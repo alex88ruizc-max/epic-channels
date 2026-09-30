@@ -12,6 +12,9 @@
   <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
 
+  <!-- EmailJS SDK para Notificaciones al Correo del Administrador -->
+  <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
+
   <script>
     tailwind.config = {
       darkMode: 'class',
@@ -439,7 +442,7 @@
 
   </main>
 
-  <!-- MODAL AUTH (CON RECUPERACIÓN DE CONTRASEÑA AUTOSERVICIO) -->
+  <!-- MODAL AUTH -->
   <div id="modalAuth" class="fixed inset-0 bg-black/80 flex items-center justify-center p-4 hidden z-50">
     <div class="bg-gray-900 border border-gray-800 rounded-2xl max-w-sm w-full p-6 relative">
       <button onclick="cerrarModalAuth()" class="absolute top-4 right-4 text-gray-500 hover:text-white">✕</button>
@@ -456,7 +459,6 @@
           <label class="text-xs text-gray-400 block mb-1">Contraseña</label>
           <input type="password" id="authPassword" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500">
           
-          <!-- Enlace para recuperar clave -->
           <div id="divOlvidastePass" class="flex justify-end pt-1.5">
             <button type="button" onclick="abrirModalAuth('reset')" class="text-[11px] text-emerald-400 hover:text-emerald-300 hover:underline">
               ¿Olvidaste tu contraseña?
@@ -487,7 +489,6 @@
           Continuar
         </button>
 
-        <!-- Botón para regresar al login desde reset -->
         <div id="divVolverLogin" class="text-center pt-2 hidden">
           <button type="button" onclick="abrirModalAuth('login')" class="text-xs text-gray-400 hover:text-white">
             ← Volver a Iniciar Sesión
@@ -593,6 +594,16 @@
       messagingSenderId: "860169917338",
       appId: "1:860169917338:web:6f25e107009568d2d2a023"
     };
+
+    // ==========================================
+    // ⚙️ CONFIGURACIÓN EMAILJS PARA EL ADMIN
+    // ==========================================
+    const EMAILJS_SERVICE_ID = "service_abc123";
+    const EMAILJS_TEMPLATE_ID = "template_87xhnvg";
+    const EMAILJS_PUBLIC_KEY = "5nAhlr7WtfP44C78Q";
+
+    // Inicializar EmailJS con tu Public Key oficial
+    emailjs.init(EMAILJS_PUBLIC_KEY);
 
     const CORREOS_ADMIN = ["alex88ruizc@gmail.com", "alex88ruiz@gmail.com"];
     const WHATSAPP_SOPORTE = "573043956726";
@@ -752,7 +763,6 @@
       }
     });
 
-    // Escuchar stock en tiempo real
     CATEGORIAS.forEach(catId => {
       db.collection('inventario').doc(catId).onSnapshot(doc => {
         const cuentas = doc.exists && doc.data().cuentas ? doc.data().cuentas : [];
@@ -796,7 +806,6 @@
       });
     });
 
-    // Control de ventanas de Auth: login, register y reset
     function abrirModalAuth(modo) {
       authMode = modo;
       document.getElementById('modalAuth').classList.remove('hidden');
@@ -833,7 +842,6 @@
         volverLogin.classList.remove('hidden');
         btnSubmit.textContent = "Enviar Enlace de Recuperación";
       } else {
-        // modo === 'login'
         titulo.textContent = "Iniciar Sesión";
         desc.classList.add('hidden');
         passDiv.classList.remove('hidden');
@@ -900,6 +908,21 @@
       auth.signOut();
     }
 
+    // Notificación en vivo al correo del Administrador con stock restante
+    function notificarVentaAlAdmin(productoNombre, cantidad, totalPagado, clienteEmail, stockRestante) {
+      const templateParams = {
+        producto: productoNombre,
+        cantidad: cantidad,
+        total: '$' + totalPagado.toLocaleString('es-CO') + ' COP',
+        cliente: clienteEmail,
+        stock_restante: stockRestante,
+        fecha: new Date().toLocaleString('es-CO', { timeZone: 'America/Bogota' })
+      };
+
+      emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, templateParams)
+        .catch(err => console.error("Error al despachar notificación de venta al admin:", err));
+    }
+
     async function comprarCuenta(catId) {
       if (!currentUser) {
         abrirModalAuth('login');
@@ -941,6 +964,9 @@
       const userRef = db.collection('usuarios').doc(currentUser.uid);
 
       try {
+        let stockRestanteFinal = 0;
+        let cuentasEntregadas = [];
+
         await db.runTransaction(async (t) => {
           const invDoc = await t.get(invRef);
           const cuentas = invDoc.exists ? invDoc.data().cuentas || [] : [];
@@ -949,7 +975,8 @@
             throw new Error(`¡Stock insuficiente! Solo quedan ${cuentas.length} cuentas disponibles en bodega.`);
           }
 
-          const cuentasEntregadas = cuentas.splice(0, cantidad);
+          cuentasEntregadas = cuentas.splice(0, cantidad);
+          stockRestanteFinal = cuentas.length;
 
           t.update(userRef, { saldo: saldoActual - totalPagar });
           t.set(invRef, { cuentas: cuentas }, { merge: true });
@@ -963,9 +990,19 @@
             precioTotal: totalPagar,
             fecha: firebase.firestore.FieldValue.serverTimestamp()
           });
-
-          mostrarModalEntrega(catId, cuentasEntregadas);
         });
+
+        mostrarModalEntrega(catId, cuentasEntregadas);
+
+        const nombresProd = {
+          amazon28: "Amazon (Garantía 28 Días)",
+          prime_local: "Prime Video Local (Con Pago)",
+          prime_europea: "Prime Video Europea (Con Pago)",
+          amazonfree: "Amazon Free Verificada (24h)",
+          correo_hotmail: "Correo Hotmail (24h)"
+        };
+        notificarVentaAlAdmin(nombresProd[catId] || catId, cantidad, totalPagar, currentUser.email, stockRestanteFinal);
+
       } catch (err) {
         alert(err.message);
       }
