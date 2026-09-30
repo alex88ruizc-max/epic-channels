@@ -128,7 +128,7 @@
       <div id="gridProductos" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 gap-5">
         <div class="col-span-full py-12 text-center text-gray-500">
           <i class="fa-solid fa-spinner fa-spin text-2xl mb-2 text-emerald-400"></i>
-          <p>Conectando con colección de inventario...</p>
+          <p>Conectando con inventario...</p>
         </div>
       </div>
     </section>
@@ -426,7 +426,7 @@
     </div>
   </div>
 
-  <!-- MODAL: ENTREGA DE CREDENCIALES -->
+  <!-- MODAL: ENTREGA DE CREDENCIALES (INDIVIDUAL O MAYORISTA) -->
   <div id="modalEntrega" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
     <div class="bg-gray-900 border border-emerald-500/50 rounded-2xl max-w-md w-full p-6 text-center">
       <div class="w-12 h-12 bg-emerald-500/20 text-emerald-400 rounded-full flex items-center justify-center mx-auto mb-3 text-xl">
@@ -435,11 +435,16 @@
       <h3 class="text-xl font-black text-white mb-1">¡Compra Exitosa!</h3>
       <p class="text-xs text-gray-400 mb-4">Tus credenciales han sido entregadas y archivadas en tu panel.</p>
 
-      <div class="bg-gray-800 border border-gray-700 p-4 rounded-xl text-left font-mono text-xs text-emerald-300 break-all mb-4 select-all" id="txtEntregaCredenciales"></div>
+      <div class="bg-gray-800 border border-gray-700 p-4 rounded-xl text-left font-mono text-xs text-emerald-300 break-all mb-4 select-all max-h-60 overflow-y-auto whitespace-pre-line" id="txtEntregaCredenciales"></div>
 
-      <button onclick="cerrarModalEntrega()" class="w-full bg-emerald-500 hover:bg-emerald-400 text-black font-bold py-2 rounded-xl text-sm">
-        Entendido
-      </button>
+      <div class="space-y-2">
+        <button onclick="copiarCredencialesEntregadas()" class="w-full bg-gray-800 hover:bg-gray-700 text-emerald-400 font-bold py-2 rounded-xl text-xs flex items-center justify-center gap-2 border border-gray-700">
+          <i class="fa-solid fa-copy"></i> Copiar Todas las Cuentas
+        </button>
+        <button onclick="cerrarModalEntrega()" class="w-full bg-emerald-500 hover:bg-emerald-400 text-black font-bold py-2 rounded-xl text-sm">
+          Entendido
+        </button>
+      </div>
     </div>
   </div>
 
@@ -487,7 +492,7 @@
         nombre: "Prime Video Local (Con Pago)",
         categoria: "Streaming",
         descripcion: "Cuenta local con pago activo. Garantía de acceso 24 horas.",
-        precioDefault: 12000
+        precioDefault: 3200
       },
       {
         id: "primevideo",
@@ -524,7 +529,6 @@
     let inventarioMap = {};
     let preciosConfig = {};
 
-    // Helper: Formatear credenciales para mostrar al usuario o admin
     function formatearCredencial(item) {
       if (!item) return '';
       if (typeof item === 'object') {
@@ -615,15 +619,13 @@
       if (tab === 'recargas') cargarRecargasAdmin();
     }
 
-    // 6. ESCUCHADOR EN VIVO DE LA COLECCIÓN `inventario` Y `configuracion`
+    // 6. ESCUCHADOR EN VIVO DE `inventario` Y `configuracion`
     function iniciarSincronizacionInventario() {
-      // Escuchar precios personalizados si existen
       db.collection('configuracion').doc('precios').onSnapshot(doc => {
         if (doc.exists) preciosConfig = doc.data() || {};
         procesarYRenderizar();
       });
 
-      // Escuchar en tiempo real la colección inventario
       db.collection('inventario').onSnapshot(snap => {
         inventarioMap = {};
         snap.forEach(d => {
@@ -637,7 +639,6 @@
 
     function procesarYRenderizar() {
       catalogoUnificado = PRODUCTOS_CATALOGO.map(prod => {
-        // Buscar documento en inventario por id directo o alias
         let docInventario = null;
         for (const alias of prod.aliases) {
           if (inventarioMap[alias]) {
@@ -667,7 +668,7 @@
       poblarSelectPrecios();
     }
 
-    // RENDERIZAR TIENDA CLIENTES
+    // RENDERIZAR TIENDA CON CONTADOR MAYORISTA
     function renderizarCatalogo() {
       const grid = document.getElementById('gridProductos');
       if (!grid) return;
@@ -703,18 +704,49 @@
               <p class="text-xs text-gray-400 mb-4 leading-relaxed">${prod.descripcion}</p>
             </div>
 
-            <div class="pt-3 border-t border-gray-800 flex items-center justify-between mt-2">
-              <div>
-                <span class="text-[10px] text-gray-400 block leading-none">Precio</span>
-                <span class="text-lg font-black text-white">$${(prod.precio || 0).toLocaleString('es-CO')}</span>
+            <!-- SECCIÓN INFERIOR: TOTAL Y CONTADOR MAYORISTA -->
+            <div class="pt-3 border-t border-gray-800 flex flex-col gap-2.5 mt-2">
+              <div class="flex items-center justify-between">
+                <div>
+                  <span class="text-[10px] text-gray-400 block leading-none">Total</span>
+                  <span id="txtTotal_${prod.docId}" class="text-base font-black text-white">$${(prod.precio || 0).toLocaleString('es-CO')}</span>
+                </div>
+                
+                <!-- CONTADOR DE CANTIDAD MAYORISTA (- 1 +) -->
+                <div class="flex items-center bg-gray-800 border border-gray-700 rounded-xl p-0.5">
+                  <button type="button" onclick="cambiarCantidad('${prod.docId}', -1, ${stockDisponible})" ${agotado ? 'disabled' : ''} class="w-7 h-7 flex items-center justify-center rounded-lg bg-gray-700/60 hover:bg-gray-700 text-gray-200 font-black text-sm active:scale-95 disabled:opacity-40">-</button>
+                  <input id="cant_${prod.docId}" type="number" value="${agotado ? 0 : 1}" min="1" max="${stockDisponible}" readonly class="w-9 text-center bg-transparent text-white font-bold text-xs focus:outline-none select-none">
+                  <button type="button" onclick="cambiarCantidad('${prod.docId}', 1, ${stockDisponible})" ${agotado ? 'disabled' : ''} class="w-7 h-7 flex items-center justify-center rounded-lg bg-gray-700/60 hover:bg-gray-700 text-gray-200 font-black text-sm active:scale-95 disabled:opacity-40">+</button>
+                </div>
               </div>
-              <button onclick="comprarProducto('${prod.docId}')" ${agotado ? 'disabled' : ''} class="px-4 py-2 rounded-xl text-xs font-bold ${agotado ? 'bg-gray-800 text-gray-500 cursor-not-allowed' : 'bg-emerald-500 hover:bg-emerald-400 text-black shadow-lg shadow-emerald-500/10'} transition">
-                ${agotado ? 'Agotado' : 'Comprar Ahora'}
+
+              <!-- BOTÓN COMPRAR AHORA -->
+              <button onclick="comprarProducto('${prod.docId}')" ${agotado ? 'disabled' : ''} class="w-full py-2.5 rounded-xl text-xs font-bold ${agotado ? 'bg-gray-800 text-gray-500 cursor-not-allowed' : 'bg-emerald-500 hover:bg-emerald-400 text-black shadow-lg shadow-emerald-500/10 active:scale-[0.98]'} transition flex items-center justify-center gap-1.5">
+                <i class="fa-solid fa-cart-shopping"></i> ${agotado ? 'Agotado' : 'Comprar Ahora'}
               </button>
             </div>
           </div>
         `;
       });
+    }
+
+    // CONTROL DEL CONTADOR MAYORISTA Y ACTUALIZACIÓN DEL TOTAL
+    function cambiarCantidad(docId, delta, maxStock) {
+      if (maxStock <= 0) return;
+      const input = document.getElementById('cant_' + docId);
+      if (!input) return;
+      let val = parseInt(input.value) || 1;
+      val = Math.max(1, Math.min(maxStock, val + delta));
+      input.value = val;
+
+      const prod = catalogoUnificado.find(p => p.docId === docId);
+      if (prod) {
+        const total = val * (prod.precio || 0);
+        const txtTotal = document.getElementById('txtTotal_' + docId);
+        if (txtTotal) {
+          txtTotal.innerText = `$${total.toLocaleString('es-CO')}`;
+        }
+      }
     }
 
     function filtrarCategoria(cat) {
@@ -728,10 +760,18 @@
       renderizarCatalogo();
     }
 
-    // 7. COMPRA DIRECTA EN `inventario` (SIN PIN)
+    // 7. COMPRA MAYORISTA O INDIVIDUAL DIRECTA EN `inventario`
     async function comprarProducto(docId) {
       if (!currentUser) {
         abrirModalAuth('login');
+        return;
+      }
+
+      const inputCant = document.getElementById('cant_' + docId);
+      const cantidad = inputCant ? (parseInt(inputCant.value) || 1) : 1;
+
+      if (cantidad <= 0) {
+        alert("Selecciona una cantidad válida.");
         return;
       }
 
@@ -747,27 +787,30 @@
           const pData = invDoc.data();
           const cuentas = pData.cuentas || [];
 
-          if (cuentas.length === 0) throw new Error("Producto agotado.");
-
-          const prodInfo = catalogoUnificado.find(p => p.docId === docId) || {};
-          const precio = pData.precio || preciosConfig[docId] || prodInfo.precioDefault || 0;
-          const saldoActual = (userDoc.data() && userDoc.data().saldo) || 0;
-
-          if (saldoActual < precio) {
-            throw new Error(`Saldo insuficiente. Tienes $${saldoActual.toLocaleString('es-CO')} y cuesta $${precio.toLocaleString('es-CO')}.`);
+          if (cuentas.length < cantidad) {
+            throw new Error(`Stock insuficiente. Solo quedan ${cuentas.length} cuentas disponibles.`);
           }
 
-          // Tomar la primera cuenta del array `cuentas`
-          const cuentaEntregada = cuentas.shift();
-          const credencialesTexto = formatearCredencial(cuentaEntregada);
+          const prodInfo = catalogoUnificado.find(p => p.docId === docId) || {};
+          const precioUnitario = pData.precio || preciosConfig[docId] || prodInfo.precioDefault || 0;
+          const totalPagar = precioUnitario * cantidad;
+          const saldoActual = (userDoc.data() && userDoc.data().saldo) || 0;
 
-          // Actualizar inventario en Firestore
+          if (saldoActual < totalPagar) {
+            throw new Error(`Saldo insuficiente. Tienes $${saldoActual.toLocaleString('es-CO')} y el total por ${cantidad} cuenta(s) es $${totalPagar.toLocaleString('es-CO')}.`);
+          }
+
+          // Extraer la cantidad seleccionada de cuentas del array
+          const cuentasEntregadas = cuentas.splice(0, cantidad);
+          const credencialesTexto = cuentasEntregadas.map((c, i) => `${i + 1}. ${formatearCredencial(c)}`).join('\n');
+
+          // Actualizar inventario en Firestore con el stock restante
           t.update(invRef, { cuentas: cuentas });
 
-          // Descontar saldo del cliente
-          t.update(userRef, { saldo: saldoActual - precio });
+          // Descontar saldo total al cliente
+          t.update(userRef, { saldo: saldoActual - totalPagar });
 
-          // Guardar en compras
+          // Registrar en compras
           const nuevaCompraRef = db.collection('compras').doc();
           t.set(nuevaCompraRef, {
             usuarioId: currentUser.uid,
@@ -775,7 +818,9 @@
             productoId: docId,
             productoNombre: prodInfo.nombre || docId,
             categoria: prodInfo.categoria || 'Streaming',
-            precio: precio,
+            cantidad: cantidad,
+            precioUnitario: precioUnitario,
+            total: totalPagar,
             credenciales: credencialesTexto,
             fecha: new Date().toISOString()
           });
@@ -787,6 +832,15 @@
       } catch (err) {
         alert(err.message);
       }
+    }
+
+    function copiarCredencialesEntregadas() {
+      const texto = document.getElementById('txtEntregaCredenciales').innerText;
+      navigator.clipboard.writeText(texto).then(() => {
+        alert("¡Todas las credenciales copiadas al portapapeles!");
+      }).catch(() => {
+        alert("Copia las credenciales seleccionando el texto en pantalla.");
+      });
     }
 
     // 8. PANEL ADMIN: PRODUCTOS Y VISIBILIDAD
@@ -931,7 +985,7 @@
       }
     }
 
-    // 10. PANEL ADMIN: CARGA DE STOCK A `inventario` Y MODIFICAR PRECIOS
+    // 10. PANEL ADMIN: CARGA DE STOCK A `inventario` Y PRECIOS
     function poblarSelectStock() {
       const select = document.getElementById('selectStockProducto');
       if (!select) return;
@@ -949,7 +1003,6 @@
 
       if (lineas.length === 0) return;
 
-      // Convertir líneas al formato map { email, pass } de tu Firestore
       const nuevasCuentas = lineas.map(l => {
         let email = l, pass = '';
         if (l.includes(':')) {
@@ -993,7 +1046,6 @@
       const nuevoPrecio = parseFloat(document.getElementById('inputNuevoPrecio').value);
 
       try {
-        // Guarda en inventario y en configuracion/precios
         await db.collection('inventario').doc(docId).set({ precio: nuevoPrecio }, { merge: true });
         await db.collection('configuracion').doc('precios').set({ [docId]: nuevoPrecio }, { merge: true });
         alert("Precio actualizado correctamente.");
@@ -1096,12 +1148,14 @@
             <div class="p-4 bg-gray-900 border border-gray-800 rounded-xl flex flex-col md:flex-row md:items-center justify-between gap-3">
               <div>
                 <span class="text-[10px] bg-gray-800 text-emerald-400 px-2 py-0.5 rounded font-semibold">${c.categoria}</span>
-                <h4 class="font-bold text-white text-sm mt-1">${c.productoNombre}</h4>
+                <h4 class="font-bold text-white text-sm mt-1">
+                  ${c.productoNombre} ${c.cantidad && c.cantidad > 1 ? `<span class="text-xs text-emerald-400 font-normal">(${c.cantidad} cuentas)</span>` : ''}
+                </h4>
                 <p class="text-xs text-gray-500">${new Date(c.fecha).toLocaleString()}</p>
               </div>
               <div class="bg-gray-800/90 border border-gray-700 px-3 py-2 rounded-lg font-mono text-xs text-emerald-300 break-all select-all flex items-center justify-between gap-2">
-                <span>${c.credenciales}</span>
-                <button onclick="navigator.clipboard.writeText('${c.credenciales}'); alert('Copiado al portapapeles');" class="text-gray-400 hover:text-white">
+                <span class="whitespace-pre-line">${c.credenciales}</span>
+                <button onclick="navigator.clipboard.writeText('${c.credenciales.replace(/\n/g, '\\n')}'); alert('Copiado al portapapeles');" class="text-gray-400 hover:text-white">
                   <i class="fa-solid fa-copy"></i>
                 </button>
               </div>
@@ -1135,7 +1189,6 @@
         document.getElementById('txtToggleAuth').innerText = '¿No tienes cuenta?';
         document.getElementById('btnToggleAuth').innerText = 'Regístrate';
 
-        // Ocultar WhatsApp y Captcha en Login
         document.getElementById('grupoAuthWhatsapp').classList.add('hidden');
         document.getElementById('grupoAuthCaptcha').classList.add('hidden');
         document.getElementById('captchaInput').required = false;
@@ -1146,7 +1199,6 @@
         document.getElementById('txtToggleAuth').innerText = '¿Ya tienes cuenta?';
         document.getElementById('btnToggleAuth').innerText = 'Inicia Sesión';
 
-        // Mostrar WhatsApp y Captcha en Registro
         document.getElementById('grupoAuthWhatsapp').classList.remove('hidden');
         document.getElementById('grupoAuthCaptcha').classList.remove('hidden');
         document.getElementById('captchaInput').required = true;
@@ -1219,7 +1271,6 @@
       document.getElementById('modalEntrega').classList.add('hidden');
     }
 
-    // Inicializar listener de inventario al arrancar la app
     window.addEventListener('DOMContentLoaded', () => {
       iniciarSincronizacionInventario();
     });
