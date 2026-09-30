@@ -189,13 +189,13 @@
         <p class="text-xs text-gray-300">Gestiona precios, inventario por lotes y saldo de clientes.</p>
       </div>
 
-      <!-- NUEVA SECCIÓN: GESTIÓN DE PRECIOS -->
+      <!-- GESTIÓN DE PRECIOS -->
       <div class="bg-gray-900 border border-gray-800 rounded-2xl p-6">
         <h3 class="font-bold text-white mb-2 flex items-center">
           <i class="fa-solid fa-tags text-emerald-400 mr-2"></i> Modificar Precios de Productos
         </h3>
         <p class="text-xs text-gray-400 mb-4">
-          Cambia el valor en pesos (COP). Se actualizará de inmediato en la tienda y en el cobro a los clientes.
+          Cambia el valor en pesos (COP). Se actualizará de inmediato en la tienda para todos los clientes.
         </p>
 
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
@@ -222,7 +222,8 @@
       <div class="bg-gray-900 border border-gray-800 rounded-2xl p-6">
         <h3 class="font-bold text-white mb-2">Cargar Cuentas (Copiar y Pegar)</h3>
         <p class="text-xs text-gray-400 mb-4">
-          Pega una cuenta por línea en formato: <code class="text-emerald-400">correo@ejemplo.com:clave123</code> o <code class="text-emerald-400">correo|clave|pin</code>.
+          Pega una cuenta por línea en formato: <code class="text-emerald-400">correo@ejemplo.com:clave_del_correo</code> o <code class="text-emerald-400">correo|clave_correo|pin</code>.<br>
+          <span class="text-amber-400 text-[11px]">Nota: La contraseña para ingresar a la plataforma se fijará automáticamente como <b>epic2828</b>.</span>
         </p>
 
         <div class="mb-4 max-w-xs">
@@ -234,7 +235,7 @@
           </select>
         </div>
 
-        <textarea id="adminTxtCuentas" rows="5" placeholder="usuario1@mail.com:password123&#10;usuario2@mail.com|clave456|pin1234" class="w-full bg-gray-800 border border-gray-700 rounded-xl p-3 text-sm font-mono text-gray-200 focus:outline-none focus:border-emerald-500"></textarea>
+        <textarea id="adminTxtCuentas" rows="5" placeholder="usuario1@mail.com:claveCorreo123&#10;usuario2@mail.com|claveCorreo456|pin1234" class="w-full bg-gray-800 border border-gray-700 rounded-xl p-3 text-sm font-mono text-gray-200 focus:outline-none focus:border-emerald-500"></textarea>
 
         <button onclick="adminSubirCuentas()" class="mt-3 px-6 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-bold text-sm">
           <i class="fa-solid fa-cloud-arrow-up mr-1"></i> Guardar Cuentas en Stock
@@ -313,7 +314,7 @@
     </div>
   </div>
 
-  <!-- MODAL ENTREGA -->
+  <!-- MODAL ENTREGA (CON CLAVE FIJA EPIC2828 Y CLAVE DEL CORREO) -->
   <div id="modalEntrega" class="fixed inset-0 bg-black/80 flex items-center justify-center p-4 hidden z-50">
     <div class="bg-gray-900 border border-emerald-500/40 rounded-2xl max-w-md w-full p-6 text-center">
       <div class="w-12 h-12 bg-emerald-500/20 text-emerald-400 rounded-full flex items-center justify-center mx-auto mb-3 text-xl">
@@ -322,7 +323,7 @@
       <h3 class="text-xl font-black text-white mb-1">¡Compra Exitosa!</h3>
       <p class="text-xs text-gray-400 mb-4">Tus credenciales han sido entregadas y archivadas en "Mis Compras".</p>
 
-      <div class="bg-gray-800 border border-gray-700 p-4 rounded-xl text-left space-y-2 mb-4 font-mono text-sm">
+      <div class="bg-gray-800 border border-gray-700 p-4 rounded-xl text-left space-y-3 mb-4 font-mono text-sm">
         <div>
           <span class="text-xs text-gray-400 block font-sans">Producto:</span>
           <span id="entregaProducto" class="font-bold text-white"></span>
@@ -332,11 +333,15 @@
           <span id="entregaEmail" class="text-emerald-400 select-all font-bold"></span>
         </div>
         <div>
-          <span class="text-xs text-gray-400 block font-sans">Contraseña:</span>
-          <span id="entregaPassword" class="text-amber-400 select-all font-bold"></span>
+          <span class="text-xs text-gray-400 block font-sans">Contraseña para ingresar a la plataforma:</span>
+          <span class="text-amber-400 select-all font-bold">epic2828</span>
+        </div>
+        <div>
+          <span class="text-xs text-gray-400 block font-sans">Clave de acceso al correo (Buzón / OTP):</span>
+          <span id="entregaClaveCorreo" class="text-cyan-400 select-all font-bold"></span>
         </div>
         <div id="divEntregaPin" class="hidden">
-          <span class="text-xs text-gray-400 block font-sans">PIN:</span>
+          <span class="text-xs text-gray-400 block font-sans">PIN de perfil:</span>
           <span id="entregaPin" class="text-blue-400 select-all font-bold"></span>
         </div>
       </div>
@@ -364,7 +369,6 @@
     const CORREOS_ADMIN = ["alex88ruizc@gmail.com", "alex88ruiz@gmail.com"];
     const WHATSAPP_SOPORTE = "573043956726";
 
-    // Precios por defecto (se sobreescriben automáticamente desde la base de datos)
     let PRECIOS = {
       amazon28: 18000,
       amazonfree: 4000,
@@ -379,7 +383,7 @@
     let userProfile = null;
     let authMode = 'login';
 
-    // Escuchador de precios en tiempo real desde Firestore
+    // Escuchador de precios en Firestore
     db.collection('configuracion').doc('precios').onSnapshot(doc => {
       if (doc.exists) {
         const data = doc.data();
@@ -388,12 +392,10 @@
         if (data.primevideo) PRECIOS.primevideo = Number(data.primevideo);
       }
 
-      // Actualizar vista de precios en la tienda
       document.getElementById('precio-amazon28').textContent = '$' + PRECIOS.amazon28.toLocaleString('es-CO') + ' COP';
       document.getElementById('precio-amazonfree').textContent = '$' + PRECIOS.amazonfree.toLocaleString('es-CO') + ' COP';
       document.getElementById('precio-primevideo').textContent = '$' + PRECIOS.primevideo.toLocaleString('es-CO') + ' COP';
 
-      // Rellenar los campos en el panel admin si están en pantalla
       const inp28 = document.getElementById('adminPrecioAmazon28');
       const inpFree = document.getElementById('adminPrecioAmazonFree');
       const inpPrime = document.getElementById('adminPrecioPrimeVideo');
@@ -551,6 +553,7 @@
       }
     }
 
+    // Modal de entrega con la clave epic2828 y clave de correo
     function mostrarModalEntrega(catId, cuenta) {
       const nombres = {
         amazon28: "Amazon (Garantía 28 Días)",
@@ -560,7 +563,7 @@
 
       document.getElementById('entregaProducto').textContent = nombres[catId];
       document.getElementById('entregaEmail').textContent = cuenta.email;
-      document.getElementById('entregaPassword').textContent = cuenta.pass;
+      document.getElementById('entregaClaveCorreo').textContent = cuenta.pass;
       if (cuenta.pin) {
         document.getElementById('divEntregaPin').classList.remove('hidden');
         document.getElementById('entregaPin').textContent = cuenta.pin;
@@ -575,6 +578,7 @@
       document.getElementById('modalEntrega').classList.add('hidden');
     }
 
+    // Historial con formato explícito
     function cargarMisCompras() {
       if (!currentUser) return;
       db.collection('compras')
@@ -592,16 +596,19 @@
               <div class="bg-gray-900 border border-gray-800 p-4 rounded-xl flex flex-col md:flex-row justify-between items-start md:items-center gap-2">
                 <div>
                   <span class="text-xs font-bold text-emerald-400 uppercase">${d.categoria}</span>
-                  <div class="font-mono text-sm text-white select-all">${d.datos.email} : ${d.datos.pass} ${d.datos.pin ? '| PIN: ' + d.datos.pin : ''}</div>
+                  <div class="font-mono text-sm text-white select-all space-y-0.5 mt-1">
+                    <div><b>Usuario / Correo:</b> <span class="text-emerald-400">${d.datos.email}</span></div>
+                    <div><b>Clave Plataforma:</b> <span class="text-amber-400">epic2828</span></div>
+                    <div><b>Clave Correo:</b> <span class="text-cyan-400">${d.datos.pass}</span> ${d.datos.pin ? '| <b>PIN:</b> ' + d.datos.pin : ''}</div>
+                  </div>
                 </div>
-                <span class="text-xs text-gray-500">$${d.precio?.toLocaleString('es-CO')} COP</span>
+                <span class="text-xs text-gray-500 font-bold">$${d.precio?.toLocaleString('es-CO')} COP</span>
               </div>
             `;
           });
         });
     }
 
-    // Guardar precios modificados desde el panel admin
     async function adminGuardarPrecios() {
       const p28 = parseInt(document.getElementById('adminPrecioAmazon28').value);
       const pFree = parseInt(document.getElementById('adminPrecioAmazonFree').value);
@@ -638,7 +645,7 @@
         if (partes.length >= 2) {
           cuentasNuevas.push({
             email: partes[0].trim(),
-            pass: partes[1].trim(),
+            pass: partes[1].trim(), // Clave de acceso al buzón del correo
             pin: partes[2] ? partes[2].trim() : ''
           });
         }
