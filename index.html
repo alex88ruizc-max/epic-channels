@@ -128,7 +128,7 @@
       <div id="gridProductos" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 gap-5">
         <div class="col-span-full py-12 text-center text-gray-500">
           <i class="fa-solid fa-spinner fa-spin text-2xl mb-2 text-emerald-400"></i>
-          <p>Conectando con inventario...</p>
+          <p>Sincronizando existencias con Firebase...</p>
         </div>
       </div>
     </section>
@@ -179,7 +179,7 @@
       <div id="adminSecProductos">
         <div class="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden">
           <div class="p-4 border-b border-gray-800 flex items-center justify-between">
-            <h4 class="font-bold text-white text-sm">Inventario en Tiempo Real (Colección `inventario`)</h4>
+            <h4 class="font-bold text-white text-sm">Inventario en Tiempo Real</h4>
             <span class="text-xs text-gray-400">Oculta o activa sin borrar tus cuentas</span>
           </div>
           <div class="overflow-x-auto">
@@ -237,7 +237,7 @@
           <h3 class="text-base font-bold text-white mb-2 flex items-center gap-2">
             <i class="fa-solid fa-key text-emerald-400"></i> Cargar Cuentas al Inventario
           </h3>
-          <p class="text-xs text-gray-400 mb-4">Pega una cuenta por cada renglón (correo:clave). Se guardarán en el array `cuentas` del producto.</p>
+          <p class="text-xs text-gray-400 mb-4">Pega una cuenta por cada renglón (correo:clave). Se guardarán sincronizadas en Firebase.</p>
           
           <form onsubmit="cargarStockMasivo(event)" class="space-y-4">
             <div>
@@ -272,7 +272,7 @@
             </div>
             <div>
               <label class="block text-xs text-gray-400 mb-1">Nuevo Precio (COP)</label>
-              <input type="number" id="inputNuevoPrecio" required placeholder="Ej: 15000" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-sm text-white">
+              <input type="number" id="inputNuevoPrecio" required placeholder="Ej: 3200" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-sm text-white">
             </div>
             <button type="submit" class="bg-emerald-500 hover:bg-emerald-400 text-black font-bold py-2.5 px-6 rounded-xl text-sm transition">
               Guardar Nuevo Precio
@@ -386,7 +386,7 @@
     </div>
   </div>
 
-  <!-- MODAL: RECARGAR SALDO (DATOS REALES RESTAURADOS) -->
+  <!-- MODAL: RECARGAR SALDO -->
   <div id="modalRecarga" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
     <div class="bg-gray-900 border border-gray-800 rounded-2xl max-w-md w-full p-6 relative">
       <button onclick="cerrarModalRecarga()" class="absolute top-4 right-4 text-gray-400 hover:text-white">
@@ -504,11 +504,10 @@
     const auth = firebase.auth();
     const db = firebase.firestore();
 
-    // 3. MAPA OFICIAL DE LAS 5 CATEGORÍAS VINCULADAS A LA COLECCIÓN `inventario`
+    // 3. MAPA OFICIAL DE LAS 5 CATEGORÍAS
     const PRODUCTOS_CATALOGO = [
       {
         id: "amazon28",
-        aliases: ["amazon28", "amazon_28", "amazon"],
         nombre: "Amazon (Garantía 28 Días)",
         categoria: "Streaming",
         descripcion: "Cuenta completa con garantía de 28 días. Entrega directa sin PIN.",
@@ -516,7 +515,6 @@
       },
       {
         id: "prime_local",
-        aliases: ["prime_local", "primelocal"],
         nombre: "Prime Video Local (Con Pago)",
         categoria: "Streaming",
         descripcion: "Cuenta local con pago activo. Garantía de acceso 24 horas.",
@@ -524,15 +522,13 @@
       },
       {
         id: "primevideo",
-        aliases: ["primevideo", "prime_europea", "primeeuropea"],
         nombre: "Prime Video Europea (Con Pago)",
         categoria: "Streaming",
         descripcion: "Cuenta europea con pago activo. Garantía de acceso 24 horas.",
-        precioDefault: 10000
+        precioDefault: 2800
       },
       {
         id: "amazonfree",
-        aliases: ["amazonfree", "amazon_free"],
         nombre: "Amazon Free (Garantía 24 Horas)",
         categoria: "Streaming",
         descripcion: "Cuenta Amazon Free verificada. Garantía de acceso 24 horas.",
@@ -540,7 +536,6 @@
       },
       {
         id: "correo_hotmail",
-        aliases: ["correo_hotmail", "hotmail", "correohotmail"],
         nombre: "Correo Hotmail (Garantía 24 Horas)",
         categoria: "Correos",
         descripcion: "Correo Outlook/Hotmail verificado con garantía de acceso 24 horas.",
@@ -554,8 +549,52 @@
     let captchaGenerado = '';
     let categoriaActiva = 'todas';
     let catalogoUnificado = [];
-    let inventarioMap = {};
+    let snapshotInventario = {};
+    let snapshotProductos = {};
     let preciosConfig = {};
+
+    // Clasificador inteligente para mapear cualquier documento a su categoría
+    function clasificarProducto(docId, docData) {
+      const texto = ((docId || '') + ' ' + ((docData && docData.nombre) || '')).toLowerCase();
+      if (texto.includes('28')) return 'amazon28';
+      if (texto.includes('local')) return 'prime_local';
+      if (texto.includes('europea') || texto.includes('primevideo')) return 'primevideo';
+      if (texto.includes('free')) return 'amazonfree';
+      if (texto.includes('hotmail') || texto.includes('correo')) return 'correo_hotmail';
+      return docId;
+    }
+
+    // Extractor universal de cuentas (sea array de mapas, array de strings o texto)
+    function extraerCuentas(data) {
+      if (!data) return [];
+      const campos = ['cuentas', 'stockCuentas', 'stock', 'items', 'lista'];
+      for (const campo of campos) {
+        if (Array.isArray(data[campo]) && data[campo].length > 0) {
+          return data[campo].map(item => {
+            if (typeof item === 'object' && item !== null) {
+              const email = item.email || item.correo || item.user || '';
+              const pass = item.pass || item.password || item.clave || '';
+              return email && pass ? { email, pass } : { email: JSON.stringify(item), pass: '' };
+            }
+            if (typeof item === 'string') {
+              let email = item, pass = '';
+              if (item.includes(':')) {
+                const parts = item.split(':');
+                email = parts[0].trim();
+                pass = parts.slice(1).join(':').trim();
+              } else if (item.includes(' ') || item.includes('\t')) {
+                const parts = item.split(/\s+/);
+                email = parts[0].trim();
+                pass = parts.slice(1).join(' ').trim();
+              }
+              return { email, pass };
+            }
+            return { email: String(item), pass: '' };
+          });
+        }
+      }
+      return [];
+    }
 
     function formatearCredencial(item) {
       if (!item) return '';
@@ -655,46 +694,80 @@
       if (tab === 'recargas') cargarRecargasAdmin();
     }
 
-    // 6. ESCUCHADOR EN VIVO DE `inventario` Y `configuracion`
-    function iniciarSincronizacionInventario() {
+    // 6. ESCUCHA SIMULTÁNEA DE AMBAS COLECCIONES: `inventario` Y `productos`
+    function iniciarSincronizacionTotal() {
+      // Escuchar configuracion de precios
       db.collection('configuracion').doc('precios').onSnapshot(doc => {
         if (doc.exists) preciosConfig = doc.data() || {};
         procesarYRenderizar();
       });
 
+      // Escuchar coleccion `inventario`
       db.collection('inventario').onSnapshot(snap => {
-        inventarioMap = {};
+        snapshotInventario = {};
         snap.forEach(d => {
-          inventarioMap[d.id] = { id: d.id, ...d.data() };
+          snapshotInventario[d.id] = d.data();
         });
         procesarYRenderizar();
-      }, err => {
-        console.error("Error al escuchar inventario:", err);
+      });
+
+      // Escuchar coleccion `productos`
+      db.collection('productos').onSnapshot(snap => {
+        snapshotProductos = {};
+        snap.forEach(d => {
+          snapshotProductos[d.id] = d.data();
+        });
+        procesarYRenderizar();
       });
     }
 
     function procesarYRenderizar() {
-      catalogoUnificado = PRODUCTOS_CATALOGO.map(prod => {
-        let docInventario = null;
-        for (const alias of prod.aliases) {
-          if (inventarioMap[alias]) {
-            docInventario = inventarioMap[alias];
-            break;
-          }
-        }
+      catalogoUnificado = PRODUCTOS_CATALOGO.map(prodBase => {
+        const key = prodBase.id;
+        let cuentasTotales = [];
+        let precioDetectado = null;
+        let activoDetectado = true;
 
-        const docIdFinal = docInventario ? docInventario.id : prod.id;
-        const cuentas = (docInventario && Array.isArray(docInventario.cuentas)) ? docInventario.cuentas : [];
-        const precio = (docInventario && docInventario.precio) || preciosConfig[docIdFinal] || prod.precioDefault;
-        const activo = docInventario ? (docInventario.activo !== false) : true;
+        // 1. Extraer desde `inventario`
+        Object.entries(snapshotInventario).forEach(([docId, docData]) => {
+          if (clasificarProducto(docId, docData) === key) {
+            const arr = extraerCuentas(docData);
+            cuentasTotales = cuentasTotales.concat(arr);
+            if (docData.precio) precioDetectado = docData.precio;
+            if (docData.activo !== undefined) activoDetectado = docData.activo;
+          }
+        });
+
+        // 2. Extraer desde `productos`
+        Object.entries(snapshotProductos).forEach(([docId, docData]) => {
+          if (clasificarProducto(docId, docData) === key) {
+            const arr = extraerCuentas(docData);
+            cuentasTotales = cuentasTotales.concat(arr);
+            if (docData.precio && !precioDetectado) precioDetectado = docData.precio;
+            if (docData.activo !== undefined && activoDetectado === true) activoDetectado = docData.activo;
+          }
+        });
+
+        // Eliminar duplicados exactos (evita contar dos veces si la misma cuenta está en ambas colecciones)
+        const cuentasUnicas = [];
+        const seen = new Set();
+        cuentasTotales.forEach(c => {
+          const identificador = (c.email + ':' + c.pass).toLowerCase();
+          if (!seen.has(identificador)) {
+            seen.add(identificador);
+            cuentasUnicas.push(c);
+          }
+        });
+
+        const precioFinal = precioDetectado || preciosConfig[key] || prodBase.precioDefault;
 
         return {
-          ...prod,
-          docId: docIdFinal,
-          stock: cuentas.length,
-          cuentas: cuentas,
-          precio: precio,
-          activo: activo
+          ...prodBase,
+          docId: key,
+          stock: cuentasUnicas.length, // STOCK TOTAL EXACTO
+          cuentas: cuentasUnicas,
+          precio: precioFinal,
+          activo: activoDetectado
         };
       });
 
@@ -740,7 +813,7 @@
               <p class="text-xs text-gray-400 mb-4 leading-relaxed">${prod.descripcion}</p>
             </div>
 
-            <!-- SECCIÓN INFERIOR: TOTAL Y CONTADOR MAYORISTA -->
+            <!-- TOTAL Y CONTADOR MAYORISTA -->
             <div class="pt-3 border-t border-gray-800 flex flex-col gap-2.5 mt-2">
               <div class="flex items-center justify-between">
                 <div>
@@ -748,7 +821,7 @@
                   <span id="txtTotal_${prod.docId}" class="text-base font-black text-white">$${(prod.precio || 0).toLocaleString('es-CO')}</span>
                 </div>
                 
-                <!-- CONTADOR DE CANTIDAD MAYORISTA (- 1 +) -->
+                <!-- CONTADOR MAYORISTA (- 1 +) -->
                 <div class="flex items-center bg-gray-800 border border-gray-700 rounded-xl p-0.5">
                   <button type="button" onclick="cambiarCantidad('${prod.docId}', -1, ${stockDisponible})" ${agotado ? 'disabled' : ''} class="w-7 h-7 flex items-center justify-center rounded-lg bg-gray-700/60 hover:bg-gray-700 text-gray-200 font-black text-sm active:scale-95 disabled:opacity-40">-</button>
                   <input id="cant_${prod.docId}" type="number" value="${agotado ? 0 : 1}" min="1" max="${stockDisponible}" readonly class="w-9 text-center bg-transparent text-white font-bold text-xs focus:outline-none select-none">
@@ -766,7 +839,6 @@
       });
     }
 
-    // CONTROL DEL CONTADOR MAYORISTA Y ACTUALIZACIÓN DEL TOTAL
     function cambiarCantidad(docId, delta, maxStock) {
       if (maxStock <= 0) return;
       const input = document.getElementById('cant_' + docId);
@@ -796,7 +868,7 @@
       renderizarCatalogo();
     }
 
-    // 7. COMPRA MAYORISTA O INDIVIDUAL DIRECTA EN `inventario`
+    // 7. COMPRA DIRECTA CON DESCUENTO SINCRONIZADO
     async function comprarProducto(docId) {
       if (!currentUser) {
         abrirModalAuth('login');
@@ -806,42 +878,34 @@
       const inputCant = document.getElementById('cant_' + docId);
       const cantidad = inputCant ? (parseInt(inputCant.value) || 1) : 1;
 
-      if (cantidad <= 0) {
-        alert("Selecciona una cantidad válida.");
+      const prodInfo = catalogoUnificado.find(p => p.docId === docId);
+      if (!prodInfo || prodInfo.stock < cantidad) {
+        alert("Stock insuficiente para realizar esta compra.");
         return;
       }
 
-      const invRef = db.collection('inventario').doc(docId);
+      const precioUnitario = prodInfo.precio || 0;
+      const totalPagar = precioUnitario * cantidad;
+
       const userRef = db.collection('usuarios').doc(currentUser.uid);
 
       try {
         await db.runTransaction(async (t) => {
-          const invDoc = await t.get(invRef);
           const userDoc = await t.get(userRef);
-
-          if (!invDoc.exists) throw new Error("Producto no disponible en inventario.");
-          const pData = invDoc.data();
-          const cuentas = pData.cuentas || [];
-
-          if (cuentas.length < cantidad) {
-            throw new Error(`Stock insuficiente. Solo quedan ${cuentas.length} cuentas disponibles.`);
-          }
-
-          const prodInfo = catalogoUnificado.find(p => p.docId === docId) || {};
-          const precioUnitario = pData.precio || preciosConfig[docId] || prodInfo.precioDefault || 0;
-          const totalPagar = precioUnitario * cantidad;
           const saldoActual = (userDoc.data() && userDoc.data().saldo) || 0;
 
           if (saldoActual < totalPagar) {
             throw new Error(`Saldo insuficiente. Tienes $${saldoActual.toLocaleString('es-CO')} y el total por ${cantidad} cuenta(s) es $${totalPagar.toLocaleString('es-CO')}.`);
           }
 
-          // Extraer las cuentas
-          const cuentasEntregadas = cuentas.splice(0, cantidad);
+          // Tomar las cuentas requeridas
+          const cuentasEntregadas = prodInfo.cuentas.slice(0, cantidad);
+          const cuentasRestantes = prodInfo.cuentas.slice(cantidad);
           const credencialesTexto = cuentasEntregadas.map((c, i) => `${i + 1}. ${formatearCredencial(c)}`).join('\n');
 
-          // Actualizar inventario en Firestore
-          t.update(invRef, { cuentas: cuentas });
+          // Descontar en `inventario` y `productos`
+          t.set(db.collection('inventario').doc(docId), { cuentas: cuentasRestantes }, { merge: true });
+          t.set(db.collection('productos').doc(docId), { stockCuentas: cuentasRestantes, cuentas: cuentasRestantes, stock: cuentasRestantes.length }, { merge: true });
 
           // Descontar saldo
           t.update(userRef, { saldo: saldoActual - totalPagar });
@@ -852,8 +916,8 @@
             usuarioId: currentUser.uid,
             usuarioEmail: currentUser.email,
             productoId: docId,
-            productoNombre: prodInfo.nombre || docId,
-            categoria: prodInfo.categoria || 'Streaming',
+            productoNombre: prodInfo.nombre,
+            categoria: prodInfo.categoria,
             cantidad: cantidad,
             precioUnitario: precioUnitario,
             total: totalPagar,
@@ -861,7 +925,6 @@
             fecha: new Date().toISOString()
           });
 
-          // Mostrar entrega
           document.getElementById('txtEntregaCredenciales').innerText = credencialesTexto;
           document.getElementById('modalEntrega').classList.remove('hidden');
         });
@@ -928,10 +991,10 @@
 
       const contenedor = document.getElementById('listaCuentasDetalle');
       document.getElementById('txtTituloModalStock').innerText = prod.nombre;
-      document.getElementById('txtSubtituloModalStock').innerText = `${prod.stock} cuentas en Firestore (inventario > ${docId})`;
+      document.getElementById('txtSubtituloModalStock').innerText = `${prod.stock} cuentas sincronizadas`;
 
       if (prod.cuentas.length === 0) {
-        contenedor.innerHTML = '<p class="text-gray-400 font-sans">No hay cuentas en este documento.</p>';
+        contenedor.innerHTML = '<p class="text-gray-400 font-sans">No hay cuentas disponibles.</p>';
       } else {
         contenedor.innerHTML = prod.cuentas.map((c, i) => `<div><span class="text-gray-500 select-none mr-2">${i + 1}.</span>${formatearCredencial(c)}</div>`).join('');
       }
@@ -947,14 +1010,16 @@
       try {
         const nuevoEstado = !estadoActual;
         await db.collection('inventario').doc(docId).set({ activo: nuevoEstado }, { merge: true });
+        await db.collection('productos').doc(docId).set({ activo: nuevoEstado }, { merge: true });
       } catch (e) {
         alert("Error al cambiar visibilidad: " + e.message);
       }
     }
 
     async function vaciarStock(docId) {
-      if (confirm("¿Estás seguro de vaciar las cuentas guardadas de este producto en inventario?")) {
-        await db.collection('inventario').doc(docId).update({ cuentas: [] });
+      if (confirm("¿Estás seguro de vaciar las cuentas guardadas de este producto?")) {
+        await db.collection('inventario').doc(docId).set({ cuentas: [] }, { merge: true });
+        await db.collection('productos').doc(docId).set({ stockCuentas: [], cuentas: [], stock: 0 }, { merge: true });
       }
     }
 
@@ -1021,7 +1086,7 @@
       }
     }
 
-    // 10. PANEL ADMIN: CARGA DE STOCK A `inventario` Y PRECIOS
+    // 10. PANEL ADMIN: CARGA DE STOCK SINCRONIZADA EN AMBAS COLECCIONES
     function poblarSelectStock() {
       const select = document.getElementById('selectStockProducto');
       if (!select) return;
@@ -1054,14 +1119,20 @@
       });
 
       try {
-        const invRef = db.collection('inventario').doc(docId);
-        const doc = await invRef.get();
-        const cuentasActuales = (doc.exists && Array.isArray(doc.data().cuentas)) ? doc.data().cuentas : [];
-        const nuevoArray = cuentasActuales.concat(nuevasCuentas);
+        const prodActual = catalogoUnificado.find(p => p.docId === docId);
+        const cuentasExistentes = (prodActual && prodActual.cuentas) || [];
+        const nuevoArray = cuentasExistentes.concat(nuevasCuentas);
 
-        await invRef.set({ cuentas: nuevoArray }, { merge: true });
+        // Guarda sincronizado en AMBAS colecciones
+        await db.collection('inventario').doc(docId).set({ cuentas: nuevoArray }, { merge: true });
+        await db.collection('productos').doc(docId).set({ 
+          stockCuentas: nuevoArray, 
+          cuentas: nuevoArray, 
+          stock: nuevoArray.length 
+        }, { merge: true });
+
         document.getElementById('txtStockLineas').value = '';
-        alert(`¡Listo! Se agregaron ${nuevasCuentas.length} cuentas al documento ${docId}.`);
+        alert(`¡Listo! Se agregaron ${nuevasCuentas.length} cuentas. Stock total actualizado a ${nuevoArray.length}.`);
       } catch (err) {
         alert("Error al cargar cuentas: " + err.message);
       }
@@ -1083,6 +1154,7 @@
 
       try {
         await db.collection('inventario').doc(docId).set({ precio: nuevoPrecio }, { merge: true });
+        await db.collection('productos').doc(docId).set({ precio: nuevoPrecio }, { merge: true });
         await db.collection('configuracion').doc('precios').set({ [docId]: nuevoPrecio }, { merge: true });
         alert("Precio actualizado correctamente.");
         document.getElementById('inputNuevoPrecio').value = '';
@@ -1308,7 +1380,7 @@
     }
 
     window.addEventListener('DOMContentLoaded', () => {
-      iniciarSincronizacionInventario();
+      iniciarSincronizacionTotal();
     });
   </script>
 </body>
