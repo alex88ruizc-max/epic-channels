@@ -1,0 +1,646 @@
+<!DOCTYPE html>
+<html lang="es" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Epic Channels | Cuentas Verificadas</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <!-- Firebase SDKs -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
+
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: { 500: '#00D084', 600: '#00B070', dark: '#0b0f19', card: '#111827' }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body { background-color: #0b0f19; color: #f3f4f6; font-family: system-ui, sans-serif; }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between">
+
+  <!-- NAVBAR -->
+  <header class="border-b border-gray-800 bg-gray-900/80 backdrop-blur sticky top-0 z-50">
+    <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
+      <div class="flex items-center space-x-2">
+        <i class="fa-solid fa-bolt text-emerald-400 text-xl"></i>
+        <span class="font-black text-lg tracking-wider text-white">EPIC<span class="text-emerald-400">CHANNELS</span></span>
+      </div>
+
+      <div id="navGuest" class="flex items-center space-x-2">
+        <button onclick="abrirModalAuth('login')" class="px-4 py-1.5 rounded-lg text-sm bg-gray-800 hover:bg-gray-700 text-gray-200 font-medium">Ingresar</button>
+        <button onclick="abrirModalAuth('register')" class="px-4 py-1.5 rounded-lg text-sm bg-emerald-500 hover:bg-emerald-600 text-black font-bold">Registrarse</button>
+      </div>
+
+      <div id="navUser" class="hidden flex items-center space-x-4">
+        <div class="bg-gray-800/90 border border-gray-700 px-3 py-1.5 rounded-xl flex items-center space-x-2">
+          <i class="fa-solid fa-wallet text-emerald-400 text-xs"></i>
+          <div>
+            <span class="text-[10px] text-gray-400 block leading-none">Mi Saldo</span>
+            <span id="txtSaldoHeader" class="text-sm font-bold text-white leading-tight">$0 COP</span>
+          </div>
+          <button onclick="abrirModalRecarga()" title="Recargar saldo" class="ml-2 bg-emerald-500 hover:bg-emerald-600 text-black text-xs font-bold px-2 py-1 rounded">
+            +
+          </button>
+        </div>
+
+        <button id="btnAdminTab" onclick="cambiarVista('admin')" class="hidden px-3 py-1.5 rounded-lg text-xs bg-amber-500/20 text-amber-400 border border-amber-500/30 font-bold">
+          <i class="fa-solid fa-shield-halved mr-1"></i> Admin
+        </button>
+
+        <button onclick="cambiarVista('tienda')" class="px-3 py-1.5 rounded-lg text-xs text-gray-300 hover:text-white font-medium">
+          Tienda
+        </button>
+
+        <button onclick="cambiarVista('compras')" class="px-3 py-1.5 rounded-lg text-xs text-gray-300 hover:text-white font-medium">
+          Mis Compras
+        </button>
+
+        <button onclick="cerrarSesion()" class="text-gray-400 hover:text-red-400 text-sm pl-2" title="Cerrar sesión">
+          <i class="fa-solid fa-right-from-bracket"></i>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- CONTENIDO PRINCIPAL -->
+  <main class="max-w-6xl mx-auto px-4 py-8 w-full flex-grow">
+
+    <div id="bannerGuest" class="mb-8 p-6 rounded-2xl bg-gradient-to-r from-emerald-950/40 to-gray-900 border border-emerald-500/20 text-center">
+      <h2 class="text-2xl font-black text-white mb-2">Cuentas Streaming con Entrega Inmediata</h2>
+      <p class="text-gray-400 text-sm max-w-xl mx-auto mb-4">
+        Regístrate gratis, recarga tu billetera por transferencia y adquiere cuentas verificadas al instante.
+      </p>
+      <button onclick="abrirModalAuth('register')" class="px-6 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-bold text-sm shadow-lg shadow-emerald-500/20 transition">
+        Crear mi cuenta ahora
+      </button>
+    </div>
+
+    <!-- SECCIÓN: TIENDA -->
+    <div id="vistaTienda" class="space-y-6">
+      <div class="flex justify-between items-center">
+        <div>
+          <h1 class="text-xl font-bold text-white">Catálogo Disponible</h1>
+          <p class="text-xs text-gray-400">Stock sincronizado en tiempo real</p>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+
+        <!-- Amazon 28 Días -->
+        <div class="bg-gray-900 border border-gray-800 rounded-2xl p-5 flex flex-col justify-between hover:border-emerald-500/40 transition">
+          <div>
+            <div class="flex justify-between items-start mb-3">
+              <span class="px-2.5 py-1 rounded-full text-[11px] font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                Garantía 28 Días
+              </span>
+              <span id="stock-amazon28" class="text-xs font-semibold px-2 py-0.5 rounded bg-gray-800 text-gray-400">
+                Consultando...
+              </span>
+            </div>
+            <h3 class="text-lg font-black text-white mb-1">Amazon (Garantía 28 Días)</h3>
+            <p class="text-xs text-gray-400 mb-4 leading-relaxed">
+              Cuenta completa con suscripción garantizada durante 28 días continuos.
+            </p>
+          </div>
+          <div>
+            <div class="text-2xl font-black text-emerald-400 mb-3" id="precio-amazon28">$18.000 COP</div>
+            <button onclick="comprarCuenta('amazon28')" id="btn-amazon28" class="w-full py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-black text-sm disabled:opacity-40 disabled:cursor-not-allowed transition">
+              Comprar Ahora
+            </button>
+          </div>
+        </div>
+
+        <!-- Amazon Free Verificadas -->
+        <div class="bg-gray-900 border border-gray-800 rounded-2xl p-5 flex flex-col justify-between hover:border-emerald-500/40 transition">
+          <div>
+            <div class="flex justify-between items-start mb-3">
+              <span class="px-2.5 py-1 rounded-full text-[11px] font-bold bg-blue-500/10 text-blue-400 border border-blue-500/20">
+                Garantía 24 Horas
+              </span>
+              <span id="stock-amazonfree" class="text-xs font-semibold px-2 py-0.5 rounded bg-gray-800 text-gray-400">
+                Consultando...
+              </span>
+            </div>
+            <h3 class="text-lg font-black text-white mb-1">Amazon Free (Verificadas)</h3>
+            <p class="text-xs text-gray-400 mb-4 leading-relaxed">
+              Cuentas verificadas listas para uso. Soporte y reemplazo por 24 horas.
+            </p>
+          </div>
+          <div>
+            <div class="text-2xl font-black text-emerald-400 mb-3" id="precio-amazonfree">$4.000 COP</div>
+            <button onclick="comprarCuenta('amazonfree')" id="btn-amazonfree" class="w-full py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-black text-sm disabled:opacity-40 disabled:cursor-not-allowed transition">
+              Comprar Ahora
+            </button>
+          </div>
+        </div>
+
+        <!-- Prime Video con Pago -->
+        <div class="bg-gray-900 border border-gray-800 rounded-2xl p-5 flex flex-col justify-between hover:border-emerald-500/40 transition">
+          <div>
+            <div class="flex justify-between items-start mb-3">
+              <span class="px-2.5 py-1 rounded-full text-[11px] font-bold bg-blue-500/10 text-blue-400 border border-blue-500/20">
+                Garantía 24 Horas
+              </span>
+              <span id="stock-primevideo" class="text-xs font-semibold px-2 py-0.5 rounded bg-gray-800 text-gray-400">
+                Consultando...
+              </span>
+            </div>
+            <h3 class="text-lg font-black text-white mb-1">Prime Video con Pago</h3>
+            <p class="text-xs text-gray-400 mb-4 leading-relaxed">
+              Activada con método de pago registrado. Cobertura de garantía por 24 horas.
+            </p>
+          </div>
+          <div>
+            <div class="text-2xl font-black text-emerald-400 mb-3" id="precio-primevideo">$9.000 COP</div>
+            <button onclick="comprarCuenta('primevideo')" id="btn-primevideo" class="w-full py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-black text-sm disabled:opacity-40 disabled:cursor-not-allowed transition">
+              Comprar Ahora
+            </button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- SECCIÓN: MIS COMPRAS -->
+    <div id="vistaCompras" class="hidden space-y-6">
+      <h2 class="text-xl font-bold text-white">Mis Cuentas Compradas</h2>
+      <div id="listaMisCompras" class="space-y-4"></div>
+    </div>
+
+    <!-- SECCIÓN: PANEL ADMIN -->
+    <div id="vistaAdmin" class="hidden space-y-8">
+      <div class="bg-amber-500/10 border border-amber-500/30 p-4 rounded-xl">
+        <h2 class="text-lg font-black text-amber-400 flex items-center">
+          <i class="fa-solid fa-user-gear mr-2"></i> Panel de Control - Administrador
+        </h2>
+        <p class="text-xs text-gray-300">Carga inventario por lotes y acredita saldo a tus clientes luego de que paguen.</p>
+      </div>
+
+      <!-- Cargar Stock -->
+      <div class="bg-gray-900 border border-gray-800 rounded-2xl p-6">
+        <h3 class="font-bold text-white mb-2">Cargar Cuentas (Copiar y Pegar)</h3>
+        <p class="text-xs text-gray-400 mb-4">
+          Pega una cuenta por línea en formato: <code class="text-emerald-400">correo@ejemplo.com:clave123</code> o <code class="text-emerald-400">correo|clave|pin</code>.
+        </p>
+
+        <div class="mb-4 max-w-xs">
+          <label class="text-xs text-gray-400 block mb-1">Categoría Destino</label>
+          <select id="adminCatSelect" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500">
+            <option value="amazon28">Amazon (Garantía 28 Días)</option>
+            <option value="amazonfree">Amazon Free (Garantía 24 Horas)</option>
+            <option value="primevideo">Prime Video (Garantía 24 Horas)</option>
+          </select>
+        </div>
+
+        <textarea id="adminTxtCuentas" rows="5" placeholder="usuario1@mail.com:password123&#10;usuario2@mail.com|clave456|pin1234" class="w-full bg-gray-800 border border-gray-700 rounded-xl p-3 text-sm font-mono text-gray-200 focus:outline-none focus:border-emerald-500"></textarea>
+
+        <button onclick="adminSubirCuentas()" class="mt-3 px-6 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-bold text-sm">
+          <i class="fa-solid fa-cloud-arrow-up mr-1"></i> Guardar Cuentas en Stock
+        </button>
+      </div>
+
+      <!-- Acreditar Saldo -->
+      <div class="bg-gray-900 border border-gray-800 rounded-2xl p-6">
+        <h3 class="font-bold text-white mb-2">Clientes Registrados y Gestión de Saldo</h3>
+        <p class="text-xs text-gray-400 mb-4">Acredita saldo a los clientes registrados luego de confirmar sus transferencias.</p>
+        <div id="adminListaUsuarios" class="divide-y divide-gray-800"></div>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- MODAL AUTH -->
+  <div id="modalAuth" class="fixed inset-0 bg-black/80 flex items-center justify-center p-4 hidden z-50">
+    <div class="bg-gray-900 border border-gray-800 rounded-2xl max-w-sm w-full p-6 relative">
+      <button onclick="cerrarModalAuth()" class="absolute top-4 right-4 text-gray-500 hover:text-white">✕</button>
+      <h3 id="authModalTitulo" class="text-xl font-bold text-white mb-4">Iniciar Sesión</h3>
+      
+      <form onsubmit="handleAuthSubmit(event)" class="space-y-4">
+        <div>
+          <label class="text-xs text-gray-400 block mb-1">Correo Electrónico</label>
+          <input type="email" id="authEmail" required class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500">
+        </div>
+        <div>
+          <label class="text-xs text-gray-400 block mb-1">Contraseña</label>
+          <input type="password" id="authPassword" required class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500">
+        </div>
+        <div id="divAuthWhatsapp" class="hidden">
+          <label class="text-xs text-gray-400 block mb-1">Número de WhatsApp (con indicativo)</label>
+          <input type="tel" id="authWhatsapp" placeholder="573001234567" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500">
+        </div>
+
+        <button type="submit" id="btnAuthSubmit" class="w-full py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-bold text-sm">
+          Continuar
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL RECARGA -->
+  <div id="modalRecarga" class="fixed inset-0 bg-black/80 flex items-center justify-center p-4 hidden z-50">
+    <div class="bg-gray-900 border border-gray-800 rounded-2xl max-w-md w-full p-6 relative">
+      <button onclick="cerrarModalRecarga()" class="absolute top-4 right-4 text-gray-500 hover:text-white">✕</button>
+      <h3 class="text-lg font-bold text-white mb-2">Recargar Saldo</h3>
+      <p class="text-xs text-gray-400 mb-4">Transfiere a las cuentas oficiales y envía el comprobante:</p>
+
+      <div class="bg-gray-800/80 rounded-xl p-3 border border-gray-700 text-sm space-y-2 mb-4">
+        <div class="flex justify-between">
+          <span class="text-gray-400">Nequi / Daviplata:</span>
+          <span class="font-bold text-emerald-400 font-mono">304 395 6726</span>
+        </div>
+        <div class="flex justify-between">
+          <span class="text-gray-400">Titular:</span>
+          <span class="font-semibold text-white">Epic Channels</span>
+        </div>
+      </div>
+
+      <div class="space-y-3">
+        <label class="text-xs text-gray-400 block">¿Cuánto transferiste?</label>
+        <div class="grid grid-cols-3 gap-2">
+          <button onclick="setMontoRecarga(20000)" class="py-2 bg-gray-800 rounded-lg text-xs font-semibold text-gray-300 hover:bg-gray-700">$20.000</button>
+          <button onclick="setMontoRecarga(50000)" class="py-2 bg-gray-800 rounded-lg text-xs font-semibold text-gray-300 hover:bg-gray-700">$50.000</button>
+          <button onclick="setMontoRecarga(100000)" class="py-2 bg-gray-800 rounded-lg text-xs font-semibold text-gray-300 hover:bg-gray-700">$100.000</button>
+        </div>
+        <input type="number" id="inputMontoRecarga" placeholder="Otro valor (COP)" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-sm text-white font-mono">
+      </div>
+
+      <button onclick="solicitarRecargaWhatsapp()" class="w-full mt-5 py-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-black text-sm flex items-center justify-center space-x-2">
+        <i class="fa-brands fa-whatsapp text-lg"></i>
+        <span>Enviar Comprobante por WhatsApp</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- MODAL ENTREGA -->
+  <div id="modalEntrega" class="fixed inset-0 bg-black/80 flex items-center justify-center p-4 hidden z-50">
+    <div class="bg-gray-900 border border-emerald-500/40 rounded-2xl max-w-md w-full p-6 text-center">
+      <div class="w-12 h-12 bg-emerald-500/20 text-emerald-400 rounded-full flex items-center justify-center mx-auto mb-3 text-xl">
+        <i class="fa-solid fa-check"></i>
+      </div>
+      <h3 class="text-xl font-black text-white mb-1">¡Compra Exitosa!</h3>
+      <p class="text-xs text-gray-400 mb-4">Tus credenciales han sido entregadas y archivadas en "Mis Compras".</p>
+
+      <div class="bg-gray-800 border border-gray-700 p-4 rounded-xl text-left space-y-2 mb-4 font-mono text-sm">
+        <div>
+          <span class="text-xs text-gray-400 block font-sans">Producto:</span>
+          <span id="entregaProducto" class="font-bold text-white"></span>
+        </div>
+        <div>
+          <span class="text-xs text-gray-400 block font-sans">Correo / Usuario:</span>
+          <span id="entregaEmail" class="text-emerald-400 select-all font-bold"></span>
+        </div>
+        <div>
+          <span class="text-xs text-gray-400 block font-sans">Contraseña:</span>
+          <span id="entregaPassword" class="text-amber-400 select-all font-bold"></span>
+        </div>
+        <div id="divEntregaPin" class="hidden">
+          <span class="text-xs text-gray-400 block font-sans">PIN:</span>
+          <span id="entregaPin" class="text-blue-400 select-all font-bold"></span>
+        </div>
+      </div>
+
+      <button onclick="cerrarModalEntrega()" class="w-full py-2.5 bg-gray-800 hover:bg-gray-700 text-white rounded-xl font-bold text-sm">
+        Cerrar
+      </button>
+    </div>
+  </div>
+
+  <footer class="border-t border-gray-800 text-center py-4 text-xs text-gray-500">
+    © Epic Channels - Todos los derechos reservados.
+  </footer>
+
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyB27R2bzWAuE_W_tmHQYkvLDQOj8XTzRZs",
+      authDomain: "epic-channels.firebaseapp.com",
+      projectId: "epic-channels",
+      storageBucket: "epic-channels.firebasestorage.app",
+      messagingSenderId: "860169917338",
+      appId: "1:860169917338:web:6f25e107009568d2d2a023"
+    };
+
+    const CORREO_ADMIN = "alex88ruizc@gmail.com";
+    const WHATSAPP_SOPORTE = "573043956726";
+
+    const PRECIOS = {
+      amazon28: 18000,
+      amazonfree: 4000,
+      primevideo: 9000
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.firestore();
+
+    let currentUser = null;
+    let userProfile = null;
+    let authMode = 'login';
+
+    auth.onAuthStateChanged(async (user) => {
+      currentUser = user;
+      if (user) {
+        document.getElementById('navGuest').classList.add('hidden');
+        document.getElementById('navUser').classList.remove('hidden');
+        document.getElementById('bannerGuest').classList.add('hidden');
+
+        db.collection('usuarios').doc(user.uid).onSnapshot(doc => {
+          if (doc.exists) {
+            userProfile = doc.data();
+            const saldo = userProfile.saldo || 0;
+            document.getElementById('txtSaldoHeader').textContent = '$' + saldo.toLocaleString('es-CO') + ' COP';
+          }
+        });
+
+        if (user.email === CORREO_ADMIN) {
+          document.getElementById('btnAdminTab').classList.remove('hidden');
+          cargarUsuariosAdmin();
+        } else {
+          document.getElementById('btnAdminTab').classList.add('hidden');
+        }
+
+        cargarMisCompras();
+      } else {
+        document.getElementById('navGuest').classList.remove('hidden');
+        document.getElementById('navUser').classList.add('hidden');
+        document.getElementById('bannerGuest').classList.remove('hidden');
+        document.getElementById('btnAdminTab').classList.add('hidden');
+        cambiarVista('tienda');
+      }
+    });
+
+    ['amazon28', 'amazonfree', 'primevideo'].forEach(catId => {
+      db.collection('inventario').doc(catId).onSnapshot(doc => {
+        const cuentas = doc.exists && doc.data().cuentas ? doc.data().cuentas : [];
+        const stockEl = document.getElementById('stock-' + catId);
+        const btnEl = document.getElementById('btn-' + catId);
+        
+        stockEl.textContent = `${cuentas.length} disp.`;
+        if (cuentas.length === 0) {
+          stockEl.className = "text-xs font-semibold px-2 py-0.5 rounded bg-red-500/10 text-red-400";
+          btnEl.disabled = true;
+          btnEl.textContent = "Agotado";
+        } else {
+          stockEl.className = "text-xs font-semibold px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400";
+          btnEl.disabled = false;
+          btnEl.textContent = "Comprar Ahora";
+        }
+      });
+    });
+
+    function abrirModalAuth(modo) {
+      authMode = modo;
+      document.getElementById('modalAuth').classList.remove('hidden');
+      if (modo === 'register') {
+        document.getElementById('authModalTitulo').textContent = "Crear Cuenta";
+        document.getElementById('divAuthWhatsapp').classList.remove('hidden');
+        document.getElementById('btnAuthSubmit').textContent = "Registrarme";
+      } else {
+        document.getElementById('authModalTitulo').textContent = "Iniciar Sesión";
+        document.getElementById('divAuthWhatsapp').classList.add('hidden');
+        document.getElementById('btnAuthSubmit').textContent = "Ingresar";
+      }
+    }
+
+    function cerrarModalAuth() {
+      document.getElementById('modalAuth').classList.add('hidden');
+    }
+
+    async function handleAuthSubmit(e) {
+      e.preventDefault();
+      const email = document.getElementById('authEmail').value.trim();
+      const pass = document.getElementById('authPassword').value;
+      const wpp = document.getElementById('authWhatsapp').value.trim();
+
+      try {
+        if (authMode === 'register') {
+          const cred = await auth.createUserWithEmailAndPassword(email, pass);
+          await db.collection('usuarios').doc(cred.user.uid).set({
+            email: email,
+            whatsapp: wpp,
+            saldo: 0,
+            fechaRegistro: firebase.firestore.FieldValue.serverTimestamp()
+          });
+          alert('¡Cuenta creada con éxito!');
+        } else {
+          await auth.signInWithEmailAndPassword(email, pass);
+        }
+        cerrarModalAuth();
+      } catch (err) {
+        alert('Error: ' + err.message);
+      }
+    }
+
+    function cerrarSesion() {
+      auth.signOut();
+    }
+
+    async function comprarCuenta(catId) {
+      if (!currentUser) {
+        abrirModalAuth('login');
+        return;
+      }
+
+      const precio = PRECIOS[catId];
+      const saldoActual = userProfile?.saldo || 0;
+
+      if (saldoActual < precio) {
+        alert(`Saldo insuficiente. Necesitas $${precio.toLocaleString('es-CO')} COP.`);
+        abrirModalRecarga();
+        return;
+      }
+
+      const invRef = db.collection('inventario').doc(catId);
+      const userRef = db.collection('usuarios').doc(currentUser.uid);
+
+      try {
+        await db.runTransaction(async (t) => {
+          const invDoc = await t.get(invRef);
+          const cuentas = invDoc.exists ? invDoc.data().cuentas || [] : [];
+          
+          if (cuentas.length === 0) {
+            throw new Error("No hay stock disponible de este producto en este momento.");
+          }
+
+          const cuentaEntregada = cuentas.shift();
+
+          t.update(userRef, { saldo: saldoActual - precio });
+          t.set(invRef, { cuentas: cuentas }, { merge: true });
+
+          const compraRef = db.collection('compras').doc();
+          t.set(compraRef, {
+            userId: currentUser.uid,
+            categoria: catId,
+            datos: cuentaEntregada,
+            precio: precio,
+            fecha: firebase.firestore.FieldValue.serverTimestamp()
+          });
+
+          mostrarModalEntrega(catId, cuentaEntregada);
+        });
+      } catch (err) {
+        alert(err.message);
+      }
+    }
+
+    function mostrarModalEntrega(catId, cuenta) {
+      const nombres = {
+        amazon28: "Amazon (Garantía 28 Días)",
+        amazonfree: "Amazon Free Verificada (24h)",
+        primevideo: "Prime Video con Pago (24h)"
+      };
+
+      document.getElementById('entregaProducto').textContent = nombres[catId];
+      document.getElementById('entregaEmail').textContent = cuenta.email;
+      document.getElementById('entregaPassword').textContent = cuenta.pass;
+      if (cuenta.pin) {
+        document.getElementById('divEntregaPin').classList.remove('hidden');
+        document.getElementById('entregaPin').textContent = cuenta.pin;
+      } else {
+        document.getElementById('divEntregaPin').classList.add('hidden');
+      }
+
+      document.getElementById('modalEntrega').classList.remove('hidden');
+    }
+
+    function cerrarModalEntrega() {
+      document.getElementById('modalEntrega').classList.add('hidden');
+    }
+
+    function cargarMisCompras() {
+      if (!currentUser) return;
+      db.collection('compras')
+        .where('userId', '==', currentUser.uid)
+        .onSnapshot(snapshot => {
+          const cont = document.getElementById('listaMisCompras');
+          cont.innerHTML = '';
+          if (snapshot.empty) {
+            cont.innerHTML = '<p class="text-xs text-gray-500">Aún no has comprado cuentas.</p>';
+            return;
+          }
+          snapshot.forEach(doc => {
+            const d = doc.data();
+            cont.innerHTML += `
+              <div class="bg-gray-900 border border-gray-800 p-4 rounded-xl flex flex-col md:flex-row justify-between items-start md:items-center gap-2">
+                <div>
+                  <span class="text-xs font-bold text-emerald-400 uppercase">${d.categoria}</span>
+                  <div class="font-mono text-sm text-white select-all">${d.datos.email} : ${d.datos.pass} ${d.datos.pin ? '| PIN: ' + d.datos.pin : ''}</div>
+                </div>
+                <span class="text-xs text-gray-500">$${d.precio?.toLocaleString('es-CO')} COP</span>
+              </div>
+            `;
+          });
+        });
+    }
+
+    async function adminSubirCuentas() {
+      const catId = document.getElementById('adminCatSelect').value;
+      const texto = document.getElementById('adminTxtCuentas').value.trim();
+      if (!texto) return alert("Pega al menos una cuenta.");
+
+      const lineas = texto.split('\n');
+      const cuentasNuevas = [];
+
+      lineas.forEach(linea => {
+        const limpia = linea.trim();
+        if (!limpia) return;
+        const partes = limpia.split(/[:|]/);
+        if (partes.length >= 2) {
+          cuentasNuevas.push({
+            email: partes[0].trim(),
+            pass: partes[1].trim(),
+            pin: partes[2] ? partes[2].trim() : ''
+          });
+        }
+      });
+
+      if (cuentasNuevas.length === 0) return alert("Formato no válido.");
+
+      const invRef = db.collection('inventario').doc(catId);
+      const doc = await invRef.get();
+      const actual = doc.exists && doc.data().cuentas ? doc.data().cuentas : [];
+
+      await invRef.set({ cuentas: [...actual, ...cuentasNuevas] }, { merge: true });
+      document.getElementById('adminTxtCuentas').value = '';
+      alert(`¡Se agregaron ${cuentasNuevas.length} cuentas con éxito!`);
+    }
+
+    function cargarUsuariosAdmin() {
+      db.collection('usuarios').onSnapshot(snap => {
+        const lista = document.getElementById('adminListaUsuarios');
+        lista.innerHTML = '';
+        snap.forEach(doc => {
+          const u = doc.data();
+          lista.innerHTML += `
+            <div class="py-3 flex flex-col md:flex-row justify-between items-start md:items-center gap-2">
+              <div>
+                <p class="text-sm font-bold text-white">${u.email}</p>
+                <p class="text-xs text-gray-400">WhatsApp: ${u.whatsapp || 'Sin registrar'} | Saldo: <span class="text-emerald-400 font-bold">$${(u.saldo || 0).toLocaleString('es-CO')}</span></p>
+              </div>
+              <div class="flex items-center space-x-2">
+                <input type="number" id="inputSaldo-${doc.id}" placeholder="Monto COP" class="w-28 bg-gray-800 border border-gray-700 px-2 py-1 text-xs rounded text-white font-mono">
+                <button onclick="adminCargarSaldo('${doc.id}', ${u.saldo || 0})" class="px-3 py-1 bg-emerald-500 hover:bg-emerald-400 text-black text-xs font-bold rounded">
+                  Sumar Saldo
+                </button>
+              </div>
+            </div>
+          `;
+        });
+      });
+    }
+
+    async function adminCargarSaldo(uid, saldoActual) {
+      const input = document.getElementById(`inputSaldo-${uid}`);
+      const monto = parseInt(input.value);
+      if (isNaN(monto) || monto <= 0) return alert("Ingresa un monto válido.");
+
+      await db.collection('usuarios').doc(uid).update({
+        saldo: saldoActual + monto
+      });
+      input.value = '';
+      alert("¡Saldo acreditado con éxito!");
+    }
+
+    function cambiarVista(vista) {
+      document.getElementById('vistaTienda').classList.add('hidden');
+      document.getElementById('vistaCompras').classList.add('hidden');
+      document.getElementById('vistaAdmin').classList.add('hidden');
+
+      if (vista === 'tienda') document.getElementById('vistaTienda').classList.remove('hidden');
+      if (vista === 'compras') document.getElementById('vistaCompras').classList.remove('hidden');
+      if (vista === 'admin') document.getElementById('vistaAdmin').classList.remove('hidden');
+    }
+
+    function abrirModalRecarga() {
+      document.getElementById('modalRecarga').classList.remove('hidden');
+    }
+
+    function cerrarModalRecarga() {
+      document.getElementById('modalRecarga').classList.add('hidden');
+    }
+
+    function setMontoRecarga(val) {
+      document.getElementById('inputMontoRecarga').value = val;
+    }
+
+    function solicitarRecargaWhatsapp() {
+      const monto = document.getElementById('inputMontoRecarga').value || "un monto";
+      const correo = currentUser ? currentUser.email : "mi cuenta";
+      const mensaje = encodeURIComponent(`Hola, acabo de transferir $${monto} COP para recargar mi usuario: ${correo}. Adjunto comprobante.`);
+      window.open(`https://wa.me/${WHATSAPP_SOPORTE}?text=${mensaje}`, '_blank');
+      cerrarModalRecarga();
+    }
+  </script>
+</body>
+</html>
