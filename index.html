@@ -166,7 +166,7 @@
         </button>
       </div>
 
-      <!-- Pestañas de Administración (Deslizables en móvil) -->
+      <!-- Pestañas de Administración -->
       <div class="flex border-b border-gray-800 gap-3 mb-6 text-sm overflow-x-auto pb-2 no-scrollbar">
         <button onclick="cambiarTabAdmin('productos')" id="tabBtnProductos" class="pb-2 border-b-2 border-emerald-400 text-emerald-400 font-bold whitespace-nowrap">Gestión y Visibilidad</button>
         <button onclick="cambiarTabAdmin('usuarios')" id="tabBtnUsuarios" class="pb-2 border-b-2 border-transparent text-gray-400 font-medium hover:text-white whitespace-nowrap">Usuarios Registrados</button>
@@ -179,7 +179,7 @@
       <div id="adminSecProductos">
         <div class="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden">
           <div class="p-4 border-b border-gray-800 flex items-center justify-between">
-            <h4 class="font-bold text-white text-sm">Inventario de Productos</h4>
+            <h4 class="font-bold text-white text-sm">Inventario de Productos (En Tiempo Real)</h4>
             <span class="text-xs text-gray-400">Toca el botón para ocultar sin borrar stock</span>
           </div>
           <div class="overflow-x-auto">
@@ -196,7 +196,7 @@
               </thead>
               <tbody id="tablaAdminProductos" class="divide-y divide-gray-800">
                 <tr>
-                  <td colspan="6" class="px-4 py-8 text-center text-gray-500">Cargando datos...</td>
+                  <td colspan="6" class="px-4 py-8 text-center text-gray-500">Cargando datos desde Firebase...</td>
                 </tr>
               </tbody>
             </table>
@@ -204,7 +204,7 @@
         </div>
       </div>
 
-      <!-- TAB 2: USUARIOS REGISTRADOS Y GESTIÓN DE SALDOS -->
+      <!-- TAB 2: USUARIOS REGISTRADOS Y SALDOS -->
       <div id="adminSecUsuarios" class="hidden">
         <div class="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden">
           <div class="p-4 border-b border-gray-800 flex items-center justify-between">
@@ -237,7 +237,7 @@
           <h3 class="text-base font-bold text-white mb-2 flex items-center gap-2">
             <i class="fa-solid fa-key text-emerald-400"></i> Cargar Cuentas al Inventario
           </h3>
-          <p class="text-xs text-gray-400 mb-4">Pega una cuenta por cada renglón (correo:clave o datos). Cada línea sumará +1 al inventario del producto.</p>
+          <p class="text-xs text-gray-400 mb-4">Pega una cuenta por cada renglón. Cada línea sumará +1 al inventario del producto.</p>
           
           <form onsubmit="cargarStockMasivo(event)" class="space-y-4">
             <div>
@@ -246,7 +246,7 @@
               </select>
             </div>
             <div>
-              <label class="block text-xs text-gray-400 mb-1">Cuentas por agregar</label>
+              <label class="block text-xs text-gray-400 mb-1">Cuentas por agregar (una por línea)</label>
               <textarea id="txtStockLineas" rows="6" required placeholder="correo1@ejemplo.com:clave123&#10;correo2@ejemplo.com:clave456" class="w-full bg-gray-800 border border-gray-700 rounded-xl p-3 text-xs font-mono text-white focus:outline-none"></textarea>
             </div>
             <button type="submit" class="bg-emerald-500 hover:bg-emerald-400 text-black font-bold py-2.5 px-6 rounded-xl text-sm transition">
@@ -313,6 +313,27 @@
   </main>
 
   <!-- ==================== MODALES ==================== -->
+
+  <!-- MODAL: VER CUENTAS EN STOCK (ADMIN) -->
+  <div id="modalVerStock" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-gray-900 border border-gray-800 rounded-2xl max-w-lg w-full p-6 relative">
+      <button onclick="cerrarModalVerStock()" class="absolute top-4 right-4 text-gray-400 hover:text-white">
+        <i class="fa-solid fa-xmark text-lg"></i>
+      </button>
+
+      <h3 id="txtTituloModalStock" class="text-lg font-bold text-white mb-1">Cuentas en Inventario</h3>
+      <p id="txtSubtituloModalStock" class="text-xs text-gray-400 mb-4">Lista actual de credenciales disponibles</p>
+
+      <div id="listaCuentasDetalle" class="bg-gray-800/90 border border-gray-700 rounded-xl p-3 max-h-60 overflow-y-auto text-xs font-mono text-emerald-300 space-y-1.5 select-all">
+      </div>
+
+      <div class="mt-4 pt-3 border-t border-gray-800 flex justify-end">
+        <button onclick="cerrarModalVerStock()" class="px-4 py-2 bg-gray-800 hover:bg-gray-700 text-gray-200 font-bold rounded-xl text-xs">
+          Cerrar
+        </button>
+      </div>
+    </div>
+  </div>
 
   <!-- MODAL: LOGIN / REGISTRO -->
   <div id="modalAuth" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
@@ -501,12 +522,55 @@
     let categoriaActiva = 'todas';
     let listaProductosGlobal = [];
 
-    // Helper: Extraer lista de cuentas sin importar el nombre del campo
-    function extraerCuentas(data) {
-      if (Array.isArray(data.stockCuentas)) return data.stockCuentas;
-      if (Array.isArray(data.cuentas)) return data.cuentas;
-      if (Array.isArray(data.stock)) return data.stock;
+    // ========================================================
+    // DETECTOR UNIVERSAL DE STOCK Y EXTRACCIÓN DE CUENTAS
+    // ========================================================
+    function extraerListaCuentas(prod) {
+      if (!prod) return [];
+      
+      const camposArray = ['stockCuentas', 'cuentas', 'stock', 'inventario', 'items', 'lista', 'accounts', 'cuentasDisponibles', 'listaCuentas'];
+      for (const campo of camposArray) {
+        if (Array.isArray(prod[campo]) && prod[campo].length > 0) {
+          return prod[campo].map(item => {
+            if (typeof item === 'string') return item;
+            if (typeof item === 'object' && item !== null) {
+              return item.cuenta || item.credenciales || item.correo || JSON.stringify(item);
+            }
+            return String(item);
+          });
+        }
+      }
+
+      const camposTexto = ['stockCuentas', 'cuentas', 'stock', 'inventario'];
+      for (const campo of camposTexto) {
+        if (typeof prod[campo] === 'string' && prod[campo].trim().length > 0) {
+          const arr = prod[campo].split('\n').map(l => l.trim()).filter(Boolean);
+          if (arr.length > 0 && (arr[0].includes('@') || arr[0].includes(':'))) {
+            return arr;
+          }
+        }
+      }
+
       return [];
+    }
+
+    function calcularStock(prod) {
+      if (!prod) return 0;
+
+      // 1. Extraer elementos si vienen como arreglo o líneas
+      const cuentas = extraerListaCuentas(prod);
+      if (cuentas.length > 0) return cuentas.length;
+
+      // 2. Si viene como número directo en la base de datos
+      const camposNumericos = ['stock', 'cantidad', 'disponibles', 'stockCuentas', 'totalStock'];
+      for (const campo of camposNumericos) {
+        if (typeof prod[campo] === 'number') return prod[campo];
+        if (typeof prod[campo] === 'string' && !isNaN(parseInt(prod[campo])) && !prod[campo].includes('@') && !prod[campo].includes(':')) {
+          return parseInt(prod[campo]);
+        }
+      }
+
+      return 0;
     }
 
     // 4. ESCUCHADOR DE SESIÓN
@@ -551,13 +615,13 @@
 
       if (vista === 'tienda') {
         document.getElementById('vistaTienda').classList.remove('hidden');
-        cargarProductosTienda();
+        renderizarCatalogo();
       } else if (vista === 'mis-cuentas') {
         document.getElementById('vistaMisCuentas').classList.remove('hidden');
         cargarMisCuentas();
       } else if (vista === 'admin') {
         document.getElementById('vistaAdmin').classList.remove('hidden');
-        cargarProductosAdmin();
+        renderizarAdminProductos();
         cargarUsuariosAdmin();
       }
     }
@@ -582,39 +646,40 @@
         actualBtn.classList.add('border-emerald-400', 'text-emerald-400');
       }
 
-      if (tab === 'productos') cargarProductosAdmin();
+      if (tab === 'productos') renderizarAdminProductos();
       if (tab === 'usuarios') cargarUsuariosAdmin();
       if (tab === 'stock') poblarSelectStock();
       if (tab === 'precios') poblarSelectPrecios();
       if (tab === 'recargas') cargarRecargasAdmin();
     }
 
-    // 6. TIENDA: OBTENER TODOS LOS PRODUCTOS DE FIRESTORE
-    async function obtenerProductosFirestore() {
-      try {
-        const snap = await db.collection('productos').get();
+    // 6. TIENDA Y PRODUCTOS EN TIEMPO REAL (SNAPSHOT)
+    function iniciarEscuchaProductos() {
+      db.collection('productos').onSnapshot(async (snap) => {
         if (snap.empty) {
-          // Inicializar los productos si no existe ninguno
+          // Si no hay productos, inicializa los 5 oficiales
           const batch = db.batch();
           PRODUCTOS_PLANTILLA.forEach(p => {
             const docRef = db.collection('productos').doc();
             batch.set(docRef, p);
           });
           await batch.commit();
-          const snap2 = await db.collection('productos').get();
-          listaProductosGlobal = snap2.docs.map(d => ({ id: d.id, ...d.data() }));
-        } else {
-          listaProductosGlobal = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+          return;
         }
-      } catch (err) {
-        console.error("Error al leer productos:", err);
-      }
-      return listaProductosGlobal;
+
+        listaProductosGlobal = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        renderizarCatalogo();
+        renderizarAdminProductos();
+        poblarSelectStock();
+        poblarSelectPrecios();
+      }, err => {
+        console.error("Error al escuchar productos:", err);
+      });
     }
 
-    async function cargarProductosTienda() {
+    function renderizarCatalogo() {
       const grid = document.getElementById('gridProductos');
-      await obtenerProductosFirestore();
+      if (!grid) return;
       grid.innerHTML = '';
 
       const filtrados = listaProductosGlobal.filter(p => {
@@ -629,9 +694,8 @@
       }
 
       filtrados.forEach(prod => {
-        const cuentas = extraerCuentas(prod);
-        const stockDisponible = cuentas.length;
-        const agotado = stockDisponible === 0;
+        const stockDisponible = calcularStock(prod);
+        const agotado = stockDisponible <= 0;
 
         grid.innerHTML += `
           <div class="bg-gray-900 border border-gray-800 rounded-2xl p-5 flex flex-col justify-between hover:border-emerald-500/40 transition">
@@ -670,7 +734,7 @@
       });
       event.target.classList.remove('bg-gray-800', 'text-gray-300', 'font-medium');
       event.target.classList.add('bg-emerald-500', 'text-black', 'font-bold');
-      cargarProductosTienda();
+      renderizarCatalogo();
     }
 
     // 7. COMPRA DIRECTA (SIN PIN)
@@ -690,9 +754,10 @@
 
           if (!prodDoc.exists) throw new Error("El producto no existe.");
           const pData = prodDoc.data();
-          const cuentas = extraerCuentas(pData);
+          const cuentas = extraerListaCuentas(pData);
+          const stockNum = calcularStock(pData);
 
-          if (cuentas.length === 0) throw new Error("Producto agotado.");
+          if (stockNum <= 0) throw new Error("Producto agotado.");
 
           const precio = pData.precio || 0;
           const saldoActual = (userDoc.data() && userDoc.data().saldo) || 0;
@@ -701,10 +766,21 @@
             throw new Error(`Saldo insuficiente. Tienes $${saldoActual.toLocaleString('es-CO')} y cuesta $${precio.toLocaleString('es-CO')}.`);
           }
 
-          const cuentaEntregada = cuentas.shift();
+          let cuentaEntregada = "Credenciales asignadas automáticamente.";
+          if (cuentas.length > 0) {
+            cuentaEntregada = cuentas.shift();
+            t.update(prodRef, { 
+              stockCuentas: cuentas,
+              cuentas: cuentas,
+              stock: cuentas.length
+            });
+          } else {
+            t.update(prodRef, { 
+              stock: Math.max(0, stockNum - 1)
+            });
+          }
 
           t.update(userRef, { saldo: saldoActual - precio });
-          t.update(prodRef, { stockCuentas: cuentas });
 
           const nuevaCompraRef = db.collection('compras').doc();
           t.set(nuevaCompraRef, {
@@ -720,24 +796,24 @@
           document.getElementById('txtEntregaCredenciales').innerText = cuentaEntregada;
           document.getElementById('modalEntrega').classList.remove('hidden');
         });
-
-        cargarProductosTienda();
       } catch (err) {
         alert(err.message);
       }
     }
 
     // 8. PANEL ADMIN: PRODUCTOS Y VISIBILIDAD
-    async function cargarProductosAdmin() {
+    function renderizarAdminProductos() {
       const tbody = document.getElementById('tablaAdminProductos');
-      tbody.innerHTML = '<tr><td colspan="6" class="px-4 py-8 text-center text-gray-500">Cargando inventario...</td></tr>';
-
-      await obtenerProductosFirestore();
+      if (!tbody) return;
       tbody.innerHTML = '';
 
+      if (listaProductosGlobal.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" class="px-4 py-8 text-center text-gray-500">Cargando inventario...</td></tr>';
+        return;
+      }
+
       listaProductosGlobal.forEach(p => {
-        const cuentas = extraerCuentas(p);
-        const stock = cuentas.length;
+        const stock = calcularStock(p);
         const esActivo = p.activo !== false;
 
         tbody.innerHTML += `
@@ -746,9 +822,16 @@
             <td class="px-4 py-3 text-xs text-gray-400">${p.categoria === 'Streaming' ? 'Cuentas Streaming' : 'Correos Electrónicos'}</td>
             <td class="px-4 py-3 font-bold text-white">$${(p.precio || 0).toLocaleString('es-CO')}</td>
             <td class="px-4 py-3">
-              <span class="px-2.5 py-0.5 rounded text-xs font-semibold ${stock > 0 ? 'bg-emerald-500/10 text-emerald-400' : 'bg-red-500/10 text-red-400'}">
-                ${stock} disponibles
-              </span>
+              <div class="flex items-center gap-2">
+                <span class="px-2.5 py-0.5 rounded text-xs font-semibold ${stock > 0 ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30' : 'bg-red-500/10 text-red-400 border border-red-500/30'}">
+                  ${stock} disponibles
+                </span>
+                ${stock > 0 ? `
+                  <button onclick="verDetalleCuentas('${p.id}')" title="Ver cuentas cargadas" class="text-[11px] bg-gray-800 hover:bg-gray-700 text-gray-300 px-2 py-0.5 rounded">
+                    <i class="fa-solid fa-list mr-1"></i>Ver
+                  </button>
+                ` : ''}
+              </div>
             </td>
             <td class="px-4 py-3 text-center">
               <button onclick="alternarVisibilidadProducto('${p.id}', ${esActivo})" class="px-2.5 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1 mx-auto ${esActivo ? 'bg-emerald-600 hover:bg-emerald-500 text-white' : 'bg-red-600/80 hover:bg-red-600 text-white'}">
@@ -766,12 +849,32 @@
       });
     }
 
+    function verDetalleCuentas(prodId) {
+      const prod = listaProductosGlobal.find(p => p.id === prodId);
+      if (!prod) return;
+
+      const cuentas = extraerListaCuentas(prod);
+      const contenedor = document.getElementById('listaCuentasDetalle');
+      document.getElementById('txtTituloModalStock').innerText = prod.nombre;
+      document.getElementById('txtSubtituloModalStock').innerText = `${calcularStock(prod)} cuentas disponibles en inventario`;
+
+      if (cuentas.length === 0) {
+        contenedor.innerHTML = '<p class="text-gray-400 font-sans">Este producto tiene stock numérico asignado directamente.</p>';
+      } else {
+        contenedor.innerHTML = cuentas.map((c, i) => `<div><span class="text-gray-500 select-none mr-2">${i + 1}.</span>${c}</div>`).join('');
+      }
+
+      document.getElementById('modalVerStock').classList.remove('hidden');
+    }
+
+    function cerrarModalVerStock() {
+      document.getElementById('modalVerStock').classList.add('hidden');
+    }
+
     async function alternarVisibilidadProducto(id, estadoActual) {
       try {
         const nuevoEstado = !estadoActual;
         await db.collection('productos').doc(id).update({ activo: nuevoEstado });
-        cargarProductosAdmin();
-        cargarProductosTienda();
       } catch (e) {
         alert("Error al cambiar visibilidad: " + e.message);
       }
@@ -779,9 +882,11 @@
 
     async function vaciarStock(id) {
       if (confirm("¿Estás seguro de vaciar las cuentas guardadas de este producto?")) {
-        await db.collection('productos').doc(id).update({ stockCuentas: [] });
-        cargarProductosAdmin();
-        cargarProductosTienda();
+        await db.collection('productos').doc(id).update({ 
+          stockCuentas: [],
+          cuentas: [],
+          stock: 0
+        });
       }
     }
 
@@ -849,10 +954,10 @@
     }
 
     // 10. PANEL ADMIN: CARGA DE STOCK Y PRECIOS DINÁMICOS
-    async function poblarSelectStock() {
+    function poblarSelectStock() {
       const select = document.getElementById('selectStockProducto');
+      if (!select) return;
       select.innerHTML = '';
-      await obtenerProductosFirestore();
       listaProductosGlobal.forEach(p => {
         select.innerHTML += `<option value="${p.id}">${p.nombre}</option>`;
       });
@@ -869,23 +974,28 @@
       try {
         const prodRef = db.collection('productos').doc(prodId);
         const doc = await prodRef.get();
-        const stockActual = (doc.exists && extraerCuentas(doc.data())) || [];
+        const pData = doc.exists ? doc.data() : {};
+        const stockActual = extraerListaCuentas(pData);
         const nuevoStock = stockActual.concat(lineas);
 
-        await prodRef.update({ stockCuentas: nuevoStock });
+        // Guarda sincronizado en los 3 formatos para máxima compatibilidad
+        await prodRef.update({ 
+          stockCuentas: nuevoStock,
+          cuentas: nuevoStock,
+          stock: nuevoStock.length
+        });
+
         document.getElementById('txtStockLineas').value = '';
         alert(`¡Listo! Se agregaron ${lineas.length} cuentas al stock.`);
-        cargarProductosAdmin();
-        cargarProductosTienda();
       } catch (err) {
         alert("Error al cargar cuentas: " + err.message);
       }
     }
 
-    async function poblarSelectPrecios() {
+    function poblarSelectPrecios() {
       const select = document.getElementById('selectPrecioProd');
+      if (!select) return;
       select.innerHTML = '';
-      await obtenerProductosFirestore();
       listaProductosGlobal.forEach(p => {
         select.innerHTML += `<option value="${p.id}">${p.nombre}</option>`;
       });
@@ -900,8 +1010,6 @@
         await db.collection('productos').doc(prodId).update({ precio: nuevoPrecio });
         alert("Precio actualizado correctamente.");
         document.getElementById('inputNuevoPrecio').value = '';
-        cargarProductosAdmin();
-        cargarProductosTienda();
       } catch (err) {
         alert("Error al actualizar precio: " + err.message);
       }
@@ -1123,8 +1231,9 @@
       document.getElementById('modalEntrega').classList.add('hidden');
     }
 
+    // Inicializar listener en tiempo real al arrancar la app
     window.addEventListener('DOMContentLoaded', () => {
-      cargarProductosTienda();
+      iniciarEscuchaProductos();
     });
   </script>
 </body>
