@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Epic Channels | Cuentas Verificadas</title>
+  <title>Epic Channels | Portal Privado</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   
@@ -46,11 +46,13 @@
         <span class="font-black text-lg tracking-wider text-white">EPIC<span class="text-emerald-400">CHANNELS</span></span>
       </div>
 
+      <!-- Barra para usuarios sin sesión -->
       <div id="navGuest" class="flex items-center space-x-2">
         <button onclick="abrirModalAuth('login')" class="px-4 py-1.5 rounded-lg text-sm bg-gray-800 hover:bg-gray-700 text-gray-200 font-medium">Ingresar</button>
         <button onclick="abrirModalAuth('register')" class="px-4 py-1.5 rounded-lg text-sm bg-emerald-500 hover:bg-emerald-600 text-black font-bold">Registrarse</button>
       </div>
 
+      <!-- Barra para usuarios logueados -->
       <div id="navUser" class="hidden flex items-center space-x-4">
         <div class="bg-gray-800/90 border border-gray-700 px-3 py-1.5 rounded-xl flex items-center space-x-2">
           <i class="fa-solid fa-wallet text-emerald-400 text-xs"></i>
@@ -85,18 +87,39 @@
   <!-- CONTENIDO PRINCIPAL -->
   <main class="max-w-6xl mx-auto px-4 py-8 w-full flex-grow">
 
-    <div id="bannerGuest" class="mb-8 p-6 rounded-2xl bg-gradient-to-r from-emerald-950/40 to-gray-900 border border-emerald-500/20 text-center">
-      <h2 class="text-2xl font-black text-white mb-2">Cuentas Streaming con Entrega Inmediata</h2>
-      <p class="text-gray-400 text-sm max-w-xl mx-auto mb-4">
-        Regístrate gratis, recarga tu billetera por transferencia y adquiere cuentas verificadas al instante.
+    <!-- PANTALLA DE BLOQUEO PRIVADO (SOLO VISIBLE PARA NO REGISTRADOS) -->
+    <div id="vistaBloqueada" class="max-w-md mx-auto my-12 p-8 rounded-3xl bg-gray-900 border border-gray-800 text-center shadow-2xl relative overflow-hidden">
+      <div class="absolute -top-12 -right-12 w-32 h-32 bg-emerald-500/10 rounded-full blur-2xl"></div>
+      
+      <div class="w-16 h-16 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded-2xl flex items-center justify-center mx-auto mb-4 text-2xl">
+        <i class="fa-solid fa-lock"></i>
+      </div>
+
+      <h2 class="text-2xl font-black text-white mb-2 tracking-wide">Plataforma Exclusiva</h2>
+      <p class="text-gray-400 text-xs leading-relaxed mb-6">
+        El catálogo de cuentas verificadas, precios especiales y stock en tiempo real son de uso privado. Inicia sesión o crea tu cuenta para tener acceso total.
       </p>
-      <button onclick="abrirModalAuth('register')" class="px-6 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-bold text-sm shadow-lg shadow-emerald-500/20 transition">
-        Crear mi cuenta ahora
-      </button>
+
+      <div class="space-y-3">
+        <button onclick="abrirModalAuth('login')" class="w-full py-3 rounded-xl bg-gray-800 hover:bg-gray-700 text-white font-bold text-sm border border-gray-700 transition flex items-center justify-center space-x-2">
+          <i class="fa-solid fa-right-to-bracket text-xs text-emerald-400"></i>
+          <span>Iniciar Sesión</span>
+        </button>
+        
+        <button onclick="abrirModalAuth('register')" class="w-full py-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-black text-sm shadow-lg shadow-emerald-500/20 transition flex items-center justify-center space-x-2">
+          <i class="fa-solid fa-user-plus text-xs"></i>
+          <span>Registrarme Gratis</span>
+        </button>
+      </div>
+
+      <div class="mt-6 pt-4 border-t border-gray-800/80 flex items-center justify-center space-x-2 text-[11px] text-gray-500">
+        <i class="fa-solid fa-shield-halved text-emerald-400/70"></i>
+        <span>Acceso seguro protegido contra robots</span>
+      </div>
     </div>
 
-    <!-- SECCIÓN: TIENDA (CATÁLOGO DE 4 CATEGORÍAS) -->
-    <div id="vistaTienda" class="space-y-6">
+    <!-- SECCIÓN: TIENDA (SOLO VISIBLE CUANDO INICIA SESIÓN) -->
+    <div id="vistaTienda" class="hidden space-y-6">
       <div class="flex justify-between items-center">
         <div>
           <h1 class="text-xl font-bold text-white">Catálogo Disponible</h1>
@@ -475,12 +498,15 @@
       }
     });
 
+    // Control de Sesión: Bloquear o desbloquear la tienda completa
     auth.onAuthStateChanged(async (user) => {
       currentUser = user;
       if (user) {
+        // Usuario logueado: Desbloquear la tienda
         document.getElementById('navGuest').classList.add('hidden');
         document.getElementById('navUser').classList.remove('hidden');
-        document.getElementById('bannerGuest').classList.add('hidden');
+        document.getElementById('vistaBloqueada').classList.add('hidden');
+        document.getElementById('vistaTienda').classList.remove('hidden');
 
         db.collection('usuarios').doc(user.uid).onSnapshot(doc => {
           if (doc.exists) {
@@ -499,11 +525,14 @@
 
         cargarMisCompras();
       } else {
+        // Usuario NO logueado: Bloquear todo y mostrar solo pantalla de acceso
         document.getElementById('navGuest').classList.remove('hidden');
         document.getElementById('navUser').classList.add('hidden');
-        document.getElementById('bannerGuest').classList.remove('hidden');
+        document.getElementById('vistaBloqueada').classList.remove('hidden');
+        document.getElementById('vistaTienda').classList.add('hidden');
+        document.getElementById('vistaCompras').classList.add('hidden');
+        document.getElementById('vistaAdmin').classList.add('hidden');
         document.getElementById('btnAdminTab').classList.add('hidden');
-        cambiarVista('tienda');
       }
     });
 
@@ -574,7 +603,7 @@
             saldo: 0,
             fechaRegistro: firebase.firestore.FieldValue.serverTimestamp()
           });
-          alert('¡Cuenta creada con éxito!');
+          alert('¡Cuenta creada con éxito! Bienvenido.');
         } else {
           await auth.signInWithEmailAndPassword(email, pass);
         }
@@ -783,6 +812,8 @@
     }
 
     function cambiarVista(vista) {
+      if (!currentUser) return; // Si no hay usuario logueado, no permite cambiar de vista
+
       document.getElementById('vistaTienda').classList.add('hidden');
       document.getElementById('vistaCompras').classList.add('hidden');
       document.getElementById('vistaAdmin').classList.add('hidden');
