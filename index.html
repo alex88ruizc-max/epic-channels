@@ -33,7 +33,7 @@
   <!-- NAVBAR -->
   <header class="border-b border-gray-800 bg-gray-900/80 backdrop-blur sticky top-0 z-50">
     <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
-      <div class="flex items-center space-x-2">
+      <div class="flex items-center space-x-2 cursor-pointer" onclick="cambiarVista('tienda')">
         <i class="fa-solid fa-bolt text-emerald-400 text-xl"></i>
         <span class="font-black text-lg tracking-wider text-white">EPIC<span class="text-emerald-400">CHANNELS</span></span>
       </div>
@@ -56,7 +56,7 @@
         </div>
 
         <!-- Botón Admin -->
-        <button id="btnAdminTab" onclick="cambiarVista('admin')" class="hidden px-3 py-1.5 rounded-lg text-xs bg-amber-500/20 text-amber-400 border border-amber-500/30 font-bold">
+        <button id="btnAdminTab" onclick="cambiarVista('admin')" class="hidden px-3 py-1.5 rounded-lg text-xs bg-amber-500/20 text-amber-400 border border-amber-500/30 font-bold hover:bg-amber-500/30 transition">
           <i class="fa-solid fa-shield-halved mr-1"></i> Admin
         </button>
 
@@ -186,7 +186,36 @@
         <h2 class="text-lg font-black text-amber-400 flex items-center">
           <i class="fa-solid fa-user-gear mr-2"></i> Panel de Control - Administrador
         </h2>
-        <p class="text-xs text-gray-300">Carga inventario por lotes y acredita saldo a tus clientes luego de que paguen.</p>
+        <p class="text-xs text-gray-300">Gestiona precios, inventario por lotes y saldo de clientes.</p>
+      </div>
+
+      <!-- NUEVA SECCIÓN: GESTIÓN DE PRECIOS -->
+      <div class="bg-gray-900 border border-gray-800 rounded-2xl p-6">
+        <h3 class="font-bold text-white mb-2 flex items-center">
+          <i class="fa-solid fa-tags text-emerald-400 mr-2"></i> Modificar Precios de Productos
+        </h3>
+        <p class="text-xs text-gray-400 mb-4">
+          Cambia el valor en pesos (COP). Se actualizará de inmediato en la tienda y en el cobro a los clientes.
+        </p>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+          <div>
+            <label class="text-xs text-gray-400 block mb-1">Amazon (28 Días)</label>
+            <input type="number" id="adminPrecioAmazon28" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-sm text-white font-mono focus:outline-none focus:border-emerald-500">
+          </div>
+          <div>
+            <label class="text-xs text-gray-400 block mb-1">Amazon Free (24h)</label>
+            <input type="number" id="adminPrecioAmazonFree" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-sm text-white font-mono focus:outline-none focus:border-emerald-500">
+          </div>
+          <div>
+            <label class="text-xs text-gray-400 block mb-1">Prime Video (24h)</label>
+            <input type="number" id="adminPrecioPrimeVideo" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-sm text-white font-mono focus:outline-none focus:border-emerald-500">
+          </div>
+        </div>
+
+        <button onclick="adminGuardarPrecios()" class="px-6 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-bold text-sm">
+          <i class="fa-solid fa-floppy-disk mr-1"></i> Guardar Nuevos Precios
+        </button>
       </div>
 
       <!-- Cargar Stock -->
@@ -323,7 +352,6 @@
   </footer>
 
   <script>
-    // TU NUEVA CLAVE SEGURA (DIVIDIDA PARA EVITAR ALERTAS DE GITHUB)
     const firebaseConfig = {
       apiKey: "AIza" + "SyDlRYxGu56PeBiGjuh9kk0jxoElZ_PwtsE",
       authDomain: "epic-channels.firebaseapp.com",
@@ -333,11 +361,11 @@
       appId: "1:860169917338:web:6f25e107009568d2d2a023"
     };
 
-    // CORREOS DE ADMINISTRADOR
     const CORREOS_ADMIN = ["alex88ruizc@gmail.com", "alex88ruiz@gmail.com"];
     const WHATSAPP_SOPORTE = "573043956726";
 
-    const PRECIOS = {
+    // Precios por defecto (se sobreescriben automáticamente desde la base de datos)
+    let PRECIOS = {
       amazon28: 18000,
       amazonfree: 4000,
       primevideo: 9000
@@ -350,6 +378,31 @@
     let currentUser = null;
     let userProfile = null;
     let authMode = 'login';
+
+    // Escuchador de precios en tiempo real desde Firestore
+    db.collection('configuracion').doc('precios').onSnapshot(doc => {
+      if (doc.exists) {
+        const data = doc.data();
+        if (data.amazon28) PRECIOS.amazon28 = Number(data.amazon28);
+        if (data.amazonfree) PRECIOS.amazonfree = Number(data.amazonfree);
+        if (data.primevideo) PRECIOS.primevideo = Number(data.primevideo);
+      }
+
+      // Actualizar vista de precios en la tienda
+      document.getElementById('precio-amazon28').textContent = '$' + PRECIOS.amazon28.toLocaleString('es-CO') + ' COP';
+      document.getElementById('precio-amazonfree').textContent = '$' + PRECIOS.amazonfree.toLocaleString('es-CO') + ' COP';
+      document.getElementById('precio-primevideo').textContent = '$' + PRECIOS.primevideo.toLocaleString('es-CO') + ' COP';
+
+      // Rellenar los campos en el panel admin si están en pantalla
+      const inp28 = document.getElementById('adminPrecioAmazon28');
+      const inpFree = document.getElementById('adminPrecioAmazonFree');
+      const inpPrime = document.getElementById('adminPrecioPrimeVideo');
+      if (inp28 && inpFree && inpPrime) {
+        inp28.value = PRECIOS.amazon28;
+        inpFree.value = PRECIOS.amazonfree;
+        inpPrime.value = PRECIOS.primevideo;
+      }
+    });
 
     auth.onAuthStateChanged(async (user) => {
       currentUser = user;
@@ -383,6 +436,7 @@
       }
     });
 
+    // Escuchador de stock en tiempo real
     ['amazon28', 'amazonfree', 'primevideo'].forEach(catId => {
       db.collection('inventario').doc(catId).onSnapshot(doc => {
         const cuentas = doc.exists && doc.data().cuentas ? doc.data().cuentas : [];
@@ -545,6 +599,28 @@
             `;
           });
         });
+    }
+
+    // Guardar precios modificados desde el panel admin
+    async function adminGuardarPrecios() {
+      const p28 = parseInt(document.getElementById('adminPrecioAmazon28').value);
+      const pFree = parseInt(document.getElementById('adminPrecioAmazonFree').value);
+      const pPrime = parseInt(document.getElementById('adminPrecioPrimeVideo').value);
+
+      if (isNaN(p28) || isNaN(pFree) || isNaN(pPrime) || p28 <= 0 || pFree <= 0 || pPrime <= 0) {
+        return alert("Por favor ingresa precios válidos mayores a 0.");
+      }
+
+      try {
+        await db.collection('configuracion').doc('precios').set({
+          amazon28: p28,
+          amazonfree: pFree,
+          primevideo: pPrime
+        }, { merge: true });
+        alert("¡Precios actualizados en tiempo real!");
+      } catch (err) {
+        alert("Error al guardar precios: " + err.message);
+      }
     }
 
     async function adminSubirCuentas() {
