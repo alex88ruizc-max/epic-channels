@@ -190,12 +190,12 @@
             </h2>
           </div>
           
-          <!-- INDICADOR FIJO SUPERIOR IZQUIERDO DE VENTAS DE HOY -->
+          <!-- INDICADOR FIJO SUPERIOR IZQUIERDO DE VENTAS DE HOY (MONTO + CANTIDAD) -->
           <div class="bg-gray-900 border border-emerald-500/40 px-3.5 py-1.5 rounded-2xl flex items-center gap-2.5 shadow-lg shadow-emerald-500/10">
             <div class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></div>
             <div>
               <span class="text-[9px] text-gray-400 block font-semibold leading-none uppercase tracking-wider">Recaudado Hoy</span>
-              <span id="txtAdminRecaudadoHoyEnVivo" class="text-sm font-black text-emerald-400 leading-tight">$0 COP</span>
+              <span id="txtAdminRecaudadoHoyEnVivo" class="text-sm font-black text-emerald-400 leading-tight">$0 COP <span class="text-xs text-gray-400 font-semibold">(0 cuentas)</span></span>
             </div>
           </div>
         </div>
@@ -836,11 +836,12 @@
       });
     }
 
-    // MONITOR EN VIVO Y AUTOMÁTICO DE RECAUDACIÓN DE HOY (SUPERIOR IZQUIERDA)
+    // MONITOR EN VIVO Y AUTOMÁTICO DE RECAUDACIÓN DE HOY (SUPERIOR IZQUIERDA: MONTO + CUENTAS)
     function escucharTotalRecaudadoHoyEnVivo() {
       db.collection('compras').onSnapshot(snap => {
         const hoyStr = new Date().toISOString().slice(0, 10);
         let acumuladoHoy = 0;
+        let cuentasHoy = 0;
 
         snap.forEach(doc => {
           const c = doc.data();
@@ -858,12 +859,13 @@
 
           if (fechaCompra.toISOString().slice(0, 10) === hoyStr) {
             acumuladoHoy += (parseFloat(c.total) || 0);
+            cuentasHoy += (parseInt(c.cantidad) || 0);
           }
         });
 
         const badgeEl = document.getElementById('txtAdminRecaudadoHoyEnVivo');
         if (badgeEl) {
-          badgeEl.innerText = `$${acumuladoHoy.toLocaleString('es-CO')} COP`;
+          badgeEl.innerHTML = `$${acumuladoHoy.toLocaleString('es-CO')} COP <span class="text-xs text-gray-400 font-semibold">(${cuentasHoy} cuentas)</span>`;
         }
       });
     }
