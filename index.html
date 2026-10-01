@@ -52,17 +52,17 @@
   <header class="border-b border-gray-800 bg-gray-900/95 backdrop-blur sticky top-0 z-50">
     <div class="max-w-6xl mx-auto px-3 py-3 flex items-center justify-between gap-2">
       
-      <!-- LOGO -->
-      <div class="flex items-center space-x-2 cursor-pointer shrink-0" onclick="cambiarVista('tienda')">
+      <!-- LOGO (VISIBLE SOLO CUANDO NO HAY SESIÓN) -->
+      <div id="navLogoContainer" class="flex items-center space-x-2 cursor-pointer shrink-0" onclick="cambiarVista('tienda')">
         <i class="fa-solid fa-bolt text-emerald-400 text-base sm:text-xl"></i>
         <span class="font-black text-sm sm:text-lg tracking-wider text-white">EPIC<span class="text-emerald-400">CHANNELS</span></span>
       </div>
 
-      <!-- SALDO (REEMPLAZANDO EL ESPACIO CENTRAL EN MÓVIL Y AL LADO EN PC) -->
-      <div id="navSaldoDirecto" class="hidden bg-gray-800/90 border border-gray-700 px-2.5 sm:px-3 py-1.5 rounded-xl items-center space-x-2 shrink-0 shadow-md">
+      <!-- SALDO (REEMPLAZA EL LOGO EN MÓVIL CUANDO HAY SESIÓN) -->
+      <div id="navSaldoDirecto" class="hidden bg-gray-800/90 border border-gray-700 px-3 py-1.5 rounded-xl items-center space-x-2 shrink-0 shadow-md">
         <i class="fa-solid fa-wallet text-emerald-400 text-xs"></i>
         <div>
-          <span class="text-[8px] sm:text-[9px] text-gray-400 block leading-none">Mi Saldo</span>
+          <span class="text-[9px] text-gray-400 block leading-none">Mi Saldo</span>
           <span id="txtSaldoHeader" class="text-xs sm:text-sm font-bold text-white leading-tight">$0 COP</span>
         </div>
         <button onclick="abrirModalRecarga()" title="Recargar saldo" class="ml-1 bg-emerald-500 hover:bg-emerald-400 text-black rounded p-1 text-xs transition">
@@ -593,14 +593,14 @@
 
   </main>
 
-  <!-- ==================== BOTÓN FLOTANTE MODO PRUEBA CLIENTE (ARRIBA IZQUIERDA) ==================== -->
+  <!-- ==================== BOTÓN FLOTANTE MODO PRUEBA CLIENTE ==================== -->
   <div id="btnFlotanteModoCliente" class="fixed top-20 left-4 z-40 hidden">
     <button onclick="salirModoPruebaCliente()" class="flex items-center gap-1.5 bg-yellow-500 hover:bg-yellow-400 text-black font-black px-3 py-2 rounded-xl shadow-2xl transition text-xs">
       <i class="fa-solid fa-arrow-rotate-left"></i> Salir Vista Cliente
     </button>
   </div>
 
-  <!-- ==================== BOTÓN FLOTANTE SOPORTE WHATSAPP (SOLO LOGUEADOS) ==================== -->
+  <!-- ==================== BOTÓN FLOTANTE SOPORTE WHATSAPP ==================== -->
   <div id="btnFlotanteSoporte" class="fixed bottom-5 right-5 z-40 hidden">
     <button onclick="abrirSoporteWhatsapp()" class="flex items-center gap-2 bg-emerald-500 hover:bg-emerald-400 text-black font-black px-4 py-3 rounded-full shadow-2xl shadow-emerald-500/30 transition transform hover:scale-105">
       <i class="fa-brands fa-whatsapp text-xl"></i>
@@ -707,8 +707,8 @@
 
       <div class="space-y-3 text-xs text-gray-300 max-h-48 overflow-y-auto pr-1 mb-4">
         <div class="p-3 bg-gray-800/80 rounded-xl border border-gray-700/60">
-          <span class="font-bold text-emerald-400 block mb-1">✨ Menú Responsivo Limpio</span>
-          <p class="text-gray-400">Los botones de acción en móvil ahora se muestran como iconos limpios, optimizando por completo la interfaz.</p>
+          <span class="font-bold text-emerald-400 block mb-1">✨ Saldo Integrado en Barra Principal</span>
+          <p class="text-gray-400">En versión móvil tu saldo reemplaza el logotipo de la izquierda para dar máxima limpieza y comodidad.</p>
         </div>
       </div>
 
@@ -1618,13 +1618,22 @@
       currentUser = user;
       const btnSoporte = document.getElementById('btnFlotanteSoporte');
       const navSaldo = document.getElementById('navSaldoDirecto');
+      const navLogo = document.getElementById('navLogoContainer');
 
       if (user) {
         document.getElementById('navGuest').classList.add('hidden');
         document.getElementById('navUser').classList.remove('hidden');
         if (btnSoporte) btnSoporte.classList.remove('hidden');
-        if (navSaldo) navSaldo.classList.remove('hidden');
-        navSaldo.style.display = 'flex';
+        
+        // REEMPLAZAR LOGO POR SALDO EN MÓVIL, MANTENER LOGO EN PC
+        if (navSaldo) {
+          navSaldo.classList.remove('hidden');
+          navSaldo.classList.add('flex');
+        }
+        if (navLogo) {
+          // En móvil ocultamos el logo y dejamos que el saldo ocupe su lugar a la izquierda
+          navLogo.classList.add('hidden', 'sm:flex');
+        }
 
         cerrarModalAuth();
         document.getElementById('vistaBloqueada').classList.add('hidden');
@@ -1691,7 +1700,14 @@
         document.getElementById('navGuest').classList.remove('hidden');
         document.getElementById('navUser').classList.add('hidden');
         if (btnSoporte) btnSoporte.classList.add('hidden');
-        if (navSaldo) navSaldo.classList.add('hidden');
+        if (navSaldo) {
+          navSaldo.classList.add('hidden');
+          navSaldo.classList.remove('flex');
+        }
+        if (navLogo) {
+          navLogo.classList.remove('hidden', 'sm:flex');
+          navLogo.classList.add('flex');
+        }
         document.getElementById('btnAdminTab').classList.add('hidden');
         bloquearAccesoVisitante();
       }
