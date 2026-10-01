@@ -329,9 +329,12 @@
           </h3>
           <form onsubmit="crearUsuarioExpress(event)" class="grid grid-cols-1 sm:grid-cols-4 gap-3">
             <input type="email" id="expEmail" required placeholder="Correo electrónico" class="bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none">
-            <input type="tel" id="expWhatsapp" required placeholder="Número de WhatsApp" class="bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none">
+            <input type="text" id="expNombre" placeholder="Nombre / Alias (Opcional)" class="bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none">
+            <input type="tel" id="expWhatsapp" placeholder="WhatsApp (Opcional)" class="bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none">
             <input type="password" id="expPassword" required placeholder="Contraseña temporal" class="bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none">
-            <button type="submit" class="bg-emerald-500 hover:bg-emerald-400 text-black font-bold py-2 px-4 rounded-xl text-xs transition">Registrar Cuenta</button>
+            <div class="sm:col-span-4">
+              <button type="submit" class="w-full bg-emerald-500 hover:bg-emerald-400 text-black font-bold py-2 px-4 rounded-xl text-xs transition">Registrar Cuenta</button>
+            </div>
           </form>
         </div>
 
@@ -343,7 +346,7 @@
             <table class="w-full text-left text-sm text-gray-300">
               <thead class="bg-gray-800/60 text-xs uppercase text-gray-400">
                 <tr>
-                  <th class="px-4 py-3">Correo Electrónico</th>
+                  <th class="px-4 py-3">Cliente / Correo</th>
                   <th class="px-4 py-3">WhatsApp</th>
                   <th class="px-4 py-3">Saldo Actual</th>
                   <th class="px-4 py-3 text-center">Permisos Catálogo</th>
@@ -633,6 +636,29 @@
 
   <!-- ==================== MODALES ==================== -->
 
+  <!-- MODAL: AVISO CREACIÓN DE USUARIO ÉXITO (CON BOTÓN COPIAR) -->
+  <div id="modalUsuarioCreado" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+    <div class="bg-gray-900 border border-emerald-500/50 rounded-2xl max-w-sm w-full p-6 text-center relative shadow-2xl">
+      <button onclick="cerrarModalUsuarioCreado()" class="absolute top-4 right-4 text-gray-400 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
+      <div class="w-12 h-12 bg-emerald-500/20 text-emerald-400 rounded-full flex items-center justify-center mx-auto mb-3 text-xl">
+        <i class="fa-solid fa-user-check"></i>
+      </div>
+      <h3 class="text-lg font-black text-white mb-1">¡Usuario Creado con Éxito!</h3>
+      <p class="text-xs text-gray-400 mb-4">Credenciales de acceso generadas:</p>
+      
+      <div class="bg-gray-800 border border-gray-700 p-3 rounded-xl text-left font-mono text-xs text-emerald-300 break-all mb-4 select-all leading-relaxed" id="txtCredencialesNuevoUsuario"></div>
+
+      <div class="space-y-2">
+        <button onclick="copiarCredencialesNuevoUsuario()" class="w-full bg-emerald-500 hover:bg-emerald-400 text-black font-bold py-2.5 rounded-xl text-xs flex items-center justify-center gap-2 transition">
+          <i class="fa-solid fa-copy"></i> Copiar Correo y Contraseña
+        </button>
+        <button onclick="cerrarModalUsuarioCreado()" class="w-full bg-gray-800 hover:bg-gray-700 text-gray-300 font-bold py-2 rounded-xl text-xs transition">
+          Entendido
+        </button>
+      </div>
+    </div>
+  </div>
+
   <!-- MODAL: PERMISOS DE CATÁLOGO (VIP) POR CLIENTE -->
   <div id="modalPermisosCliente" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
     <div class="bg-gray-900 border border-gray-800 rounded-2xl max-w-md w-full p-6 relative shadow-2xl">
@@ -684,6 +710,32 @@
           Cancelar
         </button>
       </div>
+    </div>
+  </div>
+
+  <!-- MODAL: EDITAR CLIENTE (NOMBRE Y CAMBIAR CONTRASEÑA) -->
+  <div id="modalEditarCliente" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+    <div class="bg-gray-900 border border-emerald-500/40 rounded-2xl max-w-sm w-full p-6 relative shadow-2xl">
+      <button onclick="cerrarModalEditarCliente()" class="absolute top-4 right-4 text-gray-400 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
+      <div class="w-12 h-12 bg-emerald-500/10 text-emerald-400 rounded-2xl flex items-center justify-center mb-3 text-xl">
+        <i class="fa-solid fa-user-pen"></i>
+      </div>
+      <h3 class="text-base font-black text-white mb-1">Editar Cliente / Contraseña</h3>
+      <p id="txtEditarClienteEmail" class="text-xs text-emerald-400 font-mono mb-4 break-all">cliente@ejemplo.com</p>
+      
+      <form onsubmit="guardarEdicionCliente(event)" class="space-y-3">
+        <div>
+          <label class="block text-xs text-gray-400 mb-1">Nombre o Alias</label>
+          <input type="text" id="editClienteNombre" placeholder="Ej: Juan Pérez" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none">
+        </div>
+        <div>
+          <label class="block text-xs text-gray-400 mb-1">Nueva Contraseña (Opcional)</label>
+          <input type="text" id="editClientePassword" placeholder="Déjalo vacío para no cambiarla" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white font-mono focus:outline-none">
+        </div>
+        <button type="submit" class="w-full bg-emerald-500 hover:bg-emerald-400 text-black font-bold py-2.5 rounded-xl text-xs transition mt-2">
+          Guardar Cambios
+        </button>
+      </form>
     </div>
   </div>
 
@@ -1033,7 +1085,7 @@
             const ultimaVez = new Date(u.ultima_conexion).getTime();
             if ((ahora - ultimaVez) < 180000) {
               enLineaCount++;
-              listaClientesConectados.push(u.email || u.whatsapp || 'Cliente anónimo');
+              listaClientesConectados.push(u.nombre || u.email || u.whatsapp || 'Cliente anónimo');
             }
           }
         });
@@ -1046,10 +1098,10 @@
           if (listaClientesConectados.length === 0) {
             contenedorLista.innerHTML = '<span class="text-xs text-gray-500 italic">Sin clientes activos en este momento.</span>';
           } else {
-            contenedorLista.innerHTML = listaClientesConectados.map(correo => `
+            contenedorLista.innerHTML = listaClientesConectados.map(nombreCli => `
               <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-xs font-semibold">
                 <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-                ${correo}
+                ${nombreCli}
               </span>
             `).join('');
           }
@@ -1388,8 +1440,10 @@
 
     let clientePermisosUidActual = null;
     let clienteStockUidActual = null;
+    let clienteEditarUidActual = null;
     let qrBase64Temporal = null;
     let logoMarcaBase64Temporal = null;
+    let credencialesNuevoUsuarioTemp = "";
 
     function parseCredencialObj(item) {
       if (!item) return { email: '', pass: '' };
@@ -1591,7 +1645,6 @@
 
     function renderizaracionalApariencia() {
       const tituloEl = document.getElementById('txtCatTitulo');
-      const insigniaEl = document.getElementById('txtCatInsignia');
       const subEl = document.getElementById('txtCatSubtitulo');
       const logoCont = document.getElementById('contenedorLogoMarca');
       const logoImg = document.getElementById('imgLogoMarca');
@@ -2150,6 +2203,7 @@
           const permitidos = u.productos_permitidos || [];
           const bloqueados = u.productos_bloqueados || [];
           const stockPermitidos = u.permisos_subir_stock || [];
+          const nombreCliente = u.nombre ? `<span class="font-bold text-white block">${u.nombre}</span><span class="text-[11px] text-gray-400 font-mono">${u.email || ''}</span>` : `<span class="font-bold text-white block">${u.email || ''}</span>`;
 
           let fechaRegStr = 'N/A';
           if (u.fechaRegistro) {
@@ -2176,7 +2230,10 @@
 
           tbody.innerHTML += `
             <tr class="hover:bg-gray-800/40 border-b border-gray-800">
-              <td class="px-4 py-3 font-semibold text-white">${u.email || ''}</td>
+              <td class="px-4 py-3">
+                ${nombreCliente}
+                <button onclick="abrirModalEditarCliente('${uid}', '${u.email || ''}', '${u.nombre || ''}')" class="mt-1 text-[10px] bg-gray-800 hover:bg-gray-700 text-emerald-400 px-2 py-0.5 rounded"><i class="fa-solid fa-pen mr-1"></i> Editar perfil</button>
+              </td>
               <td class="px-4 py-3 text-xs text-gray-400">${u.whatsapp || 'Sin WhatsApp'}</td>
               <td class="px-4 py-3">
                 <div class="flex items-center gap-2">
@@ -2213,6 +2270,45 @@
           `;
         });
       });
+    }
+
+    function abrirModalEditarCliente(uid, email, nombreActual) {
+      clienteEditarUidActual = uid;
+      document.getElementById('txtEditarClienteEmail').innerText = email;
+      document.getElementById('editClienteNombre').value = nombreActual || '';
+      document.getElementById('editClientePassword').value = '';
+      const modal = document.getElementById('modalEditarCliente');
+      modal.classList.remove('hidden');
+      modal.style.display = 'flex';
+    }
+
+    function cerrarModalEditarCliente() {
+      clienteEditarUidActual = null;
+      const modal = document.getElementById('modalEditarCliente');
+      modal.classList.add('hidden');
+      modal.style.display = 'none';
+    }
+
+    async function guardarEdicionCliente(e) {
+      e.preventDefault();
+      if (!clienteEditarUidActual) return;
+      const nuevoNombre = document.getElementById('editClienteNombre').value.trim();
+      const nuevaPassword = document.getElementById('editClientePassword').value.trim();
+
+      try {
+        const updateData = { nombre: nuevoNombre };
+        await db.collection('usuarios').doc(clienteEditarUidActual).set(updateData, { merge: true });
+
+        if (nuevaPassword.length >= 6) {
+          alert("¡Perfil actualizado con éxito! (Para cambiar la contraseña de acceso, por seguridad el usuario puede usar 'Clave' o restablecerla desde login).");
+        } else {
+          alert("¡Perfil de cliente actualizado con éxito!");
+        }
+
+        cerrarModalEditarCliente();
+      } catch (err) {
+        alert("Error al actualizar cliente: " + err.message);
+      }
     }
 
     function abrirModalPermisosCliente(uid, email, productosPermitidosActuales, productosBloqueadosActuales) {
@@ -2350,13 +2446,15 @@
     async function crearUsuarioExpress(e) {
       e.preventDefault();
       const email = document.getElementById('expEmail').value.trim();
+      const nombre = document.getElementById('expNombre').value.trim();
       const whatsapp = document.getElementById('expWhatsapp').value.trim();
       const password = document.getElementById('expPassword').value;
 
       try {
-        const cred = await auth.createUserWithEmailAndPassword(email, password);
-        await db.collection('usuarios').doc(cred.user.uid).set({ 
+        await auth.createUserWithEmailAndPassword(email, password);
+        await db.collection('usuarios').doc(auth.currentUser.uid).set({ 
           email, 
+          nombre: nombre || '',
           whatsapp: whatsapp || 'Sin WhatsApp', 
           saldo: 0, 
           puede_subir_stock: false, 
@@ -2364,12 +2462,31 @@
           productos_bloqueados: [],
           permisos_subir_stock: [],
           fechaRegistro: new Date().toISOString() 
-        });
+        }, { merge: true });
+
+        // Guardar credenciales temporales para el modal de éxito con copia
+        credencialesNuevoUsuarioTemp = `• Correo: ${email}\n• Contraseña: ${password}`;
+        document.getElementById('txtCredencialesNuevoUsuario').innerText = credencialesNuevoUsuarioTemp;
+        
+        const modalU = document.getElementById('modalUsuarioCreado');
+        modalU.classList.remove('hidden');
+        modalU.style.display = 'flex';
+
         document.getElementById('expEmail').value = '';
+        document.getElementById('expNombre').value = '';
         document.getElementById('expWhatsapp').value = '';
         document.getElementById('expPassword').value = '';
-        alert("¡Cuenta de usuario creada con éxito!");
       } catch (err) { alert("Error al crear cuenta: " + err.message); }
+    }
+
+    function copiarCredencialesNuevoUsuario() {
+      navigator.clipboard.writeText(credencialesNuevoUsuarioTemp).then(() => alert("¡Credenciales copiadas al portapapeles!")).catch(() => prompt("Copia:", credencialesNuevoUsuarioTemp));
+    }
+
+    function cerrarModalUsuarioCreado() {
+      const modal = document.getElementById('modalUsuarioCreado');
+      modal.classList.add('hidden');
+      modal.style.display = 'none';
     }
 
     async function adminCargarSaldo(uid) {
