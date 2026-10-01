@@ -218,7 +218,7 @@
         <button onclick="cambiarTabAdmin('productos')" id="tabBtnProductos" class="pb-2 border-b-2 border-emerald-400 text-emerald-400 font-bold whitespace-nowrap">Gestión y Visibilidad</button>
         <button onclick="cambiarTabAdmin('usuarios')" id="tabBtnUsuarios" class="pb-2 border-b-2 border-transparent text-gray-400 font-medium hover:text-white whitespace-nowrap">Usuarios Registrados</button>
         <button onclick="cambiarTabAdmin('stock')" id="tabBtnStock" class="pb-2 border-b-2 border-transparent text-gray-400 font-medium hover:text-white whitespace-nowrap">Cargar Cuentas (Stock)</button>
-        <button onclick="cambiarTabAdmin('precios')" id="tabBtnPrecios" class="pb-2 border-b-2 border-transparent text-gray-400 font-medium hover:text-white whitespace-nowrap">Modificar Precios</button>
+        <button onclick="cambiarTabAdmin('precios')" id="tabBtnPrecios" class="pb-2 border-b-2 border-transparent text-gray-400 font-medium hover:text-white whitespace-nowrap">Precios y Compra Mínima</button>
         <button onclick="cambiarTabAdmin('recargas')" id="tabBtnRecargas" class="pb-2 border-b-2 border-transparent text-gray-400 font-medium hover:text-white whitespace-nowrap">Solicitudes de Saldo</button>
       </div>
 
@@ -311,22 +311,29 @@
         </div>
       </div>
 
-      <!-- TAB 4: MODIFICAR PRECIOS -->
+      <!-- TAB 4: MODIFICAR PRECIOS Y COMPRA MÍNIMA -->
       <div id="adminSecPrecios" class="hidden">
         <div class="p-5 bg-gray-900 border border-gray-800 rounded-2xl max-w-xl">
           <h3 class="text-base font-bold text-white mb-2 flex items-center gap-2">
-            <i class="fa-solid fa-tags text-emerald-400"></i> Modificar Precios de Productos
+            <i class="fa-solid fa-sliders text-emerald-400"></i> Modificar Precio y Compra Mínima
           </h3>
-          <form onsubmit="actualizarPrecioProducto(event)" class="space-y-4">
+          <p class="text-xs text-gray-400 mb-4">Ajusta los precios y las políticas de compra mínima por rotación de producto.</p>
+          <form onsubmit="actualizarPrecioYMinimoProducto(event)" class="space-y-4">
             <div>
               <label class="block text-xs text-gray-400 mb-1">Selecciona el Producto</label>
-              <select id="selectPrecioProd" required class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-sm text-white"></select>
+              <select id="selectPrecioProd" onchange="cargarValoresEnFormPrecios()" required class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-sm text-white"></select>
             </div>
-            <div>
-              <label class="block text-xs text-gray-400 mb-1">Nuevo Precio (COP)</label>
-              <input type="number" id="inputNuevoPrecio" required placeholder="Ej: 3200" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-sm text-white">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label class="block text-xs text-gray-400 mb-1">Nuevo Precio Unitario (COP)</label>
+                <input type="number" id="inputNuevoPrecio" required placeholder="Ej: 3500" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-sm text-white">
+              </div>
+              <div>
+                <label class="block text-xs text-gray-400 mb-1">Compra Mínima (Unidades)</label>
+                <input type="number" id="inputNuevoMinCompra" required min="1" placeholder="Ej: 5" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-sm text-white">
+              </div>
             </div>
-            <button type="submit" class="bg-emerald-500 hover:bg-emerald-400 text-black font-bold py-2.5 px-6 rounded-xl text-sm transition">Guardar Precio</button>
+            <button type="submit" class="bg-emerald-500 hover:bg-emerald-400 text-black font-bold py-2.5 px-6 rounded-xl text-sm transition">Guardar Cambios</button>
           </form>
         </div>
       </div>
@@ -369,7 +376,7 @@
               <h3 class="font-black text-white text-base flex items-center gap-2">
                 <i class="fa-solid fa-chart-line text-emerald-400"></i> Reporte Financiero y Ganancias Reales
               </h3>
-              <p class="text-xs text-gray-400">Métricas exclusivas de clientes (compras de admin y pruebas excluidas).</p>
+              <p class="text-xs text-gray-400">Métricas verificadas exclusivamente de clientes registrados (excluyendo pruebas y correos sin cuenta).</p>
             </div>
             <!-- Filtro de Tiempo Interactivo -->
             <div class="flex items-center gap-2 flex-wrap">
@@ -667,7 +674,6 @@
     const auth = firebase.auth();
     const db = firebase.firestore();
 
-    // Token protegido contra escaneo de GitHub
     const TELEGRAM_BOT_TOKEN = "8974701831:AAE" + "Fibgx1DM2rO8NlxsEW9I27F88rV-VjnQ";
     const TELEGRAM_CHAT_ID = "390457801";
 
@@ -869,13 +875,28 @@
       }
     }
 
+    // Identificación exclusiva de productos oficiales válidos
+    function esProductoCatalogoValido(nombreOId) {
+      if (!nombreOId) return false;
+      const s = String(nombreOId).trim().toLowerCase();
+      if (s === "producto desconocido" || s === "prueba" || s === "test") return false;
+      return PRODUCTOS_CATALOGO.some(p => 
+        p.id.toLowerCase() === s ||
+        p.nombre.toLowerCase() === s ||
+        p.aliases.some(a => a.toLowerCase() === s)
+      );
+    }
+
     async function actualizarProductoHotGlobal() {
       try {
         const snap = await db.collection('compras').get();
         const conteo = {};
         snap.forEach(doc => {
           const c = doc.data();
-          if (EMAILS_EXCLUIDOS_REPORTE.includes((c.usuarioEmail || '').trim().toLowerCase())) return;
+          const email = (c.usuarioEmail || '').trim().toLowerCase();
+          if (!email || email === 'sin correo' || EMAILS_EXCLUIDOS_REPORTE.includes(email)) return;
+          if (!esProductoCatalogoValido(c.productoNombre) && !esProductoCatalogoValido(c.productoId)) return;
+
           const pid = c.productoId;
           if (pid) {
             conteo[pid] = (conteo[pid] || 0) + (parseInt(c.cantidad) || 1);
@@ -946,7 +967,11 @@
           const c = doc.data();
           const emailCliente = (c.usuarioEmail || '').trim().toLowerCase();
 
-          if (EMAILS_EXCLUIDOS_REPORTE.includes(emailCliente)) return;
+          // FILTRO ESTRICTO: Excluir órdenes de test, sin correo o administradores
+          if (!emailCliente || emailCliente === 'sin correo' || EMAILS_EXCLUIDOS_REPORTE.includes(emailCliente)) return;
+
+          const prodNombre = c.productoNombre || '';
+          if (!esProductoCatalogoValido(prodNombre) && !esProductoCatalogoValido(c.productoId)) return;
 
           let fechaCompra = new Date();
           if (c.fecha) {
@@ -969,7 +994,6 @@
           if (coincide) {
             const monto = parseFloat(c.total) || 0;
             const cant = parseInt(c.cantidad) || 0;
-            const prodNombre = c.productoNombre || 'Producto Desconocido';
 
             totalDinero += monto;
             totalCuentas += cant;
@@ -983,7 +1007,7 @@
 
             historialCompras.push({
               fecha: fechaCompra.toLocaleString('es-CO'),
-              email: c.usuarioEmail || 'Sin correo',
+              email: c.usuarioEmail,
               producto: prodNombre,
               cantidad: cant,
               total: monto
@@ -1063,11 +1087,11 @@
     }
 
     const PRODUCTOS_CATALOGO = [
-      { id: "amazon28", aliases: ["amazon28", "amazon_28", "amazon"], nombre: "Amazon (Garantía 28 Días)", categoria: "Streaming", descripcion: "Cuenta completa con garantía de 28 días. Entrega directa sin PIN.", precioDefault: 15000, minCompra: 5, esAmazon: true, garantia24h: false },
-      { id: "prime_local", aliases: ["prime_local", "primelocal"], nombre: "Prime Video Local (Con Pago)", categoria: "Streaming", descripcion: "Cuenta local con pago activo. Garantía de acceso 24 horas.", precioDefault: 3200, minCompra: 5, esAmazon: true, garantia24h: true },
-      { id: "primevideo", aliases: ["primevideo", "prime_europea", "primeeuropea"], nombre: "Prime Video Europea (Con Pago)", categoria: "Streaming", descripcion: "Cuenta europea con pago activo. Garantía de acceso 24 horas.", precioDefault: 2800, minCompra: 5, esAmazon: true, garantia24h: true },
-      { id: "amazonfree", aliases: ["amazonfree", "amazon_free"], nombre: "Amazon Free (Garantía 24 Horas)", categoria: "Streaming", descripcion: "Cuenta Amazon Free verificada. Garantía de acceso 24 horas.", precioDefault: 6000, minCompra: 5, esAmazon: true, garantia24h: true },
-      { id: "correo_hotmail", aliases: ["correo_hotmail", "hotmail", "correohotmail"], nombre: "Correo Hotmail", categoria: "Correos", descripcion: "Correo electrónico Hotmail completamente nuevo con su contraseña. Cuenta con garantía de 24 horas de soporte.", precioDefault: 3000, minCompra: 10, esAmazon: false, garantia24h: true }
+      { id: "amazon28", aliases: ["amazon28", "amazon_28", "amazon"], nombre: "Amazon (Garantía 28 Días)", categoria: "Streaming", descripcion: "Cuenta completa con garantía de 28 días. Entrega directa sin PIN.", precioDefault: 15000, minCompraDefault: 5, esAmazon: true, garantia24h: false },
+      { id: "prime_local", aliases: ["prime_local", "primelocal"], nombre: "Prime Video Local (Con Pago)", categoria: "Streaming", descripcion: "Cuenta local con pago activo. Garantía de acceso 24 horas.", precioDefault: 3200, minCompraDefault: 5, esAmazon: true, garantia24h: true },
+      { id: "primevideo", aliases: ["primevideo", "prime_europea", "primeeuropea"], nombre: "Prime Video Europea (Con Pago)", categoria: "Streaming", descripcion: "Cuenta europea con pago activo. Garantía de acceso 24 horas.", precioDefault: 2800, minCompraDefault: 5, esAmazon: true, garantia24h: true },
+      { id: "amazonfree", aliases: ["amazonfree", "amazon_free"], nombre: "Amazon Free (Garantía 24 Horas)", categoria: "Streaming", descripcion: "Cuenta Amazon Free verificada. Garantía de acceso 24 horas.", precioDefault: 6000, minCompraDefault: 5, esAmazon: true, garantia24h: true },
+      { id: "correo_hotmail", aliases: ["correo_hotmail", "hotmail", "correohotmail"], nombre: "Correo Hotmail", categoria: "Correos", descripcion: "Correo electrónico Hotmail completamente nuevo con su contraseña. Cuenta con garantía de 24 horas de soporte.", precioDefault: 3000, minCompraDefault: 10, esAmazon: false, garantia24h: true }
     ];
 
     let currentUser = null;
@@ -1078,6 +1102,7 @@
     let catalogoUnificado = [];
     let snapshotInventario = {};
     let preciosConfig = {};
+    let minimosConfig = {};
 
     function parseCredencialObj(item) {
       if (!item) return { email: '', pass: '' };
@@ -1233,6 +1258,10 @@
         if (doc.exists) preciosConfig = doc.data() || {};
         procesarYRenderizar();
       });
+      db.collection('configuracion').doc('minimos').onSnapshot(doc => {
+        if (doc.exists) minimosConfig = doc.data() || {};
+        procesarYRenderizar();
+      });
       db.collection('inventario').onSnapshot(snap => {
         snapshotInventario = {};
         snap.forEach(d => { snapshotInventario[d.id] = d.data(); });
@@ -1255,9 +1284,22 @@
         else if (preciosConfig[docIdFinal] !== undefined) precioFinal = preciosConfig[docIdFinal];
         else if (docInventario && docInventario.precio !== undefined) precioFinal = docInventario.precio;
 
+        let minCompraFinal = prodBase.minCompraDefault;
+        if (minimosConfig[key] !== undefined) minCompraFinal = minimosConfig[key];
+        else if (minimosConfig[docIdFinal] !== undefined) minCompraFinal = minimosConfig[docIdFinal];
+        else if (docInventario && docInventario.minCompra !== undefined) minCompraFinal = docInventario.minCompra;
+
         const activo = docInventario ? (docInventario.activo !== false) : true;
 
-        return { ...prodBase, docId: docIdFinal, stock: cuentas.length, cuentas: cuentas, precio: precioFinal, activo: activo };
+        return { 
+          ...prodBase, 
+          docId: docIdFinal, 
+          stock: cuentas.length, 
+          cuentas: cuentas, 
+          precio: precioFinal, 
+          minCompra: parseInt(minCompraFinal) || prodBase.minCompraDefault,
+          activo: activo 
+        };
       });
 
       if (currentUser) renderizarCatalogo();
@@ -1277,7 +1319,6 @@
         return p.categoria === categoriaActiva;
       });
 
-      // Hotmail siempre fijo abajo
       filtrados.sort((a, b) => {
         if (a.id === 'correo_hotmail') return 1;
         if (b.id === 'correo_hotmail') return -1;
@@ -1484,7 +1525,10 @@
         const esActivo = p.activo !== false;
         tbody.innerHTML += `
           <tr class="hover:bg-gray-800/40">
-            <td class="px-4 py-3 font-semibold text-white">${p.nombre}</td>
+            <td class="px-4 py-3 font-semibold text-white">
+              ${p.nombre}
+              <span class="block text-[10px] text-gray-500 font-normal">Mínimo compra: ${p.minCompra} u.</span>
+            </td>
             <td class="px-4 py-3 text-xs text-gray-400">${p.categoria}</td>
             <td class="px-4 py-3 font-bold text-white">$${(p.precio || 0).toLocaleString('es-CO')}</td>
             <td class="px-4 py-3">
@@ -1682,18 +1726,49 @@
     function poblarSelectPrecios() {
       const select = document.getElementById('selectPrecioProd');
       if (!select) return;
+      const actualVal = select.value;
       select.innerHTML = '';
-      catalogoUnificado.forEach(p => { select.innerHTML += `<option value="${p.docId}">${p.nombre}</option>`; });
+      catalogoUnificado.forEach(p => { 
+        select.innerHTML += `<option value="${p.docId}">${p.nombre}</option>`; 
+      });
+      if (actualVal) select.value = actualVal;
+      cargarValoresEnFormPrecios();
     }
 
-    async function actualizarPrecioProducto(e) {
+    function cargarValoresEnFormPrecios() {
+      const select = document.getElementById('selectPrecioProd');
+      if (!select) return;
+      const docId = select.value;
+      const prod = catalogoUnificado.find(p => p.docId === docId);
+      if (prod) {
+        document.getElementById('inputNuevoPrecio').value = prod.precio || 0;
+        document.getElementById('inputNuevoMinCompra').value = prod.minCompra || prod.minCompraDefault || 5;
+      }
+    }
+
+    async function actualizarPrecioYMinimoProducto(e) {
       e.preventDefault();
       const docId = document.getElementById('selectPrecioProd').value;
-      const nuevo = parseFloat(document.getElementById('inputNuevoPrecio').value);
-      if (isNaN(nuevo) || nuevo <= 0) return;
-      await db.collection('configuracion').doc('precios').set({ [docId]: nuevo }, { merge: true });
-      await db.collection('inventario').doc(docId).set({ precio: nuevo }, { merge: true });
-      alert("Precio actualizado.");
+      const nuevoPrecio = parseFloat(document.getElementById('inputNuevoPrecio').value);
+      const nuevoMinimo = parseInt(document.getElementById('inputNuevoMinCompra').value);
+
+      if (isNaN(nuevoPrecio) || nuevoPrecio <= 0) {
+        alert("Ingresa un precio válido.");
+        return;
+      }
+      if (isNaN(nuevoMinimo) || nuevoMinimo <= 0) {
+        alert("Ingresa una compra mínima válida mayor a 0.");
+        return;
+      }
+
+      try {
+        await db.collection('configuracion').doc('precios').set({ [docId]: nuevoPrecio }, { merge: true });
+        await db.collection('configuracion').doc('minimos').set({ [docId]: nuevoMinimo }, { merge: true });
+        await db.collection('inventario').doc(docId).set({ precio: nuevoPrecio, minCompra: nuevoMinimo }, { merge: true });
+        alert("¡Precio y compra mínima actualizados con éxito!");
+      } catch (err) {
+        alert("Error al guardar: " + err.message);
+      }
     }
 
     async function reportarRecarga(e) {
