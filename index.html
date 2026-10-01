@@ -52,7 +52,7 @@
   <header class="border-b border-gray-800 bg-gray-900/95 backdrop-blur sticky top-0 z-50">
     <div class="max-w-6xl mx-auto px-3 py-3 flex flex-col sm:flex-row items-center justify-between gap-3">
       
-      <!-- LOGO Y SALDO (DISTRIBUCIÓN RESPONSIVA) -->
+      <!-- LOGO Y SALDO -->
       <div class="w-full sm:w-auto flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5">
         <div class="flex items-center space-x-2 cursor-pointer" onclick="cambiarVista('tienda')">
           <i class="fa-solid fa-bolt text-emerald-400 text-lg sm:text-xl"></i>
@@ -696,8 +696,12 @@
 
       <div class="space-y-3 text-xs text-gray-300 max-h-48 overflow-y-auto pr-1 mb-4">
         <div class="p-3 bg-gray-800/80 rounded-xl border border-gray-700/60">
-          <span class="font-bold text-emerald-400 block mb-1">✨ Saldo Visible y Notificaciones Permanentes</span>
-          <p class="text-gray-400">Ahora tu saldo se ubica debajo del logotipo en móviles y al borrar una notificación esta se oculta permanentemente.</p>
+          <span class="font-bold text-emerald-400 block mb-1">✨ Notificaciones Telegram por Recarga</span>
+          <p class="text-gray-400">Cada vez que un cliente reporta una solicitud de saldo, te llega una alerta directa a Telegram con el correo y el monto.</p>
+        </div>
+        <div class="p-3 bg-gray-800/80 rounded-xl border border-gray-700/60">
+          <span class="font-bold text-emerald-400 block mb-1">⏰ Autoeliminación en 1 Hora</span>
+          <p class="text-gray-400">Las notificaciones y la campana de alertas se autoeliminarán transcurrida 1 hora desde tu primer ingreso del día.</p>
         </div>
       </div>
 
@@ -1026,6 +1030,26 @@
         return data;
       } catch (e) {
         console.error("Fallo Telegram:", e);
+      }
+    }
+
+    async function enviarNotificacionRecargaTelegram(datos) {
+      const mensaje = 
+        `💳 *¡NUEVA SOLICITUD DE RECARGA!* 💳\n\n` +
+        `👤 *Cliente:* ${datos.cliente}\n` +
+        `💰 *Monto a Cargar:* $${datos.monto.toLocaleString('es-CO')} COP\n` +
+        `⏰ *Fecha y Hora:* ${datos.fecha}`;
+
+      const url = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`;
+
+      try {
+        await fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ chat_id: TELEGRAM_CHAT_ID, text: mensaje, parse_mode: "Markdown" })
+        });
+      } catch (e) {
+        console.error("Fallo Telegram Recarga:", e);
       }
     }
 
@@ -1600,12 +1624,22 @@
             const notifBorrada = dataU.notificacion_borrada === true;
             const badgeNotif = document.getElementById('badgeNotifCount');
 
+            // Verificar temporizador de 1 hora a partir del primer ingreso
+            let primerIngreso = dataU.primer_ingreso;
+            const ahoraTiempo = new Date().getTime();
+            if (!primerIngreso) {
+              primerIngreso = new Date().toISOString();
+              db.collection('usuarios').doc(user.uid).set({ primer_ingreso: primerIngreso }, { merge: true });
+            }
+            const diffHoras = (ahoraTiempo - new Date(primerIngreso).getTime()) / 3600000;
+            const expiradoPorTiempo = diffHoras >= 1;
+
             if (userSaldo < 5000) {
               badgeNotif.innerText = "!";
               badgeNotif.classList.remove('bg-red-500', 'hidden');
               badgeNotif.classList.add('bg-yellow-500', 'animate-bounce');
               badgeNotif.title = "¡Atención! Tu saldo es menor a $5.000 COP";
-            } else if (notifBorrada) {
+            } else if (notifBorrada || expiradoPorTiempo) {
               badgeNotif.classList.add('hidden');
             } else {
               badgeNotif.innerText = "1";
@@ -1618,7 +1652,7 @@
             userProductosPermitidos = [];
             userProductosBloqueados = [];
             userPermisosSubirStock = [];
-            db.collection('usuarios').doc(user.uid).set({ email: user.email, saldo: 0, productos_permitidos: [], productos_bloqueados: [], permisos_subir_stock: [], notificacion_borrada: false }, { merge: true });
+            db.collection('usuarios').doc(user.uid).set({ email: user.email, saldo: 0, productos_permitidos: [], productos_bloqueados: [], permisos_subir_stock: [], notificacion_borrada: false, primer_ingreso: new Date().toISOString() }, { merge: true });
           }
           document.getElementById('txtSaldoHeader').innerText = `$${userSaldo.toLocaleString('es-CO')} COP`;
           renderizarCatalogo();
@@ -2877,10 +2911,26 @@
       e.preventDefault();
       if (!currentUser) return;
       const monto = parseFloat(document.getElementById('recargaMonto').value);
-      await db.collection('recargas').add({ usuarioId: currentUser.uid, usuarioEmail: currentUser.email, monto: monto, estado: 'pendiente', fecha: new Date().toISOString() });
+      
+      await db.collection('recargas').add({ 
+        usuarioId: currentUser.uid, 
+        usuarioEmail: currentUser.email, 
+        monto: monto, 
+        estado: 'pendiente', 
+        fecha: new Date().toISOString() 
+      });
+
+      // ENVIAR NOTIFICACIÓN AUTOMÁTICA A TELEGRAM
+      await enviarNotificacionRecargaTelegram({
+        cliente: currentUser.email,
+        monto: monto,
+        fecha: new Date().toLocaleString('es-CO')
+      });
+
       const wa = encodeURIComponent(`Hola, acabo de transferir $${monto.toLocaleString('es-CO')} COP para recargar saldo. Mi correo registrado es: ${currentUser.email}`);
       window.open(`https://wa.me/573043956726?text=${wa}`, '_blank');
       cerrarModalRecarga();
+      alert("¡Solicitud enviada y notificada por Telegram con éxito!");
     }
 
     async function cargarRecargasAdmin() {
@@ -3001,6 +3051,7 @@
             productos_bloqueados: [],
             permisos_subir_stock: [],
             notificacion_borrada: false,
+            primer_ingreso: new Date().toISOString(),
             fechaRegistro: new Date().toISOString() 
           });
           cerrarModalAuth();
