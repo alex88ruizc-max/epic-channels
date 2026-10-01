@@ -337,7 +337,7 @@
   <!-- ==================== MODALES ==================== -->
 
   <!-- MODAL: VER DETALLE DE CUENTAS (ADMIN) -->
-  <div id="modalVerStock" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+  <div id="modalVerStock" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
     <div class="bg-gray-900 border border-gray-800 rounded-2xl max-w-lg w-full p-6 relative">
       <button onclick="cerrarModalVerStock()" class="absolute top-4 right-4 text-gray-400 hover:text-white">
         <i class="fa-solid fa-xmark text-lg"></i>
@@ -358,7 +358,7 @@
   </div>
 
   <!-- MODAL: LOGIN / REGISTRO -->
-  <div id="modalAuth" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+  <div id="modalAuth" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
     <div class="bg-gray-900 border border-gray-800 rounded-2xl max-w-sm w-full p-6 relative">
       <button onclick="cerrarModalAuth()" class="absolute top-4 right-4 text-gray-400 hover:text-white">
         <i class="fa-solid fa-xmark text-lg"></i>
@@ -409,7 +409,7 @@
   </div>
 
   <!-- MODAL: RECARGAR SALDO -->
-  <div id="modalRecarga" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+  <div id="modalRecarga" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
     <div class="bg-gray-900 border border-gray-800 rounded-2xl max-w-md w-full p-6 relative">
       <button onclick="cerrarModalRecarga()" class="absolute top-4 right-4 text-gray-400 hover:text-white">
         <i class="fa-solid fa-xmark text-lg"></i>
@@ -477,7 +477,7 @@
   </div>
 
   <!-- MODAL: ENTREGA DE CREDENCIALES (INDIVIDUAL O MAYORISTA) -->
-  <div id="modalEntrega" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+  <div id="modalEntrega" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
     <div class="bg-gray-900 border border-emerald-500/50 rounded-2xl max-w-md w-full p-6 text-center">
       <div class="w-12 h-12 bg-emerald-500/20 text-emerald-400 rounded-full flex items-center justify-center mx-auto mb-3 text-xl">
         <i class="fa-solid fa-check"></i>
@@ -532,9 +532,11 @@
     const EMAILJS_TEMPLATE_ID = "template_87xhnvg"; 
 
     try {
-      emailjs.init(EMAILJS_PUBLIC_KEY);
+      if (window.emailjs) {
+        emailjs.init(EMAILJS_PUBLIC_KEY);
+      }
     } catch (e) {
-      console.error("Error al inicializar EmailJS:", e);
+      console.warn("EmailJS init:", e);
     }
 
     // 4. MAPA OFICIAL DE PRODUCTOS (PRECIOS REALES DE TIENDA)
@@ -615,6 +617,8 @@
         document.getElementById('navGuest').classList.add('hidden');
         document.getElementById('navUser').classList.remove('hidden');
 
+        // Cerrar modal y desbloquear tienda
+        cerrarModalAuth();
         document.getElementById('vistaBloqueada').classList.add('hidden');
 
         const userEmail = (user.email || '').trim().toLowerCase();
@@ -634,7 +638,7 @@
             db.collection('usuarios').doc(user.uid).set({ email: user.email, saldo: 0 }, { merge: true });
           }
           document.getElementById('txtSaldoHeader').innerText = `$${userSaldo.toLocaleString('es-CO')} COP`;
-        });
+        }, err => console.warn("Saldo listener:", err));
 
         cambiarVista('tienda');
       } else {
@@ -660,6 +664,7 @@
         return;
       }
 
+      cerrarModalAuth();
       document.getElementById('vistaBloqueada').classList.add('hidden');
       document.getElementById('vistaTienda').classList.add('hidden');
       document.getElementById('vistaMisCuentas').classList.add('hidden');
@@ -710,7 +715,7 @@
       db.collection('configuracion').doc('precios').onSnapshot(doc => {
         if (doc.exists) preciosConfig = doc.data() || {};
         procesarYRenderizar();
-      });
+      }, err => console.warn("Precios err:", err));
 
       db.collection('inventario').onSnapshot(snap => {
         snapshotInventario = {};
@@ -718,7 +723,7 @@
           snapshotInventario[d.id] = d.data();
         });
         procesarYRenderizar();
-      });
+      }, err => console.warn("Inventario err:", err));
     }
 
     function procesarYRenderizar() {
@@ -897,13 +902,9 @@
           const credencialesTexto = cuentasEntregadas.map((c, i) => `${i + 1}. ${formatearCredencial(c)}`).join('\n');
           const stockRestante = cuentas.length;
 
-          // Actualizar inventario en Firestore
           t.update(invRef, { cuentas: cuentas });
-
-          // Descontar saldo del cliente
           t.update(userRef, { saldo: saldoActual - totalPagar });
 
-          // Registrar compra
           const nuevaCompraRef = db.collection('compras').doc();
           t.set(nuevaCompraRef, {
             usuarioId: currentUser.uid,
@@ -918,7 +919,6 @@
             fecha: new Date().toISOString()
           });
 
-          // Variables exactas para tu plantilla de EmailJS
           datosNotificacion = {
             producto: prodInfo.nombre || docId,
             cantidad: cantidad,
@@ -930,10 +930,10 @@
 
           document.getElementById('txtEntregaCredenciales').innerText = credencialesTexto;
           document.getElementById('modalEntrega').classList.remove('hidden');
+          document.getElementById('modalEntrega').style.display = 'flex';
         });
 
-        // DISPARAR EMAILJS AUTOMÁTICO TRAS COMPRA EXITOSA
-        if (datosNotificacion) {
+        if (datosNotificacion && window.emailjs) {
           emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, datosNotificacion)
             .then(res => {
               console.log("¡Notificación enviada a Gmail exitosamente!", res.status, res.text);
@@ -1014,11 +1014,15 @@
         contenedor.innerHTML = prod.cuentas.map((c, i) => `<div><span class="text-gray-500 select-none mr-2">${i + 1}.</span>${formatearCredencial(c)}</div>`).join('');
       }
 
-      document.getElementById('modalVerStock').classList.remove('hidden');
+      const modal = document.getElementById('modalVerStock');
+      modal.classList.remove('hidden');
+      modal.style.display = 'flex';
     }
 
     function cerrarModalVerStock() {
-      document.getElementById('modalVerStock').classList.add('hidden');
+      const modal = document.getElementById('modalVerStock');
+      modal.classList.add('hidden');
+      modal.style.display = 'none';
     }
 
     async function alternarVisibilidadProducto(docId, estadoActual) {
@@ -1286,7 +1290,7 @@
       }
     }
 
-    // 14. AUTENTICACIÓN
+    // 14. AUTENTICACIÓN Y MANEJO BLINDADO DE MODAL
     function generarCaptcha() {
       const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
       let res = '';
@@ -1299,7 +1303,9 @@
 
     function abrirModalAuth(modo) {
       modoAuth = modo;
-      document.getElementById('modalAuth').classList.remove('hidden');
+      const modal = document.getElementById('modalAuth');
+      modal.classList.remove('hidden');
+      modal.style.display = 'flex';
 
       if (modo === 'login') {
         document.getElementById('modalAuthTitulo').innerText = 'Iniciar Sesión';
@@ -1330,11 +1336,14 @@
     }
 
     function cerrarModalAuth() {
-      document.getElementById('modalAuth').classList.add('hidden');
+      const modal = document.getElementById('modalAuth');
+      modal.classList.add('hidden');
+      modal.style.display = 'none';
     }
 
     async function procesarAuth(e) {
       e.preventDefault();
+      const btn = document.getElementById('btnSubmitAuth');
       const email = document.getElementById('authEmail').value.trim();
       const password = document.getElementById('authPassword').value;
 
@@ -1348,6 +1357,9 @@
           return;
         }
 
+        btn.disabled = true;
+        btn.innerText = "Registrando...";
+
         try {
           const cred = await auth.createUserWithEmailAndPassword(email, password);
           await db.collection('usuarios').doc(cred.user.uid).set({
@@ -1359,19 +1371,39 @@
           cerrarModalAuth();
         } catch (err) {
           alert("Error de registro: " + err.message);
+        } finally {
+          btn.disabled = false;
+          btn.innerText = "Registrarse";
         }
       } else {
+        btn.disabled = true;
+        btn.innerText = "Ingresando...";
+
         try {
           await auth.signInWithEmailAndPassword(email, password);
           cerrarModalAuth();
+          cambiarVista('tienda');
         } catch (err) {
-          alert("Error de inicio de sesión: " + err.message);
+          let msg = err.message;
+          if (err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential') {
+            msg = "Contraseña o correo incorrectos. Verifica tus datos.";
+          } else if (err.code === 'auth/user-not-found') {
+            msg = "No existe una cuenta registrada con este correo.";
+          } else if (err.code === 'auth/too-many-requests') {
+            msg = "Demasiados intentos fallidos. Por seguridad, espera unos minutos antes de volver a intentar.";
+          }
+          alert(msg);
+        } finally {
+          btn.disabled = false;
+          btn.innerText = "Ingresar";
         }
       }
     }
 
     function cerrarSesion() {
-      auth.signOut();
+      auth.signOut().then(() => {
+        bloquearAccesoVisitante();
+      });
     }
 
     function abrirModalRecarga() {
@@ -1379,15 +1411,21 @@
         abrirModalAuth('login');
         return;
       }
-      document.getElementById('modalRecarga').classList.remove('hidden');
+      const modal = document.getElementById('modalRecarga');
+      modal.classList.remove('hidden');
+      modal.style.display = 'flex';
     }
 
     function cerrarModalRecarga() {
-      document.getElementById('modalRecarga').classList.add('hidden');
+      const modal = document.getElementById('modalRecarga');
+      modal.classList.add('hidden');
+      modal.style.display = 'none';
     }
 
     function cerrarModalEntrega() {
-      document.getElementById('modalEntrega').classList.add('hidden');
+      const modal = document.getElementById('modalEntrega');
+      modal.classList.add('hidden');
+      modal.style.display = 'none';
     }
 
     window.addEventListener('DOMContentLoaded', () => {
