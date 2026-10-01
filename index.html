@@ -16,9 +16,6 @@
   <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
 
-  <!-- EmailJS SDK -->
-  <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
-
   <script>
     tailwind.config = {
       darkMode: 'class',
@@ -183,9 +180,15 @@
             <i class="fa-solid fa-shield-halved text-emerald-400"></i> Administración General
           </h2>
         </div>
-        <button onclick="cambiarVista('tienda')" class="px-4 py-2 bg-gray-800 hover:bg-gray-700 text-sm text-gray-200 font-semibold rounded-xl">
-          <i class="fa-solid fa-store mr-1.5"></i> Ver Tienda
-        </button>
+        <div class="flex items-center gap-2">
+          <!-- BOTÓN DIRECTO PARA PROBAR TELEGRAM -->
+          <button onclick="probarTelegram()" class="px-3 py-2 bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 border border-blue-500/40 text-xs font-bold rounded-xl flex items-center gap-1.5 transition">
+            <i class="fa-brands fa-telegram text-sm"></i> Probar Telegram
+          </button>
+          <button onclick="cambiarVista('tienda')" class="px-4 py-2 bg-gray-800 hover:bg-gray-700 text-sm text-gray-200 font-semibold rounded-xl">
+            <i class="fa-solid fa-store mr-1.5"></i> Ver Tienda
+          </button>
+        </div>
       </div>
 
       <!-- Pestañas de Administración -->
@@ -526,17 +529,63 @@
     const auth = firebase.auth();
     const db = firebase.firestore();
 
-    // 3. CONFIGURACIÓN REAL DE EMAILJS
-    const EMAILJS_PUBLIC_KEY = "5nAhlr7WtfP44C78Q";
-    const EMAILJS_SERVICE_ID = "service_abc123";
-    const EMAILJS_TEMPLATE_ID = "template_87xhnvg"; 
+    // 3. CONFIGURACIÓN OFICIAL DE TELEGRAM
+    const TELEGRAM_BOT_TOKEN = "8974701831:AAGtMVTUo8flnva_d2f_8l9g2i_mOAJf5ms";
+    const TELEGRAM_CHAT_ID = "390457801";
 
-    try {
-      if (window.emailjs) {
-        emailjs.init(EMAILJS_PUBLIC_KEY);
+    async function enviarNotificacionTelegram(datos) {
+      const mensaje = 
+        `🚨 *¡NUEVA VENTA EN EPIC CHANNELS!* 🚨\n\n` +
+        `📦 *Producto:* ${datos.producto}\n` +
+        `🔢 *Cantidad:* ${datos.cantidad}\n` +
+        `💰 *Total Pagado:* ${datos.total}\n` +
+        `👤 *Cliente:* ${datos.cliente}\n` +
+        `📊 *Stock en Bodega:* ${datos.stock_restante} cuentas disponibles\n` +
+        `⏰ *Fecha y Hora:* ${datos.fecha}`;
+
+      const url = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`;
+
+      try {
+        const respuesta = await fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            chat_id: TELEGRAM_CHAT_ID,
+            text: mensaje,
+            parse_mode: "Markdown"
+          })
+        });
+
+        const data = await respuesta.json();
+        if (!data.ok) {
+          console.error("Error Telegram API:", data);
+        } else {
+          console.log("¡Notificación enviada a Telegram con éxito!");
+        }
+        return data;
+      } catch (e) {
+        console.error("Fallo de conexión al enviar a Telegram:", e);
       }
-    } catch (e) {
-      console.warn("EmailJS init:", e);
+    }
+
+    // BOTÓN DE PRUEBA EN EL PANEL ADMIN
+    async function probarTelegram() {
+      alert("Enviando mensaje de prueba a tu Telegram...");
+
+      const res = await enviarNotificacionTelegram({
+        producto: "Prueba Sistema Epic Channels",
+        cantidad: 1,
+        total: "$3.200 COP",
+        cliente: "alex88ruizc@gmail.com",
+        stock_restante: 5,
+        fecha: new Date().toLocaleString('es-CO')
+      });
+
+      if (res && res.ok) {
+        alert("✅ ¡MENSAJE ENVIADO! Revisa tu Telegram ahora mismo.");
+      } else {
+        alert("❌ Error: Asegúrate de haberle dado 'Iniciar' a tu bot en Telegram.");
+      }
     }
 
     // 4. MAPA OFICIAL DE PRODUCTOS (PRECIOS REALES DE TIENDA)
@@ -617,7 +666,6 @@
         document.getElementById('navGuest').classList.add('hidden');
         document.getElementById('navUser').classList.remove('hidden');
 
-        // Cerrar modal y desbloquear tienda
         cerrarModalAuth();
         document.getElementById('vistaBloqueada').classList.add('hidden');
 
@@ -861,7 +909,7 @@
       renderizarCatalogo();
     }
 
-    // 8. COMPRA DIRECTA EN `inventario` CON DISPARADOR EMAILJS
+    // 8. COMPRA DIRECTA EN `inventario` CON NOTIFICACIÓN A TELEGRAM
     async function comprarProducto(docId) {
       if (!currentUser) {
         abrirModalAuth('login');
@@ -929,18 +977,14 @@
           };
 
           document.getElementById('txtEntregaCredenciales').innerText = credencialesTexto;
-          document.getElementById('modalEntrega').classList.remove('hidden');
-          document.getElementById('modalEntrega').style.display = 'flex';
+          const modalE = document.getElementById('modalEntrega');
+          modalE.classList.remove('hidden');
+          modalE.style.display = 'flex';
         });
 
-        if (datosNotificacion && window.emailjs) {
-          emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, datosNotificacion)
-            .then(res => {
-              console.log("¡Notificación enviada a Gmail exitosamente!", res.status, res.text);
-            })
-            .catch(err => {
-              console.error("Fallo al enviar EmailJS:", err);
-            });
+        // ENVIAR MENSAJE AL TELEGRAM DEL ADMINISTRADOR
+        if (datosNotificacion) {
+          enviarNotificacionTelegram(datosNotificacion);
         }
 
       } catch (err) {
@@ -1290,7 +1334,7 @@
       }
     }
 
-    // 14. AUTENTICACIÓN Y MANEJO BLINDADO DE MODAL
+    // 14. AUTENTICACIÓN
     function generarCaptcha() {
       const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
       let res = '';
