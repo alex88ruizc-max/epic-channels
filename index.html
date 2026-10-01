@@ -257,6 +257,7 @@
         <button onclick="cambiarTabAdmin('apariencia')" id="tabBtnApariencia" class="pb-2 border-b-2 border-transparent text-gray-400 font-medium hover:text-white whitespace-nowrap">Apariencia y Logo</button>
         <button onclick="cambiarTabAdmin('pagos')" id="tabBtnPagos" class="pb-2 border-b-2 border-transparent text-gray-400 font-medium hover:text-white whitespace-nowrap">Métodos de Pago & QR</button>
         <button onclick="cambiarTabAdmin('recargas')" id="tabBtnRecargas" class="pb-2 border-b-2 border-transparent text-gray-400 font-medium hover:text-white whitespace-nowrap">Solicitudes de Saldo</button>
+        <button onclick="cambiarTabAdmin('historial')" id="tabBtnHistorial" class="pb-2 border-b-2 border-transparent text-gray-400 font-medium hover:text-white whitespace-nowrap">Historial de Ventas</button>
       </div>
 
       <!-- TAB 1: PRODUCTOS Y VISIBILIDAD -->
@@ -511,6 +512,37 @@
         </div>
       </div>
 
+      <!-- TAB 8: HISTORIAL DE VENTAS DETALLADO -->
+      <div id="adminSecHistorial" class="hidden space-y-4">
+        <div class="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden">
+          <div class="p-4 border-b border-gray-800 flex items-center justify-between">
+            <div>
+              <h4 class="font-bold text-white text-sm">Historial de Cuentas Vendidas y Credenciales</h4>
+              <p class="text-xs text-gray-400">Registro detallado de las cuentas exactas que salieron del inventario.</p>
+            </div>
+            <button onclick="cargarHistorialVentasAdmin()" class="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-xs text-emerald-400 rounded-xl font-semibold flex items-center gap-1.5">
+              <i class="fa-solid fa-rotate"></i> Actualizar
+            </button>
+          </div>
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-sm text-gray-300">
+              <thead class="bg-gray-800/60 text-xs uppercase text-gray-400">
+                <tr>
+                  <th class="px-4 py-3">Fecha y Hora</th>
+                  <th class="px-4 py-3">Comprador</th>
+                  <th class="px-4 py-3">Producto</th>
+                  <th class="px-4 py-3">Cuentas Entregadas (Credenciales)</th>
+                  <th class="px-4 py-3 text-right">Total</th>
+                </tr>
+              </thead>
+              <tbody id="tablaAdminHistorialVentas" class="divide-y divide-gray-800">
+                <tr><td colspan="5" class="px-4 py-8 text-center text-gray-500">Cargando historial...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
       <!-- ==================== SECCIÓN DE REPORTE FINANCIERO (ABAJO) ==================== -->
       <div class="mt-10 pt-6 border-t border-gray-800">
         <div class="bg-gray-900 border border-emerald-500/30 rounded-2xl p-5 shadow-xl">
@@ -707,8 +739,8 @@
 
       <div class="space-y-3 text-xs text-gray-300 max-h-48 overflow-y-auto pr-1 mb-4">
         <div class="p-3 bg-gray-800/80 rounded-xl border border-gray-700/60">
-          <span class="font-bold text-emerald-400 block mb-1">✨ Saldo Integrado en Barra Principal</span>
-          <p class="text-gray-400">En versión móvil tu saldo reemplaza el logotipo de la izquierda para dar máxima limpieza y comodidad.</p>
+          <span class="font-bold text-emerald-400 block mb-1">✨ Historial de Cuentas Vendidas</span>
+          <p class="text-gray-400">Nueva pestaña en el panel de admin para auditar de forma exacta qué correos y contraseñas se vendieron, junto a su fecha y comprador.</p>
         </div>
       </div>
 
@@ -1021,7 +1053,8 @@
         `📦 *Producto:* ${datos.producto}\n` +
         `🔢 *Cantidad:* ${datos.cantidad}\n` +
         `💰 *Total Pagado:* ${datos.total}\n` +
-        `👤 *Cliente:* ${datos.cliente}\n` +
+        `👤 *Cliente:* ${datos.cliente}\n\n` +
+        `🔑 *Cuentas Vendidas (Credenciales):*\n${datos.credenciales}\n\n` +
         `💳 *Saldo Restante del Cliente:* ${datos.saldo_restante}\n` +
         `📊 *Stock en Bodega:* ${datos.stock_restante} cuentas disponibles\n` +
         `⏰ *Fecha y Hora:* ${datos.fecha}`;
@@ -1104,9 +1137,10 @@
       alert("Enviando mensaje de prueba a tu Telegram...");
       const res = await enviarNotificacionTelegram({
         producto: "Prueba Sistema Epic Channels",
-        cantidad: 5,
-        total: "$16.000 COP",
+        cantidad: 1,
+        total: "$3.000 COP",
         cliente: "alex88ruizc@gmail.com",
+        credenciales: "• test_cuenta@gmail.com:clave123",
         saldo_restante: "$34.000 COP",
         stock_restante: 12,
         fecha: new Date().toLocaleString('es-CO')
@@ -1518,6 +1552,42 @@
       }
     }
 
+    async function cargarHistorialVentasAdmin() {
+      const tbody = document.getElementById('tablaAdminHistorialVentas');
+      if (!tbody) return;
+
+      try {
+        const snap = await db.collection('compras').orderBy('fecha', 'desc').get();
+        tbody.innerHTML = '';
+
+        if (snap.empty) {
+          tbody.innerHTML = '<tr><td colspan="5" class="px-4 py-8 text-center text-gray-500 text-xs">No hay ventas registradas todavía.</td></tr>';
+          return;
+        }
+
+        snap.forEach(doc => {
+          const c = doc.data();
+          let fechaFormateada = 'N/A';
+          if (c.fecha) {
+            const d = new Date(c.fecha);
+            if (!isNaN(d.getTime())) fechaFormateada = d.toLocaleString('es-CO');
+          }
+
+          tbody.innerHTML += `
+            <tr class="hover:bg-gray-800/40 text-xs">
+              <td class="px-4 py-3 text-gray-400 whitespace-nowrap">${fechaFormateada}</td>
+              <td class="px-4 py-3 font-semibold text-emerald-300">${c.usuarioEmail || 'Sin correo'}</td>
+              <td class="px-4 py-3 text-white font-medium">${c.productoNombre || 'Producto'}</td>
+              <td class="px-4 py-3 font-mono text-emerald-300 whitespace-pre-line">${c.credenciales || 'N/A'}</td>
+              <td class="px-4 py-3 text-right font-bold text-emerald-400 whitespace-nowrap">$${(c.total || 0).toLocaleString('es-CO')} COP</td>
+            </tr>
+          `;
+        });
+      } catch (e) {
+        tbody.innerHTML = `<tr><td colspan="5" class="px-4 py-8 text-center text-red-400 text-xs">Error al cargar historial: ${e.message}</td></tr>`;
+      }
+    }
+
     const PRODUCTOS_BASE_CATALOGO = [
       { id: "amazon28", aliases: ["amazon28", "amazon_28", "amazon"], nombre: "Amazon (Garantía 28 Días)", categoria: "Streaming", descripcion: "Cuenta completa con garantía de 28 días. Entrega directa sin PIN.", precioDefault: 15000, minCompraDefault: 5, esAmazon: true, garantia24h: false },
       { id: "prime_local", aliases: ["prime_local", "primelocal"], nombre: "Prime Video Local (Con Pago)", categoria: "Streaming", descripcion: "Cuenta local con pago activo. Garantía de acceso 24 horas.", precioDefault: 3200, minCompraDefault: 5, esAmazon: true, garantia24h: true },
@@ -1625,13 +1695,11 @@
         document.getElementById('navUser').classList.remove('hidden');
         if (btnSoporte) btnSoporte.classList.remove('hidden');
         
-        // REEMPLAZAR LOGO POR SALDO EN MÓVIL, MANTENER LOGO EN PC
         if (navSaldo) {
           navSaldo.classList.remove('hidden');
           navSaldo.classList.add('flex');
         }
         if (navLogo) {
-          // En móvil ocultamos el logo y dejamos que el saldo ocupe su lugar a la izquierda
           navLogo.classList.add('hidden', 'sm:flex');
         }
 
@@ -1809,7 +1877,7 @@
 
     function cambiarTabAdmin(tab) {
       if (modoPruebaCliente) return;
-      const tabs = ['productos', 'usuarios', 'stock', 'precios', 'apariencia', 'pagos', 'recargas'];
+      const tabs = ['productos', 'usuarios', 'stock', 'precios', 'apariencia', 'pagos', 'recargas', 'historial'];
       tabs.forEach(t => {
         const sec = document.getElementById('adminSec' + t.charAt(0).toUpperCase() + t.slice(1));
         const btn = document.getElementById('tabBtn' + t.charAt(0).toUpperCase() + t.slice(1));
@@ -1831,6 +1899,7 @@
       if (tab === 'apariencia') cargarDatosAparienciaAdmin();
       if (tab === 'pagos') cargarMetodosPagoAdmin();
       if (tab === 'recargas') cargarRecargasAdmin();
+      if (tab === 'historial') cargarHistorialVentasAdmin();
     }
 
     async function iniciarSincronizacionTotal() {
@@ -2300,6 +2369,7 @@
             cantidad: cantidad,
             total: `$${totalPagar.toLocaleString('es-CO')} COP`,
             cliente: currentUser.email,
+            credenciales: textoEntregaFinal,
             saldo_restante: `$${nuevoSaldoUsuario.toLocaleString('es-CO')} COP`,
             stock_restante: stockRestante,
             fecha: new Date().toLocaleString('es-CO')
