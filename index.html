@@ -50,12 +50,26 @@
 
   <!-- ==================== NAVBAR ==================== -->
   <header class="border-b border-gray-800 bg-gray-900/90 backdrop-blur sticky top-0 z-50">
-    <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
+    <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between gap-2">
       
-      <!-- LOGO -->
-      <div class="flex items-center space-x-2 cursor-pointer" onclick="cambiarVista('tienda')">
-        <i class="fa-solid fa-bolt text-emerald-400 text-xl"></i>
-        <span class="font-black text-lg tracking-wider text-white">EPIC<span class="text-emerald-400">CHANNELS</span></span>
+      <!-- LOGO + SALDO AL LADO -->
+      <div class="flex items-center space-x-3">
+        <div class="flex items-center space-x-2 cursor-pointer" onclick="cambiarVista('tienda')">
+          <i class="fa-solid fa-bolt text-emerald-400 text-xl"></i>
+          <span class="font-black text-lg tracking-wider text-white">EPIC<span class="text-emerald-400">CHANNELS</span></span>
+        </div>
+
+        <!-- SALDO UBICADO AL LADO DEL LOGOTIPO (SOLO CON SESIÓN) -->
+        <div id="navSaldoDirecto" class="hidden bg-gray-800/90 border border-gray-700 px-3 py-1 rounded-xl items-center space-x-2 shrink-0">
+          <i class="fa-solid fa-wallet text-emerald-400 text-xs"></i>
+          <div>
+            <span class="text-[9px] text-gray-400 block leading-none">Mi Saldo</span>
+            <span id="txtSaldoHeader" class="text-xs md:text-sm font-bold text-white leading-tight">$0 COP</span>
+          </div>
+          <button onclick="abrirModalRecarga()" title="Recargar saldo" class="ml-1 bg-emerald-500 hover:bg-emerald-400 text-black rounded p-1 text-xs">
+            <i class="fa-solid fa-plus"></i>
+          </button>
+        </div>
       </div>
 
       <!-- BOTONES SIN SESIÓN -->
@@ -66,15 +80,12 @@
 
       <!-- BOTONES CON SESIÓN -->
       <div id="navUser" class="hidden flex items-center space-x-2 sm:space-x-3">
-        <!-- Saldo y Botón de Recarga -->
-        <div class="bg-gray-800/90 border border-gray-700 px-3 py-1 rounded-xl flex items-center space-x-2">
-          <i class="fa-solid fa-wallet text-emerald-400 text-xs"></i>
-          <div>
-            <span class="text-[9px] text-gray-400 block leading-none">Mi Saldo</span>
-            <span id="txtSaldoHeader" class="text-xs md:text-sm font-bold text-white leading-tight">$0 COP</span>
-          </div>
-          <button onclick="abrirModalRecarga()" title="Recargar saldo" class="ml-1 bg-emerald-500 hover:bg-emerald-400 text-black rounded p-1 text-xs">
-            <i class="fa-solid fa-plus"></i>
+        
+        <!-- CAMPANA DE NOTIFICACIONES Y NOVEDADES (CON ALERTA DE SALDO BAJO) -->
+        <div class="relative">
+          <button onclick="abrirModalNovedades()" title="Novedades y alertas" class="relative p-2 rounded-xl bg-gray-800 hover:bg-gray-700 text-gray-300 transition">
+            <i class="fa-solid fa-bell text-emerald-400 text-base"></i>
+            <span id="badgeNotifCount" class="absolute -top-1 -right-1 bg-red-500 text-white font-black text-[9px] w-4 h-4 rounded-full flex items-center justify-center shadow">1</span>
           </button>
         </div>
 
@@ -636,6 +647,37 @@
 
   <!-- ==================== MODALES ==================== -->
 
+  <!-- MODAL: NOVEDADES Y ACTUALIZACIONES DE LA PÁGINA -->
+  <div id="modalNovedades" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+    <div class="bg-gray-900 border border-emerald-500/40 rounded-2xl max-w-md w-full p-6 relative shadow-2xl">
+      <button onclick="cerrarModalNovedades()" class="absolute top-4 right-4 text-gray-400 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
+      <div class="flex items-center gap-3 mb-4">
+        <div class="w-10 h-10 bg-emerald-500/10 text-emerald-400 rounded-xl flex items-center justify-center text-lg shrink-0">
+          <i class="fa-solid fa-bullhorn"></i>
+        </div>
+        <div>
+          <h3 class="text-base font-black text-white">Novedades y Actualizaciones</h3>
+          <p class="text-[11px] text-gray-400">Últimas mejoras agregadas a la plataforma</p>
+        </div>
+      </div>
+
+      <div class="space-y-3 text-xs text-gray-300 max-h-60 overflow-y-auto pr-1">
+        <div class="p-3 bg-gray-800/80 rounded-xl border border-gray-700/60">
+          <span class="font-bold text-emerald-400 block mb-1">✨ Sistema de Pagos con QR Dinámico</span>
+          <p class="text-gray-400">Ahora puedes escanear códigos QR directamente en el módulo de recarga para realizar tus pagos de forma más rápida.</p>
+        </div>
+        <div class="p-3 bg-gray-800/80 rounded-xl border border-gray-700/60">
+          <span class="font-bold text-emerald-400 block mb-1">🛡️ Acceso Personalizado por Categorías</span>
+          <p class="text-gray-400">Se han integrado iconos dinámicos y mejoras de visualización en los filtros del catálogo mayorista.</p>
+        </div>
+      </div>
+
+      <button onclick="cerrarModalNovedades()" class="w-full mt-5 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-black font-bold text-xs rounded-xl transition">
+        Entendido
+      </button>
+    </div>
+  </div>
+
   <!-- MODAL: AVISO CREACIÓN DE USUARIO ÉXITO (CON BOTÓN COPIAR) -->
   <div id="modalUsuarioCreado" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
     <div class="bg-gray-900 border border-emerald-500/50 rounded-2xl max-w-sm w-full p-6 text-center relative shadow-2xl">
@@ -652,7 +694,7 @@
         <button onclick="copiarCredencialesNuevoUsuario()" class="w-full bg-emerald-500 hover:bg-emerald-400 text-black font-bold py-2.5 rounded-xl text-xs flex items-center justify-center gap-2 transition">
           <i class="fa-solid fa-copy"></i> Copiar Correo y Contraseña
         </button>
-        <button onclick="cerrarModalUsuarioCreado()" class="w-full bg-gray-800 hover:bg-gray-700 text-gray-300 font-bold py-2 rounded-xl text-xs transition">
+        <button onclick="cerrarModalUsuarioCreado()" class="w-full bg-gray-800 hover:bg-gray-700 text-gray-300 font-bold text-xs rounded-xl transition">
           Entendido
         </button>
       </div>
@@ -1509,11 +1551,14 @@
     auth.onAuthStateChanged(async (user) => {
       currentUser = user;
       const btnSoporte = document.getElementById('btnFlotanteSoporte');
+      const navSaldo = document.getElementById('navSaldoDirecto');
 
       if (user) {
         document.getElementById('navGuest').classList.add('hidden');
         document.getElementById('navUser').classList.remove('hidden');
         if (btnSoporte) btnSoporte.classList.remove('hidden');
+        if (navSaldo) navSaldo.classList.remove('hidden');
+        navSaldo.style.display = 'flex';
 
         cerrarModalAuth();
         document.getElementById('vistaBloqueada').classList.add('hidden');
@@ -1545,6 +1590,21 @@
             db.collection('usuarios').doc(user.uid).set({ email: user.email, saldo: 0, productos_permitidos: [], productos_bloqueados: [], permisos_subir_stock: [] }, { merge: true });
           }
           document.getElementById('txtSaldoHeader').innerText = `$${userSaldo.toLocaleString('es-CO')} COP`;
+
+          // ALERTA DE SALDO BAJO (< 5.000 COP)
+          const badgeNotif = document.getElementById('badgeNotifCount');
+          if (userSaldo < 5000) {
+            badgeNotif.innerText = "!";
+            badgeNotif.classList.remove('bg-red-500');
+            badgeNotif.classList.add('bg-yellow-500', 'animate-bounce');
+            badgeNotif.title = "¡Atención! Tu saldo es menor a $5.000 COP";
+          } else {
+            badgeNotif.innerText = "1";
+            badgeNotif.classList.remove('bg-yellow-500', 'animate-bounce');
+            badgeNotif.classList.add('bg-red-500');
+            badgeNotif.title = "Novedades y alertas";
+          }
+
           renderizarCatalogo();
           poblarSelectStock();
         });
@@ -1554,10 +1614,23 @@
         document.getElementById('navGuest').classList.remove('hidden');
         document.getElementById('navUser').classList.add('hidden');
         if (btnSoporte) btnSoporte.classList.add('hidden');
+        if (navSaldo) navSaldo.classList.add('hidden');
         document.getElementById('btnAdminTab').classList.add('hidden');
         bloquearAccesoVisitante();
       }
     });
+
+    function abrirModalNovedades() {
+      const modal = document.getElementById('modalNovedades');
+      modal.classList.remove('hidden');
+      modal.style.display = 'flex';
+    }
+
+    function cerrarModalNovedades() {
+      const modal = document.getElementById('modalNovedades');
+      modal.classList.add('hidden');
+      modal.style.display = 'none';
+    }
 
     function bloquearAccesoVisitante() {
       document.getElementById('vistaTienda').classList.add('hidden');
@@ -2451,8 +2524,8 @@
       const password = document.getElementById('expPassword').value;
 
       try {
-        await auth.createUserWithEmailAndPassword(email, password);
-        await db.collection('usuarios').doc(auth.currentUser.uid).set({ 
+        const cred = await auth.createUserWithEmailAndPassword(email, password);
+        await db.collection('usuarios').doc(cred.user.uid).set({ 
           email, 
           nombre: nombre || '',
           whatsapp: whatsapp || 'Sin WhatsApp', 
@@ -2462,9 +2535,8 @@
           productos_bloqueados: [],
           permisos_subir_stock: [],
           fechaRegistro: new Date().toISOString() 
-        }, { merge: true });
+        });
 
-        // Guardar credenciales temporales para el modal de éxito con copia
         credencialesNuevoUsuarioTemp = `• Correo: ${email}\n• Contraseña: ${password}`;
         document.getElementById('txtCredencialesNuevoUsuario').innerText = credencialesNuevoUsuarioTemp;
         
