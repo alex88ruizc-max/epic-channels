@@ -136,9 +136,9 @@
           </h1>
           <p class="text-sm text-gray-400 mt-1">Cuentas streaming y correos electrónicos con entrega directa a tu saldo.</p>
         </div>
-        <!-- BOTÓN RECARGA PRO (BRE-B) -->
+        <!-- BOTÓN RECARGA PRO (BRE-B Y OTROS MÉTODOS) -->
         <button onclick="abrirModalRecarga()" class="px-5 py-2.5 bg-gradient-to-r from-pink-600 via-purple-600 to-blue-600 hover:from-pink-500 hover:via-purple-500 hover:to-blue-500 text-white font-bold text-sm rounded-xl shadow-xl shadow-purple-900/30 flex items-center gap-2.5 transition transform hover:scale-[1.02]">
-          <i class="fa-solid fa-wallet text-pink-300 text-base"></i> Recargar Saldo Bre-B
+          <i class="fa-solid fa-wallet text-pink-300 text-base"></i> Recargar Saldo
         </button>
       </div>
 
@@ -240,6 +240,7 @@
         <button onclick="cambiarTabAdmin('usuarios')" id="tabBtnUsuarios" class="pb-2 border-b-2 border-transparent text-gray-400 font-medium hover:text-white whitespace-nowrap">Usuarios Registrados</button>
         <button onclick="cambiarTabAdmin('stock')" id="tabBtnStock" class="pb-2 border-b-2 border-transparent text-gray-400 font-medium hover:text-white whitespace-nowrap">Cargar Cuentas (Stock)</button>
         <button onclick="cambiarTabAdmin('precios')" id="tabBtnPrecios" class="pb-2 border-b-2 border-transparent text-gray-400 font-medium hover:text-white whitespace-nowrap">Precios y Compra Mínima</button>
+        <button onclick="cambiarTabAdmin('pagos')" id="tabBtnPagos" class="pb-2 border-b-2 border-transparent text-gray-400 font-medium hover:text-white whitespace-nowrap">Métodos de Pago & QR</button>
         <button onclick="cambiarTabAdmin('recargas')" id="tabBtnRecargas" class="pb-2 border-b-2 border-transparent text-gray-400 font-medium hover:text-white whitespace-nowrap">Solicitudes de Saldo</button>
       </div>
 
@@ -314,7 +315,7 @@
         </div>
       </div>
 
-      <!-- TAB 2: USUARIOS REGISTRADOS Y PERMISOS DE PRODUCTOS -->
+      <!-- TAB 2: USUARIOS REGISTRADOS Y PERMISOS -->
       <div id="adminSecUsuarios" class="hidden space-y-6">
         <div class="p-5 bg-gray-900 border border-emerald-500/30 rounded-2xl">
           <h3 class="text-sm font-bold text-white mb-2 flex items-center gap-2">
@@ -339,7 +340,7 @@
                   <th class="px-4 py-3">Correo Electrónico</th>
                   <th class="px-4 py-3">WhatsApp</th>
                   <th class="px-4 py-3">Saldo Actual</th>
-                  <th class="px-4 py-3 text-center">Permisos Productos</th>
+                  <th class="px-4 py-3 text-center">Permisos Catálogo</th>
                   <th class="px-4 py-3 text-center">Subir Stock</th>
                   <th class="px-4 py-3 text-right">Acciones</th>
                 </tr>
@@ -402,13 +403,79 @@
         </div>
       </div>
 
-      <!-- TAB 5: RECARGAS -->
+      <!-- TAB 5: GESTIÓN DE MÉTODOS DE PAGO & QR -->
+      <div id="adminSecPagos" class="hidden space-y-6">
+        <div class="p-5 bg-gray-900 border border-purple-500/40 rounded-2xl shadow-xl max-w-2xl">
+          <h3 class="text-sm font-bold text-white mb-2 flex items-center gap-2">
+            <i class="fa-solid fa-qrcode text-purple-400"></i> Registrar / Modificar Método de Pago con QR
+          </h3>
+          <p class="text-xs text-gray-400 mb-4">Agrega llaves Bre-B, Nequi, Daviplata o Bancolombia junto a su código QR escaneable.</p>
+          
+          <form onsubmit="guardarMetodoPagoAdmin(event)" class="space-y-3">
+            <input type="hidden" id="pagoDocId">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label class="block text-[11px] text-gray-400 mb-1">Nombre o Banco</label>
+                <input type="text" id="pagoNombre" required placeholder="Ej: Bre-B, Nequi, Bancolombia" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none">
+              </div>
+              <div>
+                <label class="block text-[11px] text-gray-400 mb-1">Titular de la cuenta</label>
+                <input type="text" id="pagoTitular" required placeholder="Ej: Epic Channels" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none">
+              </div>
+            </div>
+            <div>
+              <label class="block text-[11px] text-gray-400 mb-1">Llave / Número / Identificador (Texto para copiar)</label>
+              <input type="text" id="pagoLlave" required placeholder="Ej: @EPIC2828BB o 3001234567" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white font-mono focus:outline-none">
+            </div>
+            <div>
+              <label class="block text-[11px] text-gray-400 mb-1">Subir Imagen del Código QR</label>
+              <input type="file" id="pagoQrFile" accept="image/*" onchange="previsualizarQr(event)" class="w-full text-xs text-gray-400 bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 file:mr-3 file:py-1 file:px-2.5 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-purple-500/20 file:text-purple-300">
+              <div id="contenedorPreviewQr" class="mt-2 hidden">
+                <img id="previewQrImg" src="" alt="Previsualización QR" class="w-28 h-28 object-contain rounded-xl border border-gray-700 p-1 bg-white">
+              </div>
+            </div>
+            <div class="flex gap-2">
+              <button type="submit" class="bg-purple-600 hover:bg-purple-500 text-white font-bold py-2.5 px-5 rounded-xl text-xs transition flex items-center justify-center gap-1.5 shadow-lg shadow-purple-900/20">
+                <i class="fa-solid fa-floppy-disk"></i> Guardar Método de Pago
+              </button>
+              <button type="button" onclick="limpiarFormularioPagos()" class="bg-gray-800 hover:bg-gray-700 text-gray-300 font-bold py-2.5 px-4 rounded-xl text-xs transition">
+                Limpiar
+              </button>
+            </div>
+          </form>
+        </div>
+
+        <!-- Lista de métodos de pago configurados -->
+        <div class="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden">
+          <div class="p-4 border-b border-gray-800">
+            <h4 class="font-bold text-white text-sm">Métodos de Pago Activos</h4>
+          </div>
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-sm text-gray-300">
+              <thead class="bg-gray-800/60 text-xs uppercase text-gray-400">
+                <tr>
+                  <th class="px-4 py-3">QR</th>
+                  <th class="px-4 py-3">Método / Banco</th>
+                  <th class="px-4 py-3">Titular</th>
+                  <th class="px-4 py-3">Llave / Número</th>
+                  <th class="px-4 py-3 text-right">Acciones</th>
+                </tr>
+              </thead>
+              <tbody id="tablaAdminPagos" class="divide-y divide-gray-800">
+                <tr><td colspan="5" class="px-4 py-8 text-center text-gray-500">Cargando métodos...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB 6: RECARGAS -->
       <div id="adminSecRecargas" class="hidden">
         <div class="p-5 bg-gray-900 border border-gray-800 rounded-2xl">
           <h3 class="text-base font-bold text-white mb-2 flex items-center gap-2">
-            <i class="fa-solid fa-wallet text-emerald-400"></i> Gestión de Recargas Bre-B
+            <i class="fa-solid fa-wallet text-emerald-400"></i> Gestión de Recargas Bre-B y Bancos
           </h3>
-          <p class="text-xs text-gray-400 mb-4">Para aprobar recargas por llaves Bre-B, asegúrate de verificar que el comprobante haya llegado a tu WhatsApp o sistema.</p>
+          <p class="text-xs text-gray-400 mb-4">Verifica que el comprobante haya llegado a tu WhatsApp antes de aprobar la solicitud.</p>
         </div>
         <div class="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden mt-4">
           <div class="p-4 border-b border-gray-800">
@@ -524,7 +591,7 @@
 
   <!-- ==================== MODALES ==================== -->
 
-  <!-- MODAL: PERMISOS DE PRODUCTOS POR CLIENTE (SELECCIÓN MÚLTIPLE) -->
+  <!-- MODAL: PERMISOS DE CATÁLOGO (VIP) POR CLIENTE -->
   <div id="modalPermisosCliente" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
     <div class="bg-gray-900 border border-gray-800 rounded-2xl max-w-md w-full p-6 relative shadow-2xl">
       <button onclick="cerrarModalPermisosCliente()" class="absolute top-4 right-4 text-gray-400 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
@@ -535,12 +602,10 @@
       <p id="txtPermisosClienteEmail" class="text-xs text-emerald-400 font-mono mb-4 break-all">cliente@ejemplo.com</p>
       
       <p class="text-[11px] text-gray-400 mb-3 leading-relaxed">
-        Marca los productos que este cliente tiene autorización para ver y comprar. Por defecto, los productos públicos ya tienen chulo activo.
+        Marca los productos que este cliente tiene autorización para ver y comprar. Los productos públicos ya tienen chulo activo.
       </p>
 
-      <div id="listaCheckboxesProductosPermiso" class="max-h-60 overflow-y-auto space-y-2 bg-gray-800/60 p-3 rounded-xl border border-gray-700/60 mb-4 text-xs">
-        <!-- Generado dinámicamente -->
-      </div>
+      <div id="listaCheckboxesProductosPermiso" class="max-h-60 overflow-y-auto space-y-2 bg-gray-800/60 p-3 rounded-xl border border-gray-700/60 mb-4 text-xs"></div>
 
       <div class="flex gap-2">
         <button onclick="guardarPermisosClienteActual()" class="w-full py-2.5 bg-emerald-500 hover:bg-emerald-400 text-black font-bold text-xs rounded-xl transition">
@@ -553,6 +618,67 @@
     </div>
   </div>
 
+  <!-- MODAL: PERMISOS PARA SUBIR STOCK POR CLIENTE (DESMARCADOS POR DEFECTO) -->
+  <div id="modalPermisosStockCliente" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+    <div class="bg-gray-900 border border-blue-500/40 rounded-2xl max-w-md w-full p-6 relative shadow-2xl">
+      <button onclick="cerrarModalPermisosStockCliente()" class="absolute top-4 right-4 text-gray-400 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
+      <div class="w-12 h-12 bg-blue-500/10 text-blue-400 rounded-2xl flex items-center justify-center mb-3 text-xl">
+        <i class="fa-solid fa-boxes-packing"></i>
+      </div>
+      <h3 class="text-base font-black text-white mb-1">Permisos para Subir Stock por Producto</h3>
+      <p id="txtPermisosStockClienteEmail" class="text-xs text-blue-400 font-mono mb-4 break-all">cliente@ejemplo.com</p>
+      
+      <p class="text-[11px] text-gray-400 mb-3 leading-relaxed">
+        Selecciona a qué productos este cliente tiene permiso de cargar cuentas (stock). <b>Por defecto todos están sin selección.</b>
+      </p>
+
+      <div id="listaCheckboxesStockPermiso" class="max-h-60 overflow-y-auto space-y-2 bg-gray-800/60 p-3 rounded-xl border border-gray-700/60 mb-4 text-xs"></div>
+
+      <div class="flex gap-2">
+        <button onclick="guardarPermisosStockClienteActual()" class="w-full py-2.5 bg-blue-500 hover:bg-blue-400 text-black font-bold text-xs rounded-xl transition">
+          Guardar Permisos Stock
+        </button>
+        <button onclick="cerrarModalPermisosStockCliente()" class="w-full py-2.5 bg-gray-800 hover:bg-gray-700 text-gray-300 font-bold text-xs rounded-xl transition">
+          Cancelar
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: RECARGAR SALDO CON MÉTODOS Y QR DINÁMICOS -->
+  <div id="modalRecarga" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+    <div class="bg-gray-900 border border-gray-800 rounded-2xl max-w-md w-full p-6 relative max-h-[90vh] overflow-y-auto">
+      <button onclick="cerrarModalRecarga()" class="absolute top-4 right-4 text-gray-400 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
+      <h3 class="text-xl font-bold text-white mb-1 flex items-center gap-2"><i class="fa-solid fa-wallet text-emerald-400"></i> Recargar Saldo</h3>
+      <p class="text-xs text-gray-400 mb-4">Transfiere a través de nuestras cuentas oficiales escaneando el código QR o copiando la llave.</p>
+      
+      <!-- Contenedor dinámico de métodos de pago y QRs -->
+      <div id="contenedorMetodosPagoClientes" class="space-y-3 mb-4">
+        <div class="text-center py-4 text-xs text-gray-500">Cargando métodos de pago...</div>
+      </div>
+
+      <form onsubmit="reportarRecarga(event)" class="space-y-3 pt-2 border-t border-gray-800">
+        <div>
+          <label class="block text-xs text-gray-400 mb-1">Monto transferido (COP)</label>
+          <input type="number" id="recargaMonto" required min="5000" placeholder="Mínimo 5000" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none">
+        </div>
+        <button type="submit" class="w-full bg-emerald-500 hover:bg-emerald-400 text-black font-bold py-2.5 rounded-xl text-sm transition flex items-center justify-center gap-2">
+          <i class="fa-brands fa-whatsapp text-base"></i> Notificar y Enviar Comprobante
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: VISUALIZADOR DE QR AMPLIADO -->
+  <div id="modalZoomQr" class="fixed inset-0 bg-black/90 backdrop-blur-md z-50 hidden items-center justify-center p-4" onclick="cerrarZoomQr()">
+    <div class="bg-gray-900 border border-purple-500/50 p-4 rounded-3xl max-w-xs w-full text-center relative" onclick="event.stopPropagation()">
+      <button onclick="cerrarZoomQr()" class="absolute top-3 right-3 text-gray-400 hover:text-white text-lg"><i class="fa-solid fa-xmark"></i></button>
+      <h4 id="txtZoomQrTitulo" class="font-bold text-white text-sm mb-3">Código QR de Pago</h4>
+      <img id="imgZoomQr" src="" alt="QR Ampliado" class="w-full aspect-square object-contain bg-white rounded-2xl p-2 mb-3 border border-gray-700">
+      <p class="text-[11px] text-gray-400">Escanea desde tu app de banco favorita.</p>
+    </div>
+  </div>
+
   <!-- MODAL: SOPORTE Y GARANTÍA -->
   <div id="modalSoporte" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
     <div class="bg-gray-900 border border-emerald-500/40 rounded-2xl max-w-sm w-full p-6 text-center relative shadow-2xl">
@@ -562,7 +688,7 @@
       </div>
       <h3 class="text-base font-black text-white mb-2">Política de Soporte y Garantía</h3>
       <p class="text-xs text-gray-300 mb-4 leading-relaxed">
-        ⚠️ Recuerda que <b>no hay garantía por correo directo</b>. La garantía aplica únicamente si la cuenta tiene <b>menos de 24 horas</b> desde el momento en que la solicitaste.
+        ⚠️️ Recuerda que <b>no hay garantía por correo directo</b>. La garantía aplica únicamente si la cuenta tiene <b>menos de 24 horas</b> desde el momento en que la solicitaste.
       </p>
       <div class="space-y-2">
         <button onclick="enviarWhatsappSoporte()" class="w-full py-2.5 bg-emerald-500 hover:bg-emerald-400 text-black font-bold rounded-xl text-xs flex items-center justify-center gap-2 transition">
@@ -587,7 +713,7 @@
       
       <div class="space-y-2">
         <button onclick="irARecargarDesdeModal()" class="w-full py-3 bg-gradient-to-r from-pink-600 via-purple-600 to-blue-600 hover:from-pink-500 hover:via-purple-500 hover:to-blue-500 text-white font-black text-xs rounded-xl shadow-lg flex items-center justify-center gap-2 transition">
-          <i class="fa-solid fa-bolt text-pink-300"></i> Recargar Saldo Bre-B
+          <i class="fa-solid fa-bolt text-pink-300"></i> Recargar Saldo
         </button>
         <button onclick="cerrarModalSaldoInsuficiente()" class="w-full py-2 bg-gray-800 hover:bg-gray-700 text-gray-300 font-bold text-xs rounded-xl transition">
           Cerrar
@@ -599,7 +725,8 @@
   <!-- MODAL: CAMBIAR CONTRASEÑA -->
   <div id="modalPassword" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
     <div class="bg-gray-900 border border-gray-800 rounded-2xl max-w-sm w-full p-6 relative">
-      <button onclick="cerrarModalPassword()" class="absolute top-4 right-4 text-gray-400 hover:text-white"><i class="fa-solid fa-key text-emerald-400"></i> Cambiar Contraseña</h3>
+      <button onclick="cerrarModalPassword()" class="absolute top-4 right-4 text-gray-400 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
+      <h3 class="text-xl font-bold text-white mb-1 flex items-center gap-2"><i class="fa-solid fa-key text-emerald-400"></i> Cambiar Contraseña</h3>
       <p class="text-xs text-gray-400 mb-4">Ingresa tu clave actual y la nueva contraseña.</p>
       <form onsubmit="cambiarContraseñaUsuario(event)" class="space-y-3">
         <div>
@@ -656,50 +783,6 @@
         <span id="txtToggleAuth">¿No tienes cuenta?</span> 
         <button id="btnToggleAuth" onclick="alternarModoAuth()" class="text-emerald-400 font-semibold underline ml-1">Regístrate</button>
       </div>
-    </div>
-  </div>
-
-  <!-- MODAL: RECARGAR SALDO CON LLAVES BRE-B -->
-  <div id="modalRecarga" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
-    <div class="bg-gray-900 border border-gray-800 rounded-2xl max-w-md w-full p-6 relative">
-      <button onclick="cerrarModalRecarga()" class="absolute top-4 right-4 text-gray-400 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
-      <h3 class="text-xl font-bold text-white mb-1 flex items-center gap-2"><i class="fa-solid fa-wallet text-emerald-400"></i> Recargar Saldo</h3>
-      <p class="text-xs text-gray-400 mb-4">Transfiere a través de nuestras llaves oficiales Bre-B.</p>
-      
-      <div class="p-4 bg-gray-800/90 border border-gray-700 rounded-2xl mb-4 text-xs space-y-3">
-        <div class="flex justify-between items-center pb-2.5 border-b border-gray-700/60">
-          <div><span class="text-gray-400 block text-[10px]">Titular Oficial:</span><span class="font-bold text-white text-sm">Epic Channels</span></div>
-          <span class="text-[10px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 px-2.5 py-0.5 rounded-full font-bold">Mínimo: $5.000 COP</span>
-        </div>
-        
-        <!-- Bre-B Badge 1 (@EPIC2828BB) -->
-        <div class="flex justify-between items-center bg-blue-500/10 border border-blue-500/30 p-3 rounded-xl">
-          <div class="flex items-center gap-2.5">
-            <div class="w-8 h-8 rounded-lg bg-blue-500/20 flex items-center justify-center text-blue-400 font-black text-sm">B</div>
-            <div><span class="text-blue-400 block text-[10px] font-bold">LLAVE BRE-B 1</span><span class="font-mono font-black text-white text-sm sm:text-base">@EPIC2828BB</span></div>
-          </div>
-          <button onclick="copiarTexto('@EPIC2828BB', 'Llave Bre-B copiada')" class="px-3 py-1.5 bg-blue-500 hover:bg-blue-400 text-black rounded-lg text-xs font-bold transition shadow-md shadow-blue-500/20"><i class="fa-solid fa-copy mr-1"></i> Copiar</button>
-        </div>
-
-        <!-- Bre-B Badge 2 (0091142815) -->
-        <div class="flex justify-between items-center bg-blue-500/10 border border-blue-500/30 p-3 rounded-xl">
-          <div class="flex items-center gap-2.5">
-            <div class="w-8 h-8 rounded-lg bg-blue-500/20 flex items-center justify-center text-blue-400 font-black text-sm">B</div>
-            <div><span class="text-blue-400 block text-[10px] font-bold">LLAVE BRE-B 2</span><span class="font-mono font-black text-white text-sm sm:text-base">0091142815</span></div>
-          </div>
-          <button onclick="copiarTexto('0091142815', 'Llave Bre-B copiada')" class="px-3 py-1.5 bg-blue-500 hover:bg-blue-400 text-black rounded-lg text-xs font-bold transition shadow-md shadow-blue-500/20"><i class="fa-solid fa-copy mr-1"></i> Copiar</button>
-        </div>
-      </div>
-
-      <form onsubmit="reportarRecarga(event)" class="space-y-3">
-        <div>
-          <label class="block text-xs text-gray-400 mb-1">Monto transferido (COP)</label>
-          <input type="number" id="recargaMonto" required min="5000" placeholder="Mínimo 5000" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none">
-        </div>
-        <button type="submit" class="w-full bg-emerald-500 hover:bg-emerald-400 text-black font-bold py-2.5 rounded-xl text-sm transition flex items-center justify-center gap-2">
-          <i class="fa-brands fa-whatsapp text-base"></i> Notificar y Enviar Comprobante
-        </button>
-      </form>
     </div>
   </div>
 
@@ -835,9 +918,7 @@
       if (!confirm("¿Deseas enviar el reporte de stock actual a tu Telegram y al bot de clientes?")) return;
       try {
         const urlTienda = "https://epicchannels.quest/";
-
         let resumen = `📊 *ESTADO DE INVENTARIO - EPIC CHANNELS* 📊\n\n`;
-        
         const visibles = catalogoUnificado.filter(p => p.activo !== false);
 
         if (visibles.length === 0) {
@@ -1248,6 +1329,7 @@
     let userSaldo = 0;
     let userProductosPermitidos = [];
     let userProductosBloqueados = [];
+    let userPermisosSubirStock = []; // Lista de IDs de productos en los que puede subir stock
     let modoAuth = 'login';
     let captchaGenerado = '';
     let categoriaActiva = 'todas';
@@ -1255,8 +1337,11 @@
     let snapshotInventario = {};
     let preciosConfig = {};
     let minimosConfig = {};
+    let metodosPagoList = [];
 
     let clientePermisosUidActual = null;
+    let clienteStockUidActual = null;
+    let qrBase64Temporal = null;
 
     function parseCredencialObj(item) {
       if (!item) return { email: '', pass: '' };
@@ -1345,14 +1430,17 @@
             userSaldo = dataU.saldo || 0;
             userProductosPermitidos = dataU.productos_permitidos || [];
             userProductosBloqueados = dataU.productos_bloqueados || [];
+            userPermisosSubirStock = dataU.permisos_subir_stock || [];
           } else {
             userSaldo = 0;
             userProductosPermitidos = [];
             userProductosBloqueados = [];
-            db.collection('usuarios').doc(user.uid).set({ email: user.email, saldo: 0, productos_permitidos: [], productos_bloqueados: [] }, { merge: true });
+            userPermisosSubirStock = [];
+            db.collection('usuarios').doc(user.uid).set({ email: user.email, saldo: 0, productos_permitidos: [], productos_bloqueados: [], permisos_subir_stock: [] }, { merge: true });
           }
           document.getElementById('txtSaldoHeader').innerText = `$${userSaldo.toLocaleString('es-CO')} COP`;
           renderizarCatalogo();
+          poblarSelectStock(); // Actualiza según permisos si el usuario puede cargar
         });
 
         cambiarVista('tienda');
@@ -1392,7 +1480,7 @@
     }
 
     function cambiarTabAdmin(tab) {
-      const tabs = ['productos', 'usuarios', 'stock', 'precios', 'recargas'];
+      const tabs = ['productos', 'usuarios', 'stock', 'precios', 'pagos', 'recargas'];
       tabs.forEach(t => {
         const sec = document.getElementById('adminSec' + t.charAt(0).toUpperCase() + t.slice(1));
         const btn = document.getElementById('tabBtn' + t.charAt(0).toUpperCase() + t.slice(1));
@@ -1411,6 +1499,7 @@
       if (tab === 'usuarios') cargarUsuariosAdmin();
       if (tab === 'stock') poblarSelectStock();
       if (tab === 'precios') poblarSelectPrecios();
+      if (tab === 'pagos') cargarMetodosPagoAdmin();
       if (tab === 'recargas') cargarRecargasAdmin();
     }
 
@@ -1428,6 +1517,14 @@
         snapshotInventario = {};
         snap.forEach(d => { snapshotInventario[d.id] = d.data(); });
         procesarYRenderizar();
+      });
+      db.collection('metodos_pago').onSnapshot(snap => {
+        metodosPagoList = [];
+        snap.forEach(d => {
+          metodosPagoList.push({ docId: d.id, ...d.data() });
+        });
+        renderizarMetodosPagoEnClientes();
+        cargarMetodosPagoAdmin();
       });
     }
 
@@ -1607,7 +1704,6 @@
         return userProductosPermitidos.includes(prod.id) || userProductosPermitidos.includes(prod.docId);
       }
 
-      // Si es producto público, verificar que el admin no lo haya desmarcado expresamente
       const estaBloqueado = userProductosBloqueados.includes(prod.id) || userProductosBloqueados.includes(prod.docId);
       return !estaBloqueado;
     }
@@ -1874,7 +1970,6 @@
 
     async function eliminarCuentaIndividual(docId, index) {
       if (!confirm("¿Estás seguro de eliminar esta cuenta del inventario?")) return;
-      
       const prod = catalogoUnificado.find(p => p.docId === docId);
       if (!prod) return;
 
@@ -1882,9 +1977,7 @@
         const invRef = db.collection('inventario').doc(docId);
         const nuevasCuentas = [...prod.cuentas];
         nuevasCuentas.splice(index, 1);
-
         await invRef.set({ cuentas: nuevasCuentas }, { merge: true });
-        
         prod.cuentas = nuevasCuentas;
         verDetalleCuentas(docId);
       } catch (e) {
@@ -1914,9 +2007,9 @@
         snap.forEach(doc => {
           const u = doc.data();
           const uid = doc.id;
-          const puedeSubir = u.puede_subir_stock === true;
           const permitidos = u.productos_permitidos || [];
           const bloqueados = u.productos_bloqueados || [];
+          const stockPermitidos = u.permisos_subir_stock || [];
 
           tbody.innerHTML += `
             <tr class="hover:bg-gray-800/40 border-b border-gray-800">
@@ -1937,8 +2030,8 @@
                 </button>
               </td>
               <td class="px-4 py-3 text-center">
-                <button onclick="alternarPermisoStock('${uid}', ${puedeSubir})" class="px-3 py-1 rounded-lg text-xs font-bold ${puedeSubir ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40' : 'bg-gray-800 text-gray-400 border border-gray-700'}">
-                  ${puedeSubir ? 'Permitido' : 'Bloqueado'}
+                <button onclick="abrirModalPermisosStockCliente('${uid}', '${u.email || ''}', ${JSON.stringify(stockPermitidos).replace(/"/g, '&quot;')})" class="px-2.5 py-1 rounded-lg text-xs font-bold ${stockPermitidos.length > 0 ? 'bg-purple-500/20 text-purple-300 border border-purple-500/40' : 'bg-gray-800 text-gray-400 border border-gray-700'} transition">
+                  <i class="fa-solid fa-boxes-packing mr-1"></i> Permisos Stock (${stockPermitidos.length})
                 </button>
               </td>
               <td class="px-4 py-3 text-right">
@@ -1952,7 +2045,7 @@
       });
     }
 
-    // MODAL DE PERMISOS: PÚBLICOS ACTIVOS POR DEFECTO, EXCLUSIVO DESMARCADO
+    // MODAL DE PERMISOS DE CATÁLOGO (PÚBLICOS ACTIVOS, EXCLUSIVO DESMARCADO)
     function abrirModalPermisosCliente(uid, email, productosPermitidosActuales, productosBloqueadosActuales) {
       clientePermisosUidActual = uid;
       document.getElementById('txtPermisosClienteEmail').innerText = email;
@@ -2021,10 +2114,69 @@
           productos_bloqueados: nuevosBloqueados
         }, { merge: true });
 
-        alert("¡Permisos guardados con éxito para este cliente!");
+        alert("¡Permisos de catálogo guardados con éxito para este cliente!");
         cerrarModalPermisosCliente();
       } catch (e) {
         alert("Error al guardar permisos: " + e.message);
+      }
+    }
+
+    // MODAL DE PERMISOS PARA SUBIR STOCK (TODOS SIN SELECCIÓN POR DEFECTO)
+    function abrirModalPermisosStockCliente(uid, email, stockPermitidosActuales) {
+      clienteStockUidActual = uid;
+      document.getElementById('txtPermisosStockClienteEmail').innerText = email;
+      const contenedor = document.getElementById('listaCheckboxesStockPermiso');
+      const permitidos = stockPermitidosActuales || [];
+
+      let html = '';
+      catalogoUnificado.forEach(p => {
+        // Viene desmarcado salvo que se haya guardado explícitamente en la lista
+        const estaMarcado = permitidos.includes(p.id) || permitidos.includes(p.docId);
+
+        html += `
+          <label class="flex items-center justify-between p-2.5 rounded-lg bg-gray-900 border border-gray-700/60 cursor-pointer hover:border-blue-500/50">
+            <div class="flex items-center gap-2.5">
+              <input type="checkbox" value="${p.docId}" class="chk-stock-permiso rounded accent-blue-500 w-4 h-4 cursor-pointer" ${estaMarcado ? 'checked' : ''}>
+              <div>
+                <span class="font-bold text-white block">${p.nombre}</span>
+                <span class="text-[10px] text-gray-400">${p.categoria} (Stock: ${p.stock})</span>
+              </div>
+            </div>
+            <span class="text-[9px] px-2 py-0.5 rounded-full ${estaMarcado ? 'bg-blue-500/20 text-blue-300' : 'bg-gray-800 text-gray-500'} font-bold">
+              ${estaMarcado ? 'Habilitado' : 'Sin permiso'}
+            </span>
+          </label>
+        `;
+      });
+
+      contenedor.innerHTML = html;
+      const modal = document.getElementById('modalPermisosStockCliente');
+      modal.classList.remove('hidden');
+      modal.style.display = 'flex';
+    }
+
+    function cerrarModalPermisosStockCliente() {
+      clienteStockUidActual = null;
+      const modal = document.getElementById('modalPermisosStockCliente');
+      modal.classList.add('hidden');
+      modal.style.display = 'none';
+    }
+
+    async function guardarPermisosStockClienteActual() {
+      if (!clienteStockUidActual) return;
+      const inputs = document.querySelectorAll('.chk-stock-permiso:checked');
+      const seleccionados = Array.from(inputs).map(c => c.value);
+
+      try {
+        await db.collection('usuarios').doc(clienteStockUidActual).set({
+          permisos_subir_stock: seleccionados,
+          puede_subir_stock: seleccionados.length > 0
+        }, { merge: true });
+
+        alert("¡Permisos de subida de stock actualizados con éxito!");
+        cerrarModalPermisosStockCliente();
+      } catch (e) {
+        alert("Error al guardar permisos de stock: " + e.message);
       }
     }
 
@@ -2043,6 +2195,7 @@
           puede_subir_stock: false, 
           productos_permitidos: [],
           productos_bloqueados: [],
+          permisos_subir_stock: [],
           fechaRegistro: new Date().toISOString() 
         });
         document.getElementById('expEmail').value = '';
@@ -2050,14 +2203,6 @@
         document.getElementById('expPassword').value = '';
         alert("¡Cuenta de usuario creada con éxito!");
       } catch (err) { alert("Error al crear cuenta: " + err.message); }
-    }
-
-    async function alternarPermisoStock(uid, estadoActual) {
-      try {
-        await db.collection('usuarios').doc(uid).set({ puede_subir_stock: !estadoActual }, { merge: true });
-      } catch (e) {
-        alert("Error al actualizar permiso: " + e.message);
-      }
     }
 
     async function eliminarCliente(uid, email) {
@@ -2085,12 +2230,21 @@
       const select = document.getElementById('selectStockProducto');
       if (!select) return;
       select.innerHTML = '';
-      catalogoUnificado.forEach(p => { select.innerHTML += `<option value="${p.docId}">${p.nombre}</option>`; });
+      
+      const esAdmin = currentUser && ADMIN_EMAILS.some(e => e.trim().toLowerCase() === currentUser.email.toLowerCase());
+      
+      catalogoUnificado.forEach(p => { 
+        if (esAdmin || userPermisosSubirStock.includes(p.id) || userPermisosSubirStock.includes(p.docId)) {
+          select.innerHTML += `<option value="${p.docId}">${p.nombre}</option>`; 
+        }
+      });
     }
 
     async function cargarStockMasivo(e) {
       e.preventDefault();
       const docId = document.getElementById('selectStockProducto').value;
+      if (!docId) { alert("No tienes productos seleccionables."); return; }
+
       const lineas = document.getElementById('txtStockLineas').value.split('\n').map(l => l.trim()).filter(l => l);
       if (lineas.length === 0) return;
       const nuevas = lineas.map(l => {
@@ -2154,12 +2308,178 @@
       }
     }
 
+    // ==================== MÉTODOS DE PAGO Y QR ====================
+    function previsualizarQr(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function(evt) {
+        qrBase64Temporal = evt.target.result;
+        document.getElementById('previewQrImg').src = qrBase64Temporal;
+        document.getElementById('contenedorPreviewQr').classList.remove('hidden');
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function limpiarFormularioPagos() {
+      document.getElementById('pagoDocId').value = '';
+      document.getElementById('pagoNombre').value = '';
+      document.getElementById('pagoTitular').value = '';
+      document.getElementById('pagoLlave').value = '';
+      document.getElementById('pagoQrFile').value = '';
+      document.getElementById('previewQrImg').src = '';
+      document.getElementById('contenedorPreviewQr').classList.add('hidden');
+      qrBase64Temporal = null;
+    }
+
+    async function guardarMetodoPagoAdmin(e) {
+      e.preventDefault();
+      const docId = document.getElementById('pagoDocId').value.trim();
+      const nombre = document.getElementById('pagoNombre').value.trim();
+      const titular = document.getElementById('pagoTitular').value.trim();
+      const llave = document.getElementById('pagoLlave').value.trim();
+
+      const dataGuardar = {
+        nombre: nombre,
+        titular: titular,
+        llave: llave,
+        fechaActualizado: new Date().toISOString()
+      };
+
+      if (qrBase64Temporal) {
+        dataGuardar.qrImage = qrBase64Temporal;
+      }
+
+      try {
+        if (docId) {
+          await db.collection('metodos_pago').doc(docId).set(dataGuardar, { merge: true });
+        } else {
+          await db.collection('metodos_pago').add(dataGuardar);
+        }
+        alert("¡Método de pago guardado con éxito!");
+        limpiarFormularioPagos();
+      } catch (err) {
+        alert("Error al guardar método de pago: " + err.message);
+      }
+    }
+
+    function cargarMetodosPagoAdmin() {
+      const tbody = document.getElementById('tablaAdminPagos');
+      if (!tbody) return;
+      tbody.innerHTML = '';
+
+      if (metodosPagoList.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" class="text-center py-6 text-gray-500">No hay métodos de pago registrados. Añade uno arriba.</td></tr>';
+        return;
+      }
+
+      metodosPagoList.forEach(m => {
+        const qrHtml = m.qrImage 
+          ? `<img src="${m.qrImage}" onclick="abrirZoomQr('${m.qrImage}', '${m.nombre}')" class="w-10 h-10 object-contain rounded-lg border border-gray-700 bg-white p-0.5 cursor-pointer hover:scale-105 transition" title="Toca para ampliar">` 
+          : `<span class="text-xs text-gray-500 italic">Sin QR</span>`;
+
+        tbody.innerHTML += `
+          <tr class="hover:bg-gray-800/40">
+            <td class="px-4 py-3">${qrHtml}</td>
+            <td class="px-4 py-3 font-bold text-white">${m.nombre}</td>
+            <td class="px-4 py-3 text-xs text-gray-400">${m.titular || 'N/A'}</td>
+            <td class="px-4 py-3 font-mono text-emerald-400 text-xs">${m.llave}</td>
+            <td class="px-4 py-3 text-right space-x-2">
+              <button onclick="editarMetodoPago('${m.docId}')" class="px-2.5 py-1 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg text-xs font-semibold">Editar</button>
+              <button onclick="eliminarMetodoPago('${m.docId}')" class="px-2.5 py-1 bg-red-500/20 hover:bg-red-500/40 text-red-400 rounded-lg text-xs font-semibold"><i class="fa-solid fa-trash-can"></i></button>
+            </td>
+          </tr>
+        `;
+      });
+    }
+
+    function editarMetodoPago(docId) {
+      const m = metodosPagoList.find(item => item.docId === docId);
+      if (!m) return;
+      document.getElementById('pagoDocId').value = m.docId;
+      document.getElementById('pagoNombre').value = m.nombre;
+      document.getElementById('pagoTitular').value = m.titular || '';
+      document.getElementById('pagoLlave').value = m.llave;
+      if (m.qrImage) {
+        document.getElementById('previewQrImg').src = m.qrImage;
+        document.getElementById('contenedorPreviewQr').classList.remove('hidden');
+        qrBase64Temporal = m.qrImage;
+      } else {
+        document.getElementById('contenedorPreviewQr').classList.add('hidden');
+        qrBase64Temporal = null;
+      }
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    async function eliminarMetodoPago(docId) {
+      if (!confirm("¿Eliminar este método de pago y su QR?")) return;
+      try {
+        await db.collection('metodos_pago').doc(docId).delete();
+      } catch (e) {
+        alert("Error al eliminar: " + e.message);
+      }
+    }
+
+    function renderizarMetodosPagoEnClientes() {
+      const contenedor = document.getElementById('contenedorMetodosPagoClientes');
+      if (!contenedor) return;
+
+      if (metodosPagoList.length === 0) {
+        contenedor.innerHTML = `
+          <div class="p-3 bg-gray-800/80 border border-gray-700 rounded-xl text-center text-xs text-gray-400">
+            Contacta a soporte por WhatsApp para recargar tu saldo.
+          </div>
+        `;
+        return;
+      }
+
+      contenedor.innerHTML = metodosPagoList.map((m, idx) => {
+        const qrHtml = m.qrImage ? `
+          <div class="shrink-0 text-center">
+            <img src="${m.qrImage}" onclick="abrirZoomQr('${m.qrImage}', '${m.nombre}')" class="w-14 h-14 object-contain rounded-xl border border-gray-700 bg-white p-1 cursor-pointer hover:scale-105 transition shadow" title="Toca para ampliar">
+            <span class="text-[9px] text-gray-400 block mt-0.5 font-semibold">Ver QR</span>
+          </div>
+        ` : '';
+
+        return `
+          <div class="flex items-center justify-between gap-3 bg-blue-500/10 border border-blue-500/30 p-3 rounded-2xl">
+            <div class="flex items-center gap-3">
+              ${qrHtml}
+              <div>
+                <span class="text-blue-400 block text-[10px] font-bold uppercase tracking-wider">${m.nombre}</span>
+                <span class="font-mono font-black text-white text-sm sm:text-base select-all break-all">${m.llave}</span>
+                <span class="text-[10px] text-gray-400 block">Titular: <b>${m.titular || 'Epic Channels'}</b></span>
+              </div>
+            </div>
+            <button onclick="copiarTexto('${m.llave}', '¡${m.nombre} copiado al portapapeles!')" class="shrink-0 px-3 py-1.5 bg-blue-500 hover:bg-blue-400 text-black rounded-xl text-xs font-black transition shadow-md shadow-blue-500/20">
+              <i class="fa-solid fa-copy mr-1"></i> Copiar
+            </button>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function abrirZoomQr(urlImg, titulo) {
+      document.getElementById('imgZoomQr').src = urlImg;
+      document.getElementById('txtZoomQrTitulo').innerText = `Escanear ${titulo}`;
+      const modal = document.getElementById('modalZoomQr');
+      modal.classList.remove('hidden');
+      modal.style.display = 'flex';
+    }
+
+    function cerrarZoomQr() {
+      const modal = document.getElementById('modalZoomQr');
+      modal.classList.add('hidden');
+      modal.style.display = 'none';
+    }
+
     async function reportarRecarga(e) {
       e.preventDefault();
       if (!currentUser) return;
       const monto = parseFloat(document.getElementById('recargaMonto').value);
       await db.collection('recargas').add({ usuarioId: currentUser.uid, usuarioEmail: currentUser.email, monto: monto, estado: 'pendiente', fecha: new Date().toISOString() });
-      const wa = encodeURIComponent(`Hola, acabo de transferir $${monto.toLocaleString('es-CO')} COP para recargar saldo mediante Bre-B. Mi correo es: ${currentUser.email}`);
+      const wa = encodeURIComponent(`Hola, acabo de transferir $${monto.toLocaleString('es-CO')} COP para recargar saldo. Mi correo registrado es: ${currentUser.email}`);
       window.open(`https://wa.me/573043956726?text=${wa}`, '_blank');
       cerrarModalRecarga();
     }
@@ -2280,6 +2600,7 @@
             puede_subir_stock: false, 
             productos_permitidos: [],
             productos_bloqueados: [],
+            permisos_subir_stock: [],
             fechaRegistro: new Date().toISOString() 
           });
           cerrarModalAuth();
