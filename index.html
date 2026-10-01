@@ -298,7 +298,7 @@
         </div>
       </div>
 
-      <!-- TAB 5: RECARGAS -->
+      <!-- TAB 5: RECARGAS (CON BOTÓN APROBAR Y RECHAZAR/REVOCAR) -->
       <div id="adminSecRecargas" class="hidden">
         <div class="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden">
           <div class="p-4 border-b border-gray-800">
@@ -1387,7 +1387,7 @@
       const tbody = document.getElementById('tablaAdminRecargas');
       const snap = await db.collection('recargas').where('estado', '==', 'pendiente').get();
       tbody.innerHTML = '';
-      if (snap.empty) { tbody.innerHTML = '<tr><td colspan="4" class="text-center py-4">No hay recargas.</td></tr>'; return; }
+      if (snap.empty) { tbody.innerHTML = '<tr><td colspan="4" class="text-center py-4 text-gray-500">No hay recargas pendientes.</td></tr>'; return; }
       snap.forEach(doc => {
         const r = doc.data();
         tbody.innerHTML += `
@@ -1395,8 +1395,9 @@
             <td class="px-4 py-3 text-xs text-gray-400">${new Date(r.fecha).toLocaleDateString()}</td>
             <td class="px-4 py-3 text-white">${r.usuarioEmail}</td>
             <td class="px-4 py-3 font-bold text-emerald-400">$${(r.monto || 0).toLocaleString('es-CO')}</td>
-            <td class="px-4 py-3 text-right">
-              <button onclick="aprobarRecarga('${doc.id}', '${r.usuarioId}', ${r.monto})" class="px-2.5 py-1 bg-emerald-500 text-black font-bold rounded-lg text-xs">Aprobar</button>
+            <td class="px-4 py-3 text-right space-x-2">
+              <button onclick="aprobarRecarga('${doc.id}', '${r.usuarioId}', ${r.monto})" class="px-3 py-1 bg-emerald-500 hover:bg-emerald-400 text-black font-bold rounded-lg text-xs transition">Aprobar</button>
+              <button onclick="rechazarRecarga('${doc.id}')" class="px-3 py-1 bg-red-500/20 hover:bg-red-500/30 text-red-400 border border-red-500/40 font-bold rounded-lg text-xs transition">Rechazar</button>
             </td>
           </tr>
         `;
@@ -1411,6 +1412,13 @@
         t.update(db.collection('recargas').doc(recargaId), { estado: 'aprobado' });
       });
       alert("Recarga aprobada.");
+      cargarRecargasAdmin();
+    }
+
+    async function rechazarRecarga(recargaId) {
+      if (!confirm("¿Deseas rechazar y revocar esta solicitud de saldo?")) return;
+      await db.collection('recargas').doc(recargaId).update({ estado: 'rechazado' });
+      alert("Solicitud rechazada.");
       cargarRecargasAdmin();
     }
 
