@@ -566,7 +566,7 @@
                 <label class="p-3 bg-gray-900/90 border border-gray-700/80 rounded-xl flex items-start gap-2.5 cursor-pointer hover:border-emerald-500/60 transition">
                   <input type="checkbox" id="chkAutoNotifSaldoBajo" class="rounded accent-emerald-500 w-4 h-4 mt-0.5 cursor-pointer">
                   <div>
-                    <span class="text-xs font-bold text-white block">⚠️ Alerta de Saldo Bajo a Clientes</span>
+                    <span class="text-xs font-bold text-white block">⚠️️ Alerta de Saldo Bajo a Clientes</span>
                     <span class="text-[10px] text-gray-400 block mt-0.5 leading-tight">Muestra el punto amarillo al usuario cuando su saldo es menor al mínimo de recarga.</span>
                   </div>
                 </label>
@@ -1087,7 +1087,7 @@
     <p>© 2026 Epic Channels. Todos los derechos reservados.</p>
   </footer>
 
-  <!-- ==================== LÓGICA JAVASCRIPT GLOBAL COMPLETA E ÍNTEGRA ==================== -->
+  <!-- ==================== LÓGICA JAVASCRIPT GLOBAL COMPLETA CON RENDERIZADOR ==================== -->
   <script>
     let ADMIN_EMAILS = ["alex88ruizc@gmail.com"];
     let EMAILS_EXCLUIDOS_REPORTE = ["alex88ruizc@gmail.com", "alex88ruiz@gmail.com"];
@@ -1282,6 +1282,100 @@
               <button onclick="vaciarStock('${p.docId}')" class="text-xs text-red-400 hover:text-red-300 p-1.5 rounded bg-gray-800 cursor-pointer"><i class="fa-solid fa-trash-can"></i></button>
             </td>
           </tr>
+        `;
+      });
+    }
+
+    function renderizarCatalogo() {
+      const grid = document.getElementById('gridProductos');
+      if (!grid) return;
+      grid.innerHTML = '';
+
+      const filtrados = catalogoUnificado.filter(p => {
+        if (p.activo === false) return false;
+        if (!usuarioTienePermisoProducto(p)) return false;
+        if (categoriaActiva === 'todas') return true;
+        return p.categoria === categoriaActiva;
+      });
+
+      filtrados.sort((a, b) => {
+        if (a.id === 'correo_hotmail') return 1;
+        if (b.id === 'correo_hotmail') return -1;
+        return 0;
+      });
+
+      if (filtrados.length === 0) {
+        grid.innerHTML = `<p class="col-span-full text-center text-gray-500 py-12">No hay productos visibles en esta categoría.</p>`;
+        return;
+      }
+
+      filtrados.forEach(prod => {
+        const stockDisponible = prod.stock;
+        const agotado = stockDisponible <= 0;
+        const minRequerido = prod.minCompra || 5;
+        let cantidadInicial = 0, limiteInferior = 1;
+
+        if (!agotado) {
+          if (stockDisponible >= minRequerido) { cantidadInicial = minRequerido; limiteInferior = minRequerido; }
+          else { cantidadInicial = stockDisponible; limiteInferior = stockDisponible; }
+        }
+
+        const totalInicial = cantidadInicial * (prod.precio || 0);
+        const esCorreo = prod.categoria === 'Correos';
+        const esHot = (prod.id === productoHotId || (prod.aliases && prod.aliases.includes(productoHotId)));
+
+        const cardBorder = esHot 
+          ? 'border-red-500/50 shadow-xl shadow-red-500/10' 
+          : (esCorreo ? 'border-purple-500/40 hover:border-purple-500/70' : 'border-gray-800 hover:border-emerald-500/40');
+        
+        const badgeStyle = esCorreo 
+          ? 'bg-purple-500/10 text-purple-400 border border-purple-500/30' 
+          : 'bg-gray-800 text-emerald-400 border border-gray-700';
+        const badgeIcon = obtenerIconoCategoria(prod.categoria);
+        const badgeText = prod.categoria;
+
+        const hotBadgeHtml = esHot ? `<div class="mb-3 inline-flex items-center gap-1.5 bg-red-500/10 text-red-400 border border-red-500/30 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider"><i class="fa-solid fa-fire animate-pulse text-red-500"></i> Producto Más Vendido / HOT</div>` : '';
+
+        grid.innerHTML += `
+          <div class="bg-gray-900 border ${cardBorder} rounded-2xl p-4 sm:p-5 flex flex-col justify-between transition relative">
+            <div>
+              ${hotBadgeHtml}
+              <div class="flex justify-between items-start mb-3">
+                <span class="text-[11px] font-bold ${badgeStyle} px-3 py-1 rounded-full flex items-center gap-1">
+                  <i class="fa-solid ${badgeIcon}"></i> ${badgeText}
+                </span>
+                <span class="text-xs ${agotado ? 'text-red-400' : 'text-emerald-400'} font-medium">
+                  <i class="fa-solid fa-boxes-stacked mr-1"></i> Stock: ${stockDisponible}
+                </span>
+              </div>
+              <h3 class="font-bold text-white text-base mb-1">${prod.nombre}</h3>
+              <div class="text-xs font-bold text-emerald-400 mb-1.5">
+                <i class="fa-solid fa-tag mr-1"></i> $${(prod.precio || 0).toLocaleString('es-CO')} <span class="text-[10px] text-gray-400 font-normal">c/u</span>
+              </div>
+              <p class="text-xs text-gray-400 mb-2 leading-relaxed">${prod.descripcion}</p>
+              <div class="mb-4">
+                <span class="text-[10px] font-semibold ${esCorreo ? 'text-purple-400 bg-purple-500/10 border-purple-500/20' : 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20'} px-2 py-0.5 rounded border">
+                  ${stockDisponible > 0 && stockDisponible < minRequerido ? `¡Últimas ${stockDisponible} cuentas disponibles!` : `Compra mínima: ${minRequerido} cuentas`}
+                </span>
+              </div>
+            </div>
+            <div class="pt-3 border-t border-gray-800 flex flex-col gap-2.5 mt-2">
+              <div class="flex items-center justify-between">
+                <div>
+                  <span class="text-[10px] text-gray-400 block leading-none">Total a Pagar</span>
+                  <span id="txtTotal_${prod.docId}" class="text-base font-black text-white">$${totalInicial.toLocaleString('es-CO')}</span>
+                </div>
+                <div class="flex items-center bg-gray-800 border border-gray-700 rounded-xl p-0.5">
+                  <button type="button" onclick="cambiarCantidad('${prod.docId}', -1, ${stockDisponible}, ${limiteInferior})" ${agotado ? 'disabled' : ''} class="w-7 h-7 flex items-center justify-center rounded-lg bg-gray-700/60 hover:bg-gray-700 text-gray-200 font-black text-sm disabled:opacity-40 cursor-pointer">-</button>
+                  <input id="cant_${prod.docId}" type="number" value="${cantidadInicial}" min="${limiteInferior}" max="${stockDisponible}" readonly class="w-9 text-center bg-transparent text-white font-bold text-xs focus:outline-none select-none">
+                  <button type="button" onclick="cambiarCantidad('${prod.docId}', 1, ${stockDisponible}, ${limiteInferior})" ${agotado ? 'disabled' : ''} class="w-7 h-7 flex items-center justify-center rounded-lg bg-gray-700/60 hover:bg-gray-700 text-gray-200 font-black text-sm disabled:opacity-40 cursor-pointer">+</button>
+                </div>
+              </div>
+              <button onclick="comprarProducto('${prod.docId}')" ${agotado ? 'disabled' : ''} class="w-full py-2.5 rounded-xl text-xs font-bold ${agotado ? 'bg-gray-800 text-gray-500 cursor-not-allowed' : (esCorreo ? 'bg-purple-600 hover:bg-purple-500 text-white shadow-lg' : 'bg-emerald-500 hover:bg-emerald-400 text-black shadow-lg')} transition flex items-center justify-center gap-1.5 cursor-pointer">
+                <i class="fa-solid fa-cart-shopping"></i> ${agotado ? 'Agotado' : 'Comprar Ahora'}
+              </button>
+            </div>
+          </div>
         `;
       });
     }
