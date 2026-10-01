@@ -298,7 +298,7 @@
         </div>
       </div>
 
-      <!-- TAB 5: RECARGAS (CON BOTÓN APROBAR Y RECHAZAR/REVOCAR) -->
+      <!-- TAB 5: RECARGAS -->
       <div id="adminSecRecargas" class="hidden">
         <div class="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden">
           <div class="p-4 border-b border-gray-800">
@@ -406,12 +406,12 @@
 
   <!-- ==================== MODALES ==================== -->
 
-  <!-- MODAL: VER DETALLE DE CUENTAS (ADMIN) -->
+  <!-- MODAL: VER DETALLE DE CUENTAS (ADMIN) CON BOTÓN ELIMINAR INDIVIDUAL -->
   <div id="modalVerStock" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
     <div class="bg-gray-900 border border-gray-800 rounded-2xl max-w-lg w-full p-6 relative">
       <button onclick="cerrarModalVerStock()" class="absolute top-4 right-4 text-gray-400 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
       <h3 id="txtTituloModalStock" class="text-lg font-bold text-white mb-1">Cuentas en Inventario</h3>
-      <div id="listaCuentasDetalle" class="bg-gray-800/90 border border-gray-700 rounded-xl p-3 max-h-60 overflow-y-auto text-xs font-mono text-emerald-300 space-y-1.5 select-all mt-4"></div>
+      <div id="listaCuentasDetalle" class="bg-gray-800/90 border border-gray-700 rounded-xl p-3 max-h-60 overflow-y-auto text-xs font-mono text-emerald-300 space-y-1.5 mt-4"></div>
     </div>
   </div>
 
@@ -1273,12 +1273,45 @@
       if (!prod) return;
       document.getElementById('txtTituloModalStock').innerText = prod.nombre;
       const contenedor = document.getElementById('listaCuentasDetalle');
-      contenedor.innerHTML = prod.cuentas.length === 0 ? '<p>No hay cuentas.</p>' : prod.cuentas.map((raw, i) => {
-        const c = parseCredencialObj(raw);
-        return `<div><span class="text-gray-500 mr-2">${i + 1}.</span>${c.email} : ${c.pass}</div>`;
-      }).join('');
+      
+      if (!prod.cuentas || prod.cuentas.length === 0) {
+        contenedor.innerHTML = '<p class="text-gray-500 py-2">No hay cuentas disponibles.</p>';
+      } else {
+        contenedor.innerHTML = prod.cuentas.map((raw, i) => {
+          const c = parseCredencialObj(raw);
+          return `
+            <div class="flex items-center justify-between gap-2 p-1.5 bg-gray-800/60 rounded-lg border border-gray-700/50 mb-1">
+              <div class="truncate"><span class="text-gray-500 mr-1.5">${i + 1}.</span>${c.email} : ${c.pass}</div>
+              <button onclick="eliminarCuentaIndividual('${docId}', ${i})" title="Eliminar esta cuenta" class="px-2 py-1 bg-red-500/20 hover:bg-red-500/40 text-red-400 rounded text-xs transition shrink-0">
+                <i class="fa-solid fa-trash-can"></i>
+              </button>
+            </div>
+          `;
+        }).join('');
+      }
+
       document.getElementById('modalVerStock').classList.remove('hidden');
       document.getElementById('modalVerStock').style.display = 'flex';
+    }
+
+    async function eliminarCuentaIndividual(docId, index) {
+      if (!confirm("¿Estás seguro de eliminar esta cuenta del inventario?")) return;
+      
+      const prod = catalogoUnificado.find(p => p.docId === docId);
+      if (!prod) return;
+
+      try {
+        const invRef = db.collection('inventario').doc(docId);
+        const nuevasCuentas = [...prod.cuentas];
+        nuevasCuentas.splice(index, 1);
+
+        await invRef.set({ cuentas: nuevasCuentas }, { merge: true });
+        
+        prod.cuentas = nuevasCuentas;
+        verDetalleCuentas(docId);
+      } catch (e) {
+        alert("Error al eliminar la cuenta: " + e.message);
+      }
     }
 
     function cerrarModalVerStock() {
