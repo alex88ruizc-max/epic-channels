@@ -341,13 +341,15 @@
                   <th class="px-4 py-3">WhatsApp</th>
                   <th class="px-4 py-3">Saldo Actual</th>
                   <th class="px-4 py-3 text-center">Permisos Catálogo</th>
-                  <th class="px-4 py-3 text-center">Subir Stock</th>
+                  <th class="px-4 py-3 text-center">Permisos Stock</th>
+                  <th class="px-4 py-3 text-center">Registro</th>
+                  <th class="px-4 py-3 text-center">Último Acceso</th>
                   <th class="px-4 py-3 text-right">Acciones</th>
                 </tr>
               </thead>
               <tbody id="tablaAdminUsuarios" class="divide-y divide-gray-800">
                 <tr>
-                  <td colspan="6" class="px-4 py-8 text-center text-gray-500">Cargando usuarios...</td>
+                  <td colspan="8" class="px-4 py-8 text-center text-gray-500">Cargando usuarios...</td>
                 </tr>
               </tbody>
             </table>
@@ -688,7 +690,7 @@
       </div>
       <h3 class="text-base font-black text-white mb-2">Política de Soporte y Garantía</h3>
       <p class="text-xs text-gray-300 mb-4 leading-relaxed">
-        ⚠️️ Recuerda que <b>no hay garantía por correo directo</b>. La garantía aplica únicamente si la cuenta tiene <b>menos de 24 horas</b> desde el momento en que la solicitaste.
+        ⚠️ Recuerda que <b>no hay garantía por correo directo</b>. La garantía aplica únicamente si la cuenta tiene <b>menos de 24 horas</b> desde el momento en que la solicitaste.
       </p>
       <div class="space-y-2">
         <button onclick="enviarWhatsappSoporte()" class="w-full py-2.5 bg-emerald-500 hover:bg-emerald-400 text-black font-bold rounded-xl text-xs flex items-center justify-center gap-2 transition">
@@ -725,8 +727,7 @@
   <!-- MODAL: CAMBIAR CONTRASEÑA -->
   <div id="modalPassword" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
     <div class="bg-gray-900 border border-gray-800 rounded-2xl max-w-sm w-full p-6 relative">
-      <button onclick="cerrarModalPassword()" class="absolute top-4 right-4 text-gray-400 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
-      <h3 class="text-xl font-bold text-white mb-1 flex items-center gap-2"><i class="fa-solid fa-key text-emerald-400"></i> Cambiar Contraseña</h3>
+      <button onclick="cerrarModalPassword()" class="absolute top-4 right-4 text-gray-400 hover:text-white"><i class="fa-solid fa-key text-emerald-400"></i> Cambiar Contraseña</h3>
       <p class="text-xs text-gray-400 mb-4">Ingresa tu clave actual y la nueva contraseña.</p>
       <form onsubmit="cambiarContraseñaUsuario(event)" class="space-y-3">
         <div>
@@ -1329,7 +1330,7 @@
     let userSaldo = 0;
     let userProductosPermitidos = [];
     let userProductosBloqueados = [];
-    let userPermisosSubirStock = []; // Lista de IDs de productos en los que puede subir stock
+    let userPermisosSubirStock = [];
     let modoAuth = 'login';
     let captchaGenerado = '';
     let categoriaActiva = 'todas';
@@ -1440,7 +1441,7 @@
           }
           document.getElementById('txtSaldoHeader').innerText = `$${userSaldo.toLocaleString('es-CO')} COP`;
           renderizarCatalogo();
-          poblarSelectStock(); // Actualiza según permisos si el usuario puede cargar
+          poblarSelectStock();
         });
 
         cambiarVista('tienda');
@@ -2003,13 +2004,41 @@
       if (!tbody) return;
       db.collection('usuarios').onSnapshot(snap => {
         tbody.innerHTML = '';
-        if (snap.empty) { tbody.innerHTML = '<tr><td colspan="6" class="text-center py-4 text-gray-500">No hay usuarios.</td></tr>'; return; }
+        if (snap.empty) { tbody.innerHTML = '<tr><td colspan="8" class="text-center py-4 text-gray-500">No hay usuarios.</td></tr>'; return; }
+        
+        const ahora = new Date().getTime();
+
         snap.forEach(doc => {
           const u = doc.data();
           const uid = doc.id;
           const permitidos = u.productos_permitidos || [];
           const bloqueados = u.productos_bloqueados || [];
           const stockPermitidos = u.permisos_subir_stock || [];
+
+          // Formatear Fecha de Registro
+          let fechaRegStr = 'N/A';
+          if (u.fechaRegistro) {
+            const dReg = new Date(u.fechaRegistro);
+            if (!isNaN(dReg.getTime())) {
+              fechaRegStr = dReg.toLocaleDateString('es-CO', { day: '2-digit', month: '2-digit', year: 'numeric' });
+            }
+          }
+
+          // Formatear Último Acceso y Estado En Línea
+          let ultimoAccesoStr = 'Nunca';
+          let badgeEstado = '<span class="w-2 h-2 rounded-full bg-gray-500 inline-block mr-1"></span><span class="text-gray-400">Inactivo</span>';
+          if (u.ultima_conexion) {
+            const dAcc = new Date(u.ultima_conexion);
+            if (!isNaN(dAcc.getTime())) {
+              const diffMin = (ahora - dAcc.getTime()) / 60000;
+              if (diffMin < 3) {
+                badgeEstado = '<span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse inline-block mr-1"></span><span class="text-emerald-400 font-bold">En línea</span>';
+                ultimoAccesoStr = 'Hace un momento';
+              } else {
+                ultimoAccesoStr = dAcc.toLocaleString('es-CO', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+              }
+            }
+          }
 
           tbody.innerHTML += `
             <tr class="hover:bg-gray-800/40 border-b border-gray-800">
@@ -2026,13 +2055,20 @@
               </td>
               <td class="px-4 py-3 text-center">
                 <button onclick="abrirModalPermisosCliente('${uid}', '${u.email || ''}', ${JSON.stringify(permitidos).replace(/"/g, '&quot;')}, ${JSON.stringify(bloqueados).replace(/"/g, '&quot;')})" class="px-2.5 py-1 rounded-lg text-xs font-bold bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 border border-blue-500/40 transition">
-                  <i class="fa-solid fa-list-check mr-1"></i> Permisos Catálogo
+                  <i class="fa-solid fa-list-check mr-1"></i> Catálogo
                 </button>
               </td>
               <td class="px-4 py-3 text-center">
                 <button onclick="abrirModalPermisosStockCliente('${uid}', '${u.email || ''}', ${JSON.stringify(stockPermitidos).replace(/"/g, '&quot;')})" class="px-2.5 py-1 rounded-lg text-xs font-bold ${stockPermitidos.length > 0 ? 'bg-purple-500/20 text-purple-300 border border-purple-500/40' : 'bg-gray-800 text-gray-400 border border-gray-700'} transition">
-                  <i class="fa-solid fa-boxes-packing mr-1"></i> Permisos Stock (${stockPermitidos.length})
+                  <i class="fa-solid fa-boxes-packing mr-1"></i> Stock (${stockPermitidos.length})
                 </button>
+              </td>
+              <td class="px-4 py-3 text-center text-xs text-gray-300 whitespace-nowrap">${fechaRegStr}</td>
+              <td class="px-4 py-3 text-center text-xs whitespace-nowrap">
+                <div class="flex flex-col items-center">
+                  <div>${badgeEstado}</div>
+                  <span class="text-[10px] text-gray-500 mt-0.5">${ultimoAccesoStr}</span>
+                </div>
               </td>
               <td class="px-4 py-3 text-right">
                 <button onclick="eliminarCliente('${uid}', '${u.email || ''}')" class="px-2.5 py-1 bg-red-500/20 hover:bg-red-500/40 text-red-400 rounded text-xs transition" title="Eliminar cliente">
@@ -2045,7 +2081,6 @@
       });
     }
 
-    // MODAL DE PERMISOS DE CATÁLOGO (PÚBLICOS ACTIVOS, EXCLUSIVO DESMARCADO)
     function abrirModalPermisosCliente(uid, email, productosPermitidosActuales, productosBloqueadosActuales) {
       clientePermisosUidActual = uid;
       document.getElementById('txtPermisosClienteEmail').innerText = email;
@@ -2121,7 +2156,6 @@
       }
     }
 
-    // MODAL DE PERMISOS PARA SUBIR STOCK (TODOS SIN SELECCIÓN POR DEFECTO)
     function abrirModalPermisosStockCliente(uid, email, stockPermitidosActuales) {
       clienteStockUidActual = uid;
       document.getElementById('txtPermisosStockClienteEmail').innerText = email;
@@ -2130,7 +2164,6 @@
 
       let html = '';
       catalogoUnificado.forEach(p => {
-        // Viene desmarcado salvo que se haya guardado explícitamente en la lista
         const estaMarcado = permitidos.includes(p.id) || permitidos.includes(p.docId);
 
         html += `
@@ -2203,16 +2236,6 @@
         document.getElementById('expPassword').value = '';
         alert("¡Cuenta de usuario creada con éxito!");
       } catch (err) { alert("Error al crear cuenta: " + err.message); }
-    }
-
-    async function eliminarCliente(uid, email) {
-      if (!confirm(`¿Estás seguro de eliminar al usuario ${email}?`)) return;
-      try {
-        await db.collection('usuarios').doc(uid).delete();
-        alert("Cliente eliminado de la base de datos.");
-      } catch (e) {
-        alert("Error al eliminar: " + e.message);
-      }
     }
 
     async function adminCargarSaldo(uid) {
@@ -2308,7 +2331,6 @@
       }
     }
 
-    // ==================== MÉTODOS DE PAGO Y QR ====================
     function previsualizarQr(e) {
       const file = e.target.files[0];
       if (!file) return;
@@ -2434,7 +2456,7 @@
         return;
       }
 
-      contenedor.innerHTML = metodosPagoList.map((m, idx) => {
+      contenedor.innerHTML = metodosPagoList.map((m) => {
         const qrHtml = m.qrImage ? `
           <div class="shrink-0 text-center">
             <img src="${m.qrImage}" onclick="abrirZoomQr('${m.qrImage}', '${m.nombre}')" class="w-14 h-14 object-contain rounded-xl border border-gray-700 bg-white p-1 cursor-pointer hover:scale-105 transition shadow" title="Toca para ampliar">
