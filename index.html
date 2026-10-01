@@ -439,6 +439,27 @@
 
   <!-- ==================== MODALES ==================== -->
 
+  <!-- MODAL: SALDO INSUFICIENTE (DISEÑO PRO) -->
+  <div id="modalSaldoInsuficiente" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+    <div class="bg-gray-900 border border-red-500/40 rounded-2xl max-w-sm w-full p-6 text-center relative shadow-2xl shadow-red-500/10">
+      <button onclick="cerrarModalSaldoInsuficiente()" class="absolute top-4 right-4 text-gray-400 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
+      <div class="w-14 h-14 bg-red-500/10 border border-red-500/30 text-red-400 rounded-2xl flex items-center justify-center mx-auto mb-4 text-2xl">
+        <i class="fa-solid fa-wallet"></i>
+      </div>
+      <h3 class="text-lg font-black text-white mb-1">¡Saldo Insuficiente!</h3>
+      <p id="txtMensajeSaldo" class="text-xs text-gray-400 mb-6 leading-relaxed">No tienes suficiente saldo en tu cuenta para completar esta compra.</p>
+      
+      <div class="space-y-2">
+        <button onclick="irARecargarDesdeModal()" class="w-full py-3 bg-gradient-to-r from-pink-600 via-purple-600 to-blue-600 hover:from-pink-500 hover:to-blue-500 text-white font-black text-xs rounded-xl shadow-lg flex items-center justify-center gap-2 transition">
+          <i class="fa-solid fa-bolt text-pink-300"></i> Recargar Saldo Nequi / Bre-B
+        </button>
+        <button onclick="cerrarModalSaldoInsuficiente()" class="w-full py-2 bg-gray-800 hover:bg-gray-700 text-gray-300 font-bold text-xs rounded-xl transition">
+          Cerrar
+        </button>
+      </div>
+    </div>
+  </div>
+
   <!-- MODAL: CAMBIAR CONTRASEÑA -->
   <div id="modalPassword" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
     <div class="bg-gray-900 border border-gray-800 rounded-2xl max-w-sm w-full p-6 relative">
@@ -748,6 +769,24 @@
       const modal = document.getElementById('modalPassword');
       modal.classList.add('hidden');
       modal.style.display = 'none';
+    }
+
+    function abrirModalSaldoInsuficiente(mensaje) {
+      document.getElementById('txtMensajeSaldo').innerText = mensaje;
+      const modal = document.getElementById('modalSaldoInsuficiente');
+      modal.classList.remove('hidden');
+      modal.style.display = 'flex';
+    }
+
+    function cerrarModalSaldoInsuficiente() {
+      const modal = document.getElementById('modalSaldoInsuficiente');
+      modal.classList.add('hidden');
+      modal.style.display = 'none';
+    }
+
+    function irARecargarDesdeModal() {
+      cerrarModalSaldoInsuficiente();
+      abrirModalRecarga();
     }
 
     async function cambiarContraseñaUsuario(e) {
@@ -1320,7 +1359,10 @@
           const totalPagar = precioUnitario * cantidad;
           const saldoActual = (userDoc.data() && userDoc.data().saldo) || 0;
 
-          if (saldoActual < totalPagar) throw new Error(`Saldo insuficiente. Tienes $${saldoActual.toLocaleString('es-CO')} y el total es $${totalPagar.toLocaleString('es-CO')}.`);
+          if (saldoActual < totalPagar) {
+            abrirModalSaldoInsuficiente(`Saldo insuficiente. Tienes $${saldoActual.toLocaleString('es-CO')} y el total es $${totalPagar.toLocaleString('es-CO')}.`);
+            throw new Error("SALDO_INSUFICIENTE_MODAL");
+          }
 
           const nuevoSaldoUsuario = saldoActual - totalPagar;
           const cuentasEntregadas = cuentas.splice(0, cantidad);
@@ -1363,7 +1405,9 @@
 
         if (datosNotificacion) enviarNotificacionTelegram(datosNotificacion);
       } catch (err) {
-        alert(err.message);
+        if (err.message !== "SALDO_INSUFICIENTE_MODAL") {
+          alert(err.message);
+        }
       }
     }
 
