@@ -540,6 +540,7 @@
         `🔢 *Cantidad:* ${datos.cantidad}\n` +
         `💰 *Total Pagado:* ${datos.total}\n` +
         `👤 *Cliente:* ${datos.cliente}\n` +
+        `💳 *Saldo Restante del Cliente:* ${datos.saldo_restante}\n` +
         `📊 *Stock en Bodega:* ${datos.stock_restante} cuentas disponibles\n` +
         `⏰ *Fecha y Hora:* ${datos.fecha}`;
 
@@ -577,6 +578,7 @@
         cantidad: 1,
         total: "$3.200 COP",
         cliente: "alex88ruizc@gmail.com",
+        saldo_restante: "$46.800 COP",
         stock_restante: 5,
         fecha: new Date().toLocaleString('es-CO')
       });
@@ -909,7 +911,7 @@
       renderizarCatalogo();
     }
 
-    // 8. COMPRA DIRECTA EN `inventario` CON NOTIFICACIÓN A TELEGRAM
+    // 8. COMPRA DIRECTA EN `inventario` CON NOTIFICACIÓN A TELEGRAM (CLIENTE + SALDO RESTANTE)
     async function comprarProducto(docId) {
       if (!currentUser) {
         abrirModalAuth('login');
@@ -946,13 +948,18 @@
             throw new Error(`Saldo insuficiente. Tienes $${saldoActual.toLocaleString('es-CO')} y el total por ${cantidad} cuenta(s) es $${totalPagar.toLocaleString('es-CO')}.`);
           }
 
+          const nuevoSaldoUsuario = saldoActual - totalPagar;
           const cuentasEntregadas = cuentas.splice(0, cantidad);
           const credencialesTexto = cuentasEntregadas.map((c, i) => `${i + 1}. ${formatearCredencial(c)}`).join('\n');
           const stockRestante = cuentas.length;
 
+          // 1. Descontar del inventario
           t.update(invRef, { cuentas: cuentas });
-          t.update(userRef, { saldo: saldoActual - totalPagar });
 
+          // 2. Descontar saldo al cliente
+          t.update(userRef, { saldo: nuevoSaldoUsuario });
+
+          // 3. Registrar compra en Firestore
           const nuevaCompraRef = db.collection('compras').doc();
           t.set(nuevaCompraRef, {
             usuarioId: currentUser.uid,
@@ -967,11 +974,13 @@
             fecha: new Date().toISOString()
           });
 
+          // 4. Armar datos de notificación para Telegram (con saldo restante del cliente)
           datosNotificacion = {
             producto: prodInfo.nombre || docId,
             cantidad: cantidad,
             total: `$${totalPagar.toLocaleString('es-CO')} COP`,
             cliente: currentUser.email,
+            saldo_restante: `$${nuevoSaldoUsuario.toLocaleString('es-CO')} COP`,
             stock_restante: stockRestante,
             fecha: new Date().toLocaleString('es-CO')
           };
@@ -982,7 +991,7 @@
           modalE.style.display = 'flex';
         });
 
-        // ENVIAR MENSAJE AL TELEGRAM DEL ADMINISTRADOR
+        // 5. Enviar mensaje inmediato a tu Telegram
         if (datosNotificacion) {
           enviarNotificacionTelegram(datosNotificacion);
         }
