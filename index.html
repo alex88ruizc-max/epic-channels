@@ -566,7 +566,7 @@
                 <label class="p-3 bg-gray-900/90 border border-gray-700/80 rounded-xl flex items-start gap-2.5 cursor-pointer hover:border-emerald-500/60 transition">
                   <input type="checkbox" id="chkAutoNotifSaldoBajo" class="rounded accent-emerald-500 w-4 h-4 mt-0.5 cursor-pointer">
                   <div>
-                    <span class="text-xs font-bold text-white block">⚠️️ Alerta de Saldo Bajo a Clientes</span>
+                    <span class="text-xs font-bold text-white block">⚠️ Alerta de Saldo Bajo a Clientes</span>
                     <span class="text-[10px] text-gray-400 block mt-0.5 leading-tight">Muestra el punto amarillo al usuario cuando su saldo es menor al mínimo de recarga.</span>
                   </div>
                 </label>
@@ -1033,7 +1033,7 @@
   <div id="modalVerStock" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
     <div class="bg-gray-900 border border-gray-800 rounded-2xl max-w-lg w-full p-6 relative">
       <button type="button" onclick="cerrarModalVerStock()" class="absolute top-4 right-4 text-gray-400 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
-      <h3 id="txtTituloModalStockReal" class="text-lg font-bold text-white mb-1">Cuentas en Inventario</h3>
+      <h3 id="txtTituloModalStock" class="text-lg font-bold text-white mb-1">Cuentas en Inventario</h3>
       <div id="listaCuentasDetalle" class="bg-gray-800/90 border border-gray-700 rounded-xl p-3 max-h-60 overflow-y-auto text-xs font-mono text-emerald-300 space-y-1.5 mt-4"></div>
     </div>
   </div>
@@ -1087,7 +1087,7 @@
     <p>© 2026 Epic Channels. Todos los derechos reservados.</p>
   </footer>
 
-  <!-- ==================== LÓGICA JAVASCRIPT GLOBAL COMPLETA E ÍNTEGRA ==================== -->
+  <!-- ==================== LÓGICA JAVASCRIPT GLOBAL BLINDADA E ÍNTEGRA ==================== -->
   <script>
     let ADMIN_EMAILS = ["alex88ruizc@gmail.com"];
     let EMAILS_EXCLUIDOS_REPORTE = ["alex88ruizc@gmail.com", "alex88ruiz@gmail.com"];
@@ -1306,10 +1306,6 @@
           logoCont.classList.add('hidden');
         }
       }
-    }
-
-    function renderizaracionalApariencia() {
-      renderizarApariencia();
     }
 
     function renderizarCatalogo() {
@@ -2140,7 +2136,7 @@
 
         if (ajustesGeneralesConfig.autoNotifPrecios) {
           emitirNotificacionDinamica(
-            `🏷️ ¡Actualización de Precio!`,
+            `🏷️️ ¡Actualización de Precio!`,
             `${nombreProd} ahora disponible a $${nuevoPrecio.toLocaleString('es-CO')} COP con compra mínima de ${nuevoMinimo} unidades.`
           );
         }
@@ -2572,6 +2568,144 @@
       captchaGenerado = res;
       const el = document.getElementById('captchaTexto');
       if (el) el.innerText = res;
+    }
+
+    function iniciarSincronizacionTotal() {
+      actualizarProductoHotGlobal();
+      
+      db.collection('configuracion').doc('ajustes').onSnapshot(doc => {
+        if (doc.exists) aplicarAjustesGeneralesEnMemoria(doc.data() || {});
+      });
+
+      db.collection('configuracion').doc('mensajes_telegram').onSnapshot(doc => {
+        if (doc.exists) {
+          const d = doc.data();
+          if (d.venta) plantillasTelegram.venta = d.venta;
+          if (d.recarga) plantillasTelegram.recarga = d.recarga;
+          if (d.stock) plantillasTelegram.stock = d.stock;
+          if (d.difusion) plantillasTelegram.difusion = d.difusion;
+          if (d.itemStock) plantillasTelegram.itemStock = d.itemStock;
+          mensajesPersonalizadosTelegram = d.personalizados || {};
+        }
+        cargarMensajesCustomTelegramEnUI();
+      });
+
+      db.collection('configuracion').doc('novedad_global').onSnapshot(doc => {
+        if (doc.exists) novedadGlobalActual = doc.data() || {};
+        actualizarBadgeNotificaciones();
+      });
+
+      db.collection('configuracion').doc('precios').onSnapshot(doc => {
+        if (doc.exists) preciosConfig = doc.data() || {};
+        procesarYRenderizar();
+      });
+      db.collection('configuracion').doc('minimos').onSnapshot(doc => {
+        if (doc.exists) minimosConfig = doc.data() || {};
+        procesarYRenderizar();
+      });
+      db.collection('configuracion').doc('apariencia').onSnapshot(doc => {
+        if (doc.exists) aparienciaConfig = { ...aparienciaConfig, ...doc.data() };
+        renderizarApariencia();
+      });
+      db.collection('inventario').onSnapshot(snap => {
+        snapshotInventario = {};
+        snap.forEach(d => { snapshotInventario[d.id] = d.data(); });
+        procesarYRenderizar();
+      });
+      db.collection('metodos_pago').onSnapshot(snap => {
+        metodosPagoList = [];
+        snap.forEach(d => { metodosPagoList.push({ docId: d.id, ...d.data() }); });
+        renderizarMetodosPagoEnClientes();
+        cargarMetodosPagoAdmin();
+      });
+    }
+
+    function procesarYRenderizar() {
+      const mapaProds = new Map();
+
+      PRODUCTOS_BASE_CATALOGO.forEach(prodBase => {
+        const key = prodBase.id;
+        let docInventario = null;
+        for (const alias of prodBase.aliases) {
+          if (snapshotInventario[alias]) { docInventario = snapshotInventario[alias]; break; }
+        }
+        const docIdFinal = docInventario ? docInventario.id || key : key;
+        const cuentas = (docInventario && Array.isArray(docInventario.cuentas)) ? docInventario.cuentas : [];
+
+        let nombreFinal = prodBase.nombre;
+        let categoriaFinal = prodBase.categoria;
+        let descripcionFinal = prodBase.descripcion;
+
+        if (docInventario) {
+          if (docInventario.nombre) nombreFinal = docInventario.nombre;
+          if (docInventario.categoria) categoriaFinal = docInventario.categoria;
+          if (docInventario.descripcion !== undefined) descripcionFinal = docInventario.descripcion;
+        }
+
+        let precioFinal = prodBase.precioDefault;
+        if (preciosConfig[key] !== undefined) precioFinal = preciosConfig[key];
+        else if (preciosConfig[docIdFinal] !== undefined) precioFinal = preciosConfig[docIdFinal];
+        else if (docInventario && docInventario.precio !== undefined) precioFinal = docInventario.precio;
+
+        let minCompraFinal = prodBase.minCompraDefault;
+        if (minimosConfig[key] !== undefined) minCompraFinal = minimosConfig[key];
+        else if (minimosConfig[docIdFinal] !== undefined) minCompraFinal = minimosConfig[docIdFinal];
+        else if (docInventario && docInventario.minCompra !== undefined) minCompraFinal = docInventario.minCompra;
+
+        const activo = docInventario ? (docInventario.activo !== false) : true;
+
+        mapaProds.set(docIdFinal, {
+          ...prodBase,
+          docId: docIdFinal,
+          nombre: nombreFinal,
+          categoria: categoriaFinal,
+          descripcion: descripcionFinal,
+          stock: cuentas.length,
+          cuentas: cuentas,
+          precio: precioFinal,
+          minCompra: parseInt(minCompraFinal) || prodBase.minCompraDefault,
+          activo: activo
+        });
+      });
+
+      Object.keys(snapshotInventario).forEach(docId => {
+        const data = snapshotInventario[docId];
+        const yaExiste = Array.from(mapaProds.values()).some(p => p.docId === docId || (p.aliases && p.aliases.includes(docId)));
+
+        if (!yaExiste && data.nombre) {
+          const cuentas = Array.isArray(data.cuentas) ? data.cuentas : [];
+          let precioFinal = data.precio || 0;
+          if (preciosConfig[docId] !== undefined) precioFinal = preciosConfig[docId];
+
+          let minCompraFinal = data.minCompra || 1;
+          if (minimosConfig[docId] !== undefined) minCompraFinal = minimosConfig[docId];
+
+          mapaProds.set(docId, {
+            id: docId,
+            docId: docId,
+            aliases: [docId],
+            nombre: data.nombre,
+            categoria: data.categoria || 'Varios',
+            descripcion: data.descripcion || '',
+            precio: precioFinal,
+            minCompra: parseInt(minCompraFinal) || 1,
+            stock: cuentas.length,
+            cuentas: cuentas,
+            esAmazon: data.nombre.toLowerCase().includes('amazon'),
+            garantia24h: true,
+            activo: data.activo !== false
+          });
+        }
+      });
+
+      catalogoUnificado = Array.from(mapaProds.values());
+
+      renderizarFiltrosCategorias();
+      actualizarSelectCategoriasAdmin();
+      if (currentUser) renderizarCatalogo();
+      renderizarAdminProductos();
+      poblarSelectStock();
+      poblarSelectPrecios();
     }
 
     window.addEventListener('DOMContentLoaded', () => { 
