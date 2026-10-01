@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Epic Channels | Portal Oficial</title>
+  <title>Epic Channels | Portal Privado</title>
   
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
@@ -103,8 +103,30 @@
   <!-- ==================== CONTENIDO PRINCIPAL ==================== -->
   <main class="flex-grow max-w-6xl w-full mx-auto px-4 py-6">
 
-    <!-- VISTA: TIENDA PÚBLICA -->
-    <section id="vistaTienda">
+    <!-- ==================== VISTA: BLOQUEADA (SOLO REGISTRADOS) ==================== -->
+    <section id="vistaBloqueada" class="py-12 md:py-20 text-center max-w-lg mx-auto px-4">
+      <div class="p-8 bg-gray-900 border border-gray-800 rounded-3xl shadow-2xl relative overflow-hidden">
+        <div class="w-16 h-16 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 rounded-2xl flex items-center justify-center mx-auto mb-5 text-2xl shadow-lg shadow-emerald-500/10">
+          <i class="fa-solid fa-lock"></i>
+        </div>
+        <span class="text-xs font-black text-emerald-400 tracking-widest uppercase bg-emerald-500/10 px-3 py-1 rounded-full border border-emerald-500/20">Portal Privado</span>
+        <h2 class="text-2xl font-black text-white mt-4 mb-2">Acceso Exclusivo para Clientes</h2>
+        <p class="text-sm text-gray-400 mb-6 leading-relaxed">
+          Para ver nuestro catálogo oficial, disponibilidad de stock en tiempo real y precios mayoristas, debes iniciar sesión con tu cuenta registrada.
+        </p>
+        <div class="flex flex-col sm:flex-row gap-3 justify-center">
+          <button onclick="abrirModalAuth('login')" class="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-gray-800 hover:bg-gray-700 text-white font-bold text-sm transition border border-gray-700 flex items-center justify-center gap-2">
+            <i class="fa-solid fa-right-to-bracket text-emerald-400"></i> Iniciar Sesión
+          </button>
+          <button onclick="abrirModalAuth('register')" class="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-black text-sm transition shadow-lg shadow-emerald-500/20 flex items-center justify-center gap-2">
+            <i class="fa-solid fa-user-plus"></i> Crear Cuenta
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== VISTA: TIENDA PÚBLICA (SOLO USUARIOS AUTENTICADOS) ==================== -->
+    <section id="vistaTienda" class="hidden">
       <div class="mb-6 p-5 rounded-2xl bg-gradient-to-r from-gray-900 via-gray-800 to-gray-900 border border-gray-800 flex flex-col md:flex-row items-center justify-between gap-4">
         <div>
           <h1 class="text-2xl font-black text-white flex items-center gap-2">
@@ -133,7 +155,7 @@
       </div>
     </section>
 
-    <!-- VISTA: MIS CUENTAS -->
+    <!-- ==================== VISTA: MIS CUENTAS ==================== -->
     <section id="vistaMisCuentas" class="hidden">
       <div class="flex items-center justify-between mb-6">
         <div>
@@ -152,7 +174,7 @@
       </div>
     </section>
 
-    <!-- VISTA: PANEL DE ADMINISTRACIÓN -->
+    <!-- ==================== VISTA: PANEL DE ADMINISTRACIÓN ==================== -->
     <section id="vistaAdmin" class="hidden">
       <div class="flex items-center justify-between mb-6 pb-4 border-b border-gray-800">
         <div>
@@ -575,12 +597,15 @@
       });
     }
 
-    // 4. ESCUCHADOR DE SESIÓN
+    // 4. ESCUCHADOR DE SESIÓN Y PROTECCIÓN DE PORTAL PRIVADO
     auth.onAuthStateChanged(async (user) => {
       currentUser = user;
       if (user) {
         document.getElementById('navGuest').classList.add('hidden');
         document.getElementById('navUser').classList.remove('hidden');
+
+        // DESBLOQUEAR TIENDA PARA USUARIOS REGISTRADOS
+        document.getElementById('vistaBloqueada').classList.add('hidden');
 
         const userEmail = (user.email || '').trim().toLowerCase();
         const esAdmin = ADMIN_EMAILS.some(e => e.trim().toLowerCase() === userEmail);
@@ -601,16 +626,32 @@
           document.getElementById('txtSaldoHeader').innerText = `$${userSaldo.toLocaleString('es-CO')} COP`;
         });
 
+        cambiarVista('tienda');
       } else {
         document.getElementById('navGuest').classList.remove('hidden');
         document.getElementById('navUser').classList.add('hidden');
         document.getElementById('btnAdminTab').classList.add('hidden');
-        cambiarVista('tienda');
+        
+        // BLOQUEAR CATALOGO A VISITANTES
+        bloquearAccesoVisitante();
       }
     });
 
+    function bloquearAccesoVisitante() {
+      document.getElementById('vistaTienda').classList.add('hidden');
+      document.getElementById('vistaMisCuentas').classList.add('hidden');
+      document.getElementById('vistaAdmin').classList.add('hidden');
+      document.getElementById('vistaBloqueada').classList.remove('hidden');
+    }
+
     // 5. NAVEGACIÓN GENERAL
     function cambiarVista(vista) {
+      if (!currentUser) {
+        bloquearAccesoVisitante();
+        return;
+      }
+
+      document.getElementById('vistaBloqueada').classList.add('hidden');
       document.getElementById('vistaTienda').classList.add('hidden');
       document.getElementById('vistaMisCuentas').classList.add('hidden');
       document.getElementById('vistaAdmin').classList.add('hidden');
@@ -677,7 +718,6 @@
       catalogoUnificado = PRODUCTOS_CATALOGO.map(prodBase => {
         const key = prodBase.id;
         
-        // Buscar el documento en inventario
         let docInventario = null;
         for (const alias of prodBase.aliases) {
           if (snapshotInventario[alias]) {
@@ -689,10 +729,7 @@
         const docIdFinal = docInventario ? docInventario.id || key : key;
         const cuentas = (docInventario && Array.isArray(docInventario.cuentas)) ? docInventario.cuentas : [];
 
-        // JERARQUÍA ESTRICTA DE PRECIO:
-        // 1. Lo que el admin fijó en `configuracion/precios`
-        // 2. Lo que el admin fijó en `inventario[docId].precio`
-        // 3. El precio por defecto real ($3.200 para prime_local, $2.800 para primevideo, etc.)
+        // JERARQUÍA ESTRICTA DE PRECIO FIJADO POR ADMIN:
         let precioFinal = prodBase.precioDefault;
         if (preciosConfig[key] !== undefined) {
           precioFinal = preciosConfig[key];
@@ -714,7 +751,9 @@
         };
       });
 
-      renderizarCatalogo();
+      if (currentUser) {
+        renderizarCatalogo();
+      }
       renderizarAdminProductos();
       poblarSelectStock();
       poblarSelectPrecios();
@@ -1095,7 +1134,6 @@
       }
 
       try {
-        // Guarda en configuracion/precios e inventario directamente
         await db.collection('configuracion').doc('precios').set({ [docId]: nuevoPrecio }, { merge: true });
         await db.collection('inventario').doc(docId).set({ precio: nuevoPrecio }, { merge: true });
         alert("Precio actualizado exitosamente.");
