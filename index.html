@@ -749,7 +749,6 @@
     const ADMIN_EMAILS = ["alex88ruizc@gmail.com"];
     const EMAILS_EXCLUIDOS_REPORTE = ["alex88ruizc@gmail.com", "alex88ruiz@gmail.com"];
 
-    // PRODUCTOS QUE POR DEFECTO SON PRIVADOS / VIP (Requieren activación manual por cliente)
     const PRODUCTOS_VIP_EXCLUSIVOS = ["amazon28"];
 
     let productoHotId = null; 
@@ -770,7 +769,6 @@
     const auth = firebase.auth();
     const db = firebase.firestore();
 
-    // Token protegido contra escaneo de GitHub
     const TELEGRAM_BOT_TOKEN = "8974701831:AAE" + "Fibgx1DM2rO8NlxsEW9I27F88rV-VjnQ";
     const TELEGRAM_CHAT_ID = "390457801";
 
@@ -898,7 +896,6 @@
       intervaloHeartbeat = setInterval(actualizarLatido, 45000);
     }
 
-    // MONITOREO DE ACTIVIDAD: EXCLUYE ADMIN Y MUESTRA QUIÉNES ESTÁN EN LÍNEA
     function escucharUsuariosEnLinea() {
       db.collection('usuarios').onSnapshot(snap => {
         const ahora = new Date().getTime();
@@ -909,7 +906,6 @@
           const u = doc.data();
           const email = (u.email || '').trim().toLowerCase();
 
-          // Excluirte a ti (administrador) del monitoreo
           if (ADMIN_EMAILS.some(adm => adm.trim().toLowerCase() === email)) return;
 
           if (u.ultima_conexion) {
@@ -940,10 +936,19 @@
       });
     }
 
-    // MONITOR EN VIVO Y AUTOMÁTICO DE RECAUDACIÓN DE HOY (SUPERIOR IZQUIERDA: MONTO + CUENTAS)
+    // OBTENER FECHA LOCAL DE COLOMBIA (YYYY-MM-DD)
+    function obtenerFechaLocalStr(fechaObj) {
+      const d = fechaObj || new Date();
+      const año = d.getFullYear();
+      const mes = String(d.getMonth() + 1).padStart(2, '0');
+      const dia = String(d.getDate()).padStart(2, '0');
+      return `${año}-${mes}-${dia}`;
+    }
+
+    // MONITOR EN VIVO ROBUSTO: TOTAL RECAUDADO HOY + CUENTAS
     function escucharTotalRecaudadoHoyEnVivo() {
       db.collection('compras').onSnapshot(snap => {
-        const hoyStr = new Date().toISOString().slice(0, 10);
+        const hoyStr = obtenerFechaLocalStr();
         let acumuladoHoy = 0;
         let cuentasHoy = 0;
 
@@ -952,7 +957,9 @@
           const email = (c.usuarioEmail || '').trim().toLowerCase();
 
           if (!email || email === 'sin correo' || EMAILS_EXCLUIDOS_REPORTE.includes(email)) return;
-          if (!esProductoCatalogoValido(c.productoNombre) && !esProductoCatalogoValido(c.productoId)) return;
+
+          const pNom = (c.productoNombre || '').trim().toLowerCase();
+          if (pNom.includes('test') || pNom.includes('desconocido') || pNom.includes('prueba sistema')) return;
 
           let fechaCompra = new Date();
           if (c.fecha) {
@@ -960,7 +967,7 @@
             if (!isNaN(parsed.getTime())) fechaCompra = parsed;
           }
 
-          if (fechaCompra.toISOString().slice(0, 10) === hoyStr) {
+          if (obtenerFechaLocalStr(fechaCompra) === hoyStr) {
             acumuladoHoy += (parseFloat(c.total) || 0);
             cuentasHoy += (parseInt(c.cantidad) || 0);
           }
@@ -1031,12 +1038,7 @@
       if (!nombreOId) return false;
       const s = String(nombreOId).trim().toLowerCase();
       if (s === "producto desconocido" || s === "prueba" || s === "test") return false;
-      return catalogoUnificado.some(p => 
-        (p.id && p.id.toLowerCase() === s) ||
-        (p.docId && p.docId.toLowerCase() === s) ||
-        (p.nombre && p.nombre.toLowerCase() === s) ||
-        (p.aliases && p.aliases.some(a => a.toLowerCase() === s))
-      );
+      return true;
     }
 
     async function actualizarProductoHotGlobal() {
@@ -1079,7 +1081,7 @@
       if (tipo === 'dia') {
         inpDia.classList.remove('hidden');
         if (!inpDia.value) {
-          inpDia.value = new Date().toISOString().slice(0, 10);
+          inpDia.value = obtenerFechaLocalStr();
         }
       } else if (tipo === 'mes') {
         inpMes.classList.remove('hidden');
@@ -1107,7 +1109,7 @@
         const desglosePorProd = {};
         const historialCompras = [];
 
-        const hoyStr = new Date().toISOString().slice(0, 10);
+        const hoyStr = obtenerFechaLocalStr();
         let filtroValor = '';
         if (tipo === 'dia') {
           filtroValor = document.getElementById('inputDiaReporte').value || hoyStr;
@@ -1131,15 +1133,15 @@
               fechaCompra = parsed;
             }
           }
-          const fechaIso = fechaCompra.toISOString();
+          const fechaIsoStr = obtenerFechaLocalStr(fechaCompra);
 
           let coincide = false;
           if (tipo === 'hoy') {
-            coincide = (fechaIso.slice(0, 10) === hoyStr);
+            coincide = (fechaIsoStr === hoyStr);
           } else if (tipo === 'dia') {
-            coincide = (fechaIso.slice(0, 10) === filtroValor);
+            coincide = (fechaIsoStr === filtroValor);
           } else if (tipo === 'mes') {
-            coincide = (fechaIso.slice(0, 7) === filtroValor);
+            coincide = (fechaIsoStr.slice(0, 7) === filtroValor);
           }
 
           if (coincide) {
@@ -1247,7 +1249,7 @@
 
     let currentUser = null;
     let userSaldo = 0;
-    let userProductosPermitidos = []; // Productos VIP permitidos al usuario actual
+    let userProductosPermitidos = [];
     let modoAuth = 'login';
     let captchaGenerado = '';
     let categoriaActiva = 'todas';
@@ -1593,21 +1595,18 @@
       contenedor.innerHTML = html;
     }
 
-    // Comprueba si el usuario autenticado tiene permiso de ver este producto
     function usuarioTienePermisoProducto(prod) {
       if (!currentUser) return false;
       const userEmail = (currentUser.email || '').trim().toLowerCase();
       const esAdmin = ADMIN_EMAILS.some(e => e.trim().toLowerCase() === userEmail);
-      if (esAdmin) return true; // Administrador siempre ve todo
+      if (esAdmin) return true;
 
-      // Verificar si es un producto VIP restringido
       const esVip = PRODUCTOS_VIP_EXCLUSIVOS.some(vipKey => vipKey === prod.id || vipKey === prod.docId || (prod.aliases && prod.aliases.includes(vipKey)));
       
       if (!esVip) {
-        return true; // Cualquier producto normal o nueva categoría es público para todos
+        return true;
       }
 
-      // Si es VIP (ej: amazon28), validar si el cliente lo tiene activado en su perfil
       return userProductosPermitidos.includes(prod.id) || userProductosPermitidos.includes(prod.docId);
     }
 
@@ -1618,7 +1617,7 @@
 
       const filtrados = catalogoUnificado.filter(p => {
         if (p.activo === false) return false;
-        if (!usuarioTienePermisoProducto(p)) return false; // Filtro de permisos por cliente
+        if (!usuarioTienePermisoProducto(p)) return false;
         if (categoriaActiva === 'todas') return true;
         return p.categoria === categoriaActiva;
       });
@@ -1951,7 +1950,6 @@
       });
     }
 
-    // MODAL DE PERMISOS DE PRODUCTOS POR CLIENTE
     function abrirModalPermisosCliente(uid, email, productosPermitidosActuales) {
       clientePermisosUidActual = uid;
       document.getElementById('txtPermisosClienteEmail').innerText = email;
