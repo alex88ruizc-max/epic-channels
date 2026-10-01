@@ -1087,7 +1087,7 @@
     <p>© 2026 Epic Channels. Todos los derechos reservados.</p>
   </footer>
 
-  <!-- ==================== LÓGICA JAVASCRIPT GLOBAL BLINDADA E ÍNTEGRA ==================== -->
+  <!-- ==================== LÓGICA JAVASCRIPT GLOBAL COMPLETA E ÍNTEGRA ==================== -->
   <script>
     let ADMIN_EMAILS = ["alex88ruizc@gmail.com"];
     let EMAILS_EXCLUIDOS_REPORTE = ["alex88ruizc@gmail.com", "alex88ruiz@gmail.com"];
@@ -1286,6 +1286,90 @@
       });
     }
 
+    function cargarUsuariosAdmin() {
+      const tbody = document.getElementById('tablaAdminUsuarios');
+      if (!tbody) return;
+      db.collection('usuarios').onSnapshot(snap => {
+        tbody.innerHTML = '';
+        if (snap.empty) { tbody.innerHTML = '<tr><td colspan="8" class="text-center py-4 text-gray-500">No hay usuarios.</td></tr>'; return; }
+        
+        const ahora = new Date().getTime();
+
+        snap.forEach(doc => {
+          const u = doc.data();
+          const uid = doc.id;
+          const permitidos = u.productos_permitidos || [];
+          const bloqueados = u.productos_bloqueados || [];
+          const stockPermitidos = u.permisos_subir_stock || [];
+          const nombreCliente = u.nombre ? `<span class="font-bold text-white block">${u.nombre}</span><span class="text-[11px] text-gray-400 font-mono">${u.email || ''}</span>` : `<span class="font-bold text-white block">${u.email || ''}</span>`;
+
+          let fechaRegStr = 'N/A';
+          if (u.fechaRegistro) {
+            const dReg = new Date(u.fechaRegistro);
+            if (!isNaN(dReg.getTime())) {
+              fechaRegStr = dReg.toLocaleDateString('es-CO', { day: '2-digit', month: '2-digit', year: 'numeric' });
+            }
+          }
+
+          let ultimoAccesoStr = 'Nunca';
+          let badgeEstado = '<span class="w-2 h-2 rounded-full bg-gray-500 inline-block mr-1"></span><span class="text-gray-400">Inactivo</span>';
+          if (u.ultima_conexion) {
+            const dAcc = new Date(u.ultima_conexion);
+            if (!isNaN(dAcc.getTime())) {
+              const diffMin = (ahora - dAcc.getTime()) / 60000;
+              if (diffMin < 3) {
+                badgeEstado = '<span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse inline-block mr-1"></span><span class="text-emerald-400 font-bold">En línea</span>';
+                ultimoAccesoStr = 'Hace un momento';
+              } else {
+                ultimoAccesoStr = dAcc.toLocaleString('es-CO', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+              }
+            }
+          }
+
+          tbody.innerHTML += `
+            <tr class="hover:bg-gray-800/40 border-b border-gray-800">
+              <td class="px-4 py-3">
+                ${nombreCliente}
+                <button onclick="abrirModalEditarCliente('${uid}', '${u.email || ''}', '${u.nombre || ''}')" class="mt-1 text-[10px] bg-gray-800 hover:bg-gray-700 text-emerald-400 px-2 py-0.5 rounded cursor-pointer"><i class="fa-solid fa-pen mr-1"></i> Editar perfil</button>
+              </td>
+              <td class="px-4 py-3 text-xs text-gray-400">${u.whatsapp || 'Sin WhatsApp'}</td>
+              <td class="px-4 py-3">
+                <div class="flex items-center gap-2">
+                  <span class="font-bold text-emerald-400">$${(u.saldo || 0).toLocaleString('es-CO')}</span>
+                  <div class="flex items-center gap-1">
+                    <input type="number" id="inputSaldo_${uid}" placeholder="$ Monto" class="w-20 bg-gray-800 border border-gray-700 rounded px-1.5 py-1 text-xs text-white">
+                    <button onclick="adminCargarSaldo('${uid}')" class="px-2 py-1 bg-emerald-500 hover:bg-emerald-400 text-black font-bold rounded text-xs cursor-pointer" title="Sumar Saldo">+</button>
+                  </div>
+                </div>
+              </td>
+              <td class="px-4 py-3 text-center">
+                <button onclick="abrirModalPermisosCliente('${uid}', '${u.email || ''}', ${JSON.stringify(permitidos).replace(/"/g, '&quot;')}, ${JSON.stringify(bloqueados).replace(/"/g, '&quot;')})" class="px-2.5 py-1 rounded-lg text-xs font-bold bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 border border-blue-500/40 transition cursor-pointer">
+                  <i class="fa-solid fa-list-check mr-1"></i> Catálogo
+                </button>
+              </td>
+              <td class="px-4 py-3 text-center">
+                <button onclick="abrirModalPermisosStockCliente('${uid}', '${u.email || ''}', ${JSON.stringify(stockPermitidos).replace(/"/g, '&quot;')})" class="px-2.5 py-1 rounded-lg text-xs font-bold ${stockPermitidos.length > 0 ? 'bg-purple-500/20 text-purple-300 border border-purple-500/40' : 'bg-gray-800 text-gray-400 border border-gray-700'} transition cursor-pointer">
+                  <i class="fa-solid fa-boxes-packing mr-1"></i> Stock (${stockPermitidos.length})
+                </button>
+              </td>
+              <td class="px-4 py-3 text-center text-xs text-gray-300 whitespace-nowrap">${fechaRegStr}</td>
+              <td class="px-4 py-3 text-center text-xs whitespace-nowrap">
+                <div class="flex flex-col items-center">
+                  <div>${badgeEstado}</div>
+                  <span class="text-[10px] text-gray-500 mt-0.5">${ultimoAccesoStr}</span>
+                </div>
+              </td>
+              <td class="px-4 py-3 text-right">
+                <button onclick="eliminarCliente('${uid}', '${u.email || ''}')" class="px-2.5 py-1 bg-red-500/20 hover:bg-red-500/40 text-red-400 rounded text-xs transition cursor-pointer" title="Eliminar cliente">
+                  <i class="fa-solid fa-trash-can"></i> Eliminar
+                </button>
+              </td>
+            </tr>
+          `;
+        });
+      });
+    }
+
     function renderizarApariencia() {
       const tituloEl = document.getElementById('txtCatTitulo');
       const subEl = document.getElementById('txtCatSubtitulo');
@@ -1306,6 +1390,10 @@
           logoCont.classList.add('hidden');
         }
       }
+    }
+
+    function renderizaracionalApariencia() {
+      renderizarApariencia();
     }
 
     function renderizarCatalogo() {
@@ -1612,88 +1700,6 @@
       intervaloHeartbeat = setInterval(actualizarLatido, 45000);
     }
 
-    function escucharUsuariosEnLinea() {
-      db.collection('usuarios').onSnapshot(snap => {
-        const ahora = new Date().getTime();
-        let enLineaCount = 0;
-        const listaClientesConectados = [];
-
-        snap.forEach(doc => {
-          const u = doc.data();
-          const email = (u.email || '').trim().toLowerCase();
-
-          if (ADMIN_EMAILS.some(adm => adm.trim().toLowerCase() === email)) return;
-
-          if (u.ultima_conexion) {
-            const ultimaVez = new Date(u.ultima_conexion).getTime();
-            if ((ahora - ultimaVez) < 180000) {
-              enLineaCount++;
-              listaClientesConectados.push(u.nombre || u.email || u.whatsapp || 'Cliente anónimo');
-            }
-          }
-        });
-
-        const contadorEl = document.getElementById('contadorEnLinea');
-        if (contadorEl) contadorEl.innerText = enLineaCount;
-
-        const contenedorLista = document.getElementById('listaUsuariosEnLinea');
-        if (contenedorLista) {
-          if (listaClientesConectados.length === 0) {
-            contenedorLista.innerHTML = '<span class="text-xs text-gray-500 italic">Sin clientes activos en este momento.</span>';
-          } else {
-            contenedorLista.innerHTML = listaClientesConectados.map(nombreCli => `
-              <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-xs font-semibold">
-                <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-                ${nombreCli}
-              </span>
-            `).join('');
-          }
-        }
-      });
-    }
-
-    function obtenerFechaLocalStr(fechaObj) {
-      const d = fechaObj || new Date();
-      const año = d.getFullYear();
-      const mes = String(d.getMonth() + 1).padStart(2, '0');
-      const dia = String(d.getDate()).padStart(2, '0');
-      return `${año}-${mes}-${dia}`;
-    }
-
-    function escucharTotalRecaudadoHoyEnVivo() {
-      db.collection('compras').onSnapshot(snap => {
-        const hoyStr = obtenerFechaLocalStr();
-        let acumuladoHoy = 0;
-        let cuentasHoy = 0;
-
-        snap.forEach(doc => {
-          const c = doc.data();
-          const email = (c.usuarioEmail || '').trim().toLowerCase();
-
-          if (!email || email === 'sin correo' || EMAILS_EXCLUIDOS_REPORTE.includes(email)) return;
-
-          const pNom = (c.productoNombre || '').trim().toLowerCase();
-          if (pNom.includes('test') || pNom.includes('desconocido') || pNom.includes('prueba sistema')) return;
-
-          let fechaCompra = new Date();
-          if (c.fecha) {
-            const parsed = new Date(c.fecha);
-            if (!isNaN(parsed.getTime())) fechaCompra = parsed;
-          }
-
-          if (obtenerFechaLocalStr(fechaCompra) === hoyStr) {
-            acumuladoHoy += (parseFloat(c.total) || 0);
-            cuentasHoy += (parseInt(c.cantidad) || 0);
-          }
-        });
-
-        const badgeEl = document.getElementById('txtAdminRecaudadoHoyEnVivo');
-        if (badgeEl) {
-          badgeEl.innerHTML = `$${acumuladoHoy.toLocaleString('es-CO')} COP <span class="text-xs text-gray-400 font-semibold">(${cuentasHoy} cuentas)</span>`;
-        }
-      });
-    }
-
     function abrirModalPassword() {
       const modal = document.getElementById('modalPassword');
       modal.classList.remove('hidden');
@@ -1781,195 +1787,6 @@
         productoHotId = topId;
       } catch (e) {
         console.error("Error al calcular producto HOT:", e);
-      }
-    }
-
-    function alternarSelectorMes() {
-      const tipo = document.getElementById('selPeriodoReporte').value;
-      const inpDia = document.getElementById('inputDiaReporte');
-      const inpMes = document.getElementById('inputMesReporte');
-      
-      inpDia.classList.add('hidden');
-      inpMes.classList.add('hidden');
-
-      if (tipo === 'dia') {
-        inpDia.classList.remove('hidden');
-        if (!inpDia.value) inpDia.value = obtenerFechaLocalStr();
-      } else if (tipo === 'mes') {
-        inpMes.classList.remove('hidden');
-        if (!inpMes.value) {
-          const ahora = new Date();
-          inpMes.value = `${ahora.getFullYear()}-${String(ahora.getMonth() + 1).padStart(2, '0')}`;
-        }
-      }
-    }
-
-    async function consultarReporteFinanciero() {
-      const tipo = document.getElementById('selPeriodoReporte').value;
-      const contenedorRes = document.getElementById('contenedorResultadoReporte');
-      const avisoInicial = document.getElementById('avisoReporteSinCargar');
-
-      try {
-        avisoInicial.innerHTML = `<i class="fa-solid fa-spinner fa-spin text-emerald-400 mr-2"></i> Calculando métricas de ventas reales...`;
-        avisoInicial.classList.remove('hidden');
-        contenedorRes.classList.add('hidden');
-
-        const snap = await db.collection('compras').get();
-        let totalDinero = 0;
-        let totalCuentas = 0;
-        let totalOrdenes = 0;
-        const desglosePorProd = {};
-        const historialCompras = [];
-
-        const hoyStr = obtenerFechaLocalStr();
-        let filtroValor = '';
-        if (tipo === 'dia') {
-          filtroValor = document.getElementById('inputDiaReporte').value || hoyStr;
-        } else if (tipo === 'mes') {
-          filtroValor = document.getElementById('inputMesReporte').value || hoyStr.slice(0, 7);
-        }
-
-        snap.forEach(doc => {
-          const c = doc.data();
-          const emailCliente = (c.usuarioEmail || '').trim().toLowerCase();
-
-          if (!emailCliente || emailCliente === 'sin correo' || EMAILS_EXCLUIDOS_REPORTE.includes(emailCliente)) return;
-
-          const prodNombre = c.productoNombre || '';
-          if (!esProductoCatalogoValido(prodNombre) && !esProductoCatalogoValido(c.productoId)) return;
-
-          let fechaCompra = new Date();
-          if (c.fecha) {
-            const parsed = new Date(c.fecha);
-            if (!isNaN(parsed.getTime())) fechaCompra = parsed;
-          }
-          const fechaIsoStr = obtenerFechaLocalStr(fechaCompra);
-
-          let coincide = false;
-          if (tipo === 'hoy') coincide = (fechaIsoStr === hoyStr);
-          else if (tipo === 'dia') coincide = (fechaIsoStr === filtroValor);
-          else if (tipo === 'mes') coincide = (fechaIsoStr.slice(0, 7) === filtroValor);
-
-          if (coincide) {
-            const monto = parseFloat(c.total) || 0;
-            const cant = parseInt(c.cantidad) || 0;
-
-            totalDinero += monto;
-            totalCuentas += cant;
-            totalOrdenes += 1;
-
-            if (!desglosePorProd[prodNombre]) desglosePorProd[prodNombre] = { cantidad: 0, total: 0 };
-            desglosePorProd[prodNombre].cantidad += cant;
-            desglosePorProd[prodNombre].total += monto;
-
-            historialCompras.push({
-              fecha: fechaCompra.toLocaleString('es-CO'),
-              email: c.usuarioEmail,
-              producto: prodNombre,
-              cantidad: cant,
-              total: monto
-            });
-          }
-        });
-
-        document.getElementById('repTotalRecaudado').innerText = `$${totalDinero.toLocaleString('es-CO')} COP`;
-        document.getElementById('repTotalCuentas').innerText = `${totalCuentas} unidades`;
-        document.getElementById('repTotalOrdenes').innerText = `${totalOrdenes} órdenes`;
-        
-        let subText = `Hoy: ${hoyStr}`;
-        if (tipo === 'dia') subText = `Día: ${filtroValor}`;
-        if (tipo === 'mes') subText = `Mes: ${filtroValor}`;
-        document.getElementById('repSubtituloPeriodo').innerText = subText;
-
-        const productosOrdenados = Object.keys(desglosePorProd).sort((a, b) => desglosePorProd[b].cantidad - desglosePorProd[a].cantidad);
-        const contenedorLista = document.getElementById('listaDesgloseProductos');
-        contenedorLista.innerHTML = '';
-
-        if (productosOrdenados.length === 0) {
-          contenedorLista.innerHTML = `<p class="text-gray-500 py-3">No hay ventas registradas de clientes en este período.</p>`;
-        } else {
-          productosOrdenados.forEach((prod, index) => {
-            const data = desglosePorProd[prod];
-            let medalla = (index === 0) ? '🥇' : ((index === 1) ? '🥈' : ((index === 2) ? '🥉' : `#${index + 1}`));
-            const insigniaHtml = index === 0 ? `<span class="ml-2 bg-red-500/20 text-red-400 border border-red-500/40 text-[9px] px-2 py-0.5 rounded-full font-black animate-pulse"><i class="fa-solid fa-fire mr-1"></i> 🔥 Producto Insignia (HOT)</span>` : '';
-
-            contenedorLista.innerHTML += `
-              <div class="flex items-center justify-between p-3 bg-gray-900/80 rounded-xl border border-gray-800">
-                <div class="flex items-center gap-2.5">
-                  <span class="text-base font-black text-gray-400">${medalla}</span>
-                  <div>
-                    <span class="font-bold text-white text-sm">${prod}</span>
-                    ${insigniaHtml}
-                  </div>
-                </div>
-                <div class="text-right">
-                  <span class="text-emerald-400 font-black text-sm block">$${data.total.toLocaleString('es-CO')} COP</span>
-                  <span class="text-[11px] text-gray-400">${data.cantidad} unidades vendidas</span>
-                </div>
-              </div>
-            `;
-          });
-        }
-
-        const tablaCompradores = document.getElementById('tablaHistorialCompradores');
-        tablaCompradores.innerHTML = '';
-        if (historialCompras.length === 0) {
-          tablaCompradores.innerHTML = `<tr><td colspan="5" class="text-center py-4 text-gray-500">Sin compradores en este período.</td></tr>`;
-        } else {
-          historialCompras.forEach(h => {
-            tablaCompradores.innerHTML += `
-              <tr class="hover:bg-gray-800/40">
-                <td class="px-3 py-2 text-gray-400">${h.fecha}</td>
-                <td class="px-3 py-2 font-semibold text-emerald-300">${h.email}</td>
-                <td class="px-3 py-2 text-white">${h.producto}</td>
-                <td class="px-3 py-2 text-center text-gray-300">${h.cantidad}</td>
-                <td class="px-3 py-2 text-right font-bold text-emerald-400">$${h.total.toLocaleString('es-CO')} COP</td>
-              </tr>
-            `;
-          });
-        }
-
-        avisoInicial.classList.add('hidden');
-        contenedorRes.classList.remove('hidden');
-      } catch (err) {
-        alert("Error al cargar reporte: " + err.message);
-        avisoInicial.innerText = "Error al consultar reporte.";
-      }
-    }
-
-    async function cargarHistorialVentasAdmin() {
-      const tbody = document.getElementById('tablaAdminHistorialVentas');
-      if (!tbody) return;
-
-      try {
-        const snap = await db.collection('compras').orderBy('fecha', 'desc').get();
-        tbody.innerHTML = '';
-
-        if (snap.empty) {
-          tbody.innerHTML = '<tr><td colspan="5" class="px-4 py-8 text-center text-gray-500 text-xs">No hay ventas registradas todavía.</td></tr>';
-          return;
-        }
-
-        snap.forEach(doc => {
-          const c = doc.data();
-          let fechaFormateada = 'N/A';
-          if (c.fecha) {
-            const d = new Date(c.fecha);
-            if (!isNaN(d.getTime())) fechaFormateada = d.toLocaleString('es-CO');
-          }
-
-          tbody.innerHTML += `
-            <tr class="hover:bg-gray-800/40 text-xs">
-              <td class="px-4 py-3 text-gray-400 whitespace-nowrap">${fechaFormateada}</td>
-              <td class="px-4 py-3 font-semibold text-emerald-300">${c.usuarioEmail || 'Sin correo'}</td>
-              <td class="px-4 py-3 text-white font-medium">${c.productoNombre || 'Producto'}</td>
-              <td class="px-4 py-3 font-mono text-emerald-300 whitespace-pre-line">${c.credenciales || 'N/A'}</td>
-              <td class="px-4 py-3 text-right font-bold text-emerald-400 whitespace-nowrap">$${(c.total || 0).toLocaleString('es-CO')} COP</td>
-            </tr>
-          `;
-        });
-      } catch (e) {
-        tbody.innerHTML = `<tr><td colspan="5" class="px-4 py-8 text-center text-red-400 text-xs">Error al cargar historial: ${e.message}</td></tr>`;
       }
     }
 
@@ -2136,7 +1953,7 @@
 
         if (ajustesGeneralesConfig.autoNotifPrecios) {
           emitirNotificacionDinamica(
-            `🏷️️ ¡Actualización de Precio!`,
+            `🏷 ¡Actualización de Precio!`,
             `${nombreProd} ahora disponible a $${nuevoPrecio.toLocaleString('es-CO')} COP con compra mínima de ${nuevoMinimo} unidades.`
           );
         }
