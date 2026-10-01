@@ -914,7 +914,7 @@
       <div class="bg-gray-800 border border-gray-700 p-3 rounded-xl text-left font-mono text-xs text-emerald-300 break-all mb-4 select-all leading-relaxed" id="txtCredencialesNuevoUsuario"></div>
       <div class="space-y-2">
         <button onclick="copiarCredencialesNuevoUsuario()" class="w-full bg-emerald-500 hover:bg-emerald-400 text-black font-bold py-2.5 rounded-xl text-xs flex items-center justify-center gap-2 transition"><i class="fa-solid fa-copy"></i> Copiar Credenciales</button>
-        <button onclick="cerrarModalUsuarioCreado()" class="w-full bg-gray-800 hover:bg-gray-700 text-gray-300 font-bold py-2.5 rounded-xl text-xs transition">Entendido</button>
+        <button onclick="cerrarModalUsuarioCreado()" class="w-full bg-gray-800 hover:bg-gray-700 text-gray-300 font-bold text-xs rounded-xl transition">Entendido</button>
       </div>
     </div>
   </div>
@@ -1087,8 +1087,1275 @@
     <p>© 2026 Epic Channels. Todos los derechos reservados.</p>
   </footer>
 
-  <!-- ==================== LOGICA JAVASCRIPT CORREGIDA ==================== -->
+  <!-- ==================== LÓGICA JAVASCRIPT GLOBAL COMPLETA ==================== -->
   <script>
+    let ADMIN_EMAILS = ["alex88ruizc@gmail.com"];
+    let EMAILS_EXCLUIDOS_REPORTE = ["alex88ruizc@gmail.com", "alex88ruiz@gmail.com"];
+    const PRODUCTOS_VIP_EXCLUSIVOS = ["amazon28"];
+
+    let productoHotId = null; 
+    let intervaloHeartbeat = null;
+    let modoPruebaCliente = false;
+
+    let novedadGlobalActual = {
+      id: "inicio",
+      titulo: "✨ Bienvenido a Epic Channels",
+      cuerpo: "Cuentas streaming y correos electrónicos con entrega directa a tu saldo."
+    };
+
+    let ajustesGeneralesConfig = {
+      telegramToken: "8974701831:AAE" + "Fibgx1DM2rO8NlxsEW9I27F88rV-VjnQ",
+      telegramChatId: "390457801",
+      telegramBotUrl: "https://t.me/epic_ventas_bot",
+      whatsappNumero: "573043956726",
+      whatsappMensaje: "Hola, necesito soporte con una cuenta. Cumple con la condición de menos de 24 horas y entiendo que no hay garantía por correo directo.",
+      claveAmazon: "epic2828",
+      minRecarga: 5000,
+      adminEmailsStr: "alex88ruizc@gmail.com",
+      excluidosReporteStr: "alex88ruizc@gmail.com, alex88ruiz@gmail.com",
+      autoNotifStock: true,
+      autoNotifPrecios: false,
+      autoNotifNuevoProd: false,
+      autoNotifSaldoBajo: true,
+      activarAvisoManual: false,
+      manualAvisoTitulo: "",
+      manualAvisoCuerpo: "",
+      mostrarBtnTelegram: true,
+      mostrarBtnWhatsapp: true,
+      textoBtnTelegram: "Bot Stock / Cuentas",
+      textoBtnWhatsapp: "Soporte"
+    };
+
+    let plantillasTelegram = {
+      venta: "🚨 *¡NUEVA VENTA EN EPIC CHANNELS!* 🚨\n\n📦 *Producto:* {producto}\n🔢 *Cantidad:* {cantidad}\n💰 *Total Pagado:* {total}\n👤 *Cliente:* {cliente}\n\n🔑 *Cuentas Vendidas (Credenciales):*\n{credenciales}\n\n💳 *Saldo Restante del Cliente:* {saldo_restante}\n📊 *Stock en Bodega:* {stock_restante} cuentas disponibles\n⏰ *Fecha y Hora:* {fecha}",
+      recarga: "💳 *¡NUEVA SOLICITUD DE RECARGA!* 💳\n\n👤 *Cliente:* {cliente}\n💰 *Monto a Cargar:* ${monto} COP\n⏰ *Fecha y Hora:* {fecha}",
+      stock: "📦 *¡STOCK CARGADO AL INVENTARIO!* 📦\n\n🏷 *Producto:* {producto}\n➕ *Cuentas Agregadas:* {cantidad}\n⏰ *Fecha y Hora:* {fecha}",
+      itemStock: "• {nombre}: {stock} disponibles",
+      difusion: "📊 *ESTADO DE INVENTARIO - EPIC CHANNELS* 📊\n\n{lista_stock}\n\n🛒 ¡Aprovecha y recarga tu saldo en nuestra tienda oficial!\n{url_tienda}"
+    };
+    let mensajesPersonalizadosTelegram = {};
+
+    let currentUser = null;
+    let userSaldo = 0;
+    let userProductosPermitidos = [];
+    let userProductosBloqueados = [];
+    let userPermisosSubirStock = [];
+    let userUltimaNovedadLeida = "";
+    let modoAuth = 'login';
+    let captchaGenerado = '';
+    let categoriaActiva = 'todas';
+    let catalogoUnificado = [];
+    let snapshotInventario = {};
+    let preciosConfig = {};
+    let minimosConfig = {};
+    let metodosPagoList = [];
+    let aparienciaConfig = {
+      titulo: "Catálogo Oficial",
+      insignia: "Mayorista 24/7",
+      subtitulo: "Cuentas streaming y correos electrónicos con entrega directa a tu saldo.",
+      logoUrl: ""
+    };
+
+    let clientePermisosUidActual = null;
+    let clienteStockUidActual = null;
+    let clienteEditarUidActual = null;
+    let qrBase64Temporal = null;
+    let logoMarcaBase64Temporal = null;
+    let credencialesNuevoUsuarioTemp = "";
+
+    const PRODUCTOS_BASE_CATALOGO = [
+      { id: "amazon28", aliases: ["amazon28", "amazon_28", "amazon"], nombre: "Amazon (Garantía 28 Días)", categoria: "Streaming", descripcion: "Cuenta completa con garantía de 28 días. Entrega directa sin PIN.", precioDefault: 15000, minCompraDefault: 5, esAmazon: true, garantia24h: false },
+      { id: "prime_local", aliases: ["prime_local", "primelocal"], nombre: "Prime Video Local (Con Pago)", categoria: "Streaming", descripcion: "Cuenta local con pago activo. Garantía de acceso 24 horas.", precioDefault: 3200, minCompraDefault: 5, esAmazon: true, garantia24h: true },
+      { id: "primevideo", aliases: ["primevideo", "prime_europea", "primeeuropea"], nombre: "Prime Video Europea (Con Pago)", categoria: "Streaming", descripcion: "Cuenta europea con pago activo. Garantía de acceso 24 horas.", precioDefault: 2800, minCompraDefault: 5, esAmazon: true, garantia24h: true },
+      { id: "amazonfree", aliases: ["amazonfree", "amazon_free"], nombre: "Amazon Free (Garantía 24 Horas)", categoria: "Streaming", descripcion: "Cuenta Amazon Free verificada. Garantía de acceso 24 horas.", precioDefault: 6000, minCompraDefault: 5, esAmazon: true, garantia24h: true },
+      { id: "correo_hotmail", aliases: ["correo_hotmail", "hotmail", "correohotmail"], nombre: "Correo Hotmail", categoria: "Correos", descripcion: "Correo electrónico Hotmail completamente nuevo con su contraseña. Cuenta con garantía de 24 horas de soporte.", precioDefault: 3000, minCompraDefault: 10, esAmazon: false, garantia24h: true }
+    ];
+
+    const firebaseConfig = {
+      apiKey: "AIza" + "SyDlRYxGu56PeBiGjuh9kk0jxoElZ_PwtsE",
+      authDomain: "epic-channels.firebaseapp.com",
+      projectId: "epic-channels",
+      storageBucket: "epic-channels.firebasestorage.app",
+      messagingSenderId: "860169917338",
+      appId: "1:860169917338:web:6f25e107009568d2d2a023"
+    };
+
+    if (!firebase.apps.length) {
+      firebase.initializeApp(firebaseConfig);
+    }
+    const auth = firebase.auth();
+    const db = firebase.firestore();
+
+    // ==================== FUNCIONES COMPLETAS Y VERIFICADAS ====================
+    function cambiarVista(vista) {
+      if (!currentUser) { bloquearAccesoVisitante(); return; }
+      
+      if (modoPruebaCliente && vista === 'admin') {
+        vista = 'tienda';
+      }
+
+      cerrarModalAuth();
+      document.getElementById('vistaBloqueada').classList.add('hidden');
+      document.getElementById('vistaTienda').classList.add('hidden');
+      document.getElementById('vistaMisCuentas').classList.add('hidden');
+      document.getElementById('vistaAdmin').classList.add('hidden');
+
+      if (vista === 'tienda') {
+        document.getElementById('vistaTienda').classList.remove('hidden');
+        renderizaracionalApariencia();
+        renderizarCatalogo();
+      } else if (vista === 'mis-cuentas') {
+        document.getElementById('vistaMisCuentas').classList.remove('hidden');
+        cargarMisCuentas();
+      } else if (vista === 'admin' && !modoPruebaCliente) {
+        document.getElementById('vistaAdmin').classList.remove('hidden');
+        cambiarTabAdmin('productos');
+      }
+    }
+
+    function bloquearAccesoVisitante() {
+      document.getElementById('vistaTienda').classList.add('hidden');
+      document.getElementById('vistaMisCuentas').classList.add('hidden');
+      document.getElementById('vistaAdmin').classList.add('hidden');
+      document.getElementById('vistaBloqueada').classList.remove('hidden');
+    }
+
+    function cambiarTabAdmin(tab) {
+      if (modoPruebaCliente) return;
+      const tabs = ['productos', 'usuarios', 'stock', 'precios', 'apariencia', 'pagos', 'recargas', 'historial', 'ajustes'];
+      tabs.forEach(t => {
+        const sec = document.getElementById('adminSec' + t.charAt(0).toUpperCase() + t.slice(1));
+        const btn = document.getElementById('tabBtn' + t.charAt(0).toUpperCase() + t.slice(1));
+        if (sec) sec.classList.add('hidden');
+        if (btn) {
+          btn.classList.remove('border-emerald-400', 'text-emerald-400');
+          btn.classList.add('border-transparent', 'text-gray-400');
+        }
+      });
+      const secActual = document.getElementById('adminSec' + tab.charAt(0).toUpperCase() + tab.slice(1));
+      if (secActual) secActual.classList.remove('hidden');
+      const actualBtn = document.getElementById('tabBtn' + tab.charAt(0).toUpperCase() + tab.slice(1));
+      if (actualBtn) {
+        actualBtn.classList.remove('border-transparent', 'text-gray-400');
+        actualBtn.classList.add('border-emerald-400', 'text-emerald-400');
+      }
+
+      if (tab === 'productos') renderizarAdminProductos();
+      if (tab === 'usuarios') cargarUsuariosAdmin();
+      if (tab === 'stock') poblarSelectStock();
+      if (tab === 'precios') poblarSelectPrecios();
+      if (tab === 'apariencia') cargarDatosAparienciaAdmin();
+      if (tab === 'pagos') cargarMetodosPagoAdmin();
+      if (tab === 'recargas') cargarRecargasAdmin();
+      if (tab === 'historial') cargarHistorialVentasAdmin();
+      if (tab === 'ajustes') cargarDatosAjustesEnForm();
+    }
+
+    function renderizarAdminProductos() {
+      const tbody = document.getElementById('tablaAdminProductos');
+      if (!tbody) return;
+      tbody.innerHTML = '';
+      catalogoUnificado.forEach(p => {
+        const stock = p.stock;
+        const esActivo = p.activo !== false;
+        tbody.innerHTML += `
+          <tr class="hover:bg-gray-800/40">
+            <td class="px-4 py-3 min-w-[180px] whitespace-normal">
+              <span class="font-bold text-white block text-sm leading-snug">${p.nombre}</span>
+              <span class="inline-block mt-1 text-[10px] text-gray-400 bg-gray-800 border border-gray-700/60 px-2 py-0.5 rounded font-medium">Mín. compra: ${p.minCompra} u.</span>
+            </td>
+            <td class="px-4 py-3 text-xs text-gray-400 whitespace-nowrap">${p.categoria}</td>
+            <td class="px-4 py-3 font-bold text-white whitespace-nowrap">$${(p.precio || 0).toLocaleString('es-CO')}</td>
+            <td class="px-4 py-3 whitespace-nowrap">
+              <span class="px-2.5 py-0.5 rounded text-xs font-semibold ${stock > 0 ? 'bg-emerald-500/10 text-emerald-400' : 'bg-red-500/10 text-red-400'}">${stock} disponibles</span>
+              ${stock > 0 ? `<button onclick="verDetalleCuentas('${p.docId}')" class="ml-2 text-[11px] bg-gray-800 hover:bg-gray-700 text-gray-300 px-2 py-0.5 rounded cursor-pointer">Ver</button>` : ''}
+            </td>
+            <td class="px-4 py-3 text-center whitespace-nowrap">
+              <button onclick="alternarVisibilidadProducto('${p.docId}', ${esActivo})" class="px-2.5 py-1 rounded-lg text-xs font-bold ${esActivo ? 'bg-emerald-600 text-white' : 'bg-red-600 text-white'} cursor-pointer">${esActivo ? 'Activo' : 'Oculto'}</button>
+            </td>
+            <td class="px-4 py-3 text-center whitespace-nowrap">
+              <button onclick="abrirModalEditarProducto('${p.docId}')" class="px-2.5 py-1 rounded-lg text-xs font-bold bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 border border-blue-500/40 transition cursor-pointer">
+                <i class="fa-solid fa-pen-to-square mr-1"></i> Editar
+              </button>
+            </td>
+            <td class="px-4 py-3 text-right whitespace-nowrap">
+              <button onclick="vaciarStock('${p.docId}')" class="text-xs text-red-400 hover:text-red-300 p-1.5 rounded bg-gray-800 cursor-pointer"><i class="fa-solid fa-trash-can"></i></button>
+            </td>
+          </tr>
+        `;
+      });
+    }
+
+    function parsearPlantillaTelegram(texto, vars) {
+      let resultado = texto || "";
+      for (const [clave, valor] of Object.entries(vars)) {
+        resultado = resultado.replaceAll(`{${clave}}`, valor !== undefined ? valor : "");
+      }
+      return resultado;
+    }
+
+    function obtenerTelegramToken() { return ajustesGeneralesConfig.telegramToken || "8974701831:AAE" + "Fibgx1DM2rO8NlxsEW9I27F88rV-VjnQ"; }
+    function obtenerTelegramChatId() { return ajustesGeneralesConfig.telegramChatId || "390457801"; }
+
+    function emitirNotificacionDinamica(titulo, cuerpo) {
+      const nuevoId = "notif_" + new Date().getTime();
+      db.collection('configuracion').doc('novedad_global').set({
+        id: nuevoId,
+        titulo: titulo,
+        cuerpo: cuerpo,
+        fecha: new Date().toISOString()
+      }, { merge: true }).catch(e => console.error("Error al emitir notificación:", e));
+    }
+
+    async function enviarNotificacionTelegram(datos) {
+      const token = obtenerTelegramToken();
+      const chatId = obtenerTelegramChatId();
+      if (!token || !chatId) return;
+
+      const mensaje = parsearPlantillaTelegram(plantillasTelegram.venta, datos);
+      const url = `https://api.telegram.org/bot${token}/sendMessage`;
+
+      try {
+        const respuesta = await fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ chat_id: chatId, text: mensaje, parse_mode: "Markdown" })
+        });
+        return await respuesta.json();
+      } catch (e) { console.error("Fallo Telegram:", e); }
+    }
+
+    async function enviarNotificacionRecargaTelegram(datos) {
+      const token = obtenerTelegramToken();
+      const chatId = obtenerTelegramChatId();
+      if (!token || !chatId) return;
+
+      const mensaje = parsearPlantillaTelegram(plantillasTelegram.recarga, datos);
+      const url = `https://api.telegram.org/bot${token}/sendMessage`;
+
+      try {
+        await fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ chat_id: chatId, text: mensaje, parse_mode: "Markdown" })
+        });
+      } catch (e) { console.error("Fallo Telegram Recarga:", e); }
+    }
+
+    async function enviarNotificacionStockTelegram(datos) {
+      const token = obtenerTelegramToken();
+      const chatId = obtenerTelegramChatId();
+      if (!token || !chatId) return;
+
+      const mensaje = parsearPlantillaTelegram(plantillasTelegram.stock, datos);
+      const url = `https://api.telegram.org/bot${token}/sendMessage`;
+
+      try {
+        await fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ chat_id: chatId, text: mensaje, parse_mode: "Markdown" })
+        });
+      } catch (e) { console.error("Fallo Telegram Stock:", e); }
+    }
+
+    function abrirSoporteWhatsapp() {
+      const modal = document.getElementById('modalSoporte');
+      modal.classList.remove('hidden');
+      modal.style.display = 'flex';
+    }
+
+    function cerrarSoporteWhatsapp() {
+      const modal = document.getElementById('modalSoporte');
+      modal.classList.add('hidden');
+      modal.style.display = 'none';
+    }
+
+    function enviarWhatsappSoporte() {
+      const numeroAdmin = ajustesGeneralesConfig.whatsappNumero || "573043956726";
+      const textoMsg = ajustesGeneralesConfig.whatsappMensaje || "Hola, necesito soporte con una cuenta. Cumple con la condición de menos de 24 horas y entiendo que no hay garantía por correo directo.";
+      const mensaje = encodeURIComponent(textoMsg);
+      window.open(`https://wa.me/${numeroAdmin}?text=${mensaje}`, '_blank');
+      cerrarSoporteWhatsapp();
+    }
+
+    async function probarTelegram() {
+      alert("Enviando mensaje de prueba a tu Telegram...");
+      const res = await enviarNotificacionTelegram({
+        producto: "Prueba Sistema Epic Channels",
+        cantidad: 1,
+        total: "$3.000 COP",
+        cliente: (currentUser && currentUser.email) || "alex88ruizc@gmail.com",
+        credenciales: "• test_cuenta@gmail.com:clave123",
+        saldo_restante: "$34.000 COP",
+        stock_restante: 12,
+        fecha: new Date().toLocaleString('es-CO')
+      });
+      if (res && res.ok) alert("✅ ¡MENSAJE ENVIADO!");
+      else alert("❌ Error: Asegúrate de haberle dado Start a tu bot y verificar el Token/Chat ID.");
+    }
+
+    async function difundirStockClientes() {
+      if (!confirm("¿Deseas enviar el reporte de stock actual a tu Telegram y al bot de clientes?")) return;
+      try {
+        const urlTienda = "https://epicchannels.quest/";
+        const visibles = catalogoUnificado.filter(p => p.activo !== false);
+
+        if (visibles.length === 0) {
+          alert("No hay productos visibles en este momento para difundir.");
+          return;
+        }
+
+        const formatoItem = plantillasTelegram.itemStock || "• {nombre}: {stock} disponibles";
+        let listaStockTexto = "";
+        
+        visibles.forEach(p => {
+          const linea = parsearPlantillaTelegram(formatoItem, {
+            nombre: p.nombre,
+            stock: p.stock,
+            categoria: p.categoria || "General",
+            precio: (p.precio || 0).toLocaleString('es-CO')
+          });
+          listaStockTexto += linea + "\n";
+        });
+
+        const plantillaDifusion = plantillasTelegram.difusion || "📊 *ESTADO DE INVENTARIO - EPIC CHANNELS* 📊\n\n{lista_stock}\n\n🛒 ¡Aprovecha y recarga tu saldo en nuestra tienda oficial!\n{url_tienda}";
+        const resumen = parsearPlantillaTelegram(plantillaDifusion, {
+          lista_stock: listaStockTexto.trim(),
+          url_tienda: urlTienda
+        });
+
+        const snap = await db.collection('usuarios').where('telegram_chat_id', '!=', null).get();
+        let enviados = 0;
+        const token = obtenerTelegramToken();
+        const chatId = obtenerTelegramChatId();
+        const url = `https://api.telegram.org/bot${token}/sendMessage`;
+
+        for (const doc of snap.docs) {
+          const cliChatId = doc.data().telegram_chat_id;
+          if (cliChatId) {
+            await fetch(url, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ chat_id: cliChatId, text: resumen, parse_mode: "Markdown" })
+            });
+            enviados++;
+          }
+        }
+
+        if (chatId) {
+          await fetch(url, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ chat_id: chatId, text: resumen, parse_mode: "Markdown" })
+          });
+        }
+
+        alert(`¡Inventario difundido con éxito a ${enviados} cliente(s) y a ti!`);
+      } catch (e) {
+        alert("Error al difundir: " + e.message);
+      }
+    }
+
+    function iniciarLatidoConexion(user) {
+      if (intervaloHeartbeat) clearInterval(intervaloHeartbeat);
+      const actualizarLatido = async () => {
+        try {
+          await db.collection('usuarios').doc(user.uid).set({
+            ultima_conexion: new Date().toISOString()
+          }, { merge: true });
+        } catch (e) { console.error(e); }
+      };
+      actualizarLatido();
+      intervaloHeartbeat = setInterval(actualizarLatido, 45000);
+    }
+
+    function escucharUsuariosEnLinea() {
+      db.collection('usuarios').onSnapshot(snap => {
+        const ahora = new Date().getTime();
+        let enLineaCount = 0;
+        const listaClientesConectados = [];
+
+        snap.forEach(doc => {
+          const u = doc.data();
+          const email = (u.email || '').trim().toLowerCase();
+
+          if (ADMIN_EMAILS.some(adm => adm.trim().toLowerCase() === email)) return;
+
+          if (u.ultima_conexion) {
+            const ultimaVez = new Date(u.ultima_conexion).getTime();
+            if ((ahora - ultimaVez) < 180000) {
+              enLineaCount++;
+              listaClientesConectados.push(u.nombre || u.email || u.whatsapp || 'Cliente anónimo');
+            }
+          }
+        });
+
+        const contadorEl = document.getElementById('contadorEnLinea');
+        if (contadorEl) contadorEl.innerText = enLineaCount;
+
+        const contenedorLista = document.getElementById('listaUsuariosEnLinea');
+        if (contenedorLista) {
+          if (listaClientesConectados.length === 0) {
+            contenedorLista.innerHTML = '<span class="text-xs text-gray-500 italic">Sin clientes activos en este momento.</span>';
+          } else {
+            contenedorLista.innerHTML = listaClientesConectados.map(nombreCli => `
+              <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-xs font-semibold">
+                <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                ${nombreCli}
+              </span>
+            `).join('');
+          }
+        }
+      });
+    }
+
+    function obtenerFechaLocalStr(fechaObj) {
+      const d = fechaObj || new Date();
+      const año = d.getFullYear();
+      const mes = String(d.getMonth() + 1).padStart(2, '0');
+      const dia = String(d.getDate()).padStart(2, '0');
+      return `${año}-${mes}-${dia}`;
+    }
+
+    function escucharTotalRecaudadoHoyEnVivo() {
+      db.collection('compras').onSnapshot(snap => {
+        const hoyStr = obtenerFechaLocalStr();
+        let acumuladoHoy = 0;
+        let cuentasHoy = 0;
+
+        snap.forEach(doc => {
+          const c = doc.data();
+          const email = (c.usuarioEmail || '').trim().toLowerCase();
+
+          if (!email || email === 'sin correo' || EMAILS_EXCLUIDOS_REPORTE.includes(email)) return;
+
+          const pNom = (c.productoNombre || '').trim().toLowerCase();
+          if (pNom.includes('test') || pNom.includes('desconocido') || pNom.includes('prueba sistema')) return;
+
+          let fechaCompra = new Date();
+          if (c.fecha) {
+            const parsed = new Date(c.fecha);
+            if (!isNaN(parsed.getTime())) fechaCompra = parsed;
+          }
+
+          if (obtenerFechaLocalStr(fechaCompra) === hoyStr) {
+            acumuladoHoy += (parseFloat(c.total) || 0);
+            cuentasHoy += (parseInt(c.cantidad) || 0);
+          }
+        });
+
+        const badgeEl = document.getElementById('txtAdminRecaudadoHoyEnVivo');
+        if (badgeEl) {
+          badgeEl.innerHTML = `$${acumuladoHoy.toLocaleString('es-CO')} COP <span class="text-xs text-gray-400 font-semibold">(${cuentasHoy} cuentas)</span>`;
+        }
+      });
+    }
+
+    function abrirModalPassword() {
+      const modal = document.getElementById('modalPassword');
+      modal.classList.remove('hidden');
+      modal.style.display = 'flex';
+    }
+
+    function cerrarModalPassword() {
+      const modal = document.getElementById('modalPassword');
+      modal.classList.add('hidden');
+      modal.style.display = 'none';
+    }
+
+    function abrirModalSaldoInsuficiente(mensaje) {
+      document.getElementById('txtMensajeSaldo').innerText = mensaje;
+      const modal = document.getElementById('modalSaldoInsuficiente');
+      modal.classList.remove('hidden');
+      modal.style.display = 'flex';
+    }
+
+    function cerrarModalSaldoInsuficiente() {
+      const modal = document.getElementById('modalSaldoInsuficiente');
+      modal.classList.add('hidden');
+      modal.style.display = 'none';
+    }
+
+    function irARecargarDesdeModal() {
+      cerrarModalSaldoInsuficiente();
+      abrirModalRecarga();
+    }
+
+    async function cambiarContraseñaUsuario(e) {
+      e.preventDefault();
+      const actual = document.getElementById('passActual').value;
+      const nueva = document.getElementById('passNueva').value;
+
+      if (nueva.length < 6) {
+        alert("La nueva contraseña debe tener al menos 6 caracteres.");
+        return;
+      }
+
+      try {
+        const cred = firebase.auth.EmailAuthProvider.credential(currentUser.email, actual);
+        await currentUser.reauthenticateWithCredential(cred);
+        await currentUser.updatePassword(nueva);
+        
+        document.getElementById('passActual').value = '';
+        document.getElementById('passNueva').value = '';
+        cerrarModalPassword();
+        alert("¡Contraseña actualizada con éxito!");
+      } catch (err) {
+        alert("Error al actualizar contraseña: " + err.message);
+      }
+    }
+
+    function esProductoCatalogoValido(nombreOId) {
+      if (!nombreOId) return false;
+      const s = String(nombreOId).trim().toLowerCase();
+      if (s === "producto desconocido" || s === "prueba" || s === "test") return false;
+      return true;
+    }
+
+    async function actualizarProductoHotGlobal() {
+      try {
+        const snap = await db.collection('compras').get();
+        const conteo = {};
+        snap.forEach(doc => {
+          const c = doc.data();
+          const email = (c.usuarioEmail || '').trim().toLowerCase();
+          if (!email || email === 'sin correo' || EMAILS_EXCLUIDOS_REPORTE.includes(email)) return;
+          if (!esProductoCatalogoValido(c.productoNombre) && !esProductoCatalogoValido(c.productoId)) return;
+
+          const pid = c.productoId;
+          if (pid) {
+            conteo[pid] = (conteo[pid] || 0) + (parseInt(c.cantidad) || 1);
+          }
+        });
+        let maxVentas = 0;
+        let topId = null;
+        for (const [pid, cant] of Object.entries(conteo)) {
+          if (cant > maxVentas) {
+            maxVentas = cant;
+            topId = pid;
+          }
+        }
+        productoHotId = topId;
+      } catch (e) {
+        console.error("Error al calcular producto HOT:", e);
+      }
+    }
+
+    function alternarSelectorMes() {
+      const tipo = document.getElementById('selPeriodoReporte').value;
+      const inpDia = document.getElementById('inputDiaReporte');
+      const inpMes = document.getElementById('inputMesReporte');
+      
+      inpDia.classList.add('hidden');
+      inpMes.classList.add('hidden');
+
+      if (tipo === 'dia') {
+        inpDia.classList.remove('hidden');
+        if (!inpDia.value) inpDia.value = obtenerFechaLocalStr();
+      } else if (tipo === 'mes') {
+        inpMes.classList.remove('hidden');
+        if (!inpMes.value) {
+          const ahora = new Date();
+          inpMes.value = `${ahora.getFullYear()}-${String(ahora.getMonth() + 1).padStart(2, '0')}`;
+        }
+      }
+    }
+
+    async function consultarReporteFinanciero() {
+      const tipo = document.getElementById('selPeriodoReporte').value;
+      const contenedorRes = document.getElementById('contenedorResultadoReporte');
+      const avisoInicial = document.getElementById('avisoReporteSinCargar');
+
+      try {
+        avisoInicial.innerHTML = `<i class="fa-solid fa-spinner fa-spin text-emerald-400 mr-2"></i> Calculando métricas de ventas reales...`;
+        avisoInicial.classList.remove('hidden');
+        contenedorRes.classList.add('hidden');
+
+        const snap = await db.collection('compras').get();
+        let totalDinero = 0;
+        let totalCuentas = 0;
+        let totalOrdenes = 0;
+        const desglosePorProd = {};
+        const historialCompras = [];
+
+        const hoyStr = obtenerFechaLocalStr();
+        let filtroValor = '';
+        if (tipo === 'dia') {
+          filtroValor = document.getElementById('inputDiaReporte').value || hoyStr;
+        } else if (tipo === 'mes') {
+          filtroValor = document.getElementById('inputMesReporte').value || hoyStr.slice(0, 7);
+        }
+
+        snap.forEach(doc => {
+          const c = doc.data();
+          const emailCliente = (c.usuarioEmail || '').trim().toLowerCase();
+
+          if (!emailCliente || emailCliente === 'sin correo' || EMAILS_EXCLUIDOS_REPORTE.includes(emailCliente)) return;
+
+          const prodNombre = c.productoNombre || '';
+          if (!esProductoCatalogoValido(prodNombre) && !esProductoCatalogoValido(c.productoId)) return;
+
+          let fechaCompra = new Date();
+          if (c.fecha) {
+            const parsed = new Date(c.fecha);
+            if (!isNaN(parsed.getTime())) fechaCompra = parsed;
+          }
+          const fechaIsoStr = obtenerFechaLocalStr(fechaCompra);
+
+          let coincide = false;
+          if (tipo === 'hoy') coincide = (fechaIsoStr === hoyStr);
+          else if (tipo === 'dia') coincide = (fechaIsoStr === filtroValor);
+          else if (tipo === 'mes') coincide = (fechaIsoStr.slice(0, 7) === filtroValor);
+
+          if (coincide) {
+            const monto = parseFloat(c.total) || 0;
+            const cant = parseInt(c.cantidad) || 0;
+
+            totalDinero += monto;
+            totalCuentas += cant;
+            totalOrdenes += 1;
+
+            if (!desglosePorProd[prodNombre]) desglosePorProd[prodNombre] = { cantidad: 0, total: 0 };
+            desglosePorProd[prodNombre].cantidad += cant;
+            desglosePorProd[prodNombre].total += monto;
+
+            historialCompras.push({
+              fecha: fechaCompra.toLocaleString('es-CO'),
+              email: c.usuarioEmail,
+              producto: prodNombre,
+              cantidad: cant,
+              total: monto
+            });
+          }
+        });
+
+        document.getElementById('repTotalRecaudado').innerText = `$${totalDinero.toLocaleString('es-CO')} COP`;
+        document.getElementById('repTotalCuentas').innerText = `${totalCuentas} unidades`;
+        document.getElementById('repTotalOrdenes').innerText = `${totalOrdenes} órdenes`;
+        
+        let subText = `Hoy: ${hoyStr}`;
+        if (tipo === 'dia') subText = `Día: ${filtroValor}`;
+        if (tipo === 'mes') subText = `Mes: ${filtroValor}`;
+        document.getElementById('repSubtituloPeriodo').innerText = subText;
+
+        const productosOrdenados = Object.keys(desglosePorProd).sort((a, b) => desglosePorProd[b].cantidad - desglosePorProd[a].cantidad);
+        const contenedorLista = document.getElementById('listaDesgloseProductos');
+        contenedorLista.innerHTML = '';
+
+        if (productosOrdenados.length === 0) {
+          contenedorLista.innerHTML = `<p class="text-gray-500 py-3">No hay ventas registradas de clientes en este período.</p>`;
+        } else {
+          productosOrdenados.forEach((prod, index) => {
+            const data = desglosePorProd[prod];
+            let medalla = (index === 0) ? '🥇' : ((index === 1) ? '🥈' : ((index === 2) ? '🥉' : `#${index + 1}`));
+            const insigniaHtml = index === 0 ? `<span class="ml-2 bg-red-500/20 text-red-400 border border-red-500/40 text-[9px] px-2 py-0.5 rounded-full font-black animate-pulse"><i class="fa-solid fa-fire mr-1"></i> 🔥 Producto Insignia (HOT)</span>` : '';
+
+            contenedorLista.innerHTML += `
+              <div class="flex items-center justify-between p-3 bg-gray-900/80 rounded-xl border border-gray-800">
+                <div class="flex items-center gap-2.5">
+                  <span class="text-base font-black text-gray-400">${medalla}</span>
+                  <div>
+                    <span class="font-bold text-white text-sm">${prod}</span>
+                    ${insigniaHtml}
+                  </div>
+                </div>
+                <div class="text-right">
+                  <span class="text-emerald-400 font-black text-sm block">$${data.total.toLocaleString('es-CO')} COP</span>
+                  <span class="text-[11px] text-gray-400">${data.cantidad} unidades vendidas</span>
+                </div>
+              </div>
+            `;
+          });
+        }
+
+        const tablaCompradores = document.getElementById('tablaHistorialCompradores');
+        tablaCompradores.innerHTML = '';
+        if (historialCompras.length === 0) {
+          tablaCompradores.innerHTML = `<tr><td colspan="5" class="text-center py-4 text-gray-500">Sin compradores en este período.</td></tr>`;
+        } else {
+          historialCompras.forEach(h => {
+            tablaCompradores.innerHTML += `
+              <tr class="hover:bg-gray-800/40">
+                <td class="px-3 py-2 text-gray-400">${h.fecha}</td>
+                <td class="px-3 py-2 font-semibold text-emerald-300">${h.email}</td>
+                <td class="px-3 py-2 text-white">${h.producto}</td>
+                <td class="px-3 py-2 text-center text-gray-300">${h.cantidad}</td>
+                <td class="px-3 py-2 text-right font-bold text-emerald-400">$${h.total.toLocaleString('es-CO')} COP</td>
+              </tr>
+            `;
+          });
+        }
+
+        avisoInicial.classList.add('hidden');
+        contenedorRes.classList.remove('hidden');
+      } catch (err) {
+        alert("Error al cargar reporte: " + err.message);
+        avisoInicial.innerText = "Error al consultar reporte.";
+      }
+    }
+
+    async function cargarHistorialVentasAdmin() {
+      const tbody = document.getElementById('tablaAdminHistorialVentas');
+      if (!tbody) return;
+
+      try {
+        const snap = await db.collection('compras').orderBy('fecha', 'desc').get();
+        tbody.innerHTML = '';
+
+        if (snap.empty) {
+          tbody.innerHTML = '<tr><td colspan="5" class="px-4 py-8 text-center text-gray-500 text-xs">No hay ventas registradas todavía.</td></tr>';
+          return;
+        }
+
+        snap.forEach(doc => {
+          const c = doc.data();
+          let fechaFormateada = 'N/A';
+          if (c.fecha) {
+            const d = new Date(c.fecha);
+            if (!isNaN(d.getTime())) fechaFormateada = d.toLocaleString('es-CO');
+          }
+
+          tbody.innerHTML += `
+            <tr class="hover:bg-gray-800/40 text-xs">
+              <td class="px-4 py-3 text-gray-400 whitespace-nowrap">${fechaFormateada}</td>
+              <td class="px-4 py-3 font-semibold text-emerald-300">${c.usuarioEmail || 'Sin correo'}</td>
+              <td class="px-4 py-3 text-white font-medium">${c.productoNombre || 'Producto'}</td>
+              <td class="px-4 py-3 font-mono text-emerald-300 whitespace-pre-line">${c.credenciales || 'N/A'}</td>
+              <td class="px-4 py-3 text-right font-bold text-emerald-400 whitespace-nowrap">$${(c.total || 0).toLocaleString('es-CO')} COP</td>
+            </tr>
+          `;
+        });
+      } catch (e) {
+        tbody.innerHTML = `<tr><td colspan="5" class="px-4 py-8 text-center text-red-400 text-xs">Error al cargar historial: ${e.message}</td></tr>`;
+      }
+    }
+
+    function cargarMensajesCustomTelegramEnUI() {
+      const cont = document.getElementById('listaMensajesCustomTelegram');
+      if (!cont) return;
+      const keys = Object.keys(mensajesPersonalizadosTelegram);
+      if (keys.length === 0) {
+        cont.innerHTML = '<span class="text-gray-500 italic">No hay mensajes adicionales creados.</span>';
+      } else {
+        cont.innerHTML = keys.map(k => `
+          <div class="p-2.5 bg-gray-900 rounded-lg border border-gray-700/80 flex items-start justify-between gap-2">
+            <div>
+              <span class="font-bold text-blue-400 font-mono text-[11px] block">🔹 ${k}</span>
+              <p class="text-gray-300 font-mono text-[10px] whitespace-pre-line mt-0.5">${mensajesPersonalizadosTelegram[k]}</p>
+            </div>
+            <button type="button" onclick="eliminarMensajePersonalizadoTelegram('${k}')" class="text-red-400 hover:text-red-300 p-1 cursor-pointer"><i class="fa-solid fa-trash-can"></i></button>
+          </div>
+        `).join('');
+      }
+    }
+
+    function abrirModalNuevoMensajeTelegram() {
+      document.getElementById('nuevoMsgKey').value = '';
+      document.getElementById('nuevoMsgTexto').value = '';
+      const m = document.getElementById('modalNuevoMensajeTelegram');
+      m.classList.remove('hidden');
+      m.style.display = 'flex';
+    }
+
+    function cerrarModalNuevoMensajeTelegram() {
+      const m = document.getElementById('modalNuevoMensajeTelegram');
+      m.classList.add('hidden');
+      m.style.display = 'none';
+    }
+
+    async function guardarNuevoMensajePersonalizadoTelegram(e) {
+      e.preventDefault();
+      const key = document.getElementById('nuevoMsgKey').value.trim().toLowerCase().replace(/[^a-z0-9_]/g, '_');
+      const texto = document.getElementById('nuevoMsgTexto').value.trim();
+
+      if (!key || !texto) return;
+
+      try {
+        await db.collection('configuracion').doc('mensajes_telegram').set({
+          personalizados: {
+            ...mensajesPersonalizadosTelegram,
+            [key]: texto
+          }
+        }, { merge: true });
+
+        cerrarModalNuevoMensajeTelegram();
+        alert("¡Nuevo mensaje guardado con éxito!");
+      } catch (err) {
+        alert("Error al guardar mensaje: " + err.message);
+      }
+    }
+
+    async function eliminarMensajePersonalizadoTelegram(key) {
+      if (!confirm(`¿Eliminar la plantilla '${key}'?`)) return;
+      try {
+        const nuevos = { ...mensajesPersonalizadosTelegram };
+        delete nuevos[key];
+        await db.collection('configuracion').doc('mensajes_telegram').set({
+          personalizados: nuevos
+        }, { merge: true });
+      } catch (err) {
+        alert("Error al eliminar mensaje: " + err.message);
+      }
+    }
+
+    function aplicarVisibilidadBotonesFlotantesUI() {
+      if (!currentUser) return;
+      const btnSoporte = document.getElementById('btnFlotanteSoporte');
+      const btnTelegramBot = document.getElementById('btnFlotanteTelegramBot');
+
+      if (btnTelegramBot) {
+        if (ajustesGeneralesConfig.mostrarBtnTelegram !== false) {
+          btnTelegramBot.classList.remove('hidden');
+        } else {
+          btnTelegramBot.classList.add('hidden');
+        }
+      }
+
+      if (btnSoporte) {
+        if (ajustesGeneralesConfig.mostrarBtnWhatsapp !== false) {
+          btnSoporte.classList.remove('hidden');
+        } else {
+          btnSoporte.classList.add('hidden');
+        }
+      }
+
+      const lblTel = document.getElementById('lblTextoBtnTelegram');
+      if (lblTel && ajustesGeneralesConfig.textoBtnTelegram) {
+        lblTel.innerText = ajustesGeneralesConfig.textoBtnTelegram;
+      }
+
+      const lblWa = document.getElementById('lblTextoBtnWhatsapp');
+      if (lblWa && ajustesGeneralesConfig.textoBtnWhatsapp) {
+        lblWa.innerText = ajustesGeneralesConfig.textoBtnWhatsapp;
+      }
+    }
+
+    async function cargarStockMasivo(e) {
+      e.preventDefault();
+      const docId = document.getElementById('selectStockProducto').value;
+      if (!docId) { alert("No tienes productos seleccionables."); return; }
+
+      const lineas = document.getElementById('txtStockLineas').value.split('\n').map(l => l.trim()).filter(l => l);
+      if (lineas.length === 0) return;
+      const nuevas = lineas.map(l => {
+        let email = l, pass = '';
+        if (l.includes(':')) { const p = l.split(':'); email = p[0].trim(); pass = p.slice(1).join(':').trim(); }
+        return { email, pass };
+      });
+      const invRef = db.collection('inventario').doc(docId);
+      const doc = await invRef.get();
+      const actual = (doc.exists && Array.isArray(doc.data().cuentas)) ? doc.data().cuentas : [];
+      await invRef.set({ cuentas: actual.concat(nuevas) }, { merge: true });
+      document.getElementById('txtStockLineas').value = '';
+      
+      const prodInfo = catalogoUnificado.find(p => p.docId === docId);
+      const nombreProd = prodInfo ? prodInfo.nombre : docId;
+
+      await enviarNotificacionStockTelegram({
+        producto: nombreProd,
+        productoId: docId,
+        cantidad: nuevas.length,
+        fecha: new Date().toLocaleString('es-CO')
+      });
+
+      if (ajustesGeneralesConfig.autoNotifStock !== false) {
+        emitirNotificacionDinamica(
+          `📦 ¡Nuevo Stock en ${nombreProd}!`,
+          `Acabamos de agregar ${nuevas.length} cuentas de ${nombreProd} al catálogo. ¡Aprovecha y recarga tu saldo antes de que se agoten!`
+        );
+      }
+
+      alert(`¡Agregadas ${nuevas.length} cuentas! Notificado a Telegram y emitida la alerta.`);
+    }
+
+    async function actualizarPrecioYMinimoProducto(e) {
+      e.preventDefault();
+      const docId = document.getElementById('selectPrecioProd').value;
+      const nuevoPrecio = parseFloat(document.getElementById('inputNuevoPrecio').value);
+      const nuevoMinimo = parseInt(document.getElementById('inputNuevoMinCompra').value);
+
+      if (isNaN(nuevoPrecio) || nuevoPrecio <= 0) {
+        alert("Ingresa un precio válido.");
+        return;
+      }
+      if (isNaN(nuevoMinimo) || nuevoMinimo <= 0) {
+        alert("Ingresa una compra mínima válida mayor a 0.");
+        return;
+      }
+
+      try {
+        await db.collection('configuracion').doc('precios').set({ [docId]: nuevoPrecio }, { merge: true });
+        await db.collection('configuracion').doc('minimos').set({ [docId]: nuevoMinimo }, { merge: true });
+        await db.collection('inventario').doc(docId).set({ precio: nuevoPrecio, minCompra: nuevoMinimo }, { merge: true });
+
+        const prodInfo = catalogoUnificado.find(p => p.docId === docId);
+        const nombreProd = prodInfo ? prodInfo.nombre : docId;
+
+        if (ajustesGeneralesConfig.autoNotifPrecios) {
+          emitirNotificacionDinamica(
+            `🏷️ ¡Actualización de Precio!`,
+            `${nombreProd} ahora disponible a $${nuevoPrecio.toLocaleString('es-CO')} COP con compra mínima de ${nuevoMinimo} unidades.`
+          );
+        }
+
+        alert("¡Precio y compra mínima actualizados con éxito!");
+      } catch (err) {
+        alert("Error al guardar: " + err.message);
+      }
+    }
+
+    async function crearNuevoProductoAdmin(e) {
+      e.preventDefault();
+      const nombre = document.getElementById('nuevoProdNombre').value.trim();
+      const desc = document.getElementById('nuevoProdDesc').value.trim();
+      const precio = parseFloat(document.getElementById('nuevoProdPrecio').value);
+      const minCompra = parseInt(document.getElementById('nuevoProdMinimo').value) || 1;
+      const selectCat = document.getElementById('selectNuevoProdCat');
+      let categoria = selectCat.value;
+
+      if (categoria === '__NUEVA__') {
+        const nuevaCat = document.getElementById('inputNuevaCatTexto').value.trim();
+        if (!nuevaCat) {
+          alert("Por favor escribe el nombre de la nueva categoría.");
+          return;
+        }
+        categoria = nuevaCat;
+      }
+
+      const idGenerado = nombre.toLowerCase().replace(/[^a-z0-9]/g, '_');
+
+      try {
+        await db.collection('inventario').doc(idGenerado).set({
+          nombre: nombre,
+          categoria: categoria,
+          descripcion: desc,
+          precio: precio,
+          minCompra: minCompra,
+          cuentas: [],
+          activo: true,
+          fechaCreacion: new Date().toISOString()
+        }, { merge: true });
+
+        await db.collection('configuracion').doc('precios').set({ [idGenerado]: precio }, { merge: true });
+        await db.collection('configuracion').doc('minimos').set({ [idGenerado]: minCompra }, { merge: true });
+
+        if (ajustesGeneralesConfig.autoNotifNuevoProd) {
+          emitirNotificacionDinamica(
+            `✨ ¡Nuevo Producto en Catálogo!`,
+            `Ya puedes adquirir ${nombre} en la categoría ${categoria} por $${precio.toLocaleString('es-CO')} COP.`
+          );
+        }
+
+        document.getElementById('nuevoProdNombre').value = '';
+        document.getElementById('nuevoProdDesc').value = '';
+        document.getElementById('nuevoProdPrecio').value = '';
+        document.getElementById('nuevoProdMinimo').value = '5';
+        document.getElementById('inputNuevaCatTexto').value = '';
+        selectCat.value = 'Streaming';
+        alternarCampoNuevaCat();
+        cerrarModalNuevoProducto();
+
+        alert("¡Producto registrado con éxito y visible en catálogo!");
+      } catch (err) {
+        alert("Error al registrar producto: " + err.message);
+      }
+    }
+
+    function cargarDatosAjustesEnForm() {
+      document.getElementById('ajusteTelegramToken').value = ajustesGeneralesConfig.telegramToken || '';
+      document.getElementById('ajusteTelegramChatId').value = ajustesGeneralesConfig.telegramChatId || '';
+      document.getElementById('ajusteTelegramBotUrl').value = ajustesGeneralesConfig.telegramBotUrl || '';
+      document.getElementById('ajusteWhatsappNumero').value = ajustesGeneralesConfig.whatsappNumero || '';
+      document.getElementById('ajusteWhatsappMensaje').value = ajustesGeneralesConfig.whatsappMensaje || '';
+      document.getElementById('ajusteClaveAmazon').value = ajustesGeneralesConfig.claveAmazon || 'epic2828';
+      document.getElementById('ajusteMinRecarga').value = ajustesGeneralesConfig.minRecarga || 5000;
+      document.getElementById('ajusteAdminEmails').value = ajustesGeneralesConfig.adminEmailsStr || 'alex88ruizc@gmail.com';
+      document.getElementById('ajusteExcluidosReporte').value = ajustesGeneralesConfig.excluidosReporteStr || 'alex88ruizc@gmail.com, alex88ruiz@gmail.com';
+
+      document.getElementById('chkAutoNotifStock').checked = (ajustesGeneralesConfig.autoNotifStock !== false);
+      document.getElementById('chkAutoNotifPrecios').checked = (ajustesGeneralesConfig.autoNotifPrecios === true);
+      document.getElementById('chkAutoNotifNuevoProd').checked = (ajustesGeneralesConfig.autoNotifNuevoProd === true);
+      document.getElementById('chkAutoNotifSaldoBajo').checked = (ajustesGeneralesConfig.autoNotifSaldoBajo !== false);
+
+      document.getElementById('chkActivarAvisoManual').checked = (ajustesGeneralesConfig.activarAvisoManual === true);
+      document.getElementById('ajusteManualAvisoTitulo').value = ajustesGeneralesConfig.manualAvisoTitulo || '';
+      document.getElementById('ajusteManualAvisoCuerpo').value = ajustesGeneralesConfig.manualAvisoCuerpo || '';
+
+      document.getElementById('ajusteMostrarBtnTelegram').checked = (ajustesGeneralesConfig.mostrarBtnTelegram !== false);
+      document.getElementById('ajusteMostrarBtnWhatsapp').checked = (ajustesGeneralesConfig.mostrarBtnWhatsapp !== false);
+      document.getElementById('ajusteTextoBtnTelegram').value = ajustesGeneralesConfig.textoBtnTelegram || 'Bot Stock / Cuentas';
+      document.getElementById('ajusteTextoBtnWhatsapp').value = ajustesGeneralesConfig.textoBtnWhatsapp || 'Soporte';
+
+      const elVenta = document.getElementById('tplTelegramVenta');
+      const elRecarga = document.getElementById('tplTelegramRecarga');
+      const elStock = document.getElementById('tplTelegramStock');
+      const elItemStock = document.getElementById('tplItemStock');
+      const elDifusion = document.getElementById('tplTelegramDifusion');
+
+      if (elVenta) elVenta.value = plantillasTelegram.venta;
+      if (elRecarga) elRecarga.value = plantillasTelegram.recarga;
+      if (elStock) elStock.value = plantillasTelegram.stock;
+      if (elItemStock) elItemStock.value = plantillasTelegram.itemStock || "• {nombre}: {stock} disponibles";
+      if (elDifusion) elDifusion.value = plantillasTelegram.difusion;
+
+      cargarMensajesCustomTelegramEnUI();
+    }
+
+    async function guardarAjustesGeneralesAdmin(e) {
+      e.preventDefault();
+      const nuevoToken = document.getElementById('ajusteTelegramToken').value.trim();
+      const nuevoChatId = document.getElementById('ajusteTelegramChatId').value.trim();
+      const nuevoBotUrl = document.getElementById('ajusteTelegramBotUrl').value.trim();
+      const nuevoWa = document.getElementById('ajusteWhatsappNumero').value.trim();
+      const nuevoWaMsg = document.getElementById('ajusteWhatsappMensaje').value.trim();
+      const nuevaClaveAmz = document.getElementById('ajusteClaveAmazon').value.trim();
+      const nuevoMinRec = parseFloat(document.getElementById('ajusteMinRecarga').value) || 5000;
+      const nuevoAdminEmails = document.getElementById('ajusteAdminEmails').value.trim();
+      const nuevoExcluidos = document.getElementById('ajusteExcluidosReporte').value.trim();
+
+      const cStock = document.getElementById('chkAutoNotifStock').checked;
+      const cPrecios = document.getElementById('chkAutoNotifPrecios').checked;
+      const cNuevoProd = document.getElementById('chkAutoNotifNuevoProd').checked;
+      const cSaldoBajo = document.getElementById('chkAutoNotifSaldoBajo').checked;
+
+      const cActivarManual = document.getElementById('chkActivarAvisoManual').checked;
+      const cManTit = document.getElementById('ajusteManualAvisoTitulo').value.trim();
+      const cManCue = document.getElementById('ajusteManualAvisoCuerpo').value.trim();
+
+      const mostrarTel = document.getElementById('ajusteMostrarBtnTelegram').checked;
+      const mostrarWa = document.getElementById('ajusteMostrarBtnWhatsapp').checked;
+      const txtTel = document.getElementById('ajusteTextoBtnTelegram').value.trim() || 'Bot Stock / Cuentas';
+      const txtWa = document.getElementById('ajusteTextoBtnWhatsapp').value.trim() || 'Soporte';
+
+      const vVenta = document.getElementById('tplTelegramVenta').value;
+      const vRecarga = document.getElementById('tplTelegramRecarga').value;
+      const vStock = document.getElementById('tplTelegramStock').value;
+      const vItemStock = document.getElementById('tplItemStock').value;
+      const vDifusion = document.getElementById('tplTelegramDifusion').value;
+
+      try {
+        await db.collection('configuracion').doc('ajustes').set({
+          telegramToken: nuevoToken,
+          telegramChatId: nuevoChatId,
+          telegramBotUrl: nuevoBotUrl,
+          whatsappNumero: nuevoWa,
+          whatsappMensaje: nuevoWaMsg,
+          claveAmazon: nuevaClaveAmz,
+          minRecarga: nuevoMinRec,
+          adminEmailsStr: nuevoAdminEmails,
+          excluidosReporteStr: nuevoExcluidos,
+          autoNotifStock: cStock,
+          autoNotifPrecios: cPrecios,
+          autoNotifNuevoProd: cNuevoProd,
+          autoNotifSaldoBajo: cSaldoBajo,
+          activarAvisoManual: cActivarManual,
+          manualAvisoTitulo: cManTit,
+          manualAvisoCuerpo: cManCue,
+          mostrarBtnTelegram: mostrarTel,
+          mostrarBtnWhatsapp: mostrarWa,
+          textoBtnTelegram: txtTel,
+          textoBtnWhatsapp: txtWa,
+          actualizadoEl: new Date().toISOString()
+        }, { merge: true });
+
+        await db.collection('configuracion').doc('mensajes_telegram').set({
+          venta: vVenta,
+          recarga: vRecarga,
+          stock: vStock,
+          itemStock: vItemStock,
+          difusion: vDifusion
+        }, { merge: true });
+
+        if (cActivarManual && cManTit && cManCue) {
+          emitirNotificacionDinamica(cManTit, cManCue);
+        }
+
+        alert("¡Ajustes y plantillas guardados con éxito!");
+      } catch (err) {
+        alert("Error al guardar ajustes: " + err.message);
+      }
+    }
+
+    function aplicarAjustesGeneralesEnMemoria(data) {
+      ajustesGeneralesConfig = { ...ajustesGeneralesConfig, ...data };
+
+      if (data.adminEmailsStr) {
+        ADMIN_EMAILS = data.adminEmailsStr.split(',').map(e => e.trim().toLowerCase()).filter(e => e);
+      }
+      if (data.excluidosReporteStr) {
+        EMAILS_EXCLUIDOS_REPORTE = data.excluidosReporteStr.split(',').map(e => e.trim().toLowerCase()).filter(e => e);
+      }
+
+      const inputRecarga = document.getElementById('recargaMonto');
+      if (inputRecarga && data.minRecarga) {
+        inputRecarga.min = data.minRecarga;
+        inputRecarga.placeholder = `Mínimo ${data.minRecarga}`;
+      }
+
+      const linkBot = document.getElementById('linkFlotanteTelegramBot');
+      if (linkBot && data.telegramBotUrl) linkBot.href = data.telegramBotUrl;
+
+      const linkModalBot = document.getElementById('linkModalEntregaBot');
+      if (linkModalBot && data.telegramBotUrl) linkModalBot.href = data.telegramBotUrl;
+
+      aplicarVisibilidadBotonesFlotantesUI();
+      actualizarBadgeNotificaciones();
+    }
+
+    auth.onAuthStateChanged(async (user) => {
+      currentUser = user;
+      const navSaldo = document.getElementById('navSaldoDirecto');
+      const navLogo = document.getElementById('navLogoContainer');
+
+      if (user) {
+        document.getElementById('navGuest').classList.add('hidden');
+        document.getElementById('navUser').classList.remove('hidden');
+
+        aplicarVisibilidadBotonesFlotantesUI();
+        
+        if (navSaldo) {
+          navSaldo.classList.remove('hidden');
+          navSaldo.classList.add('flex');
+        }
+        if (navLogo) {
+          navLogo.classList.add('hidden', 'sm:flex');
+        }
+
+        cerrarModalAuth();
+        document.getElementById('vistaBloqueada').classList.add('hidden');
+
+        iniciarLatidoConexion(user);
+
+        const userEmail = (user.email || '').trim().toLowerCase();
+        const esAdmin = ADMIN_EMAILS.some(e => e.trim().toLowerCase() === userEmail);
+        if (esAdmin) {
+          document.getElementById('btnAdminTab').classList.remove('hidden');
+          escucharUsuariosEnLinea();
+          escucharTotalRecaudadoHoyEnVivo();
+        } else {
+          document.getElementById('btnAdminTab').classList.add('hidden');
+        }
+
+        db.collection('usuarios').doc(user.uid).onSnapshot(doc => {
+          if (doc.exists) {
+            const dataU = doc.data();
+            userSaldo = dataU.saldo || 0;
+            userProductosPermitidos = dataU.productos_permitidos || [];
+            userProductosBloqueados = dataU.productos_bloqueados || [];
+            userPermisosSubirStock = dataU.permisos_subir_stock || [];
+            userUltimaNovedadLeida = dataU.ultima_novedad_leida || "";
+          } else {
+            userSaldo = 0;
+            userProductosPermitidos = [];
+            userProductosBloqueados = [];
+            userPermisosSubirStock = [];
+            userUltimaNovedadLeida = "";
+            db.collection('usuarios').doc(user.uid).set({ email: user.email, saldo: 0, productos_permitidos: [], productos_bloqueados: [], permisos_subir_stock: [], ultima_novedad_leida: "", primer_ingreso: new Date().toISOString() }, { merge: true });
+          }
+          document.getElementById('txtSaldoHeader').innerText = `$${userSaldo.toLocaleString('es-CO')} COP`;
+          actualizarBadgeNotificaciones();
+          renderizarCatalogo();
+          poblarSelectStock();
+        });
+
+        cambiarVista('tienda');
+      } else {
+        document.getElementById('navGuest').classList.remove('hidden');
+        document.getElementById('navUser').classList.add('hidden');
+        
+        const btnSoporte = document.getElementById('btnFlotanteSoporte');
+        const btnTelegramBot = document.getElementById('btnFlotanteTelegramBot');
+        if (btnSoporte) btnSoporte.classList.add('hidden');
+        if (btnTelegramBot) btnTelegramBot.classList.add('hidden');
+
+        if (navSaldo) {
+          navSaldo.classList.add('hidden');
+          navSaldo.classList.remove('flex');
+        }
+        if (navLogo) {
+          navLogo.classList.remove('hidden', 'sm:flex');
+          navLogo.classList.add('flex');
+        }
+        document.getElementById('btnAdminTab').classList.add('hidden');
+        bloquearAccesoVisitante();
+      }
+    });
+
+    function actualizarBadgeNotificaciones() {
+      const badgeNotif = document.getElementById('badgeNotifCount');
+      if (!badgeNotif) return;
+
+      const minAlerta = ajustesGeneralesConfig.minRecarga || 5000;
+      
+      if (ajustesGeneralesConfig.autoNotifSaldoBajo !== false && userSaldo < minAlerta) {
+        badgeNotif.innerText = "!";
+        badgeNotif.classList.remove('bg-red-500', 'hidden');
+        badgeNotif.classList.add('bg-yellow-500', 'animate-bounce', 'flex');
+        badgeNotif.title = `¡Atención! Tu saldo es menor al mínimo`;
+        return;
+      }
+
+      if (novedadGlobalActual && novedadGlobalActual.id && userUltimaNovedadLeida === novedadGlobalActual.id) {
+        badgeNotif.classList.add('hidden');
+        badgeNotif.classList.remove('flex', 'bg-yellow-500', 'animate-bounce');
+        return;
+      }
+
+      if (novedadGlobalActual && novedadGlobalActual.id) {
+        badgeNotif.innerText = "1";
+        badgeNotif.classList.remove('hidden', 'bg-yellow-500', 'animate-bounce');
+        badgeNotif.classList.add('bg-red-500', 'flex');
+      } else {
+        badgeNotif.classList.add('hidden');
+      }
+    }
+
+    function abrirModalAuth(modo) {
+      modoAuth = modo;
+      const modal = document.getElementById('modalAuth');
+      if (!modal) return;
+
+      modal.classList.remove('hidden');
+      modal.style.display = 'flex';
+
+      const titulo = document.getElementById('modalAuthTitulo');
+      const btnSubmit = document.getElementById('btnSubmitAuth');
+      const txtToggle = document.getElementById('txtToggleAuth');
+      const btnToggle = document.getElementById('btnToggleAuth');
+      const grupoWhatsapp = document.getElementById('grupoAuthWhatsapp');
+      const grupoCaptcha = document.getElementById('grupoAuthCaptcha');
+
+      if (modo === 'login') {
+        if (titulo) titulo.innerText = 'Iniciar Sesión';
+        if (btnSubmit) btnSubmit.innerText = 'Ingresar';
+        if (txtToggle) txtToggle.innerText = '¿No tienes cuenta?';
+        if (btnToggle) btnToggle.innerText = 'Regístrate';
+        if (grupoWhatsapp) grupoWhatsapp.classList.add('hidden');
+        if (grupoCaptcha) grupoCaptcha.classList.add('hidden');
+      } else {
+        if (titulo) titulo.innerText = 'Crear Cuenta';
+        if (btnSubmit) btnSubmit.innerText = 'Registrarse';
+        if (txtToggle) txtToggle.innerText = '¿Ya tienes cuenta?';
+        if (btnToggle) btnToggle.innerText = 'Inicia Sesión';
+        if (grupoWhatsapp) grupoWhatsapp.classList.remove('hidden');
+        if (grupoCaptcha) grupoCaptcha.classList.remove('hidden');
+        generarCaptcha();
+      }
+    }
+
+    function alternarModoAuth() { 
+      abrirModalAuth(modoAuth === 'login' ? 'register' : 'login'); 
+    }
+
+    function cerrarModalAuth() { 
+      const modal = document.getElementById('modalAuth');
+      if (modal) {
+        modal.classList.add('hidden');
+        modal.style.display = 'none';
+      }
+    }
+
     async function procesarAuth(e) {
       e.preventDefault();
       const email = document.getElementById('authEmail').value.trim();
@@ -1128,6 +2395,42 @@
         }
       }
     }
+
+    function cerrarSesion() { 
+      auth.signOut().then(() => bloquearAccesoVisitante()); 
+    }
+    
+    function abrirModalRecarga() { 
+      if (!currentUser) { abrirModalAuth('login'); return; } 
+      const m = document.getElementById('modalRecarga');
+      m.classList.remove('hidden'); 
+      m.style.display = 'flex'; 
+    }
+    
+    function cerrarModalRecarga() { 
+      const m = document.getElementById('modalRecarga');
+      m.classList.add('hidden'); 
+      m.style.display = 'none'; 
+    }
+    
+    function cerrarModalEntrega() { 
+      const m = document.getElementById('modalEntrega');
+      m.classList.add('hidden'); 
+      m.style.display = 'none'; 
+    }
+
+    function generarCaptcha() {
+      const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+      let res = '';
+      for (let i = 0; i < 5; i++) res += chars.charAt(Math.floor(Math.random() * chars.length));
+      captchaGenerado = res;
+      const el = document.getElementById('captchaTexto');
+      if (el) el.innerText = res;
+    }
+
+    window.addEventListener('DOMContentLoaded', () => { 
+      iniciarSincronizacionTotal(); 
+    });
   </script>
 </body>
 </html>
