@@ -526,6 +526,8 @@
     const ADMIN_EMAILS = ["alex88ruizc@gmail.com"];
     const EMAILS_EXCLUIDOS_REPORTE = ["alex88ruizc@gmail.com", "alex88ruiz@gmail.com"];
 
+    let productoHotId = null; // ID del producto más vendido dinámicamente
+
     const firebaseConfig = {
       apiKey: "AIza" + "SyDlRYxGu56PeBiGjuh9kk0jxoElZ_PwtsE",
       authDomain: "epic-channels.firebaseapp.com",
@@ -634,6 +636,33 @@
       }
     }
 
+    // Detectar dinámicamente el producto más vendido para la etiqueta HOT
+    async function actualizarProductoHotGlobal() {
+      try {
+        const snap = await db.collection('compras').get();
+        const conteo = {};
+        snap.forEach(doc => {
+          const c = doc.data();
+          if (EMAILS_EXCLUIDOS_REPORTE.includes((c.usuarioEmail || '').trim().toLowerCase())) return;
+          const pid = c.productoId;
+          if (pid) {
+            conteo[pid] = (conteo[pid] || 0) + (parseInt(c.cantidad) || 1);
+          }
+        });
+        let maxVentas = 0;
+        let topId = null;
+        for (const [pid, cant] of Object.entries(conteo)) {
+          if (cant > maxVentas) {
+            maxVentas = cant;
+            topId = pid;
+          }
+        }
+        productoHotId = topId;
+      } catch (e) {
+        console.error("Error al calcular producto HOT:", e);
+      }
+    }
+
     function alternarSelectorMes() {
       const tipo = document.getElementById('selPeriodoReporte').value;
       const inpDia = document.getElementById('inputDiaReporte');
@@ -739,7 +768,6 @@
         if (tipo === 'mes') subText = `Mes: ${filtroValor}`;
         document.getElementById('repSubtituloPeriodo').innerText = subText;
 
-        // Ordenar productos por cantidad vendida (Ranking)
         const productosOrdenados = Object.keys(desglosePorProd).sort((a, b) => desglosePorProd[b].cantidad - desglosePorProd[a].cantidad);
 
         const contenedorLista = document.getElementById('listaDesgloseProductos');
@@ -756,7 +784,6 @@
             else if (index === 2) medalla = '🥉';
             else medalla = `#${index + 1}`;
 
-            // Etiqueta HOT / Producto Insignia para el más vendido (#1)
             const insigniaHtml = index === 0 ? `<span class="ml-2 bg-red-500/20 text-red-400 border border-red-500/40 text-[9px] px-2 py-0.5 rounded-full font-black animate-pulse"><i class="fa-solid fa-fire mr-1"></i> 🔥 Producto Insignia (HOT)</span>` : '';
 
             contenedorLista.innerHTML += `
@@ -777,7 +804,6 @@
           });
         }
 
-        // Renderizar tabla de compradores
         const tablaCompradores = document.getElementById('tablaHistorialCompradores');
         tablaCompradores.innerHTML = '';
         if (historialCompras.length === 0) {
@@ -963,7 +989,8 @@
       if (tab === 'recargas') cargarRecargasAdmin();
     }
 
-    function iniciarSincronizacionTotal() {
+    async function iniciarSincronizacionTotal() {
+      await actualizarProductoHotGlobal();
       db.collection('configuracion').doc('precios').onSnapshot(doc => {
         if (doc.exists) preciosConfig = doc.data() || {};
         procesarYRenderizar();
@@ -1012,6 +1039,13 @@
         return p.categoria === categoriaActiva;
       });
 
+      // Ordenar: Hotmail siempre al final fijo
+      filtrados.sort((a, b) => {
+        if (a.id === 'correo_hotmail') return 1;
+        if (b.id === 'correo_hotmail') return -1;
+        return 0;
+      });
+
       if (filtrados.length === 0) {
         grid.innerHTML = `<p class="col-span-full text-center text-gray-500 py-12">No hay productos visibles en esta categoría.</p>`;
         return;
@@ -1038,8 +1072,13 @@
         const badgeIcon = esCorreo ? 'fa-envelope' : 'fa-tv';
         const badgeText = esCorreo ? 'Correos Electrónicos' : 'Cuentas Streaming';
 
+        // Etiqueta HOT dinámica si es el producto más vendido
+        const esHot = (prod.id === productoHotId || prod.aliases.includes(productoHotId));
+        const hotBadgeHtml = esHot ? `<div class="absolute -top-3 right-4 bg-red-500 text-white font-black text-[10px] px-3 py-1 rounded-full shadow-lg shadow-red-500/30 animate-bounce flex items-center gap-1 z-10"><i class="fa-solid fa-fire"></i> HOT / DESTACADO</div>` : '';
+
         grid.innerHTML += `
-          <div class="bg-gray-900 border ${cardBorder} rounded-2xl p-5 flex flex-col justify-between transition">
+          <div class="bg-gray-900 border ${cardBorder} rounded-2xl p-5 flex flex-col justify-between transition relative">
+            ${hotBadgeHtml}
             <div>
               <div class="flex justify-between items-start mb-3">
                 <span class="text-[11px] font-bold ${badgeStyle} px-3 py-1 rounded-full">
