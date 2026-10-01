@@ -535,7 +535,7 @@
       <p id="txtPermisosClienteEmail" class="text-xs text-emerald-400 font-mono mb-4 break-all">cliente@ejemplo.com</p>
       
       <p class="text-[11px] text-gray-400 mb-3 leading-relaxed">
-        Marca los productos exclusivos que este cliente tiene autorización para ver y comprar (ejemplo: <b>Amazon 28 Días</b>).
+        Marca los productos que este cliente tiene autorización para ver y comprar. Por defecto, los productos públicos ya tienen chulo activo.
       </p>
 
       <div id="listaCheckboxesProductosPermiso" class="max-h-60 overflow-y-auto space-y-2 bg-gray-800/60 p-3 rounded-xl border border-gray-700/60 mb-4 text-xs">
@@ -599,8 +599,7 @@
   <!-- MODAL: CAMBIAR CONTRASEÑA -->
   <div id="modalPassword" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
     <div class="bg-gray-900 border border-gray-800 rounded-2xl max-w-sm w-full p-6 relative">
-      <button onclick="cerrarModalPassword()" class="absolute top-4 right-4 text-gray-400 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
-      <h3 class="text-xl font-bold text-white mb-1 flex items-center gap-2"><i class="fa-solid fa-key text-emerald-400"></i> Cambiar Contraseña</h3>
+      <button onclick="cerrarModalPassword()" class="absolute top-4 right-4 text-gray-400 hover:text-white"><i class="fa-solid fa-key text-emerald-400"></i> Cambiar Contraseña</h3>
       <p class="text-xs text-gray-400 mb-4">Ingresa tu clave actual y la nueva contraseña.</p>
       <form onsubmit="cambiarContraseñaUsuario(event)" class="space-y-3">
         <div>
@@ -936,7 +935,6 @@
       });
     }
 
-    // OBTENER FECHA LOCAL DE COLOMBIA (YYYY-MM-DD)
     function obtenerFechaLocalStr(fechaObj) {
       const d = fechaObj || new Date();
       const año = d.getFullYear();
@@ -945,7 +943,6 @@
       return `${año}-${mes}-${dia}`;
     }
 
-    // MONITOR EN VIVO ROBUSTO: TOTAL RECAUDADO HOY + CUENTAS
     function escucharTotalRecaudadoHoyEnVivo() {
       db.collection('compras').onSnapshot(snap => {
         const hoyStr = obtenerFechaLocalStr();
@@ -1250,6 +1247,7 @@
     let currentUser = null;
     let userSaldo = 0;
     let userProductosPermitidos = [];
+    let userProductosBloqueados = [];
     let modoAuth = 'login';
     let captchaGenerado = '';
     let categoriaActiva = 'todas';
@@ -1346,10 +1344,12 @@
             const dataU = doc.data();
             userSaldo = dataU.saldo || 0;
             userProductosPermitidos = dataU.productos_permitidos || [];
+            userProductosBloqueados = dataU.productos_bloqueados || [];
           } else {
             userSaldo = 0;
             userProductosPermitidos = [];
-            db.collection('usuarios').doc(user.uid).set({ email: user.email, saldo: 0, productos_permitidos: [] }, { merge: true });
+            userProductosBloqueados = [];
+            db.collection('usuarios').doc(user.uid).set({ email: user.email, saldo: 0, productos_permitidos: [], productos_bloqueados: [] }, { merge: true });
           }
           document.getElementById('txtSaldoHeader').innerText = `$${userSaldo.toLocaleString('es-CO')} COP`;
           renderizarCatalogo();
@@ -1603,11 +1603,13 @@
 
       const esVip = PRODUCTOS_VIP_EXCLUSIVOS.some(vipKey => vipKey === prod.id || vipKey === prod.docId || (prod.aliases && prod.aliases.includes(vipKey)));
       
-      if (!esVip) {
-        return true;
+      if (esVip) {
+        return userProductosPermitidos.includes(prod.id) || userProductosPermitidos.includes(prod.docId);
       }
 
-      return userProductosPermitidos.includes(prod.id) || userProductosPermitidos.includes(prod.docId);
+      // Si es producto público, verificar que el admin no lo haya desmarcado expresamente
+      const estaBloqueado = userProductosBloqueados.includes(prod.id) || userProductosBloqueados.includes(prod.docId);
+      return !estaBloqueado;
     }
 
     function renderizarCatalogo() {
@@ -1914,7 +1916,7 @@
           const uid = doc.id;
           const puedeSubir = u.puede_subir_stock === true;
           const permitidos = u.productos_permitidos || [];
-          const cantPermitidos = permitidos.length;
+          const bloqueados = u.productos_bloqueados || [];
 
           tbody.innerHTML += `
             <tr class="hover:bg-gray-800/40 border-b border-gray-800">
@@ -1930,8 +1932,8 @@
                 </div>
               </td>
               <td class="px-4 py-3 text-center">
-                <button onclick="abrirModalPermisosCliente('${uid}', '${u.email || ''}', ${JSON.stringify(permitidos).replace(/"/g, '&quot;')})" class="px-2.5 py-1 rounded-lg text-xs font-bold bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 border border-blue-500/40 transition">
-                  <i class="fa-solid fa-list-check mr-1"></i> Permisos (${cantPermitidos})
+                <button onclick="abrirModalPermisosCliente('${uid}', '${u.email || ''}', ${JSON.stringify(permitidos).replace(/"/g, '&quot;')}, ${JSON.stringify(bloqueados).replace(/"/g, '&quot;')})" class="px-2.5 py-1 rounded-lg text-xs font-bold bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 border border-blue-500/40 transition">
+                  <i class="fa-solid fa-list-check mr-1"></i> Permisos Catálogo
                 </button>
               </td>
               <td class="px-4 py-3 text-center">
@@ -1950,26 +1952,36 @@
       });
     }
 
-    function abrirModalPermisosCliente(uid, email, productosPermitidosActuales) {
+    // MODAL DE PERMISOS: PÚBLICOS ACTIVOS POR DEFECTO, EXCLUSIVO DESMARCADO
+    function abrirModalPermisosCliente(uid, email, productosPermitidosActuales, productosBloqueadosActuales) {
       clientePermisosUidActual = uid;
       document.getElementById('txtPermisosClienteEmail').innerText = email;
       const contenedor = document.getElementById('listaCheckboxesProductosPermiso');
       
+      const permitidos = productosPermitidosActuales || [];
+      const bloqueados = productosBloqueadosActuales || [];
+
       let html = '';
       catalogoUnificado.forEach(p => {
         const esVip = PRODUCTOS_VIP_EXCLUSIVOS.includes(p.id) || PRODUCTOS_VIP_EXCLUSIVOS.includes(p.docId);
-        const estaMarcado = productosPermitidosActuales.includes(p.id) || productosPermitidosActuales.includes(p.docId);
+        
+        let estaMarcado = false;
+        if (esVip) {
+          estaMarcado = permitidos.includes(p.id) || permitidos.includes(p.docId);
+        } else {
+          estaMarcado = !(bloqueados.includes(p.id) || bloqueados.includes(p.docId));
+        }
 
         html += `
-          <label class="flex items-center justify-between p-2 rounded-lg bg-gray-900 border border-gray-700/60 cursor-pointer hover:border-emerald-500/50">
-            <div class="flex items-center gap-2">
-              <input type="checkbox" value="${p.docId}" class="chk-prod-permiso rounded accent-emerald-500 w-4 h-4 cursor-pointer" ${estaMarcado ? 'checked' : ''}>
+          <label class="flex items-center justify-between p-2.5 rounded-lg bg-gray-900 border border-gray-700/60 cursor-pointer hover:border-emerald-500/50">
+            <div class="flex items-center gap-2.5">
+              <input type="checkbox" value="${p.docId}" data-vip="${esVip ? '1' : '0'}" class="chk-prod-permiso rounded accent-emerald-500 w-4 h-4 cursor-pointer" ${estaMarcado ? 'checked' : ''}>
               <div>
                 <span class="font-bold text-white block">${p.nombre}</span>
                 <span class="text-[10px] text-gray-400">${p.categoria} - $${(p.precio || 0).toLocaleString('es-CO')}</span>
               </div>
             </div>
-            ${esVip ? `<span class="text-[9px] px-2 py-0.5 rounded-full bg-yellow-500/10 text-yellow-400 border border-yellow-500/30 font-bold uppercase">VIP Exclusivo</span>` : `<span class="text-[9px] text-gray-500">Público</span>`}
+            ${esVip ? `<span class="text-[9px] px-2 py-0.5 rounded-full bg-yellow-500/10 text-yellow-400 border border-yellow-500/30 font-bold uppercase">VIP Exclusivo</span>` : `<span class="text-[9px] text-gray-400 font-medium">Público</span>`}
           </label>
         `;
       });
@@ -1989,15 +2001,27 @@
 
     async function guardarPermisosClienteActual() {
       if (!clientePermisosUidActual) return;
-      const checkboxes = document.querySelectorAll('.chk-prod-permiso:checked');
-      const seleccionados = Array.from(checkboxes).map(c => c.value);
+      const inputs = document.querySelectorAll('.chk-prod-permiso');
+      const nuevosPermitidos = [];
+      const nuevosBloqueados = [];
+
+      inputs.forEach(chk => {
+        const docId = chk.value;
+        const esVip = chk.getAttribute('data-vip') === '1';
+        if (esVip) {
+          if (chk.checked) nuevosPermitidos.push(docId);
+        } else {
+          if (!chk.checked) nuevosBloqueados.push(docId);
+        }
+      });
 
       try {
         await db.collection('usuarios').doc(clientePermisosUidActual).set({
-          productos_permitidos: seleccionados
+          productos_permitidos: nuevosPermitidos,
+          productos_bloqueados: nuevosBloqueados
         }, { merge: true });
 
-        alert("¡Permisos de productos actualizados para este cliente!");
+        alert("¡Permisos guardados con éxito para este cliente!");
         cerrarModalPermisosCliente();
       } catch (e) {
         alert("Error al guardar permisos: " + e.message);
@@ -2012,22 +2036,20 @@
 
       try {
         const cred = await auth.createUserWithEmailAndPassword(email, password);
-        await db.collection('usuarios').doc(cred.user.uid).set({
-          email: email,
-          whatsapp: whatsapp,
-          saldo: 0,
-          puede_subir_stock: false,
+        await db.collection('usuarios').doc(cred.user.uid).set({ 
+          email, 
+          whatsapp: whatsapp || 'Sin WhatsApp', 
+          saldo: 0, 
+          puede_subir_stock: false, 
           productos_permitidos: [],
-          fechaRegistro: new Date().toISOString()
+          productos_bloqueados: [],
+          fechaRegistro: new Date().toISOString() 
         });
-
         document.getElementById('expEmail').value = '';
         document.getElementById('expWhatsapp').value = '';
         document.getElementById('expPassword').value = '';
         alert("¡Cuenta de usuario creada con éxito!");
-      } catch (err) {
-        alert("Error al crear cuenta: " + err.message);
-      }
+      } catch (err) { alert("Error al crear cuenta: " + err.message); }
     }
 
     async function alternarPermisoStock(uid, estadoActual) {
@@ -2257,6 +2279,7 @@
             saldo: 0, 
             puede_subir_stock: false, 
             productos_permitidos: [],
+            productos_bloqueados: [],
             fechaRegistro: new Date().toISOString() 
           });
           cerrarModalAuth();
