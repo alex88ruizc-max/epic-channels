@@ -213,17 +213,27 @@
         </div>
       </div>
 
-      <!-- SECCIÓN EN LÍNEA EN TIEMPO REAL -->
-      <div class="mb-6 p-4 bg-gray-900 border border-emerald-500/30 rounded-2xl flex items-center justify-between">
-        <div class="flex items-center gap-3">
-          <div class="w-3 h-3 rounded-full bg-emerald-500 animate-ping"></div>
-          <div>
-            <h4 class="text-xs font-bold text-white uppercase tracking-wider">Monitoreo de Actividad</h4>
-            <p class="text-[11px] text-gray-400">Usuarios conectados en este momento en la plataforma.</p>
+      <!-- SECCIÓN EN LÍNEA EN TIEMPO REAL (CON LISTA DE CLIENTES CONECTADOS Y EXCLUYENDO ADMIN) -->
+      <div class="mb-6 p-4 bg-gray-900 border border-emerald-500/30 rounded-2xl space-y-3">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-3">
+            <div class="w-3 h-3 rounded-full bg-emerald-500 animate-ping"></div>
+            <div>
+              <h4 class="text-xs font-bold text-white uppercase tracking-wider">Monitoreo de Actividad</h4>
+              <p class="text-[11px] text-gray-400">Clientes conectados en este momento en la plataforma (excluyendo tu cuenta).</p>
+            </div>
+          </div>
+          <div class="bg-emerald-500/10 border border-emerald-500/30 px-3 py-1.5 rounded-xl text-emerald-400 font-black text-xs shrink-0">
+            🟢 <span id="contadorEnLinea">0</span> En Línea
           </div>
         </div>
-        <div class="bg-emerald-500/10 border border-emerald-500/30 px-3 py-1.5 rounded-xl text-emerald-400 font-black text-xs">
-          🟢 <span id="contadorEnLinea">0</span> En Línea
+        
+        <!-- Lista de usuarios activos en línea -->
+        <div class="pt-2 border-t border-gray-800/80">
+          <span class="text-[10px] text-gray-400 uppercase font-semibold tracking-wider block mb-1.5">Clientes activos ahora:</span>
+          <div id="listaUsuariosEnLinea" class="flex flex-wrap gap-1.5">
+            <span class="text-xs text-gray-500 italic">Sin clientes activos en este momento.</span>
+          </div>
         </div>
       </div>
 
@@ -246,7 +256,7 @@
             <table class="w-full text-left text-sm text-gray-300">
               <thead class="bg-gray-800/60 text-xs uppercase text-gray-400">
                 <tr>
-                  <th class="px-4 py-3">Producto</th>
+                  <th class="px-4 py-3 min-w-[200px]">Producto</th>
                   <th class="px-4 py-3">Categoría</th>
                   <th class="px-4 py-3">Precio</th>
                   <th class="px-4 py-3">Stock Disponible</th>
@@ -816,23 +826,45 @@
       intervaloHeartbeat = setInterval(actualizarLatido, 45000);
     }
 
+    // MONITOREO DE ACTIVIDAD: EXCLUYE ADMIN Y MUESTRA QUIÉNES ESTÁN EN LÍNEA
     function escucharUsuariosEnLinea() {
       db.collection('usuarios').onSnapshot(snap => {
         const ahora = new Date().getTime();
         let enLineaCount = 0;
+        const listaClientesConectados = [];
 
         snap.forEach(doc => {
           const u = doc.data();
+          const email = (u.email || '').trim().toLowerCase();
+
+          // Excluirte a ti (administrador) del monitoreo
+          if (ADMIN_EMAILS.some(adm => adm.trim().toLowerCase() === email)) return;
+
           if (u.ultima_conexion) {
             const ultimaVez = new Date(u.ultima_conexion).getTime();
             if ((ahora - ultimaVez) < 180000) {
               enLineaCount++;
+              listaClientesConectados.push(u.email || u.whatsapp || 'Cliente anónimo');
             }
           }
         });
 
         const contadorEl = document.getElementById('contadorEnLinea');
         if (contadorEl) contadorEl.innerText = enLineaCount;
+
+        const contenedorLista = document.getElementById('listaUsuariosEnLinea');
+        if (contenedorLista) {
+          if (listaClientesConectados.length === 0) {
+            contenedorLista.innerHTML = '<span class="text-xs text-gray-500 italic">Sin clientes activos en este momento.</span>';
+          } else {
+            contenedorLista.innerHTML = listaClientesConectados.map(correo => `
+              <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-xs font-semibold">
+                <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                ${correo}
+              </span>
+            `).join('');
+          }
+        }
       });
     }
 
@@ -1575,20 +1607,20 @@
         const esActivo = p.activo !== false;
         tbody.innerHTML += `
           <tr class="hover:bg-gray-800/40">
-            <td class="px-4 py-3 font-semibold text-white">
-              ${p.nombre}
-              <span class="block text-[10px] text-gray-500 font-normal">Mínimo compra: ${p.minCompra} u.</span>
+            <td class="px-4 py-3 min-w-[200px] whitespace-normal">
+              <span class="font-bold text-white block text-sm leading-snug">${p.nombre}</span>
+              <span class="inline-block mt-1 text-[10px] text-gray-400 bg-gray-800 border border-gray-700/60 px-2 py-0.5 rounded font-medium">Mín. compra: ${p.minCompra} u.</span>
             </td>
-            <td class="px-4 py-3 text-xs text-gray-400">${p.categoria}</td>
-            <td class="px-4 py-3 font-bold text-white">$${(p.precio || 0).toLocaleString('es-CO')}</td>
-            <td class="px-4 py-3">
+            <td class="px-4 py-3 text-xs text-gray-400 whitespace-nowrap">${p.categoria}</td>
+            <td class="px-4 py-3 font-bold text-white whitespace-nowrap">$${(p.precio || 0).toLocaleString('es-CO')}</td>
+            <td class="px-4 py-3 whitespace-nowrap">
               <span class="px-2.5 py-0.5 rounded text-xs font-semibold ${stock > 0 ? 'bg-emerald-500/10 text-emerald-400' : 'bg-red-500/10 text-red-400'}">${stock} disponibles</span>
               ${stock > 0 ? `<button onclick="verDetalleCuentas('${p.docId}')" class="ml-2 text-[11px] bg-gray-800 hover:bg-gray-700 text-gray-300 px-2 py-0.5 rounded">Ver</button>` : ''}
             </td>
-            <td class="px-4 py-3 text-center">
+            <td class="px-4 py-3 text-center whitespace-nowrap">
               <button onclick="alternarVisibilidadProducto('${p.docId}', ${esActivo})" class="px-2.5 py-1 rounded-lg text-xs font-bold ${esActivo ? 'bg-emerald-600 text-white' : 'bg-red-600 text-white'}">${esActivo ? 'Activo' : 'Oculto'}</button>
             </td>
-            <td class="px-4 py-3 text-right">
+            <td class="px-4 py-3 text-right whitespace-nowrap">
               <button onclick="vaciarStock('${p.docId}')" class="text-xs text-red-400 hover:text-red-300 p-1.5 rounded bg-gray-800"><i class="fa-solid fa-trash-can"></i></button>
             </td>
           </tr>
