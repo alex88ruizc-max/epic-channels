@@ -193,7 +193,7 @@
         </div>
       </div>
 
-      <!-- Pestañas de Administración (Sin reporte financiero arriba) -->
+      <!-- Pestañas de Administración -->
       <div class="flex border-b border-gray-800 gap-3 mb-6 text-sm overflow-x-auto pb-2 no-scrollbar">
         <button onclick="cambiarTabAdmin('productos')" id="tabBtnProductos" class="pb-2 border-b-2 border-emerald-400 text-emerald-400 font-bold whitespace-nowrap">Gestión y Visibilidad</button>
         <button onclick="cambiarTabAdmin('usuarios')" id="tabBtnUsuarios" class="pb-2 border-b-2 border-transparent text-gray-400 font-medium hover:text-white whitespace-nowrap">Usuarios Registrados</button>
@@ -335,8 +335,10 @@
             <div class="flex items-center gap-2 flex-wrap">
               <select id="selPeriodoReporte" onchange="alternarSelectorMes()" class="bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none">
                 <option value="hoy">Ventas de Hoy</option>
+                <option value="dia">Por Día Específico</option>
                 <option value="mes">Por Mes Específico</option>
               </select>
+              <input type="date" id="inputDiaReporte" class="hidden bg-gray-800 border border-gray-700 rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none">
               <input type="month" id="inputMesReporte" class="hidden bg-gray-800 border border-gray-700 rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none">
               <button onclick="consultarReporteFinanciero()" class="px-4 py-2 bg-emerald-500 hover:bg-emerald-400 text-black font-bold text-xs rounded-xl shadow-lg shadow-emerald-500/10 flex items-center gap-1.5 transition">
                 <i class="fa-solid fa-rotate"></i> Consultar / Actualizar
@@ -365,10 +367,29 @@
               </div>
             </div>
 
-            <!-- Desglose por Producto -->
-            <div class="bg-gray-800/50 border border-gray-700/50 rounded-xl p-4">
-              <h4 class="text-xs font-bold text-gray-300 uppercase tracking-wider mb-3">Desglose Detallado por Producto</h4>
+            <!-- Desglose por Producto con Ranking y Insignia HOT -->
+            <div class="bg-gray-800/50 border border-gray-700/50 rounded-xl p-4 mb-6">
+              <h4 class="text-xs font-bold text-gray-300 uppercase tracking-wider mb-3">Ranking y Desglose por Producto</h4>
               <div id="listaDesgloseProductos" class="space-y-2 text-xs"></div>
+            </div>
+
+            <!-- Historial Detallado de Compradores -->
+            <div class="bg-gray-800/50 border border-gray-700/50 rounded-xl p-4">
+              <h4 class="text-xs font-bold text-gray-300 uppercase tracking-wider mb-3">Historial de Compradores en este Período</h4>
+              <div class="overflow-x-auto">
+                <table class="w-full text-left text-xs text-gray-300">
+                  <thead class="bg-gray-800 text-gray-400 uppercase">
+                    <tr>
+                      <th class="px-3 py-2">Fecha / Hora</th>
+                      <th class="px-3 py-2">Correo del Comprador</th>
+                      <th class="px-3 py-2">Producto</th>
+                      <th class="px-3 py-2 text-center">Cant.</th>
+                      <th class="px-3 py-2 text-right">Total Pagado</th>
+                    </tr>
+                  </thead>
+                  <tbody id="tablaHistorialCompradores" class="divide-y divide-gray-800"></tbody>
+                </table>
+              </div>
             </div>
           </div>
 
@@ -615,15 +636,23 @@
 
     function alternarSelectorMes() {
       const tipo = document.getElementById('selPeriodoReporte').value;
+      const inpDia = document.getElementById('inputDiaReporte');
       const inpMes = document.getElementById('inputMesReporte');
-      if (tipo === 'mes') {
+      
+      inpDia.classList.add('hidden');
+      inpMes.classList.add('hidden');
+
+      if (tipo === 'dia') {
+        inpDia.classList.remove('hidden');
+        if (!inpDia.value) {
+          inpDia.value = new Date().toISOString().slice(0, 10);
+        }
+      } else if (tipo === 'mes') {
         inpMes.classList.remove('hidden');
         if (!inpMes.value) {
           const ahora = new Date();
           inpMes.value = `${ahora.getFullYear()}-${String(ahora.getMonth() + 1).padStart(2, '0')}`;
         }
-      } else {
-        inpMes.classList.add('hidden');
       }
     }
 
@@ -642,11 +671,14 @@
         let totalCuentas = 0;
         let totalOrdenes = 0;
         const desglosePorProd = {};
+        const historialCompras = [];
 
         const hoyStr = new Date().toISOString().slice(0, 10);
-        let mesFiltroStr = '';
-        if (tipo === 'mes') {
-          mesFiltroStr = document.getElementById('inputMesReporte').value || hoyStr.slice(0, 7);
+        let filtroValor = '';
+        if (tipo === 'dia') {
+          filtroValor = document.getElementById('inputDiaReporte').value || hoyStr;
+        } else if (tipo === 'mes') {
+          filtroValor = document.getElementById('inputMesReporte').value || hoyStr.slice(0, 7);
         }
 
         snap.forEach(doc => {
@@ -667,8 +699,10 @@
           let coincide = false;
           if (tipo === 'hoy') {
             coincide = (fechaIso.slice(0, 10) === hoyStr);
-          } else {
-            coincide = (fechaIso.slice(0, 7) === mesFiltroStr);
+          } else if (tipo === 'dia') {
+            coincide = (fechaIso.slice(0, 10) === filtroValor);
+          } else if (tipo === 'mes') {
+            coincide = (fechaIso.slice(0, 7) === filtroValor);
           }
 
           if (coincide) {
@@ -685,31 +719,79 @@
             }
             desglosePorProd[prodNombre].cantidad += cant;
             desglosePorProd[prodNombre].total += monto;
+
+            historialCompras.push({
+              fecha: fechaCompra.toLocaleString('es-CO'),
+              email: c.usuarioEmail || 'Sin correo',
+              producto: prodNombre,
+              cantidad: cant,
+              total: monto
+            });
           }
         });
 
         document.getElementById('repTotalRecaudado').innerText = `$${totalDinero.toLocaleString('es-CO')} COP`;
         document.getElementById('repTotalCuentas').innerText = `${totalCuentas} unidades`;
         document.getElementById('repTotalOrdenes').innerText = `${totalOrdenes} órdenes`;
-        document.getElementById('repSubtituloPeriodo').innerText = (tipo === 'hoy') ? `Hoy: ${hoyStr}` : `Mes: ${mesFiltroStr}`;
+        
+        let subText = `Hoy: ${hoyStr}`;
+        if (tipo === 'dia') subText = `Día: ${filtroValor}`;
+        if (tipo === 'mes') subText = `Mes: ${filtroValor}`;
+        document.getElementById('repSubtituloPeriodo').innerText = subText;
+
+        // Ordenar productos por cantidad vendida (Ranking)
+        const productosOrdenados = Object.keys(desglosePorProd).sort((a, b) => desglosePorProd[b].cantidad - desglosePorProd[a].cantidad);
 
         const contenedorLista = document.getElementById('listaDesgloseProductos');
         contenedorLista.innerHTML = '';
 
-        const productosKeys = Object.keys(desglosePorProd);
-        if (productosKeys.length === 0) {
+        if (productosOrdenados.length === 0) {
           contenedorLista.innerHTML = `<p class="text-gray-500 py-3">No hay ventas registradas de clientes en este período.</p>`;
         } else {
-          productosKeys.forEach(prod => {
+          productosOrdenados.forEach((prod, index) => {
             const data = desglosePorProd[prod];
+            let medalla = '';
+            if (index === 0) medalla = '🥇';
+            else if (index === 1) medalla = '🥈';
+            else if (index === 2) medalla = '🥉';
+            else medalla = `#${index + 1}`;
+
+            // Etiqueta HOT / Producto Insignia para el más vendido (#1)
+            const insigniaHtml = index === 0 ? `<span class="ml-2 bg-red-500/20 text-red-400 border border-red-500/40 text-[9px] px-2 py-0.5 rounded-full font-black animate-pulse"><i class="fa-solid fa-fire mr-1"></i> 🔥 Producto Insignia (HOT)</span>` : '';
+
             contenedorLista.innerHTML += `
-              <div class="flex items-center justify-between p-2.5 bg-gray-900/80 rounded-lg border border-gray-800">
-                <span class="font-bold text-white">${prod}</span>
+              <div class="flex items-center justify-between p-3 bg-gray-900/80 rounded-xl border border-gray-800">
+                <div class="flex items-center gap-2">
+                  <span class="text-base font-black text-gray-400">${medalla}</span>
+                  <div>
+                    <span class="font-bold text-white text-sm">${prod}</span>
+                    ${insigniaHtml}
+                  </div>
+                </div>
                 <div class="text-right">
-                  <span class="text-emerald-400 font-bold block">$${data.total.toLocaleString('es-CO')} COP</span>
-                  <span class="text-[10px] text-gray-400">${data.cantidad} unidades vendidas</span>
+                  <span class="text-emerald-400 font-black text-sm block">$${data.total.toLocaleString('es-CO')} COP</span>
+                  <span class="text-[11px] text-gray-400">${data.cantidad} unidades vendidas</span>
                 </div>
               </div>
+            `;
+          });
+        }
+
+        // Renderizar tabla de compradores
+        const tablaCompradores = document.getElementById('tablaHistorialCompradores');
+        tablaCompradores.innerHTML = '';
+        if (historialCompras.length === 0) {
+          tablaCompradores.innerHTML = `<tr><td colspan="5" class="text-center py-4 text-gray-500">Sin compradores en este período.</td></tr>`;
+        } else {
+          historialCompras.forEach(h => {
+            tablaCompradores.innerHTML += `
+              <tr class="hover:bg-gray-800/40">
+                <td class="px-3 py-2 text-gray-400">${h.fecha}</td>
+                <td class="px-3 py-2 font-semibold text-emerald-300">${h.email}</td>
+                <td class="px-3 py-2 text-white">${h.producto}</td>
+                <td class="px-3 py-2 text-center text-gray-300">${h.cantidad}</td>
+                <td class="px-3 py-2 text-right font-bold text-emerald-400">$${h.total.toLocaleString('es-CO')} COP</td>
+              </tr>
             `;
           });
         }
