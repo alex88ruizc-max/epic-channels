@@ -210,6 +210,9 @@
         </div>
 
         <div class="flex items-center gap-2 flex-wrap">
+          <button onclick="activarModoPruebaCliente()" class="px-3.5 py-2 bg-yellow-500/20 hover:bg-yellow-500/30 text-yellow-300 border border-yellow-500/40 text-xs font-bold rounded-xl flex items-center gap-1.5 transition shadow">
+            <i class="fa-solid fa-eye text-sm"></i> Ver como Cliente
+          </button>
           <button onclick="probarTelegram()" class="px-3 py-2 bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 border border-blue-500/40 text-xs font-bold rounded-xl flex items-center gap-1.5 transition">
             <i class="fa-brands fa-telegram text-sm"></i> Probar Admin
           </button>
@@ -589,6 +592,13 @@
 
   </main>
 
+  <!-- ==================== BOTÓN FLOTANTE MODO PRUEBA CLIENTE ==================== -->
+  <div id="btnFlotanteModoCliente" class="fixed bottom-20 right-5 z-40 hidden">
+    <button onclick="salirModoPruebaCliente()" class="flex items-center gap-2 bg-yellow-500 hover:bg-yellow-400 text-black font-black px-4 py-2.5 rounded-full shadow-2xl transition transform hover:scale-105 text-xs animate-bounce">
+      <i class="fa-solid fa-arrow-rotate-left text-sm"></i> Salir de Vista Cliente
+    </button>
+  </div>
+
   <!-- ==================== BOTÓN FLOTANTE SOPORTE WHATSAPP (SOLO LOGUEADOS) ==================== -->
   <div id="btnFlotanteSoporte" class="fixed bottom-5 right-5 z-40 hidden">
     <button onclick="abrirSoporteWhatsapp()" class="flex items-center gap-2 bg-emerald-500 hover:bg-emerald-400 text-black font-black px-4 py-3 rounded-full shadow-2xl shadow-emerald-500/30 transition transform hover:scale-105">
@@ -702,6 +712,10 @@
         <div class="p-3 bg-gray-800/80 rounded-xl border border-gray-700/60">
           <span class="font-bold text-emerald-400 block mb-1">⏰ Autoeliminación en 1 Hora</span>
           <p class="text-gray-400">Las notificaciones y la campana de alertas se autoeliminarán transcurrida 1 hora desde tu primer ingreso del día.</p>
+        </div>
+        <div class="p-3 bg-gray-800/80 rounded-xl border border-gray-700/60">
+          <span class="font-bold text-emerald-400 block mb-1">👁️ Modo Vista de Cliente</span>
+          <p class="text-gray-400">Permite a los administradores comprobar el funcionamiento exacto de la tienda desde la perspectiva de un usuario.</p>
         </div>
       </div>
 
@@ -988,6 +1002,7 @@
 
     let productoHotId = null; 
     let intervaloHeartbeat = null;
+    let modoPruebaCliente = false;
 
     const firebaseConfig = {
       apiKey: "AIza" + "SyDlRYxGu56PeBiGjuh9kk0jxoElZ_PwtsE",
@@ -1050,6 +1065,26 @@
         });
       } catch (e) {
         console.error("Fallo Telegram Recarga:", e);
+      }
+    }
+
+    async function enviarNotificacionStockTelegram(datos) {
+      const mensaje = 
+        `📦 *¡STOCK CARGADO AL INVENTARIO!* 📦\n\n` +
+        `🏷️️ *Producto ID:* ${datos.productoId}\n` +
+        `➕ *Cuentas Agregadas:* ${datos.cantidad}\n` +
+        `⏰ *Fecha y Hora:* ${datos.fecha}`;
+
+      const url = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`;
+
+      try {
+        await fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ chat_id: TELEGRAM_CHAT_ID, text: mensaje, parse_mode: "Markdown" })
+        });
+      } catch (e) {
+        console.error("Fallo Telegram Stock:", e);
       }
     }
 
@@ -1624,7 +1659,6 @@
             const notifBorrada = dataU.notificacion_borrada === true;
             const badgeNotif = document.getElementById('badgeNotifCount');
 
-            // Verificar temporizador de 1 hora a partir del primer ingreso
             let primerIngreso = dataU.primer_ingreso;
             const ahoraTiempo = new Date().getTime();
             if (!primerIngreso) {
@@ -1669,6 +1703,20 @@
         bloquearAccesoVisitante();
       }
     });
+
+    function activarModoPruebaCliente() {
+      modoPruebaCliente = true;
+      document.getElementById('btnAdminTab').classList.add('hidden');
+      document.getElementById('btnFlotanteModoCliente').classList.remove('hidden');
+      cambiarVista('tienda');
+    }
+
+    function salirModoPruebaCliente() {
+      modoPruebaCliente = false;
+      document.getElementById('btnAdminTab').classList.remove('hidden');
+      document.getElementById('btnFlotanteModoCliente').classList.add('hidden');
+      cambiarVista('admin');
+    }
 
     function abrirModalNovedades() {
       const modal = document.getElementById('modalNovedades');
@@ -1726,6 +1774,11 @@
 
     function cambiarVista(vista) {
       if (!currentUser) { bloquearAccesoVisitante(); return; }
+      
+      if (modoPruebaCliente && vista === 'admin') {
+        vista = 'tienda';
+      }
+
       cerrarModalAuth();
       document.getElementById('vistaBloqueada').classList.add('hidden');
       document.getElementById('vistaTienda').classList.add('hidden');
@@ -1739,13 +1792,14 @@
       } else if (vista === 'mis-cuentas') {
         document.getElementById('vistaMisCuentas').classList.remove('hidden');
         cargarMisCuentas();
-      } else if (vista === 'admin') {
+      } else if (vista === 'admin' && !modoPruebaCliente) {
         document.getElementById('vistaAdmin').classList.remove('hidden');
         cambiarTabAdmin('productos');
       }
     }
 
     function cambiarTabAdmin(tab) {
+      if (modoPruebaCliente) return;
       const tabs = ['productos', 'usuarios', 'stock', 'precios', 'apariencia', 'pagos', 'recargas'];
       tabs.forEach(t => {
         const sec = document.getElementById('adminSec' + t.charAt(0).toUpperCase() + t.slice(1));
@@ -2045,7 +2099,7 @@
       if (!currentUser) return false;
       const userEmail = (currentUser.email || '').trim().toLowerCase();
       const esAdmin = ADMIN_EMAILS.some(e => e.trim().toLowerCase() === userEmail);
-      if (esAdmin) return true;
+      if (esAdmin && !modoPruebaCliente) return true;
 
       const esVip = PRODUCTOS_VIP_EXCLUSIVOS.some(vipKey => vipKey === prod.id || vipKey === prod.docId || (prod.aliases && prod.aliases.includes(vipKey)));
       
@@ -2691,7 +2745,15 @@
       const actual = (doc.exists && Array.isArray(doc.data().cuentas)) ? doc.data().cuentas : [];
       await invRef.set({ cuentas: actual.concat(nuevas) }, { merge: true });
       document.getElementById('txtStockLineas').value = '';
-      alert(`¡Agregadas ${nuevas.length} cuentas!`);
+      
+      // Enviar notificación a Telegram de stock cargado
+      await enviarNotificacionStockTelegram({
+        productoId: docId,
+        cantidad: nuevas.length,
+        fecha: new Date().toLocaleString('es-CO')
+      });
+
+      alert(`¡Agregadas ${nuevas.length} cuentas y notificadas a Telegram!`);
     }
 
     function poblarSelectPrecios() {
@@ -2920,7 +2982,6 @@
         fecha: new Date().toISOString() 
       });
 
-      // ENVIAR NOTIFICACIÓN AUTOMÁTICA A TELEGRAM
       await enviarNotificacionRecargaTelegram({
         cliente: currentUser.email,
         monto: monto,
