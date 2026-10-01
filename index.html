@@ -103,7 +103,7 @@
   <!-- ==================== CONTENIDO PRINCIPAL ==================== -->
   <main class="flex-grow max-w-6xl w-full mx-auto px-4 py-6">
 
-    <!-- ==================== VISTA: BLOQUEADA (SOLO REGISTRADOS) ==================== -->
+    <!-- VISTA: BLOQUEADA (PORTAL PRIVADO - SOLO REGISTRADOS) -->
     <section id="vistaBloqueada" class="py-12 md:py-20 text-center max-w-lg mx-auto px-4">
       <div class="p-8 bg-gray-900 border border-gray-800 rounded-3xl shadow-2xl relative overflow-hidden">
         <div class="w-16 h-16 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 rounded-2xl flex items-center justify-center mx-auto mb-5 text-2xl shadow-lg shadow-emerald-500/10">
@@ -125,7 +125,7 @@
       </div>
     </section>
 
-    <!-- ==================== VISTA: TIENDA PÚBLICA (SOLO USUARIOS AUTENTICADOS) ==================== -->
+    <!-- VISTA: TIENDA PÚBLICA (SOLO USUARIOS AUTENTICADOS) -->
     <section id="vistaTienda" class="hidden">
       <div class="mb-6 p-5 rounded-2xl bg-gradient-to-r from-gray-900 via-gray-800 to-gray-900 border border-gray-800 flex flex-col md:flex-row items-center justify-between gap-4">
         <div>
@@ -155,7 +155,7 @@
       </div>
     </section>
 
-    <!-- ==================== VISTA: MIS CUENTAS ==================== -->
+    <!-- VISTA: MIS CUENTAS -->
     <section id="vistaMisCuentas" class="hidden">
       <div class="flex items-center justify-between mb-6">
         <div>
@@ -174,7 +174,7 @@
       </div>
     </section>
 
-    <!-- ==================== VISTA: PANEL DE ADMINISTRACIÓN ==================== -->
+    <!-- VISTA: PANEL DE ADMINISTRACIÓN -->
     <section id="vistaAdmin" class="hidden">
       <div class="flex items-center justify-between mb-6 pb-4 border-b border-gray-800">
         <div>
@@ -526,7 +526,18 @@
     const auth = firebase.auth();
     const db = firebase.firestore();
 
-    // 3. MAPA OFICIAL DE PRODUCTOS (PRECIOS REALES DE TIENDA)
+    // 3. CONFIGURACIÓN REAL DE EMAILJS
+    const EMAILJS_PUBLIC_KEY = "5nAhlr7WtfP44C78Q";
+    const EMAILJS_SERVICE_ID = "service_abc123";
+    const EMAILJS_TEMPLATE_ID = "template_87xhnvg"; 
+
+    try {
+      emailjs.init(EMAILJS_PUBLIC_KEY);
+    } catch (e) {
+      console.error("Error al inicializar EmailJS:", e);
+    }
+
+    // 4. MAPA OFICIAL DE PRODUCTOS (PRECIOS REALES DE TIENDA)
     const PRODUCTOS_CATALOGO = [
       {
         id: "amazon28",
@@ -597,14 +608,13 @@
       });
     }
 
-    // 4. ESCUCHADOR DE SESIÓN Y PROTECCIÓN DE PORTAL PRIVADO
+    // 5. ESCUCHADOR DE SESIÓN Y PROTECCIÓN DE PORTAL PRIVADO
     auth.onAuthStateChanged(async (user) => {
       currentUser = user;
       if (user) {
         document.getElementById('navGuest').classList.add('hidden');
         document.getElementById('navUser').classList.remove('hidden');
 
-        // DESBLOQUEAR TIENDA PARA USUARIOS REGISTRADOS
         document.getElementById('vistaBloqueada').classList.add('hidden');
 
         const userEmail = (user.email || '').trim().toLowerCase();
@@ -632,7 +642,6 @@
         document.getElementById('navUser').classList.add('hidden');
         document.getElementById('btnAdminTab').classList.add('hidden');
         
-        // BLOQUEAR CATALOGO A VISITANTES
         bloquearAccesoVisitante();
       }
     });
@@ -644,7 +653,7 @@
       document.getElementById('vistaBloqueada').classList.remove('hidden');
     }
 
-    // 5. NAVEGACIÓN GENERAL
+    // 6. NAVEGACIÓN GENERAL
     function cambiarVista(vista) {
       if (!currentUser) {
         bloquearAccesoVisitante();
@@ -696,15 +705,13 @@
       if (tab === 'recargas') cargarRecargasAdmin();
     }
 
-    // 6. SINCRONIZACIÓN DE INVENTARIO Y PRECIOS DEL ADMINISTRADOR
+    // 7. SINCRONIZACIÓN DE INVENTARIO Y PRECIOS DEL ADMINISTRADOR
     function iniciarSincronizacionTotal() {
-      // 1. Escuchar precios fijados por el Administrador en `configuracion/precios`
       db.collection('configuracion').doc('precios').onSnapshot(doc => {
         if (doc.exists) preciosConfig = doc.data() || {};
         procesarYRenderizar();
       });
 
-      // 2. Escuchar la colección real `inventario`
       db.collection('inventario').onSnapshot(snap => {
         snapshotInventario = {};
         snap.forEach(d => {
@@ -729,7 +736,6 @@
         const docIdFinal = docInventario ? docInventario.id || key : key;
         const cuentas = (docInventario && Array.isArray(docInventario.cuentas)) ? docInventario.cuentas : [];
 
-        // JERARQUÍA ESTRICTA DE PRECIO FIJADO POR ADMIN:
         let precioFinal = prodBase.precioDefault;
         if (preciosConfig[key] !== undefined) {
           precioFinal = preciosConfig[key];
@@ -850,7 +856,7 @@
       renderizarCatalogo();
     }
 
-    // 7. COMPRA DIRECTA EN `inventario`
+    // 8. COMPRA DIRECTA EN `inventario` CON DISPARADOR EMAILJS
     async function comprarProducto(docId) {
       if (!currentUser) {
         abrirModalAuth('login');
@@ -864,6 +870,8 @@
       const userRef = db.collection('usuarios').doc(currentUser.uid);
 
       try {
+        let datosNotificacion = null;
+
         await db.runTransaction(async (t) => {
           const invDoc = await t.get(invRef);
           const userDoc = await t.get(userRef);
@@ -887,11 +895,12 @@
 
           const cuentasEntregadas = cuentas.splice(0, cantidad);
           const credencialesTexto = cuentasEntregadas.map((c, i) => `${i + 1}. ${formatearCredencial(c)}`).join('\n');
+          const stockRestante = cuentas.length;
 
-          // Actualizar inventario
+          // Actualizar inventario en Firestore
           t.update(invRef, { cuentas: cuentas });
 
-          // Descontar saldo
+          // Descontar saldo del cliente
           t.update(userRef, { saldo: saldoActual - totalPagar });
 
           // Registrar compra
@@ -909,9 +918,31 @@
             fecha: new Date().toISOString()
           });
 
+          // Variables exactas para tu plantilla de EmailJS
+          datosNotificacion = {
+            producto: prodInfo.nombre || docId,
+            cantidad: cantidad,
+            total: `$${totalPagar.toLocaleString('es-CO')} COP`,
+            cliente: currentUser.email,
+            stock_restante: stockRestante,
+            fecha: new Date().toLocaleString('es-CO')
+          };
+
           document.getElementById('txtEntregaCredenciales').innerText = credencialesTexto;
           document.getElementById('modalEntrega').classList.remove('hidden');
         });
+
+        // DISPARAR EMAILJS AUTOMÁTICO TRAS COMPRA EXITOSA
+        if (datosNotificacion) {
+          emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, datosNotificacion)
+            .then(res => {
+              console.log("¡Notificación enviada a Gmail exitosamente!", res.status, res.text);
+            })
+            .catch(err => {
+              console.error("Fallo al enviar EmailJS:", err);
+            });
+        }
+
       } catch (err) {
         alert(err.message);
       }
@@ -926,7 +957,7 @@
       });
     }
 
-    // 8. PANEL ADMIN: PRODUCTOS Y VISIBILIDAD
+    // 9. PANEL ADMIN: PRODUCTOS Y VISIBILIDAD
     function renderizarAdminProductos() {
       const tbody = document.getElementById('tablaAdminProductos');
       if (!tbody) return;
@@ -1005,7 +1036,7 @@
       }
     }
 
-    // 9. PANEL ADMIN: USUARIOS REGISTRADOS Y SALDOS
+    // 10. PANEL ADMIN: USUARIOS REGISTRADOS Y SALDOS
     function cargarUsuariosAdmin() {
       const tbody = document.getElementById('tablaAdminUsuarios');
       if (!tbody) return;
@@ -1068,7 +1099,7 @@
       }
     }
 
-    // 10. PANEL ADMIN: CARGA DE STOCK A `inventario` Y MODIFICAR PRECIOS
+    // 11. PANEL ADMIN: CARGA DE STOCK A `inventario` Y MODIFICAR PRECIOS
     function poblarSelectStock() {
       const select = document.getElementById('selectStockProducto');
       if (!select) return;
@@ -1143,7 +1174,7 @@
       }
     }
 
-    // 11. RECARGAS (NEQUI / BRE-B)
+    // 12. RECARGAS (NEQUI / BRE-B)
     async function reportarRecarga(e) {
       e.preventDefault();
       if (!currentUser) return;
@@ -1216,7 +1247,7 @@
       }
     }
 
-    // 12. HISTORIAL MIS CUENTAS
+    // 13. HISTORIAL MIS CUENTAS
     async function cargarMisCuentas() {
       const contenedor = document.getElementById('listaMisCuentas');
       try {
@@ -1255,7 +1286,7 @@
       }
     }
 
-    // 13. AUTENTICACIÓN
+    // 14. AUTENTICACIÓN
     function generarCaptcha() {
       const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
       let res = '';
