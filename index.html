@@ -266,7 +266,7 @@
         <div class="flex justify-between items-center bg-gray-900 border border-emerald-500/30 p-4 rounded-2xl">
           <div>
             <h3 class="text-sm font-bold text-white">Gestión de Catálogo</h3>
-            <p class="text-xs text-gray-400">Añade nuevos servicios o productos mediante el botón.</p>
+            <p class="text-xs text-gray-400">Añade nuevos servicios o edita productos existentes.</p>
           </div>
           <button onclick="abrirModalNuevoProducto()" class="px-4 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-black font-bold text-xs rounded-xl transition flex items-center gap-2 shadow-lg">
             <i class="fa-solid fa-plus text-sm"></i> Registrar Nuevo Producto
@@ -286,11 +286,12 @@
                   <th class="px-4 py-3">Precio</th>
                   <th class="px-4 py-3">Stock Disponible</th>
                   <th class="px-4 py-3 text-center">Visibilidad Pública</th>
+                  <th class="px-4 py-3 text-center">Editar</th>
                   <th class="px-4 py-3 text-right">Vaciar Stock</th>
                 </tr>
               </thead>
               <tbody id="tablaAdminProductos" class="divide-y divide-gray-800">
-                <tr><td colspan="6" class="px-4 py-8 text-center text-gray-500">Cargando inventario...</td></tr>
+                <tr><td colspan="7" class="px-4 py-8 text-center text-gray-500">Cargando inventario...</td></tr>
               </tbody>
             </table>
           </div>
@@ -791,6 +792,54 @@
     </div>
   </div>
 
+  <!-- MODAL: EDITAR PRODUCTO EXISTENTE Y CATEGORÍA -->
+  <div id="modalEditarProducto" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+    <div class="bg-gray-900 border border-emerald-500/40 rounded-2xl max-w-md w-full p-6 relative shadow-2xl max-h-[90vh] overflow-y-auto">
+      <button onclick="cerrarModalEditarProducto()" class="absolute top-4 right-4 text-gray-400 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
+      <div class="w-12 h-12 bg-emerald-500/10 text-emerald-400 rounded-2xl flex items-center justify-center mb-3 text-xl">
+        <i class="fa-solid fa-pen-to-square"></i>
+      </div>
+      <h3 class="text-base font-black text-white mb-1">Editar Producto y Categoría</h3>
+      <p class="text-xs text-gray-400 mb-4">Actualiza los datos visuales, categoría, precio y política de compra mínima.</p>
+
+      <form onsubmit="guardarEdicionProductoAdmin(event)" class="space-y-3">
+        <input type="hidden" id="editProdDocId">
+        
+        <div>
+          <label class="block text-[11px] text-gray-400 mb-1">Nombre del Producto</label>
+          <input type="text" id="editProdNombre" required class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none">
+        </div>
+        <div>
+          <label class="block text-[11px] text-gray-400 mb-1">Categoría</label>
+          <select id="selectEditProdCat" onchange="alternarCampoEditarNuevaCat()" required class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none">
+            <option value="Streaming">Streaming</option>
+            <option value="Correos">Correos</option>
+            <option value="__NUEVA__">+ Crear nueva categoría...</option>
+          </select>
+          <input type="text" id="inputEditNuevaCatTexto" placeholder="Nombre de la nueva categoría" class="w-full hidden bg-gray-800 border border-emerald-500/50 rounded-xl px-3 py-2 text-xs text-white focus:outline-none mt-2">
+        </div>
+        <div>
+          <label class="block text-[11px] text-gray-400 mb-1">Descripción</label>
+          <textarea id="editProdDesc" rows="3" required class="w-full bg-gray-800 border border-gray-700 rounded-xl p-3 text-xs text-white focus:outline-none"></textarea>
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label class="block text-[11px] text-gray-400 mb-1">Precio Unitario (COP)</label>
+            <input type="number" id="editProdPrecio" required min="100" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none">
+          </div>
+          <div>
+            <label class="block text-[11px] text-gray-400 mb-1">Compra Mínima (Unidades)</label>
+            <input type="number" id="editProdMinimo" required min="1" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none">
+          </div>
+        </div>
+        <div class="flex gap-2 pt-2">
+          <button type="submit" class="w-full bg-emerald-500 hover:bg-emerald-400 text-black font-bold py-2.5 rounded-xl text-xs transition">Guardar Cambios</button>
+          <button type="button" onclick="cerrarModalEditarProducto()" class="w-full bg-gray-800 hover:bg-gray-700 text-gray-300 font-bold py-2.5 rounded-xl text-xs transition">Cancelar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <!-- MODAL: CREAR CUENTA DE USUARIO RÁPIDA -->
   <div id="modalNuevoCliente" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
     <div class="bg-gray-900 border border-emerald-500/40 rounded-2xl max-w-sm w-full p-6 relative shadow-2xl max-h-[90vh] overflow-y-auto">
@@ -985,7 +1034,7 @@
       </div>
       <h3 class="text-base font-black text-white mb-2">Política de Soporte y Garantía</h3>
       <p class="text-xs text-gray-300 mb-4 leading-relaxed">
-        ⚠️ La garantía aplica únicamente si la cuenta tiene menos de 24 horas.
+        ⚠ La garantía aplica únicamente si la cuenta tiene menos de 24 horas.
       </p>
       <div class="space-y-2">
         <button onclick="enviarWhatsappSoporte()" class="w-full py-2.5 bg-emerald-500 hover:bg-emerald-400 text-black font-bold rounded-xl text-xs flex items-center justify-center gap-2 transition">
@@ -1132,7 +1181,6 @@
     let intervaloHeartbeat = null;
     let modoPruebaCliente = false;
 
-    // Configuración general dinámica sincronizada en Firestore
     let ajustesGeneralesConfig = {
       telegramToken: "8974701831:AAE" + "Fibgx1DM2rO8NlxsEW9I27F88rV-VjnQ",
       telegramChatId: "390457801",
@@ -1643,7 +1691,7 @@
 
             contenedorLista.innerHTML += `
               <div class="flex items-center justify-between p-3 bg-gray-900/80 rounded-xl border border-gray-800">
-                <div class="flex items-center gap-2">
+                <div class="flex items-center gap-2.5">
                   <span class="text-base font-black text-gray-400">${medalla}</span>
                   <div>
                     <span class="font-bold text-white text-sm">${prod}</span>
@@ -2282,15 +2330,25 @@
 
     function actualizarSelectCategoriasAdmin() {
       const selectCat = document.getElementById('selectNuevoProdCat');
-      if (!selectCat) return;
+      const selectEditCat = document.getElementById('selectEditProdCat');
 
       const categorias = Array.from(new Set(catalogoUnificado.map(p => p.categoria).filter(Boolean)));
       if (!categorias.includes('Streaming')) categorias.unshift('Streaming');
       if (!categorias.includes('Correos')) categorias.push('Correos');
 
-      const valorActual = selectCat.value;
-      selectCat.innerHTML = categorias.map(c => `<option value="${c}">${c}</option>`).join('') + `<option value="__NUEVA__">+ Crear nueva categoría...</option>`;
-      if (valorActual && valorActual !== '__NUEVA__') selectCat.value = valorActual;
+      const opcionesHtml = categorias.map(c => `<option value="${c}">${c}</option>`).join('') + `<option value="__NUEVA__">+ Crear nueva categoría...</option>`;
+
+      if (selectCat) {
+        const valorActual = selectCat.value;
+        selectCat.innerHTML = opcionesHtml;
+        if (valorActual && valorActual !== '__NUEVA__') selectCat.value = valorActual;
+      }
+
+      if (selectEditCat) {
+        const valorActualEdit = selectEditCat.value;
+        selectEditCat.innerHTML = opcionesHtml;
+        if (valorActualEdit && valorActualEdit !== '__NUEVA__') selectEditCat.value = valorActualEdit;
+      }
     }
 
     function procesarYRenderizar() {
@@ -2304,6 +2362,16 @@
         }
         const docIdFinal = docInventario ? docInventario.id || key : key;
         const cuentas = (docInventario && Array.isArray(docInventario.cuentas)) ? docInventario.cuentas : [];
+
+        let nombreFinal = prodBase.nombre;
+        let categoriaFinal = prodBase.categoria;
+        let descripcionFinal = prodBase.descripcion;
+
+        if (docInventario) {
+          if (docInventario.nombre) nombreFinal = docInventario.nombre;
+          if (docInventario.categoria) categoriaFinal = docInventario.categoria;
+          if (docInventario.descripcion !== undefined) descripcionFinal = docInventario.descripcion;
+        }
 
         let precioFinal = prodBase.precioDefault;
         if (preciosConfig[key] !== undefined) precioFinal = preciosConfig[key];
@@ -2320,6 +2388,9 @@
         mapaProds.set(docIdFinal, {
           ...prodBase,
           docId: docIdFinal,
+          nombre: nombreFinal,
+          categoria: categoriaFinal,
+          descripcion: descripcionFinal,
           stock: cuentas.length,
           cuentas: cuentas,
           precio: precioFinal,
@@ -2638,12 +2709,101 @@
             <td class="px-4 py-3 text-center whitespace-nowrap">
               <button onclick="alternarVisibilidadProducto('${p.docId}', ${esActivo})" class="px-2.5 py-1 rounded-lg text-xs font-bold ${esActivo ? 'bg-emerald-600 text-white' : 'bg-red-600 text-white'}">${esActivo ? 'Activo' : 'Oculto'}</button>
             </td>
+            <td class="px-4 py-3 text-center whitespace-nowrap">
+              <button onclick="abrirModalEditarProducto('${p.docId}')" class="px-2.5 py-1 rounded-lg text-xs font-bold bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 border border-blue-500/40 transition">
+                <i class="fa-solid fa-pen-to-square mr-1"></i> Editar
+              </button>
+            </td>
             <td class="px-4 py-3 text-right whitespace-nowrap">
               <button onclick="vaciarStock('${p.docId}')" class="text-xs text-red-400 hover:text-red-300 p-1.5 rounded bg-gray-800"><i class="fa-solid fa-trash-can"></i></button>
             </td>
           </tr>
         `;
       });
+    }
+
+    function abrirModalEditarProducto(docId) {
+      const prod = catalogoUnificado.find(p => p.docId === docId);
+      if (!prod) return;
+
+      document.getElementById('editProdDocId').value = prod.docId;
+      document.getElementById('editProdNombre').value = prod.nombre || '';
+      document.getElementById('editProdDesc').value = prod.descripcion || '';
+      document.getElementById('editProdPrecio').value = prod.precio || 0;
+      document.getElementById('editProdMinimo').value = prod.minCompra || 1;
+
+      actualizarSelectCategoriasAdmin();
+      const selectCat = document.getElementById('selectEditProdCat');
+      const inputNuevaCat = document.getElementById('inputEditNuevaCatTexto');
+      
+      const categoriasDisponibles = Array.from(selectCat.options).map(o => o.value);
+      if (categoriasDisponibles.includes(prod.categoria)) {
+        selectCat.value = prod.categoria;
+        inputNuevaCat.classList.add('hidden');
+        inputNuevaCat.value = '';
+      } else {
+        selectCat.value = '__NUEVA__';
+        inputNuevaCat.classList.remove('hidden');
+        inputNuevaCat.value = prod.categoria;
+      }
+
+      const modal = document.getElementById('modalEditarProducto');
+      modal.classList.remove('hidden');
+      modal.style.display = 'flex';
+    }
+
+    function cerrarModalEditarProducto() {
+      const modal = document.getElementById('modalEditarProducto');
+      modal.classList.add('hidden');
+      modal.style.display = 'none';
+    }
+
+    function alternarCampoEditarNuevaCat() {
+      const sel = document.getElementById('selectEditProdCat');
+      const inp = document.getElementById('inputEditNuevaCatTexto');
+      if (sel.value === '__NUEVA__') {
+        inp.classList.remove('hidden');
+        inp.focus();
+      } else {
+        inp.classList.add('hidden');
+      }
+    }
+
+    async function guardarEdicionProductoAdmin(e) {
+      e.preventDefault();
+      const docId = document.getElementById('editProdDocId').value;
+      const nombre = document.getElementById('editProdNombre').value.trim();
+      const desc = document.getElementById('editProdDesc').value.trim();
+      const precio = parseFloat(document.getElementById('editProdPrecio').value);
+      const minCompra = parseInt(document.getElementById('editProdMinimo').value) || 1;
+
+      const selectCat = document.getElementById('selectEditProdCat');
+      let categoria = selectCat.value;
+      if (categoria === '__NUEVA__') {
+        categoria = document.getElementById('inputEditNuevaCatTexto').value.trim();
+        if (!categoria) {
+          alert("Por favor escribe el nombre de la nueva categoría.");
+          return;
+        }
+      }
+
+      try {
+        await db.collection('inventario').doc(docId).set({
+          nombre: nombre,
+          categoria: categoria,
+          descripcion: desc,
+          precio: precio,
+          minCompra: minCompra
+        }, { merge: true });
+
+        await db.collection('configuracion').doc('precios').set({ [docId]: precio }, { merge: true });
+        await db.collection('configuracion').doc('minimos').set({ [docId]: minCompra }, { merge: true });
+
+        cerrarModalEditarProducto();
+        alert("¡Producto y categoría actualizados con éxito!");
+      } catch (err) {
+        alert("Error al actualizar producto: " + err.message);
+      }
     }
 
     function verDetalleCuentas(docId) {
@@ -2976,6 +3136,7 @@
           productos_bloqueados: [],
           permisos_subir_stock: [],
           notificacion_borrada: false,
+          primer_ingreso: new Date().toISOString(),
           fechaRegistro: new Date().toISOString() 
         });
 
