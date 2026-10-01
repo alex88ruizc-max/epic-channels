@@ -66,7 +66,7 @@
 
       <!-- BOTONES CON SESIÓN -->
       <div id="navUser" class="hidden flex items-center space-x-3">
-        <!-- Saldo -->
+        <!-- Saldo + Botón discreto de cambiar contraseña -->
         <div class="bg-gray-800/90 border border-gray-700 px-3 py-1 rounded-xl flex items-center space-x-2">
           <i class="fa-solid fa-wallet text-emerald-400 text-xs"></i>
           <div>
@@ -79,13 +79,13 @@
         </div>
 
         <!-- Mis Cuentas -->
-        <button onclick="cambiarVista('mis-cuentas')" class="px-3 py-1.5 rounded-lg text-xs bg-gray-800 hover:bg-gray-700 text-gray-300 font-medium">
-          <i class="fa-solid fa-box-archive mr-1 text-emerald-400"></i> Mis Cuentas
+        <button onclick="cambiarVista('mis-cuentas')" class="px-3 py-1.5 rounded-lg text-xs bg-gray-800 hover:bg-gray-700 text-gray-300 font-medium flex items-center gap-1.5">
+          <i class="fa-solid fa-box-archive text-emerald-400"></i> <span class="hidden sm:inline">Mis Cuentas</span>
         </button>
 
-        <!-- Mi Cuenta (Configuración) -->
-        <button onclick="cambiarVista('mi-cuenta')" class="px-3 py-1.5 rounded-lg text-xs bg-gray-800 hover:bg-gray-700 text-gray-300 font-medium">
-          <i class="fa-solid fa-user-gear mr-1 text-emerald-400"></i> Mi Cuenta
+        <!-- Botón Cambiar Contraseña (Discreto y rápido) -->
+        <button onclick="abrirModalPassword()" title="Cambiar contraseña" class="px-3 py-1.5 rounded-lg text-xs bg-gray-800 hover:bg-gray-700 text-gray-300 font-medium flex items-center gap-1.5">
+          <i class="fa-solid fa-key text-emerald-400"></i> <span class="hidden sm:inline">Clave</span>
         </button>
 
         <!-- Botón Administrador -->
@@ -158,7 +158,7 @@
       </div>
     </section>
 
-    <!-- VISTA: MIS CUENTAS (SOLO HISTORIAL DE COMPRAS) -->
+    <!-- VISTA: MIS CUENTAS -->
     <section id="vistaMisCuentas" class="hidden">
       <div class="flex items-center justify-between mb-6">
         <div>
@@ -174,49 +174,6 @@
 
       <div id="listaMisCuentas" class="space-y-4">
         <p class="text-gray-500 text-center py-8">No has adquirido cuentas todavía.</p>
-      </div>
-    </section>
-
-    <!-- VISTA: MI CUENTA (PERFIL Y SEGURIDAD) -->
-    <section id="vistaMiCuenta" class="hidden max-w-xl mx-auto space-y-6">
-      <div class="flex items-center justify-between mb-2">
-        <div>
-          <h2 class="text-xl font-bold text-white flex items-center gap-2">
-            <i class="fa-solid fa-user-gear text-emerald-400"></i> Configuración de Mi Cuenta
-          </h2>
-          <p class="text-xs text-gray-400">Gestiona los datos de acceso y seguridad de tu perfil.</p>
-        </div>
-        <button onclick="cambiarVista('tienda')" class="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-sm text-gray-300 rounded-lg">
-          <i class="fa-solid fa-arrow-left mr-1"></i> Volver
-        </button>
-      </div>
-
-      <!-- Tarjeta de Datos del Usuario -->
-      <div class="p-5 bg-gray-900 border border-gray-800 rounded-2xl space-y-3">
-        <h3 class="text-sm font-bold text-white border-b border-gray-800 pb-2">Información del Perfil</h3>
-        <div>
-          <span class="text-[10px] text-gray-400 block">Correo Electrónico Registrado:</span>
-          <span id="txtPerfilEmail" class="text-sm font-semibold text-emerald-400">Cargando...</span>
-        </div>
-      </div>
-
-      <!-- Formulario Cambiar Contraseña -->
-      <div class="p-5 bg-gray-900 border border-gray-800 rounded-2xl">
-        <h3 class="text-sm font-bold text-white mb-2 flex items-center gap-2">
-          <i class="fa-solid fa-key text-emerald-400"></i> Cambiar Contraseña de Acceso
-        </h3>
-        <p class="text-xs text-gray-400 mb-4">Actualiza tu contraseña ingresando la clave actual y la nueva.</p>
-        <form onsubmit="cambiarContraseñaUsuario(event)" class="space-y-3">
-          <div>
-            <label class="block text-xs text-gray-400 mb-1">Contraseña Actual</label>
-            <input type="password" id="passActual" required class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none">
-          </div>
-          <div>
-            <label class="block text-xs text-gray-400 mb-1">Nueva Contraseña</label>
-            <input type="password" id="passNueva" required placeholder="Mínimo 6 caracteres" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none">
-          </div>
-          <button type="submit" class="w-full bg-emerald-500 hover:bg-emerald-400 text-black font-bold py-2.5 rounded-xl text-xs transition">Guardar Nueva Contraseña</button>
-        </form>
       </div>
     </section>
 
@@ -482,6 +439,26 @@
 
   <!-- ==================== MODALES ==================== -->
 
+  <!-- MODAL: CAMBIAR CONTRASEÑA -->
+  <div id="modalPassword" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+    <div class="bg-gray-900 border border-gray-800 rounded-2xl max-w-sm w-full p-6 relative">
+      <button onclick="cerrarModalPassword()" class="absolute top-4 right-4 text-gray-400 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
+      <h3 class="text-xl font-bold text-white mb-1 flex items-center gap-2"><i class="fa-solid fa-key text-emerald-400"></i> Cambiar Contraseña</h3>
+      <p class="text-xs text-gray-400 mb-4">Ingresa tu clave actual y la nueva contraseña.</p>
+      <form onsubmit="cambiarContraseñaUsuario(event)" class="space-y-3">
+        <div>
+          <label class="block text-xs text-gray-400 mb-1">Contraseña Actual</label>
+          <input type="password" id="passActual" required class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none">
+        </div>
+        <div>
+          <label class="block text-xs text-gray-400 mb-1">Nueva Contraseña</label>
+          <input type="password" id="passNueva" required placeholder="Mínimo 6 caracteres" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none">
+        </div>
+        <button type="submit" class="w-full bg-emerald-500 hover:bg-emerald-400 text-black font-bold py-2.5 rounded-xl text-xs transition mt-2">Guardar Contraseña</button>
+      </form>
+    </div>
+  </div>
+
   <!-- MODAL: VER DETALLE DE CUENTAS (ADMIN) -->
   <div id="modalVerStock" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
     <div class="bg-gray-900 border border-gray-800 rounded-2xl max-w-lg w-full p-6 relative">
@@ -743,7 +720,7 @@
 
     function escucharUsuariosEnLinea() {
       db.collection('usuarios').onSnapshot(snap => {
-        const ahora = new Date().getTime();
+        constahora = new Date().getTime();
         let enLineaCount = 0;
 
         snap.forEach(doc => {
@@ -759,6 +736,18 @@
         const contadorEl = document.getElementById('contadorEnLinea');
         if (contadorEl) contadorEl.innerText = enLineaCount;
       });
+    }
+
+    function abrirModalPassword() {
+      const modal = document.getElementById('modalPassword');
+      modal.classList.remove('hidden');
+      modal.style.display = 'flex';
+    }
+
+    function cerrarModalPassword() {
+      const modal = document.getElementById('modalPassword');
+      modal.classList.add('hidden');
+      modal.style.display = 'none';
     }
 
     async function cambiarContraseñaUsuario(e) {
@@ -778,6 +767,7 @@
         
         document.getElementById('passActual').value = '';
         document.getElementById('passNueva').value = '';
+        cerrarModalPassword();
         alert("¡Contraseña actualizada con éxito!");
       } catch (err) {
         alert("Error al actualizar contraseña: " + err.message);
@@ -1064,7 +1054,6 @@
         document.getElementById('vistaBloqueada').classList.add('hidden');
 
         iniciarLatidoConexion(user);
-        document.getElementById('txtPerfilEmail').innerText = user.email;
 
         const userEmail = (user.email || '').trim().toLowerCase();
         const esAdmin = ADMIN_EMAILS.some(e => e.trim().toLowerCase() === userEmail);
@@ -1096,7 +1085,6 @@
     function bloquearAccesoVisitante() {
       document.getElementById('vistaTienda').classList.add('hidden');
       document.getElementById('vistaMisCuentas').classList.add('hidden');
-      document.getElementById('vistaMiCuenta').classList.add('hidden');
       document.getElementById('vistaAdmin').classList.add('hidden');
       document.getElementById('vistaBloqueada').classList.remove('hidden');
     }
@@ -1107,7 +1095,6 @@
       document.getElementById('vistaBloqueada').classList.add('hidden');
       document.getElementById('vistaTienda').classList.add('hidden');
       document.getElementById('vistaMisCuentas').classList.add('hidden');
-      document.getElementById('vistaMiCuenta').classList.add('hidden');
       document.getElementById('vistaAdmin').classList.add('hidden');
 
       if (vista === 'tienda') {
@@ -1116,8 +1103,6 @@
       } else if (vista === 'mis-cuentas') {
         document.getElementById('vistaMisCuentas').classList.remove('hidden');
         cargarMisCuentas();
-      } else if (vista === 'mi-cuenta') {
-        document.getElementById('vistaMiCuenta').classList.remove('hidden');
       } else if (vista === 'admin') {
         document.getElementById('vistaAdmin').classList.remove('hidden');
         cambiarTabAdmin('productos');
