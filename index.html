@@ -136,7 +136,7 @@
           </h1>
           <p class="text-sm text-gray-400 mt-1">Cuentas streaming y correos electrónicos con entrega directa a tu saldo.</p>
         </div>
-        <!-- BOTÓN RECARGA PRO (BRE-B Y OTROS MÉTODOS) -->
+        <!-- BOTÓN RECARGA PRO -->
         <button onclick="abrirModalRecarga()" class="px-5 py-2.5 bg-gradient-to-r from-pink-600 via-purple-600 to-blue-600 hover:from-pink-500 hover:via-purple-500 hover:to-blue-500 text-white font-bold text-sm rounded-xl shadow-xl shadow-purple-900/30 flex items-center gap-2.5 transition transform hover:scale-[1.02]">
           <i class="fa-solid fa-wallet text-pink-300 text-base"></i> Recargar Saldo
         </button>
@@ -583,8 +583,8 @@
 
   </main>
 
-  <!-- ==================== BOTÓN FLOTANTE SOPORTE WHATSAPP ==================== -->
-  <div class="fixed bottom-5 right-5 z-40">
+  <!-- ==================== BOTÓN FLOTANTE SOPORTE WHATSAPP (SOLO LOGUEADOS) ==================== -->
+  <div id="btnFlotanteSoporte" class="fixed bottom-5 right-5 z-40 hidden">
     <button onclick="abrirSoporteWhatsapp()" class="flex items-center gap-2 bg-emerald-500 hover:bg-emerald-400 text-black font-black px-4 py-3 rounded-full shadow-2xl shadow-emerald-500/30 transition transform hover:scale-105">
       <i class="fa-brands fa-whatsapp text-xl"></i>
       <span class="text-xs uppercase tracking-wider">Soporte</span>
@@ -620,7 +620,7 @@
     </div>
   </div>
 
-  <!-- MODAL: PERMISOS PARA SUBIR STOCK POR CLIENTE (DESMARCADOS POR DEFECTO) -->
+  <!-- MODAL: PERMISOS PARA SUBIR STOCK POR CLIENTE -->
   <div id="modalPermisosStockCliente" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
     <div class="bg-gray-900 border border-blue-500/40 rounded-2xl max-w-md w-full p-6 relative shadow-2xl">
       <button onclick="cerrarModalPermisosStockCliente()" class="absolute top-4 right-4 text-gray-400 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
@@ -654,7 +654,6 @@
       <h3 class="text-xl font-bold text-white mb-1 flex items-center gap-2"><i class="fa-solid fa-wallet text-emerald-400"></i> Recargar Saldo</h3>
       <p class="text-xs text-gray-400 mb-4">Transfiere a través de nuestras cuentas oficiales escaneando el código QR o copiando la llave.</p>
       
-      <!-- Contenedor dinámico de métodos de pago y QRs -->
       <div id="contenedorMetodosPagoClientes" class="space-y-3 mb-4">
         <div class="text-center py-4 text-xs text-gray-500">Cargando métodos de pago...</div>
       </div>
@@ -703,7 +702,7 @@
     </div>
   </div>
 
-  <!-- MODAL: SALDO INSUFICIENTE (DISEÑO PRO) -->
+  <!-- MODAL: SALDO INSUFICIENTE -->
   <div id="modalSaldoInsuficiente" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
     <div class="bg-gray-900 border border-red-500/40 rounded-2xl max-w-sm w-full p-6 text-center relative shadow-2xl shadow-red-500/10">
       <button onclick="cerrarModalSaldoInsuficiente()" class="absolute top-4 right-4 text-gray-400 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
@@ -724,10 +723,11 @@
     </div>
   </div>
 
-  <!-- MODAL: CAMBIAR CONTRASEÑA -->
+  <!-- MODAL: CAMBIAR CONTRASEÑA (CORREGIDO PARA PC Y MÓVIL) -->
   <div id="modalPassword" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
-    <div class="bg-gray-900 border border-gray-800 rounded-2xl max-w-sm w-full p-6 relative">
-      <button onclick="cerrarModalPassword()" class="absolute top-4 right-4 text-gray-400 hover:text-white"><i class="fa-solid fa-key text-emerald-400"></i> Cambiar Contraseña</h3>
+    <div class="bg-gray-900 border border-gray-800 rounded-2xl max-w-sm w-full p-6 relative shadow-2xl">
+      <button onclick="cerrarModalPassword()" class="absolute top-4 right-4 text-gray-400 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
+      <h3 class="text-xl font-bold text-white mb-1 flex items-center gap-2"><i class="fa-solid fa-key text-emerald-400"></i> Cambiar Contraseña</h3>
       <p class="text-xs text-gray-400 mb-4">Ingresa tu clave actual y la nueva contraseña.</p>
       <form onsubmit="cambiarContraseñaUsuario(event)" class="space-y-3">
         <div>
@@ -754,7 +754,7 @@
 
   <!-- MODAL: LOGIN / REGISTRO -->
   <div id="modalAuth" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
-    <div class="bg-gray-900 border border-gray-800 rounded-2xl max-w-sm w-full p-6 relative">
+    <div class="bg-gray-900 border border-gray-800 rounded-2xl max-w-sm w-full p-6 relative shadow-2xl">
       <button onclick="cerrarModalAuth()" class="absolute top-4 right-4 text-gray-400 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
       <h3 id="modalAuthTitulo" class="text-xl font-bold text-white mb-1">Iniciar Sesión</h3>
       <form onsubmit="procesarAuth(event)" class="space-y-3 mt-4">
@@ -1407,9 +1407,13 @@
 
     auth.onAuthStateChanged(async (user) => {
       currentUser = user;
+      const btnSoporte = document.getElementById('btnFlotanteSoporte');
+
       if (user) {
         document.getElementById('navGuest').classList.add('hidden');
         document.getElementById('navUser').classList.remove('hidden');
+        if (btnSoporte) btnSoporte.classList.remove('hidden'); // Mostrar soporte solo al iniciar sesión
+
         cerrarModalAuth();
         document.getElementById('vistaBloqueada').classList.add('hidden');
 
@@ -1448,6 +1452,7 @@
       } else {
         document.getElementById('navGuest').classList.remove('hidden');
         document.getElementById('navUser').classList.add('hidden');
+        if (btnSoporte) btnSoporte.classList.add('hidden'); // Ocultar soporte si no hay sesión
         document.getElementById('btnAdminTab').classList.add('hidden');
         bloquearAccesoVisitante();
       }
@@ -2015,7 +2020,6 @@
           const bloqueados = u.productos_bloqueados || [];
           const stockPermitidos = u.permisos_subir_stock || [];
 
-          // Formatear Fecha de Registro
           let fechaRegStr = 'N/A';
           if (u.fechaRegistro) {
             const dReg = new Date(u.fechaRegistro);
@@ -2024,7 +2028,6 @@
             }
           }
 
-          // Formatear Último Acceso y Estado En Línea
           let ultimoAccesoStr = 'Nunca';
           let badgeEstado = '<span class="w-2 h-2 rounded-full bg-gray-500 inline-block mr-1"></span><span class="text-gray-400">Inactivo</span>';
           if (u.ultima_conexion) {
