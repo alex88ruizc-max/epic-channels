@@ -914,7 +914,7 @@
       <div class="bg-gray-800 border border-gray-700 p-3 rounded-xl text-left font-mono text-xs text-emerald-300 break-all mb-4 select-all leading-relaxed" id="txtCredencialesNuevoUsuario"></div>
       <div class="space-y-2">
         <button onclick="copiarCredencialesNuevoUsuario()" class="w-full bg-emerald-500 hover:bg-emerald-400 text-black font-bold py-2.5 rounded-xl text-xs flex items-center justify-center gap-2 transition"><i class="fa-solid fa-copy"></i> Copiar Credenciales</button>
-        <button onclick="cerrarModalUsuarioCreado()" class="w-full bg-gray-800 hover:bg-gray-700 text-gray-300 font-bold py-2.5 rounded-xl text-xs transition">Entendido</button>
+        <button onclick="cerrarModalUsuarioCreado()" class="w-full bg-gray-800 hover:bg-gray-700 text-gray-300 font-bold text-xs rounded-xl transition">Entendido</button>
       </div>
     </div>
   </div>
@@ -1087,7 +1087,7 @@
     <p>© 2026 Epic Channels. Todos los derechos reservados.</p>
   </footer>
 
-  <!-- ==================== LÓGICA JAVASCRIPT GLOBAL COMPLETA E ÍNTEGRA ==================== -->
+  <!-- ==================== LÓGICA JAVASCRIPT GLOBAL COMPLETA CON USUARIOS Y NOTIFICACIONES ==================== -->
   <script>
     let ADMIN_EMAILS = ["alex88ruizc@gmail.com"];
     let EMAILS_EXCLUIDOS_REPORTE = ["alex88ruizc@gmail.com", "alex88ruiz@gmail.com"];
@@ -1186,7 +1186,7 @@
     const auth = firebase.auth();
     const db = firebase.firestore();
 
-    // ==================== FUNCIONES COMPLETAS Y RENDERIZADORES ====================
+    // ==================== FUNCIONES COMPLETAS Y RESTAURADAS ====================
     function cambiarVista(vista) {
       if (!currentUser) { bloquearAccesoVisitante(); return; }
       
@@ -1286,6 +1286,121 @@
       });
     }
 
+    function cargarUsuariosAdmin() {
+      const tbody = document.getElementById('tablaAdminUsuarios');
+      if (!tbody) return;
+      db.collection('usuarios').onSnapshot(snap => {
+        tbody.innerHTML = '';
+        if (snap.empty) { tbody.innerHTML = '<tr><td colspan="8" class="text-center py-4 text-gray-500">No hay usuarios registrados.</td></tr>'; return; }
+        
+        const ahora = new Date().getTime();
+
+        snap.forEach(doc => {
+          const u = doc.data();
+          const uid = doc.id;
+          const permitidos = u.productos_permitidos || [];
+          const bloqueados = u.productos_bloqueados || [];
+          const stockPermitidos = u.permisos_subir_stock || [];
+          const nombreCliente = u.nombre ? `<span class="font-bold text-white block">${u.nombre}</span><span class="text-[11px] text-gray-400 font-mono">${u.email || ''}</span>` : `<span class="font-bold text-white block">${u.email || ''}</span>`;
+
+          let fechaRegStr = 'N/A';
+          if (u.fechaRegistro) {
+            const dReg = new Date(u.fechaRegistro);
+            if (!isNaN(dReg.getTime())) {
+              fechaRegStr = dReg.toLocaleDateString('es-CO', { day: '2-digit', month: '2-digit', year: 'numeric' });
+            }
+          }
+
+          let ultimoAccesoStr = 'Nunca';
+          let badgeEstado = '<span class="w-2 h-2 rounded-full bg-gray-500 inline-block mr-1"></span><span class="text-gray-400">Inactivo</span>';
+          if (u.ultima_conexion) {
+            const dAcc = new Date(u.ultima_conexion);
+            if (!isNaN(dAcc.getTime())) {
+              const diffMin = (ahora - dAcc.getTime()) / 60000;
+              if (diffMin < 3) {
+                badgeEstado = '<span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse inline-block mr-1"></span><span class="text-emerald-400 font-bold">En línea</span>';
+                ultimoAccesoStr = 'Hace un momento';
+              } else {
+                ultimoAccesoStr = dAcc.toLocaleString('es-CO', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+              }
+            }
+          }
+
+          tbody.innerHTML += `
+            <tr class="hover:bg-gray-800/40 border-b border-gray-800">
+              <td class="px-4 py-3">
+                ${nombreCliente}
+                <button onclick="abrirModalEditarCliente('${uid}', '${u.email || ''}', '${u.nombre || ''}')" class="mt-1 text-[10px] bg-gray-800 hover:bg-gray-700 text-emerald-400 px-2 py-0.5 rounded cursor-pointer"><i class="fa-solid fa-pen mr-1"></i> Editar perfil</button>
+              </td>
+              <td class="px-4 py-3 text-xs text-gray-400">${u.whatsapp || 'Sin WhatsApp'}</td>
+              <td class="px-4 py-3">
+                <div class="flex items-center gap-2">
+                  <span class="font-bold text-emerald-400">$${(u.saldo || 0).toLocaleString('es-CO')}</span>
+                  <div class="flex items-center gap-1">
+                    <input type="number" id="inputSaldo_${uid}" placeholder="$ Monto" class="w-20 bg-gray-800 border border-gray-700 rounded px-1.5 py-1 text-xs text-white">
+                    <button onclick="adminCargarSaldo('${uid}')" class="px-2 py-1 bg-emerald-500 hover:bg-emerald-400 text-black font-bold rounded text-xs cursor-pointer" title="Sumar Saldo">+</button>
+                  </div>
+                </div>
+              </td>
+              <td class="px-4 py-3 text-center">
+                <button onclick="abrirModalPermisosCliente('${uid}', '${u.email || ''}', ${JSON.stringify(permitidos).replace(/"/g, '&quot;')}, ${JSON.stringify(bloqueados).replace(/"/g, '&quot;')})" class="px-2.5 py-1 rounded-lg text-xs font-bold bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 border border-blue-500/40 transition cursor-pointer">
+                  <i class="fa-solid fa-list-check mr-1"></i> Catálogo
+                </button>
+              </td>
+              <td class="px-4 py-3 text-center">
+                <button onclick="abrirModalPermisosStockCliente('${uid}', '${u.email || ''}', ${JSON.stringify(stockPermitidos).replace(/"/g, '&quot;')})" class="px-2.5 py-1 rounded-lg text-xs font-bold ${stockPermitidos.length > 0 ? 'bg-purple-500/20 text-purple-300 border border-purple-500/40' : 'bg-gray-800 text-gray-400 border border-gray-700'} transition cursor-pointer">
+                  <i class="fa-solid fa-boxes-packing mr-1"></i> Stock (${stockPermitidos.length})
+                </button>
+              </td>
+              <td class="px-4 py-3 text-center text-xs text-gray-300 whitespace-nowrap">${fechaRegStr}</td>
+              <td class="px-4 py-3 text-center text-xs whitespace-nowrap">
+                <div class="flex flex-col items-center">
+                  <div>${badgeEstado}</div>
+                  <span class="text-[10px] text-gray-500 mt-0.5">${ultimoAccesoStr}</span>
+                </div>
+              </td>
+              <td class="px-4 py-3 text-right">
+                <button onclick="eliminarCliente('${uid}', '${u.email || ''}')" class="px-2.5 py-1 bg-red-500/20 hover:bg-red-500/40 text-red-400 rounded text-xs transition cursor-pointer" title="Eliminar cliente">
+                  <i class="fa-solid fa-trash-can"></i> Eliminar
+                </button>
+              </td>
+            </tr>
+          `;
+        });
+      });
+    }
+
+    function abrirModalNovedades() {
+      const modal = document.getElementById('modalNovedades');
+      if (!modal) return;
+      document.getElementById('lblModalNovedadTitulo').innerText = novedadGlobalActual.titulo || "✨ Novedades";
+      document.getElementById('lblModalNovedadCuerpo').innerText = novedadGlobalActual.cuerpo || "Sin novedades recientes.";
+      modal.classList.remove('hidden');
+      modal.style.display = 'flex';
+    }
+
+    function cerrarModalNovedades() {
+      const modal = document.getElementById('modalNovedades');
+      if (modal) {
+        modal.classList.add('hidden');
+        modal.style.display = 'none';
+      }
+    }
+
+    async function borrarNotificacionActual() {
+      if (!currentUser) return;
+      try {
+        await db.collection('usuarios').doc(currentUser.uid).set({
+          ultima_novedad_leida: novedadGlobalActual.id || ""
+        }, { merge: true });
+        userUltimaNovedadLeida = novedadGlobalActual.id || "";
+        actualizarBadgeNotificaciones();
+        cerrarModalNovedades();
+      } catch (e) {
+        console.error("Error al marcar notificación:", e);
+      }
+    }
+
     function renderizarApariencia() {
       const tituloEl = document.getElementById('txtCatTitulo');
       const subEl = document.getElementById('txtCatSubtitulo');
@@ -1306,6 +1421,10 @@
           logoCont.classList.add('hidden');
         }
       }
+    }
+
+    function renderizaracionalApariencia() {
+      renderizarApariencia();
     }
 
     function renderizarCatalogo() {
@@ -1610,88 +1729,6 @@
       };
       actualizarLatido();
       intervaloHeartbeat = setInterval(actualizarLatido, 45000);
-    }
-
-    function escucharUsuariosEnLinea() {
-      db.collection('usuarios').onSnapshot(snap => {
-        const ahora = new Date().getTime();
-        let enLineaCount = 0;
-        const listaClientesConectados = [];
-
-        snap.forEach(doc => {
-          const u = doc.data();
-          const email = (u.email || '').trim().toLowerCase();
-
-          if (ADMIN_EMAILS.some(adm => adm.trim().toLowerCase() === email)) return;
-
-          if (u.ultima_conexion) {
-            const ultimaVez = new Date(u.ultima_conexion).getTime();
-            if ((ahora - ultimaVez) < 180000) {
-              enLineaCount++;
-              listaClientesConectados.push(u.nombre || u.email || u.whatsapp || 'Cliente anónimo');
-            }
-          }
-        });
-
-        const contadorEl = document.getElementById('contadorEnLinea');
-        if (contadorEl) contadorEl.innerText = enLineaCount;
-
-        const contenedorLista = document.getElementById('listaUsuariosEnLinea');
-        if (contenedorLista) {
-          if (listaClientesConectados.length === 0) {
-            contenedorLista.innerHTML = '<span class="text-xs text-gray-500 italic">Sin clientes activos en este momento.</span>';
-          } else {
-            contenedorLista.innerHTML = listaClientesConectados.map(nombreCli => `
-              <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-xs font-semibold">
-                <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-                ${nombreCli}
-              </span>
-            `).join('');
-          }
-        }
-      });
-    }
-
-    function obtenerFechaLocalStr(fechaObj) {
-      const d = fechaObj || new Date();
-      const año = d.getFullYear();
-      const mes = String(d.getMonth() + 1).padStart(2, '0');
-      const dia = String(d.getDate()).padStart(2, '0');
-      return `${año}-${mes}-${dia}`;
-    }
-
-    function escucharTotalRecaudadoHoyEnVivo() {
-      db.collection('compras').onSnapshot(snap => {
-        const hoyStr = obtenerFechaLocalStr();
-        let acumuladoHoy = 0;
-        let cuentasHoy = 0;
-
-        snap.forEach(doc => {
-          const c = doc.data();
-          const email = (c.usuarioEmail || '').trim().toLowerCase();
-
-          if (!email || email === 'sin correo' || EMAILS_EXCLUIDOS_REPORTE.includes(email)) return;
-
-          const pNom = (c.productoNombre || '').trim().toLowerCase();
-          if (pNom.includes('test') || pNom.includes('desconocido') || pNom.includes('prueba sistema')) return;
-
-          let fechaCompra = new Date();
-          if (c.fecha) {
-            const parsed = new Date(c.fecha);
-            if (!isNaN(parsed.getTime())) fechaCompra = parsed;
-          }
-
-          if (obtenerFechaLocalStr(fechaCompra) === hoyStr) {
-            acumuladoHoy += (parseFloat(c.total) || 0);
-            cuentasHoy += (parseInt(c.cantidad) || 0);
-          }
-        });
-
-        const badgeEl = document.getElementById('txtAdminRecaudadoHoyEnVivo');
-        if (badgeEl) {
-          badgeEl.innerHTML = `$${acumuladoHoy.toLocaleString('es-CO')} COP <span class="text-xs text-gray-400 font-semibold">(${cuentasHoy} cuentas)</span>`;
-        }
-      });
     }
 
     function abrirModalPassword() {
