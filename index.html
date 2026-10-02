@@ -592,7 +592,7 @@
                 </div>
                 <div>
                   <label class="block text-[11px] text-gray-400 mb-1">Recarga Mínima Permitida (COP)</label>
-                  <input type="number" id="ajusteMinRecarga" min="1000" step="500" placeholder="Ej: 5000" class="w-full bg-gray-900 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none">
+                  <input type="number" id="ajusteMinRecarga" min="1000" step="500" placeholder="Ej: 5000" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none">
                 </div>
               </div>
             </div>
@@ -680,7 +680,7 @@
                     <tr>
                       <th class="px-3 py-2">Fecha / Hora</th>
                       <th class="px-3 py-2">Correo del Comprador</th>
-                      <th class="px-3 py-2 text-white">Producto</th>
+                      <th class="px-3 py-2">Producto</th>
                       <th class="px-3 py-2 text-center">Cant.</th>
                       <th class="px-3 py-2 text-right">Total Pagado</th>
                     </tr>
@@ -751,6 +751,7 @@
           <select id="selectNuevoProdCat" onchange="alternarCampoNuevaCat()" required class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none">
             <option value="Streaming">Streaming</option>
             <option value="Correos">Correos</option>
+            <option value="Inteligencia Artificial (IA)">Inteligencia Artificial (IA)</option>
             <option value="__NUEVA__">+ Crear nueva categoría...</option>
           </select>
           <input type="text" id="inputNuevaCatTexto" placeholder="Nombre de la nueva categoría" class="w-full hidden bg-gray-800 border border-emerald-500/50 rounded-xl px-3 py-2 text-xs text-white focus:outline-none mt-2">
@@ -799,6 +800,7 @@
           <select id="selectEditProdCat" onchange="alternarCampoEditarNuevaCat()" required class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none">
             <option value="Streaming">Streaming</option>
             <option value="Correos">Correos</option>
+            <option value="Inteligencia Artificial (IA)">Inteligencia Artificial (IA)</option>
             <option value="__NUEVA__">+ Crear nueva categoría...</option>
           </select>
           <input type="text" id="inputEditNuevaCatTexto" placeholder="Nombre de la nueva categoría" class="w-full hidden bg-gray-800 border border-emerald-500/50 rounded-xl px-3 py-2 text-xs text-white focus:outline-none mt-2">
@@ -1938,6 +1940,53 @@
       navigator.clipboard.writeText(texto).then(() => alert(mensaje)).catch(() => prompt("Copia:", texto));
     }
 
+    // ==================== PALETA DINÁMICA DE CATEGORÍAS ====================
+    const PALETA_COLORES_DINAMICA = [
+      { border: 'border-blue-500/40 hover:border-blue-500/70', badge: 'bg-blue-500/10 text-blue-400 border border-blue-500/30', btn: 'bg-blue-600 hover:bg-blue-500 text-white shadow-lg' },
+      { border: 'border-amber-500/40 hover:border-amber-500/70', badge: 'bg-amber-500/10 text-amber-400 border border-amber-500/30', btn: 'bg-amber-500 hover:bg-amber-400 text-black shadow-lg font-black' },
+      { border: 'border-pink-500/40 hover:border-pink-500/70', badge: 'bg-pink-500/10 text-pink-400 border border-pink-500/30', btn: 'bg-pink-600 hover:bg-pink-500 text-white shadow-lg' },
+      { border: 'border-indigo-500/40 hover:border-indigo-500/70', badge: 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/30', btn: 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg' },
+      { border: 'border-lime-500/40 hover:border-lime-500/70', badge: 'bg-lime-500/10 text-lime-400 border border-lime-500/30', btn: 'bg-lime-500 hover:bg-lime-400 text-black shadow-lg font-black' },
+      { border: 'border-orange-500/40 hover:border-orange-500/70', badge: 'bg-orange-500/10 text-orange-400 border border-orange-500/30', btn: 'bg-orange-500 hover:bg-orange-400 text-black shadow-lg font-black' }
+    ];
+
+    function obtenerEstiloCategoria(cat) {
+      const c = (cat || '').trim().toLowerCase();
+      
+      // 1. Streaming (Verde Esmeralda)
+      if (c === 'streaming') {
+        return {
+          border: 'border-gray-800 hover:border-emerald-500/40',
+          badge: 'bg-gray-800 text-emerald-400 border border-gray-700',
+          btn: 'bg-emerald-500 hover:bg-emerald-400 text-black shadow-lg'
+        };
+      }
+      // 2. Correos (Púrpura)
+      if (c.includes('correo') || c.includes('email') || c.includes('mail')) {
+        return {
+          border: 'border-purple-500/40 hover:border-purple-500/70',
+          badge: 'bg-purple-500/10 text-purple-400 border border-purple-500/30',
+          btn: 'bg-purple-600 hover:bg-purple-500 text-white shadow-lg'
+        };
+      }
+      // 3. Inteligencia Artificial (Cian / Turquesa Futurista)
+      if (c.includes('ia') || c.includes('inteligencia') || c.includes('artificial') || c.includes('gemini') || c.includes('gpt')) {
+        return {
+          border: 'border-cyan-500/40 hover:border-cyan-500/70',
+          badge: 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/30',
+          btn: 'bg-cyan-500 hover:bg-cyan-400 text-black shadow-lg font-black'
+        };
+      }
+
+      // 4. Otras categorías nuevas: rotación armónica sin repetirse
+      let hash = 0;
+      for (let i = 0; i < c.length; i++) {
+        hash = c.charCodeAt(i) + ((hash << 5) - hash);
+      }
+      const indice = Math.abs(hash) % PALETA_COLORES_DINAMICA.length;
+      return PALETA_COLORES_DINAMICA[indice];
+    }
+
     auth.onAuthStateChanged(async (user) => {
       currentUser = user;
       const btnSoporte = document.getElementById('btnFlotanteSoporte');
@@ -2340,7 +2389,7 @@
         alternarCampoNuevaCat();
         cerrarModalNuevoProducto();
 
-        alert("¡Producto registrado con éxito y visible en catálogo!");
+        alert(`¡Producto registrado con éxito en la categoría "${categoria}"!`);
       } catch (err) {
         alert("Error al registrar producto: " + err.message);
       }
@@ -2353,6 +2402,7 @@
       const categorias = Array.from(new Set(catalogoUnificado.map(p => p.categoria).filter(Boolean)));
       if (!categorias.includes('Streaming')) categorias.unshift('Streaming');
       if (!categorias.includes('Correos')) categorias.push('Correos');
+      if (!categorias.includes('Inteligencia Artificial (IA)')) categorias.push('Inteligencia Artificial (IA)');
 
       const opcionesHtml = categorias.map(c => `<option value="${c}">${c}</option>`).join('') + `<option value="__NUEVA__">+ Crear nueva categoría...</option>`;
 
@@ -2461,6 +2511,7 @@
       const c = (cat || '').toLowerCase();
       if (c.includes('streaming') || c.includes('video') || c.includes('tv') || c.includes('entretenimiento')) return 'fa-tv';
       if (c.includes('correo') || c.includes('email') || c.includes('mail')) return 'fa-envelope';
+      if (c.includes('ia') || c.includes('inteligencia') || c.includes('artificial') || c.includes('robot')) return 'fa-robot';
       if (c.includes('gaming') || c.includes('juegos') || c.includes('game')) return 'fa-gamepad';
       if (c.includes('vpn') || c.includes('seguridad')) return 'fa-shield-halved';
       if (c.includes('musica') || c.includes('audio')) return 'fa-music';
@@ -2536,16 +2587,14 @@
 
         const totalInicial = cantidadInicial * (prod.precio || 0);
 
-        const esCorreo = prod.categoria === 'Correos';
+        const estiloCat = obtenerEstiloCategoria(prod.categoria);
         const esHot = (prod.id === productoHotId || (prod.aliases && prod.aliases.includes(productoHotId)));
 
         const cardBorder = esHot 
           ? 'border-red-500/50 shadow-xl shadow-red-500/10' 
-          : (esCorreo ? 'border-purple-500/40 hover:border-purple-500/70' : 'border-gray-800 hover:border-emerald-500/40');
+          : estiloCat.border;
         
-        const badgeStyle = esCorreo 
-          ? 'bg-purple-500/10 text-purple-400 border border-purple-500/30' 
-          : 'bg-gray-800 text-emerald-400 border border-gray-700';
+        const badgeStyle = estiloCat.badge;
         const badgeIcon = obtenerIconoCategoria(prod.categoria);
         const badgeText = prod.categoria;
 
@@ -2569,7 +2618,7 @@
               </div>
               <p class="text-xs text-gray-400 mb-2 leading-relaxed">${prod.descripcion}</p>
               <div class="mb-4">
-                <span class="text-[10px] font-semibold ${esCorreo ? 'text-purple-400 bg-purple-500/10 border-purple-500/20' : 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20'} px-2 py-0.5 rounded border">
+                <span class="text-[10px] font-semibold text-gray-300 bg-gray-800 border border-gray-700 px-2 py-0.5 rounded">
                   ${stockDisponible > 0 && stockDisponible < minRequerido ? `¡Últimas ${stockDisponible} cuentas disponibles!` : `Compra mínima: ${minRequerido} cuentas`}
                 </span>
               </div>
@@ -2586,7 +2635,7 @@
                   <button type="button" onclick="cambiarCantidad('${prod.docId}', 1, ${stockDisponible}, ${limiteInferior})" ${agotado ? 'disabled' : ''} class="w-7 h-7 flex items-center justify-center rounded-lg bg-gray-700/60 hover:bg-gray-700 text-gray-200 font-black text-sm disabled:opacity-40">+</button>
                 </div>
               </div>
-              <button onclick="comprarProducto('${prod.docId}')" ${agotado ? 'disabled' : ''} class="w-full py-2.5 rounded-xl text-xs font-bold ${agotado ? 'bg-gray-800 text-gray-500 cursor-not-allowed' : (esCorreo ? 'bg-purple-600 hover:bg-purple-500 text-white shadow-lg' : 'bg-emerald-500 hover:bg-emerald-400 text-black shadow-lg')} transition flex items-center justify-center gap-1.5">
+              <button onclick="comprarProducto('${prod.docId}')" ${agotado ? 'disabled' : ''} class="w-full py-2.5 rounded-xl text-xs font-bold ${agotado ? 'bg-gray-800 text-gray-500 cursor-not-allowed' : estiloCat.btn} transition flex items-center justify-center gap-1.5">
                 <i class="fa-solid fa-cart-shopping"></i> ${agotado ? 'Agotado' : 'Comprar Ahora'}
               </button>
             </div>
