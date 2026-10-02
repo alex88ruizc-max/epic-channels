@@ -48,6 +48,17 @@
 </head>
 <body class="min-h-screen flex flex-col justify-between">
 
+  <!-- ==================== NOTIFICACIÓN TOAST ELEGANTE ==================== -->
+  <div id="toastNotif" class="fixed top-5 right-5 z-[9999] hidden items-center gap-3 bg-gray-900 border border-emerald-500/60 text-white px-4 py-3 rounded-2xl shadow-2xl transition-all duration-300">
+    <div class="w-8 h-8 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0">
+      <i class="fa-solid fa-check"></i>
+    </div>
+    <div>
+      <h5 class="text-xs font-bold text-white leading-tight">Operación exitosa</h5>
+      <p id="txtToastMensaje" class="text-[11px] text-gray-300">Cambios guardados correctamente.</p>
+    </div>
+  </div>
+
   <!-- ==================== NAVBAR ==================== -->
   <header class="border-b border-gray-800 bg-gray-900/95 backdrop-blur sticky top-0 z-50">
     <div class="max-w-6xl mx-auto px-3 py-3 flex items-center justify-between gap-2">
@@ -248,7 +259,7 @@
         </div>
       </div>
 
-      <!-- Pestañas de Administración (Optimizada sin la pestaña duplicada) -->
+      <!-- Pestañas de Administración (Optimizada sin pestaña duplicada) -->
       <div class="flex border-b border-gray-800 gap-3 mb-6 text-sm overflow-x-auto pb-2 no-scrollbar">
         <button onclick="cambiarTabAdmin('productos')" id="tabBtnProductos" class="pb-2 border-b-2 border-emerald-400 text-emerald-400 font-bold whitespace-nowrap">Gestión y Visibilidad</button>
         <button onclick="cambiarTabAdmin('usuarios')" id="tabBtnUsuarios" class="pb-2 border-b-2 border-transparent text-gray-400 font-medium hover:text-white whitespace-nowrap">Usuarios Registrados</button>
@@ -265,7 +276,7 @@
         <div class="flex justify-between items-center bg-gray-900 border border-emerald-500/30 p-4 rounded-2xl">
           <div>
             <h3 class="text-sm font-bold text-white">Gestión de Catálogo</h3>
-            <p class="text-xs text-gray-400">Añade nuevos servicios, ajusta precios o edita el stock y fotos.</p>
+            <p class="text-xs text-gray-400">Edita títulos, precios, compra mínima, fotos redondas o visibilidad.</p>
           </div>
           <button onclick="abrirModalNuevoProducto()" class="px-4 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-black font-bold text-xs rounded-xl transition flex items-center gap-2 shadow-lg">
             <i class="fa-solid fa-plus text-sm"></i> Registrar Nuevo Producto
@@ -564,7 +575,7 @@
                 </div>
                 <div>
                   <label class="block text-[11px] text-gray-400 mb-1">Recarga Mínima Permitida (COP)</label>
-                  <input type="number" id="ajusteMinRecarga" min="1000" step="500" placeholder="Ej: 5000" class="w-full bg-gray-900 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none">
+                  <input type="number" id="ajusteMinRecarga" min="1000" step="500" placeholder="Ej: 5000" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none">
                 </div>
               </div>
             </div>
@@ -750,7 +761,7 @@
     </div>
   </div>
 
-  <!-- MODAL: EDITAR PRODUCTO EXISTENTE, CATEGORÍA E IMAGEN -->
+  <!-- MODAL: EDITAR PRODUCTO EXISTENTE, CATEGORÍA E IMAGEN REDONDA -->
   <div id="modalEditarProducto" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
     <div class="bg-gray-900 border border-emerald-500/40 rounded-2xl max-w-md w-full p-6 relative shadow-2xl max-h-[90vh] overflow-y-auto">
       <button onclick="cerrarModalEditarProducto()" class="absolute top-4 right-4 text-gray-400 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
@@ -792,7 +803,7 @@
           </div>
         </div>
 
-        <!-- SECCIÓN: FOTO / ÍCONO REDONDO OPCIONAL -->
+        <!-- SECCIÓN: FOTO / ÍCONO REDONDO OPCIONAL (OPTIMIZADO PARA PC Y MÓVIL) -->
         <div class="pt-2 border-t border-gray-800">
           <label class="block text-[11px] text-gray-400 mb-1">Foto / Ícono Redondo del Producto (Opcional)</label>
           <input type="file" id="editProdImagenFile" accept="image/*" onchange="previsualizarImagenProducto(event)" class="w-full text-xs text-gray-400 bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 file:mr-3 file:py-1 file:px-2.5 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-emerald-500/20 file:text-emerald-300">
@@ -1177,6 +1188,19 @@
     const auth = firebase.auth();
     const db = firebase.firestore();
 
+    function mostrarToast(mensaje) {
+      const toast = document.getElementById('toastNotif');
+      const txt = document.getElementById('txtToastMensaje');
+      if (!toast || !txt) return;
+      txt.innerText = mensaje;
+      toast.classList.remove('hidden');
+      toast.classList.add('flex');
+      setTimeout(() => {
+        toast.classList.add('hidden');
+        toast.classList.remove('flex');
+      }, 3000);
+    }
+
     function obtenerTelegramToken() { return ajustesGeneralesConfig.telegramToken || "8974701831:AAE" + "Fibgx1DM2rO8NlxsEW9I27F88rV-VjnQ"; }
     function obtenerTelegramChatId() { return ajustesGeneralesConfig.telegramChatId || "390457801"; }
 
@@ -1514,7 +1538,7 @@
         document.getElementById('passActual').value = '';
         document.getElementById('passNueva').value = '';
         cerrarModalPassword();
-        alert("¡Contraseña actualizada con éxito!");
+        mostrarToast("¡Contraseña actualizada con éxito!");
       } catch (err) {
         alert("Error al actualizar contraseña: " + err.message);
       }
@@ -1797,7 +1821,7 @@
 
       try {
         await db.collection('configuracion').doc('ajustes').set(dataGuardar, { merge: true });
-        alert("¡Ajustes generales actualizados con éxito!");
+        mostrarToast("¡Ajustes generales actualizados con éxito!");
       } catch (err) {
         alert("Error al guardar ajustes: " + err.message);
       }
@@ -2286,14 +2310,44 @@
       reader.readAsDataURL(file);
     }
 
+    // ==================== COMPRESOR DE IMAGEN VÍA CANVAS (GARANTIZA COMPATIBILIDAD CON PC) ====================
     function previsualizarImagenProducto(e) {
       const file = e.target.files[0];
       if (!file) return;
+
       const reader = new FileReader();
       reader.onload = function(evt) {
-        imagenProductoBase64Temporal = evt.target.result;
-        document.getElementById('previewProdImg').src = imagenProductoBase64Temporal;
-        document.getElementById('contenedorPreviewProdImg').classList.remove('hidden');
+        const img = new Image();
+        img.onload = function() {
+          const canvas = document.createElement('canvas');
+          const maxDim = 200; // Máximo 200px para que pese ~20KB y no exceda límites de Firestore
+          let width = img.width;
+          let height = img.height;
+
+          if (width > height) {
+            if (width > maxDim) {
+              height = Math.round((height * maxDim) / width);
+              width = maxDim;
+            }
+          } else {
+            if (height > maxDim) {
+              width = Math.round((width * maxDim) / height);
+              height = maxDim;
+            }
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, width, height);
+
+          // Convertir a WebP o JPEG ligero
+          imagenProductoBase64Temporal = canvas.toDataURL('image/webp', 0.85);
+
+          document.getElementById('previewProdImg').src = imagenProductoBase64Temporal;
+          document.getElementById('contenedorPreviewProdImg').classList.remove('hidden');
+        };
+        img.src = evt.target.result;
       };
       reader.readAsDataURL(file);
     }
@@ -2330,7 +2384,7 @@
 
       try {
         await db.collection('configuracion').doc('apariencia').set(dataToSave, { merge: true });
-        alert("¡Apariencia del catálogo actualizada con éxito!");
+        mostrarToast("¡Apariencia actualizada con éxito!");
       } catch (err) {
         alert("Error al guardar apariencia: " + err.message);
       }
@@ -2396,7 +2450,7 @@
         alternarCampoNuevaCat();
         cerrarModalNuevoProducto();
 
-        alert(`¡Producto registrado con éxito en la categoría "${categoria}"!`);
+        mostrarToast(`¡Producto creado en "${categoria}"!`);
       } catch (err) {
         alert("Error al registrar producto: " + err.message);
       }
@@ -2609,7 +2663,7 @@
 
         const hotBadgeHtml = esHot ? `<div class="mb-3 inline-flex items-center gap-1.5 bg-red-500/10 text-red-400 border border-red-500/30 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider"><i class="fa-solid fa-fire animate-pulse text-red-500"></i> Producto Más Vendido / HOT</div>` : '';
 
-        // Foto redonda al lado derecho del título si está configurada
+        // Foto redonda elegante al lado derecho del título
         const imagenProdHtml = prod.imagenUrl 
           ? `<img src="${prod.imagenUrl}" alt="${prod.nombre}" class="w-10 h-10 rounded-full object-cover border border-gray-700/80 shadow-md shrink-0">` 
           : '';
@@ -2785,7 +2839,7 @@
           <tr class="hover:bg-gray-800/40">
             <td class="px-4 py-3 min-w-[180px] whitespace-normal">
               <div class="flex items-center gap-2.5">
-                ${p.imagenUrl ? `<img src="${p.imagenUrl}" alt="" class="w-7 h-7 rounded-full object-cover border border-gray-700 shrink-0">` : ''}
+                ${p.imagenUrl ? `<img src="${p.imagenUrl}" alt="" class="w-8 h-8 rounded-full object-cover border border-gray-700 shadow shrink-0">` : ''}
                 <div>
                   <span class="font-bold text-white block text-sm leading-snug">${p.nombre}</span>
                   <span class="inline-block mt-0.5 text-[10px] text-gray-400 bg-gray-800 border border-gray-700/60 px-2 py-0.5 rounded font-medium">Mín. compra: ${p.minCompra} u.</span>
@@ -2839,7 +2893,7 @@
         inputNuevaCat.value = prod.categoria;
       }
 
-      // Cargar imagen existente si la tiene
+      // Cargar imagen existente o limpiar selector
       if (prod.imagenUrl) {
         imagenProductoBase64Temporal = prod.imagenUrl;
         document.getElementById('previewProdImg').src = prod.imagenUrl;
@@ -2903,12 +2957,11 @@
         }
 
         await db.collection('inventario').doc(docId).set(updateData, { merge: true });
-
         await db.collection('configuracion').doc('precios').set({ [docId]: precio }, { merge: true });
         await db.collection('configuracion').doc('minimos').set({ [docId]: minCompra }, { merge: true });
 
         cerrarModalEditarProducto();
-        alert("¡Producto actualizado con éxito!");
+        mostrarToast("¡Producto y foto guardados con éxito!");
       } catch (err) {
         alert("Error al actualizar producto: " + err.message);
       }
@@ -3061,7 +3114,7 @@
 
       try {
         await db.collection('usuarios').doc(uid).delete();
-        alert("¡Cliente eliminado con éxito de la base de datos!");
+        mostrarToast("¡Cliente eliminado con éxito!");
       } catch (error) {
         alert("Error al eliminar cliente: " + error.message);
       }
@@ -3095,9 +3148,9 @@
         await db.collection('usuarios').doc(clienteEditarUidActual).set(updateData, { merge: true });
 
         if (nuevaPassword.length >= 6) {
-          alert("¡Perfil actualizado con éxito! (Para cambiar la contraseña de acceso, por seguridad el usuario puede usar 'Clave' o restablecerla desde login).");
+          mostrarToast("¡Perfil actualizado con éxito! (Clave modificable por el usuario)");
         } else {
-          alert("¡Perfil de cliente actualizado con éxito!");
+          mostrarToast("¡Perfil de cliente actualizado con éxito!");
         }
 
         cerrarModalEditarCliente();
@@ -3174,7 +3227,7 @@
           productos_bloqueados: nuevosBloqueados
         }, { merge: true });
 
-        alert("¡Permisos de catálogo guardados con éxito para este cliente!");
+        mostrarToast("¡Permisos de catálogo guardados!");
         cerrarModalPermisosCliente();
       } catch (e) {
         alert("Error al guardar permisos: " + e.message);
@@ -3231,7 +3284,7 @@
           puede_subir_stock: seleccionados.length > 0
         }, { merge: true });
 
-        alert("¡Permisos de subida de stock actualizados con éxito!");
+        mostrarToast("¡Permisos de subida de stock guardados!");
         cerrarModalPermisosStockCliente();
       } catch (e) {
         alert("Error al guardar permisos de stock: " + e.message);
@@ -3294,7 +3347,7 @@
         const uDoc = await t.get(userRef);
         t.update(userRef, { saldo: ((uDoc.exists && uDoc.data().saldo) || 0) + monto });
       });
-      alert("¡Saldo acreditado!");
+      mostrarToast("¡Saldo acreditado con éxito!");
     }
 
     function poblarSelectStock() {
@@ -3335,7 +3388,7 @@
         fecha: new Date().toLocaleString('es-CO')
       });
 
-      alert(`¡Agregadas ${nuevas.length} cuentas y notificadas a Telegram!`);
+      mostrarToast(`¡Agregadas ${nuevas.length} cuentas al inventario!`);
     }
 
     function previsualizarQr(e) {
@@ -3386,7 +3439,7 @@
         } else {
           await db.collection('metodos_pago').add(dataGuardar);
         }
-        alert("¡Método de pago guardado con éxito!");
+        mostrarToast("¡Método de pago guardado con éxito!");
         limpiarFormularioPagos();
       } catch (err) {
         alert("Error al guardar método de pago: " + err.message);
@@ -3445,6 +3498,7 @@
       if (!confirm("¿Eliminar este método de pago y su QR?")) return;
       try {
         await db.collection('metodos_pago').doc(docId).delete();
+        mostrarToast("¡Método de pago eliminado!");
       } catch (e) {
         alert("Error al eliminar: " + e.message);
       }
@@ -3532,7 +3586,7 @@
       const wa = encodeURIComponent(`Hola, acabo de transferir $${monto.toLocaleString('es-CO')} COP para recargar saldo. Mi correo registrado es: ${currentUser.email}`);
       window.open(`https://wa.me/${numeroAdmin}?text=${wa}`, '_blank');
       cerrarModalRecarga();
-      alert("¡Solicitud enviada y notificada por Telegram con éxito!");
+      mostrarToast("¡Solicitud enviada y notificada!");
     }
 
     async function cargarRecargasAdmin() {
@@ -3563,14 +3617,14 @@
         t.update(userRef, { saldo: ((uDoc.exists && uDoc.data().saldo) || 0) + monto });
         t.update(db.collection('recargas').doc(recargaId), { estado: 'aprobado' });
       });
-      alert("Recarga aprobada.");
+      mostrarToast("Recarga aprobada con éxito.");
       cargarRecargasAdmin();
     }
 
     async function rechazarRecarga(recargaId) {
       if (!confirm("¿Deseas rechazar y revocar esta solicitud de saldo?")) return;
       await db.collection('recargas').doc(recargaId).update({ estado: 'rechazado' });
-      alert("Solicitud rechazada.");
+      mostrarToast("Solicitud rechazada.");
       cargarRecargasAdmin();
     }
 
@@ -3592,7 +3646,7 @@
             </div>
             <div class="bg-gray-800/90 border border-gray-700 p-3 rounded-lg font-mono text-xs text-gray-200 break-all select-all flex items-start justify-between gap-2 whitespace-pre-line leading-relaxed">
               <span>${c.credenciales}</span>
-              <button onclick="navigator.clipboard.writeText('${c.credenciales.replace(/\n/g, '\\n')}'); alert('Copiado');" class="text-gray-400 hover:text-white p-1"><i class="fa-solid fa-copy"></i></button>
+              <button onclick="navigator.clipboard.writeText('${c.credenciales.replace(/\n/g, '\\n')}'); mostrarToast('¡Copiado!');" class="text-gray-400 hover:text-white p-1"><i class="fa-solid fa-copy"></i></button>
             </div>
           </div>
         `;
