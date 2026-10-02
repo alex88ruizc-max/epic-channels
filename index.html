@@ -1860,23 +1860,13 @@
             const notifBorrada = dataU.notificacion_borrada === true;
             const badgeNotif = document.getElementById('badgeNotifCount');
 
-            let primerIngreso = dataU.primer_ingreso;
-            const ahoraTiempo = new Date().getTime();
-            if (!primerIngreso) {
-              primerIngreso = new Date().toISOString();
-              db.collection('usuarios').doc(user.uid).set({ primer_ingreso: primerIngreso }, { merge: true });
-            }
-            // Intervalo exacto de 5 minutos (5 min * 60,000 ms)
-            const diffMinutos = (ahoraTiempo - new Date(primerIngreso).getTime()) / 60000;
-            const expiradoPorTiempo = diffMinutos >= 5;
-
             const minAlerta = ajustesGeneralesConfig.minRecarga || 5000;
             if (userSaldo < minAlerta) {
               badgeNotif.innerText = "!";
               badgeNotif.classList.remove('bg-red-500', 'hidden');
               badgeNotif.classList.add('bg-yellow-500', 'animate-bounce');
               badgeNotif.title = `¡Atención! Tu saldo es menor a $${minAlerta.toLocaleString('es-CO')} COP`;
-            } else if (notifBorrada || expiradoPorTiempo) {
+            } else if (notifBorrada) {
               badgeNotif.classList.add('hidden');
             } else {
               badgeNotif.innerText = "1";
@@ -1889,7 +1879,7 @@
             userProductosPermitidos = [];
             userProductosBloqueados = [];
             userPermisosSubirStock = [];
-            db.collection('usuarios').doc(user.uid).set({ email: user.email, saldo: 0, productos_permitidos: [], productos_bloqueados: [], permisos_subir_stock: [], notificacion_borrada: false, primer_ingreso: new Date().toISOString() }, { merge: true });
+            db.collection('usuarios').doc(user.uid).set({ email: user.email, saldo: 0, productos_permitidos: [], productos_bloqueados: [], permisos_subir_stock: [], notificacion_borrada: false }, { merge: true });
           }
           document.getElementById('txtSaldoHeader').innerText = `$${userSaldo.toLocaleString('es-CO')} COP`;
           renderizarCatalogo();
