@@ -2860,6 +2860,13 @@
           const cuentasEntregadas = cuentas.splice(0, cantidad);
           const stockRestante = cuentas.length;
 
+          // LISTA LIMPIA EXCLUSIVA DE CORREO:CONTRASEÑA PARA HISTORIAL Y ADMINISTRACIÓN
+          const credencialesPuras = cuentasEntregadas.map(raw => {
+            const c = parseCredencialObj(raw);
+            return `${c.email}:${c.pass}`;
+          }).join('\n');
+
+          // Formato decorado para entrega visual en pantalla del cliente
           textoEntregaFinal = construirFormatoEntrega(cuentasEntregadas, prodInfo);
 
           t.update(invRef, { cuentas: cuentas });
@@ -2875,7 +2882,7 @@
             cantidad: cantidad,
             precioUnitario: precioUnitario,
             total: totalPagar,
-            credenciales: textoEntregaFinal,
+            credenciales: credencialesPuras, // REGISTRO LIMPIO: Únicamente correo:contraseña
             fecha: new Date().toISOString()
           });
 
@@ -2884,7 +2891,7 @@
             cantidad: cantidad,
             total: `$${totalPagar.toLocaleString('es-CO')} COP`,
             cliente: currentUser.email,
-            credenciales: textoEntregaFinal,
+            credenciales: credencialesPuras, // Telegram también recibe únicamente correo:contraseña
             saldo_restante: `$${nuevoSaldoUsuario.toLocaleString('es-CO')} COP`,
             stock_restante: stockRestante,
             fecha: new Date().toLocaleString('es-CO')
@@ -3818,3 +3825,4 @@
   </script>
 </body>
 </html>
+
