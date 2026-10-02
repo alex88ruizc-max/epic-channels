@@ -1205,17 +1205,10 @@
         <div>
           <label class="block text-xs text-gray-400 mb-1">Contraseña</label>
           <input type="password" id="authPassword" required class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none">
-          <div id="grupoAuthRecuperar" class="text-right mt-1.5">
-            <button type="button" onclick="recuperarPasswordModal()" class="text-[11px] text-emerald-400 hover:underline">¿Olvidaste tu contraseña?</button>
-          </div>
         </div>
-
-        <!-- RECUADRO ELEGANTE DE ERROR INTEGRADO AL DISEÑO -->
-        <div id="authErrorBox" class="hidden p-2.5 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-xs flex items-center gap-2">
-          <i class="fa-solid fa-triangle-exclamation shrink-0"></i>
-          <span id="authErrorMsg"></span>
+        <div id="grupoAuthRecuperar" class="text-right">
+          <button type="button" onclick="recuperarPasswordModal()" class="text-[11px] text-emerald-400 hover:underline">¿Olvidaste tu contraseña?</button>
         </div>
-
         <div id="grupoAuthWhatsapp" class="hidden">
           <label class="block text-xs text-gray-400 mb-1">Número de WhatsApp</label>
           <input type="tel" id="authWhatsapp" placeholder="Ej: 3001234567" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none">
@@ -1492,7 +1485,7 @@
 
     function enviarWhatsappSoporte() {
       const numeroAdmin = ajustesGeneralesConfig.whatsappNumero || "573043956726";
-      const mensaje = encodeURIComponent("Hola, necesito soporte con una cuenta. Cumple con la condición de garantía estipulada.");
+      const mensaje = encodeURIComponent("Hola, necesito soporte con una cuenta. Cumple con la condición de menos de 24 horas y entiendo que no hay garantía por correo directo.");
       window.open(`https://wa.me/${numeroAdmin}?text=${mensaje}`, '_blank');
       cerrarSoporteWhatsapp();
     }
@@ -2489,7 +2482,7 @@
 
       if (vista === 'tienda') {
         document.getElementById('vistaTienda').classList.remove('hidden');
-        renderizaracionalApariencia();
+        renderizarApariencia();
         renderizarCatalogo();
       } else if (vista === 'mis-cuentas') {
         document.getElementById('vistaMisCuentas').classList.remove('hidden');
@@ -2544,7 +2537,7 @@
         if (doc.exists) preciosConfig = doc.data() || {};
         procesarYRenderizar();
       });
-      db.collection('minimos').onSnapshot(doc => {
+      db.collection('configuracion').doc('minimos').onSnapshot(doc => {
         if (doc.exists) minimosConfig = doc.data() || {};
         procesarYRenderizar();
       });
@@ -2557,7 +2550,7 @@
         if (doc.exists) {
           aparienciaConfig = { ...aparienciaConfig, ...doc.data() };
         }
-        renderizaracionalApariencia();
+        renderizarApariencia();
       });
       db.collection('inventario').onSnapshot(snap => {
         snapshotInventario = {};
@@ -2574,7 +2567,7 @@
       });
     }
 
-    function renderizaracionalApariencia() {
+    function renderizarApariencia() {
       const tituloEl = document.getElementById('txtCatTitulo');
       const subEl = document.getElementById('txtCatSubtitulo');
       const logoCont = document.getElementById('contenedorLogoMarca');
@@ -3643,7 +3636,7 @@
         mostrarToast("¡Permisos de subida de stock guardados!");
         cerrarModalPermisosStockCliente();
       } catch (e) {
-        alert("Error al guardar permisos: " + e.message);
+        alert("Error al guardar permisos de stock: " + e.message);
       }
     }
 
@@ -3682,7 +3675,7 @@
         document.getElementById('expWhatsapp').value = '';
         document.getElementById('expPassword').value = '';
         cerrarModalNuevoCliente();
-      } catch (err) { alert("Error al crear cuenta: " + err.message); }
+      } catch (err) { alert(err.message); }
     }
 
     function copiarCredencialesNuevoUsuario() {
@@ -4034,10 +4027,6 @@
       modoAuth = modo;
       document.getElementById('modalAuth').classList.remove('hidden');
       document.getElementById('modalAuth').style.display = 'flex';
-      
-      const errBox = document.getElementById('authErrorBox');
-      if (errBox) errBox.classList.add('hidden');
-
       const rec = document.getElementById('grupoAuthRecuperar');
       if (modo === 'login') {
         document.getElementById('modalAuthTitulo').innerText = 'Iniciar Sesión';
@@ -4114,24 +4103,7 @@
           cerrarModalAuth();
           cambiarVista('tienda');
         } catch (err) {
-          const errBox = document.getElementById('authErrorBox');
-          const errMsg = document.getElementById('authErrorMsg');
-          
-          let texto = "Correo o contraseña incorrectos.";
-          if (err.code === 'auth/wrong-password') {
-            texto = "Contraseña incorrecta. Verifica o usa '¿Olvidaste tu contraseña?'.";
-          } else if (err.code === 'auth/user-not-found') {
-            texto = "No existe ninguna cuenta registrada con este correo.";
-          } else if (err.code === 'auth/too-many-requests') {
-            texto = "Demasiados intentos. Espera unos minutos antes de volver a intentar.";
-          }
-
-          if (errBox && errMsg) {
-            errMsg.innerText = texto;
-            errBox.classList.remove('hidden');
-          } else {
-            mostrarToast(texto);
-          }
+          alert("Credenciales incorrectas o error de acceso: " + err.message);
         }
       }
     }
