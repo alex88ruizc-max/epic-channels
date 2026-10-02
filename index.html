@@ -534,10 +534,47 @@
           <h3 class="text-base font-black text-white mb-1 flex items-center gap-2">
             <i class="fa-solid fa-gears text-emerald-400"></i> Configuración General y Parámetros
           </h3>
-          <p class="text-xs text-gray-400 mb-5">Administra los tokens, números de contacto, claves maestras y listas de control sin editar código.</p>
+          <p class="text-xs text-gray-400 mb-5">Administra los tokens, números de contacto, claves maestras, colores y listas de control sin editar código.</p>
 
           <form onsubmit="guardarAjustesGeneralesAdmin(event)" class="space-y-4">
             
+            <!-- SECCIÓN: TEMA Y COLOR PRINCIPAL DE LA PLATAFORMA -->
+            <div class="p-4 bg-gray-800/60 border border-gray-700/60 rounded-xl space-y-3">
+              <div class="flex items-center justify-between">
+                <h4 class="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
+                  <i class="fa-solid fa-palette text-emerald-400"></i> Color Temático de la Plataforma
+                </h4>
+                <button type="button" onclick="restablecerTemaPorDefecto()" class="text-[10px] text-gray-400 hover:text-white underline font-semibold">
+                  Restablecer por defecto (Verde)
+                </button>
+              </div>
+              <p class="text-[11px] text-gray-400">Elige el color principal que vestirá botones de compra, insignias, saldos y elementos destacados.</p>
+              
+              <div class="grid grid-cols-2 sm:grid-cols-5 gap-2.5 pt-1">
+                <button type="button" onclick="seleccionarTemaColor('emerald')" id="btnTema_emerald" class="btn-tema-opt p-2.5 rounded-xl border border-gray-700 bg-gray-900 flex items-center gap-2 hover:border-emerald-400 transition">
+                  <span class="w-4 h-4 rounded-full bg-[#00D084] inline-block shadow"></span>
+                  <span class="text-xs font-bold text-gray-200">Verde (Defecto)</span>
+                </button>
+                <button type="button" onclick="seleccionarTemaColor('purple')" id="btnTema_purple" class="btn-tema-opt p-2.5 rounded-xl border border-gray-700 bg-gray-900 flex items-center gap-2 hover:border-purple-400 transition">
+                  <span class="w-4 h-4 rounded-full bg-[#a855f7] inline-block shadow"></span>
+                  <span class="text-xs font-bold text-gray-200">Morado Neón</span>
+                </button>
+                <button type="button" onclick="seleccionarTemaColor('blue')" id="btnTema_blue" class="btn-tema-opt p-2.5 rounded-xl border border-gray-700 bg-gray-900 flex items-center gap-2 hover:border-blue-400 transition">
+                  <span class="w-4 h-4 rounded-full bg-[#3b82f6] inline-block shadow"></span>
+                  <span class="text-xs font-bold text-gray-200">Azul Eléctrico</span>
+                </button>
+                <button type="button" onclick="seleccionarTemaColor('rose')" id="btnTema_rose" class="btn-tema-opt p-2.5 rounded-xl border border-gray-700 bg-gray-900 flex items-center gap-2 hover:border-rose-400 transition">
+                  <span class="w-4 h-4 rounded-full bg-[#f43f5e] inline-block shadow"></span>
+                  <span class="text-xs font-bold text-gray-200">Rosa Carmesí</span>
+                </button>
+                <button type="button" onclick="seleccionarTemaColor('amber')" id="btnTema_amber" class="btn-tema-opt p-2.5 rounded-xl border border-gray-700 bg-gray-900 flex items-center gap-2 hover:border-amber-400 transition">
+                  <span class="w-4 h-4 rounded-full bg-[#f59e0b] inline-block shadow"></span>
+                  <span class="text-xs font-bold text-gray-200">Ámbar Dorado</span>
+                </button>
+              </div>
+              <input type="hidden" id="ajusteColorTema" value="emerald">
+            </div>
+
             <!-- SECCIÓN TELEGRAM -->
             <div class="p-4 bg-gray-800/60 border border-gray-700/60 rounded-xl space-y-3">
               <h4 class="text-xs font-bold text-blue-400 uppercase tracking-wider flex items-center gap-1.5">
@@ -916,8 +953,8 @@
             <span class="text-[10px] font-bold bg-purple-500/20 text-purple-400 border border-purple-500/40 px-2 py-0.5 rounded-full"><i class="fa-solid fa-palette mr-1"></i> Visual</span>
             <span class="text-[10px] text-gray-500">Reciente</span>
           </div>
-          <p class="text-gray-300 font-bold">Paleta dinámica inteligente</p>
-          <p class="text-[11px] text-gray-400 mt-0.5">Las categorías nuevas reciben automáticamente colores armónicos y legibles sin repetirse.</p>
+          <p class="text-gray-300 font-bold">Paleta dinámica y personalizable</p>
+          <p class="text-[11px] text-gray-400 mt-0.5">Se agregó personalización de color global en Ajustes Generales y paleta rotativa armónica para nuevas categorías.</p>
         </div>
       </div>
 
@@ -1206,6 +1243,50 @@
     let intervaloHeartbeat = null;
     let modoPruebaCliente = false;
 
+    // Paleta de temas para la interfaz completa
+    const MAPA_TEMAS_COLORES = {
+      emerald: { primario: '#00D084', primarioHover: '#00B070', texto: '#34d399', borde: 'rgba(0, 208, 132, 0.4)', fondoSuave: 'rgba(0, 208, 132, 0.1)' },
+      purple:  { primario: '#a855f7', primarioHover: '#9333ea', texto: '#c084fc', borde: 'rgba(168, 85, 247, 0.4)', fondoSuave: 'rgba(168, 85, 247, 0.1)' },
+      blue:    { primario: '#3b82f6', primarioHover: '#2563eb', texto: '#60a5fa', borde: 'rgba(59, 130, 246, 0.4)', fondoSuave: 'rgba(59, 130, 246, 0.1)' },
+      rose:    { primario: '#f43f5e', primarioHover: '#e11d48', texto: '#fb7185', borde: 'rgba(244, 63, 94, 0.4)',  fondoSuave: 'rgba(244, 63, 94, 0.1)' },
+      amber:   { primario: '#f59e0b', primarioHover: '#d97706', texto: '#fbbf24', borde: 'rgba(245, 158, 11, 0.4)', fondoSuave: 'rgba(245, 158, 11, 0.1)' }
+    };
+
+    function aplicarTemaVisual(temaId) {
+      const tema = MAPA_TEMAS_COLORES[temaId] || MAPA_TEMAS_COLORES.emerald;
+      let styleTag = document.getElementById('dynamicThemeStyles');
+      if (!styleTag) {
+        styleTag = document.createElement('style');
+        styleTag.id = 'dynamicThemeStyles';
+        document.head.appendChild(styleTag);
+      }
+
+      styleTag.innerHTML = `
+        .bg-emerald-500, .bg-brand-500 { background-color: ${tema.primario} !important; }
+        .hover\\:bg-emerald-400:hover, .hover\\:bg-emerald-600:hover { background-color: ${tema.primarioHover} !important; }
+        .text-emerald-400, .text-brand-500, .text-emerald-300 { color: ${tema.texto} !important; }
+        .border-emerald-500, .border-emerald-400, .border-emerald-500\\/30, .border-emerald-500\\/40, .border-emerald-500\\/50, .border-emerald-500\\/60 { border-color: ${tema.borde} !important; }
+        .bg-emerald-500\\/10, .bg-emerald-500\\/20 { background-color: ${tema.fondoSuave} !important; }
+      `;
+
+      document.querySelectorAll('.btn-tema-opt').forEach(b => b.classList.remove('border-white', 'ring-2', 'ring-emerald-400'));
+      const activo = document.getElementById('btnTema_' + (temaId || 'emerald'));
+      if (activo) activo.classList.add('border-white', 'ring-2');
+
+      const inputOculto = document.getElementById('ajusteColorTema');
+      if (inputOculto) inputOculto.value = temaId || 'emerald';
+    }
+
+    function seleccionarTemaColor(temaId) {
+      aplicarTemaVisual(temaId);
+      mostrarToast(`Vista previa de color aplicada.`);
+    }
+
+    function restablecerTemaPorDefecto() {
+      seleccionarTemaColor('emerald');
+      mostrarToast(`Color restablecido al Verde por defecto.`);
+    }
+
     let ajustesGeneralesConfig = {
       telegramToken: "8974701831:AAE" + "Fibgx1DM2rO8NlxsEW9I27F88rV-VjnQ",
       telegramChatId: "390457801",
@@ -1214,7 +1295,8 @@
       claveAmazon: "epic2828",
       minRecarga: 5000,
       adminEmailsStr: "alex88ruizc@gmail.com",
-      excluidosReporteStr: "alex88ruizc@gmail.com, alex88ruiz@gmail.com"
+      excluidosReporteStr: "alex88ruizc@gmail.com, alex88ruiz@gmail.com",
+      colorTema: "emerald"
     };
 
     const firebaseConfig = {
@@ -1838,6 +1920,7 @@
       document.getElementById('ajusteMinRecarga').value = ajustesGeneralesConfig.minRecarga || 5000;
       document.getElementById('ajusteAdminEmails').value = ajustesGeneralesConfig.adminEmailsStr || 'alex88ruizc@gmail.com';
       document.getElementById('ajusteExcluidosReporte').value = ajustesGeneralesConfig.excluidosReporteStr || 'alex88ruizc@gmail.com, alex88ruiz@gmail.com';
+      aplicarTemaVisual(ajustesGeneralesConfig.colorTema || 'emerald');
     }
 
     async function guardarAjustesGeneralesAdmin(e) {
@@ -1850,6 +1933,7 @@
       const nuevoMinRec = parseFloat(document.getElementById('ajusteMinRecarga').value) || 5000;
       const nuevoAdminEmails = document.getElementById('ajusteAdminEmails').value.trim();
       const nuevoExcluidos = document.getElementById('ajusteExcluidosReporte').value.trim();
+      const nuevoColorTema = document.getElementById('ajusteColorTema').value || 'emerald';
 
       const dataGuardar = {
         telegramToken: nuevoToken,
@@ -1860,12 +1944,13 @@
         minRecarga: nuevoMinRec,
         adminEmailsStr: nuevoAdminEmails,
         excluidosReporteStr: nuevoExcluidos,
+        colorTema: nuevoColorTema,
         actualizadoEl: new Date().toISOString()
       };
 
       try {
         await db.collection('configuracion').doc('ajustes').set(dataGuardar, { merge: true });
-        mostrarToast("¡Ajustes generales actualizados con éxito!");
+        mostrarToast("¡Ajustes y color guardados con éxito!");
       } catch (err) {
         alert("Error al guardar ajustes: " + err.message);
       }
@@ -1879,6 +1964,12 @@
       }
       if (data.excluidosReporteStr) {
         EMAILS_EXCLUIDOS_REPORTE = data.excluidosReporteStr.split(',').map(e => e.trim().toLowerCase()).filter(e => e);
+      }
+
+      if (data.colorTema) {
+        aplicarTemaVisual(data.colorTema);
+      } else {
+        aplicarTemaVisual('emerald');
       }
 
       const inputRecarga = document.getElementById('recargaMonto');
@@ -2006,7 +2097,7 @@
     function obtenerEstiloCategoria(cat) {
       const c = (cat || '').trim().toLowerCase();
       
-      // 1. Streaming (Verde Esmeralda)
+      // 1. Streaming (Color principal configurable)
       if (c === 'streaming') {
         return {
           border: 'border-gray-800 hover:border-emerald-500/40',
