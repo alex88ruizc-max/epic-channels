@@ -533,7 +533,7 @@
                   <th class="px-4 py-3">Fecha y Hora</th>
                   <th class="px-4 py-3">Comprador</th>
                   <th class="px-4 py-3">Producto</th>
-                  <th class="px-4 py-3">Cuentas Entregadas (Credenciales)</th>
+                  <th class="px-4 py-3 text-center">Credenciales</th>
                   <th class="px-4 py-3 text-right">Total</th>
                 </tr>
               </thead>
@@ -592,7 +592,7 @@
                 </div>
                 <div>
                   <label class="block text-[11px] text-gray-400 mb-1">Recarga Mínima Permitida (COP)</label>
-                  <input type="number" id="ajusteMinRecarga" min="1000" step="500" placeholder="Ej: 5000" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none">
+                  <input type="number" id="ajusteMinRecarga" min="1000" step="500" placeholder="Ej: 5000" class="w-full bg-gray-900 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none">
                 </div>
               </div>
             </div>
@@ -1226,6 +1226,30 @@
       }
     }
 
+    async function notificarInicioSesionTelegram(email, saldo) {
+      const token = obtenerTelegramToken();
+      const chatId = obtenerTelegramChatId();
+      if (!token || !chatId) return;
+
+      const mensaje = 
+        `🟢 *¡CLIENTE INICIÓ SESIÓN!* 🟢\n\n` +
+        `👤 *Correo:* ${email}\n` +
+        `💳 *Saldo Actual:* $${(saldo || 0).toLocaleString('es-CO')} COP\n` +
+        `⏰ *Fecha y Hora:* ${new Date().toLocaleString('es-CO')}`;
+
+      const url = `https://api.telegram.org/bot${token}/sendMessage`;
+
+      try {
+        await fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ chat_id: chatId, text: mensaje, parse_mode: "Markdown" })
+        });
+      } catch (e) {
+        console.error("Fallo aviso inicio sesión Telegram:", e);
+      }
+    }
+
     async function enviarNotificacionRecargaTelegram(datos) {
       const token = obtenerTelegramToken();
       const chatId = obtenerTelegramChatId();
@@ -1794,6 +1818,29 @@
       }
     }
 
+    function aplicarAjustesGeneralesEnMemoria(data) {
+      ajustesGeneralesConfig = { ...ajustesGeneralesConfig, ...data };
+
+      if (data.adminEmailsStr) {
+        ADMIN_EMAILS = data.adminEmailsStr.split(',').map(e => e.trim().toLowerCase()).filter(e => e);
+      }
+      if (data.excluidosReporteStr) {
+        EMAILS_EXCLUIDOS_REPORTE = data.excluidosReporteStr.split(',').map(e => e.trim().toLowerCase()).filter(e => e);
+      }
+
+      const inputRecarga = document.getElementById('recargaMonto');
+      if (inputRecarga && data.minRecarga) {
+        inputRecarga.min = data.minRecarga;
+        inputRecarga.placeholder = `Mínimo ${data.minRecarga}`;
+      }
+
+      const linkBot = document.getElementById('linkFlotanteTelegramBot');
+      if (linkBot && data.telegramBotUrl) linkBot.href = data.telegramBotUrl;
+
+      const linkModalBot = document.getElementById('linkModalEntregaBot');
+      if (linkModalBot && data.telegramBotUrl) linkModalBot.href = data.telegramBotUrl;
+    }
+
     const PRODUCTOS_BASE_CATALOGO = [
       { id: "amazon28", aliases: ["amazon28", "amazon_28", "amazon"], nombre: "Amazon (Garantía 28 Días)", categoria: "Streaming", descripcion: "Cuenta completa con garantía de 28 días. Entrega directa sin PIN.", precioDefault: 15000, minCompraDefault: 5, esAmazon: true, garantia24h: false },
       { id: "prime_local", aliases: ["prime_local", "primelocal"], nombre: "Prime Video Local (Con Pago)", categoria: "Streaming", descripcion: "Cuenta local con pago activo. Garantía de acceso 24 horas.", precioDefault: 3200, minCompraDefault: 5, esAmazon: true, garantia24h: true },
@@ -1897,6 +1944,7 @@
       const btnTelegramBot = document.getElementById('btnFlotanteTelegramBot');
       const navSaldo = document.getElementById('navSaldoDirecto');
       const navLogo = document.getElementById('navLogoContainer');
+      const vistaBloqueadaEl = document.getElementById('vistaBloqueada');
 
       if (user) {
         document.getElementById('navGuest').classList.add('hidden');
@@ -1913,7 +1961,11 @@
         }
 
         cerrarModalAuth();
-        document.getElementById('vistaBloqueada').classList.add('hidden');
+
+        if (vistaBloqueadaEl) {
+          vistaBloqueadaEl.classList.add('hidden');
+          vistaBloqueadaEl.style.display = 'none';
+        }
 
         iniciarLatidoConexion(user);
 
@@ -1935,6 +1987,11 @@
             userProductosBloqueados = dataU.productos_bloqueados || [];
             userPermisosSubirStock = dataU.permisos_subir_stock || [];
             
+            if (!esAdmin && !sessionStorage.getItem('login_notificado_' + user.uid)) {
+              sessionStorage.setItem('login_notificado_' + user.uid, 'true');
+              notificarInicioSesionTelegram(user.email, userSaldo);
+            }
+
             const notifBorrada = dataU.notificacion_borrada === true;
             const badgeNotif = document.getElementById('badgeNotifCount');
 
@@ -1944,7 +2001,6 @@
               primerIngreso = new Date().toISOString();
               db.collection('usuarios').doc(user.uid).set({ primer_ingreso: primerIngreso }, { merge: true });
             }
-            // Control exacto de 1 hora (3600000 ms)
             const diffHoras = (ahoraTiempo - new Date(primerIngreso).getTime()) / 3600000;
             const expiradoPorTiempo = diffHoras >= 1;
 
@@ -2058,7 +2114,11 @@
       document.getElementById('vistaTienda').classList.add('hidden');
       document.getElementById('vistaMisCuentas').classList.add('hidden');
       document.getElementById('vistaAdmin').classList.add('hidden');
-      document.getElementById('vistaBloqueada').classList.remove('hidden');
+      const vb = document.getElementById('vistaBloqueada');
+      if (vb) {
+        vb.classList.remove('hidden');
+        vb.style.display = 'block';
+      }
     }
 
     function cambiarVista(vista) {
@@ -2069,7 +2129,11 @@
       }
 
       cerrarModalAuth();
-      document.getElementById('vistaBloqueada').classList.add('hidden');
+      const vb = document.getElementById('vistaBloqueada');
+      if (vb) {
+        vb.classList.add('hidden');
+        vb.style.display = 'none';
+      }
       document.getElementById('vistaTienda').classList.add('hidden');
       document.getElementById('vistaMisCuentas').classList.add('hidden');
       document.getElementById('vistaAdmin').classList.add('hidden');
@@ -2246,7 +2310,7 @@
         categoria = nuevaCat;
       }
 
-      const idGenerado = nombre.toLowerCase().replace(/[^a-z0-9]/g, '_');
+      const idGenerado = 'prod_' + Date.now();
 
       try {
         await db.collection('inventario').doc(idGenerado).set({
@@ -2258,10 +2322,14 @@
           cuentas: [],
           activo: true,
           fechaCreacion: new Date().toISOString()
-        }, { merge: true });
+        });
 
-        await db.collection('configuracion').doc('precios').set({ [idGenerado]: precio }, { merge: true });
-        await db.collection('configuracion').doc('minimos').set({ [idGenerado]: minCompra }, { merge: true });
+        try {
+          await db.collection('configuracion').doc('precios').set({ [idGenerado]: precio }, { merge: true });
+          await db.collection('configuracion').doc('minimos').set({ [idGenerado]: minCompra }, { merge: true });
+        } catch (confErr) {
+          console.warn("Aviso de permisos en configuracion:", confErr);
+        }
 
         document.getElementById('nuevoProdNombre').value = '';
         document.getElementById('nuevoProdDesc').value = '';
@@ -3541,7 +3609,7 @@
           cerrarModalAuth();
           cambiarVista('tienda');
         } catch (err) {
-          alert("Credenciales incorrectas o error de acceso.");
+          alert("Credenciales incorrectas o error de acceso: " + err.message);
         }
       }
     }
