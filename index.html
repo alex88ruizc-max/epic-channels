@@ -1602,7 +1602,7 @@
         <div class="grid grid-cols-2 gap-2">
           <div>
             <label class="block text-xs text-gray-400 mb-1">Cliente (nombre)</label>
-            <input type="text" id="nfCliente" placeholder="Ej: Mile" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none">
+            <input type="text" id="nfCliente" oninput="actualizarVistaVenceNetflix()" placeholder="Ej: Mile" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none">
           </div>
           <div>
             <label class="block text-xs text-gray-400 mb-1">WhatsApp (opcional)</label>
@@ -1612,7 +1612,7 @@
         <div class="grid grid-cols-2 gap-2">
           <div>
             <label class="block text-xs text-gray-400 mb-1">Plan</label>
-            <select id="nfPlan" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none">
+            <select id="nfPlan" onchange="nfAutoCalcularVence('plan')" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none">
               <option value="1">1 mes</option>
               <option value="2">2 meses</option>
               <option value="3">3 meses</option>
@@ -1625,15 +1625,16 @@
         </div>
         <div class="grid grid-cols-2 gap-2">
           <div>
-            <label class="block text-xs text-gray-400 mb-1">Fecha de inicio</label>
-            <input type="date" id="nfInicio" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none">
+            <label class="block text-xs text-gray-400 mb-1">Inicio del periodo</label>
+            <input type="date" id="nfInicio" oninput="nfAutoCalcularVence('inicio')" onchange="nfAutoCalcularVence('inicio')" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none">
           </div>
           <div>
-            <label class="block text-xs text-gray-400 mb-1">Próximo pago</label>
-            <input type="date" id="nfProximo" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none">
+            <label class="block text-xs text-gray-400 mb-1">Próximo pago (se calcula solo)</label>
+            <input type="date" id="nfProximo" oninput="nfAutoCalcularVence('proximo')" onchange="nfAutoCalcularVence('proximo')" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none">
           </div>
         </div>
-        <p class="text-[10px] text-gray-500 -mt-1">Si dejas el próximo pago vacío, se calcula con la fecha de inicio más los meses del plan.</p>
+        <div id="nfVistaVence" class="p-2.5 bg-gray-800/60 border border-gray-700 rounded-xl text-[11px] text-gray-300"></div>
+        <p class="text-[10px] text-gray-500 -mt-1">Inicio del periodo = día del último pago. El próximo pago se calcula con los meses del plan; solo cámbialo a mano si la fecha real es otra.</p>
         <div>
           <label class="block text-xs text-gray-400 mb-1">Notas (opcional)</label>
           <input type="text" id="nfNotas" maxlength="200" placeholder="Ej: paga los 21 de cada mes" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none">
@@ -1653,10 +1654,10 @@
       <h3 class="text-base font-black text-white mb-1 flex items-center gap-2"><i class="fa-solid fa-list-check text-red-500"></i> Carga en bloque</h3>
       <p class="text-[11px] text-gray-400 mb-3">Una cuenta por línea, separando con punto y coma (;):</p>
       <div class="p-3 bg-gray-800/70 border border-gray-700 rounded-xl text-[11px] font-mono text-gray-300 mb-3 leading-relaxed break-words">
-        correo ; cliente ; plan ; precio ; próximo pago ; whatsapp
+        correo ; cliente ; plan ; precio ; fecha de inicio ; whatsapp
       </div>
       <ul class="text-[11px] text-gray-400 space-y-1 mb-3 list-disc pl-4">
-        <li>Plan: 1, 2 o 3 (meses). Fecha: 21/10/2026 o 2026-10-21.</li>
+        <li>Plan: 1, 2 o 3 (meses). Fecha de inicio = día del último pago (21/10/2026 o 2026-10-21). El vencimiento se calcula solo con el plan.</li>
         <li>WhatsApp es opcional. <b class="text-gray-200">No pegues claves</b>: no se guardan.</li>
         <li>Solo el correo = cuenta sin asignar. Con cliente = asignada (pendiente de migrar hasta que lo vincules).</li>
       </ul>
@@ -7511,6 +7512,7 @@
     let unsubMisAlquileres = null;
     let netflixResultadosOtp = {};
     let netflixEditandoId = null;
+    let nfProximoManual = false;
     let netflixVincularId = null;
     let usuariosNetflixCache = null;
 
@@ -7696,7 +7698,17 @@
       const dato = netflixResultadosOtp[ambito + '_' + id];
       if (!dato) return null;
       const ahora = Date.now();
-      return dato.lista.filter(r => !r.venceEn || new Date(r.venceEn).getTime() > ahora);
+      const vigentes = dato.lista
+        .filter(r => !r.venceEn || new Date(r.venceEn).getTime() > ahora)
+        .sort((a, b) => String(b.fecha).localeCompare(String(a.fecha)));
+      // Solo el código más reciente y el enlace más reciente (evita mostrar el mismo dato varias veces)
+      const salida = [];
+      let hayCodigo = false, hayEnlace = false;
+      vigentes.forEach(r => {
+        if (r.codigo && !hayCodigo) { hayCodigo = true; salida.push(r); }
+        else if (r.enlace && !hayEnlace) { hayEnlace = true; salida.push(r); }
+      });
+      return salida;
     }
 
     function pintarOtpNetflix(ambito, id) {
@@ -7967,7 +7979,51 @@
       if (titulo) titulo.innerHTML = `<i class="fa-solid fa-tv text-red-500"></i> ${!a ? 'Agregar cuenta' : (modoAsignar ? 'Asignar cuenta' : 'Editar cuenta')}`;
       const elim = document.getElementById('btnEliminarNetflixCuenta');
       if (elim) elim.classList.toggle('hidden', !a);
+      // Si la cuenta ya tiene fecha de pago, se respeta; si no, se calcula sola
+      nfProximoManual = !!(a && esFechaNetflix(a.proximoPago));
       nfAbrir('modalNetflixCuenta');
+      nfAutoCalcularVence(nfProximoManual ? 'proximo' : 'inicio');
+    }
+
+    function nfValor(id) { return ((document.getElementById(id) || {}).value || '').trim(); }
+
+    // Recalcula el próximo pago (inicio + meses del plan) salvo que el admin lo haya fijado a mano
+    function nfAutoCalcularVence(origen) {
+      const inpP = document.getElementById('nfProximo');
+      if (!inpP) return;
+      if (origen === 'proximo') nfProximoManual = inpP.value !== '';
+      if (!nfProximoManual) {
+        const inicio = nfValor('nfInicio');
+        const plan = [1, 2, 3].includes(parseInt(nfValor('nfPlan'), 10)) ? parseInt(nfValor('nfPlan'), 10) : 1;
+        inpP.value = esFechaNetflix(inicio) ? sumarMesesNetflix(inicio, plan) : '';
+      }
+      actualizarVistaVenceNetflix();
+    }
+
+    function actualizarVistaVenceNetflix() {
+      const box = document.getElementById('nfVistaVence');
+      if (!box) return;
+      const previa = netflixEditandoId ? netflixCuentasAdmin.find(x => x.id === netflixEditandoId) : null;
+      const asignada = !!nfValor('nfCliente') || !!(previa && previa.estado === 'asignado');
+      const prox = nfValor('nfProximo');
+      if (!asignada) {
+        box.className = 'p-2.5 bg-gray-800/60 border border-gray-700 rounded-xl text-[11px] text-gray-300';
+        box.innerHTML = '<i class="fa-solid fa-circle-info mr-1 text-sky-400"></i> Sin cliente: la cuenta quedará <b>sin asignar</b> y no usa fechas.';
+        return;
+      }
+      if (!esFechaNetflix(prox)) {
+        box.className = 'p-2.5 bg-gray-800/60 border border-gray-700 rounded-xl text-[11px] text-gray-300';
+        box.innerHTML = '<i class="fa-solid fa-calendar-day mr-1 text-sky-400"></i> Elige el <b>inicio del periodo</b> para ver cuándo vence.';
+        return;
+      }
+      const d = diasNetflix(hoyNetflix(), prox);
+      if (d < 0) {
+        box.className = 'p-2.5 bg-red-500/10 border border-red-500/40 rounded-xl text-[11px] text-red-300';
+        box.innerHTML = `<i class="fa-solid fa-triangle-exclamation mr-1"></i> Vencía el <b>${fechaCortaNetflix(prox)}</b> (hace ${Math.abs(d)} ${Math.abs(d) === 1 ? 'día' : 'días'}). Quedaría <b>vencida</b>.`;
+      } else {
+        box.className = 'p-2.5 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-[11px] text-emerald-300';
+        box.innerHTML = `<i class="fa-solid fa-calendar-check mr-1"></i> Vence el <b>${fechaCortaNetflix(prox)}</b> · ${d === 0 ? 'hoy' : 'en ' + d + (d === 1 ? ' día' : ' días')}${nfProximoManual ? ' <span class="text-gray-400">(fecha manual)</span>' : ''}`;
+      }
     }
 
     async function guardarNetflixCuenta(e) {
@@ -8061,11 +8117,12 @@
         if (![1, 2, 3].includes(plan)) return { error: 'el plan debe ser 1, 2 o 3' };
       }
       const precio = partes[3] ? (parseInt(partes[3].replace(/\D/g, ''), 10) || 0) : 0;
-      const proximo = parsearFechaNetflix(partes[4]);
-      if (partes[4] && !proximo) return { error: 'fecha no válida (usa 21/10/2026)' };
-      if (cliente && !proximo) return { error: 'falta la fecha del próximo pago' };
+      const inicio = parsearFechaNetflix(partes[4]);
+      if (partes[4] && !inicio) return { error: 'fecha no válida (usa 21/10/2026)' };
+      if (cliente && !inicio) return { error: 'falta la fecha de inicio (la del último pago)' };
+      const proximo = inicio ? sumarMesesNetflix(inicio, plan) : '';
       const wa = (partes[5] || '').replace(/\D/g, '');
-      return { correo, cliente, plan, precio, proximo, wa };
+      return { correo, cliente, plan, precio, inicio, proximo, wa };
     }
 
     async function cargarNetflixLote() {
@@ -8086,7 +8143,12 @@
       if (!validas.length) { alert('No hay líneas válidas para cargar.\n\n' + errores.slice(0, 8).join('\n')); return; }
       const asignadas = validas.filter(v => v.cliente).length;
       const sinPrecio = validas.filter(v => v.cliente && !v.precio).length;
+      const hoyLote = hoyNetflix();
+      const yaVencidas = validas.filter(v => v.cliente && v.proximo < hoyLote).length;
       let msg = `Se cargarán ${validas.length} cuenta(s): ${asignadas} asignada(s) y ${validas.length - asignadas} sin asignar.`;
+      const previa = validas.filter(v => v.cliente).slice(0, 6).map(v => `• ${v.cliente} → vence ${fechaCortaNetflix(v.proximo)}`);
+      if (previa.length) msg += '\n\n' + previa.join('\n') + (asignadas > previa.length ? '\n…' : '');
+      if (yaVencidas) msg += `\n\n⚠️ ${yaVencidas} quedarían VENCIDAS por la fecha de inicio. Si no es lo esperado, revisa esas fechas.`;
       if (sinPrecio) msg += `\n${sinPrecio} asignada(s) quedan sin precio de renovación (puedes ponerlo luego con Editar).`;
       if (errores.length) msg += `\n\nSe omitirán ${errores.length} línea(s):\n` + errores.slice(0, 8).join('\n') + (errores.length > 8 ? '\n…' : '');
       if (!await confirmarModal(msg, { tipo: 'pregunta', textoAceptar: 'Cargar' })) return;
@@ -8103,7 +8165,7 @@
               estado: v.cliente ? 'asignado' : 'sin_asignar',
               clienteNombre: v.cliente, clienteWhatsapp: v.wa, clienteUid: '', clienteEmail: '',
               plan: v.plan, precio: v.precio,
-              fechaInicio: v.cliente ? hoyNetflix() : '', proximoPago: v.cliente ? v.proximo : '',
+              fechaInicio: v.cliente ? v.inicio : '', proximoPago: v.cliente ? v.proximo : '',
               limpiezaPendiente: false, notas: '', creadoEl: ahora, actualizadoEl: ahora
             });
           });
