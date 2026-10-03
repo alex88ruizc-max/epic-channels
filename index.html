@@ -935,7 +935,7 @@
                 </div>
                 <div>
                   <label class="block text-[11px] text-gray-400 mb-1">Chat ID de Notificaciones</label>
-                  <input type="text" id="ajusteTelegramChatId" placeholder="Ej: 390457801" class="w-full bg-gray-900 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white font-mono focus:outline-none">
+                  <input type="text" id="ajusteTelegramChatId" placeholder="Ej: 123456789" class="w-full bg-gray-900 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white font-mono focus:outline-none">
                 </div>
               </div>
               <div>
@@ -956,7 +956,7 @@
                 </div>
                 <div>
                   <label class="block text-[11px] text-gray-400 mb-1">Contraseña máster (entrega de cuentas)</label>
-                  <input type="text" id="ajusteClaveAmazon" placeholder="Ej: epic2828" class="w-full bg-gray-900 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white font-mono focus:outline-none">
+                  <input type="text" id="ajusteClaveAmazon" placeholder="Contraseña maestra de las cuentas" class="w-full bg-gray-900 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white font-mono focus:outline-none">
                 </div>
                 <div>
                   <label class="block text-[11px] text-gray-400 mb-1">Recarga Mínima Permitida (COP)</label>
@@ -1990,11 +1990,11 @@
     }
 
     let ajustesGeneralesConfig = {
-      telegramToken: "8974701831:AAE" + "Fibgx1DM2rO8NlxsEW9I27F88rV-VjnQ",
-      telegramChatId: "390457801",
+      telegramToken: "",
+      telegramChatId: "",
       telegramBotUrl: "https://t.me/epic_ventas_bot",
       whatsappNumero: "573043956726",
-      claveAmazon: "epic2828",
+      claveAmazon: "",
       minRecarga: 5000,
       adminEmailsStr: "alex88ruizc@gmail.com",
       excluidosReporteStr: "alex88ruizc@gmail.com, alex88ruiz@gmail.com",
@@ -2124,14 +2124,32 @@
       abrirDialogo({ tipo: 'info', titulo: 'Cópialo manualmente', mensaje: texto, monoespaciado: true });
     }
 
-    function obtenerTelegramToken() { return ajustesGeneralesConfig.telegramToken || "8974701831:AAE" + "Fibgx1DM2rO8NlxsEW9I27F88rV-VjnQ"; }
-    function obtenerTelegramChatId() { return ajustesGeneralesConfig.telegramChatId || "390457801"; }
+    // El token y el chat de Telegram viven en la zona privada (secretos/ajustes) y solo el admin los lee.
+    // Los clientes y colaboradores avisan a través del servidor seguro.
+    function obtenerTelegramToken() { return ajustesGeneralesConfig.telegramToken || ""; }
+    function obtenerTelegramChatId() { return ajustesGeneralesConfig.telegramChatId || (obtenerBackendUrl() && esAdminSesionActual() ? "ADMIN" : ""); }
+
+    async function avisarServidor(tipo, datos) {
+      try {
+        const r = await llamarBackend('notificar', Object.assign({ tipo: tipo }, datos || {}));
+        return !!(r && r.ok);
+      } catch (e) {
+        console.warn('Aviso al servidor no enviado:', e);
+        return false;
+      }
+    }
+
+    async function enviarTextoAdminServidor(chats, texto) {
+      const r = await llamarBackend('texto_admin', { chats: chats, texto: texto });
+      return r;
+    }
 
     // ==================== NOTIFICACIÓN TELEGRAM CON GARANTÍA DINÁMICA ====================
     async function enviarNotificacionTelegram(datos) {
       const token = obtenerTelegramToken();
       const chatId = obtenerTelegramChatId();
-      if (!token || !chatId) return;
+      if (!token && !(obtenerBackendUrl() && esAdminSesionActual())) return;
+      if (!chatId) return;
 
       const mensaje = 
         `🚨 *¡NUEVA VENTA EN EPIC CHANNELS!* 🚨\n\n` +
@@ -2144,6 +2162,16 @@
         `💳 *Saldo Restante del Cliente:* ${datos.saldo_restante}\n` +
         `📊 *Stock en Bodega:* ${datos.stock_restante} cuentas disponibles\n` +
         `⏰ *Fecha y Hora:* ${datos.fecha}`;
+
+      if (obtenerBackendUrl() && esAdminSesionActual()) {
+        try {
+          const r = await enviarTextoAdminServidor(['ADMIN'], mensaje);
+          return { ok: !!(r && r.ok && r.enviados > 0) };
+        } catch (e) {
+          console.error("Fallo Telegram (servidor):", e);
+          return { ok: false };
+        }
+      }
 
       const url = `https://api.telegram.org/bot${token}/sendMessage`;
 
@@ -2161,6 +2189,7 @@
     }
 
     async function notificarInicioSesionTelegram(email, saldo) {
+      if (obtenerBackendUrl()) { avisarServidor('login', {}); return; }
       const token = obtenerTelegramToken();
       const chatId = obtenerTelegramChatId();
       if (!token || !chatId) return;
@@ -2185,6 +2214,7 @@
     }
 
     async function enviarNotificacionRecargaTelegram(datos) {
+      if (obtenerBackendUrl()) { await avisarServidor('recarga', { monto: datos.monto }); return; }
       const token = obtenerTelegramToken();
       const chatId = obtenerTelegramChatId();
       if (!token || !chatId) return;
@@ -2209,6 +2239,16 @@
     }
 
     async function enviarNotificacionStockTelegram(datos) {
+      if (obtenerBackendUrl()) {
+        await avisarServidor('stock', {
+          productoId: String(datos.productoIdRaw || datos.productoId || ''),
+          etiqueta: String(datos.productoId || ''),
+          cantidad: datos.cantidad,
+          costoUnitario: datos.costoUnitario,
+          inversion: datos.inversion
+        });
+        return;
+      }
       const token = obtenerTelegramToken();
       const chatId = obtenerTelegramChatId();
       if (!token || !chatId) return;
@@ -2332,6 +2372,15 @@
 
     // Envía respetando el límite de 4096 caracteres y reintenta sin formato si el Markdown falla
     async function enviarMensajeTelegramSeguro(chatId, texto) {
+      if (obtenerBackendUrl() && esAdminSesionActual()) {
+        try {
+          const r = await enviarTextoAdminServidor([String(chatId)], String(texto));
+          return !!(r && r.ok && r.enviados > 0);
+        } catch (e) {
+          console.error('Fallo envío Telegram (servidor):', e);
+          return false;
+        }
+      }
       const token = obtenerTelegramToken();
       const url = `https://api.telegram.org/bot${token}/sendMessage`;
       const partes = [];
@@ -3048,7 +3097,7 @@
       document.getElementById('ajusteTelegramChatId').value = ajustesGeneralesConfig.telegramChatId || '';
       document.getElementById('ajusteTelegramBotUrl').value = ajustesGeneralesConfig.telegramBotUrl || '';
       document.getElementById('ajusteWhatsappNumero').value = ajustesGeneralesConfig.whatsappNumero || '';
-      document.getElementById('ajusteClaveAmazon').value = ajustesGeneralesConfig.claveAmazon || 'epic2828';
+      document.getElementById('ajusteClaveAmazon').value = ajustesGeneralesConfig.claveAmazon || '';
       document.getElementById('ajusteMinRecarga').value = ajustesGeneralesConfig.minRecarga || 5000;
       const inpPuntos = document.getElementById('ajustePuntosPorCuenta');
       if (inpPuntos) inpPuntos.value = obtenerFactorPuntos();
@@ -3078,11 +3127,8 @@
       const nuevoColorTema = document.getElementById('ajusteColorTema').value || 'emerald';
 
       const dataGuardar = {
-        telegramToken: nuevoToken,
-        telegramChatId: nuevoChatId,
         telegramBotUrl: nuevoBotUrl,
         whatsappNumero: nuevoWa,
-        claveAmazon: nuevaClaveAmz,
         minRecarga: nuevoMinRec,
         adminEmailsStr: nuevoAdminEmails,
         excluidosReporteStr: nuevoExcluidos,
@@ -3097,15 +3143,36 @@
       };
 
       try {
+        // Secretos: zona privada (solo admin). Se borran de la configuración pública.
+        await db.collection('secretos').doc('ajustes').set({
+          telegramToken: nuevoToken,
+          telegramChatId: nuevoChatId,
+          claveAmazon: nuevaClaveAmz,
+          actualizadoEl: new Date().toISOString()
+        }, { merge: true });
+        secretosAdmin = { telegramToken: nuevoToken, telegramChatId: nuevoChatId, claveAmazon: nuevaClaveAmz };
+        Object.assign(ajustesGeneralesConfig, secretosAdmin);
+
+        const borrar = firebase.firestore.FieldValue.delete();
+        dataGuardar.telegramToken = borrar;
+        dataGuardar.telegramChatId = borrar;
+        dataGuardar.claveAmazon = borrar;
         await db.collection('configuracion').doc('ajustes').set(dataGuardar, { merge: true });
+        renderizarEstadoSeguridadAdmin();
         mostrarToast("¡Ajustes y color guardados con éxito!");
       } catch (err) {
         alert("Error al guardar ajustes: " + err.message);
       }
     }
 
+    let secretosAdmin = null;
+    let ajustesPublicosRaw = {};
+    let unsubSecretosAdmin = null;
+
     function aplicarAjustesGeneralesEnMemoria(data) {
+      ajustesPublicosRaw = data || {};
       ajustesGeneralesConfig = { ...ajustesGeneralesConfig, ...data };
+      if (secretosAdmin) ajustesGeneralesConfig = { ...ajustesGeneralesConfig, ...secretosAdmin };
 
       if (data.adminEmailsStr) {
         ADMIN_EMAILS = data.adminEmailsStr.split(',').map(e => e.trim().toLowerCase()).filter(e => e);
@@ -3195,8 +3262,11 @@
     }
 
     // Contraseña de acceso a entregar: la del lote o, si no tiene, la contraseña máster
+    let claveMasterRuntime = '';
+    function obtenerClaveMaster() { return claveMasterRuntime || ajustesGeneralesConfig.claveAmazon || ''; }
+
     function resolverClaveAccesoCuentas(cuentas) {
-      const master = ajustesGeneralesConfig.claveAmazon || 'epic2828';
+      const master = obtenerClaveMaster();
       const claves = (cuentas || []).map(raw => parseCredencialObj(raw).claveAcceso || master);
       const unicas = Array.from(new Set(claves.filter(Boolean)));
       return unicas.length ? unicas.join(' / ') : master;
@@ -3285,7 +3355,7 @@
         const box = document.getElementById('txtStockResumenInversion');
         if (!box) return;
         const infoMaster = document.getElementById('txtStockClaveMasterInfo');
-        if (infoMaster) infoMaster.innerHTML = `Si lo dejas vacío, al cliente le llega la contraseña máster: <b class="font-mono text-gray-300">${escaparHtml(ajustesGeneralesConfig.claveAmazon || 'epic2828')}</b>`;
+        if (infoMaster) infoMaster.innerHTML = `Si lo dejas vacío, al cliente le llega la contraseña máster: <b class="font-mono text-gray-300">${escaparHtml(obtenerClaveMaster() || '(sin definir)')}</b>`;
         const txt = document.getElementById('txtStockLineas');
         const cantidad = txt ? txt.value.split('\n').map(l => l.trim()).filter(l => l).length : 0;
         const costo = leerCostoUnitarioStock();
@@ -3413,7 +3483,7 @@
       const textoGarantia = tg === '29d'
         ? 'Este producto cuenta con soporte y garantía de 29 días.'
         : (tg === '24h' ? 'Este producto cuenta con soporte y garantía de 24 horas.' : 'Este producto se entrega sin garantía directa de reemplazo.');
-      const claveAmz = ajustesGeneralesConfig.claveAmazon || 'epic2828';
+      const claveAmz = obtenerClaveMaster();
 
       const vars = {
         producto: prodInfo.nombre || '',
@@ -3453,7 +3523,7 @@
       let texto = `✨ ¡Tus cuentas están listas!\n\n`;
 
       if (prodInfo.esAmazon) {
-        const claveAcceso = ajustesGeneralesConfig.claveAmazon || "epic2828";
+        const claveAcceso = obtenerClaveMaster();
         texto += `🔑 Clave de acceso Amazon: ${claveAcceso}\n\n`;
       }
 
@@ -3681,10 +3751,12 @@
           escucharUsuariosEnLinea();
           escucharTotalRecaudadoHoyEnVivo();
           iniciarInventarioPrivadoAdmin();
+          iniciarSecretosAdmin();
           recalcularProductoHotAdmin();
         } else {
           document.getElementById('btnAdminTab').classList.add('hidden');
           detenerInventarioPrivadoAdmin();
+          detenerSecretosAdmin();
         }
 
         db.collection('usuarios').doc(user.uid).onSnapshot(doc => {
@@ -5396,24 +5468,14 @@
           return `${c.email}:${c.pass}`;
         }).join('\n');
 
+        if (r.claveMaster) claveMasterRuntime = String(r.claveMaster);
         const textoEntregaFinal = construirFormatoEntrega(cuentasEntregadas, prodInfo, { total: totalPagar, saldo: nuevoSaldoUsuario, cliente: currentUser.email });
         document.getElementById('txtEntregaCredenciales').innerText = textoEntregaFinal;
         const modalE = document.getElementById('modalEntrega');
         modalE.classList.remove('hidden');
         modalE.style.display = 'flex';
 
-        const textoGarantiaTelegram = prodInfo.tipoGarantia === '29d' ? '29 Días' : (prodInfo.tipoGarantia === '24h' ? '24 Horas' : 'Sin garantía');
-        enviarNotificacionTelegram({
-          producto: prodInfo.nombre || docId,
-          cantidad: cuentasEntregadas.length,
-          garantia: textoGarantiaTelegram,
-          total: `$${totalPagar.toLocaleString('es-CO')} COP`,
-          cliente: currentUser.email,
-          credenciales: credencialesPuras,
-          saldo_restante: `$${nuevoSaldoUsuario.toLocaleString('es-CO')} COP`,
-          stock_restante: r.stockRestante,
-          fecha: new Date().toLocaleString('es-CO')
-        });
+        // El aviso de venta a Telegram lo envía el servidor seguro
         verificarSubidaNivel(cuentasEntregadas.length);
       } catch (err) {
         alert(err && err.message ? err.message : 'No se pudo completar la compra.');
@@ -6200,6 +6262,7 @@
 
         try {
           await enviarNotificacionStockTelegram({
+            productoIdRaw: docId,
             productoId: prod ? `${prod.nombre} (${docId})` : docId,
             cantidad: nuevas.length,
             costoUnitario: costoUnitario,
@@ -7157,6 +7220,28 @@
       return resultado;
     }
 
+    function iniciarSecretosAdmin() {
+      if (unsubSecretosAdmin) return;
+      try {
+        unsubSecretosAdmin = db.collection('secretos').doc('ajustes').onSnapshot(doc => {
+          if (doc.exists) {
+            const d = doc.data() || {};
+            secretosAdmin = { telegramToken: d.telegramToken || '', telegramChatId: d.telegramChatId || '', claveAmazon: d.claveAmazon || '' };
+            ajustesGeneralesConfig = { ...ajustesGeneralesConfig, ...secretosAdmin };
+          }
+          renderizarEstadoSeguridadAdmin();
+        }, err => console.warn('Secretos no disponibles:', err));
+      } catch (e) {
+        console.warn(e);
+      }
+    }
+
+    function detenerSecretosAdmin() {
+      try { if (unsubSecretosAdmin) unsubSecretosAdmin(); } catch (e) { console.warn(e); }
+      unsubSecretosAdmin = null;
+      secretosAdmin = null;
+    }
+
     function iniciarInventarioPrivadoAdmin() {
       if (unsubInventarioPrivado) return;
       try {
@@ -7180,6 +7265,12 @@
       snapshotInventarioPrivado = {};
     }
 
+    function secretosEnZonaPrivada() {
+      const enPrivado = !!(secretosAdmin && secretosAdmin.telegramToken);
+      const sigueEnPublico = !!(ajustesPublicosRaw && (ajustesPublicosRaw.telegramToken || ajustesPublicosRaw.claveAmazon));
+      return enPrivado && !sigueEnPublico;
+    }
+
     function contarProductosFormatoAntiguo() {
       return Object.keys(snapshotInventario).filter(id => Array.isArray((snapshotInventario[id] || {}).cuentas) && snapshotInventario[id].cuentas.length > 0).length;
     }
@@ -7195,7 +7286,8 @@
       box.innerHTML = `
         <div>${url ? ok + 'Servidor seguro configurado.' : no + 'Falta la URL del servidor seguro.'}</div>
         <div>${seguro && !antiguos ? ok + 'Inventario protegido activo: los clientes no pueden ver las cuentas.' : no + (seguro ? `Quedan ${antiguos} producto(s) por migrar.` : 'Inventario protegido sin activar.')}</div>
-        <div class="text-gray-500 mt-1">Cuando ambos estén en verde, publica las nuevas reglas de Firestore.</div>`;
+        <div>${secretosEnZonaPrivada() ? ok + 'Token de Telegram y clave maestra en zona privada.' : no + 'El token de Telegram y la clave maestra siguen en la configuración pública: guárdalos en Ajustes.'}</div>
+        <div class="text-gray-500 mt-1">Cuando todos estén en verde, publica las nuevas reglas de Firestore.</div>`;
       const btn = document.getElementById('btnActivarInventarioSeguro');
       if (btn) btn.classList.toggle('hidden', seguro && !antiguos);
     }
@@ -7206,7 +7298,7 @@
         const urlForm = inp ? inp.value.trim() : '';
         if (urlForm && urlForm !== obtenerBackendUrl()) ajustesGeneralesConfig.backendUrl = urlForm;
         const r = await llamarBackend('ping', {});
-        if (r && r.ok) alert('Conexión correcta con el servidor seguro.\nUsuario verificado: ' + (r.email || '') + (r.firestore ? '\nAcceso a la base de datos: OK' : '\nAcceso a la base de datos: FALLÓ'));
+        if (r && r.ok) alert('Conexión correcta con el servidor seguro.\nUsuario verificado: ' + (r.email || '') + (r.firestore ? '\nAcceso a la base de datos: OK' : '\nAcceso a la base de datos: FALLÓ') + (r.telegram ? '\nTelegram: configurado' : '\nTelegram: falta el token o el chat en Ajustes'));
         else alert('El servidor respondió con un error: ' + ((r && r.error) || 'desconocido'));
       } catch (e) {
         alert('No se pudo conectar: ' + e.message);
