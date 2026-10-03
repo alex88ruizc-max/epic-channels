@@ -1594,19 +1594,23 @@
       <button onclick="nfCerrar('modalNetflixCuenta')" class="absolute top-4 right-4 text-gray-400 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
       <h3 id="nfTituloModal" class="text-base font-black text-white mb-1 flex items-center gap-2"><i class="fa-solid fa-tv text-red-500"></i> Cuenta de Netflix</h3>
       <p class="text-[11px] text-gray-400 mb-4">No se guarda la clave de la cuenta. Si dejas el cliente vacío, queda "sin asignar".</p>
-      <form onsubmit="guardarNetflixCuenta(event)" class="space-y-3">
+      <form onsubmit="guardarNetflixCuenta(event)" class="space-y-3" novalidate autocomplete="off">
         <div>
-          <label class="block text-xs text-gray-400 mb-1">Correo de la cuenta (el alias completo)</label>
-          <input type="email" id="nfCorreo" required placeholder="usuario+alias@gmail.com" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white font-mono focus:outline-none">
+          <div class="flex items-center justify-between mb-1">
+            <label class="block text-xs text-gray-400">Correo de la cuenta (el alias completo)</label>
+            <button type="button" onclick="nfPegarPortapapeles()" class="text-[11px] font-bold text-red-300 hover:text-red-200 flex items-center gap-1"><i class="fa-regular fa-paste"></i> Pegar</button>
+          </div>
+          <input type="text" inputmode="email" id="nfCorreo" oninput="nfAlEscribirCorreo(this)" onchange="nfLimpiarCorreo(this)" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" data-lpignore="true" placeholder="usuario+alias@gmail.com" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white font-mono focus:outline-none">
+          <p class="text-[10px] text-gray-500 mt-1">Puedes pegar solo el correo, solo el nombre, o una línea completa: <span class="font-mono">correo ; cliente ; plan ; precio ; inicio ; whatsapp</span></p>
         </div>
         <div class="grid grid-cols-2 gap-2">
           <div>
             <label class="block text-xs text-gray-400 mb-1">Cliente (nombre)</label>
-            <input type="text" id="nfCliente" oninput="actualizarVistaVenceNetflix()" placeholder="Ej: Mile" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none">
+            <input type="text" id="nfCliente" oninput="actualizarVistaVenceNetflix()" autocomplete="off" data-lpignore="true" placeholder="Ej: Mile" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none">
           </div>
           <div>
             <label class="block text-xs text-gray-400 mb-1">WhatsApp (opcional)</label>
-            <input type="tel" id="nfWhatsapp" placeholder="3001234567" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none">
+            <input type="tel" id="nfWhatsapp" autocomplete="off" data-lpignore="true" placeholder="3001234567" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none">
           </div>
         </div>
         <div class="grid grid-cols-2 gap-2">
@@ -1671,7 +1675,7 @@
     <div class="bg-gray-900 border border-red-500/40 rounded-2xl max-w-md w-full p-5 relative shadow-2xl max-h-[92vh] overflow-y-auto">
       <button onclick="nfCerrar('modalNetflixVincular')" class="absolute top-4 right-4 text-gray-400 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
       <h3 class="text-base font-black text-white mb-1 flex items-center gap-2"><i class="fa-solid fa-link text-red-500"></i> Vincular a un usuario</h3>
-      <p id="nfVincularCuenta" class="text-[11px] text-red-300 font-mono mb-3 break-all"></p>
+      <p id="nfVincularCuenta" class="text-[11px] text-red-300 font-mono mb-3 break-all whitespace-pre-line"></p>
       <input type="text" id="nfVincularBuscar" oninput="renderizarVincularNetflix()" placeholder="Buscar por correo, nombre o WhatsApp..." class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2.5 text-xs text-white focus:outline-none mb-3">
       <div id="nfVincularLista" class="space-y-2 max-h-72 overflow-y-auto"></div>
       <button id="btnDesvincularNetflix" onclick="desvincularNetflix()" class="hidden w-full mt-3 bg-gray-800 hover:bg-gray-700 text-gray-300 border border-gray-700 font-bold py-2 rounded-xl text-xs transition">Quitar el vínculo actual</button>
@@ -6231,6 +6235,37 @@
       }
     }
 
+    // ==================== CREAR CLIENTE DESDE EL PANEL (CON RECUPERACIÓN) ====================
+    const TIEMPO_ESPERA_USUARIO_MS = 20000;
+
+    // Evita que una conexión lenta deje el botón girando para siempre
+    function conTiempo(promesa, ms, mensaje) {
+      return new Promise((resolve, reject) => {
+        const t = setTimeout(() => reject(Object.assign(new Error(mensaje || 'Tiempo agotado'), { code: 'timeout' })), ms);
+        promesa.then(v => { clearTimeout(t); resolve(v); }, e => { clearTimeout(t); reject(e); });
+      });
+    }
+
+    async function buscarPerfilPorEmail(email) {
+      const variantes = Array.from(new Set([email, email.toLowerCase()]));
+      for (const em of variantes) {
+        const snap = await conTiempo(db.collection('usuarios').where('email', '==', em).limit(1).get(), TIEMPO_ESPERA_USUARIO_MS, 'La conexión está lenta.');
+        if (!snap.empty) return Object.assign({ uid: snap.docs[0].id }, snap.docs[0].data());
+      }
+      return null;
+    }
+
+    async function escribirPerfilNuevo(uid, perfil, appSecundaria) {
+      try {
+        // Escritura con la sesión del administrador
+        await conTiempo(db.collection('usuarios').doc(uid).set(perfil, { merge: true }), TIEMPO_ESPERA_USUARIO_MS, 'La conexión está lenta.');
+      } catch (errAdmin) {
+        // Respaldo: se escribe como el propio usuario nuevo (las reglas lo permiten con saldo 0)
+        console.warn("Escritura como admin no confirmada, usando sesión secundaria:", errAdmin);
+        await conTiempo(appSecundaria.firestore().collection('usuarios').doc(uid).set(perfil, { merge: true }), TIEMPO_ESPERA_USUARIO_MS, 'La conexión está lenta.');
+      }
+    }
+
     async function crearUsuarioExpress(e) {
       e.preventDefault();
       const email = document.getElementById('expEmail').value.trim();
@@ -6252,6 +6287,7 @@
 
       let secondaryApp = null;
       let secondaryAuth = null;
+      let recuperada = false;
 
       try {
         // Instancia secundaria temporal: la sesión del admin (auth principal) no se toca
@@ -6263,7 +6299,25 @@
           console.warn("No se pudo fijar persistencia NONE en app secundaria:", persErr);
         }
 
-        const cred = await secondaryAuth.createUserWithEmailAndPassword(email, password);
+        let uid;
+        try {
+          const cred = await conTiempo(secondaryAuth.createUserWithEmailAndPassword(email, password), 30000, 'La conexión está lenta.');
+          uid = cred.user.uid;
+        } catch (errCrear) {
+          if (errCrear.code !== 'auth/email-already-in-use') throw errCrear;
+          // El acceso ya existe. ¿Tiene ficha en el panel?
+          const existente = await buscarPerfilPorEmail(email);
+          if (existente) throw Object.assign(new Error('ya-en-panel'), { code: 'ya-en-panel' });
+          // Acceso creado a medias en un intento anterior: se recupera con la misma contraseña
+          try {
+            const ingreso = await conTiempo(secondaryAuth.signInWithEmailAndPassword(email, password), 30000, 'La conexión está lenta.');
+            uid = ingreso.user.uid;
+            recuperada = true;
+          } catch (errIngreso) {
+            if (errIngreso.code === 'timeout') throw errIngreso;
+            throw Object.assign(new Error('huerfano'), { code: 'huerfano' });
+          }
+        }
 
         const perfilNuevo = {
           email,
@@ -6279,14 +6333,7 @@
           fechaRegistro: new Date().toISOString()
         };
 
-        try {
-          // Escritura con la sesión del administrador
-          await db.collection('usuarios').doc(cred.user.uid).set(perfilNuevo, { merge: true });
-        } catch (errAdminWrite) {
-          // Respaldo: si las reglas solo permiten que el dueño cree su doc, se escribe como el nuevo usuario
-          console.warn("Escritura como admin rechazada, usando sesión secundaria:", errAdminWrite);
-          await secondaryApp.firestore().collection('usuarios').doc(cred.user.uid).set(perfilNuevo, { merge: true });
-        }
+        await escribirPerfilNuevo(uid, perfilNuevo, secondaryApp);
 
         credencialesNuevoUsuarioTemp = `• Correo: ${email}\n• Contraseña: ${password}`;
         document.getElementById('txtCredencialesNuevoUsuario').innerText = credencialesNuevoUsuarioTemp;
@@ -6300,11 +6347,16 @@
         const modalU = document.getElementById('modalUsuarioCreado');
         modalU.classList.remove('hidden');
         modalU.style.display = 'flex';
+        if (recuperada) mostrarToast('Cuenta recuperada: el cliente ya está en el panel.');
       } catch (err) {
         let msg = err.message;
         if (err.code === 'auth/email-already-in-use') msg = "Ese correo ya tiene una cuenta registrada.";
         else if (err.code === 'auth/invalid-email') msg = "El correo ingresado no es válido.";
         else if (err.code === 'auth/weak-password') msg = "La contraseña es muy débil (mínimo 6 caracteres).";
+        else if (err.code === 'auth/network-request-failed') msg = "No hay conexión con el servidor. Revisa tu internet e intenta de nuevo.";
+        else if (err.code === 'ya-en-panel') msg = "Ese correo ya está registrado y aparece en Usuarios Registrados. Búscalo ahí.";
+        else if (err.code === 'huerfano') msg = "Ese correo ya existe en el sistema de acceso, con otra contraseña, pero no tiene ficha en el panel. Pídele al cliente que inicie sesión una vez con su contraseña: su ficha se crea sola al entrar.";
+        else if (err.code === 'timeout') msg = "La conexión está lenta y no se pudo confirmar el guardado. Si el acceso llegó a crearse, vuelve a tocar Crear con los mismos datos y la misma contraseña: se completa solo.";
         alert("No se pudo crear el usuario: " + msg);
       } finally {
         if (secondaryAuth) {
@@ -7917,6 +7969,11 @@
       lista.forEach(a => pintarOtpNetflix('a', a.id));
     }
 
+    function emailPorUidNetflix(uid) {
+      const u = usuariosNetflixCache && usuariosNetflixCache.lista.find(x => x.uid === uid);
+      return u ? u.email : '';
+    }
+
     function htmlTarjetaNetflixAdmin(a) {
       const est = estadoNetflix(a), st = ESTILO_NETFLIX[est.clave] || ESTILO_NETFLIX.sin_fecha;
       const id = escaparHtml(a.id);
@@ -7931,6 +7988,10 @@
       const cliente = asignada
         ? `<span class="text-white font-bold">${escaparHtml(a.clienteNombre || a.clienteEmail || 'Sin nombre')}</span> ${a.clienteUid ? '<span class="text-[10px] text-emerald-400"><i class="fa-solid fa-link"></i> vinculado</span>' : '<span class="text-[10px] text-amber-400">pendiente de migrar</span>'}`
         : '<span class="text-gray-400">Sin cliente</span>';
+      const emailVinculado = a.clienteUid ? (a.clienteEmail || emailPorUidNetflix(a.clienteUid) || a.clienteUid) : '';
+      const lineaUsuario = !asignada ? '' : (a.clienteUid
+        ? `<p class="text-[11px] mt-1 text-emerald-300 break-all"><i class="fa-solid fa-link mr-1"></i> Usuario vinculado: <span class="font-mono font-bold">${escaparHtml(emailVinculado)}</span></p>`
+        : `<p class="text-[11px] mt-1 text-amber-300"><i class="fa-solid fa-user-clock mr-1"></i> Todavía no tiene usuario vinculado</p>`);
       const btn = (clase, accion, icono, txt) => `<button onclick="${accion}" class="px-2.5 py-1.5 rounded-lg text-[11px] font-bold flex items-center gap-1 transition ${clase}"><i class="fa-solid ${icono}"></i> ${txt}</button>`;
       const gris = 'bg-gray-800 hover:bg-gray-700 text-gray-200 border border-gray-700';
 
@@ -7954,6 +8015,7 @@
             <span class="shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-full border ${st.chip}">${st.txt}</span>
           </div>
           <p class="text-xs mt-1.5">${cliente}${a.clienteWhatsapp ? ` <span class="text-[10px] text-gray-500">· ${escaparHtml(a.clienteWhatsapp)}</span>` : ''}</p>
+          ${lineaUsuario}
           ${asignada ? `<p class="text-[11px] text-gray-400 mt-1">Plan ${plan} ${plan === 1 ? 'mes' : 'meses'} · ${Number(a.precio) > 0 ? escaparHtml(formatoCOP(a.precio)) : '<span class="text-amber-400">sin precio</span>'} · Pago: <b class="text-gray-200">${fechaCortaNetflix(a.proximoPago)}</b>${diasTxt ? ' · ' + diasTxt : ''}</p>` : ''}
           ${a.limpiezaPendiente === true ? '<p class="text-[11px] text-yellow-300 mt-1"><i class="fa-solid fa-broom mr-1"></i> Pendiente: cambiar clave y cerrar sesiones antes de reasignarla.</p>' : ''}
           ${a.notas ? `<p class="text-[10px] text-gray-500 mt-1">${escaparHtml(a.notas)}</p>` : ''}
@@ -7983,6 +8045,63 @@
       nfProximoManual = !!(a && esFechaNetflix(a.proximoPago));
       nfAbrir('modalNetflixCuenta');
       nfAutoCalcularVence(nfProximoManual ? 'proximo' : 'inicio');
+    }
+
+    // Deja el correo limpio: sin espacios, <>, mailto: ni ":clave"
+    function nfNormalizarCorreo(t) {
+      let c = String(t || '').trim().toLowerCase().replace(/^mailto:/, '').replace(/[<>"'\s]/g, '');
+      if (c.indexOf(':') !== -1) c = c.split(':')[0];
+      return c;
+    }
+
+    function nfLimpiarCorreo(el) {
+      if (!el || /[;\t|]/.test(el.value)) return;
+      el.value = nfNormalizarCorreo(el.value);
+    }
+
+    // Si pegan una línea completa en el campo de correo, se reparte en todos los campos
+    function nfAlEscribirCorreo(el) {
+      if (el && /[;\t|]/.test(el.value)) nfRellenarDesdeLinea(el.value.split('\n')[0]);
+    }
+
+    function nfRellenarDesdeLinea(linea) {
+      const set = (id, v) => { const el = document.getElementById(id); if (el) el.value = v; };
+      const partes = String(linea).split(/[;\t|]/).map(x => x.trim());
+      set('nfCorreo', nfNormalizarCorreo(partes[0]));
+      if (partes[1]) set('nfCliente', partes[1]);
+      const plan = parseInt(String(partes[2] || '').replace(/\D/g, ''), 10);
+      if ([1, 2, 3].includes(plan)) set('nfPlan', String(plan));
+      const precio = parseInt(String(partes[3] || '').replace(/\D/g, ''), 10);
+      if (precio > 0) set('nfPrecio', String(precio));
+      const inicio = parsearFechaNetflix(partes[4]);
+      if (inicio) { set('nfInicio', inicio); nfProximoManual = false; set('nfProximo', ''); }
+      const wa = String(partes[5] || '').replace(/\D/g, '');
+      if (wa) set('nfWhatsapp', wa);
+      nfAutoCalcularVence('inicio');
+    }
+
+    // Reparte cualquier texto pegado: línea completa, un correo o un nombre
+    function nfAplicarTextoPegado(texto) {
+      const t = String(texto || '').trim();
+      if (!t) return false;
+      const set = (id, v) => { const el = document.getElementById(id); if (el) el.value = v; };
+      if (/[;\t|]/.test(t)) { nfRellenarDesdeLinea(t.split('\n')[0]); return true; }
+      const m = t.match(/[^\s@<>"',;:]+@[^\s@<>"',;:]+\.[^\s@<>"',;:]+/);
+      if (m) { set('nfCorreo', nfNormalizarCorreo(m[0])); return true; }
+      set('nfCliente', t.replace(/\s+/g, ' ').slice(0, 80));
+      actualizarVistaVenceNetflix();
+      return true;
+    }
+
+    async function nfPegarPortapapeles() {
+      try {
+        const t = await navigator.clipboard.readText();
+        if (!t || !t.trim()) { alert('El portapapeles está vacío.'); return; }
+        nfAplicarTextoPegado(t);
+        mostrarToast('Pegado.');
+      } catch (e) {
+        alert('El navegador no permitió leer el portapapeles. Mantén presionado dentro del campo y elige "Pegar".');
+      }
     }
 
     function nfValor(id) { return ((document.getElementById(id) || {}).value || '').trim(); }
@@ -8029,8 +8148,9 @@
     async function guardarNetflixCuenta(e) {
       e.preventDefault();
       const val = (id) => ((document.getElementById(id) || {}).value || '').trim();
-      const correo = val('nfCorreo').toLowerCase();
-      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(correo)) { alert('Escribe un correo válido.'); return; }
+      const correo = nfNormalizarCorreo(val('nfCorreo'));
+      if (!correo) { alert('Falta el correo de la cuenta. Escríbelo o toca "Pegar".'); return; }
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(correo)) { alert('El correo no es válido: ' + correo); return; }
       if (netflixCuentasAdmin.some(x => x.correo === correo && x.id !== netflixEditandoId)) { alert('Esa cuenta ya está en la lista.'); return; }
 
       const previa = netflixEditandoId ? netflixCuentasAdmin.find(x => x.id === netflixEditandoId) : null;
@@ -8257,7 +8377,7 @@
       const a = netflixCuentasAdmin.find(x => x.id === id);
       if (!a) return;
       netflixVincularId = id;
-      document.getElementById('nfVincularCuenta').innerText = `${a.correo} · ${a.clienteNombre || 'sin nombre'}`;
+      document.getElementById('nfVincularCuenta').innerText = `${a.correo} · ${a.clienteNombre || 'sin nombre'}` + (a.clienteUid ? `\nVinculada ahora a: ${a.clienteEmail || emailPorUidNetflix(a.clienteUid) || a.clienteUid}` : '\nSin usuario vinculado');
       const buscar = document.getElementById('nfVincularBuscar');
       if (buscar) buscar.value = '';
       document.getElementById('btnDesvincularNetflix').classList.toggle('hidden', !a.clienteUid);
