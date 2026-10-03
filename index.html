@@ -188,7 +188,7 @@
         </div>
 
         <!-- Mi Netflix (visible solo si el cliente tiene cuentas asignadas) -->
-        <button id="btnNavNetflix" onclick="cambiarVista('netflix')" title="Mi Netflix" class="hidden relative p-2 sm:px-3 sm:py-1.5 rounded-xl sm:rounded-lg text-xs bg-red-500/10 hover:bg-red-500/20 text-red-400 font-semibold border border-red-500/30 items-center gap-1.5 shrink-0 transition">
+        <button id="btnNavNetflix" onclick="abrirModalNetflixCliente()" title="Mi Netflix" class="hidden relative p-2 sm:px-3 sm:py-1.5 rounded-xl sm:rounded-lg text-xs bg-red-500/10 hover:bg-red-500/20 text-red-400 font-semibold border border-red-500/30 items-center gap-1.5 shrink-0 transition">
           <i class="fa-solid fa-tv text-xs sm:text-sm"></i>
           <span class="hidden sm:inline">Netflix</span>
           <span id="badgeNetflixNav" class="hidden absolute -top-1 -right-1 bg-red-500 text-white font-black text-[8px] min-w-[14px] h-3.5 px-0.5 rounded-full flex items-center justify-center shadow"></span>
@@ -1657,7 +1657,8 @@
           </div>
           <div>
             <label class="block text-xs text-gray-400 mb-1">Saldo (COP)</label>
-            <input type="number" id="editClienteSaldo" min="0" step="500" placeholder="0" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none">
+            <input type="number" id="editClienteSaldo" min="0" step="500" placeholder="Vacío = $0" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none">
+            <p class="text-[10px] text-gray-500 mt-1">Si lo dejas vacío, el saldo queda en $0.</p>
           </div>
         </div>
         <div>
@@ -1667,6 +1668,21 @@
         </div>
         <button type="submit" id="btnGuardarEdicionCliente" class="w-full bg-emerald-500 hover:bg-emerald-400 text-black font-bold py-2.5 rounded-xl text-xs transition mt-2">Guardar cambios</button>
       </form>
+    </div>
+  </div>
+
+  <!-- MODAL: MI NETFLIX (desde la tienda) -->
+  <div id="modalNetflixCliente" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-40 hidden items-center justify-center p-4">
+    <div class="bg-gray-900 border border-red-500/40 rounded-2xl max-w-md w-full p-5 relative shadow-2xl max-h-[92vh] overflow-y-auto">
+      <button onclick="cerrarModalNetflixCliente()" class="absolute top-4 right-4 text-gray-400 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
+      <h3 class="text-lg font-black text-white mb-0.5 flex items-center gap-2"><i class="fa-solid fa-tv text-red-500"></i> Mi Netflix</h3>
+      <p class="text-[11px] text-gray-400 mb-3">Tus cuentas, días restantes, renovación y códigos de acceso.</p>
+      <div class="mb-3 p-3 bg-gray-800/60 border border-gray-700 rounded-xl text-[11px] text-gray-300 leading-relaxed space-y-1">
+        <p><span class="text-red-400 font-bold">1.</span> En Netflix pide el código o el enlace ("Estoy de viaje", "Actualizar Hogar").</p>
+        <p><span class="text-red-400 font-bold">2.</span> Espera 30 a 60 segundos y toca <b>Ver código</b>. Los enlaces duran 15 minutos.</p>
+        <p><span class="text-red-400 font-bold">3.</span> Si tu cuenta vence, renueva para volver a pedir códigos.</p>
+      </div>
+      <div id="listaNetflixModal" class="space-y-3"></div>
     </div>
   </div>
 
@@ -1685,6 +1701,38 @@
           <input type="text" inputmode="email" id="nfCorreo" oninput="nfAlEscribirCorreo(this)" onchange="nfLimpiarCorreo(this)" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" data-lpignore="true" placeholder="usuario+alias@gmail.com" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white font-mono focus:outline-none">
           <p class="text-[10px] text-gray-500 mt-1">Puedes pegar solo el correo, solo el nombre, o una línea completa: <span class="font-mono">correo ; cliente ; plan ; precio ; inicio ; whatsapp</span></p>
         </div>
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block text-xs text-gray-400 mb-1">Tipo de cuenta</label>
+            <select id="nfTipo" onchange="nfCambioTipo()" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none">
+              <option value="individual">Individual (1 cliente)</option>
+              <option value="compartida">Compartida (varios perfiles)</option>
+            </select>
+          </div>
+          <div id="nfBloqueCantidad" class="hidden">
+            <label class="block text-xs text-gray-400 mb-1">Cantidad de perfiles</label>
+            <select id="nfCantidad" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none">
+              <option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5" selected>5</option>
+            </select>
+          </div>
+        </div>
+        <p id="nfAvisoCompartida" class="hidden text-[11px] text-sky-300 bg-sky-500/10 border border-sky-500/30 rounded-xl p-2.5 leading-snug">
+          <i class="fa-solid fa-user-group mr-1"></i> Se crea una casilla por perfil. Luego tocas <b>Asignar</b> en cada una para ponerle cliente, plan, precio y fecha de pago.
+        </p>
+        <div id="nfBloquePerfil" class="hidden grid grid-cols-2 gap-2">
+          <div>
+            <label class="block text-xs text-gray-400 mb-1">Perfil (nombre en Netflix)</label>
+            <input type="text" id="nfPerfil" maxlength="30" autocomplete="off" placeholder="Perfil 1" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none">
+          </div>
+          <div>
+            <label class="block text-xs text-gray-400 mb-1">PIN del perfil (4 números)</label>
+            <div class="flex gap-1">
+              <input type="text" id="nfPin" inputmode="numeric" maxlength="4" autocomplete="off" placeholder="----" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white font-mono tracking-widest focus:outline-none">
+              <button type="button" onclick="nfGenerarPin()" title="Generar un PIN al azar" class="shrink-0 px-2.5 bg-gray-800 hover:bg-gray-700 border border-gray-700 rounded-xl text-gray-300 text-xs"><i class="fa-solid fa-shuffle"></i></button>
+            </div>
+          </div>
+        </div>
+        <div id="nfBloqueCliente" class="space-y-3">
         <div class="grid grid-cols-2 gap-2">
           <div>
             <label class="block text-xs text-gray-400 mb-1">Cliente (nombre)</label>
@@ -1721,6 +1769,7 @@
         </div>
         <div id="nfVistaVence" class="p-2.5 bg-gray-800/60 border border-gray-700 rounded-xl text-[11px] text-gray-300"></div>
         <p class="text-[10px] text-gray-500 -mt-1">Inicio del periodo = día del último pago. El próximo pago se calcula con los meses del plan; solo cámbialo a mano si la fecha real es otra.</p>
+        </div>
         <div>
           <label class="block text-xs text-gray-400 mb-1">Notas (opcional)</label>
           <input type="text" id="nfNotas" maxlength="200" placeholder="Ej: paga los 21 de cada mes" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none">
@@ -1740,11 +1789,12 @@
       <h3 class="text-base font-black text-white mb-1 flex items-center gap-2"><i class="fa-solid fa-list-check text-red-500"></i> Carga en bloque</h3>
       <p class="text-[11px] text-gray-400 mb-3">Una cuenta por línea, separando con punto y coma (;):</p>
       <div class="p-3 bg-gray-800/70 border border-gray-700 rounded-xl text-[11px] font-mono text-gray-300 mb-3 leading-relaxed break-words">
-        correo ; cliente ; plan ; precio ; fecha de inicio ; whatsapp
+        correo ; cliente ; plan ; precio ; fecha de inicio ; whatsapp ; perfil ; pin
       </div>
       <ul class="text-[11px] text-gray-400 space-y-1 mb-3 list-disc pl-4">
         <li>Plan: 1, 2 o 3 (meses). Fecha de inicio = día del último pago (21/10/2026 o 2026-10-21). El vencimiento se calcula solo con el plan.</li>
         <li>WhatsApp es opcional. <b class="text-gray-200">No pegues claves</b>: no se guardan.</li>
+        <li>Perfil y PIN solo para cuentas <b class="text-gray-200">compartidas</b>: una línea por perfil, con el mismo correo.</li>
         <li>Solo el correo = cuenta sin asignar. Con cliente = asignada (pendiente de migrar hasta que lo vincules).</li>
       </ul>
       <textarea id="nfLoteTexto" rows="8" placeholder="soccer344ruiz+k2etla@gmail.com ; Mile ; 1 ; 28000 ; 21/10/2026 ; 3001234567&#10;hankop1209+n05@gmail.com" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white font-mono focus:outline-none"></textarea>
@@ -5516,7 +5566,7 @@
         grid.innerHTML = `<p class="col-span-full text-center text-gray-500 py-12"><i class="fa-solid fa-spinner fa-spin mr-2 text-emerald-400"></i>Cargando catálogo...</p>`;
         return;
       }
-      grid.innerHTML = '';
+      grid.innerHTML = (misAlquileres.length && (categoriaActiva === 'todas' || categoriaActiva === 'Streaming')) ? htmlTarjetaNetflixTienda() : '';
 
       const filtrados = catalogoUnificado.filter(p => {
         if (p.activo === false) return false;
@@ -5532,7 +5582,7 @@
       });
 
       if (filtrados.length === 0) {
-        grid.innerHTML = catalogoCargado
+        grid.innerHTML += catalogoCargado
           ? `<p class="col-span-full text-center text-gray-500 py-12">No hay productos visibles en esta categoría.</p>`
           : `<p class="col-span-full text-center text-gray-500 py-12"><i class="fa-solid fa-spinner fa-spin mr-2 text-emerald-400"></i>Cargando catálogo...</p>`;
         return;
@@ -6206,7 +6256,7 @@
 
     async function abrirModalEditarCliente(uid, email, nombreActual) {
       clienteEditarUidActual = uid;
-      editClienteOriginal = { email: email || '', nombre: nombreActual || '', whatsapp: '', saldo: 0, perfilCompleto: !!email };
+      editClienteOriginal = { email: email || '', nombre: nombreActual || '', whatsapp: '', saldo: 0, perfilCompleto: !!email, cargado: false };
       const set = (id, v) => { const el = document.getElementById(id); if (el) el.value = v; };
       const aviso = document.getElementById('editClienteEmailAviso');
       document.getElementById('txtEditarClienteEmail').innerText = email || '(ficha sin correo)';
@@ -6219,6 +6269,8 @@
       const modal = document.getElementById('modalEditarCliente');
       modal.classList.remove('hidden');
       modal.style.display = 'flex';
+      const btnGuardarEd = document.getElementById('btnGuardarEdicionCliente');
+      if (btnGuardarEd) { btnGuardarEd.disabled = true; btnGuardarEd.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Cargando datos...'; }
 
       try {
         const doc = await db.collection('usuarios').doc(uid).get();
@@ -6227,8 +6279,9 @@
         editClienteOriginal = {
           email: d.email || '', nombre: d.nombre || '',
           whatsapp: whatsappEsVacio(d.whatsapp) ? '' : String(d.whatsapp),
-          saldo: Number(d.saldo) || 0, perfilCompleto: !!d.email
+          saldo: Number(d.saldo) || 0, perfilCompleto: !!d.email, cargado: true
         };
+        if (btnGuardarEd) { btnGuardarEd.disabled = false; btnGuardarEd.innerHTML = 'Guardar cambios'; }
         set('editClienteEmail', editClienteOriginal.email);
         set('editClienteNombre', editClienteOriginal.nombre);
         set('editClienteWhatsapp', editClienteOriginal.whatsapp);
@@ -6250,6 +6303,7 @@
         }
       } catch (err) {
         console.warn('No se pudo cargar la ficha completa:', err);
+        if (btnGuardarEd) { btnGuardarEd.disabled = false; btnGuardarEd.innerHTML = 'Guardar cambios'; }
       }
     }
 
@@ -6266,6 +6320,10 @@
       const uid = clienteEditarUidActual;
       const val = (id) => ((document.getElementById(id) || {}).value || '').trim();
       const orig = editClienteOriginal || {};
+      if (!orig.cargado) {
+        alert('Los datos del cliente no terminaron de cargar, así que no se guardó nada. Cierra esta ventana, ábrela de nuevo y espera a que cargue.');
+        return;
+      }
 
       const nuevoEmail = nfNormalizarCorreo(val('editClienteEmail'));
       const nombre = val('editClienteNombre');
@@ -6276,7 +6334,8 @@
       if (!nuevoEmail) { alert('El correo de acceso no puede quedar vacío.'); return; }
       if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(nuevoEmail)) { alert('El correo no es válido: ' + nuevoEmail); return; }
       if (password && password.length < 6) { alert('La contraseña nueva debe tener al menos 6 caracteres.'); return; }
-      let nuevoSaldo = null;
+      // Saldo vacío = $0
+      let nuevoSaldo = 0;
       if (saldoTxt !== '') {
         nuevoSaldo = Math.round(Number(saldoTxt));
         if (!isFinite(nuevoSaldo) || nuevoSaldo < 0) { alert('El saldo debe ser un número válido (0 o más).'); return; }
@@ -6284,14 +6343,19 @@
 
       const correoAnterior = String(orig.email || '').toLowerCase();
       const cambiaCorreo = nuevoEmail !== correoAnterior;
-      const cambiaSaldo = nuevoSaldo !== null && nuevoSaldo !== (Number(orig.saldo) || 0);
+      const cambiaSaldo = nuevoSaldo !== (Number(orig.saldo) || 0);
 
       if ((cambiaCorreo || password) && !obtenerBackendUrl()) {
         alert('Para cambiar el correo o la contraseña de un cliente necesitas tener configurado el servidor seguro (Ajustes → Seguridad).');
         return;
       }
       if (correoAnterior && cambiaCorreo && !await confirmarModal(`¿Cambiar el correo de ${orig.email} a ${nuevoEmail}?\n\nEl cliente deberá entrar con el correo nuevo.`, { tipo: 'pregunta', textoAceptar: 'Sí, cambiar' })) return;
-      if (cambiaSaldo && !await confirmarModal(`¿Cambiar el saldo de ${formatoCOP(orig.saldo || 0)} a ${formatoCOP(nuevoSaldo)} COP?`, { tipo: 'pregunta', textoAceptar: 'Sí, cambiar saldo' })) return;
+      if (cambiaSaldo && !await confirmarModal(
+        nuevoSaldo === 0
+          ? `¿Poner el saldo en $0? Ahora tiene ${formatoCOP(orig.saldo || 0)} COP.`
+          : `¿Cambiar el saldo de ${formatoCOP(orig.saldo || 0)} a ${formatoCOP(nuevoSaldo)} COP?`,
+        { tipo: nuevoSaldo === 0 ? 'peligro' : 'pregunta', textoAceptar: 'Sí, cambiar saldo' }
+      )) return;
 
       const btn = document.getElementById('btnGuardarEdicionCliente');
       if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Guardando...'; }
@@ -6942,7 +7006,7 @@
         const r = doc.data();
         tbody.innerHTML += `
           <tr class="hover:bg-gray-800/40">
-            <td class="px-4 py-3 text-xs text-gray-400">${new Date(r.fecha).toLocaleDateString()}</td>
+            <td class="px-4 py-3 text-xs text-gray-400">${new Date(r.fecha).toLocaleDateString('es-CO', { day: '2-digit', month: '2-digit', year: 'numeric' })}</td>
             <td class="px-4 py-3 text-white">${r.usuarioEmail}</td>
             <td class="px-4 py-3 font-bold text-emerald-400">$${(r.monto || 0).toLocaleString('es-CO')}</td>
             <td class="px-4 py-3 text-right space-x-2">
@@ -7779,6 +7843,139 @@
       }
     }
 
+    // ==================== CAMPOS DE FECHA: SIEMPRE DÍA / MES / AÑO ====================
+    // Los <input type="date"> usan el idioma del navegador (en EE. UU. muestran mes/día/año).
+    // Estos campos escriben y muestran siempre dd/mm/aaaa, pero por dentro siguen entregando AAAA-MM-DD
+    // para que el resto del código funcione igual.
+    function fdmaFormatear(texto) {
+      const t = String(texto == null ? '' : texto).trim();
+      let m = t.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+      if (m) return ('0' + m[3]).slice(-2) + '/' + ('0' + m[2]).slice(-2) + '/' + m[1];
+      m = t.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{4})$/);
+      if (m) return ('0' + m[1]).slice(-2) + '/' + ('0' + m[2]).slice(-2) + '/' + m[3];
+      const d = t.replace(/\D/g, '').slice(0, 8);
+      if (d.length <= 2) return d;
+      if (d.length <= 4) return d.slice(0, 2) + '/' + d.slice(2);
+      return d.slice(0, 2) + '/' + d.slice(2, 4) + '/' + d.slice(4);
+    }
+
+    function fdmaAISO(texto) {
+      const m = fdmaFormatear(texto).match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+      if (!m) return '';
+      const d = +m[1], mes = +m[2], a = +m[3];
+      if (a < 2000 || a > 2100) return '';
+      const f = new Date(Date.UTC(a, mes - 1, d));
+      if (f.getUTCFullYear() !== a || f.getUTCMonth() !== mes - 1 || f.getUTCDate() !== d) return '';
+      return m[3] + '-' + m[2] + '-' + m[1];
+    }
+
+    function fdmaDeISO(iso) {
+      const m = String(iso == null ? '' : iso).match(/^(\d{4})-(\d{2})-(\d{2})/);
+      return m ? m[3] + '/' + m[2] + '/' + m[1] : '';
+    }
+
+    function fmesFormatear(texto) {
+      const t = String(texto == null ? '' : texto).trim();
+      let m = t.match(/^(\d{4})-(\d{1,2})$/);
+      if (m) return ('0' + m[2]).slice(-2) + '/' + m[1];
+      m = t.match(/^(\d{1,2})[\/\-.](\d{4})$/);
+      if (m) return ('0' + m[1]).slice(-2) + '/' + m[2];
+      const d = t.replace(/\D/g, '').slice(0, 6);
+      return d.length <= 2 ? d : d.slice(0, 2) + '/' + d.slice(2);
+    }
+
+    function fmesAISO(texto) {
+      const m = fmesFormatear(texto).match(/^(\d{2})\/(\d{4})$/);
+      if (!m || +m[1] < 1 || +m[1] > 12 || +m[2] < 2000 || +m[2] > 2100) return '';
+      return m[2] + '-' + m[1];
+    }
+
+    function fmesDeISO(iso) {
+      const m = String(iso == null ? '' : iso).match(/^(\d{4})-(\d{2})/);
+      return m ? m[2] + '/' + m[1] : '';
+    }
+
+    // modo: 'dia' (dd/mm/aaaa) o 'mes' (mm/aaaa). conCalendario: agrega un botón para elegir en el calendario
+    function instalarCampoFecha(el, modo, conCalendario) {
+      if (!el || el.__fdma) return;
+      el.__fdma = true;
+      const nativo = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value');
+      const formatear = modo === 'mes' ? fmesFormatear : fdmaFormatear;
+      const aISO = modo === 'mes' ? fmesAISO : fdmaAISO;
+      const deISO = modo === 'mes' ? fmesDeISO : fdmaDeISO;
+      const completo = modo === 'mes' ? 7 : 10;
+
+      el.type = 'text';
+      el.setAttribute('inputmode', 'numeric');
+      el.setAttribute('autocomplete', 'off');
+      el.placeholder = modo === 'mes' ? 'mm/aaaa' : 'dd/mm/aaaa';
+
+      // value entrega AAAA-MM-DD (o AAAA-MM) y recibe lo mismo, aunque en pantalla se vea día/mes/año
+      Object.defineProperty(el, 'value', {
+        configurable: true,
+        get() { return aISO(nativo.get.call(el)); },
+        set(v) { nativo.set.call(el, deISO(v)); }
+      });
+      el.textoCrudo = function () { return nativo.get.call(el); };
+
+      el.addEventListener('input', function (ev) {
+        let crudo = nativo.get.call(el);
+        // Al PEGAR "3-10-26" se entiende 03/10/2026; al ESCRIBIR no se adivina el año
+        if (modo === 'dia' && (!ev || !ev.inputType || ev.inputType === 'insertFromPaste' || ev.inputType === 'insertFromDrop')) {
+          const y2 = crudo.trim().match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2})$/);
+          if (y2) crudo = y2[1] + '/' + y2[2] + '/20' + y2[3];
+        }
+        const f = formatear(crudo);
+        if (f !== crudo) nativo.set.call(el, f);
+        el.classList.toggle('border-red-500', f.length >= completo && !aISO(f));
+      }, true);
+
+      if (conCalendario && el.parentNode) {
+        const envoltorio = document.createElement('div');
+        envoltorio.className = 'relative';
+        el.parentNode.insertBefore(envoltorio, el);
+        envoltorio.appendChild(el);
+        el.style.paddingRight = '2.2rem';
+
+        const selector = document.createElement('input');
+        selector.type = 'date';
+        selector.tabIndex = -1;
+        selector.setAttribute('aria-hidden', 'true');
+        selector.style.cssText = 'position:absolute;right:0;bottom:0;width:1px;height:1px;opacity:0;pointer-events:none;';
+        selector.addEventListener('change', function () {
+          if (!selector.value) return;
+          el.value = selector.value;
+          el.dispatchEvent(new Event('input', { bubbles: true }));
+          el.dispatchEvent(new Event('change', { bubbles: true }));
+        });
+
+        const boton = document.createElement('button');
+        boton.type = 'button';
+        boton.title = 'Elegir en el calendario';
+        boton.className = 'absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white';
+        boton.innerHTML = '<i class="fa-regular fa-calendar"></i>';
+        boton.addEventListener('click', function () {
+          selector.value = el.value || '';
+          try { if (selector.showPicker) selector.showPicker(); else selector.click(); } catch (e) { try { selector.click(); } catch (e2) { /* sin calendario */ } }
+        });
+        envoltorio.appendChild(boton);
+        envoltorio.appendChild(selector);
+      }
+    }
+
+    function iniciarCamposFechaDMA() {
+      try {
+        instalarCampoFecha(document.getElementById('nfInicio'), 'dia', true);
+        instalarCampoFecha(document.getElementById('nfProximo'), 'dia', true);
+        instalarCampoFecha(document.getElementById('inputDiaReporte'), 'dia', false);
+        instalarCampoFecha(document.getElementById('inputMesReporte'), 'mes', false);
+      } catch (e) {
+        console.warn('No se pudieron preparar los campos de fecha:', e);
+      }
+    }
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', iniciarCamposFechaDMA);
+    else iniciarCamposFechaDMA();
+
     // ==================== MÓDULO NETFLIX: ALQUILER DE CUENTAS ====================
     const ZONA_NETFLIX = 'America/Bogota';
     const SPINNER_NF = '<i class="fa-solid fa-spinner fa-spin"></i>';
@@ -7885,6 +8082,9 @@
           actualizarBotonNetflixNav();
           const v = document.getElementById('vistaNetflix');
           if (v && !v.classList.contains('hidden')) renderizarNetflixCliente();
+          renderizarNetflixModal();
+          const vt = document.getElementById('vistaTienda');
+          if (vt && !vt.classList.contains('hidden')) { try { renderizarCatalogo(); } catch (e) { console.warn(e); } }
         }, err => console.warn('Alquileres no disponibles:', err));
       } catch (e) {
         console.warn(e);
@@ -7925,7 +8125,8 @@
       lista.forEach(a => pintarOtpNetflix('c', a.id));
     }
 
-    function htmlTarjetaNetflixCliente(a) {
+    function htmlTarjetaNetflixCliente(a, ambito) {
+      ambito = ambito || 'c';
       const est = estadoNetflix(a), st = ESTILO_NETFLIX[est.clave] || ESTILO_NETFLIX.sin_fecha;
       const dias = est.dias;
       const plan = parseInt(a.plan, 10) || 1;
@@ -7942,10 +8143,10 @@
       const id = escaparHtml(a.id);
 
       const botonRenovar = precio > 0
-        ? `<button id="btnRenovarNf_${id}" onclick="renovarNetflix('${id}')" class="${vencida ? 'bg-red-600 hover:bg-red-500 text-white' : 'bg-gray-800 hover:bg-gray-700 text-gray-100 border border-gray-700'} font-black py-2.5 rounded-xl text-xs flex items-center justify-center gap-1.5 transition"><i class="fa-solid fa-rotate"></i> Renovar por ${escaparHtml(formatoCOP(precio))}</button>`
+        ? `<button id="btnRenovarNf_${ambito}_${id}" onclick="renovarNetflix('${id}','${ambito}')" class="${vencida ? 'bg-red-600 hover:bg-red-500 text-white' : 'bg-gray-800 hover:bg-gray-700 text-gray-100 border border-gray-700'} font-black py-2.5 rounded-xl text-xs flex items-center justify-center gap-1.5 transition"><i class="fa-solid fa-rotate"></i> Renovar por ${escaparHtml(formatoCOP(precio))}</button>`
         : `<div class="col-span-2 text-[11px] text-gray-400 text-center py-2">La renovación en línea no está disponible para esta cuenta. Escríbenos por soporte.</div>`;
 
-      const botonOtp = `<button id="btnOtpNf_c_${id}" onclick="pedirCodigoNetflix('${id}','c')" ${vencida ? 'disabled' : ''} class="${vencida ? 'bg-gray-800 text-gray-500 cursor-not-allowed' : 'bg-emerald-500 hover:bg-emerald-400 text-black'} font-black py-2.5 rounded-xl text-xs flex items-center justify-center gap-1.5 transition"><i class="fa-solid ${vencida ? 'fa-lock' : 'fa-key'}"></i> ${vencida ? 'Códigos bloqueados' : 'Ver código'}</button>`;
+      const botonOtp = `<button id="btnOtpNf_${ambito}_${id}" onclick="pedirCodigoNetflix('${id}','${ambito}')" ${vencida ? 'disabled' : ''} class="${vencida ? 'bg-gray-800 text-gray-500 cursor-not-allowed' : 'bg-emerald-500 hover:bg-emerald-400 text-black'} font-black py-2.5 rounded-xl text-xs flex items-center justify-center gap-1.5 transition"><i class="fa-solid ${vencida ? 'fa-lock' : 'fa-key'}"></i> ${vencida ? 'Códigos bloqueados' : 'Ver código'}</button>`;
 
       return `
         <div class="p-4 bg-gray-900 border ${vencida ? 'border-red-500/40' : 'border-gray-800'} rounded-2xl">
@@ -7954,6 +8155,7 @@
             <span class="text-[11px] font-bold px-2.5 py-0.5 rounded-full border ${st.chip}">${st.txt}</span>
           </div>
           <p class="font-mono text-xs text-white mt-2 break-all select-all">${escaparHtml(a.correo)}</p>
+          ${a.tipo === 'compartida' ? `<div class="mt-2 p-2.5 bg-sky-500/10 border border-sky-500/30 rounded-lg text-[11px] text-sky-200"><i class="fa-solid fa-user-group mr-1"></i> Cuenta compartida · Tu perfil: <b>${escaparHtml(a.perfil || '—')}</b>${(!vencida && a.pin) ? ` · PIN: <b class="font-mono tracking-widest text-white">${escaparHtml(a.pin)}</b>` : ''}</div>` : ''}
           <div class="flex items-baseline gap-2 mt-3">
             <span class="text-3xl font-black text-white">${grande}</span>
             <span class="text-xs text-gray-400">${leyenda}</span>
@@ -7965,8 +8167,164 @@
             ${botonOtp}
             ${botonRenovar}
           </div>
-          <div id="resNf_c_${id}" class="mt-3"></div>
+          <div id="resNf_${ambito}_${id}" class="mt-3"></div>
         </div>`;
+    }
+
+    // ==================== CUENTAS COMPARTIDAS, "NO RENOVÓ" Y NETFLIX EN LA TIENDA ====================
+    async function crearCuentaCompartida(correo, cantidadTxt, notas) {
+      const n = Math.max(2, Math.min(5, parseInt(cantidadTxt, 10) || 5));
+      const btn = document.getElementById('btnGuardarNetflixCuenta');
+      if (btn) { btn.disabled = true; btn.innerHTML = SPINNER_NF + ' Creando...'; }
+      try {
+        const ahora = new Date().toISOString();
+        const lote = db.batch();
+        for (let i = 1; i <= n; i++) {
+          lote.set(db.collection('alquileres').doc(), {
+            correo: correo, tipo: 'compartida', perfil: 'Perfil ' + i, pin: '', pinPendiente: false,
+            estado: 'sin_asignar', clienteNombre: '', clienteWhatsapp: '', clienteUid: '', clienteEmail: '',
+            plan: 1, precio: 0, fechaInicio: '', proximoPago: '', limpiezaPendiente: false,
+            notas: notas || '', creadoEl: ahora, actualizadoEl: ahora
+          });
+        }
+        await lote.commit();
+        nfCerrar('modalNetflixCuenta');
+        mostrarToast(`Cuenta compartida creada con ${n} perfiles. Toca "Asignar" en cada uno.`);
+      } catch (err) {
+        alert('No se pudo crear la cuenta compartida: ' + err.message);
+      } finally {
+        if (btn) { btn.disabled = false; btn.innerHTML = 'Guardar'; }
+      }
+    }
+
+    // Copia el correo de la cuenta y abre la página de Netflix para restablecer la contraseña.
+    // Devuelve una promesa: true si el correo quedó copiado.
+    function abrirRestablecerNetflix(correo, silencioso) {
+      let copia = Promise.resolve(false);
+      if (correo) {
+        try { copia = navigator.clipboard.writeText(String(correo)).then(() => true, () => false); }
+        catch (e) { copia = Promise.resolve(false); }
+      }
+      window.open('https://www.netflix.com/LoginHelp', '_blank', 'noopener');
+      if (!silencioso) copia.then(ok => { if (ok) mostrarToast('Correo copiado: pégalo en la página de Netflix.'); });
+      return copia;
+    }
+
+    // El cliente no renovó: individual => se libera y se abre Netflix para restablecer la clave;
+    // compartida => se libera el perfil y se genera un PIN nuevo (hay que ponerlo en Netflix a mano)
+    async function noRenovoNetflix(id) {
+      const a = netflixCuentasAdmin.find(x => x.id === id);
+      if (!a || a.estado !== 'asignado') return;
+      const compartida = a.tipo === 'compartida';
+      const quien = a.clienteNombre || a.clienteEmail || 'el cliente';
+      const pregunta = compartida
+        ? `¿Marcar que ${quien} no renovó? Se libera el perfil «${a.perfil || '?'}» de ${a.correo} y se genera un PIN nuevo.`
+        : `¿Marcar que ${quien} no renovó? Se quita la cuenta ${a.correo} y se abre Netflix para restablecer la contraseña.`;
+      if (!await confirmarModal(pregunta, { textoAceptar: 'Sí, no renovó' })) return;
+
+      // La pestaña de Netflix se abre ya, mientras el clic sigue vigente (si no, el navegador la bloquea)
+      const copiaCorreo = compartida ? null : abrirRestablecerNetflix(a.correo, true);
+
+      const nuevoPin = compartida ? generarPinNetflix(a.pin) : '';
+      try {
+        const ahora = new Date().toISOString();
+        const lote = db.batch();
+        lote.set(db.collection('alquileres_historial').doc(), {
+          alquilerId: id, correo: a.correo || '', clienteNombre: a.clienteNombre || '', clienteUid: a.clienteUid || '',
+          clienteEmail: a.clienteEmail || '', plan: parseInt(a.plan, 10) || 1, precio: Number(a.precio) || 0,
+          desde: a.fechaInicio || '', ultimoVencimiento: a.proximoPago || '', hasta: hoyNetflix(), quitadoEl: ahora,
+          motivo: 'no renovó', perfil: a.perfil || ''
+        });
+        const cambios = {
+          estado: 'sin_asignar', clienteNombre: '', clienteWhatsapp: '', clienteUid: '', clienteEmail: '',
+          fechaInicio: '', proximoPago: '', avisoVencido: '', actualizadoEl: ahora
+        };
+        if (compartida) Object.assign(cambios, { pin: nuevoPin, pinPendiente: true, limpiezaPendiente: false });
+        else cambios.limpiezaPendiente = true;
+        lote.set(db.collection('alquileres').doc(id), cambios, { merge: true });
+        await lote.commit();
+        delete netflixResultadosOtp['a_' + id];
+
+        if (compartida) {
+          await abrirDialogo({
+            tipo: 'info', titulo: 'Cambia el PIN en Netflix',
+            mensaje: `Perfil: ${a.perfil || '—'}\nCuenta: ${a.correo}\n\nPIN NUEVO: ${nuevoPin}\n\n1) Entra a esa cuenta en Netflix.\n2) Perfil «${a.perfil || ''}» → Bloqueo de perfil.\n3) Pon este PIN.\n4) Vuelve aquí y toca "Ya cambié el PIN".\n\n(Netflix no se cambia solo desde la plataforma.)`,
+            textoAceptar: 'Copiar PIN'
+          });
+          try { await navigator.clipboard.writeText(nuevoPin); mostrarToast('PIN copiado: ' + nuevoPin); } catch (e) { /* sin portapapeles */ }
+        } else {
+          const copiado = await copiaCorreo;
+          await abrirDialogo({
+            tipo: 'info', titulo: 'Restablece la contraseña',
+            mensaje: `1) ${copiado ? `Ya copié el correo ${a.correo}. En la pestaña de Netflix mantén presionado el campo, toca "Pegar"` : `En la pestaña de Netflix escribe el correo ${a.correo}`} y pide restablecer la contraseña.\n2) El enlace llegará a tu Gmail y saldrá aquí en el botón «Código» de esta cuenta (dura 15 minutos).\n3) Cambia la clave y cierra sesión en todos los dispositivos.\n4) Toca "Ya cambié la clave".`,
+            textoAceptar: 'Entendido'
+          });
+        }
+      } catch (err) {
+        alert('No se pudo completar: ' + err.message);
+      }
+    }
+
+    async function marcarPinCambiadoNetflix(id) {
+      try {
+        await db.collection('alquileres').doc(id).set({ pinPendiente: false, actualizadoEl: new Date().toISOString() }, { merge: true });
+        mostrarToast('Listo: el perfil quedó disponible para asignar.');
+      } catch (err) {
+        alert('No se pudo actualizar: ' + err.message);
+      }
+    }
+
+    // ----- Netflix dentro de la tienda -----
+    function htmlTarjetaNetflixTienda() {
+      const lista = misAlquileres.filter(a => a.estado === 'asignado');
+      if (!lista.length) return '';
+      const ests = lista.map(a => ({ a: a, e: estadoNetflix(a) }));
+      const peor = ['vencida', 'vence_hoy', 'por_vencer', 'activa', 'sin_fecha'].find(c => ests.some(x => x.e.clave === c)) || 'activa';
+      const st = ESTILO_NETFLIX[peor] || ESTILO_NETFLIX.activa;
+      const conDias = ests.filter(x => x.e.dias !== null).sort((x, y) => x.e.dias - y.e.dias);
+      let resumen = '';
+      if (conDias.length) {
+        const d = conDias[0].e.dias;
+        resumen = d < 0 ? `Venció hace ${-d} ${-d === 1 ? 'día' : 'días'}` : (d === 0 ? 'Vence hoy' : `Vence en ${d} ${d === 1 ? 'día' : 'días'}`);
+      }
+      const n = lista.length;
+      return `
+        <div onclick="abrirModalNetflixCliente()" role="button" tabindex="0" class="cursor-pointer bg-gray-900 border border-red-500/50 shadow-xl shadow-red-500/10 hover:border-red-400 rounded-2xl p-4 sm:p-5 flex flex-col justify-between transition relative">
+          <div>
+            <div class="flex justify-between items-start mb-3">
+              <span class="text-[11px] font-bold bg-red-500/15 text-red-300 px-3 py-1 rounded-full flex items-center gap-1"><i class="fa-solid fa-tv"></i> Streaming</span>
+              <span class="text-[11px] font-bold px-2.5 py-0.5 rounded-full border ${st.chip}">${st.txt}</span>
+            </div>
+            <h3 class="font-bold text-white text-base leading-snug">Netflix · Mis cuentas</h3>
+            <p class="text-xs text-gray-400 mt-1 leading-relaxed">Códigos de acceso, días restantes y renovación de tu${n === 1 ? ' cuenta' : 's ' + n + ' cuentas'}.</p>
+            ${resumen ? `<p class="text-xs text-gray-300 mt-3"><i class="fa-regular fa-calendar mr-1 text-red-400"></i> ${resumen}</p>` : ''}
+          </div>
+          <div class="mt-4 w-full py-2.5 rounded-xl text-xs font-bold bg-red-600 hover:bg-red-500 text-white transition flex items-center justify-center gap-1.5">
+            <i class="fa-solid fa-key"></i> Abrir mis cuentas
+          </div>
+        </div>`;
+    }
+
+    function abrirModalNetflixCliente() {
+      if (!currentUser) { abrirModalAuth('login'); return; }
+      nfAbrir('modalNetflixCliente');
+      renderizarNetflixModal();
+    }
+
+    function cerrarModalNetflixCliente() { nfCerrar('modalNetflixCliente'); }
+
+    function renderizarNetflixModal() {
+      const m = document.getElementById('modalNetflixCliente');
+      const cont = document.getElementById('listaNetflixModal');
+      if (!m || !cont || m.classList.contains('hidden')) return;
+      const asignadas = misAlquileres.filter(a => a.estado === 'asignado');
+      if (!asignadas.length) {
+        cont.innerHTML = '<p class="text-gray-500 text-center py-6 text-sm">Aún no tienes cuentas de Netflix asignadas.</p>';
+        return;
+      }
+      const lista = asignadas.slice().sort((x, y) => String(x.proximoPago || '9999').localeCompare(String(y.proximoPago || '9999')));
+      cont.innerHTML = lista.map(a => htmlTarjetaNetflixCliente(a, 'm')).join('');
+      lista.forEach(a => pintarOtpNetflix('m', a.id));
     }
 
     // ---------- Códigos / enlaces ----------
@@ -8064,7 +8422,8 @@
     }
 
     // ---------- Renovación con saldo ----------
-    async function renovarNetflix(id) {
+    async function renovarNetflix(id, ambito) {
+      ambito = ambito || 'c';
       const a = misAlquileres.find(x => x.id === id);
       if (!a) return;
       const plan = parseInt(a.plan, 10) || 1;
@@ -8077,7 +8436,7 @@
       );
       if (!ok) return;
 
-      const btn = document.getElementById('btnRenovarNf_' + id);
+      const btn = document.getElementById('btnRenovarNf_' + ambito + '_' + id);
       const original = btn ? btn.innerHTML : '';
       if (btn) { btn.disabled = true; btn.innerHTML = SPINNER_NF + ' Procesando...'; }
       try {
@@ -8140,7 +8499,7 @@
         if (f === 'pendientes' && !(a.estado === 'asignado' && !a.clienteUid)) return false;
         if (f === 'limpieza' && a.limpiezaPendiente !== true) return false;
         if (q) {
-          const texto = normalizarBusqueda([a.correo, a.clienteNombre, a.clienteEmail, a.clienteWhatsapp, a.notas].join(' '));
+          const texto = normalizarBusqueda([a.correo, a.clienteNombre, a.clienteEmail, a.clienteWhatsapp, a.notas, a.perfil].join(' '));
           if (texto.indexOf(q) === -1) return false;
         }
         return true;
@@ -8191,7 +8550,18 @@
         cont.innerHTML = '<p class="text-gray-500 text-center py-8 text-sm">Ninguna cuenta coincide con la búsqueda.</p>';
         return;
       }
-      cont.innerHTML = lista.map(htmlTarjetaNetflixAdmin).join('');
+      // Las cuentas compartidas se agrupan por correo (una casilla por perfil)
+      const vistos = new Set();
+      let html = '';
+      lista.forEach(a => {
+        if (a.tipo !== 'compartida') { html += htmlTarjetaNetflixAdmin(a); return; }
+        if (vistos.has(a.correo)) return;
+        vistos.add(a.correo);
+        const slots = lista.filter(x => x.tipo === 'compartida' && x.correo === a.correo)
+          .sort((x, y) => String(x.perfil || '').localeCompare(String(y.perfil || ''), 'es', { numeric: true }));
+        html += htmlGrupoCompartidaAdmin(a.correo, slots);
+      });
+      cont.innerHTML = html;
       lista.forEach(a => pintarOtpNetflix('a', a.id));
     }
 
@@ -8200,7 +8570,22 @@
       return u ? u.email : '';
     }
 
-    function htmlTarjetaNetflixAdmin(a) {
+    function htmlGrupoCompartidaAdmin(correo, slots) {
+      const todos = netflixCuentasAdmin.filter(x => x.tipo === 'compartida' && x.correo === correo);
+      const ocupados = todos.filter(x => x.estado === 'asignado').length;
+      const pendPin = todos.filter(x => x.pinPendiente === true).length;
+      return `
+        <div class="p-3 bg-gray-900/60 border border-sky-500/30 rounded-2xl">
+          <div class="flex items-start justify-between gap-2">
+            <p class="font-mono text-xs text-white break-all select-all">${escaparHtml(correo)}</p>
+            <span class="shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-full border bg-sky-500/15 text-sky-300 border-sky-500/30"><i class="fa-solid fa-user-group mr-1"></i>Compartida · ${ocupados}/${todos.length}</span>
+          </div>
+          ${pendPin ? `<p class="text-[11px] text-yellow-300 mt-1"><i class="fa-solid fa-key mr-1"></i> ${pendPin} PIN por cambiar en Netflix</p>` : ''}
+          <div class="mt-3 space-y-2">${slots.map(sl => htmlTarjetaNetflixAdmin(sl, true)).join('')}</div>
+        </div>`;
+    }
+
+    function htmlTarjetaNetflixAdmin(a, enGrupo) {
       const est = estadoNetflix(a), st = ESTILO_NETFLIX[est.clave] || ESTILO_NETFLIX.sin_fecha;
       const id = escaparHtml(a.id);
       const asignada = a.estado === 'asignado';
@@ -8226,22 +8611,34 @@
         botones += `<button id="btnOtpNf_a_${id}" onclick="pedirCodigoNetflix('${id}','a')" class="px-2.5 py-1.5 rounded-lg text-[11px] font-bold flex items-center gap-1 transition bg-emerald-500 hover:bg-emerald-400 text-black"><i class="fa-solid fa-key"></i> Código</button>`;
         botones += btn('bg-green-600 hover:bg-green-500 text-white', `registrarPagoNetflix('${id}')`, 'fa-money-bill-wave', 'Registrar pago');
         botones += btn(gris, `abrirModalNetflixVincular('${id}')`, 'fa-link', a.clienteUid ? 'Cambiar usuario' : 'Vincular');
-        botones += btn('bg-red-500/15 hover:bg-red-500/25 text-red-300 border border-red-500/30', `quitarNetflix('${id}')`, 'fa-user-minus', 'Quitar');
+        botones += (est.clave === 'vencida')
+          ? btn('bg-red-600 hover:bg-red-500 text-white', `noRenovoNetflix('${id}')`, 'fa-ban', 'No renovó')
+          : btn('bg-red-500/15 hover:bg-red-500/25 text-red-300 border border-red-500/30', `quitarNetflix('${id}')`, 'fa-user-minus', 'Quitar');
       } else {
         botones += btn('bg-red-600 hover:bg-red-500 text-white', `abrirModalNetflixCuenta('${id}', true)`, 'fa-user-plus', 'Asignar');
+        // Tras "No renovó" en una cuenta individual: el enlace para restablecer la clave llega aquí
+        if (a.limpiezaPendiente === true && a.tipo !== 'compartida') {
+          botones += `<button id="btnOtpNf_a_${id}" onclick="pedirCodigoNetflix('${id}','a')" class="px-2.5 py-1.5 rounded-lg text-[11px] font-bold flex items-center gap-1 transition bg-emerald-500 hover:bg-emerald-400 text-black"><i class="fa-solid fa-key"></i> Código</button>`;
+        }
       }
       if (a.limpiezaPendiente === true) botones += btn('bg-yellow-500/20 hover:bg-yellow-500/30 text-yellow-300 border border-yellow-500/40', `marcarLimpiaNetflix('${id}')`, 'fa-broom', 'Ya cambié la clave');
+      if (a.pinPendiente === true) botones += btn('bg-yellow-500/20 hover:bg-yellow-500/30 text-yellow-300 border border-yellow-500/40', `marcarPinCambiadoNetflix('${id}')`, 'fa-key', 'Ya cambié el PIN');
+      if (a.limpiezaPendiente === true && a.tipo !== 'compartida') botones += btn(gris, `abrirRestablecerNetflix('${escaparJsAttr(a.correo)}')`, 'fa-arrow-up-right-from-square', 'Restablecer clave');
       botones += btn(gris, `abrirModalNetflixCuenta('${id}')`, 'fa-pen', 'Editar');
       botones += btn(gris, `verHistorialNetflix('${id}')`, 'fa-clock-rotate-left', 'Historial');
 
       return `
         <div class="p-4 bg-gray-900 border ${est.clave === 'vencida' ? 'border-red-500/40' : 'border-gray-800'} rounded-2xl">
           <div class="flex items-start justify-between gap-2">
-            <p class="font-mono text-xs text-white break-all select-all">${escaparHtml(a.correo)}</p>
+            ${enGrupo
+              ? `<p class="text-xs font-bold text-sky-200"><i class="fa-solid fa-circle-user mr-1"></i>${escaparHtml(a.perfil || 'Perfil')}</p>`
+              : `<p class="font-mono text-xs text-white break-all select-all">${escaparHtml(a.correo)}</p>`}
             <span class="shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-full border ${st.chip}">${st.txt}</span>
           </div>
           <p class="text-xs mt-1.5">${cliente}${a.clienteWhatsapp ? ` <span class="text-[10px] text-gray-500">· ${escaparHtml(a.clienteWhatsapp)}</span>` : ''}</p>
           ${lineaUsuario}
+          ${a.tipo === 'compartida' ? `<p class="text-[11px] mt-1 text-sky-300"><i class="fa-solid fa-lock mr-1"></i> PIN: <b class="font-mono tracking-widest">${escaparHtml(a.pin || 'sin definir')}</b></p>` : ''}
+          ${(a.tipo === 'compartida' && a.pinPendiente === true) ? `<p class="text-[11px] text-yellow-300 mt-1"><i class="fa-solid fa-key mr-1"></i> Pendiente: pon el PIN <b class="font-mono">${escaparHtml(a.pin || '')}</b> en el perfil «${escaparHtml(a.perfil || '')}» dentro de Netflix.</p>` : ''}
           ${asignada ? `<p class="text-[11px] text-gray-400 mt-1">Plan ${plan} ${plan === 1 ? 'mes' : 'meses'} · ${Number(a.precio) > 0 ? escaparHtml(formatoCOP(a.precio)) : '<span class="text-amber-400">sin precio</span>'} · Pago: <b class="text-gray-200">${fechaCortaNetflix(a.proximoPago)}</b>${diasTxt ? ' · ' + diasTxt : ''}</p>` : ''}
           ${a.limpiezaPendiente === true ? '<p class="text-[11px] text-yellow-300 mt-1"><i class="fa-solid fa-broom mr-1"></i> Pendiente: cambiar clave y cerrar sesiones antes de reasignarla.</p>' : ''}
           ${a.notas ? `<p class="text-[10px] text-gray-500 mt-1">${escaparHtml(a.notas)}</p>` : ''}
@@ -8263,6 +8660,10 @@
       set('nfInicio', a && esFechaNetflix(a.fechaInicio) ? a.fechaInicio : (modoAsignar ? hoyNetflix() : ''));
       set('nfProximo', a && esFechaNetflix(a.proximoPago) ? a.proximoPago : '');
       set('nfNotas', a ? (a.notas || '') : '');
+      set('nfTipo', a && a.tipo === 'compartida' ? 'compartida' : 'individual');
+      set('nfPerfil', a ? (a.perfil || '') : '');
+      set('nfPin', a ? (a.pin || '') : '');
+      set('nfCantidad', '5');
       const titulo = document.getElementById('nfTituloModal');
       if (titulo) titulo.innerHTML = `<i class="fa-solid fa-tv text-red-500"></i> ${!a ? 'Agregar cuenta' : (modoAsignar ? 'Asignar cuenta' : 'Editar cuenta')}`;
       const elim = document.getElementById('btnEliminarNetflixCuenta');
@@ -8270,7 +8671,39 @@
       // Si la cuenta ya tiene fecha de pago, se respeta; si no, se calcula sola
       nfProximoManual = !!(a && esFechaNetflix(a.proximoPago));
       nfAbrir('modalNetflixCuenta');
+      nfCambioTipo();
       nfAutoCalcularVence(nfProximoManual ? 'proximo' : 'inicio');
+    }
+
+    // Muestra u oculta los campos según sea cuenta individual o compartida
+    function nfCambioTipo() {
+      const sel = document.getElementById('nfTipo');
+      const tipo = sel && sel.value === 'compartida' ? 'compartida' : 'individual';
+      const editando = !!netflixEditandoId;
+      const mostrar = (id, si) => { const e = document.getElementById(id); if (e) e.classList.toggle('hidden', !si); };
+      mostrar('nfBloqueCantidad', tipo === 'compartida' && !editando);
+      mostrar('nfAvisoCompartida', tipo === 'compartida' && !editando);
+      mostrar('nfBloquePerfil', tipo === 'compartida' && editando);
+      mostrar('nfBloqueCliente', !(tipo === 'compartida' && !editando));
+      if (sel) sel.disabled = editando;
+    }
+
+    // PIN de 4 números al azar, sin repetidos obvios (0000, 1234) ni igual al anterior
+    function generarPinNetflix(anterior) {
+      const malo = (p) => p === String(anterior || '') || /^(\d)\1{3}$/.test(p) || '01234567890'.includes(p) || '09876543210'.includes(p);
+      for (let i = 0; i < 60; i++) {
+        let n;
+        try { const arr = new Uint32Array(1); crypto.getRandomValues(arr); n = arr[0] % 10000; }
+        catch (e) { n = Math.floor(Math.random() * 10000); }
+        const pin = ('000' + n).slice(-4);
+        if (!malo(pin)) return pin;
+      }
+      return '4826';
+    }
+
+    function nfGenerarPin() {
+      const el = document.getElementById('nfPin');
+      if (el) el.value = generarPinNetflix(el.value);
     }
 
     // Deja el correo limpio: sin espacios, <>, mailto: ni ":clave"
@@ -8336,7 +8769,12 @@
     function nfAutoCalcularVence(origen) {
       const inpP = document.getElementById('nfProximo');
       if (!inpP) return;
-      if (origen === 'proximo') nfProximoManual = inpP.value !== '';
+      if (origen === 'proximo') {
+        const crudoP = typeof inpP.textoCrudo === 'function' ? inpP.textoCrudo() : inpP.value;
+        nfProximoManual = crudoP !== '';
+        // Está borrando para escribir otra fecha: se vuelve a calcular recién al salir del campo
+        if (crudoP === '' && document.activeElement === inpP) { actualizarVistaVenceNetflix(); return; }
+      }
       if (!nfProximoManual) {
         const inicio = nfValor('nfInicio');
         const plan = [1, 2, 3].includes(parseInt(nfValor('nfPlan'), 10)) ? parseInt(nfValor('nfPlan'), 10) : 1;
@@ -8351,6 +8789,13 @@
       const previa = netflixEditandoId ? netflixCuentasAdmin.find(x => x.id === netflixEditandoId) : null;
       const asignada = !!nfValor('nfCliente') || !!(previa && previa.estado === 'asignado');
       const prox = nfValor('nfProximo');
+      const inpProx = document.getElementById('nfProximo');
+      const crudoProx = inpProx && typeof inpProx.textoCrudo === 'function' ? inpProx.textoCrudo() : '';
+      if (asignada && crudoProx && !esFechaNetflix(prox)) {
+        box.className = 'p-2.5 bg-amber-500/10 border border-amber-500/40 rounded-xl text-[11px] text-amber-300';
+        box.innerHTML = '<i class="fa-solid fa-triangle-exclamation mr-1"></i> Fecha incompleta o no válida. Escríbela como día/mes/año, por ejemplo <b>21/10/2026</b>.';
+        return;
+      }
       if (!asignada) {
         box.className = 'p-2.5 bg-gray-800/60 border border-gray-700 rounded-xl text-[11px] text-gray-300';
         box.innerHTML = '<i class="fa-solid fa-circle-info mr-1 text-sky-400"></i> Sin cliente: la cuenta quedará <b>sin asignar</b> y no usa fechas.';
@@ -8377,20 +8822,38 @@
       const correo = nfNormalizarCorreo(val('nfCorreo'));
       if (!correo) { alert('Falta el correo de la cuenta. Escríbelo o toca "Pegar".'); return; }
       if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(correo)) { alert('El correo no es válido: ' + correo); return; }
-      if (netflixCuentasAdmin.some(x => x.correo === correo && x.id !== netflixEditandoId)) { alert('Esa cuenta ya está en la lista.'); return; }
-
       const previa = netflixEditandoId ? netflixCuentasAdmin.find(x => x.id === netflixEditandoId) : null;
+      const tipoFinal = previa
+        ? (previa.tipo === 'compartida' ? 'compartida' : 'individual')
+        : ((document.getElementById('nfTipo') || {}).value === 'compartida' ? 'compartida' : 'individual');
+      // Una cuenta compartida repite el correo (un registro por perfil); una individual no
+      const repetida = netflixCuentasAdmin.some(x => x.correo === correo && x.id !== netflixEditandoId && !(previa && tipoFinal === 'compartida' && x.tipo === 'compartida'));
+      if (repetida) { alert('Esa cuenta ya está en la lista.'); return; }
+      if (!previa && tipoFinal === 'compartida') { await crearCuentaCompartida(correo, val('nfCantidad'), val('nfNotas')); return; }
+
+      let perfil = '', pin = '';
+      if (tipoFinal === 'compartida') {
+        perfil = val('nfPerfil') || (previa && previa.perfil) || 'Perfil';
+        pin = val('nfPin');
+        if (pin && !/^\d{4}$/.test(pin)) { alert('El PIN debe tener exactamente 4 números.'); return; }
+        const mismoPerfil = netflixCuentasAdmin.some(x => x.correo === correo && x.tipo === 'compartida' && x.id !== netflixEditandoId && String(x.perfil || '').toLowerCase() === perfil.toLowerCase());
+        if (mismoPerfil) { alert('Ya hay un perfil con el nombre "' + perfil + '" en esta cuenta.'); return; }
+      }
       const cliente = val('nfCliente');
       const plan = [1, 2, 3].includes(parseInt(val('nfPlan'), 10)) ? parseInt(val('nfPlan'), 10) : 1;
       const precio = Math.max(0, Math.round(Number(val('nfPrecio')) || 0));
       const wa = val('nfWhatsapp').replace(/\D/g, '');
       let inicio = val('nfInicio'), proximo = val('nfProximo');
+      const crudoDe = (id) => { const el = document.getElementById(id); return el && typeof el.textoCrudo === 'function' ? el.textoCrudo().trim() : ''; };
+      if (crudoDe('nfInicio') && !inicio) { alert('La fecha de inicio no es válida. Escríbela como día/mes/año, por ejemplo 21/10/2026.'); return; }
+      if (crudoDe('nfProximo') && !proximo) { alert('La fecha del próximo pago no es válida. Escríbela como día/mes/año, por ejemplo 21/10/2026.'); return; }
       const asignada = !!cliente || !!(previa && previa.estado === 'asignado');
 
       const datos = {
-        correo: correo, plan: plan, precio: precio, notas: val('nfNotas'),
+        correo: correo, plan: plan, precio: precio, notas: val('nfNotas'), tipo: tipoFinal,
         actualizadoEl: new Date().toISOString()
       };
+      if (tipoFinal === 'compartida') { datos.perfil = perfil; datos.pin = pin; }
 
       if (asignada) {
         if (!proximo && inicio) proximo = sumarMesesNetflix(inicio, plan);
@@ -8468,7 +8931,10 @@
       if (cliente && !inicio) return { error: 'falta la fecha de inicio (la del último pago)' };
       const proximo = inicio ? sumarMesesNetflix(inicio, plan) : '';
       const wa = (partes[5] || '').replace(/\D/g, '');
-      return { correo, cliente, plan, precio, inicio, proximo, wa };
+      const perfil = (partes[6] || '').slice(0, 30);
+      const pin = (partes[7] || '').replace(/\D/g, '');
+      if (pin && pin.length !== 4) return { error: 'el PIN debe tener 4 números' };
+      return { correo, cliente, plan, precio, inicio, proximo, wa, perfil, pin };
     }
 
     async function cargarNetflixLote() {
@@ -8477,12 +8943,18 @@
       if (!lineas.length) { alert('Pega al menos una línea.'); return; }
 
       const validas = [], errores = [];
-      const vistos = new Set(netflixCuentasAdmin.map(a => a.correo));
+      const clave = (c, pf) => c + '|' + String(pf || '').toLowerCase();
+      const vistos = new Set(netflixCuentasAdmin.map(a => clave(a.correo, a.tipo === 'compartida' ? a.perfil : '')));
+      const tipoPorCorreo = {};
+      netflixCuentasAdmin.forEach(a => { tipoPorCorreo[a.correo] = a.tipo === 'compartida' ? 'compartida' : 'individual'; });
       lineas.forEach((l, i) => {
         const r = parsearLineaNetflix(l);
         if (r.error) { errores.push(`Línea ${i + 1}: ${r.error}`); return; }
-        if (vistos.has(r.correo)) { errores.push(`Línea ${i + 1}: ${r.correo} ya existe o está repetida`); return; }
-        vistos.add(r.correo);
+        const tipoLinea = r.perfil ? 'compartida' : 'individual';
+        if (tipoPorCorreo[r.correo] && tipoPorCorreo[r.correo] !== tipoLinea) { errores.push(`Línea ${i + 1}: ${r.correo} mezcla cuenta individual y compartida`); return; }
+        if (vistos.has(clave(r.correo, r.perfil))) { errores.push(`Línea ${i + 1}: ${r.correo}${r.perfil ? ' (' + r.perfil + ')' : ''} ya existe o está repetida`); return; }
+        vistos.add(clave(r.correo, r.perfil));
+        tipoPorCorreo[r.correo] = tipoLinea;
         validas.push(r);
       });
 
@@ -8508,6 +8980,7 @@
           validas.slice(i, i + 400).forEach(v => {
             lote.set(db.collection('alquileres').doc(), {
               correo: v.correo,
+              tipo: v.perfil ? 'compartida' : 'individual', perfil: v.perfil || '', pin: v.pin || '', pinPendiente: false,
               estado: v.cliente ? 'asignado' : 'sin_asignar',
               clienteNombre: v.cliente, clienteWhatsapp: v.wa, clienteUid: '', clienteEmail: '',
               plan: v.plan, precio: v.precio,
@@ -8562,6 +9035,7 @@
     async function quitarNetflix(id) {
       const a = netflixCuentasAdmin.find(x => x.id === id);
       if (!a || a.estado !== 'asignado') return;
+      if (a.tipo === 'compartida') return noRenovoNetflix(id);
       const quien = a.clienteNombre || a.clienteEmail || 'el cliente';
       if (!await confirmarModal(`¿Quitar ${a.correo} a ${quien}? El cliente dejará de verla y de pedir códigos al instante.`, { textoAceptar: 'Sí, quitar' })) return;
 
