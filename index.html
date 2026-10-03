@@ -39,6 +39,15 @@
       border: 1px dashed #00d084;
       text-decoration: line-through;
     }
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    .admin-tab { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: .4rem; padding: .75rem .35rem; border-radius: .9rem; border-width: 1px; font-size: 11px; font-weight: 700; line-height: 1.15; text-align: center; transition: color .15s, border-color .15s, background-color .15s; }
+    .admin-tab i { font-size: 1.05rem; }
+    .admin-tab:hover { color: #fff; }
+    @media (min-width: 1024px) {
+      .admin-tab { flex-direction: row; justify-content: flex-start; gap: .7rem; padding: .7rem .85rem; font-size: 13px; text-align: left; }
+      .admin-tab i { width: 1.1rem; text-align: center; font-size: .95rem; }
+    }
     input[type=number]::-webkit-inner-spin-button,
     input[type=number]::-webkit-outer-spin-button {
       -webkit-appearance: none;
@@ -315,10 +324,7 @@
 
         <div class="flex items-center gap-2 flex-wrap">
           <button onclick="activarModoPruebaCliente()" class="px-3.5 py-2 bg-yellow-500/20 hover:bg-yellow-500/30 text-yellow-300 border border-yellow-500/40 text-xs font-bold rounded-xl flex items-center gap-1.5 transition shadow">
-            <i class="fa-solid fa-eye text-sm"></i> Ver como Cliente
-          </button>
-          <button onclick="probarTelegram()" class="px-3 py-2 bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 border border-blue-500/40 text-xs font-bold rounded-xl flex items-center gap-1.5 transition">
-            <i class="fa-brands fa-telegram text-sm"></i> Probar Admin
+            <i class="fa-solid fa-eye text-sm"></i> Ver como Cliente (simulación)
           </button>
           <button onclick="difundirStockClientes()" class="px-3 py-2 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 border border-emerald-500/40 text-xs font-bold rounded-xl flex items-center gap-1.5 transition">
             <i class="fa-solid fa-bullhorn text-sm"></i> Difundir Stock
@@ -351,18 +357,42 @@
         </div>
       </div>
 
-      <!-- Pestañas de Administración (Incluye pestaña Categorías) -->
-      <div class="flex border-b border-gray-800 gap-3 mb-6 text-sm overflow-x-auto pb-2 no-scrollbar">
-        <button onclick="cambiarTabAdmin('productos')" id="tabBtnProductos" class="pb-2 border-b-2 border-emerald-400 text-emerald-400 font-bold whitespace-nowrap">Gestión y Visibilidad</button>
-        <button onclick="cambiarTabAdmin('categorias')" id="tabBtnCategorias" class="pb-2 border-b-2 border-transparent text-gray-400 font-medium hover:text-white whitespace-nowrap">Categorías & Colores</button>
-        <button onclick="cambiarTabAdmin('usuarios')" id="tabBtnUsuarios" class="pb-2 border-b-2 border-transparent text-gray-400 font-medium hover:text-white whitespace-nowrap">Usuarios Registrados</button>
-        <button onclick="cambiarTabAdmin('stock')" id="tabBtnStock" class="pb-2 border-b-2 border-transparent text-gray-400 font-medium hover:text-white whitespace-nowrap">Cargar Cuentas (Stock)</button>
-        <button onclick="cambiarTabAdmin('apariencia')" id="tabBtnApariencia" class="pb-2 border-b-2 border-transparent text-gray-400 font-medium hover:text-white whitespace-nowrap">Apariencia y Logo</button>
-        <button onclick="cambiarTabAdmin('pagos')" id="tabBtnPagos" class="pb-2 border-b-2 border-transparent text-gray-400 font-medium hover:text-white whitespace-nowrap">Métodos de Pago & QR</button>
-        <button onclick="cambiarTabAdmin('recargas')" id="tabBtnRecargas" class="pb-2 border-b-2 border-transparent text-gray-400 font-medium hover:text-white whitespace-nowrap">Solicitudes de Saldo</button>
-        <button onclick="cambiarTabAdmin('historial')" id="tabBtnHistorial" class="pb-2 border-b-2 border-transparent text-gray-400 font-medium hover:text-white whitespace-nowrap">Historial de Ventas</button>
-        <button onclick="cambiarTabAdmin('ajustes')" id="tabBtnAjustes" class="pb-2 border-b-2 border-transparent text-gray-400 font-medium hover:text-white whitespace-nowrap">Ajustes Generales</button>
-      </div>
+      <!-- Navegación del panel: cuadrícula en móvil, barra lateral en PC -->
+      <div class="lg:grid lg:grid-cols-[230px_minmax(0,1fr)] lg:gap-6 lg:items-start">
+        <nav class="mb-6 lg:mb-0 lg:sticky lg:top-24 p-2 bg-gray-900/40 border border-gray-800 rounded-2xl">
+          <span class="hidden lg:block text-[10px] font-bold text-gray-500 uppercase tracking-wider px-2 pt-1 pb-2">Secciones</span>
+          <div class="grid grid-cols-3 lg:grid-cols-1 gap-1.5">
+          <button onclick="irATabAdmin('productos')" id="tabBtnProductos" class="admin-tab bg-gray-900 border-gray-800 text-gray-400">
+            <i class="fa-solid fa-boxes-stacked"></i><span>Gestión y Visibilidad</span><span id="badgeTabStockBajo" class="hidden absolute top-1.5 right-1.5 lg:static lg:ml-auto min-w-[18px] h-[18px] px-1 rounded-full bg-amber-500 text-black text-[10px] font-black flex items-center justify-center"></span>
+          </button>
+          <button onclick="irATabAdmin('categorias')" id="tabBtnCategorias" class="admin-tab bg-gray-900 border-gray-800 text-gray-400">
+            <i class="fa-solid fa-palette"></i><span>Categorías & Colores</span>
+          </button>
+          <button onclick="irATabAdmin('usuarios')" id="tabBtnUsuarios" class="admin-tab bg-gray-900 border-gray-800 text-gray-400">
+            <i class="fa-solid fa-users"></i><span>Usuarios Registrados</span>
+          </button>
+          <button onclick="irATabAdmin('stock')" id="tabBtnStock" class="admin-tab bg-gray-900 border-gray-800 text-gray-400">
+            <i class="fa-solid fa-key"></i><span>Cargar Cuentas (Stock)</span>
+          </button>
+          <button onclick="irATabAdmin('apariencia')" id="tabBtnApariencia" class="admin-tab bg-gray-900 border-gray-800 text-gray-400">
+            <i class="fa-solid fa-paintbrush"></i><span>Apariencia y Logo</span>
+          </button>
+          <button onclick="irATabAdmin('pagos')" id="tabBtnPagos" class="admin-tab bg-gray-900 border-gray-800 text-gray-400">
+            <i class="fa-solid fa-qrcode"></i><span>Métodos de Pago & QR</span>
+          </button>
+          <button onclick="irATabAdmin('recargas')" id="tabBtnRecargas" class="admin-tab bg-gray-900 border-gray-800 text-gray-400">
+            <i class="fa-solid fa-wallet"></i><span>Solicitudes de Saldo</span><span id="badgeTabRecargas" class="hidden absolute top-1.5 right-1.5 lg:static lg:ml-auto min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-[10px] font-black flex items-center justify-center"></span>
+          </button>
+          <button onclick="irATabAdmin('historial')" id="tabBtnHistorial" class="admin-tab bg-gray-900 border-gray-800 text-gray-400">
+            <i class="fa-solid fa-receipt"></i><span>Historial de Ventas</span>
+          </button>
+          <button onclick="irATabAdmin('ajustes')" id="tabBtnAjustes" class="admin-tab bg-gray-900 border-gray-800 text-gray-400">
+            <i class="fa-solid fa-gears"></i><span>Ajustes Generales</span>
+          </button>
+          </div>
+        </nav>
+
+        <div id="adminContenidoTabs" class="min-w-0 scroll-mt-24">
 
       <!-- TAB 1: PRODUCTOS Y VISIBILIDAD -->
       <div id="adminSecProductos" class="space-y-6">
@@ -932,6 +962,9 @@
         </div>
       </div>
 
+        </div><!-- /adminContenidoTabs -->
+      </div><!-- /navegación del panel -->
+
       <!-- ==================== SECCIÓN DE REPORTE FINANCIERO (ABAJO) ==================== -->
       <div class="mt-10 pt-6 border-t border-gray-800">
         <div class="bg-gray-900 border border-emerald-500/30 rounded-2xl p-5 shadow-xl">
@@ -1026,16 +1059,25 @@
 
   <!-- ==================== BOTÓN FLOTANTE MODO PRUEBA CLIENTE ==================== -->
   <div id="btnFlotanteModoCliente" class="fixed top-20 left-4 z-40 hidden">
-    <button onclick="salirModoPruebaCliente()" class="flex items-center gap-1.5 bg-yellow-500 hover:bg-yellow-400 text-black font-black px-3 py-2 rounded-xl shadow-2xl transition text-xs">
-      <i class="fa-solid fa-arrow-rotate-left"></i> Salir Vista Cliente
-    </button>
+    <div class="flex items-center gap-2 bg-gray-900/95 border border-yellow-500/60 rounded-xl p-1.5 pl-3 shadow-2xl">
+      <div class="leading-tight">
+        <span class="text-[9px] font-black text-yellow-400 block tracking-wider">MODO SIMULACIÓN</span>
+        <span id="txtSaldoSimulado" class="text-xs font-black text-white">$1.000.000</span>
+      </div>
+      <button onclick="reiniciarSaldoSimulado()" title="Volver a $1.000.000" class="w-8 h-8 rounded-lg bg-gray-800 hover:bg-gray-700 text-yellow-400 text-xs flex items-center justify-center">
+        <i class="fa-solid fa-rotate"></i>
+      </button>
+      <button onclick="salirModoPruebaCliente()" class="flex items-center gap-1.5 bg-yellow-500 hover:bg-yellow-400 text-black font-black px-3 py-2 rounded-lg transition text-xs">
+        <i class="fa-solid fa-arrow-rotate-left"></i> Salir
+      </button>
+    </div>
   </div>
 
   <!-- ==================== BOTONES FLOTANTES INFERIORES DERECHOS ==================== -->
   <div class="fixed bottom-5 right-5 z-40 flex flex-col gap-2.5 items-end">
     
     <!-- BOTÓN BOT TELEGRAM -->
-    <div id="btnFlotanteTelegramBot" class="hidden">
+    <div id="btnFlotanteTelegramBot" class="hidden" style="display:none !important;">
       <a id="linkFlotanteTelegramBot" href="https://t.me/epic_ventas_bot" target="_blank" title="Consulta stock en vivo y cuentas entregadas" class="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white font-black px-4 py-3 rounded-full shadow-2xl shadow-blue-600/30 transition transform hover:scale-105">
         <i class="fa-brands fa-telegram text-xl"></i>
         <span class="text-[11px] uppercase tracking-wider">Bot Stock / Cuentas</span>
@@ -1514,6 +1556,9 @@
       </div>
       <h3 class="text-xl font-black text-white mb-1">¡Compra Exitosa!</h3>
       <p class="text-xs text-gray-400 mb-3">Tus cuentas han sido entregadas y archivadas en tu panel.</p>
+      <div id="avisoEntregaSimulada" class="hidden mb-3 p-2.5 rounded-xl bg-yellow-500/10 border border-yellow-500/40 text-yellow-300 text-[11px] font-bold">
+        🧪 Compra simulada: no se descontó stock ni saldo real, no se guardó la venta y no se envió nada a Telegram. Las cuentas son de ejemplo.
+      </div>
 
       <div class="bg-gray-800 border border-gray-700 p-4 rounded-xl text-left font-mono text-xs text-gray-200 break-all mb-3 select-all max-h-48 overflow-y-auto whitespace-pre-line leading-relaxed" id="txtEntregaCredenciales"></div>
 
@@ -3423,7 +3468,7 @@
             userPermisosSubirStock = [];
             db.collection('usuarios').doc(user.uid).set({ email: user.email, saldo: 0, productos_permitidos: [], productos_bloqueados: [], permisos_subir_stock: [], notificacion_borrada: false, primer_ingreso: new Date().toISOString() }, { merge: true });
           }
-          document.getElementById('txtSaldoHeader').innerText = `$${userSaldo.toLocaleString('es-CO')} COP`;
+          actualizarSaldoHeader();
           renderizarCatalogo();
           poblarSelectStock();
         });
@@ -3447,18 +3492,106 @@
       }
     });
 
+    // ==================== MODO CLIENTE SIMULADO ====================
+    const SALDO_SIMULADO_INICIAL = 1000000;
+    let saldoSimulado = SALDO_SIMULADO_INICIAL;
+    let comprasSimuladas = [];
+
+    function actualizarSaldoHeader() {
+      const el = document.getElementById('txtSaldoHeader');
+      if (el) el.innerText = `$${(modoPruebaCliente ? saldoSimulado : userSaldo).toLocaleString('es-CO')} COP`;
+      const caja = document.getElementById('navSaldoDirecto');
+      if (caja) {
+        caja.classList.toggle('border-yellow-500', modoPruebaCliente);
+        caja.classList.toggle('border-gray-700', !modoPruebaCliente);
+      }
+      const sim = document.getElementById('txtSaldoSimulado');
+      if (sim) sim.innerText = `$${saldoSimulado.toLocaleString('es-CO')}`;
+    }
+
     function activarModoPruebaCliente() {
       modoPruebaCliente = true;
+      saldoSimulado = SALDO_SIMULADO_INICIAL; // cada activación arranca con $1.000.000
+      comprasSimuladas = [];
       document.getElementById('btnAdminTab').classList.add('hidden');
       document.getElementById('btnFlotanteModoCliente').classList.remove('hidden');
+      actualizarSaldoHeader();
       cambiarVista('tienda');
+      mostrarToast('Modo simulación: $1.000.000 de saldo de prueba. Nada real se modifica.');
     }
 
     function salirModoPruebaCliente() {
       modoPruebaCliente = false;
+      comprasSimuladas = [];
+      saldoSimulado = SALDO_SIMULADO_INICIAL;
       document.getElementById('btnAdminTab').classList.remove('hidden');
       document.getElementById('btnFlotanteModoCliente').classList.add('hidden');
+      actualizarSaldoHeader();
       cambiarVista('admin');
+    }
+
+    function reiniciarSaldoSimulado() {
+      if (!modoPruebaCliente) return;
+      saldoSimulado = SALDO_SIMULADO_INICIAL;
+      actualizarSaldoHeader();
+      mostrarToast('Saldo simulado restablecido a $1.000.000.');
+    }
+
+    // Simula una compra completa sin escribir en Firestore ni enviar nada a Telegram
+    function comprarProductoSimulado(docId) {
+      try {
+        const prodInfo = catalogoUnificado.find(p => p.docId === docId) || {};
+        const minRequerido = prodInfo.minCompra || 5;
+        const inputCant = document.getElementById('cant_' + docId);
+        const cantidad = inputCant ? (parseInt(inputCant.value) || minRequerido) : minRequerido;
+        const cuentasReales = Array.isArray(prodInfo.cuentas) ? prodInfo.cuentas : [];
+
+        if (cuentasReales.length < cantidad) { alert(`Stock insuficiente. Solo quedan ${cuentasReales.length} cuentas disponibles.`); return; }
+        if (cuentasReales.length >= minRequerido && cantidad < minRequerido) { alert(`La compra mínima es de ${minRequerido} cuentas.`); return; }
+
+        const precioUnitario = prodInfo.precio || 0;
+        const totalPagar = precioUnitario * cantidad;
+        if (saldoSimulado < totalPagar) {
+          abrirModalSaldoInsuficiente(`(Simulación) Saldo insuficiente. Tienes $${saldoSimulado.toLocaleString('es-CO')} y el total es $${totalPagar.toLocaleString('es-CO')}.`);
+          return;
+        }
+
+        saldoSimulado -= totalPagar;
+
+        // Cuentas de ejemplo (respetan la contraseña de acceso real del lote para que el mensaje sea fiel)
+        const cuentasDemo = cuentasReales.slice(0, cantidad).map((raw, i) => {
+          const c = parseCredencialObj(raw);
+          const demo = { email: `cliente.demo${i + 1}@ejemplo.com`, pass: `Demo${1000 + i}` };
+          if (c.claveAcceso) demo.claveAcceso = c.claveAcceso;
+          return demo;
+        });
+
+        const texto = construirFormatoEntrega(cuentasDemo, prodInfo, { total: totalPagar, saldo: saldoSimulado, cliente: currentUser.email });
+
+        comprasSimuladas.unshift({
+          id: 'sim_' + Date.now(),
+          simulada: true,
+          productoId: docId,
+          productoNombre: prodInfo.nombre || docId,
+          categoria: prodInfo.categoria || 'Streaming',
+          cantidad,
+          total: totalPagar,
+          credenciales: cuentasDemo.map(c => `${c.email}:${c.pass}`).join('\n'),
+          claveAcceso: resolverClaveAccesoCuentas(cuentasDemo),
+          tipoGarantia: prodInfo.tipoGarantia || '',
+          fecha: new Date().toISOString()
+        });
+
+        actualizarSaldoHeader();
+        document.getElementById('txtEntregaCredenciales').innerText = texto;
+        const aviso = document.getElementById('avisoEntregaSimulada');
+        if (aviso) aviso.classList.remove('hidden');
+        const modalE = document.getElementById('modalEntrega');
+        modalE.classList.remove('hidden');
+        modalE.style.display = 'flex';
+      } catch (e) {
+        alert('Error en la simulación: ' + e.message);
+      }
     }
 
     // ==================== NOTIFICACIONES (CLIENTE) ====================
@@ -3787,25 +3920,49 @@
       }
     }
 
+    const CLASES_TAB_INACTIVA = ['bg-gray-900', 'border-gray-800', 'text-gray-400'];
+    const CLASES_TAB_ACTIVA = ['bg-emerald-500/10', 'border-emerald-500/40', 'text-emerald-400'];
+    let unsubBadgeRecargas = null;
+
+    function iniciarBadgesAdmin() {
+      if (unsubBadgeRecargas) return;
+      try {
+        unsubBadgeRecargas = db.collection('recargas').where('estado', '==', 'pendiente').onSnapshot(snap => {
+          const b = document.getElementById('badgeTabRecargas');
+          if (!b) return;
+          b.innerText = snap.size > 9 ? '9+' : String(snap.size);
+          b.classList.toggle('hidden', snap.size === 0);
+        }, err => console.warn('Badge de recargas no disponible:', err));
+      } catch (e) {
+        console.warn(e);
+      }
+    }
+
+    // Desde los botones: cambia de sección y en móvil baja al contenido
+    function irATabAdmin(tab) {
+      cambiarTabAdmin(tab);
+      if (window.innerWidth < 1024) {
+        const cont = document.getElementById('adminContenidoTabs');
+        if (cont) cont.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }
+
     function cambiarTabAdmin(tab) {
       if (modoPruebaCliente) return;
+      iniciarBadgesAdmin();
       const tabs = ['productos', 'categorias', 'usuarios', 'stock', 'apariencia', 'pagos', 'recargas', 'historial', 'ajustes'];
       tabs.forEach(t => {
-        const sec = document.getElementById('adminSec' + t.charAt(0).toUpperCase() + t.slice(1));
-        const btn = document.getElementById('tabBtn' + t.charAt(0).toUpperCase() + t.slice(1));
-        if (sec) sec.classList.add('hidden');
+        const nombre = t.charAt(0).toUpperCase() + t.slice(1);
+        const sec = document.getElementById('adminSec' + nombre);
+        const btn = document.getElementById('tabBtn' + nombre);
+        const activo = t === tab;
+        if (sec) sec.classList.toggle('hidden', !activo);
         if (btn) {
-          btn.classList.remove('border-emerald-400', 'text-emerald-400');
-          btn.classList.add('border-transparent', 'text-gray-400');
+          CLASES_TAB_ACTIVA.forEach(c => btn.classList.toggle(c, activo));
+          CLASES_TAB_INACTIVA.forEach(c => btn.classList.toggle(c, !activo));
+          btn.setAttribute('aria-current', activo ? 'page' : 'false');
         }
       });
-      const secActual = document.getElementById('adminSec' + tab.charAt(0).toUpperCase() + tab.slice(1));
-      const btnActual = document.getElementById('tabBtn' + tab.charAt(0).toUpperCase() + tab.slice(1));
-      if (secActual) secActual.classList.remove('hidden');
-      if (btnActual) {
-        btnActual.classList.remove('border-transparent', 'text-gray-400');
-        btnActual.classList.add('border-emerald-400', 'text-emerald-400');
-      }
 
       if (tab === 'productos') renderizarAdminProductos();
       if (tab === 'categorias') renderizarAdminCategoriasColores();
@@ -4370,6 +4527,7 @@
 
     async function comprarProducto(docId) {
       if (!currentUser) { abrirModalAuth('login'); return; }
+      if (modoPruebaCliente) { comprarProductoSimulado(docId); return; }
 
       const prodInfo = catalogoUnificado.find(p => p.docId === docId) || {};
       const minRequerido = prodInfo.minCompra || 5;
@@ -4548,6 +4706,13 @@
           } else {
             conteoEl.classList.add('hidden');
           }
+        }
+
+        const badgeTab = document.getElementById('badgeTabStockBajo');
+        if (badgeTab) {
+          badgeTab.innerText = conteoBajo;
+          badgeTab.title = `${conteoBajo} producto(s) con stock bajo`;
+          badgeTab.classList.toggle('hidden', conteoBajo === 0);
         }
 
         filtrarTablaProductosAdmin();
@@ -5402,6 +5567,11 @@
     async function reportarRecarga(e) {
       e.preventDefault();
       if (!currentUser) return;
+      if (modoPruebaCliente) {
+        cerrarModalRecarga();
+        mostrarToast('Simulación: no se reporta la recarga. Usa el botón ⟳ para volver a $1.000.000.');
+        return;
+      }
       const monto = parseFloat(document.getElementById('recargaMonto').value);
       const minPermitido = ajustesGeneralesConfig.minRecarga || 5000;
 
@@ -5526,7 +5696,7 @@
       setTxt('perfilAvatar', inicial);
       setTxt('perfilNombreTitulo', nombre || 'Sin nombre');
       setTxt('perfilEmailTitulo', email);
-      setTxt('perfilStatSaldo', formatoCOP(userSaldo));
+      setTxt('perfilStatSaldo', formatoCOP(modoPruebaCliente ? saldoSimulado : userSaldo));
 
       let desde = '';
       const fechaReg = d.fechaRegistro || d.primer_ingreso;
@@ -5776,6 +5946,7 @@
     function reclamarGarantiaCompra(idx) {
       const c = misComprasPerfilCache[idx];
       if (!c) return;
+      if (c.simulada) { mostrarToast('Simulación: aquí el cliente abriría WhatsApp para reclamar.'); return; }
       const g = estadoGarantiaCompra(c);
       if (g.estado !== 'vigente') {
         alert('La garantía de esta compra ya no está vigente.');
@@ -5891,9 +6062,13 @@
       contenedor.innerHTML = `<p class="text-gray-500 text-center py-8 text-xs"><i class="fa-solid fa-spinner fa-spin text-emerald-400 mr-2"></i>Cargando tus compras...</p>`;
 
       try {
-        const snap = await db.collection('compras').where('usuarioId', '==', currentUser.uid).get();
         misComprasPerfilCache = [];
-        snap.forEach(d => misComprasPerfilCache.push({ id: d.id, ...d.data() }));
+        if (modoPruebaCliente) {
+          misComprasPerfilCache = comprasSimuladas.map(c => ({ ...c }));
+        } else {
+          const snap = await db.collection('compras').where('usuarioId', '==', currentUser.uid).get();
+          snap.forEach(d => misComprasPerfilCache.push({ id: d.id, ...d.data() }));
+        }
         misComprasPerfilCache.sort((a, b) => (new Date(b.fecha).getTime() || 0) - (new Date(a.fecha).getTime() || 0));
 
         const totalCuentas = misComprasPerfilCache.reduce((s, c) => s + (parseInt(c.cantidad) || 0), 0);
@@ -6082,7 +6257,12 @@
     function cerrarSesion() { auth.signOut().then(() => bloquearAccesoVisitante()); }
     function abrirModalRecarga() { if (!currentUser) { abrirModalAuth('login'); return; } document.getElementById('modalRecarga').classList.remove('hidden'); document.getElementById('modalRecarga').style.display = 'flex'; }
     function cerrarModalRecarga() { document.getElementById('modalRecarga').classList.add('hidden'); document.getElementById('modalRecarga').style.display = 'none'; }
-    function cerrarModalEntrega() { document.getElementById('modalEntrega').classList.add('hidden'); document.getElementById('modalEntrega').style.display = 'none'; }
+    function cerrarModalEntrega() {
+      document.getElementById('modalEntrega').classList.add('hidden');
+      document.getElementById('modalEntrega').style.display = 'none';
+      const aviso = document.getElementById('avisoEntregaSimulada');
+      if (aviso) aviso.classList.add('hidden');
+    }
 
     window.addEventListener('DOMContentLoaded', () => { iniciarSincronizacionTotal(); });
   </script>
