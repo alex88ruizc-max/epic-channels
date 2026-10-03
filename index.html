@@ -17,16 +17,76 @@
   <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
 
   <script>
-    tailwind.config = {
-      darkMode: 'class',
-      theme: {
-        extend: {
-          colors: {
-            brand: { 500: '#00D084', 600: '#00B070', dark: '#0b0f19', card: '#111827' }
+    if (window.tailwind) {
+      tailwind.config = {
+        darkMode: 'class',
+        theme: {
+          extend: {
+            colors: {
+              brand: { 500: '#00D084', 600: '#00B070', dark: '#0b0f19', card: '#111827' }
+            }
           }
         }
+      };
+    }
+  </script>
+
+  <!-- RESPALDO DE ESTILOS: si Tailwind no carga (bloqueado o sin conexión) se intenta otra copia y, si tampoco, se muestra un aviso claro en vez de la página rota -->
+  <script>
+    (function () {
+      var avisoMostrado = false;
+
+      function verificar(cb) {
+        try {
+          var t = document.createElement('div');
+          t.className = 'hidden';
+          (document.body || document.documentElement).appendChild(t);
+          setTimeout(function () {
+            var ok = false;
+            try { ok = window.getComputedStyle(t).display === 'none'; } catch (e) { ok = true; }
+            if (t.parentNode) t.parentNode.removeChild(t);
+            cb(ok);
+          }, 300);
+        } catch (e) { cb(true); }
       }
-    };
+
+      function mostrarAviso() {
+        if (avisoMostrado || document.getElementById('avisoSinEstilos')) return;
+        avisoMostrado = true;
+        var d = document.createElement('div');
+        d.id = 'avisoSinEstilos';
+        d.setAttribute('style', 'position:fixed;top:0;left:0;right:0;bottom:0;z-index:2147483647;background:#0b0f19;color:#f3f4f6;font-family:system-ui,-apple-system,sans-serif;display:flex;align-items:center;justify-content:center;padding:20px;overflow:auto;');
+        d.innerHTML =
+          '<div style="max-width:420px;width:100%;text-align:center;">' +
+          '<div style="font-size:42px;margin-bottom:8px;">⚠️</div>' +
+          '<h2 style="margin:0 0 10px;font-size:20px;font-weight:800;">No se pudo cargar el diseño de la página</h2>' +
+          '<p style="margin:0 0 14px;font-size:14px;color:#9ca3af;line-height:1.5;">Tu navegador o tu red está bloqueando una parte de la página. No es un problema de tu cuenta.</p>' +
+          '<div style="text-align:left;background:#111827;border:1px solid #1f2937;border-radius:14px;padding:14px 16px;font-size:13px;color:#d1d5db;line-height:1.6;margin-bottom:16px;">' +
+          '<b>Prueba esto:</b><br>• Toca <b>Reintentar</b>.<br>• Desactiva el bloqueador de anuncios o el filtro de red para este sitio.<br>• Abre la página en Chrome o usa datos móviles en vez del wifi.</div>' +
+          '<button id="btnReintentarEstilos" style="width:100%;background:#00d084;color:#000;border:0;border-radius:12px;padding:12px;font-size:14px;font-weight:800;cursor:pointer;margin-bottom:10px;">Reintentar</button>' +
+          '<a href="https://wa.me/573043956726?text=Hola%2C%20la%20p%C3%A1gina%20no%20me%20carga%20bien%20(se%20ve%20sin%20dise%C3%B1o)." target="_blank" rel="noopener" style="display:block;background:#1f2937;color:#e5e7eb;border-radius:12px;padding:11px;font-size:13px;font-weight:700;text-decoration:none;margin-bottom:12px;">Escribir a soporte por WhatsApp</a>' +
+          '<a href="#" id="lnkContinuarSinEstilos" style="font-size:11px;color:#6b7280;">Continuar de todos modos</a>' +
+          '</div>';
+        (document.body || document.documentElement).appendChild(d);
+        document.getElementById('btnReintentarEstilos').onclick = function () { location.reload(); };
+        document.getElementById('lnkContinuarSinEstilos').onclick = function (e) { e.preventDefault(); d.parentNode.removeChild(d); };
+      }
+
+      function cargarRespaldo() {
+        var s = document.createElement('script');
+        s.src = 'https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4';
+        s.onload = function () { setTimeout(function () { verificar(function (ok) { if (!ok) mostrarAviso(); }); }, 500); };
+        s.onerror = mostrarAviso;
+        document.head.appendChild(s);
+      }
+
+      function iniciar() {
+        verificar(function (ok) { if (!ok) cargarRespaldo(); });
+      }
+
+      if (document.readyState === 'complete') setTimeout(iniciar, 500);
+      else window.addEventListener('load', function () { setTimeout(iniciar, 500); });
+    })();
   </script>
 
   <style>
@@ -350,6 +410,7 @@
         <p><span class="text-red-400 font-bold">1.</span> En Netflix elige "Enviar código" o "Estoy de viaje" / "Actualizar Hogar".</p>
         <p><span class="text-red-400 font-bold">2.</span> Espera unos 30 a 60 segundos y toca <b>Ver código</b> en la cuenta correspondiente.</p>
         <p><span class="text-red-400 font-bold">3.</span> Los enlaces de Netflix duran 15 minutos. Si venció tu cuenta, renueva para volver a pedir códigos.</p>
+        <p><span class="text-red-400 font-bold">4.</span> ¿Olvidaste la contraseña? En Netflix elige "Olvidé mi contraseña", espera y toca <b>Ver código</b>: aparecerá el enlace para restablecerla.</p>
       </div>
 
       <div id="listaNetflixCliente" class="space-y-4">
@@ -1566,24 +1627,40 @@
 
   <!-- MODAL: EDITAR CLIENTE -->
   <div id="modalEditarCliente" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
-    <div class="bg-gray-900 border border-emerald-500/40 rounded-2xl max-w-sm w-full p-6 relative shadow-2xl">
+    <div class="bg-gray-900 border border-emerald-500/40 rounded-2xl max-w-sm w-full p-6 relative shadow-2xl max-h-[92vh] overflow-y-auto">
       <button onclick="cerrarModalEditarCliente()" class="absolute top-4 right-4 text-gray-400 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
       <div class="w-12 h-12 bg-emerald-500/10 text-emerald-400 rounded-2xl flex items-center justify-center mb-3 text-xl">
         <i class="fa-solid fa-user-pen"></i>
       </div>
-      <h3 class="text-base font-black text-white mb-1">Editar Cliente / Contraseña</h3>
+      <h3 class="text-base font-black text-white mb-1">Editar cliente</h3>
       <p id="txtEditarClienteEmail" class="text-xs text-emerald-400 font-mono mb-4 break-all">cliente@ejemplo.com</p>
-      
-      <form onsubmit="guardarEdicionCliente(event)" class="space-y-3">
+
+      <form onsubmit="guardarEdicionCliente(event)" class="space-y-3" novalidate autocomplete="off">
+        <div>
+          <label class="block text-xs text-gray-400 mb-1">Correo de acceso</label>
+          <input type="text" inputmode="email" id="editClienteEmail" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" data-lpignore="true" placeholder="cliente@correo.com" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white font-mono focus:outline-none">
+          <p id="editClienteEmailAviso" class="text-[10px] text-amber-300 mt-1 hidden"></p>
+        </div>
         <div>
           <label class="block text-xs text-gray-400 mb-1">Nombre o Alias</label>
-          <input type="text" id="editClienteNombre" placeholder="Ej: Juan Pérez" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none">
+          <input type="text" id="editClienteNombre" autocomplete="off" data-lpignore="true" placeholder="Ej: Juan Pérez" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none">
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block text-xs text-gray-400 mb-1">WhatsApp</label>
+            <input type="tel" id="editClienteWhatsapp" autocomplete="off" data-lpignore="true" placeholder="3001234567" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none">
+          </div>
+          <div>
+            <label class="block text-xs text-gray-400 mb-1">Saldo (COP)</label>
+            <input type="number" id="editClienteSaldo" min="0" step="500" placeholder="0" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none">
+          </div>
         </div>
         <div>
-          <label class="block text-xs text-gray-400 mb-1">Nueva Contraseña (Opcional)</label>
-          <input type="text" id="editClientePassword" placeholder="Déjalo vacío para no cambiarla" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white font-mono focus:outline-none">
+          <label class="block text-xs text-gray-400 mb-1">Nueva contraseña (opcional)</label>
+          <input type="text" id="editClientePassword" autocomplete="off" data-lpignore="true" placeholder="Déjalo vacío para no cambiarla" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white font-mono focus:outline-none">
+          <p class="text-[10px] text-gray-500 mt-1">Si cambias el correo o la contraseña, el cliente entra con los datos nuevos.</p>
         </div>
-        <button type="submit" class="w-full bg-emerald-500 hover:bg-emerald-400 text-black font-bold py-2.5 rounded-xl text-xs transition mt-2">Guardar Cambios</button>
+        <button type="submit" id="btnGuardarEdicionCliente" class="w-full bg-emerald-500 hover:bg-emerald-400 text-black font-bold py-2.5 rounded-xl text-xs transition mt-2">Guardar cambios</button>
       </form>
     </div>
   </div>
@@ -2699,10 +2776,11 @@
       
       const actualizarLatido = async () => {
         try {
-          await db.collection('usuarios').doc(user.uid).set({
+          // update (no set): si la ficha aún no existe, no crea una ficha vacía
+          await db.collection('usuarios').doc(user.uid).update({
             ultima_conexion: new Date().toISOString()
-          }, { merge: true });
-        } catch (e) { console.error(e); }
+          });
+        } catch (e) { console.warn('Latido de conexión no registrado:', e && e.code ? e.code : e); }
       };
 
       actualizarLatido();
@@ -3940,6 +4018,16 @@
               notificarInicioSesionTelegram(user.email, userSaldo);
             }
 
+            // Ficha incompleta (sin correo): se completa sola
+            if (!dataU.email && user.email) {
+              const reparar = { email: user.email };
+              if (dataU.saldo === undefined) reparar.saldo = 0;
+              if (dataU.productos_permitidos === undefined) reparar.productos_permitidos = [];
+              if (dataU.productos_bloqueados === undefined) reparar.productos_bloqueados = [];
+              if (dataU.permisos_subir_stock === undefined) reparar.permisos_subir_stock = [];
+              db.collection('usuarios').doc(user.uid).set(reparar, { merge: true }).catch(e => console.warn('No se pudo completar la ficha:', e));
+            }
+
             let primerIngreso = dataU.primer_ingreso;
             if (!primerIngreso) {
               primerIngreso = new Date().toISOString();
@@ -4548,6 +4636,10 @@
       if (!currentUser) { bloquearAccesoVisitante(); return; }
       
       if (modoPruebaCliente && vista === 'admin') {
+        vista = 'tienda';
+      }
+      // Aunque el botón se viera por un fallo de estilos, un cliente no puede abrir el panel de administración
+      if (vista === 'admin' && !esAdminSesionActual()) {
         vista = 'tienda';
       }
 
@@ -5957,7 +6049,7 @@
             const permitidos = u.productos_permitidos || [];
             const bloqueados = u.productos_bloqueados || [];
             const stockPermitidos = u.permisos_subir_stock || [];
-            const nombreCliente = u.nombre ? `<span class="font-bold text-white block">${u.nombre}</span><span class="text-[11px] text-gray-400 font-mono">${u.email || ''}</span>` : `<span class="font-bold text-white block">${u.email || ''}</span>`;
+            const nombreCliente = u.nombre ? `<span class="font-bold text-white block">${u.nombre}</span><span class="text-[11px] text-gray-400 font-mono">${u.email || ''}</span>` : (u.email ? `<span class="font-bold text-white block">${u.email}</span>` : `<span class="font-bold text-amber-300 block"><i class="fa-solid fa-triangle-exclamation mr-1"></i>Ficha incompleta (sin correo)</span><span class="text-[10px] text-gray-500 font-mono block">${uid}</span>`);
 
             let fechaRegStr = 'N/A';
             if (u.fechaRegistro) {
@@ -6064,14 +6156,55 @@
       }
     }
 
-    function abrirModalEditarCliente(uid, email, nombreActual) {
+    let editClienteOriginal = null;
+
+    async function abrirModalEditarCliente(uid, email, nombreActual) {
       clienteEditarUidActual = uid;
-      document.getElementById('txtEditarClienteEmail').innerText = email;
-      document.getElementById('editClienteNombre').value = nombreActual || '';
-      document.getElementById('editClientePassword').value = '';
+      editClienteOriginal = { email: email || '', nombre: nombreActual || '', whatsapp: '', saldo: 0, perfilCompleto: !!email };
+      const set = (id, v) => { const el = document.getElementById(id); if (el) el.value = v; };
+      const aviso = document.getElementById('editClienteEmailAviso');
+      document.getElementById('txtEditarClienteEmail').innerText = email || '(ficha sin correo)';
+      set('editClienteEmail', email || '');
+      set('editClienteNombre', nombreActual || '');
+      set('editClienteWhatsapp', '');
+      set('editClienteSaldo', '');
+      set('editClientePassword', '');
+      if (aviso) { aviso.classList.add('hidden'); aviso.innerText = ''; }
       const modal = document.getElementById('modalEditarCliente');
       modal.classList.remove('hidden');
       modal.style.display = 'flex';
+
+      try {
+        const doc = await db.collection('usuarios').doc(uid).get();
+        if (clienteEditarUidActual !== uid) return;
+        const d = doc.exists ? (doc.data() || {}) : {};
+        editClienteOriginal = {
+          email: d.email || '', nombre: d.nombre || '',
+          whatsapp: whatsappEsVacio(d.whatsapp) ? '' : String(d.whatsapp),
+          saldo: Number(d.saldo) || 0, perfilCompleto: !!d.email
+        };
+        set('editClienteEmail', editClienteOriginal.email);
+        set('editClienteNombre', editClienteOriginal.nombre);
+        set('editClienteWhatsapp', editClienteOriginal.whatsapp);
+        set('editClienteSaldo', String(editClienteOriginal.saldo));
+        document.getElementById('txtEditarClienteEmail').innerText = editClienteOriginal.email || '(ficha sin correo)';
+
+        // Ficha incompleta ("usuario anónimo"): se trae el correo real desde el sistema de acceso
+        if (!d.email) {
+          if (aviso) { aviso.classList.remove('hidden'); aviso.innerText = 'Esta ficha no tiene correo guardado.'; }
+          if (obtenerBackendUrl()) {
+            try {
+              const r = await llamarBackend('admin_usuario_ver', { uid: uid });
+              if (clienteEditarUidActual === uid && r && r.ok && r.authEmail) {
+                set('editClienteEmail', r.authEmail);
+                if (aviso) aviso.innerText = 'Correo tomado del acceso del usuario. Toca Guardar para completar la ficha.';
+              }
+            } catch (e) { console.warn('No se pudo consultar el acceso:', e); }
+          }
+        }
+      } catch (err) {
+        console.warn('No se pudo cargar la ficha completa:', err);
+      }
     }
 
     function cerrarModalEditarCliente() {
@@ -6084,22 +6217,58 @@
     async function guardarEdicionCliente(e) {
       e.preventDefault();
       if (!clienteEditarUidActual) return;
-      const nuevoNombre = document.getElementById('editClienteNombre').value.trim();
-      const nuevaPassword = document.getElementById('editClientePassword').value.trim();
+      const uid = clienteEditarUidActual;
+      const val = (id) => ((document.getElementById(id) || {}).value || '').trim();
+      const orig = editClienteOriginal || {};
 
+      const nuevoEmail = nfNormalizarCorreo(val('editClienteEmail'));
+      const nombre = val('editClienteNombre');
+      const wa = val('editClienteWhatsapp').replace(/\D/g, '');
+      const password = val('editClientePassword');
+      const saldoTxt = val('editClienteSaldo');
+
+      if (!nuevoEmail) { alert('El correo de acceso no puede quedar vacío.'); return; }
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(nuevoEmail)) { alert('El correo no es válido: ' + nuevoEmail); return; }
+      if (password && password.length < 6) { alert('La contraseña nueva debe tener al menos 6 caracteres.'); return; }
+      let nuevoSaldo = null;
+      if (saldoTxt !== '') {
+        nuevoSaldo = Math.round(Number(saldoTxt));
+        if (!isFinite(nuevoSaldo) || nuevoSaldo < 0) { alert('El saldo debe ser un número válido (0 o más).'); return; }
+      }
+
+      const correoAnterior = String(orig.email || '').toLowerCase();
+      const cambiaCorreo = nuevoEmail !== correoAnterior;
+      const cambiaSaldo = nuevoSaldo !== null && nuevoSaldo !== (Number(orig.saldo) || 0);
+
+      if ((cambiaCorreo || password) && !obtenerBackendUrl()) {
+        alert('Para cambiar el correo o la contraseña de un cliente necesitas tener configurado el servidor seguro (Ajustes → Seguridad).');
+        return;
+      }
+      if (correoAnterior && cambiaCorreo && !await confirmarModal(`¿Cambiar el correo de ${orig.email} a ${nuevoEmail}?\n\nEl cliente deberá entrar con el correo nuevo.`, { tipo: 'pregunta', textoAceptar: 'Sí, cambiar' })) return;
+      if (cambiaSaldo && !await confirmarModal(`¿Cambiar el saldo de ${formatoCOP(orig.saldo || 0)} a ${formatoCOP(nuevoSaldo)} COP?`, { tipo: 'pregunta', textoAceptar: 'Sí, cambiar saldo' })) return;
+
+      const btn = document.getElementById('btnGuardarEdicionCliente');
+      if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Guardando...'; }
       try {
-        const updateData = { nombre: nuevoNombre };
-        await db.collection('usuarios').doc(clienteEditarUidActual).set(updateData, { merge: true });
-
-        if (nuevaPassword.length >= 6) {
-          mostrarToast("¡Perfil actualizado con éxito! (Clave modificable por el usuario)");
+        if (cambiaCorreo || password || !orig.perfilCompleto) {
+          // Correo y contraseña se cambian en el sistema de acceso (solo el servidor puede hacerlo)
+          const r = await conTiempo(llamarBackend('admin_usuario_editar', {
+            uid: uid, email: nuevoEmail, password: password, nombre: nombre, whatsapp: wa
+          }), 40000, 'El servidor tardó demasiado. Intenta de nuevo.');
+          if (!r.ok) { alert(r.error || 'No se pudo guardar el cambio.'); return; }
         } else {
-          mostrarToast("¡Perfil de cliente actualizado con éxito!");
+          await db.collection('usuarios').doc(uid).set({ nombre: nombre, whatsapp: wa || 'Sin WhatsApp' }, { merge: true });
         }
-
+        if (cambiaSaldo) {
+          await db.collection('usuarios').doc(uid).set({ saldo: nuevoSaldo }, { merge: true });
+        }
+        usuariosNetflixCache = null;
+        mostrarToast(password ? '¡Cliente actualizado! Recuerda pasarle la contraseña nueva.' : '¡Cliente actualizado con éxito!');
         cerrarModalEditarCliente();
       } catch (err) {
-        alert("Error al actualizar cliente: " + err.message);
+        alert('Error al actualizar cliente: ' + err.message);
+      } finally {
+        if (btn) { btn.disabled = false; btn.innerHTML = 'Guardar cambios'; }
       }
     }
 
@@ -6288,6 +6457,7 @@
       let secondaryApp = null;
       let secondaryAuth = null;
       let recuperada = false;
+      let perfilGuardado = false;
 
       try {
         // Instancia secundaria temporal: la sesión del admin (auth principal) no se toca
@@ -6305,17 +6475,24 @@
           uid = cred.user.uid;
         } catch (errCrear) {
           if (errCrear.code !== 'auth/email-already-in-use') throw errCrear;
-          // El acceso ya existe. ¿Tiene ficha en el panel?
-          const existente = await buscarPerfilPorEmail(email);
-          if (existente) throw Object.assign(new Error('ya-en-panel'), { code: 'ya-en-panel' });
-          // Acceso creado a medias en un intento anterior: se recupera con la misma contraseña
-          try {
-            const ingreso = await conTiempo(secondaryAuth.signInWithEmailAndPassword(email, password), 30000, 'La conexión está lenta.');
-            uid = ingreso.user.uid;
-            recuperada = true;
-          } catch (errIngreso) {
-            if (errIngreso.code === 'timeout') throw errIngreso;
-            throw Object.assign(new Error('huerfano'), { code: 'huerfano' });
+          if (obtenerBackendUrl()) {
+            // El servidor encuentra el acceso aunque no se sepa su contraseña y completa la ficha
+            const rec = await conTiempo(llamarBackend('admin_usuario_recuperar', { email: email, password: password, nombre: nombre, whatsapp: whatsapp }), 40000, 'La conexión está lenta.');
+            if (rec.ok) { uid = rec.uid; recuperada = true; perfilGuardado = true; }
+            else if (rec.codigo === 'YA_EN_PANEL') throw Object.assign(new Error('ya-en-panel'), { code: 'ya-en-panel' });
+            else throw Object.assign(new Error(rec.error || 'No se pudo recuperar la cuenta.'), { code: 'servidor' });
+          } else {
+            // Sin servidor: se intenta con la misma contraseña
+            const existente = await buscarPerfilPorEmail(email);
+            if (existente) throw Object.assign(new Error('ya-en-panel'), { code: 'ya-en-panel' });
+            try {
+              const ingreso = await conTiempo(secondaryAuth.signInWithEmailAndPassword(email, password), 30000, 'La conexión está lenta.');
+              uid = ingreso.user.uid;
+              recuperada = true;
+            } catch (errIngreso) {
+              if (errIngreso.code === 'timeout') throw errIngreso;
+              throw Object.assign(new Error('huerfano'), { code: 'huerfano' });
+            }
           }
         }
 
@@ -6333,7 +6510,7 @@
           fechaRegistro: new Date().toISOString()
         };
 
-        await escribirPerfilNuevo(uid, perfilNuevo, secondaryApp);
+        if (!perfilGuardado) await escribirPerfilNuevo(uid, perfilNuevo, secondaryApp);
 
         credencialesNuevoUsuarioTemp = `• Correo: ${email}\n• Contraseña: ${password}`;
         document.getElementById('txtCredencialesNuevoUsuario').innerText = credencialesNuevoUsuarioTemp;
@@ -6356,6 +6533,7 @@
         else if (err.code === 'auth/network-request-failed') msg = "No hay conexión con el servidor. Revisa tu internet e intenta de nuevo.";
         else if (err.code === 'ya-en-panel') msg = "Ese correo ya está registrado y aparece en Usuarios Registrados. Búscalo ahí.";
         else if (err.code === 'huerfano') msg = "Ese correo ya existe en el sistema de acceso, con otra contraseña, pero no tiene ficha en el panel. Pídele al cliente que inicie sesión una vez con su contraseña: su ficha se crea sola al entrar.";
+        else if (err.code === 'servidor') msg = err.message;
         else if (err.code === 'timeout') msg = "La conexión está lenta y no se pudo confirmar el guardado. Si el acceso llegó a crearse, vuelve a tocar Crear con los mismos datos y la misma contraseña: se completa solo.";
         alert("No se pudo crear el usuario: " + msg);
       } finally {
@@ -7753,12 +7931,12 @@
       const vigentes = dato.lista
         .filter(r => !r.venceEn || new Date(r.venceEn).getTime() > ahora)
         .sort((a, b) => String(b.fecha).localeCompare(String(a.fecha)));
-      // Solo el código más reciente y el enlace más reciente (evita mostrar el mismo dato varias veces)
+      // Solo el más reciente de cada tipo (código, enlace de viaje, de hogar o de restablecer)
       const salida = [];
-      let hayCodigo = false, hayEnlace = false;
+      const vistos = new Set();
       vigentes.forEach(r => {
-        if (r.codigo && !hayCodigo) { hayCodigo = true; salida.push(r); }
-        else if (r.enlace && !hayEnlace) { hayEnlace = true; salida.push(r); }
+        const tipo = r.codigo ? 'codigo' : 'enlace:' + (r.enlaceTipo || '');
+        if (!vistos.has(tipo)) { vistos.add(tipo); salida.push(r); }
       });
       return salida;
     }
@@ -7776,7 +7954,7 @@
         return `
           <div class="p-3 bg-gray-800/70 border border-emerald-500/30 rounded-lg mb-2">
             <div class="flex items-center justify-between gap-2 mb-2">
-              <span class="text-[11px] font-bold text-white flex items-center gap-1.5"><i class="fa-solid fa-envelope-open-text text-emerald-400"></i> Netflix</span>
+              <span class="text-[11px] font-bold text-white flex items-center gap-1.5"><i class="fa-solid ${r.restablecer ? 'fa-key text-amber-400' : 'fa-envelope-open-text text-emerald-400'}"></i> ${r.restablecer ? 'Restablecer contraseña' : 'Netflix'}</span>
               <span class="text-[10px] text-gray-400">${mins ? 'vence en ~' + mins + ' min' : ''}</span>
             </div>
             ${r.codigo ? `
@@ -7785,10 +7963,12 @@
                 <button onclick="copiarCodigoNetflix('${ambito}','${id}',${j})" class="text-gray-300 hover:text-white text-xs px-2 py-1 bg-gray-800 rounded-lg"><i class="fa-solid fa-copy mr-1"></i>Copiar</button>
               </div>` : ''}
             ${r.enlace ? `
-              <button onclick="abrirEnlaceNetflix('${ambito}','${id}',${j})" class="w-full bg-red-600 hover:bg-red-500 text-white font-black py-2.5 rounded-lg text-xs flex items-center justify-center gap-1.5 transition">
+              <button onclick="abrirEnlaceNetflix('${ambito}','${id}',${j})" class="w-full ${r.restablecer ? 'bg-amber-500 hover:bg-amber-400 text-black' : 'bg-red-600 hover:bg-red-500 text-white'} font-black py-2.5 rounded-lg text-xs flex items-center justify-center gap-1.5 transition">
                 <i class="fa-solid fa-arrow-up-right-from-square"></i> ${escaparHtml(r.enlaceTipo || 'Abrir enlace de Netflix')}
               </button>
-              <p class="text-[10px] text-gray-500 mt-1.5 text-center">Ábrelo desde el mismo dispositivo donde estás viendo Netflix.</p>` : ''}
+              ${r.restablecer
+                ? '<p class="text-[10px] text-amber-300 mt-1.5 text-center leading-snug"><i class="fa-solid fa-triangle-exclamation mr-1"></i>Al restablecerla, la contraseña cambia para todos los que usan esta cuenta. Guárdala y avísanos la nueva.</p>'
+                : '<p class="text-[10px] text-gray-500 mt-1.5 text-center">Ábrelo desde el mismo dispositivo donde estás viendo Netflix.</p>'}` : ''}
           </div>`;
       }).join('');
     }
@@ -7830,7 +8010,7 @@
     function abrirEnlaceNetflix(ambito, id, j) {
       const r = (vigentesNetflix(ambito, id) || [])[j];
       if (!r || !r.enlace) return;
-      if (!/^https:\/\/(www\.)?netflix\.com\/account\/(travel\/verify|update-primary-location)(\?|$)/i.test(r.enlace)) {
+      if (!/^https:\/\/(www\.)?netflix\.com\/(account\/(travel\/verify|update-primary-location)|password)(\?|$)/i.test(r.enlace)) {
         mostrarToast('Enlace no permitido.');
         return;
       }
