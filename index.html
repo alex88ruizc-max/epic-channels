@@ -981,6 +981,27 @@
               <p class="text-[10px] text-gray-500">Se guarda con el botón "Guardar Ajustes Generales".</p>
             </div>
 
+            <!-- SECCIÓN SERVIDOR SEGURO (APPS SCRIPT) E INVENTARIO PROTEGIDO -->
+            <div class="p-4 bg-gray-800/60 border border-emerald-500/30 rounded-xl space-y-3">
+              <h4 class="text-xs font-bold text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
+                <i class="fa-solid fa-lock"></i> Seguridad: Servidor e Inventario Protegido
+              </h4>
+              <div>
+                <label class="block text-[11px] text-gray-400 mb-1">URL del servidor seguro (Apps Script, termina en /exec)</label>
+                <input type="url" id="ajusteBackendUrl" placeholder="https://script.google.com/macros/s/.../exec" class="w-full bg-gray-900 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white font-mono focus:outline-none">
+                <p class="text-[10px] text-gray-500 mt-1">Con esta URL las compras se procesan en el servidor: el cliente nunca toca su saldo ni el inventario. Se guarda con "Guardar Ajustes Generales".</p>
+              </div>
+              <div class="flex flex-wrap gap-2">
+                <button type="button" onclick="probarConexionBackend()" class="px-3 py-2 bg-gray-900 hover:bg-gray-700 border border-gray-700 text-gray-200 text-xs font-bold rounded-xl flex items-center gap-1.5 transition">
+                  <i class="fa-solid fa-plug"></i> Probar conexión
+                </button>
+                <button type="button" id="btnActivarInventarioSeguro" onclick="activarInventarioSeguro()" class="px-3 py-2 bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/40 text-emerald-400 text-xs font-bold rounded-xl flex items-center gap-1.5 transition">
+                  <i class="fa-solid fa-vault"></i> Activar inventario protegido
+                </button>
+              </div>
+              <div id="estadoSeguridadAdmin" class="text-[11px] text-gray-400 leading-relaxed"></div>
+            </div>
+
             <!-- SECCIÓN SEGURIDAD Y REPORTES -->
             <div class="p-4 bg-gray-800/60 border border-gray-700/60 rounded-xl space-y-3">
               <h4 class="text-xs font-bold text-yellow-400 uppercase tracking-wider flex items-center gap-1.5">
@@ -2618,6 +2639,18 @@
     }
 
     async function actualizarProductoHotGlobal() {
+      // Los clientes ya no leen todas las compras: solo el resultado publicado por el admin
+      try {
+        const doc = await db.collection('configuracion').doc('estadisticas').get();
+        if (doc.exists && doc.data().productoHotId) {
+          productoHotId = doc.data().productoHotId;
+        }
+      } catch (e) {
+        console.warn("Producto HOT no disponible:", e);
+      }
+    }
+
+    async function recalcularProductoHotAdmin() {
       try {
         const snap = await db.collection('compras').get();
         const conteo = {};
@@ -2641,6 +2674,13 @@
           }
         }
         productoHotId = topId;
+        if (topId) {
+          await db.collection('configuracion').doc('estadisticas').set({
+            productoHotId: topId,
+            actualizadoEl: new Date().toISOString()
+          }, { merge: true });
+        }
+        if (currentUser) renderizarCatalogo();
       } catch (e) {
         console.error("Error al calcular producto HOT:", e);
       }
@@ -3015,6 +3055,9 @@
       previsualizarNivelesAdmin();
       document.getElementById('ajusteAdminEmails').value = ajustesGeneralesConfig.adminEmailsStr || 'alex88ruizc@gmail.com';
       document.getElementById('ajusteExcluidosReporte').value = ajustesGeneralesConfig.excluidosReporteStr || 'alex88ruizc@gmail.com, alex88ruiz@gmail.com';
+      const inpBackend = document.getElementById('ajusteBackendUrl');
+      if (inpBackend) inpBackend.value = ajustesGeneralesConfig.backendUrl || '';
+      renderizarEstadoSeguridadAdmin();
       renderizarSelectorTemas();
       restaurarTemaGuardado();
       cargarPlantillasEntregaEnForm();
@@ -3049,6 +3092,7 @@
         skinTema: (document.getElementById('ajusteSkinTema') || {}).value || 'medianoche',
         plantillaEntrega: (document.getElementById('ajustePlantillaEntrega') || {}).value || '',
         plantillaCuentaEntrega: (document.getElementById('ajustePlantillaCuenta') || {}).value || '',
+        backendUrl: ((document.getElementById('ajusteBackendUrl') || {}).value || ajustesGeneralesConfig.backendUrl || '').trim(),
         actualizadoEl: new Date().toISOString()
       };
 
@@ -3103,6 +3147,10 @@
     let categoriaActiva = 'todas';
     let catalogoUnificado = [];
     let snapshotInventario = {};
+    let snapshotInventarioPrivado = {};
+    let unsubInventarioPrivado = null;
+    let migrandoInventario = false;
+    let compraEnCurso = false;
     let preciosConfig = {};
     let minimosConfig = {};
     let coloresCategoriasConfig = {};
@@ -3632,8 +3680,11 @@
           document.getElementById('btnAdminTab').classList.remove('hidden');
           escucharUsuariosEnLinea();
           escucharTotalRecaudadoHoyEnVivo();
+          iniciarInventarioPrivadoAdmin();
+          recalcularProductoHotAdmin();
         } else {
           document.getElementById('btnAdminTab').classList.add('hidden');
+          detenerInventarioPrivadoAdmin();
         }
 
         db.collection('usuarios').doc(user.uid).onSnapshot(doc => {
@@ -4682,7 +4733,8 @@
         snapshotInventario = {};
         snap.forEach(d => { snapshotInventario[d.id] = d.data(); });
         procesarYRenderizar();
-      });
+        renderizarEstadoSeguridadAdmin();
+      }, err => console.warn('Inventario no disponible:', err));
       db.collection('configuracion').doc('novedades').onSnapshot(doc => {
         novedadesGlobales = (doc.exists && Array.isArray(doc.data().items)) ? doc.data().items : [];
         renderizarNotificaciones();
@@ -4873,7 +4925,7 @@
           descripcion: desc,
           precio: precio,
           minCompra: minCompra,
-          cuentas: [],
+          stock: 0,
           activo: true,
           esVip: esVip,
           tipoGarantia: tipoGarantia,
@@ -4943,7 +4995,8 @@
           if (snapshotInventario[alias]) { docInventario = snapshotInventario[alias]; break; }
         }
         const docIdFinal = docInventario ? docInventario.id || key : key;
-        const cuentas = (docInventario && Array.isArray(docInventario.cuentas)) ? docInventario.cuentas : [];
+        const infoCuentasBase = resolverCuentasYStock(docIdFinal, docInventario);
+        const cuentas = infoCuentasBase.cuentas;
 
         let nombreFinal = prodBase.nombre;
         let categoriaFinal = prodBase.categoria;
@@ -4976,7 +5029,7 @@
           nombre: nombreFinal,
           categoria: categoriaFinal,
           descripcion: descripcionFinal,
-          stock: cuentas.length,
+          stock: infoCuentasBase.stock,
           cuentas: cuentas,
           precio: precioFinal,
           minCompra: parseInt(minCompraFinal) || prodBase.minCompraDefault,
@@ -4992,7 +5045,8 @@
         const yaExiste = Array.from(mapaProds.values()).some(p => p.docId === docId || (p.aliases && p.aliases.includes(docId)));
 
         if (!yaExiste && data.nombre) {
-          const cuentas = Array.isArray(data.cuentas) ? data.cuentas : [];
+          const infoCuentasExtra = resolverCuentasYStock(docId, data);
+          const cuentas = infoCuentasExtra.cuentas;
           let precioFinal = data.precio || 0;
           if (preciosConfig[docId] !== undefined) precioFinal = preciosConfig[docId];
 
@@ -5008,7 +5062,7 @@
             descripcion: data.descripcion || '',
             precio: precioFinal,
             minCompra: parseInt(minCompraFinal) || 1,
-            stock: cuentas.length,
+            stock: infoCuentasExtra.stock,
             cuentas: cuentas,
             imagenUrl: data.imagenUrl || '',
             esVip: data.esVip === true,
@@ -5209,20 +5263,34 @@
       const inputCant = document.getElementById('cant_' + docId);
       let cantidad = inputCant ? (parseInt(inputCant.value) || minRequerido) : minRequerido;
 
+      if (compraEnCurso) return;
+
+      if (obtenerBackendUrl()) {
+        await comprarProductoServidor(docId, prodInfo, cantidad);
+        return;
+      }
+
+      // Respaldo (modo anterior): solo funciona mientras las reglas de Firestore sigan abiertas
       const invRef = db.collection('inventario').doc(docId);
+      const privRef = db.collection('inventario_privado').doc(docId);
       const userRef = db.collection('usuarios').doc(currentUser.uid);
 
       try {
+        compraEnCurso = true;
         let datosNotificacion = null;
         let textoEntregaFinal = '';
 
         await db.runTransaction(async (t) => {
           const invDoc = await t.get(invRef);
+          const privDoc = await t.get(privRef);
           const userDoc = await t.get(userRef);
 
           if (!invDoc.exists) throw new Error("Producto no disponible en inventario.");
           const pData = invDoc.data();
-          const cuentas = pData.cuentas || [];
+          const legadoCompra = Array.isArray(pData.cuentas) ? pData.cuentas : [];
+          const privCompra = (privDoc.exists && Array.isArray(privDoc.data().cuentas)) ? privDoc.data().cuentas : [];
+          const usaPrivado = privDoc.exists || inventarioSeguroActivo();
+          const cuentas = privCompra.concat(legadoCompra);
 
           if (cuentas.length < cantidad) throw new Error(`Stock insuficiente. Solo quedan ${cuentas.length} cuentas disponibles.`);
           if (cuentas.length >= minRequerido && cantidad < minRequerido) throw new Error(`La compra mínima es de ${minRequerido} cuentas.`);
@@ -5249,7 +5317,12 @@
 
           textoEntregaFinal = construirFormatoEntrega(cuentasEntregadas, prodInfo, { total: totalPagar, saldo: nuevoSaldoUsuario, cliente: currentUser.email });
 
-          t.update(invRef, { cuentas: cuentas });
+          if (usaPrivado) {
+            t.set(privRef, { cuentas: cuentas }, { merge: true });
+            t.set(invRef, { stock: cuentas.length, cuentas: firebase.firestore.FieldValue.delete() }, { merge: true });
+          } else {
+            t.set(invRef, { cuentas: cuentas, stock: cuentas.length }, { merge: true });
+          }
           t.update(userRef, { saldo: nuevoSaldoUsuario });
 
           const nuevaCompraRef = db.collection('compras').doc();
@@ -5297,6 +5370,56 @@
         if (err.message !== "SALDO_INSUFICIENTE_MODAL") {
           alert(err.message);
         }
+      } finally {
+        compraEnCurso = false;
+      }
+    }
+
+    // ==================== COMPRA SEGURA VÍA SERVIDOR (APPS SCRIPT) ====================
+    async function comprarProductoServidor(docId, prodInfo, cantidad) {
+      compraEnCurso = true;
+      const btnCompra = document.querySelector(`[onclick="comprarProducto('${docId}')"]`);
+      const htmlBtn = btnCompra ? btnCompra.innerHTML : '';
+      if (btnCompra) { btnCompra.disabled = true; btnCompra.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Procesando...'; }
+      try {
+        const r = await llamarBackend('comprar', { productoId: docId, cantidad: cantidad });
+        if (!r.ok) {
+          if (r.codigo === 'SALDO_INSUFICIENTE') { abrirModalSaldoInsuficiente(r.error); return; }
+          throw new Error(r.error || 'No se pudo completar la compra.');
+        }
+
+        const cuentasEntregadas = Array.isArray(r.cuentas) ? r.cuentas : [];
+        const totalPagar = Number(r.total) || 0;
+        const nuevoSaldoUsuario = Number(r.saldo) || 0;
+        const credencialesPuras = cuentasEntregadas.map(raw => {
+          const c = parseCredencialObj(raw);
+          return `${c.email}:${c.pass}`;
+        }).join('\n');
+
+        const textoEntregaFinal = construirFormatoEntrega(cuentasEntregadas, prodInfo, { total: totalPagar, saldo: nuevoSaldoUsuario, cliente: currentUser.email });
+        document.getElementById('txtEntregaCredenciales').innerText = textoEntregaFinal;
+        const modalE = document.getElementById('modalEntrega');
+        modalE.classList.remove('hidden');
+        modalE.style.display = 'flex';
+
+        const textoGarantiaTelegram = prodInfo.tipoGarantia === '29d' ? '29 Días' : (prodInfo.tipoGarantia === '24h' ? '24 Horas' : 'Sin garantía');
+        enviarNotificacionTelegram({
+          producto: prodInfo.nombre || docId,
+          cantidad: cuentasEntregadas.length,
+          garantia: textoGarantiaTelegram,
+          total: `$${totalPagar.toLocaleString('es-CO')} COP`,
+          cliente: currentUser.email,
+          credenciales: credencialesPuras,
+          saldo_restante: `$${nuevoSaldoUsuario.toLocaleString('es-CO')} COP`,
+          stock_restante: r.stockRestante,
+          fecha: new Date().toLocaleString('es-CO')
+        });
+        verificarSubidaNivel(cuentasEntregadas.length);
+      } catch (err) {
+        alert(err && err.message ? err.message : 'No se pudo completar la compra.');
+      } finally {
+        compraEnCurso = false;
+        if (btnCompra) { btnCompra.disabled = false; btnCompra.innerHTML = htmlBtn; }
       }
     }
 
@@ -5530,10 +5653,13 @@
       if (!prod) return;
 
       try {
-        const invRef = db.collection('inventario').doc(docId);
-        const nuevasCuentas = [...prod.cuentas];
-        nuevasCuentas.splice(index, 1);
-        await invRef.set({ cuentas: nuevasCuentas }, { merge: true });
+        const objetivo = JSON.stringify((prod.cuentas || [])[index]);
+        const nuevasCuentas = await modificarCuentasProducto(docId, (lista) => {
+          const idx = (JSON.stringify(lista[index]) === objetivo) ? index : lista.findIndex(c => JSON.stringify(c) === objetivo);
+          if (idx < 0) throw new Error('La cuenta ya no está en el inventario (pudo venderse). Recarga la lista.');
+          lista.splice(idx, 1);
+          return lista;
+        });
         prod.cuentas = nuevasCuentas;
         verDetalleCuentas(docId);
       } catch (e) {
@@ -5551,7 +5677,13 @@
     }
 
     async function vaciarStock(docId) {
-      if (await confirmarModal("¿Vaciar cuentas de este producto?")) await db.collection('inventario').doc(docId).set({ cuentas: [] }, { merge: true });
+      if (!await confirmarModal("¿Vaciar cuentas de este producto?")) return;
+      try {
+        await modificarCuentasProducto(docId, () => []);
+        mostrarToast('Stock vaciado.');
+      } catch (e) {
+        alert('No se pudo vaciar el stock: ' + e.message);
+      }
     }
 
     let unsubUsuariosAdmin = null;
@@ -6028,18 +6160,25 @@
         const cuenta = { email, pass, costo: costoUnitario };
         if (claveAccesoLote) cuenta.claveAcceso = claveAccesoLote;
         return cuenta;
-      });
+      }).filter((c, i, arr) => arr.findIndex(o => JSON.stringify(o) === JSON.stringify(c)) === i);
 
       if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i> Cargando...'; }
 
       try {
-        const invRef = db.collection('inventario').doc(docId);
-        // Transacción: evita que una venta simultánea se pierda al concatenar el stock
-        await db.runTransaction(async (t) => {
-          const doc = await t.get(invRef);
-          const actual = (doc.exists && Array.isArray(doc.data().cuentas)) ? doc.data().cuentas : [];
-          t.set(invRef, { cuentas: actual.concat(nuevas) }, { merge: true });
-        });
+        if (esAdminSesionActual() || !inventarioSeguroActivo()) {
+          // Admin (o modo anterior): transacción que concatena sin perder ventas simultáneas
+          await modificarCuentasProducto(docId, (lista) => lista.concat(nuevas));
+        } else {
+          // Colaborador con permiso: solo puede AGREGAR cuentas, nunca leer las existentes
+          const lote = db.batch();
+          lote.set(db.collection('inventario_privado').doc(docId), { cuentas: firebase.firestore.FieldValue.arrayUnion(...nuevas) }, { merge: true });
+          lote.set(db.collection('inventario').doc(docId), { stock: firebase.firestore.FieldValue.increment(nuevas.length) }, { merge: true });
+          try {
+            await lote.commit();
+          } catch (errLote) {
+            throw new Error('No se pudo cargar el lote. Si alguna de estas cuentas ya estaba cargada, quítala e intenta de nuevo.');
+          }
+        }
 
         const prod = catalogoUnificado.find(p => p.docId === docId);
         const inversion = costoUnitario * nuevas.length;
@@ -6943,6 +7082,158 @@
       document.getElementById('modalEntrega').style.display = 'none';
       const aviso = document.getElementById('avisoEntregaSimulada');
       if (aviso) aviso.classList.add('hidden');
+    }
+
+    // ==================== MÓDULO DE SEGURIDAD: SERVIDOR E INVENTARIO PROTEGIDO ====================
+    function esAdminSesionActual() {
+      if (!currentUser) return false;
+      const correo = (currentUser.email || '').trim().toLowerCase();
+      return ADMIN_EMAILS.some(e => e.trim().toLowerCase() === correo);
+    }
+
+    function inventarioSeguroActivo() {
+      return ajustesGeneralesConfig && ajustesGeneralesConfig.inventarioSeguro === true;
+    }
+
+    function obtenerBackendUrl() {
+      return String((ajustesGeneralesConfig && ajustesGeneralesConfig.backendUrl) || '').trim();
+    }
+
+    // Une las cuentas del inventario protegido con las que aún estén en formato antiguo
+    function resolverCuentasYStock(docId, data) {
+      const legado = (data && Array.isArray(data.cuentas)) ? data.cuentas : [];
+      const priv = snapshotInventarioPrivado[docId];
+      if (priv && Array.isArray(priv.cuentas)) {
+        const todas = priv.cuentas.concat(legado);
+        return { cuentas: todas, stock: todas.length };
+      }
+      const stockPublico = (data && typeof data.stock === 'number' && data.stock > 0 && !legado.length) ? data.stock : 0;
+      return { cuentas: legado, stock: legado.length || stockPublico };
+    }
+
+    async function llamarBackend(accion, datos) {
+      const url = obtenerBackendUrl();
+      if (!url) throw new Error('El servidor seguro no está configurado.');
+      if (!currentUser) throw new Error('Debes iniciar sesión.');
+      const idToken = await currentUser.getIdToken();
+      let resp;
+      try {
+        resp = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify(Object.assign({ accion: accion, idToken: idToken }, datos || {}))
+        });
+      } catch (e) {
+        throw new Error('No hay conexión con el servidor. Revisa tu internet e intenta de nuevo.');
+      }
+      if (!resp.ok) throw new Error('El servidor no respondió (' + resp.status + '). Intenta de nuevo.');
+      try {
+        return await resp.json();
+      } catch (e) {
+        throw new Error('Respuesta inválida del servidor. Revisa que la URL termine en /exec.');
+      }
+    }
+
+    // Transacción del admin sobre las cuentas de un producto (protegido o formato antiguo)
+    async function modificarCuentasProducto(docId, transformar) {
+      const invRef = db.collection('inventario').doc(docId);
+      const privRef = db.collection('inventario_privado').doc(docId);
+      let resultado = [];
+      await db.runTransaction(async (t) => {
+        const invDoc = await t.get(invRef);
+        const privDoc = await t.get(privRef);
+        const inv = invDoc.exists ? (invDoc.data() || {}) : {};
+        const legado = Array.isArray(inv.cuentas) ? inv.cuentas : [];
+        const priv = (privDoc.exists && Array.isArray(privDoc.data().cuentas)) ? privDoc.data().cuentas : [];
+        const nuevas = transformar(priv.concat(legado).slice());
+        if (privDoc.exists || inventarioSeguroActivo()) {
+          t.set(privRef, { cuentas: nuevas }, { merge: true });
+          t.set(invRef, { stock: nuevas.length, cuentas: firebase.firestore.FieldValue.delete() }, { merge: true });
+        } else {
+          t.set(invRef, { cuentas: nuevas, stock: nuevas.length }, { merge: true });
+        }
+        resultado = nuevas;
+      });
+      return resultado;
+    }
+
+    function iniciarInventarioPrivadoAdmin() {
+      if (unsubInventarioPrivado) return;
+      try {
+        unsubInventarioPrivado = db.collection('inventario_privado').onSnapshot(snap => {
+          snapshotInventarioPrivado = {};
+          snap.forEach(d => { snapshotInventarioPrivado[d.id] = d.data() || {}; });
+          procesarYRenderizar();
+          renderizarEstadoSeguridadAdmin();
+        }, err => {
+          console.warn('Inventario protegido no disponible:', err);
+          unsubInventarioPrivado = null;
+        });
+      } catch (e) {
+        console.warn(e);
+      }
+    }
+
+    function detenerInventarioPrivadoAdmin() {
+      try { if (unsubInventarioPrivado) unsubInventarioPrivado(); } catch (e) { console.warn(e); }
+      unsubInventarioPrivado = null;
+      snapshotInventarioPrivado = {};
+    }
+
+    function contarProductosFormatoAntiguo() {
+      return Object.keys(snapshotInventario).filter(id => Array.isArray((snapshotInventario[id] || {}).cuentas) && snapshotInventario[id].cuentas.length > 0).length;
+    }
+
+    function renderizarEstadoSeguridadAdmin() {
+      const box = document.getElementById('estadoSeguridadAdmin');
+      if (!box) return;
+      const url = obtenerBackendUrl();
+      const seguro = inventarioSeguroActivo();
+      const antiguos = contarProductosFormatoAntiguo();
+      const ok = '<i class="fa-solid fa-circle-check text-emerald-400 mr-1"></i>';
+      const no = '<i class="fa-solid fa-circle-xmark text-red-400 mr-1"></i>';
+      box.innerHTML = `
+        <div>${url ? ok + 'Servidor seguro configurado.' : no + 'Falta la URL del servidor seguro.'}</div>
+        <div>${seguro && !antiguos ? ok + 'Inventario protegido activo: los clientes no pueden ver las cuentas.' : no + (seguro ? `Quedan ${antiguos} producto(s) por migrar.` : 'Inventario protegido sin activar.')}</div>
+        <div class="text-gray-500 mt-1">Cuando ambos estén en verde, publica las nuevas reglas de Firestore.</div>`;
+      const btn = document.getElementById('btnActivarInventarioSeguro');
+      if (btn) btn.classList.toggle('hidden', seguro && !antiguos);
+    }
+
+    async function probarConexionBackend() {
+      try {
+        const inp = document.getElementById('ajusteBackendUrl');
+        const urlForm = inp ? inp.value.trim() : '';
+        if (urlForm && urlForm !== obtenerBackendUrl()) ajustesGeneralesConfig.backendUrl = urlForm;
+        const r = await llamarBackend('ping', {});
+        if (r && r.ok) alert('Conexión correcta con el servidor seguro.\nUsuario verificado: ' + (r.email || '') + (r.firestore ? '\nAcceso a la base de datos: OK' : '\nAcceso a la base de datos: FALLÓ'));
+        else alert('El servidor respondió con un error: ' + ((r && r.error) || 'desconocido'));
+      } catch (e) {
+        alert('No se pudo conectar: ' + e.message);
+      }
+    }
+
+    async function activarInventarioSeguro() {
+      if (!esAdminSesionActual()) return;
+      if (!await confirmarModal('Se moverán todas las cuentas del inventario a una zona protegida que solo tú puedes ver. Los clientes seguirán viendo el stock normalmente.\n\nAntes de continuar, asegúrate de que tu bot de Telegram lea el campo "stock" y no la lista de cuentas.\n\n¿Activar ahora?')) return;
+      if (migrandoInventario) return;
+      migrandoInventario = true;
+      let movidos = 0;
+      try {
+        await db.collection('configuracion').doc('ajustes').set({ inventarioSeguro: true }, { merge: true });
+        ajustesGeneralesConfig.inventarioSeguro = true;
+        const ids = Object.keys(snapshotInventario).filter(id => Array.isArray((snapshotInventario[id] || {}).cuentas));
+        for (const id of ids) {
+          await modificarCuentasProducto(id, (lista) => lista);
+          movidos++;
+        }
+        mostrarToast(`Inventario protegido activo (${movidos} producto(s) migrado(s)).`);
+      } catch (e) {
+        alert('La migración se detuvo: ' + e.message + '\nVuelve a tocar el botón para continuar; no se pierde ninguna cuenta.');
+      } finally {
+        migrandoInventario = false;
+        renderizarEstadoSeguridadAdmin();
+      }
     }
 
     window.addEventListener('DOMContentLoaded', () => { iniciarSincronizacionTotal(); });
