@@ -232,6 +232,7 @@
           <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-xs"></i>
           <input type="search" id="perfilBuscarCuentas" oninput="filtrarMisCuentasPerfil()" placeholder="Buscar por producto o correo de la cuenta..." autocomplete="off" class="w-full bg-gray-900 border border-gray-800 rounded-xl pl-8 pr-3 py-2.5 text-xs text-white focus:outline-none focus:border-gray-600">
         </div>
+        <div id="perfilFiltrosGarantia" class="flex gap-2 overflow-x-auto pb-1 mb-3 text-xs"></div>
         <div id="listaMisCuentas" class="space-y-3">
           <p class="text-gray-500 text-center py-8">No has adquirido cuentas todavía.</p>
         </div>
@@ -4694,6 +4695,190 @@
         .catch(() => prompt('Copia:', texto));
     }
 
+    // ==================== GARANTÍA POR COMPRA ====================
+    let filtroGarantiaPerfil = 'todas';
+    let intervaloGarantiaPerfil = null;
+
+    function resolverTipoGarantiaCompra(c) {
+      // Compras nuevas: guardan tipoGarantia ('' = sin garantía definida)
+      if (c.tipoGarantia !== undefined && c.tipoGarantia !== null) {
+        return { tipo: c.tipoGarantia || 'ninguna', inferida: false };
+      }
+      // Compras antiguas: se toma la garantía actual del producto
+      try {
+        const pid = c.productoId;
+        const prod = catalogoUnificado.find(p => p.docId === pid || p.id === pid || (p.aliases && p.aliases.includes(pid)))
+          || catalogoUnificado.find(p => p.nombre && c.productoNombre && p.nombre === c.productoNombre);
+        if (prod) return { tipo: prod.tipoGarantia || 'ninguna', inferida: true };
+      } catch (e) { console.warn(e); }
+      return { tipo: 'ninguna', inferida: true };
+    }
+
+    function estadoGarantiaCompra(c) {
+      const { tipo, inferida } = resolverTipoGarantiaCompra(c);
+      const fecha = c.fecha ? new Date(c.fecha) : null;
+      if (tipo === 'ninguna' || (tipo !== '24h' && tipo !== '29d') || !fecha || isNaN(fecha.getTime())) {
+        return { estado: 'sin', tipo, inferida };
+      }
+      const totalMs = tipo === '29d' ? 29 * 24 * 3600000 : 24 * 3600000;
+      const vence = new Date(fecha.getTime() + totalMs);
+      const restanteMs = vence.getTime() - Date.now();
+      return {
+        estado: restanteMs > 0 ? 'vigente' : 'vencida',
+        tipo, inferida, vence, restanteMs, totalMs,
+        pct: Math.max(0, Math.min(100, (restanteMs / totalMs) * 100))
+      };
+    }
+
+    function formatearFechaHoraCorta(d) {
+      if (!d || isNaN(d.getTime())) return 'N/A';
+      const p = n => String(n).padStart(2, '0');
+      return `${p(d.getDate())}/${p(d.getMonth() + 1)}/${d.getFullYear()}, ${p(d.getHours())}:${p(d.getMinutes())}`;
+    }
+
+    function formatearTiempoRestante(ms) {
+      const min = Math.floor(ms / 60000);
+      const dias = Math.floor(min / 1440);
+      const horas = Math.floor((min % 1440) / 60);
+      const minutos = min % 60;
+      if (dias > 0) return `${dias} día${dias === 1 ? '' : 's'} y ${horas}h`;
+      if (horas > 0) return `${horas}h ${minutos}m`;
+      return `${Math.max(minutos, 1)} min`;
+    }
+
+    function renderTarjetaGarantia(idx) {
+      const c = misComprasPerfilCache[idx];
+      if (!c) return '';
+      const g = estadoGarantiaCompra(c);
+      const etiquetaTipo = g.tipo === '29d' ? '29 días' : '24 horas';
+
+      if (g.estado === 'vigente') {
+        const urgente = g.restanteMs < 3 * 3600000; // menos de 3 horas
+        const colorTxt = urgente ? 'text-amber-400' : 'text-green-400';
+        const colorBorde = urgente ? 'border-amber-500/40 bg-amber-500/10' : 'border-green-500/40 bg-green-500/10';
+        const colorBarra = urgente ? 'bg-amber-400' : 'bg-green-400';
+        return `
+          <div class="rounded-xl border ${colorBorde} p-3">
+            <div class="flex items-start justify-between gap-2">
+              <div class="flex items-center gap-2">
+                <i class="fa-solid fa-shield-halved ${colorTxt} text-lg"></i>
+                <div>
+                  <span class="${colorTxt} font-black text-xs block">Garantía vigente</span>
+                  <span class="text-[10px] text-gray-400">Cobertura de ${etiquetaTipo}</span>
+                </div>
+              </div>
+              <div class="text-right">
+                <span class="text-white font-black text-sm block">${formatearTiempoRestante(g.restanteMs)}</span>
+                <span class="text-[10px] text-gray-400">restantes</span>
+              </div>
+            </div>
+            <div class="w-full h-1.5 bg-gray-800 rounded-full mt-2.5 overflow-hidden">
+              <div class="h-full ${colorBarra} rounded-full" style="width:${g.pct.toFixed(1)}%"></div>
+            </div>
+            <div class="flex items-center justify-between gap-2 mt-2.5">
+              <span class="text-[10px] text-gray-400">Vence: ${formatearFechaHoraCorta(g.vence)}</span>
+              <button onclick="reclamarGarantiaCompra(${idx})" class="shrink-0 px-3 py-1.5 bg-gray-900 hover:bg-gray-800 border border-gray-700 ${colorTxt} font-bold text-[11px] rounded-lg flex items-center gap-1.5">
+                <i class="fa-brands fa-whatsapp"></i> Reclamar garantía
+              </button>
+            </div>
+          </div>`;
+      }
+
+      if (g.estado === 'vencida') {
+        return `
+          <div class="rounded-xl border border-red-500/30 bg-red-500/10 p-3 flex items-center justify-between gap-2">
+            <div class="flex items-center gap-2">
+              <i class="fa-solid fa-shield-halved text-red-400 text-lg opacity-70"></i>
+              <div>
+                <span class="text-red-400 font-black text-xs block">Garantía vencida</span>
+                <span class="text-[10px] text-gray-400">Cobertura de ${etiquetaTipo}</span>
+              </div>
+            </div>
+            <span class="text-[10px] text-gray-400 text-right">Venció el<br>${formatearFechaHoraCorta(g.vence)}</span>
+          </div>`;
+      }
+
+      return `
+        <div class="rounded-xl border border-gray-700 bg-gray-800/50 p-3 flex items-center gap-2">
+          <i class="fa-solid fa-circle-info text-gray-500"></i>
+          <span class="text-[11px] text-gray-400">Este producto se entregó sin garantía directa de reemplazo.</span>
+        </div>`;
+    }
+
+    function reclamarGarantiaCompra(idx) {
+      const c = misComprasPerfilCache[idx];
+      if (!c) return;
+      const g = estadoGarantiaCompra(c);
+      if (g.estado !== 'vigente') {
+        alert('La garantía de esta compra ya no está vigente.');
+        actualizarGarantiasPerfil();
+        return;
+      }
+      const numero = ajustesGeneralesConfig.whatsappNumero || '573043956726';
+      const msg =
+        `Hola, quiero reclamar la garantía de mi compra:\n` +
+        `• Producto: ${c.productoNombre || 'N/A'}\n` +
+        `• Fecha de compra: ${formatearFechaHoraCorta(new Date(c.fecha))}\n` +
+        `• Garantía vigente hasta: ${formatearFechaHoraCorta(g.vence)}\n` +
+        `• Mi correo: ${(currentUser && currentUser.email) || ''}\n` +
+        `• Cuenta(s):\n${c.credenciales || ''}\n\n` +
+        `Problema: `;
+      window.open(`https://wa.me/${numero}?text=${encodeURIComponent(msg)}`, '_blank');
+    }
+
+    function renderFiltrosGarantiaPerfil() {
+      const cont = document.getElementById('perfilFiltrosGarantia');
+      if (!cont) return;
+      if (!misComprasPerfilCache.length) { cont.innerHTML = ''; return; }
+      let vig = 0, ven = 0;
+      misComprasPerfilCache.forEach(c => {
+        const e = estadoGarantiaCompra(c).estado;
+        if (e === 'vigente') vig++; else if (e === 'vencida') ven++;
+      });
+      const chip = (clave, texto, n, colorActivo) => {
+        const activo = filtroGarantiaPerfil === clave;
+        return `<button onclick="cambiarFiltroGarantiaPerfil('${clave}')" class="shrink-0 px-3 py-1.5 rounded-full border font-bold whitespace-nowrap ${activo ? colorActivo : 'bg-gray-900 border-gray-800 text-gray-400'}">${texto} <span class="opacity-70">${n}</span></button>`;
+      };
+      cont.innerHTML =
+        chip('todas', 'Todas', misComprasPerfilCache.length, 'bg-gray-700 border-gray-600 text-white') +
+        chip('vigente', '🛡 Vigentes', vig, 'bg-green-500/15 border-green-500/50 text-green-400') +
+        chip('vencida', 'Vencidas', ven, 'bg-red-500/15 border-red-500/50 text-red-400');
+    }
+
+    function cambiarFiltroGarantiaPerfil(clave) {
+      filtroGarantiaPerfil = clave;
+      renderFiltrosGarantiaPerfil();
+      filtrarMisCuentasPerfil();
+    }
+
+    // Refresca contadores cada minuto mientras el perfil está abierto
+    function actualizarGarantiasPerfil() {
+      try {
+        document.querySelectorAll('#listaMisCuentas [data-garantia-idx]').forEach(el => {
+          const idx = parseInt(el.getAttribute('data-garantia-idx'));
+          const c = misComprasPerfilCache[idx];
+          if (!c) return;
+          el.innerHTML = renderTarjetaGarantia(idx);
+          const card = el.closest('[data-buscar]');
+          if (card) card.setAttribute('data-estado', estadoGarantiaCompra(c).estado);
+        });
+        renderFiltrosGarantiaPerfil();
+        filtrarMisCuentasPerfil();
+      } catch (e) {
+        console.error('Error al actualizar garantías:', e);
+      }
+    }
+
+    function iniciarRelojGarantiasPerfil() {
+      if (intervaloGarantiaPerfil) return;
+      intervaloGarantiaPerfil = setInterval(() => {
+        const vista = document.getElementById('vistaMisCuentas');
+        if (vista && !vista.classList.contains('hidden') && misComprasPerfilCache.length) {
+          actualizarGarantiasPerfil();
+        }
+      }, 60000);
+    }
+
     function filtrarMisCuentasPerfil() {
       try {
         const input = document.getElementById('perfilBuscarCuentas');
@@ -4706,12 +4891,18 @@
         contenedor.querySelectorAll('[data-buscar]').forEach(card => {
           total++;
           const texto = card.getAttribute('data-buscar') || '';
-          const ok = terminos.every(t => texto.includes(t));
+          const estado = card.getAttribute('data-estado') || '';
+          const okTexto = terminos.every(t => texto.includes(t));
+          const okEstado = filtroGarantiaPerfil === 'todas' || estado === filtroGarantiaPerfil;
+          const ok = okTexto && okEstado;
           card.style.display = ok ? '' : 'none';
           if (ok) visibles++;
         });
-        if (terminos.length && total && !visibles) {
-          contenedor.insertAdjacentHTML('beforeend', `<p class="perfil-sin-resultados text-gray-500 text-center text-xs py-6">Ninguna compra coincide con "${escaparHtml(input.value)}".</p>`);
+        if (total && !visibles) {
+          const motivo = terminos.length
+            ? `Ninguna compra coincide con "${escaparHtml(input.value)}".`
+            : (filtroGarantiaPerfil === 'vigente' ? 'No tienes compras con garantía vigente.' : 'No tienes compras con garantía vencida.');
+          contenedor.insertAdjacentHTML('beforeend', `<p class="perfil-sin-resultados text-gray-500 text-center text-xs py-6">${motivo}</p>`);
         }
       } catch (e) {
         console.error('Error al filtrar cuentas del perfil:', e);
@@ -4747,7 +4938,7 @@
           contenedor.innerHTML = `
             <div class="text-center py-10 bg-gray-900 border border-gray-800 rounded-2xl">
               <i class="fa-solid fa-box-open text-3xl text-gray-600 mb-3"></i>
-              <p class="text-gray-400 text-sm mb-3">Aún no has comprado cuentas.</p>
+              <p class="text-gray-400 text-sm mb-3">Aún no has comprado cuentas.</p>${(() => { const f = document.getElementById('perfilFiltrosGarantia'); if (f) f.innerHTML = ''; return ''; })()}
               <button onclick="cambiarVista('tienda')" class="px-4 py-2 bg-emerald-500 hover:bg-emerald-400 text-black font-bold text-xs rounded-xl">Ir al catálogo</button>
             </div>`;
           return;
@@ -4773,11 +4964,10 @@
             ? lineas.map(l => `<div class="py-1 border-b border-gray-700/40 last:border-0 break-all">${escaparHtml(l)}</div>`).join('')
             : '<div class="text-gray-500">Sin credenciales registradas.</div>';
 
-          // Solo compras nuevas guardan tipoGarantia; las antiguas no muestran contador para no confundir
-          const garantiaHtml = (c.tipoGarantia !== undefined && c.fecha) ? calcularEstadoGarantia(c.fecha, c.tipoGarantia) : '';
+          const estadoGar = estadoGarantiaCompra(c).estado;
 
           html += `
-            <div data-buscar="${construirAtributoBusqueda(c.productoNombre, c.categoria, c.credenciales)}" class="p-4 bg-gray-900 border border-gray-800 rounded-2xl flex flex-col gap-3">
+            <div data-buscar="${construirAtributoBusqueda(c.productoNombre, c.categoria, c.credenciales)}" data-estado="${estadoGar}" class="p-4 bg-gray-900 border border-gray-800 rounded-2xl flex flex-col gap-3">
               <div class="flex items-start justify-between gap-3">
                 <div class="min-w-0">
                   <span class="text-[10px] bg-gray-800 text-emerald-400 px-2 py-0.5 rounded font-semibold">${escaparHtml(c.categoria || 'Producto')}</span>
@@ -4788,7 +4978,7 @@
                   ${c.total ? `<p class="text-xs font-bold text-white mt-0.5">${formatoCOP(c.total)}</p>` : ''}
                 </div>
               </div>
-              ${garantiaHtml ? `<div class="flex">${garantiaHtml}</div>` : ''}
+              <div data-garantia-idx="${idx}">${renderTarjetaGarantia(idx)}</div>
               <div class="bg-gray-800/90 border border-gray-700 rounded-xl p-3 font-mono text-xs text-gray-200 select-all leading-relaxed">${lineasHtml}</div>
               <button onclick="copiarCompraPerfil(${idx})" class="w-full py-2 bg-gray-800 hover:bg-gray-700 border border-gray-700 text-emerald-400 font-bold text-xs rounded-xl flex items-center justify-center gap-2">
                 <i class="fa-solid fa-copy"></i> Copiar ${lineas.length > 1 ? `las ${lineas.length} cuentas` : 'cuenta'}
@@ -4797,7 +4987,9 @@
         });
 
         contenedor.innerHTML = html;
+        renderFiltrosGarantiaPerfil();
         filtrarMisCuentasPerfil();
+        iniciarRelojGarantiasPerfil();
       } catch (err) {
         console.error('Error al cargar compras del perfil:', err);
         contenedor.innerHTML = `<p class="text-red-400 text-center text-xs py-8">No se pudieron cargar tus compras: ${escaparHtml(err.message)}</p>`;
