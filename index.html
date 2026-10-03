@@ -1671,6 +1671,15 @@
     </div>
   </div>
 
+  <!-- MODAL: GESTIONAR UN PERFIL (cuentas compartidas, panel de administración) -->
+  <div id="modalNetflixGestion" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-40 hidden items-center justify-center p-4">
+    <div class="bg-gray-900 border border-sky-500/40 rounded-2xl max-w-md w-full p-4 relative shadow-2xl max-h-[92vh] overflow-y-auto">
+      <button onclick="cerrarGestionNetflix()" class="absolute top-3 right-3 text-gray-400 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
+      <h3 class="text-base font-black text-white mb-2 pr-8 flex items-center gap-2"><i class="fa-solid fa-circle-user text-sky-300"></i> Gestionar perfil</h3>
+      <div id="contenidoNetflixGestion"></div>
+    </div>
+  </div>
+
   <!-- MODAL: MI NETFLIX (desde la tienda) -->
   <div id="modalNetflixCliente" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-40 hidden items-center justify-center p-4">
     <div class="bg-gray-900 border border-red-500/40 rounded-2xl max-w-md w-full p-5 relative shadow-2xl max-h-[92vh] overflow-y-auto">
@@ -8462,6 +8471,7 @@
           netflixCuentasAdmin = [];
           snap.forEach(d => netflixCuentasAdmin.push(Object.assign({ id: d.id }, d.data())));
           actualizarBadgeNetflixAdmin();
+          renderizarGestionNetflix();
           const sec = document.getElementById('adminSecNetflix');
           if (sec && !sec.classList.contains('hidden')) renderizarNetflixAdmin();
         }, err => console.warn('Alquileres (admin) no disponibles:', err));
@@ -8576,13 +8586,121 @@
       const pendPin = todos.filter(x => x.pinPendiente === true).length;
       return `
         <div class="p-3 bg-gray-900/60 border border-sky-500/30 rounded-2xl">
-          <div class="flex items-start justify-between gap-2">
+          <div class="flex flex-wrap items-start justify-between gap-2">
             <p class="font-mono text-xs text-white break-all select-all">${escaparHtml(correo)}</p>
-            <span class="shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-full border bg-sky-500/15 text-sky-300 border-sky-500/30"><i class="fa-solid fa-user-group mr-1"></i>Compartida · ${ocupados}/${todos.length}</span>
+            <div class="flex items-center gap-1.5 shrink-0">
+              <span class="text-[10px] font-bold px-2 py-0.5 rounded-full border bg-sky-500/15 text-sky-300 border-sky-500/30"><i class="fa-solid fa-user-group mr-1"></i>Compartida · ${ocupados}/${todos.length}</span>
+              <button onclick="eliminarCuentaCompartidaNetflix('${escaparJsAttr(correo)}')" class="px-2 py-0.5 rounded-lg text-[10px] font-bold flex items-center gap-1 transition hover:bg-red-500/20 text-red-400 border border-red-500/40"><i class="fa-solid fa-trash-can"></i> Eliminar cuenta</button>
+            </div>
           </div>
           ${pendPin ? `<p class="text-[11px] text-yellow-300 mt-1"><i class="fa-solid fa-key mr-1"></i> ${pendPin} PIN por cambiar en Netflix</p>` : ''}
-          <div class="mt-3 space-y-2">${slots.map(sl => htmlTarjetaNetflixAdmin(sl, true)).join('')}</div>
+          <div class="mt-2 space-y-1.5">${slots.map(htmlFilaPerfilAdmin).join('')}</div>
         </div>`;
+    }
+
+    // Fila compacta de un perfil: al tocarla se abre la ventana con todo lo que se puede hacer
+    function htmlFilaPerfilAdmin(a) {
+      const est = estadoNetflix(a), st = ESTILO_NETFLIX[est.clave] || ESTILO_NETFLIX.sin_fecha;
+      const id = escaparHtml(a.id);
+      const asignada = a.estado === 'asignado';
+      let detalle = 'Sin cliente';
+      if (asignada) {
+        if (est.dias === null) detalle = 'Sin fecha de pago';
+        else if (est.dias > 0) detalle = `${est.dias} ${est.dias === 1 ? 'día' : 'días'} restantes`;
+        else if (est.dias === 0) detalle = 'Vence hoy';
+        else detalle = `Venció hace ${Math.abs(est.dias)} ${Math.abs(est.dias) === 1 ? 'día' : 'días'}`;
+      }
+      const pinTxt = a.pin ? `PIN ${escaparHtml(a.pin)}` : 'PIN sin definir';
+      const btnFila = (clase, accion, texto) => `<button onclick="event.stopPropagation();${accion}" class="shrink-0 px-2.5 py-1 rounded-lg text-[11px] font-bold transition ${clase}">${texto}</button>`;
+      let accion = '';
+      if (!asignada) accion = btnFila('bg-red-600 hover:bg-red-500 text-white', `abrirModalNetflixCuenta('${id}', true)`, 'Asignar');
+      else if (est.clave === 'vencida') accion = btnFila('bg-red-600 hover:bg-red-500 text-white', `noRenovoNetflix('${id}')`, 'No renovó');
+      return `
+        <div onclick="abrirGestionNetflix('${id}')" role="button" tabindex="0" class="cursor-pointer flex items-center gap-2 p-2.5 bg-gray-800/50 hover:bg-gray-800 border ${est.clave === 'vencida' ? 'border-red-500/40' : 'border-gray-700/60'} rounded-xl transition">
+          <div class="min-w-0 flex-grow">
+            <p class="text-xs font-bold text-white truncate"><i class="fa-solid fa-circle-user text-sky-300 mr-1"></i>${escaparHtml(a.perfil || 'Perfil')}${asignada ? ` <span class="font-normal text-gray-300">· ${escaparHtml(a.clienteNombre || a.clienteEmail || 'Sin nombre')}</span>` : ''}</p>
+            <p class="text-[10px] text-gray-400 mt-0.5 truncate">${detalle} · <span class="font-mono">${pinTxt}</span></p>
+            ${a.pinPendiente === true ? '<p class="text-[10px] text-yellow-300 mt-0.5"><i class="fa-solid fa-key mr-1"></i>Falta cambiar el PIN en Netflix</p>' : ''}
+          </div>
+          <span class="shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-full border ${st.chip}">${st.txt}</span>
+          ${accion}
+          <i class="fa-solid fa-chevron-right text-gray-500 text-[10px] shrink-0"></i>
+        </div>`;
+    }
+
+    // ---------- Ventana de gestión de un perfil ----------
+    let netflixGestionId = null;
+
+    function abrirGestionNetflix(id) {
+      netflixGestionId = id;
+      nfAbrir('modalNetflixGestion');
+      renderizarGestionNetflix();
+    }
+
+    function cerrarGestionNetflix() {
+      netflixGestionId = null;
+      nfCerrar('modalNetflixGestion');
+    }
+
+    function renderizarGestionNetflix() {
+      const m = document.getElementById('modalNetflixGestion');
+      const cont = document.getElementById('contenidoNetflixGestion');
+      if (!m || !cont || !netflixGestionId || m.classList.contains('hidden')) return;
+      const a = netflixCuentasAdmin.find(x => x.id === netflixGestionId);
+      if (!a) { cerrarGestionNetflix(); return; }
+      cont.innerHTML = `<p class="font-mono text-[11px] text-gray-400 mb-2 break-all select-all">${escaparHtml(a.correo)}</p>` + htmlTarjetaNetflixAdmin(a, true);
+      pintarOtpNetflix('a', a.id);
+    }
+
+    // ---------- Eliminar cuentas del inventario ----------
+    async function eliminarCuentaNetflix(id) {
+      const a = netflixCuentasAdmin.find(x => x.id === id);
+      if (!a) return;
+      const ocupada = a.estado === 'asignado';
+      const quien = a.clienteNombre || a.clienteEmail || 'un cliente';
+      const msg = ocupada
+        ? `¿Eliminar ${a.correo} del inventario? Está asignada a ${quien}: dejará de verla y de pedir códigos al instante.`
+        : `¿Eliminar ${a.correo} del inventario?`;
+      if (!await confirmarModal(msg, { textoAceptar: 'Sí, eliminar' })) return;
+      await borrarDocsNetflix([a], 'cuenta eliminada');
+    }
+
+    async function eliminarCuentaCompartidaNetflix(correo) {
+      const slots = netflixCuentasAdmin.filter(x => x.tipo === 'compartida' && x.correo === correo);
+      if (!slots.length) return;
+      const ocupados = slots.filter(x => x.estado === 'asignado');
+      let msg = `¿Eliminar la cuenta compartida ${correo} con sus ${slots.length} perfiles del inventario?`;
+      if (ocupados.length) {
+        const nombres = ocupados.map(x => `${x.perfil || 'Perfil'}: ${x.clienteNombre || x.clienteEmail || 'cliente'}`).join(', ');
+        msg += `\n\nTiene ${ocupados.length} cliente${ocupados.length === 1 ? '' : 's'} asignado${ocupados.length === 1 ? '' : 's'} (${nombres}). Dejarán de ver su perfil y de pedir códigos al instante.`;
+      }
+      if (!await confirmarModal(msg, { textoAceptar: 'Sí, eliminar todo' })) return;
+      await borrarDocsNetflix(slots, 'cuenta eliminada');
+    }
+
+    // Borra los registros y deja en el historial a quienes la tenían asignada
+    async function borrarDocsNetflix(lista, motivo) {
+      try {
+        const ahora = new Date().toISOString();
+        const lote = db.batch();
+        lista.forEach(a => {
+          if (a.estado === 'asignado') {
+            lote.set(db.collection('alquileres_historial').doc(), {
+              alquilerId: a.id, correo: a.correo || '', clienteNombre: a.clienteNombre || '', clienteUid: a.clienteUid || '',
+              clienteEmail: a.clienteEmail || '', plan: parseInt(a.plan, 10) || 1, precio: Number(a.precio) || 0,
+              desde: a.fechaInicio || '', ultimoVencimiento: a.proximoPago || '', hasta: hoyNetflix(), quitadoEl: ahora,
+              motivo: motivo, perfil: a.perfil || ''
+            });
+          }
+          lote.delete(db.collection('alquileres').doc(a.id));
+        });
+        await lote.commit();
+        if (lista.some(a => a.id === netflixGestionId)) cerrarGestionNetflix();
+        lista.forEach(a => { delete netflixResultadosOtp['a_' + a.id]; });
+        mostrarToast(lista.length === 1 ? 'Cuenta eliminada del inventario.' : `Cuenta eliminada (${lista.length} perfiles).`);
+      } catch (err) {
+        alert('No se pudo eliminar: ' + err.message);
+      }
     }
 
     function htmlTarjetaNetflixAdmin(a, enGrupo) {
@@ -8626,6 +8744,7 @@
       if (a.limpiezaPendiente === true && a.tipo !== 'compartida') botones += btn(gris, `abrirRestablecerNetflix('${escaparJsAttr(a.correo)}')`, 'fa-arrow-up-right-from-square', 'Restablecer clave');
       botones += btn(gris, `abrirModalNetflixCuenta('${id}')`, 'fa-pen', 'Editar');
       botones += btn(gris, `verHistorialNetflix('${id}')`, 'fa-clock-rotate-left', 'Historial');
+      if (!enGrupo) botones += `<button onclick="eliminarCuentaNetflix('${id}')" class="ml-auto px-2.5 py-1.5 rounded-lg text-[11px] font-bold flex items-center gap-1 transition hover:bg-red-500/20 text-red-400 border border-red-500/40"><i class="fa-solid fa-trash-can"></i> Eliminar cuenta</button>`;
 
       return `
         <div class="p-4 bg-gray-900 border ${est.clave === 'vencida' ? 'border-red-500/40' : 'border-gray-800'} rounded-2xl">
