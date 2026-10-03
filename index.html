@@ -98,16 +98,10 @@
           </button>
         </div>
 
-        <!-- Mis Cuentas -->
-        <button onclick="cambiarVista('mis-cuentas')" title="Mis Cuentas" class="p-2 sm:px-3 sm:py-1.5 rounded-xl sm:rounded-lg text-xs bg-gray-800 hover:bg-gray-700 text-gray-300 font-medium flex items-center gap-1.5 shrink-0 transition">
-          <i class="fa-solid fa-box-archive text-emerald-400 text-xs sm:text-sm"></i> 
-          <span class="hidden sm:inline">Mis Cuentas</span>
-        </button>
-
-        <!-- Botón Cambiar Contraseña -->
-        <button onclick="abrirModalPassword()" title="Cambiar Contraseña" class="p-2 sm:px-3 sm:py-1.5 rounded-xl sm:rounded-lg text-xs bg-gray-800 hover:bg-gray-700 text-gray-300 font-medium flex items-center gap-1.5 shrink-0 transition">
-          <i class="fa-solid fa-key text-emerald-400 text-xs sm:text-sm"></i> 
-          <span class="hidden sm:inline">Clave</span>
+        <!-- Mi Perfil (cuentas compradas, datos y contraseña) -->
+        <button onclick="abrirPerfilEn('cuentas')" title="Mi Perfil" class="p-2 sm:px-3 sm:py-1.5 rounded-xl sm:rounded-lg text-xs bg-gray-800 hover:bg-gray-700 text-gray-300 font-medium flex items-center gap-1.5 shrink-0 transition">
+          <i class="fa-solid fa-user text-emerald-400 text-xs sm:text-sm"></i> 
+          <span class="hidden sm:inline">Perfil</span>
         </button>
 
         <!-- Botón Administrador -->
@@ -183,22 +177,119 @@
       </div>
     </section>
 
-    <!-- VISTA: MIS CUENTAS -->
-    <section id="vistaMisCuentas" class="hidden">
-      <div class="flex items-center justify-between mb-6">
-        <div>
-          <h2 class="text-xl font-bold text-white flex items-center gap-2">
-            <i class="fa-solid fa-box-archive text-emerald-400"></i> Mis Cuentas Adquiridas
-          </h2>
-          <p class="text-xs text-gray-400">Historial de cuentas y credenciales compradas.</p>
-        </div>
-        <button onclick="cambiarVista('tienda')" class="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-sm text-gray-300 rounded-lg">
-          <i class="fa-solid fa-arrow-left mr-1"></i> Volver a Tienda
+    <!-- VISTA: MI PERFIL (antes "Mis Cuentas"; se conserva el id vistaMisCuentas) -->
+    <section id="vistaMisCuentas" class="hidden pb-28 sm:pb-6 max-w-3xl mx-auto">
+      <div class="flex items-center justify-between gap-3 mb-5">
+        <h2 class="text-xl font-black text-white flex items-center gap-2">
+          <i class="fa-solid fa-user text-emerald-400"></i> Mi Perfil
+        </h2>
+        <button onclick="cambiarVista('tienda')" class="shrink-0 px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-xs sm:text-sm text-gray-300 rounded-lg">
+          <i class="fa-solid fa-arrow-left mr-1"></i> Tienda
         </button>
       </div>
 
-      <div id="listaMisCuentas" class="space-y-4">
-        <p class="text-gray-500 text-center py-8">No has adquirido cuentas todavía.</p>
+      <!-- Tarjeta de identidad -->
+      <div class="p-4 sm:p-5 bg-gray-900 border border-gray-800 rounded-2xl mb-4">
+        <div class="flex items-center gap-3">
+          <div id="perfilAvatar" class="w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-emerald-500/15 border border-emerald-500/40 text-emerald-400 flex items-center justify-center text-lg sm:text-xl font-black shrink-0">?</div>
+          <div class="min-w-0">
+            <h3 id="perfilNombreTitulo" class="font-black text-white text-base sm:text-lg leading-tight truncate">Cliente</h3>
+            <p id="perfilEmailTitulo" class="text-xs text-gray-400 font-mono truncate"></p>
+            <p id="perfilMiembroDesde" class="text-[10px] text-gray-500 mt-0.5"></p>
+          </div>
+        </div>
+        <div class="grid grid-cols-3 gap-2 mt-4">
+          <div class="bg-gray-800/70 border border-gray-700/60 rounded-xl p-2.5 text-center">
+            <span class="text-[10px] text-gray-400 block">Saldo</span>
+            <span id="perfilStatSaldo" class="text-sm font-black text-emerald-400">$0</span>
+          </div>
+          <div class="bg-gray-800/70 border border-gray-700/60 rounded-xl p-2.5 text-center">
+            <span class="text-[10px] text-gray-400 block">Compras</span>
+            <span id="perfilStatCompras" class="text-sm font-black text-white">0</span>
+          </div>
+          <div class="bg-gray-800/70 border border-gray-700/60 rounded-xl p-2.5 text-center">
+            <span class="text-[10px] text-gray-400 block">Cuentas</span>
+            <span id="perfilStatCuentas" class="text-sm font-black text-white">0</span>
+          </div>
+        </div>
+        <div id="perfilAvisoDatos" class="hidden mt-3 p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-[11px] flex items-center gap-2">
+          <i class="fa-solid fa-circle-info shrink-0"></i>
+          <span>Completa tu nombre y WhatsApp para que soporte pueda ayudarte más rápido.</span>
+          <button onclick="cambiarTabPerfil('datos')" class="ml-auto shrink-0 underline font-bold">Completar</button>
+        </div>
+      </div>
+
+      <!-- Pestañas del perfil -->
+      <div class="grid grid-cols-3 gap-1 p-1 bg-gray-900 border border-gray-800 rounded-xl mb-4 text-xs">
+        <button onclick="cambiarTabPerfil('cuentas')" id="perfilTabBtnCuentas" class="perfil-tab py-2 rounded-lg font-bold flex items-center justify-center gap-1.5"><i class="fa-solid fa-box-archive"></i> Mis Cuentas</button>
+        <button onclick="cambiarTabPerfil('datos')" id="perfilTabBtnDatos" class="perfil-tab py-2 rounded-lg font-bold flex items-center justify-center gap-1.5"><i class="fa-solid fa-id-card"></i> Mis Datos</button>
+        <button onclick="cambiarTabPerfil('seguridad')" id="perfilTabBtnSeguridad" class="perfil-tab py-2 rounded-lg font-bold flex items-center justify-center gap-1.5"><i class="fa-solid fa-lock"></i> Contraseña</button>
+      </div>
+
+      <!-- TAB: MIS CUENTAS -->
+      <div id="perfilSecCuentas">
+        <div class="relative mb-3">
+          <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-xs"></i>
+          <input type="search" id="perfilBuscarCuentas" oninput="filtrarMisCuentasPerfil()" placeholder="Buscar por producto o correo de la cuenta..." autocomplete="off" class="w-full bg-gray-900 border border-gray-800 rounded-xl pl-8 pr-3 py-2.5 text-xs text-white focus:outline-none focus:border-gray-600">
+        </div>
+        <div id="listaMisCuentas" class="space-y-3">
+          <p class="text-gray-500 text-center py-8">No has adquirido cuentas todavía.</p>
+        </div>
+      </div>
+
+      <!-- TAB: MIS DATOS -->
+      <div id="perfilSecDatos" class="hidden">
+        <form onsubmit="guardarDatosPerfil(event)" class="p-4 sm:p-5 bg-gray-900 border border-gray-800 rounded-2xl space-y-3">
+          <div>
+            <label for="perfilEmail" class="block text-xs text-gray-400 mb-1">Correo electrónico</label>
+            <div class="relative">
+              <input type="email" id="perfilEmail" disabled class="w-full bg-gray-800/50 border border-gray-700/60 rounded-xl px-3 py-2.5 pr-9 text-sm text-gray-400 font-mono cursor-not-allowed">
+              <i class="fa-solid fa-lock absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 text-xs"></i>
+            </div>
+            <p class="text-[10px] text-gray-500 mt-1">El correo es tu usuario de acceso y no se puede cambiar. Si lo necesitas, escribe a soporte.</p>
+          </div>
+          <div>
+            <label for="perfilNombre" class="block text-xs text-gray-400 mb-1">Nombre o alias</label>
+            <input type="text" id="perfilNombre" maxlength="60" placeholder="Ej: Juan Pérez" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:border-gray-500">
+          </div>
+          <div>
+            <label for="perfilWhatsapp" class="block text-xs text-gray-400 mb-1">WhatsApp</label>
+            <input type="tel" id="perfilWhatsapp" inputmode="numeric" maxlength="20" placeholder="Ej: 3001234567" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:border-gray-500">
+            <p class="text-[10px] text-gray-500 mt-1">Solo números. Lo usamos para confirmar tus recargas y darte soporte.</p>
+          </div>
+          <button type="submit" id="btnGuardarPerfil" class="w-full sm:w-auto bg-emerald-500 hover:bg-emerald-400 text-black font-bold py-2.5 px-6 rounded-xl text-sm transition flex items-center justify-center gap-2">
+            <i class="fa-solid fa-floppy-disk"></i> Guardar datos
+          </button>
+        </form>
+      </div>
+
+      <!-- TAB: CONTRASEÑA -->
+      <div id="perfilSecSeguridad" class="hidden">
+        <form onsubmit="cambiarPasswordPerfil(event)" class="p-4 sm:p-5 bg-gray-900 border border-gray-800 rounded-2xl space-y-3">
+          <div>
+            <label for="perfilPassActual" class="block text-xs text-gray-400 mb-1">Contraseña actual</label>
+            <input type="password" id="perfilPassActual" required autocomplete="current-password" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:border-gray-500">
+          </div>
+          <div>
+            <label for="perfilPassNueva" class="block text-xs text-gray-400 mb-1">Nueva contraseña</label>
+            <input type="password" id="perfilPassNueva" required minlength="6" autocomplete="new-password" placeholder="Mínimo 6 caracteres" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:border-gray-500">
+          </div>
+          <div>
+            <label for="perfilPassConfirmar" class="block text-xs text-gray-400 mb-1">Repite la nueva contraseña</label>
+            <input type="password" id="perfilPassConfirmar" required minlength="6" autocomplete="new-password" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:border-gray-500">
+          </div>
+          <label class="flex items-center gap-2 text-xs text-gray-400 cursor-pointer select-none">
+            <input type="checkbox" id="perfilMostrarPass" onchange="alternarVerPasswordPerfil()" class="w-4 h-4 rounded accent-emerald-500"> Mostrar contraseñas
+          </label>
+          <div id="perfilPassError" class="hidden p-2.5 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-xs"></div>
+          <button type="submit" id="btnCambiarPassPerfil" class="w-full sm:w-auto bg-emerald-500 hover:bg-emerald-400 text-black font-bold py-2.5 px-6 rounded-xl text-sm transition flex items-center justify-center gap-2">
+            <i class="fa-solid fa-key"></i> Cambiar contraseña
+          </button>
+          <p class="text-[11px] text-gray-500 pt-1">
+            ¿No recuerdas tu contraseña actual?
+            <button type="button" onclick="enviarResetPasswordPerfil()" class="text-emerald-400 underline font-semibold">Envíame un enlace a mi correo</button>
+          </p>
+        </form>
       </div>
     </section>
 
@@ -4417,42 +4508,300 @@
       cargarRecargasAdmin();
     }
 
-    async function cargarMisCuentas() {
-      const contenedor = document.getElementById('listaMisCuentas');
-      const snap = await db.collection('compras').where('usuarioId', '==', currentUser.uid).get();
-      contenedor.innerHTML = '';
-      if (snap.empty) { contenedor.innerHTML = '<p class="text-gray-500 text-center py-8">Aún no has adquirido ninguna cuenta.</p>'; return; }
-      snap.forEach(d => {
-        const c = d.data();
-        let fechaLegible = 'N/A';
-        if (c.fecha) {
-          const dObj = new Date(c.fecha);
-          if (!isNaN(dObj.getTime())) {
-            const dia = String(dObj.getDate()).padStart(2, '0');
-            const mes = String(dObj.getMonth() + 1).padStart(2, '0');
-            const anio = dObj.getFullYear();
-            const hora = String(dObj.getHours()).padStart(2, '0');
-            const min = String(dObj.getMinutes()).padStart(2, '0');
-            fechaLegible = `${dia}/${mes}/${anio}, ${hora}:${min}`;
+    // ==================== MI PERFIL ====================
+    let misComprasPerfilCache = [];
+    let perfilDatosCache = {};
+
+    function abrirPerfilEn(tab) {
+      cambiarVista('mis-cuentas');
+      cambiarTabPerfil(tab || 'cuentas');
+    }
+
+    function cambiarTabPerfil(tab) {
+      try {
+        ['cuentas', 'datos', 'seguridad'].forEach(t => {
+          const nombre = t.charAt(0).toUpperCase() + t.slice(1);
+          const sec = document.getElementById('perfilSec' + nombre);
+          const btn = document.getElementById('perfilTabBtn' + nombre);
+          const activo = t === tab;
+          if (sec) sec.classList.toggle('hidden', !activo);
+          if (btn) {
+            btn.classList.toggle('bg-emerald-500', activo);
+            btn.classList.toggle('text-black', activo);
+            btn.classList.toggle('text-gray-400', !activo);
           }
+        });
+        if (tab === 'datos') rellenarFormularioPerfil();
+        if (tab === 'seguridad') {
+          const err = document.getElementById('perfilPassError');
+          if (err) err.classList.add('hidden');
+        }
+      } catch (e) {
+        console.error('Error al cambiar pestaña de perfil:', e);
+      }
+    }
+
+    function whatsappEsVacio(valor) {
+      const v = String(valor || '').trim().toLowerCase();
+      return !v || v === 'sin whatsapp';
+    }
+
+    function renderizarCabeceraPerfil() {
+      if (!currentUser) return;
+      const d = perfilDatosCache || {};
+      const nombre = (d.nombre || '').trim();
+      const email = currentUser.email || d.email || '';
+      const inicial = (nombre || email || '?').trim().charAt(0).toUpperCase();
+
+      const setTxt = (id, txt) => { const el = document.getElementById(id); if (el) el.innerText = txt; };
+      setTxt('perfilAvatar', inicial);
+      setTxt('perfilNombreTitulo', nombre || 'Sin nombre');
+      setTxt('perfilEmailTitulo', email);
+      setTxt('perfilStatSaldo', formatoCOP(userSaldo));
+
+      let desde = '';
+      const fechaReg = d.fechaRegistro || d.primer_ingreso;
+      if (fechaReg) {
+        const f = new Date(fechaReg);
+        if (!isNaN(f.getTime())) desde = 'Cliente desde ' + f.toLocaleDateString('es-CO', { day: 'numeric', month: 'long', year: 'numeric' });
+      }
+      setTxt('perfilMiembroDesde', desde);
+
+      const aviso = document.getElementById('perfilAvisoDatos');
+      if (aviso) aviso.classList.toggle('hidden', !!nombre && !whatsappEsVacio(d.whatsapp));
+    }
+
+    function rellenarFormularioPerfil() {
+      if (!currentUser) return;
+      const d = perfilDatosCache || {};
+      const inpEmail = document.getElementById('perfilEmail');
+      const inpNombre = document.getElementById('perfilNombre');
+      const inpWa = document.getElementById('perfilWhatsapp');
+      if (inpEmail) inpEmail.value = currentUser.email || '';
+      if (inpNombre) inpNombre.value = d.nombre || '';
+      if (inpWa) inpWa.value = whatsappEsVacio(d.whatsapp) ? '' : d.whatsapp;
+    }
+
+    async function cargarDatosPerfil() {
+      if (!currentUser) return;
+      try {
+        const doc = await db.collection('usuarios').doc(currentUser.uid).get();
+        perfilDatosCache = doc.exists ? (doc.data() || {}) : {};
+      } catch (e) {
+        console.error('Error al leer perfil:', e);
+        perfilDatosCache = perfilDatosCache || {};
+      }
+      renderizarCabeceraPerfil();
+      rellenarFormularioPerfil();
+    }
+
+    async function guardarDatosPerfil(e) {
+      e.preventDefault();
+      if (!currentUser) return;
+      const btn = document.getElementById('btnGuardarPerfil');
+      const nombre = document.getElementById('perfilNombre').value.trim().slice(0, 60);
+      const waCrudo = document.getElementById('perfilWhatsapp').value.trim();
+      const waDigitos = waCrudo.replace(/\D/g, '');
+
+      if (waCrudo && (waDigitos.length < 7 || waDigitos.length > 15)) {
+        alert('El WhatsApp debe tener entre 7 y 15 números. Ejemplo: 3001234567');
+        return;
+      }
+
+      const textoOriginal = btn ? btn.innerHTML : '';
+      if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Guardando...'; }
+
+      try {
+        // Solo se tocan nombre y WhatsApp; el correo y el saldo nunca se envían desde aquí
+        const cambios = { nombre: nombre, whatsapp: waDigitos || 'Sin WhatsApp' };
+        await db.collection('usuarios').doc(currentUser.uid).set(cambios, { merge: true });
+        perfilDatosCache = { ...perfilDatosCache, ...cambios };
+        renderizarCabeceraPerfil();
+        rellenarFormularioPerfil();
+        mostrarToast('¡Datos guardados!');
+      } catch (err) {
+        alert('No se pudieron guardar tus datos: ' + err.message);
+      } finally {
+        if (btn) { btn.disabled = false; btn.innerHTML = textoOriginal; }
+      }
+    }
+
+    function alternarVerPasswordPerfil() {
+      const ver = document.getElementById('perfilMostrarPass').checked;
+      ['perfilPassActual', 'perfilPassNueva', 'perfilPassConfirmar'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.type = ver ? 'text' : 'password';
+      });
+    }
+
+    async function cambiarPasswordPerfil(e) {
+      e.preventDefault();
+      if (!currentUser) return;
+      const errBox = document.getElementById('perfilPassError');
+      const mostrarError = (msg) => { if (errBox) { errBox.innerText = msg; errBox.classList.remove('hidden'); } else { alert(msg); } };
+      if (errBox) errBox.classList.add('hidden');
+
+      const actual = document.getElementById('perfilPassActual').value;
+      const nueva = document.getElementById('perfilPassNueva').value;
+      const confirmar = document.getElementById('perfilPassConfirmar').value;
+
+      if (nueva.length < 6) { mostrarError('La nueva contraseña debe tener al menos 6 caracteres.'); return; }
+      if (nueva !== confirmar) { mostrarError('Las contraseñas nuevas no coinciden. Escríbelas de nuevo.'); return; }
+      if (nueva === actual) { mostrarError('La nueva contraseña debe ser diferente a la actual.'); return; }
+
+      const btn = document.getElementById('btnCambiarPassPerfil');
+      const textoOriginal = btn ? btn.innerHTML : '';
+      if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Cambiando...'; }
+
+      try {
+        const cred = firebase.auth.EmailAuthProvider.credential(currentUser.email, actual);
+        await currentUser.reauthenticateWithCredential(cred);
+        await currentUser.updatePassword(nueva);
+
+        ['perfilPassActual', 'perfilPassNueva', 'perfilPassConfirmar'].forEach(id => { document.getElementById(id).value = ''; });
+        const chk = document.getElementById('perfilMostrarPass');
+        if (chk) { chk.checked = false; alternarVerPasswordPerfil(); }
+        mostrarToast('¡Contraseña actualizada con éxito!');
+      } catch (err) {
+        let msg = 'No se pudo cambiar la contraseña: ' + err.message;
+        if (['auth/wrong-password', 'auth/invalid-credential', 'auth/invalid-login-credentials'].includes(err.code)) msg = 'La contraseña actual no es correcta.';
+        else if (err.code === 'auth/too-many-requests') msg = 'Demasiados intentos. Espera unos minutos y vuelve a intentar.';
+        else if (err.code === 'auth/weak-password') msg = 'La nueva contraseña es muy débil. Usa al menos 6 caracteres.';
+        else if (err.code === 'auth/requires-recent-login') msg = 'Por seguridad, cierra sesión, vuelve a entrar e inténtalo de nuevo.';
+        mostrarError(msg);
+      } finally {
+        if (btn) { btn.disabled = false; btn.innerHTML = textoOriginal; }
+      }
+    }
+
+    async function enviarResetPasswordPerfil() {
+      if (!currentUser || !currentUser.email) return;
+      if (!confirm(`Te enviaremos un enlace a ${currentUser.email} para crear una nueva contraseña. ¿Continuar?`)) return;
+      try {
+        await auth.sendPasswordResetEmail(currentUser.email);
+        mostrarToast('Enlace enviado. Revisa tu correo (y la carpeta de spam).');
+      } catch (err) {
+        alert('No se pudo enviar el enlace: ' + err.message);
+      }
+    }
+
+    function copiarCompraPerfil(indice) {
+      const compra = misComprasPerfilCache[indice];
+      if (!compra) return;
+      const texto = compra.credenciales || '';
+      navigator.clipboard.writeText(texto)
+        .then(() => mostrarToast('¡Cuentas copiadas!'))
+        .catch(() => prompt('Copia:', texto));
+    }
+
+    function filtrarMisCuentasPerfil() {
+      try {
+        const input = document.getElementById('perfilBuscarCuentas');
+        const terminos = normalizarBusqueda(input ? input.value : '').split(/\s+/).filter(Boolean);
+        const contenedor = document.getElementById('listaMisCuentas');
+        if (!contenedor) return;
+        const previo = contenedor.querySelector('.perfil-sin-resultados');
+        if (previo) previo.remove();
+        let visibles = 0, total = 0;
+        contenedor.querySelectorAll('[data-buscar]').forEach(card => {
+          total++;
+          const texto = card.getAttribute('data-buscar') || '';
+          const ok = terminos.every(t => texto.includes(t));
+          card.style.display = ok ? '' : 'none';
+          if (ok) visibles++;
+        });
+        if (terminos.length && total && !visibles) {
+          contenedor.insertAdjacentHTML('beforeend', `<p class="perfil-sin-resultados text-gray-500 text-center text-xs py-6">Ninguna compra coincide con "${escaparHtml(input.value)}".</p>`);
+        }
+      } catch (e) {
+        console.error('Error al filtrar cuentas del perfil:', e);
+      }
+    }
+
+    // Se conserva el nombre: cambiarVista('mis-cuentas') la sigue llamando
+    async function cargarMisCuentas() {
+      if (!currentUser) return;
+      const contenedor = document.getElementById('listaMisCuentas');
+      if (!contenedor) return;
+
+      // Pestaña por defecto y datos del perfil
+      if (!document.querySelector('.perfil-tab.bg-emerald-500')) cambiarTabPerfil('cuentas');
+      renderizarCabeceraPerfil();
+      cargarDatosPerfil();
+
+      contenedor.innerHTML = `<p class="text-gray-500 text-center py-8 text-xs"><i class="fa-solid fa-spinner fa-spin text-emerald-400 mr-2"></i>Cargando tus compras...</p>`;
+
+      try {
+        const snap = await db.collection('compras').where('usuarioId', '==', currentUser.uid).get();
+        misComprasPerfilCache = [];
+        snap.forEach(d => misComprasPerfilCache.push({ id: d.id, ...d.data() }));
+        misComprasPerfilCache.sort((a, b) => (new Date(b.fecha).getTime() || 0) - (new Date(a.fecha).getTime() || 0));
+
+        const totalCuentas = misComprasPerfilCache.reduce((s, c) => s + (parseInt(c.cantidad) || 0), 0);
+        const elCompras = document.getElementById('perfilStatCompras');
+        const elCuentas = document.getElementById('perfilStatCuentas');
+        if (elCompras) elCompras.innerText = misComprasPerfilCache.length;
+        if (elCuentas) elCuentas.innerText = totalCuentas;
+
+        if (misComprasPerfilCache.length === 0) {
+          contenedor.innerHTML = `
+            <div class="text-center py-10 bg-gray-900 border border-gray-800 rounded-2xl">
+              <i class="fa-solid fa-box-open text-3xl text-gray-600 mb-3"></i>
+              <p class="text-gray-400 text-sm mb-3">Aún no has comprado cuentas.</p>
+              <button onclick="cambiarVista('tienda')" class="px-4 py-2 bg-emerald-500 hover:bg-emerald-400 text-black font-bold text-xs rounded-xl">Ir al catálogo</button>
+            </div>`;
+          return;
         }
 
-        contenedor.innerHTML += `
-          <div class="p-4 bg-gray-900 border border-gray-800 rounded-xl flex flex-col justify-between gap-3">
-            <div class="flex items-center justify-between border-b border-gray-800 pb-2">
-              <div>
-                <span class="text-[10px] bg-gray-800 text-emerald-400 px-2 py-0.5 rounded font-semibold">${c.categoria}</span>
-                <h4 class="font-bold text-white text-sm mt-1">${c.productoNombre} ${c.cantidad > 1 ? `(${c.cantidad})` : ''}</h4>
+        let html = '';
+        misComprasPerfilCache.forEach((c, idx) => {
+          let fechaLegible = 'N/A';
+          if (c.fecha) {
+            const dObj = new Date(c.fecha);
+            if (!isNaN(dObj.getTime())) {
+              const dia = String(dObj.getDate()).padStart(2, '0');
+              const mes = String(dObj.getMonth() + 1).padStart(2, '0');
+              const anio = dObj.getFullYear();
+              const hora = String(dObj.getHours()).padStart(2, '0');
+              const min = String(dObj.getMinutes()).padStart(2, '0');
+              fechaLegible = `${dia}/${mes}/${anio}, ${hora}:${min}`;
+            }
+          }
+
+          const lineas = String(c.credenciales || '').split('\n').map(l => l.trim()).filter(Boolean);
+          const lineasHtml = lineas.length
+            ? lineas.map(l => `<div class="py-1 border-b border-gray-700/40 last:border-0 break-all">${escaparHtml(l)}</div>`).join('')
+            : '<div class="text-gray-500">Sin credenciales registradas.</div>';
+
+          // Solo compras nuevas guardan tipoGarantia; las antiguas no muestran contador para no confundir
+          const garantiaHtml = (c.tipoGarantia !== undefined && c.fecha) ? calcularEstadoGarantia(c.fecha, c.tipoGarantia) : '';
+
+          html += `
+            <div data-buscar="${construirAtributoBusqueda(c.productoNombre, c.categoria, c.credenciales)}" class="p-4 bg-gray-900 border border-gray-800 rounded-2xl flex flex-col gap-3">
+              <div class="flex items-start justify-between gap-3">
+                <div class="min-w-0">
+                  <span class="text-[10px] bg-gray-800 text-emerald-400 px-2 py-0.5 rounded font-semibold">${escaparHtml(c.categoria || 'Producto')}</span>
+                  <h4 class="font-bold text-white text-sm mt-1.5 leading-snug">${escaparHtml(c.productoNombre || 'Producto')}${(parseInt(c.cantidad) || 0) > 1 ? ` <span class="text-gray-400 font-semibold">× ${c.cantidad}</span>` : ''}</h4>
+                </div>
+                <div class="text-right shrink-0">
+                  <p class="text-[11px] text-gray-400 font-mono">${fechaLegible}</p>
+                  ${c.total ? `<p class="text-xs font-bold text-white mt-0.5">${formatoCOP(c.total)}</p>` : ''}
+                </div>
               </div>
-              <p class="text-xs text-gray-400 font-mono">${fechaLegible}</p>
-            </div>
-            <div class="bg-gray-800/90 border border-gray-700 p-3 rounded-lg font-mono text-xs text-gray-200 break-all select-all flex items-start justify-between gap-2 whitespace-pre-line leading-relaxed">
-              <span>${c.credenciales}</span>
-              <button onclick="navigator.clipboard.writeText('${c.credenciales.replace(/\n/g, '\\n')}'); mostrarToast('¡Copiado!');" class="text-gray-400 hover:text-white p-1"><i class="fa-solid fa-copy"></i></button>
-            </div>
-          </div>
-        `;
-      });
+              ${garantiaHtml ? `<div class="flex">${garantiaHtml}</div>` : ''}
+              <div class="bg-gray-800/90 border border-gray-700 rounded-xl p-3 font-mono text-xs text-gray-200 select-all leading-relaxed">${lineasHtml}</div>
+              <button onclick="copiarCompraPerfil(${idx})" class="w-full py-2 bg-gray-800 hover:bg-gray-700 border border-gray-700 text-emerald-400 font-bold text-xs rounded-xl flex items-center justify-center gap-2">
+                <i class="fa-solid fa-copy"></i> Copiar ${lineas.length > 1 ? `las ${lineas.length} cuentas` : 'cuenta'}
+              </button>
+            </div>`;
+        });
+
+        contenedor.innerHTML = html;
+        filtrarMisCuentasPerfil();
+      } catch (err) {
+        console.error('Error al cargar compras del perfil:', err);
+        contenedor.innerHTML = `<p class="text-red-400 text-center text-xs py-8">No se pudieron cargar tus compras: ${escaparHtml(err.message)}</p>`;
+      }
     }
 
     function generarCaptcha() {
@@ -4577,4 +4926,4 @@
     window.addEventListener('DOMContentLoaded', () => { iniciarSincronizacionTotal(); });
   </script>
 </body>
-      </html>
+</html>
