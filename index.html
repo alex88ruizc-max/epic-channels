@@ -127,6 +127,13 @@
           </button>
         </div>
 
+        <!-- Mi Netflix (visible solo si el cliente tiene cuentas asignadas) -->
+        <button id="btnNavNetflix" onclick="cambiarVista('netflix')" title="Mi Netflix" class="hidden relative p-2 sm:px-3 sm:py-1.5 rounded-xl sm:rounded-lg text-xs bg-red-500/10 hover:bg-red-500/20 text-red-400 font-semibold border border-red-500/30 items-center gap-1.5 shrink-0 transition">
+          <i class="fa-solid fa-tv text-xs sm:text-sm"></i>
+          <span class="hidden sm:inline">Netflix</span>
+          <span id="badgeNetflixNav" class="hidden absolute -top-1 -right-1 bg-red-500 text-white font-black text-[8px] min-w-[14px] h-3.5 px-0.5 rounded-full flex items-center justify-center shadow"></span>
+        </button>
+
         <!-- Mi Perfil (cuentas compradas, datos y contraseña) -->
         <button onclick="abrirPerfilEn('cuentas')" title="Mi Perfil" class="p-2 sm:px-3 sm:py-1.5 rounded-xl sm:rounded-lg text-xs bg-gray-800 hover:bg-gray-700 text-gray-300 font-medium flex items-center gap-1.5 shrink-0 transition">
           <i class="fa-solid fa-user text-emerald-400 text-xs sm:text-sm"></i> 
@@ -325,6 +332,31 @@
       </div>
     </section>
 
+    <!-- VISTA: MI NETFLIX (ALQUILERES) -->
+    <section id="vistaNetflix" class="hidden pb-28 sm:pb-6 max-w-3xl mx-auto">
+      <div class="flex items-center justify-between gap-3 mb-5">
+        <div>
+          <h2 class="text-xl font-black text-white flex items-center gap-2">
+            <i class="fa-solid fa-tv text-red-500"></i> Mi Netflix
+          </h2>
+          <p class="text-xs text-gray-400">Tus cuentas, días restantes, renovación y códigos de acceso.</p>
+        </div>
+        <button onclick="cambiarVista('tienda')" class="shrink-0 px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-xs sm:text-sm text-gray-300 rounded-lg">
+          <i class="fa-solid fa-arrow-left mr-1"></i> Tienda
+        </button>
+      </div>
+
+      <div class="mb-5 p-4 bg-gray-900 border border-gray-800 rounded-2xl text-[11px] text-gray-300 leading-relaxed space-y-1">
+        <p><span class="text-red-400 font-bold">1.</span> En Netflix elige "Enviar código" o "Estoy de viaje" / "Actualizar Hogar".</p>
+        <p><span class="text-red-400 font-bold">2.</span> Espera unos 30 a 60 segundos y toca <b>Ver código</b> en la cuenta correspondiente.</p>
+        <p><span class="text-red-400 font-bold">3.</span> Los enlaces de Netflix duran 15 minutos. Si venció tu cuenta, renueva para volver a pedir códigos.</p>
+      </div>
+
+      <div id="listaNetflixCliente" class="space-y-4">
+        <p class="text-gray-500 text-center py-8 text-sm">Aún no tienes cuentas de Netflix asignadas.</p>
+      </div>
+    </section>
+
     <!-- VISTA: PANEL DE ADMINISTRACIÓN -->
     <section id="vistaAdmin" class="hidden">
       <div class="flex flex-col md:flex-row md:items-center justify-between mb-6 pb-4 border-b border-gray-800 gap-4">
@@ -411,6 +443,9 @@
           <button onclick="irATabAdmin('historial')" id="tabBtnHistorial" class="admin-tab bg-gray-900 border-gray-800 text-gray-400">
             <i class="fa-solid fa-receipt"></i><span>Historial de Ventas</span>
           </button>
+          <button onclick="irATabAdmin('netflix')" id="tabBtnNetflix" class="admin-tab admin-tab-ancho bg-gray-900 border-gray-800 text-gray-400">
+            <i class="fa-solid fa-tv"></i><span>Alquiler Netflix</span><span id="badgeTabNetflix" class="hidden lg:static lg:ml-auto min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-[10px] font-black flex items-center justify-center"></span>
+          </button>
           <button onclick="irATabAdmin('ajustes')" id="tabBtnAjustes" class="admin-tab admin-tab-ancho bg-gray-900 border-gray-800 text-gray-400">
             <i class="fa-solid fa-gears"></i><span>Ajustes Generales</span>
           </button>
@@ -418,6 +453,42 @@
         </nav>
 
         <div id="adminContenidoTabs" class="min-w-0 scroll-mt-24">
+
+      <!-- TAB: ALQUILER NETFLIX -->
+      <div id="adminSecNetflix" class="hidden space-y-4">
+        <div id="alertaNetflixVencidas" class="hidden"></div>
+        <div id="resumenNetflixAdmin" class="grid grid-cols-2 sm:grid-cols-4 gap-2"></div>
+
+        <div class="p-4 bg-gray-900 border border-gray-800 rounded-2xl space-y-3">
+          <div class="flex flex-col sm:flex-row gap-2">
+            <div class="relative flex-grow">
+              <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-xs"></i>
+              <input type="text" id="txtNetflixBuscar" oninput="renderizarNetflixAdmin()" placeholder="Buscar por cuenta, cliente o WhatsApp..." class="w-full bg-gray-800 border border-gray-700 rounded-xl pl-8 pr-3 py-2.5 text-xs text-white focus:outline-none">
+            </div>
+            <select id="selNetflixFiltro" onchange="renderizarNetflixAdmin()" class="bg-gray-800 border border-gray-700 rounded-xl px-3 py-2.5 text-xs text-white focus:outline-none">
+              <option value="todas">Todas</option>
+              <option value="vencidas">Vencidas (por quitar)</option>
+              <option value="por_vencer">Vencen en 3 días o menos</option>
+              <option value="activas">Activas</option>
+              <option value="sin_asignar">Sin asignar</option>
+              <option value="pendientes">Pendientes de migrar</option>
+              <option value="limpieza">Por limpiar (cambiar clave)</option>
+            </select>
+          </div>
+          <div class="flex flex-wrap gap-2">
+            <button onclick="abrirModalNetflixCuenta()" class="px-3 py-2 bg-red-600 hover:bg-red-500 text-white font-black rounded-xl text-xs flex items-center gap-1.5 transition">
+              <i class="fa-solid fa-plus"></i> Agregar cuenta
+            </button>
+            <button onclick="abrirModalNetflixLote()" class="px-3 py-2 bg-gray-800 hover:bg-gray-700 border border-gray-700 text-gray-200 font-bold rounded-xl text-xs flex items-center gap-1.5 transition">
+              <i class="fa-solid fa-list-check"></i> Carga en bloque
+            </button>
+          </div>
+        </div>
+
+        <div id="listaNetflixAdmin" class="space-y-3">
+          <p class="text-gray-500 text-center py-8 text-sm">Cargando cuentas...</p>
+        </div>
+      </div>
 
       <!-- TAB 1: PRODUCTOS Y VISIBILIDAD -->
       <div id="adminSecProductos" class="space-y-6">
@@ -1514,6 +1585,95 @@
         </div>
         <button type="submit" class="w-full bg-emerald-500 hover:bg-emerald-400 text-black font-bold py-2.5 rounded-xl text-xs transition mt-2">Guardar Cambios</button>
       </form>
+    </div>
+  </div>
+
+  <!-- MODAL: CUENTA DE NETFLIX (AGREGAR / EDITAR / ASIGNAR) -->
+  <div id="modalNetflixCuenta" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+    <div class="bg-gray-900 border border-red-500/40 rounded-2xl max-w-md w-full p-5 relative shadow-2xl max-h-[92vh] overflow-y-auto">
+      <button onclick="nfCerrar('modalNetflixCuenta')" class="absolute top-4 right-4 text-gray-400 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
+      <h3 id="nfTituloModal" class="text-base font-black text-white mb-1 flex items-center gap-2"><i class="fa-solid fa-tv text-red-500"></i> Cuenta de Netflix</h3>
+      <p class="text-[11px] text-gray-400 mb-4">No se guarda la clave de la cuenta. Si dejas el cliente vacío, queda "sin asignar".</p>
+      <form onsubmit="guardarNetflixCuenta(event)" class="space-y-3">
+        <div>
+          <label class="block text-xs text-gray-400 mb-1">Correo de la cuenta (el alias completo)</label>
+          <input type="email" id="nfCorreo" required placeholder="usuario+alias@gmail.com" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white font-mono focus:outline-none">
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block text-xs text-gray-400 mb-1">Cliente (nombre)</label>
+            <input type="text" id="nfCliente" placeholder="Ej: Mile" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none">
+          </div>
+          <div>
+            <label class="block text-xs text-gray-400 mb-1">WhatsApp (opcional)</label>
+            <input type="tel" id="nfWhatsapp" placeholder="3001234567" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none">
+          </div>
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block text-xs text-gray-400 mb-1">Plan</label>
+            <select id="nfPlan" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none">
+              <option value="1">1 mes</option>
+              <option value="2">2 meses</option>
+              <option value="3">3 meses</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs text-gray-400 mb-1">Precio de renovación (COP)</label>
+            <input type="number" id="nfPrecio" min="0" step="500" placeholder="Ej: 28000" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none">
+          </div>
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block text-xs text-gray-400 mb-1">Fecha de inicio</label>
+            <input type="date" id="nfInicio" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none">
+          </div>
+          <div>
+            <label class="block text-xs text-gray-400 mb-1">Próximo pago</label>
+            <input type="date" id="nfProximo" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none">
+          </div>
+        </div>
+        <p class="text-[10px] text-gray-500 -mt-1">Si dejas el próximo pago vacío, se calcula con la fecha de inicio más los meses del plan.</p>
+        <div>
+          <label class="block text-xs text-gray-400 mb-1">Notas (opcional)</label>
+          <input type="text" id="nfNotas" maxlength="200" placeholder="Ej: paga los 21 de cada mes" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none">
+        </div>
+        <button type="submit" id="btnGuardarNetflixCuenta" class="w-full bg-red-600 hover:bg-red-500 text-white font-black py-2.5 rounded-xl text-xs transition">Guardar</button>
+        <button type="button" id="btnEliminarNetflixCuenta" onclick="eliminarNetflixCuenta()" class="hidden w-full bg-gray-800 hover:bg-red-500/20 text-red-400 border border-red-500/30 font-bold py-2 rounded-xl text-xs transition">
+          <i class="fa-solid fa-trash-can mr-1"></i> Eliminar esta cuenta de la lista
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: CARGA EN BLOQUE DE CUENTAS DE NETFLIX -->
+  <div id="modalNetflixLote" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+    <div class="bg-gray-900 border border-red-500/40 rounded-2xl max-w-lg w-full p-5 relative shadow-2xl max-h-[92vh] overflow-y-auto">
+      <button onclick="nfCerrar('modalNetflixLote')" class="absolute top-4 right-4 text-gray-400 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
+      <h3 class="text-base font-black text-white mb-1 flex items-center gap-2"><i class="fa-solid fa-list-check text-red-500"></i> Carga en bloque</h3>
+      <p class="text-[11px] text-gray-400 mb-3">Una cuenta por línea, separando con punto y coma (;):</p>
+      <div class="p-3 bg-gray-800/70 border border-gray-700 rounded-xl text-[11px] font-mono text-gray-300 mb-3 leading-relaxed break-words">
+        correo ; cliente ; plan ; precio ; próximo pago ; whatsapp
+      </div>
+      <ul class="text-[11px] text-gray-400 space-y-1 mb-3 list-disc pl-4">
+        <li>Plan: 1, 2 o 3 (meses). Fecha: 21/10/2026 o 2026-10-21.</li>
+        <li>WhatsApp es opcional. <b class="text-gray-200">No pegues claves</b>: no se guardan.</li>
+        <li>Solo el correo = cuenta sin asignar. Con cliente = asignada (pendiente de migrar hasta que lo vincules).</li>
+      </ul>
+      <textarea id="nfLoteTexto" rows="8" placeholder="soccer344ruiz+k2etla@gmail.com ; Mile ; 1 ; 28000 ; 21/10/2026 ; 3001234567&#10;hankop1209+n05@gmail.com" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white font-mono focus:outline-none"></textarea>
+      <button id="btnCargarLoteNetflix" onclick="cargarNetflixLote()" class="w-full mt-3 bg-red-600 hover:bg-red-500 text-white font-black py-2.5 rounded-xl text-xs transition">Revisar y cargar</button>
+    </div>
+  </div>
+
+  <!-- MODAL: VINCULAR CUENTA A UN USUARIO REGISTRADO -->
+  <div id="modalNetflixVincular" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+    <div class="bg-gray-900 border border-red-500/40 rounded-2xl max-w-md w-full p-5 relative shadow-2xl max-h-[92vh] overflow-y-auto">
+      <button onclick="nfCerrar('modalNetflixVincular')" class="absolute top-4 right-4 text-gray-400 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
+      <h3 class="text-base font-black text-white mb-1 flex items-center gap-2"><i class="fa-solid fa-link text-red-500"></i> Vincular a un usuario</h3>
+      <p id="nfVincularCuenta" class="text-[11px] text-red-300 font-mono mb-3 break-all"></p>
+      <input type="text" id="nfVincularBuscar" oninput="renderizarVincularNetflix()" placeholder="Buscar por correo, nombre o WhatsApp..." class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2.5 text-xs text-white focus:outline-none mb-3">
+      <div id="nfVincularLista" class="space-y-2 max-h-72 overflow-y-auto"></div>
+      <button id="btnDesvincularNetflix" onclick="desvincularNetflix()" class="hidden w-full mt-3 bg-gray-800 hover:bg-gray-700 text-gray-300 border border-gray-700 font-bold py-2 rounded-xl text-xs transition">Quitar el vínculo actual</button>
     </div>
   </div>
 
@@ -3743,6 +3903,7 @@
         }
 
         iniciarLatidoConexion(user);
+        iniciarMisAlquileres();
 
         const userEmail = (user.email || '').trim().toLowerCase();
         const esAdmin = ADMIN_EMAILS.some(e => e.trim().toLowerCase() === userEmail);
@@ -3752,11 +3913,13 @@
           escucharTotalRecaudadoHoyEnVivo();
           iniciarInventarioPrivadoAdmin();
           iniciarSecretosAdmin();
+          iniciarNetflixAdmin();
           recalcularProductoHotAdmin();
         } else {
           document.getElementById('btnAdminTab').classList.add('hidden');
           detenerInventarioPrivadoAdmin();
           detenerSecretosAdmin();
+          detenerNetflixAdmin();
         }
 
         db.collection('usuarios').doc(user.uid).onSnapshot(doc => {
@@ -3808,6 +3971,8 @@
           navLogo.classList.add('flex');
         }
         document.getElementById('btnAdminTab').classList.add('hidden');
+        detenerMisAlquileres();
+        detenerNetflixAdmin();
         bloquearAccesoVisitante();
       }
     });
@@ -4365,6 +4530,8 @@
       document.getElementById('vistaTienda').classList.add('hidden');
       document.getElementById('vistaMisCuentas').classList.add('hidden');
       document.getElementById('vistaAdmin').classList.add('hidden');
+      const vNfBloq = document.getElementById('vistaNetflix');
+      if (vNfBloq) vNfBloq.classList.add('hidden');
       const vb = document.getElementById('vistaBloqueada');
       if (vb) {
         vb.classList.remove('hidden');
@@ -4388,6 +4555,8 @@
       document.getElementById('vistaTienda').classList.add('hidden');
       document.getElementById('vistaMisCuentas').classList.add('hidden');
       document.getElementById('vistaAdmin').classList.add('hidden');
+      const vNf = document.getElementById('vistaNetflix');
+      if (vNf) vNf.classList.add('hidden');
 
       if (vista === 'tienda') {
         document.getElementById('vistaTienda').classList.remove('hidden');
@@ -4396,6 +4565,9 @@
       } else if (vista === 'mis-cuentas') {
         document.getElementById('vistaMisCuentas').classList.remove('hidden');
         cargarMisCuentas();
+      } else if (vista === 'netflix' && vNf) {
+        vNf.classList.remove('hidden');
+        renderizarNetflixCliente();
       } else if (vista === 'admin' && !modoPruebaCliente) {
         document.getElementById('vistaAdmin').classList.remove('hidden');
         cambiarTabAdmin('productos');
@@ -4747,7 +4919,7 @@
     function cambiarTabAdmin(tab) {
       if (modoPruebaCliente) return;
       iniciarBadgesAdmin();
-      const tabs = ['productos', 'reporte', 'categorias', 'usuarios', 'stock', 'apariencia', 'pagos', 'recargas', 'historial', 'ajustes'];
+      const tabs = ['productos', 'reporte', 'categorias', 'usuarios', 'stock', 'apariencia', 'pagos', 'recargas', 'historial', 'netflix', 'ajustes'];
       tabs.forEach(t => {
         const nombre = t.charAt(0).toUpperCase() + t.slice(1);
         const sec = document.getElementById('adminSec' + nombre);
@@ -4770,11 +4942,13 @@
       if (tab === 'pagos') cargarMetodosPagoAdmin();
       if (tab === 'recargas') cargarRecargasAdmin();
       if (tab === 'historial') cargarHistorialVentasAdmin();
+      if (tab === 'netflix') renderizarNetflixAdmin();
       if (tab === 'ajustes') cargarDatosAjustesEnForm();
     }
 
     async function iniciarSincronizacionTotal() {
-      await actualizarProductoHotGlobal();
+      // En paralelo: el producto "HOT" ya no retrasa la carga del catálogo
+      actualizarProductoHotGlobal().then(() => { if (currentUser) renderizarCatalogo(); }).catch(() => {});
       
       db.collection('configuracion').doc('ajustes').onSnapshot(doc => {
         if (doc.exists) {
@@ -7325,6 +7499,791 @@
       } finally {
         migrandoInventario = false;
         renderizarEstadoSeguridadAdmin();
+      }
+    }
+
+    // ==================== MÓDULO NETFLIX: ALQUILER DE CUENTAS ====================
+    const ZONA_NETFLIX = 'America/Bogota';
+    const SPINNER_NF = '<i class="fa-solid fa-spinner fa-spin"></i>';
+    let netflixCuentasAdmin = [];
+    let unsubNetflixAdmin = null;
+    let misAlquileres = [];
+    let unsubMisAlquileres = null;
+    let netflixResultadosOtp = {};
+    let netflixEditandoId = null;
+    let netflixVincularId = null;
+    let usuariosNetflixCache = null;
+
+    const ESTILO_NETFLIX = {
+      activa:      { txt: 'Activa',      chip: 'bg-green-500/15 text-green-400 border-green-500/30',   barra: 'bg-green-500' },
+      por_vencer:  { txt: 'Por vencer',  chip: 'bg-amber-500/15 text-amber-400 border-amber-500/30',   barra: 'bg-amber-500' },
+      vence_hoy:   { txt: 'Vence hoy',   chip: 'bg-orange-500/15 text-orange-400 border-orange-500/30', barra: 'bg-orange-500' },
+      vencida:     { txt: 'Vencida',     chip: 'bg-red-500/15 text-red-400 border-red-500/30',         barra: 'bg-red-500' },
+      sin_asignar: { txt: 'Sin asignar', chip: 'bg-gray-700/40 text-gray-300 border-gray-600/50',      barra: 'bg-gray-500' },
+      sin_fecha:   { txt: 'Sin fecha',   chip: 'bg-gray-700/40 text-gray-300 border-gray-600/50',      barra: 'bg-gray-500' }
+    };
+
+    // ---------- Fechas (texto 'AAAA-MM-DD', hora de Colombia) ----------
+    function hoyNetflix() {
+      try {
+        return new Intl.DateTimeFormat('en-CA', { timeZone: ZONA_NETFLIX, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+      } catch (e) {
+        return obtenerFechaLocalStr();
+      }
+    }
+
+    function esFechaNetflix(f) { return typeof f === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(f); }
+
+    function diasNetflix(desde, hasta) {
+      const a = desde.split('-').map(Number), b = hasta.split('-').map(Number);
+      return Math.round((Date.UTC(b[0], b[1] - 1, b[2]) - Date.UTC(a[0], a[1] - 1, a[2])) / 86400000);
+    }
+
+    function sumarMesesNetflix(fecha, n) {
+      const p = fecha.split('-').map(Number);
+      const total = (p[1] - 1) + n;
+      const anio = p[0] + Math.floor(total / 12);
+      const mes = total % 12;
+      const ultimo = new Date(Date.UTC(anio, mes + 1, 0)).getUTCDate();
+      const dia = Math.min(p[2], ultimo);
+      return anio + '-' + ('0' + (mes + 1)).slice(-2) + '-' + ('0' + dia).slice(-2);
+    }
+
+    function fechaCortaNetflix(f) {
+      if (!esFechaNetflix(f)) return '—';
+      const p = f.split('-');
+      return p[2] + '/' + p[1] + '/' + p[0];
+    }
+
+    // Acepta 2026-10-21, 21/10/2026, 21-10-2026 y 21/10/26. Devuelve 'AAAA-MM-DD' o ''
+    function parsearFechaNetflix(txt) {
+      const t = String(txt || '').trim();
+      if (!t) return '';
+      let d, m, y;
+      let r = t.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+      if (r) { y = +r[1]; m = +r[2]; d = +r[3]; }
+      else {
+        r = t.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})$/);
+        if (!r) return '';
+        d = +r[1]; m = +r[2]; y = +r[3];
+        if (y < 100) y += 2000;
+      }
+      const f = new Date(Date.UTC(y, m - 1, d));
+      if (f.getUTCFullYear() !== y || f.getUTCMonth() !== m - 1 || f.getUTCDate() !== d) return '';
+      return y + '-' + ('0' + m).slice(-2) + '-' + ('0' + d).slice(-2);
+    }
+
+    function estadoNetflix(a) {
+      if (!a || a.estado !== 'asignado') return { clave: 'sin_asignar', dias: null };
+      if (!esFechaNetflix(a.proximoPago)) return { clave: 'sin_fecha', dias: null };
+      const d = diasNetflix(hoyNetflix(), a.proximoPago);
+      if (d < 0) return { clave: 'vencida', dias: d };
+      if (d === 0) return { clave: 'vence_hoy', dias: 0 };
+      if (d <= 3) return { clave: 'por_vencer', dias: d };
+      return { clave: 'activa', dias: d };
+    }
+
+    function nfAbrir(id) {
+      const m = document.getElementById(id);
+      if (!m) return;
+      m.classList.remove('hidden');
+      m.style.display = 'flex';
+    }
+
+    function nfCerrar(id) {
+      const m = document.getElementById(id);
+      if (!m) return;
+      m.classList.add('hidden');
+      m.style.display = 'none';
+    }
+
+    // ==================== VISTA DEL CLIENTE ====================
+    function iniciarMisAlquileres() {
+      if (unsubMisAlquileres || !currentUser) return;
+      try {
+        unsubMisAlquileres = db.collection('alquileres').where('clienteUid', '==', currentUser.uid).onSnapshot(snap => {
+          misAlquileres = [];
+          snap.forEach(d => misAlquileres.push(Object.assign({ id: d.id }, d.data())));
+          actualizarBotonNetflixNav();
+          const v = document.getElementById('vistaNetflix');
+          if (v && !v.classList.contains('hidden')) renderizarNetflixCliente();
+        }, err => console.warn('Alquileres no disponibles:', err));
+      } catch (e) {
+        console.warn(e);
+      }
+    }
+
+    function detenerMisAlquileres() {
+      try { if (unsubMisAlquileres) unsubMisAlquileres(); } catch (e) { console.warn(e); }
+      unsubMisAlquileres = null;
+      misAlquileres = [];
+      netflixResultadosOtp = {};
+      actualizarBotonNetflixNav();
+    }
+
+    function actualizarBotonNetflixNav() {
+      const btn = document.getElementById('btnNavNetflix');
+      const badge = document.getElementById('badgeNetflixNav');
+      if (!btn) return;
+      const hay = misAlquileres.length > 0;
+      btn.classList.toggle('hidden', !hay);
+      btn.classList.toggle('flex', hay);
+      const alertas = misAlquileres.filter(a => ['por_vencer', 'vence_hoy', 'vencida'].includes(estadoNetflix(a).clave)).length;
+      if (badge) {
+        badge.classList.toggle('hidden', alertas === 0);
+        badge.innerText = alertas > 9 ? '9+' : String(alertas);
+      }
+    }
+
+    function renderizarNetflixCliente() {
+      const cont = document.getElementById('listaNetflixCliente');
+      if (!cont) return;
+      if (!misAlquileres.length) {
+        cont.innerHTML = '<p class="text-gray-500 text-center py-8 text-sm">Aún no tienes cuentas de Netflix asignadas.</p>';
+        return;
+      }
+      const lista = misAlquileres.slice().sort((a, b) => String(a.proximoPago || '9999').localeCompare(String(b.proximoPago || '9999')));
+      cont.innerHTML = lista.map(htmlTarjetaNetflixCliente).join('');
+      lista.forEach(a => pintarOtpNetflix('c', a.id));
+    }
+
+    function htmlTarjetaNetflixCliente(a) {
+      const est = estadoNetflix(a), st = ESTILO_NETFLIX[est.clave] || ESTILO_NETFLIX.sin_fecha;
+      const dias = est.dias;
+      const plan = parseInt(a.plan, 10) || 1;
+      const precio = Number(a.precio) || 0;
+      const grande = dias === null ? '—' : (dias === 0 ? 'Hoy' : Math.abs(dias));
+      let leyenda = '';
+      if (dias !== null) {
+        if (dias > 0) leyenda = dias === 1 ? 'día restante' : 'días restantes';
+        else if (dias === 0) leyenda = 'vence tu cuenta';
+        else leyenda = Math.abs(dias) === 1 ? 'día de vencida' : 'días de vencida';
+      }
+      const pct = dias === null ? 0 : Math.max(0, Math.min(100, Math.round(dias / (plan * 30) * 100)));
+      const vencida = est.clave === 'vencida';
+      const id = escaparHtml(a.id);
+
+      const botonRenovar = precio > 0
+        ? `<button id="btnRenovarNf_${id}" onclick="renovarNetflix('${id}')" class="${vencida ? 'bg-red-600 hover:bg-red-500 text-white' : 'bg-gray-800 hover:bg-gray-700 text-gray-100 border border-gray-700'} font-black py-2.5 rounded-xl text-xs flex items-center justify-center gap-1.5 transition"><i class="fa-solid fa-rotate"></i> Renovar por ${escaparHtml(formatoCOP(precio))}</button>`
+        : `<div class="col-span-2 text-[11px] text-gray-400 text-center py-2">La renovación en línea no está disponible para esta cuenta. Escríbenos por soporte.</div>`;
+
+      const botonOtp = `<button id="btnOtpNf_c_${id}" onclick="pedirCodigoNetflix('${id}','c')" ${vencida ? 'disabled' : ''} class="${vencida ? 'bg-gray-800 text-gray-500 cursor-not-allowed' : 'bg-emerald-500 hover:bg-emerald-400 text-black'} font-black py-2.5 rounded-xl text-xs flex items-center justify-center gap-1.5 transition"><i class="fa-solid ${vencida ? 'fa-lock' : 'fa-key'}"></i> ${vencida ? 'Códigos bloqueados' : 'Ver código'}</button>`;
+
+      return `
+        <div class="p-4 bg-gray-900 border ${vencida ? 'border-red-500/40' : 'border-gray-800'} rounded-2xl">
+          <div class="flex items-center justify-between gap-2">
+            <span class="text-xs text-gray-400 flex items-center gap-1.5"><i class="fa-solid fa-tv text-red-500"></i> Plan ${plan} ${plan === 1 ? 'mes' : 'meses'}</span>
+            <span class="text-[11px] font-bold px-2.5 py-0.5 rounded-full border ${st.chip}">${st.txt}</span>
+          </div>
+          <p class="font-mono text-xs text-white mt-2 break-all select-all">${escaparHtml(a.correo)}</p>
+          <div class="flex items-baseline gap-2 mt-3">
+            <span class="text-3xl font-black text-white">${grande}</span>
+            <span class="text-xs text-gray-400">${leyenda}</span>
+          </div>
+          <div class="h-1.5 bg-gray-800 rounded-full mt-2 overflow-hidden"><div class="h-1.5 rounded-full ${st.barra}" style="width:${pct}%"></div></div>
+          <p class="text-[11px] text-gray-400 mt-2"><i class="fa-regular fa-calendar mr-1"></i> Próximo pago: <b class="text-gray-200">${fechaCortaNetflix(a.proximoPago)}</b></p>
+          ${vencida ? `<p class="text-[11px] text-red-300 mt-2"><i class="fa-solid fa-lock mr-1"></i> Tu cuenta venció. Renueva para volver a pedir códigos.</p>` : ''}
+          <div class="grid grid-cols-2 gap-2 mt-3">
+            ${botonOtp}
+            ${botonRenovar}
+          </div>
+          <div id="resNf_c_${id}" class="mt-3"></div>
+        </div>`;
+    }
+
+    // ---------- Códigos / enlaces ----------
+    function vigentesNetflix(ambito, id) {
+      const dato = netflixResultadosOtp[ambito + '_' + id];
+      if (!dato) return null;
+      const ahora = Date.now();
+      return dato.lista.filter(r => !r.venceEn || new Date(r.venceEn).getTime() > ahora);
+    }
+
+    function pintarOtpNetflix(ambito, id) {
+      const box = document.getElementById(`resNf_${ambito}_${id}`);
+      const vig = vigentesNetflix(ambito, id);
+      if (!box || vig === null) return;
+      if (!vig.length) {
+        box.innerHTML = `<div class="p-3 bg-gray-800/70 border border-gray-700 rounded-lg text-[11px] text-gray-300"><i class="fa-solid fa-hourglass-half text-yellow-400 mr-1"></i> No hay códigos vigentes. Pídelo en Netflix, espera 30 a 60 segundos y vuelve a tocar el botón.</div>`;
+        return;
+      }
+      box.innerHTML = vig.map((r, j) => {
+        const mins = r.venceEn ? Math.max(1, Math.round((new Date(r.venceEn).getTime() - Date.now()) / 60000)) : null;
+        return `
+          <div class="p-3 bg-gray-800/70 border border-emerald-500/30 rounded-lg mb-2">
+            <div class="flex items-center justify-between gap-2 mb-2">
+              <span class="text-[11px] font-bold text-white flex items-center gap-1.5"><i class="fa-solid fa-envelope-open-text text-emerald-400"></i> Netflix</span>
+              <span class="text-[10px] text-gray-400">${mins ? 'vence en ~' + mins + ' min' : ''}</span>
+            </div>
+            ${r.codigo ? `
+              <div class="flex items-center justify-between gap-2 bg-gray-900 border border-gray-700 rounded-lg px-3 py-2">
+                <span class="font-mono font-black text-2xl tracking-[0.3em] text-emerald-400">${escaparHtml(r.codigo)}</span>
+                <button onclick="copiarCodigoNetflix('${ambito}','${id}',${j})" class="text-gray-300 hover:text-white text-xs px-2 py-1 bg-gray-800 rounded-lg"><i class="fa-solid fa-copy mr-1"></i>Copiar</button>
+              </div>` : ''}
+            ${r.enlace ? `
+              <button onclick="abrirEnlaceNetflix('${ambito}','${id}',${j})" class="w-full bg-red-600 hover:bg-red-500 text-white font-black py-2.5 rounded-lg text-xs flex items-center justify-center gap-1.5 transition">
+                <i class="fa-solid fa-arrow-up-right-from-square"></i> ${escaparHtml(r.enlaceTipo || 'Abrir enlace de Netflix')}
+              </button>
+              <p class="text-[10px] text-gray-500 mt-1.5 text-center">Ábrelo desde el mismo dispositivo donde estás viendo Netflix.</p>` : ''}
+          </div>`;
+      }).join('');
+    }
+
+    function pintarErrorNetflix(ambito, id, mensaje) {
+      const box = document.getElementById(`resNf_${ambito}_${id}`);
+      if (!box) return;
+      box.innerHTML = `<div class="p-3 bg-red-500/10 border border-red-500/40 rounded-lg text-[11px] text-red-300"><i class="fa-solid fa-triangle-exclamation mr-1"></i> ${escaparHtml(mensaje)}</div>`;
+    }
+
+    async function pedirCodigoNetflix(id, ambito) {
+      const btn = document.getElementById(`btnOtpNf_${ambito}_${id}`);
+      const original = btn ? btn.innerHTML : '';
+      if (btn) { btn.disabled = true; btn.innerHTML = SPINNER_NF + ' Buscando...'; }
+      try {
+        if (!obtenerBackendUrl()) throw new Error('El servicio de códigos no está disponible por ahora. Contacta a soporte.');
+        const r = await llamarBackend('otp', { id: id });
+        if (!r.ok) {
+          pintarErrorNetflix(ambito, id, r.error || 'No se pudo obtener el código.');
+        } else {
+          netflixResultadosOtp[ambito + '_' + id] = { lista: r.resultados || [] };
+          pintarOtpNetflix(ambito, id);
+        }
+      } catch (e) {
+        pintarErrorNetflix(ambito, id, e && e.message ? e.message : 'Error al consultar el código.');
+      } finally {
+        if (btn) { btn.disabled = false; btn.innerHTML = original; }
+      }
+    }
+
+    function copiarCodigoNetflix(ambito, id, j) {
+      const r = (vigentesNetflix(ambito, id) || [])[j];
+      if (!r || !r.codigo) return;
+      navigator.clipboard.writeText(String(r.codigo))
+        .then(() => mostrarToast('¡Código copiado!'))
+        .catch(() => mostrarTextoCopiable(r.codigo));
+    }
+
+    function abrirEnlaceNetflix(ambito, id, j) {
+      const r = (vigentesNetflix(ambito, id) || [])[j];
+      if (!r || !r.enlace) return;
+      if (!/^https:\/\/(www\.)?netflix\.com\/account\/(travel\/verify|update-primary-location)(\?|$)/i.test(r.enlace)) {
+        mostrarToast('Enlace no permitido.');
+        return;
+      }
+      window.open(r.enlace, '_blank', 'noopener');
+    }
+
+    // ---------- Renovación con saldo ----------
+    async function renovarNetflix(id) {
+      const a = misAlquileres.find(x => x.id === id);
+      if (!a) return;
+      const plan = parseInt(a.plan, 10) || 1;
+      const precio = Number(a.precio) || 0;
+      if (!obtenerBackendUrl()) { alert('La renovación en línea no está disponible por ahora. Contacta a soporte.'); return; }
+
+      const ok = await confirmarModal(
+        `¿Renovar ${a.correo} por ${plan} ${plan === 1 ? 'mes' : 'meses'}?\n\nSe descontarán ${formatoCOP(precio)} COP de tu saldo.`,
+        { tipo: 'pregunta', textoAceptar: 'Sí, renovar' }
+      );
+      if (!ok) return;
+
+      const btn = document.getElementById('btnRenovarNf_' + id);
+      const original = btn ? btn.innerHTML : '';
+      if (btn) { btn.disabled = true; btn.innerHTML = SPINNER_NF + ' Procesando...'; }
+      try {
+        const r = await llamarBackend('renovar', { id: id });
+        if (!r.ok) {
+          if (r.codigo === 'SALDO_INSUFICIENTE') abrirModalSaldoInsuficiente(r.error);
+          else alert(r.error || 'No se pudo renovar.');
+          return;
+        }
+        mostrarToast('¡Renovada! Próximo pago: ' + fechaCortaNetflix(r.proximoPago));
+      } catch (e) {
+        alert(e && e.message ? e.message : 'No se pudo renovar.');
+      } finally {
+        if (btn) { btn.disabled = false; btn.innerHTML = original; }
+      }
+    }
+
+    // ==================== PANEL DE ADMINISTRACIÓN ====================
+    function iniciarNetflixAdmin() {
+      if (unsubNetflixAdmin) return;
+      try {
+        unsubNetflixAdmin = db.collection('alquileres').onSnapshot(snap => {
+          netflixCuentasAdmin = [];
+          snap.forEach(d => netflixCuentasAdmin.push(Object.assign({ id: d.id }, d.data())));
+          actualizarBadgeNetflixAdmin();
+          const sec = document.getElementById('adminSecNetflix');
+          if (sec && !sec.classList.contains('hidden')) renderizarNetflixAdmin();
+        }, err => console.warn('Alquileres (admin) no disponibles:', err));
+      } catch (e) {
+        console.warn(e);
+      }
+    }
+
+    function detenerNetflixAdmin() {
+      try { if (unsubNetflixAdmin) unsubNetflixAdmin(); } catch (e) { console.warn(e); }
+      unsubNetflixAdmin = null;
+      netflixCuentasAdmin = [];
+    }
+
+    function actualizarBadgeNetflixAdmin() {
+      const b = document.getElementById('badgeTabNetflix');
+      if (!b) return;
+      const n = netflixCuentasAdmin.filter(a => estadoNetflix(a).clave === 'vencida').length;
+      b.classList.toggle('hidden', n === 0);
+      b.classList.toggle('absolute', n > 0);
+      b.innerText = n > 9 ? '9+' : String(n);
+    }
+
+    const ORDEN_NETFLIX = { vencida: 0, vence_hoy: 1, por_vencer: 2, activa: 3, sin_fecha: 4, sin_asignar: 5 };
+
+    function filtrarNetflixAdmin() {
+      const q = normalizarBusqueda((document.getElementById('txtNetflixBuscar') || {}).value || '');
+      const f = (document.getElementById('selNetflixFiltro') || {}).value || 'todas';
+      return netflixCuentasAdmin.filter(a => {
+        const est = estadoNetflix(a).clave;
+        if (f === 'activas' && est !== 'activa') return false;
+        if (f === 'por_vencer' && !(est === 'por_vencer' || est === 'vence_hoy')) return false;
+        if (f === 'vencidas' && est !== 'vencida') return false;
+        if (f === 'sin_asignar' && est !== 'sin_asignar') return false;
+        if (f === 'pendientes' && !(a.estado === 'asignado' && !a.clienteUid)) return false;
+        if (f === 'limpieza' && a.limpiezaPendiente !== true) return false;
+        if (q) {
+          const texto = normalizarBusqueda([a.correo, a.clienteNombre, a.clienteEmail, a.clienteWhatsapp, a.notas].join(' '));
+          if (texto.indexOf(q) === -1) return false;
+        }
+        return true;
+      }).sort((x, y) => {
+        const ex = estadoNetflix(x), ey = estadoNetflix(y);
+        if (ORDEN_NETFLIX[ex.clave] !== ORDEN_NETFLIX[ey.clave]) return ORDEN_NETFLIX[ex.clave] - ORDEN_NETFLIX[ey.clave];
+        return String(x.proximoPago || '').localeCompare(String(y.proximoPago || '')) || String(x.correo).localeCompare(String(y.correo));
+      });
+    }
+
+    function renderizarNetflixAdmin() {
+      const cont = document.getElementById('listaNetflixAdmin');
+      if (!cont) return;
+
+      // Resumen y alerta
+      const estados = netflixCuentasAdmin.map(a => estadoNetflix(a).clave);
+      const cuenta = (...claves) => estados.filter(e => claves.includes(e)).length;
+      const vencidas = cuenta('vencida');
+      const pendientes = netflixCuentasAdmin.filter(a => a.estado === 'asignado' && !a.clienteUid).length;
+      const tile = (n, txt, color) => `<div class="p-3 bg-gray-900 border border-gray-800 rounded-xl text-center"><p class="text-xl font-black ${color}">${n}</p><p class="text-[10px] text-gray-400 mt-0.5">${txt}</p></div>`;
+      const res = document.getElementById('resumenNetflixAdmin');
+      if (res) {
+        res.innerHTML =
+          tile(cuenta('activa', 'por_vencer', 'vence_hoy'), 'Al día', 'text-green-400') +
+          tile(cuenta('por_vencer', 'vence_hoy'), 'Vencen en 3 días o menos', 'text-amber-400') +
+          tile(vencidas, 'Vencidas', 'text-red-400') +
+          tile(cuenta('sin_asignar'), `Sin asignar${pendientes ? ' · ' + pendientes + ' por migrar' : ''}`, 'text-gray-300');
+      }
+      const alerta = document.getElementById('alertaNetflixVencidas');
+      if (alerta) {
+        if (vencidas > 0) {
+          alerta.classList.remove('hidden');
+          alerta.innerHTML = `<div class="p-3 bg-red-500/10 border border-red-500/40 rounded-xl flex items-center justify-between gap-3">
+            <p class="text-xs text-red-300 font-bold"><i class="fa-solid fa-triangle-exclamation mr-1"></i> ${vencidas} cuenta${vencidas === 1 ? '' : 's'} vencida${vencidas === 1 ? '' : 's'} por quitar</p>
+            <button onclick="document.getElementById('selNetflixFiltro').value='vencidas'; renderizarNetflixAdmin();" class="shrink-0 px-3 py-1.5 bg-red-600 hover:bg-red-500 text-white font-bold rounded-lg text-xs">Ver</button></div>`;
+        } else {
+          alerta.classList.add('hidden');
+          alerta.innerHTML = '';
+        }
+      }
+
+      const lista = filtrarNetflixAdmin();
+      if (!netflixCuentasAdmin.length) {
+        cont.innerHTML = '<p class="text-gray-500 text-center py-8 text-sm">Aún no hay cuentas. Usa "Agregar cuenta" o "Carga en bloque".</p>';
+        return;
+      }
+      if (!lista.length) {
+        cont.innerHTML = '<p class="text-gray-500 text-center py-8 text-sm">Ninguna cuenta coincide con la búsqueda.</p>';
+        return;
+      }
+      cont.innerHTML = lista.map(htmlTarjetaNetflixAdmin).join('');
+      lista.forEach(a => pintarOtpNetflix('a', a.id));
+    }
+
+    function htmlTarjetaNetflixAdmin(a) {
+      const est = estadoNetflix(a), st = ESTILO_NETFLIX[est.clave] || ESTILO_NETFLIX.sin_fecha;
+      const id = escaparHtml(a.id);
+      const asignada = a.estado === 'asignado';
+      const plan = parseInt(a.plan, 10) || 1;
+      let diasTxt = '';
+      if (est.dias !== null) {
+        if (est.dias > 0) diasTxt = `${est.dias} ${est.dias === 1 ? 'día' : 'días'} restantes`;
+        else if (est.dias === 0) diasTxt = 'Vence hoy';
+        else diasTxt = `Venció hace ${Math.abs(est.dias)} ${Math.abs(est.dias) === 1 ? 'día' : 'días'}`;
+      }
+      const cliente = asignada
+        ? `<span class="text-white font-bold">${escaparHtml(a.clienteNombre || a.clienteEmail || 'Sin nombre')}</span> ${a.clienteUid ? '<span class="text-[10px] text-emerald-400"><i class="fa-solid fa-link"></i> vinculado</span>' : '<span class="text-[10px] text-amber-400">pendiente de migrar</span>'}`
+        : '<span class="text-gray-400">Sin cliente</span>';
+      const btn = (clase, accion, icono, txt) => `<button onclick="${accion}" class="px-2.5 py-1.5 rounded-lg text-[11px] font-bold flex items-center gap-1 transition ${clase}"><i class="fa-solid ${icono}"></i> ${txt}</button>`;
+      const gris = 'bg-gray-800 hover:bg-gray-700 text-gray-200 border border-gray-700';
+
+      let botones = '';
+      if (asignada) {
+        botones += `<button id="btnOtpNf_a_${id}" onclick="pedirCodigoNetflix('${id}','a')" class="px-2.5 py-1.5 rounded-lg text-[11px] font-bold flex items-center gap-1 transition bg-emerald-500 hover:bg-emerald-400 text-black"><i class="fa-solid fa-key"></i> Código</button>`;
+        botones += btn('bg-green-600 hover:bg-green-500 text-white', `registrarPagoNetflix('${id}')`, 'fa-money-bill-wave', 'Registrar pago');
+        botones += btn(gris, `abrirModalNetflixVincular('${id}')`, 'fa-link', a.clienteUid ? 'Cambiar usuario' : 'Vincular');
+        botones += btn('bg-red-500/15 hover:bg-red-500/25 text-red-300 border border-red-500/30', `quitarNetflix('${id}')`, 'fa-user-minus', 'Quitar');
+      } else {
+        botones += btn('bg-red-600 hover:bg-red-500 text-white', `abrirModalNetflixCuenta('${id}', true)`, 'fa-user-plus', 'Asignar');
+      }
+      if (a.limpiezaPendiente === true) botones += btn('bg-yellow-500/20 hover:bg-yellow-500/30 text-yellow-300 border border-yellow-500/40', `marcarLimpiaNetflix('${id}')`, 'fa-broom', 'Ya cambié la clave');
+      botones += btn(gris, `abrirModalNetflixCuenta('${id}')`, 'fa-pen', 'Editar');
+      botones += btn(gris, `verHistorialNetflix('${id}')`, 'fa-clock-rotate-left', 'Historial');
+
+      return `
+        <div class="p-4 bg-gray-900 border ${est.clave === 'vencida' ? 'border-red-500/40' : 'border-gray-800'} rounded-2xl">
+          <div class="flex items-start justify-between gap-2">
+            <p class="font-mono text-xs text-white break-all select-all">${escaparHtml(a.correo)}</p>
+            <span class="shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-full border ${st.chip}">${st.txt}</span>
+          </div>
+          <p class="text-xs mt-1.5">${cliente}${a.clienteWhatsapp ? ` <span class="text-[10px] text-gray-500">· ${escaparHtml(a.clienteWhatsapp)}</span>` : ''}</p>
+          ${asignada ? `<p class="text-[11px] text-gray-400 mt-1">Plan ${plan} ${plan === 1 ? 'mes' : 'meses'} · ${Number(a.precio) > 0 ? escaparHtml(formatoCOP(a.precio)) : '<span class="text-amber-400">sin precio</span>'} · Pago: <b class="text-gray-200">${fechaCortaNetflix(a.proximoPago)}</b>${diasTxt ? ' · ' + diasTxt : ''}</p>` : ''}
+          ${a.limpiezaPendiente === true ? '<p class="text-[11px] text-yellow-300 mt-1"><i class="fa-solid fa-broom mr-1"></i> Pendiente: cambiar clave y cerrar sesiones antes de reasignarla.</p>' : ''}
+          ${a.notas ? `<p class="text-[10px] text-gray-500 mt-1">${escaparHtml(a.notas)}</p>` : ''}
+          <div class="flex flex-wrap gap-1.5 mt-3">${botones}</div>
+          <div id="resNf_a_${id}" class="mt-3"></div>
+        </div>`;
+    }
+
+    // ---------- Agregar / editar / asignar ----------
+    function abrirModalNetflixCuenta(id, modoAsignar) {
+      netflixEditandoId = id || null;
+      const a = id ? netflixCuentasAdmin.find(x => x.id === id) : null;
+      const set = (campo, valor) => { const el = document.getElementById(campo); if (el) el.value = valor; };
+      set('nfCorreo', a ? (a.correo || '') : '');
+      set('nfCliente', a ? (a.clienteNombre || '') : '');
+      set('nfWhatsapp', a ? (a.clienteWhatsapp || '') : '');
+      set('nfPlan', a ? String(parseInt(a.plan, 10) || 1) : '1');
+      set('nfPrecio', a && Number(a.precio) > 0 ? String(a.precio) : '');
+      set('nfInicio', a && esFechaNetflix(a.fechaInicio) ? a.fechaInicio : (modoAsignar ? hoyNetflix() : ''));
+      set('nfProximo', a && esFechaNetflix(a.proximoPago) ? a.proximoPago : '');
+      set('nfNotas', a ? (a.notas || '') : '');
+      const titulo = document.getElementById('nfTituloModal');
+      if (titulo) titulo.innerHTML = `<i class="fa-solid fa-tv text-red-500"></i> ${!a ? 'Agregar cuenta' : (modoAsignar ? 'Asignar cuenta' : 'Editar cuenta')}`;
+      const elim = document.getElementById('btnEliminarNetflixCuenta');
+      if (elim) elim.classList.toggle('hidden', !a);
+      nfAbrir('modalNetflixCuenta');
+    }
+
+    async function guardarNetflixCuenta(e) {
+      e.preventDefault();
+      const val = (id) => ((document.getElementById(id) || {}).value || '').trim();
+      const correo = val('nfCorreo').toLowerCase();
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(correo)) { alert('Escribe un correo válido.'); return; }
+      if (netflixCuentasAdmin.some(x => x.correo === correo && x.id !== netflixEditandoId)) { alert('Esa cuenta ya está en la lista.'); return; }
+
+      const previa = netflixEditandoId ? netflixCuentasAdmin.find(x => x.id === netflixEditandoId) : null;
+      const cliente = val('nfCliente');
+      const plan = [1, 2, 3].includes(parseInt(val('nfPlan'), 10)) ? parseInt(val('nfPlan'), 10) : 1;
+      const precio = Math.max(0, Math.round(Number(val('nfPrecio')) || 0));
+      const wa = val('nfWhatsapp').replace(/\D/g, '');
+      let inicio = val('nfInicio'), proximo = val('nfProximo');
+      const asignada = !!cliente || !!(previa && previa.estado === 'asignado');
+
+      const datos = {
+        correo: correo, plan: plan, precio: precio, notas: val('nfNotas'),
+        actualizadoEl: new Date().toISOString()
+      };
+
+      if (asignada) {
+        if (!proximo && inicio) proximo = sumarMesesNetflix(inicio, plan);
+        if (!proximo) { alert('Escribe la fecha del próximo pago (o la fecha de inicio para calcularla).'); return; }
+        if (!inicio) inicio = hoyNetflix();
+        Object.assign(datos, {
+          estado: 'asignado', clienteNombre: cliente, clienteWhatsapp: wa,
+          fechaInicio: inicio, proximoPago: proximo, limpiezaPendiente: false
+        });
+      } else {
+        Object.assign(datos, {
+          estado: 'sin_asignar', clienteNombre: '', clienteWhatsapp: '', clienteUid: '', clienteEmail: '',
+          fechaInicio: '', proximoPago: ''
+        });
+      }
+
+      const btn = document.getElementById('btnGuardarNetflixCuenta');
+      if (btn) { btn.disabled = true; btn.innerHTML = SPINNER_NF + ' Guardando...'; }
+      try {
+        if (previa) {
+          await db.collection('alquileres').doc(previa.id).set(datos, { merge: true });
+        } else {
+          Object.assign(datos, { clienteUid: '', clienteEmail: '', limpiezaPendiente: false, creadoEl: new Date().toISOString() });
+          await db.collection('alquileres').add(datos);
+        }
+        nfCerrar('modalNetflixCuenta');
+        mostrarToast('Cuenta guardada.');
+      } catch (err) {
+        alert('No se pudo guardar: ' + err.message);
+      } finally {
+        if (btn) { btn.disabled = false; btn.innerHTML = 'Guardar'; }
+      }
+    }
+
+    async function eliminarNetflixCuenta() {
+      const a = netflixEditandoId ? netflixCuentasAdmin.find(x => x.id === netflixEditandoId) : null;
+      if (!a) return;
+      if (!await confirmarModal(`¿Eliminar ${a.correo} de la lista? Esto borra la cuenta y su asignación (los pagos registrados se conservan).`)) return;
+      try {
+        await db.collection('alquileres').doc(a.id).delete();
+        nfCerrar('modalNetflixCuenta');
+        mostrarToast('Cuenta eliminada de la lista.');
+      } catch (err) {
+        alert('No se pudo eliminar: ' + err.message);
+      }
+    }
+
+    // ---------- Carga en bloque ----------
+    function abrirModalNetflixLote() {
+      const t = document.getElementById('nfLoteTexto');
+      if (t) t.value = '';
+      nfAbrir('modalNetflixLote');
+    }
+
+    function parsearLineaNetflix(linea) {
+      let partes;
+      if (linea.indexOf('\t') !== -1) partes = linea.split('\t');
+      else if (/[;|]/.test(linea)) partes = linea.split(/[;|]/);
+      else partes = linea.split(',');
+      partes = partes.map(x => x.trim());
+
+      let correo = (partes[0] || '').toLowerCase();
+      if (correo.indexOf(':') !== -1) correo = correo.split(':')[0].trim();   // si pegaron correo:clave, la clave se descarta
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(correo)) return { error: 'correo no válido' };
+
+      const cliente = partes[1] || '';
+      let plan = 1;
+      if (partes[2]) {
+        plan = parseInt(partes[2].replace(/\D/g, ''), 10);
+        if (![1, 2, 3].includes(plan)) return { error: 'el plan debe ser 1, 2 o 3' };
+      }
+      const precio = partes[3] ? (parseInt(partes[3].replace(/\D/g, ''), 10) || 0) : 0;
+      const proximo = parsearFechaNetflix(partes[4]);
+      if (partes[4] && !proximo) return { error: 'fecha no válida (usa 21/10/2026)' };
+      if (cliente && !proximo) return { error: 'falta la fecha del próximo pago' };
+      const wa = (partes[5] || '').replace(/\D/g, '');
+      return { correo, cliente, plan, precio, proximo, wa };
+    }
+
+    async function cargarNetflixLote() {
+      const texto = (document.getElementById('nfLoteTexto') || {}).value || '';
+      const lineas = texto.split('\n').map(l => l.trim()).filter(Boolean);
+      if (!lineas.length) { alert('Pega al menos una línea.'); return; }
+
+      const validas = [], errores = [];
+      const vistos = new Set(netflixCuentasAdmin.map(a => a.correo));
+      lineas.forEach((l, i) => {
+        const r = parsearLineaNetflix(l);
+        if (r.error) { errores.push(`Línea ${i + 1}: ${r.error}`); return; }
+        if (vistos.has(r.correo)) { errores.push(`Línea ${i + 1}: ${r.correo} ya existe o está repetida`); return; }
+        vistos.add(r.correo);
+        validas.push(r);
+      });
+
+      if (!validas.length) { alert('No hay líneas válidas para cargar.\n\n' + errores.slice(0, 8).join('\n')); return; }
+      const asignadas = validas.filter(v => v.cliente).length;
+      const sinPrecio = validas.filter(v => v.cliente && !v.precio).length;
+      let msg = `Se cargarán ${validas.length} cuenta(s): ${asignadas} asignada(s) y ${validas.length - asignadas} sin asignar.`;
+      if (sinPrecio) msg += `\n${sinPrecio} asignada(s) quedan sin precio de renovación (puedes ponerlo luego con Editar).`;
+      if (errores.length) msg += `\n\nSe omitirán ${errores.length} línea(s):\n` + errores.slice(0, 8).join('\n') + (errores.length > 8 ? '\n…' : '');
+      if (!await confirmarModal(msg, { tipo: 'pregunta', textoAceptar: 'Cargar' })) return;
+
+      const btn = document.getElementById('btnCargarLoteNetflix');
+      if (btn) { btn.disabled = true; btn.innerHTML = SPINNER_NF + ' Cargando...'; }
+      try {
+        const ahora = new Date().toISOString();
+        for (let i = 0; i < validas.length; i += 400) {
+          const lote = db.batch();
+          validas.slice(i, i + 400).forEach(v => {
+            lote.set(db.collection('alquileres').doc(), {
+              correo: v.correo,
+              estado: v.cliente ? 'asignado' : 'sin_asignar',
+              clienteNombre: v.cliente, clienteWhatsapp: v.wa, clienteUid: '', clienteEmail: '',
+              plan: v.plan, precio: v.precio,
+              fechaInicio: v.cliente ? hoyNetflix() : '', proximoPago: v.cliente ? v.proximo : '',
+              limpiezaPendiente: false, notas: '', creadoEl: ahora, actualizadoEl: ahora
+            });
+          });
+          await lote.commit();
+        }
+        nfCerrar('modalNetflixLote');
+        mostrarToast(`¡${validas.length} cuenta(s) cargada(s)!`);
+      } catch (err) {
+        alert('La carga se detuvo: ' + err.message);
+      } finally {
+        if (btn) { btn.disabled = false; btn.innerHTML = 'Revisar y cargar'; }
+      }
+    }
+
+    // ---------- Registrar pago manual ----------
+    async function registrarPagoNetflix(id) {
+      const a = netflixCuentasAdmin.find(x => x.id === id);
+      if (!a || a.estado !== 'asignado') return;
+      const plan = parseInt(a.plan, 10) || 1;
+      const precio = Number(a.precio) || 0;
+      const hoy = hoyNetflix();
+      let base = esFechaNetflix(a.proximoPago) ? a.proximoPago : hoy;
+      if (diasNetflix(base, hoy) > 7) base = hoy;
+      const nuevo = sumarMesesNetflix(base, plan);
+
+      if (!await confirmarModal(
+        `¿Registrar el pago de ${a.clienteNombre || a.correo}?\n\n${plan} ${plan === 1 ? 'mes' : 'meses'} · ${formatoCOP(precio)}\nNuevo vencimiento: ${fechaCortaNetflix(nuevo)}\n\nNo descuenta saldo: úsalo cuando pagó por transferencia u otro medio.`,
+        { tipo: 'pregunta', textoAceptar: 'Registrar pago' }
+      )) return;
+
+      try {
+        const ahora = new Date().toISOString();
+        const lote = db.batch();
+        lote.set(db.collection('alquileres').doc(id), { proximoPago: nuevo, ultimoPago: ahora, ultimoMonto: precio, actualizadoEl: ahora }, { merge: true });
+        lote.set(db.collection('pagos_alquiler').doc(), {
+          alquilerId: id, correo: a.correo || '', usuarioId: a.clienteUid || '', usuarioEmail: a.clienteEmail || '',
+          clienteNombre: a.clienteNombre || '', monto: precio, meses: plan, desde: base, hasta: nuevo,
+          fecha: ahora, metodo: 'manual', procesadoPor: 'admin'
+        });
+        await lote.commit();
+        mostrarToast('Pago registrado. Próximo pago: ' + fechaCortaNetflix(nuevo));
+      } catch (err) {
+        alert('No se pudo registrar el pago: ' + err.message);
+      }
+    }
+
+    // ---------- Quitar cuenta ----------
+    async function quitarNetflix(id) {
+      const a = netflixCuentasAdmin.find(x => x.id === id);
+      if (!a || a.estado !== 'asignado') return;
+      const quien = a.clienteNombre || a.clienteEmail || 'el cliente';
+      if (!await confirmarModal(`¿Quitar ${a.correo} a ${quien}? El cliente dejará de verla y de pedir códigos al instante.`, { textoAceptar: 'Sí, quitar' })) return;
+
+      try {
+        const ahora = new Date().toISOString();
+        const lote = db.batch();
+        lote.set(db.collection('alquileres_historial').doc(), {
+          alquilerId: id, correo: a.correo || '', clienteNombre: a.clienteNombre || '', clienteUid: a.clienteUid || '',
+          clienteEmail: a.clienteEmail || '', plan: parseInt(a.plan, 10) || 1, precio: Number(a.precio) || 0,
+          desde: a.fechaInicio || '', ultimoVencimiento: a.proximoPago || '', hasta: hoyNetflix(), quitadoEl: ahora
+        });
+        lote.set(db.collection('alquileres').doc(id), {
+          estado: 'sin_asignar', clienteNombre: '', clienteWhatsapp: '', clienteUid: '', clienteEmail: '',
+          fechaInicio: '', proximoPago: '', avisoVencido: '', limpiezaPendiente: true, actualizadoEl: ahora
+        }, { merge: true });
+        await lote.commit();
+        delete netflixResultadosOtp['a_' + id];
+        await abrirDialogo({
+          tipo: 'info', titulo: 'Antes de reasignarla',
+          mensaje: '1) Cambia la clave de la cuenta en Netflix.\n2) Cierra sesión en todos los dispositivos (Cuenta → Seguridad → Cerrar sesión en todos los dispositivos).\n3) Vuelve aquí y toca "Ya cambié la clave".',
+          textoAceptar: 'Entendido'
+        });
+      } catch (err) {
+        alert('No se pudo quitar la cuenta: ' + err.message);
+      }
+    }
+
+    async function marcarLimpiaNetflix(id) {
+      try {
+        await db.collection('alquileres').doc(id).set({ limpiezaPendiente: false, actualizadoEl: new Date().toISOString() }, { merge: true });
+        mostrarToast('Lista para reasignar.');
+      } catch (err) {
+        alert('No se pudo actualizar: ' + err.message);
+      }
+    }
+
+    // ---------- Vincular a un usuario registrado ----------
+    async function abrirModalNetflixVincular(id) {
+      const a = netflixCuentasAdmin.find(x => x.id === id);
+      if (!a) return;
+      netflixVincularId = id;
+      document.getElementById('nfVincularCuenta').innerText = `${a.correo} · ${a.clienteNombre || 'sin nombre'}`;
+      const buscar = document.getElementById('nfVincularBuscar');
+      if (buscar) buscar.value = '';
+      document.getElementById('btnDesvincularNetflix').classList.toggle('hidden', !a.clienteUid);
+      document.getElementById('nfVincularLista').innerHTML = `<p class="text-center text-gray-500 text-xs py-4">${SPINNER_NF} Cargando usuarios...</p>`;
+      nfAbrir('modalNetflixVincular');
+      try {
+        if (!usuariosNetflixCache || (Date.now() - usuariosNetflixCache.t) > 300000) {
+          const snap = await db.collection('usuarios').get();
+          const lista = [];
+          snap.forEach(d => { const u = d.data() || {}; lista.push({ uid: d.id, email: u.email || '', nombre: u.nombre || '', whatsapp: u.whatsapp || '' }); });
+          usuariosNetflixCache = { t: Date.now(), lista: lista };
+        }
+        renderizarVincularNetflix();
+      } catch (err) {
+        document.getElementById('nfVincularLista').innerHTML = `<p class="text-center text-red-400 text-xs py-4">No se pudieron cargar los usuarios: ${escaparHtml(err.message)}</p>`;
+      }
+    }
+
+    function renderizarVincularNetflix() {
+      const cont = document.getElementById('nfVincularLista');
+      if (!cont || !usuariosNetflixCache) return;
+      const q = normalizarBusqueda((document.getElementById('nfVincularBuscar') || {}).value || '');
+      const a = netflixCuentasAdmin.find(x => x.id === netflixVincularId);
+      const lista = usuariosNetflixCache.lista.filter(u => !q || normalizarBusqueda([u.email, u.nombre, u.whatsapp].join(' ')).indexOf(q) !== -1).slice(0, 40);
+      if (!lista.length) { cont.innerHTML = '<p class="text-center text-gray-500 text-xs py-4">No hay usuarios que coincidan.</p>'; return; }
+      cont.innerHTML = lista.map(u => `
+        <div class="flex items-center justify-between gap-2 p-2.5 bg-gray-800/60 border ${a && a.clienteUid === u.uid ? 'border-emerald-500/50' : 'border-gray-700/60'} rounded-xl">
+          <div class="min-w-0">
+            <p class="text-xs text-white font-bold truncate">${escaparHtml(u.nombre || u.email)}</p>
+            <p class="text-[10px] text-gray-400 font-mono truncate">${escaparHtml(u.email)}${whatsappEsVacio(u.whatsapp) ? '' : ' · ' + escaparHtml(u.whatsapp)}</p>
+          </div>
+          <button onclick="vincularNetflixUsuario('${escaparHtml(u.uid)}')" class="shrink-0 px-3 py-1.5 bg-red-600 hover:bg-red-500 text-white font-bold rounded-lg text-[11px]">Vincular</button>
+        </div>`).join('');
+    }
+
+    async function vincularNetflixUsuario(uid) {
+      const a = netflixCuentasAdmin.find(x => x.id === netflixVincularId);
+      const u = usuariosNetflixCache && usuariosNetflixCache.lista.find(x => x.uid === uid);
+      if (!a || !u) return;
+      try {
+        await db.collection('alquileres').doc(a.id).set({
+          clienteUid: u.uid, clienteEmail: u.email,
+          clienteNombre: a.clienteNombre || u.nombre || u.email,
+          clienteWhatsapp: a.clienteWhatsapp || (whatsappEsVacio(u.whatsapp) ? '' : String(u.whatsapp).replace(/\D/g, '')),
+          actualizadoEl: new Date().toISOString()
+        }, { merge: true });
+        nfCerrar('modalNetflixVincular');
+        mostrarToast('Cuenta vinculada a ' + (u.nombre || u.email));
+      } catch (err) {
+        alert('No se pudo vincular: ' + err.message);
+      }
+    }
+
+    async function desvincularNetflix() {
+      const a = netflixCuentasAdmin.find(x => x.id === netflixVincularId);
+      if (!a) return;
+      try {
+        await db.collection('alquileres').doc(a.id).set({ clienteUid: '', clienteEmail: '', actualizadoEl: new Date().toISOString() }, { merge: true });
+        nfCerrar('modalNetflixVincular');
+        mostrarToast('Vínculo quitado: queda pendiente de migrar.');
+      } catch (err) {
+        alert('No se pudo quitar el vínculo: ' + err.message);
+      }
+    }
+
+    // ---------- Historial ----------
+    async function verHistorialNetflix(id) {
+      const a = netflixCuentasAdmin.find(x => x.id === id);
+      if (!a) return;
+      try {
+        const [pagos, clientes] = await Promise.all([
+          db.collection('pagos_alquiler').where('alquilerId', '==', id).get(),
+          db.collection('alquileres_historial').where('alquilerId', '==', id).get()
+        ]);
+        const fmt = (iso) => { const d = new Date(iso); return isNaN(d) ? '' : d.toLocaleDateString('es-CO') + ' ' + d.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' }); };
+        const lp = [], lc = [];
+        pagos.forEach(d => lp.push(d.data()));
+        clientes.forEach(d => lc.push(d.data()));
+        lp.sort((x, y) => String(y.fecha).localeCompare(String(x.fecha)));
+        lc.sort((x, y) => String(y.quitadoEl).localeCompare(String(x.quitadoEl)));
+
+        let msg = `Cuenta: ${a.correo}\n\nPAGOS (${lp.length})\n`;
+        msg += lp.length ? lp.slice(0, 15).map(p => `• ${fmt(p.fecha)} — ${p.clienteNombre || p.usuarioEmail || '?'} · +${p.meses} ${p.meses === 1 ? 'mes' : 'meses'} · ${formatoCOP(p.monto)} · ${p.metodo === 'manual' ? 'manual' : 'saldo'}`).join('\n') : '(sin pagos registrados)';
+        msg += `\n\nCLIENTES ANTERIORES (${lc.length})\n`;
+        msg += lc.length ? lc.slice(0, 15).map(c => `• ${c.clienteNombre || c.clienteEmail || '?'} — ${fechaCortaNetflix(c.desde)} a ${fechaCortaNetflix(c.hasta)}`).join('\n') : '(ninguno)';
+        abrirDialogo({ tipo: 'info', titulo: 'Historial de la cuenta', mensaje: msg, textoAceptar: 'Cerrar' });
+      } catch (err) {
+        alert('No se pudo cargar el historial: ' + err.message);
       }
     }
 
