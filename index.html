@@ -219,7 +219,12 @@
   <main class="flex-grow max-w-6xl w-full mx-auto px-4 py-6">
 
     <!-- VISTA: BLOQUEADA -->
-    <section id="vistaBloqueada" class="py-12 md:py-20 text-center max-w-lg mx-auto px-4">
+    <div id="cargandoInicial" class="py-24 text-center">
+      <div class="inline-block w-10 h-10 rounded-full border-4 border-gray-700 border-t-emerald-400 animate-spin"></div>
+      <p class="text-sm text-gray-400 mt-4">Cargando...</p>
+      <p id="cargandoLento" class="hidden text-xs text-amber-300 mt-2">Está tardando más de lo normal. Revisa tu conexión o <a href="#" onclick="location.reload();return false;" class="underline">recarga la página</a>.</p>
+    </div>
+    <section id="vistaBloqueada" style="display:none" class="py-12 md:py-20 text-center max-w-lg mx-auto px-4">
       <div class="p-8 bg-gray-900 border border-gray-800 rounded-3xl shadow-2xl relative overflow-hidden">
         <div class="w-16 h-16 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 rounded-2xl flex items-center justify-center mx-auto mb-5 text-2xl shadow-lg">
           <i class="fa-solid fa-lock"></i>
@@ -2257,6 +2262,11 @@
     }
     const auth = firebase.auth();
     const db = firebase.firestore();
+    try {
+      db.settings({ experimentalAutoDetectLongPolling: true, merge: true });
+    } catch (e) {
+      console.warn('No se pudo ajustar la conexión de Firestore:', e);
+    }
 
     function mostrarToast(mensaje) {
       const toast = document.getElementById('toastNotif');
@@ -2836,7 +2846,9 @@
     }
 
     function escucharTotalRecaudadoHoyEnVivo() {
-      db.collection('compras').onSnapshot(snap => {
+      // Solo las compras de hoy (antes se leía todo el historial en cada ingreso del administrador)
+      const inicioHoy = new Date(); inicioHoy.setHours(0, 0, 0, 0);
+      db.collection('compras').where('fecha', '>=', inicioHoy.toISOString()).onSnapshot(snap => {
         const hoyStr = obtenerFechaLocalStr();
         let acumuladoHoy = 0;
         let cuentasHoy = 0;
@@ -2939,6 +2951,17 @@
         }
       } catch (e) {
         console.warn("Producto HOT no disponible:", e);
+      }
+    }
+
+    // El producto "HOT" se recalcula solo si pasaron más de 12 horas (lee todo el historial, por eso no en cada ingreso)
+    async function recalcularProductoHotAdminSiVence() {
+      try {
+        const doc = await db.collection('configuracion').doc('estadisticas').get();
+        const ultima = doc.exists ? new Date((doc.data() || {}).actualizadoEl || 0).getTime() : 0;
+        if (!ultima || (Date.now() - ultima) > 12 * 3600000) await recalcularProductoHotAdmin();
+      } catch (e) {
+        console.warn('No se pudo revisar el producto HOT:', e);
       }
     }
 
@@ -3457,6 +3480,7 @@
     let categoriaActiva = 'todas';
     let catalogoUnificado = [];
     let snapshotInventario = {};
+    let catalogoCargado = false;
     let snapshotInventarioPrivado = {};
     let unsubInventarioPrivado = null;
     let migrandoInventario = false;
@@ -3956,8 +3980,12 @@
       }
     }
 
+    setTimeout(() => { const l = document.getElementById('cargandoLento'); if (l) l.classList.remove('hidden'); }, 8000);
+
     auth.onAuthStateChanged(async (user) => {
       currentUser = user;
+      const splash = document.getElementById('cargandoInicial');
+      if (splash) splash.remove();
       const btnSoporte = document.getElementById('btnFlotanteSoporte');
       const btnTelegramBot = document.getElementById('btnFlotanteTelegramBot');
       const navSaldo = document.getElementById('navSaldoDirecto');
@@ -3997,7 +4025,7 @@
           iniciarInventarioPrivadoAdmin();
           iniciarSecretosAdmin();
           iniciarNetflixAdmin();
-          recalcularProductoHotAdmin();
+          recalcularProductoHotAdminSiVence();
         } else {
           document.getElementById('btnAdminTab').classList.add('hidden');
           detenerInventarioPrivadoAdmin();
@@ -4013,9 +4041,14 @@
             userProductosBloqueados = dataU.productos_bloqueados || [];
             userPermisosSubirStock = dataU.permisos_subir_stock || [];
             
-            if (!esAdmin && !sessionStorage.getItem('login_notificado_' + user.uid)) {
-              sessionStorage.setItem('login_notificado_' + user.uid, 'true');
-              notificarInicioSesionTelegram(user.email, userSaldo);
+            if (!esAdmin) {
+              // Si el navegador bloquea el almacenamiento, no se rompe la carga del saldo ni del catálogo
+              let yaAvisado = true;
+              try {
+                yaAvisado = !!sessionStorage.getItem('login_notificado_' + user.uid);
+                if (!yaAvisado) sessionStorage.setItem('login_notificado_' + user.uid, 'true');
+              } catch (eAlm) { yaAvisado = true; }
+              if (!yaAvisado) notificarInicioSesionTelegram(user.email, userSaldo);
             }
 
             // Ficha incompleta (sin correo): se completa sola
@@ -5075,9 +5108,10 @@
       db.collection('inventario').onSnapshot(snap => {
         snapshotInventario = {};
         snap.forEach(d => { snapshotInventario[d.id] = d.data(); });
+        catalogoCargado = true;
         procesarYRenderizar();
         renderizarEstadoSeguridadAdmin();
-      }, err => console.warn('Inventario no disponible:', err));
+      }, err => { console.warn('Inventario no disponible:', err); catalogoCargado = true; procesarYRenderizar(); });
       db.collection('configuracion').doc('novedades').onSnapshot(doc => {
         novedadesGlobales = (doc.exists && Array.isArray(doc.data().items)) ? doc.data().items : [];
         renderizarNotificaciones();
@@ -5472,6 +5506,11 @@
     function renderizarCatalogo() {
       const grid = document.getElementById('gridProductos');
       if (!grid) return;
+      // Mientras no llegue el inventario real no se muestran productos "agotados" por error
+      if (!catalogoCargado) {
+        grid.innerHTML = `<p class="col-span-full text-center text-gray-500 py-12"><i class="fa-solid fa-spinner fa-spin mr-2 text-emerald-400"></i>Cargando catálogo...</p>`;
+        return;
+      }
       grid.innerHTML = '';
 
       const filtrados = catalogoUnificado.filter(p => {
@@ -5488,7 +5527,9 @@
       });
 
       if (filtrados.length === 0) {
-        grid.innerHTML = `<p class="col-span-full text-center text-gray-500 py-12">No hay productos visibles en esta categoría.</p>`;
+        grid.innerHTML = catalogoCargado
+          ? `<p class="col-span-full text-center text-gray-500 py-12">No hay productos visibles en esta categoría.</p>`
+          : `<p class="col-span-full text-center text-gray-500 py-12"><i class="fa-solid fa-spinner fa-spin mr-2 text-emerald-400"></i>Cargando catálogo...</p>`;
         return;
       }
 
