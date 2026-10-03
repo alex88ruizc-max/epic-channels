@@ -789,6 +789,61 @@
               </div>
             </div>
 
+            <!-- SECCIÓN: MENSAJE DE STOCK PARA TELEGRAM -->
+            <div class="p-4 bg-gray-800/60 border border-gray-700/60 rounded-xl space-y-3">
+              <div>
+                <h4 class="text-sm font-bold text-white flex items-center gap-1.5">
+                  <i class="fa-brands fa-telegram text-blue-400"></i> Mensaje de stock para Telegram
+                </h4>
+                <p class="text-[11px] text-gray-400 mt-0.5">Es el reporte que se envía con el botón "Difundir Stock". Usa <span class="font-mono text-gray-300">*texto*</span> para negrita y <span class="font-mono text-gray-300">_texto_</span> para cursiva.</p>
+              </div>
+
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <label class="flex items-center gap-2 p-2.5 rounded-xl bg-gray-900 border border-gray-700 cursor-pointer">
+                  <input type="checkbox" id="ajusteStockExcluirVip" checked onchange="previsualizarPlantillaStock()" class="w-4 h-4 accent-emerald-500">
+                  <span class="text-xs text-gray-200">No incluir productos <b class="text-yellow-400">VIP</b></span>
+                </label>
+                <label class="flex items-center gap-2 p-2.5 rounded-xl bg-gray-900 border border-gray-700 cursor-pointer">
+                  <input type="checkbox" id="ajusteStockExcluirAgotados" onchange="previsualizarPlantillaStock()" class="w-4 h-4 accent-emerald-500">
+                  <span class="text-xs text-gray-200">No incluir productos agotados</span>
+                </label>
+              </div>
+
+              <div>
+                <label for="ajusteStockUrlTienda" class="block text-[11px] text-gray-400 mb-1">Enlace de la tienda (variable <span class="font-mono text-gray-300">{tienda}</span>)</label>
+                <input type="url" id="ajusteStockUrlTienda" oninput="previsualizarPlantillaStock()" placeholder="https://epicchannels.quest/" class="w-full bg-gray-900 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white font-mono focus:outline-none">
+              </div>
+
+              <div id="chipsVariablesStock" class="flex flex-wrap gap-1.5"></div>
+              <div>
+                <label for="ajustePlantillaStock" class="block text-[11px] text-gray-400 mb-1">Mensaje completo</label>
+                <textarea id="ajustePlantillaStock" rows="8" oninput="previsualizarPlantillaStock()" placeholder="Vacío = mensaje original. Toca &quot;Usar plantilla base&quot; para empezar a editar." class="w-full bg-gray-900 border border-gray-700 rounded-xl p-3 text-xs text-white font-mono focus:outline-none focus:border-gray-500"></textarea>
+              </div>
+
+              <div>
+                <label for="ajustePlantillaLineaStock" class="block text-[11px] text-gray-400 mb-1">Formato de cada producto (reemplaza a <span class="font-mono text-gray-300">{productos}</span>)</label>
+                <div id="chipsVariablesLineaStock" class="flex flex-wrap gap-1.5 mb-1.5"></div>
+                <textarea id="ajustePlantillaLineaStock" rows="2" oninput="previsualizarPlantillaStock()" class="w-full bg-gray-900 border border-gray-700 rounded-xl p-3 text-xs text-white font-mono focus:outline-none focus:border-gray-500"></textarea>
+              </div>
+
+              <div>
+                <span id="txtResumenPreviewStock" class="block text-[11px] text-gray-400 mb-1">Vista previa con tu stock real</span>
+                <div id="previewPlantillaStock" class="bg-gray-900 border border-gray-700 p-3 rounded-xl font-mono text-xs text-gray-200 whitespace-pre-line leading-relaxed max-h-72 overflow-y-auto"></div>
+              </div>
+
+              <div class="flex flex-col sm:flex-row gap-2">
+                <button type="button" onclick="guardarPlantillaStockAdmin()" id="btnGuardarPlantillaStock" class="flex-1 bg-emerald-500 hover:bg-emerald-400 text-black font-black py-2.5 px-5 rounded-xl text-xs transition flex items-center justify-center gap-2">
+                  <i class="fa-solid fa-floppy-disk"></i> Guardar mensaje de stock
+                </button>
+                <button type="button" onclick="enviarPruebaStockTelegram()" class="bg-blue-500/20 hover:bg-blue-500/30 border border-blue-500/40 text-blue-400 font-bold py-2.5 px-4 rounded-xl text-xs transition flex items-center justify-center gap-1.5">
+                  <i class="fa-brands fa-telegram"></i> Enviarme prueba
+                </button>
+                <button type="button" onclick="usarPlantillaBaseStock()" class="bg-gray-900 hover:bg-gray-700 border border-gray-700 text-gray-300 font-bold py-2.5 px-4 rounded-xl text-xs transition">
+                  Usar plantilla base
+                </button>
+              </div>
+            </div>
+
             <!-- SECCIÓN TELEGRAM -->
             <div class="p-4 bg-gray-800/60 border border-gray-700/60 rounded-xl space-y-3">
               <h4 class="text-xs font-bold text-blue-400 uppercase tracking-wider flex items-center gap-1.5">
@@ -1939,55 +1994,214 @@
       else alert("❌ Error: Asegúrate de haberle dado Start a tu bot y verificar el Token/Chat ID.");
     }
 
+    // ==================== MENSAJE DE STOCK (TELEGRAM) ====================
+    const PLANTILLA_STOCK_BASE =
+`📊 *ESTADO DE INVENTARIO - EPIC CHANNELS* 📊
+
+{productos}
+
+🛒 ¡Aprovecha y recarga tu saldo en nuestra tienda oficial!
+{tienda}`;
+
+    const PLANTILLA_LINEA_STOCK_BASE = `• *{nombre}* ({garantia}): {stock} disponibles`;
+
+    const VARIABLES_STOCK = [
+      ['{productos}', 'Lista de productos'], ['{total_productos}', 'N° productos'], ['{total_cuentas}', 'Total cuentas'],
+      ['{fecha}', 'Fecha'], ['{tienda}', 'Enlace tienda']
+    ];
+    const VARIABLES_LINEA_STOCK = [
+      ['{nombre}', 'Nombre'], ['{stock}', 'Stock'], ['{estado}', 'Estado ✅⚠️❌'], ['{garantia}', 'Garantía'],
+      ['{precio}', 'Precio'], ['{minimo}', 'Compra mín.'], ['{categoria}', 'Categoría']
+    ];
+
+    function esProductoVip(p) {
+      return p.esVip === true || PRODUCTOS_VIP_EXCLUSIVOS.some(k => k === p.id || k === p.docId || (p.aliases && p.aliases.includes(k)));
+    }
+
+    // overrides: valores del formulario (vista previa) en lugar de los guardados
+    function construirMensajeStockTelegram(overrides) {
+      const cfg = { ...ajustesGeneralesConfig, ...(overrides || {}) };
+      const excluirVip = cfg.stockExcluirVip !== false;           // por defecto: VIP fuera
+      const excluirAgotados = cfg.stockExcluirAgotados === true;  // por defecto: se muestran
+
+      const activos = catalogoUnificado.filter(p => p.activo !== false);
+      const vipExcluidos = excluirVip ? activos.filter(esProductoVip).length : 0;
+      const lista = activos
+        .filter(p => !(excluirVip && esProductoVip(p)))
+        .filter(p => !(excluirAgotados && (p.stock || 0) <= 0));
+
+      const tplLinea = String(cfg.plantillaLineaStockTelegram || '').trim() || PLANTILLA_LINEA_STOCK_BASE;
+      const lineas = lista.map(p => {
+        const stock = p.stock || 0;
+        const minimo = parseInt(p.minCompra) || 1;
+        const garantia = p.tipoGarantia === '29d' ? 'Garantía 29 Días' : (p.tipoGarantia === 'ninguna' ? 'Sin Garantía' : 'Garantía 24 Horas');
+        const estado = stock <= 0 ? '❌' : (stock < Math.max(3, minimo) ? '⚠️' : '✅');
+        return reemplazarVariablesPlantilla(tplLinea, {
+          nombre: p.nombre || '', stock, estado, garantia,
+          precio: `${formatoCOP(p.precio || 0)}`, minimo, categoria: p.categoria || ''
+        });
+      });
+
+      const tpl = String(cfg.plantillaStockTelegram || '').trim() || PLANTILLA_STOCK_BASE;
+      const texto = reemplazarVariablesPlantilla(tpl, {
+        productos: lineas.join('\n'),
+        total_productos: lista.length,
+        total_cuentas: lista.reduce((s, p) => s + (p.stock || 0), 0),
+        fecha: new Date().toLocaleString('es-CO'),
+        tienda: cfg.stockUrlTienda || 'https://epicchannels.quest/'
+      }).replace(/\n{3,}/g, '\n\n').trim();
+
+      return { texto, cantidad: lista.length, vipExcluidos };
+    }
+
+    // Envía respetando el límite de 4096 caracteres y reintenta sin formato si el Markdown falla
+    async function enviarMensajeTelegramSeguro(chatId, texto) {
+      const token = obtenerTelegramToken();
+      const url = `https://api.telegram.org/bot${token}/sendMessage`;
+      const partes = [];
+      let actual = '';
+      String(texto).split('\n').forEach(linea => {
+        if ((actual + '\n' + linea).length > 3900) { partes.push(actual); actual = linea; }
+        else actual = actual ? actual + '\n' + linea : linea;
+      });
+      if (actual) partes.push(actual);
+
+      let todoOk = true;
+      for (const parte of partes) {
+        let data = {};
+        try {
+          let r = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ chat_id: chatId, text: parte, parse_mode: 'Markdown' }) });
+          data = await r.json().catch(() => ({}));
+          if (!data.ok) {
+            r = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ chat_id: chatId, text: parte }) });
+            data = await r.json().catch(() => ({}));
+          }
+        } catch (e) {
+          console.error('Fallo envío Telegram:', e);
+        }
+        if (!data.ok) todoOk = false;
+      }
+      return todoOk;
+    }
+
     async function difundirStockClientes() {
       if (!confirm("¿Deseas enviar el reporte de stock actual a tu Telegram y al bot de clientes?")) return;
       try {
-        const urlTienda = "https://epicchannels.quest/";
-        let resumen = `📊 *ESTADO DE INVENTARIO - EPIC CHANNELS* 📊\n\n`;
-        const visibles = catalogoUnificado.filter(p => p.activo !== false);
-
-        if (visibles.length === 0) {
-          alert("No hay productos visibles en este momento para difundir.");
+        const { texto, cantidad } = construirMensajeStockTelegram();
+        if (cantidad === 0) {
+          alert("No hay productos para difundir (revisa que haya productos visibles que no sean VIP).");
           return;
         }
 
-        visibles.forEach(p => {
-          let detalleGarantia = p.tipoGarantia === '29d' ? "Garantía 29 Días" : (p.tipoGarantia === 'ninguna' ? "Sin Garantía" : "Garantía 24 Horas");
-          resumen += `• *${p.nombre}* (${detalleGarantia}): ${p.stock} disponibles\n`;
-        });
-        
-        resumen += `\n🛒 ¡Aprovecha y recarga tu saldo en nuestra tienda oficial!\n${urlTienda}`;
-
         const snap = await db.collection('usuarios').where('telegram_chat_id', '!=', null).get();
-        let enviados = 0;
-        const token = obtenerTelegramToken();
-        const chatId = obtenerTelegramChatId();
-        const url = `https://api.telegram.org/bot${token}/sendMessage`;
-
+        let enviados = 0, fallidos = 0;
         for (const doc of snap.docs) {
           const cliChatId = doc.data().telegram_chat_id;
-          if (cliChatId) {
-            await fetch(url, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ chat_id: cliChatId, text: resumen, parse_mode: "Markdown" })
-            });
-            enviados++;
-          }
+          if (!cliChatId) continue;
+          const ok = await enviarMensajeTelegramSeguro(cliChatId, texto);
+          if (ok) enviados++; else fallidos++;
         }
 
-        if (chatId) {
-          await fetch(url, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ chat_id: chatId, text: resumen, parse_mode: "Markdown" })
-          });
-        }
+        const chatId = obtenerTelegramChatId();
+        if (chatId) await enviarMensajeTelegramSeguro(chatId, texto);
 
-        alert(`¡Inventario difundido con éxito a ${enviados} cliente(s) y a ti!`);
+        alert(`¡Inventario difundido a ${enviados} cliente(s) y a ti!` + (fallidos ? `\n${fallidos} envío(s) fallaron (el cliente pudo haber bloqueado el bot).` : ''));
       } catch (e) {
         alert("Error al difundir: " + e.message);
       }
+    }
+
+    function leerFormularioStockTelegram() {
+      const v = id => (document.getElementById(id) || {});
+      return {
+        plantillaStockTelegram: v('ajustePlantillaStock').value || '',
+        plantillaLineaStockTelegram: v('ajustePlantillaLineaStock').value || '',
+        stockExcluirVip: v('ajusteStockExcluirVip').checked !== false,
+        stockExcluirAgotados: v('ajusteStockExcluirAgotados').checked === true,
+        stockUrlTienda: (v('ajusteStockUrlTienda').value || '').trim() || 'https://epicchannels.quest/'
+      };
+    }
+
+    function renderizarChipsStock() {
+      const pintar = (contId, lista, campoId) => {
+        const cont = document.getElementById(contId);
+        if (!cont || cont.dataset.listo) return;
+        cont.innerHTML = lista.map(([v, etiqueta]) =>
+          `<button type="button" onclick="insertarVariablePlantilla('${v}', '${campoId}')" class="px-2 py-1 rounded-lg bg-gray-900 border border-gray-700 text-[10px] text-gray-300 hover:text-white"><span class="font-mono text-blue-400">${v}</span> ${etiqueta}</button>`
+        ).join('');
+        cont.dataset.listo = '1';
+      };
+      pintar('chipsVariablesStock', VARIABLES_STOCK, 'ajustePlantillaStock');
+      pintar('chipsVariablesLineaStock', VARIABLES_LINEA_STOCK, 'ajustePlantillaLineaStock');
+    }
+
+    function cargarPlantillaStockEnForm() {
+      renderizarChipsStock();
+      const c = ajustesGeneralesConfig;
+      const set = (id, val) => { const el = document.getElementById(id); if (el) el.value = val; };
+      set('ajustePlantillaStock', c.plantillaStockTelegram || '');
+      set('ajustePlantillaLineaStock', c.plantillaLineaStockTelegram || '');
+      set('ajusteStockUrlTienda', c.stockUrlTienda || 'https://epicchannels.quest/');
+      const chkVip = document.getElementById('ajusteStockExcluirVip');
+      if (chkVip) chkVip.checked = c.stockExcluirVip !== false;
+      const chkAg = document.getElementById('ajusteStockExcluirAgotados');
+      if (chkAg) chkAg.checked = c.stockExcluirAgotados === true;
+      const tl = document.getElementById('ajustePlantillaLineaStock');
+      if (tl) tl.placeholder = PLANTILLA_LINEA_STOCK_BASE;
+      previsualizarPlantillaStock();
+    }
+
+    function previsualizarPlantillaStock() {
+      try {
+        const box = document.getElementById('previewPlantillaStock');
+        if (!box) return;
+        const form = leerFormularioStockTelegram();
+        const { texto, cantidad, vipExcluidos } = construirMensajeStockTelegram(form);
+        box.innerText = texto;
+        const resumen = document.getElementById('txtResumenPreviewStock');
+        if (resumen) {
+          resumen.innerText = `Vista previa con tu stock real: ${cantidad} producto(s)` + (vipExcluidos ? ` · ${vipExcluidos} VIP ocultos` : '');
+        }
+      } catch (e) {
+        console.error('Error en vista previa de stock:', e);
+      }
+    }
+
+    function usarPlantillaBaseStock() {
+      const t1 = document.getElementById('ajustePlantillaStock');
+      const t2 = document.getElementById('ajustePlantillaLineaStock');
+      if (t1 && t1.value.trim() && !confirm('Esto reemplaza el mensaje que estás editando por la plantilla base. ¿Continuar?')) return;
+      if (t1) t1.value = PLANTILLA_STOCK_BASE;
+      if (t2) t2.value = PLANTILLA_LINEA_STOCK_BASE;
+      previsualizarPlantillaStock();
+    }
+
+    async function guardarPlantillaStockAdmin() {
+      const btn = document.getElementById('btnGuardarPlantillaStock');
+      const original = btn ? btn.innerHTML : '';
+      const form = leerFormularioStockTelegram();
+      if (form.plantillaStockTelegram.trim() && !form.plantillaStockTelegram.includes('{productos}') &&
+          !confirm('Tu mensaje no incluye {productos}: no se mostrará la lista de stock. ¿Guardar de todas formas?')) return;
+
+      if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Guardando...'; }
+      try {
+        await db.collection('configuracion').doc('ajustes').set({ ...form, actualizadoEl: new Date().toISOString() }, { merge: true });
+        Object.assign(ajustesGeneralesConfig, form);
+        mostrarToast('¡Mensaje de stock guardado!');
+      } catch (err) {
+        alert('Error al guardar el mensaje de stock: ' + err.message);
+      } finally {
+        if (btn) { btn.disabled = false; btn.innerHTML = original; }
+      }
+    }
+
+    async function enviarPruebaStockTelegram() {
+      const chatId = obtenerTelegramChatId();
+      if (!chatId) { alert('Configura primero el Chat ID de notificaciones.'); return; }
+      const { texto } = construirMensajeStockTelegram(leerFormularioStockTelegram());
+      const ok = await enviarMensajeTelegramSeguro(chatId, '🧪 PRUEBA (solo para ti)\n\n' + texto);
+      if (ok) mostrarToast('Prueba enviada a tu Telegram.');
+      else alert('No se pudo enviar. Verifica el Token y que le hayas dado Start a tu bot.');
     }
 
     function iniciarLatidoConexion(user) {
@@ -2469,6 +2683,7 @@
       el.setRangeText(variable, ini, fin, 'end');
       el.focus();
       previsualizarPlantillaEntrega();
+      if (typeof previsualizarPlantillaStock === 'function') previsualizarPlantillaStock();
     }
 
     function previsualizarPlantillaEntrega() {
@@ -2545,6 +2760,7 @@
       renderizarSelectorTemas();
       restaurarTemaGuardado();
       cargarPlantillasEntregaEnForm();
+      cargarPlantillaStockEnForm();
     }
 
     async function guardarAjustesGeneralesAdmin(e) {
