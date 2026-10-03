@@ -39,6 +39,12 @@
       border: 1px dashed #00d084;
       text-decoration: line-through;
     }
+    * { scrollbar-width: thin; scrollbar-color: rgba(148,163,184,.28) transparent; }
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(148,163,184,.28); border-radius: 999px; }
+    ::-webkit-scrollbar-thumb:hover { background: rgba(148,163,184,.45); }
+    @media (max-width: 1023px) { .admin-tab-ancho { grid-column: span 3 / span 3; flex-direction: row; gap: .6rem; } }
     .no-scrollbar::-webkit-scrollbar { display: none; }
     .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
     .admin-tab { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: .4rem; padding: .75rem .35rem; border-radius: .9rem; border-width: 1px; font-size: 11px; font-weight: 700; line-height: 1.15; text-align: center; transition: color .15s, border-color .15s, background-color .15s; }
@@ -65,6 +71,20 @@
     <div>
       <h5 class="text-xs font-bold text-white leading-tight">Operación exitosa</h5>
       <p id="txtToastMensaje" class="text-[11px] text-gray-300">Cambios guardados correctamente.</p>
+    </div>
+  </div>
+
+  <!-- ==================== DIÁLOGO MODERNO (reemplaza alert/confirm/prompt) ==================== -->
+  <div id="modalDialogoSistema" class="fixed inset-0 z-[10000] hidden items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+    <div class="bg-gray-900 border border-gray-700 rounded-2xl max-w-sm w-full p-5 shadow-2xl text-center">
+      <div id="dlgIcono" class="w-14 h-14 rounded-2xl mx-auto mb-3 flex items-center justify-center text-2xl"></div>
+      <h3 id="dlgTitulo" class="text-base font-black text-white mb-1.5"></h3>
+      <p id="dlgMensaje" class="text-[13px] text-gray-300 leading-relaxed whitespace-pre-line break-words mb-4 max-h-64 overflow-y-auto"></p>
+      <input id="dlgInput" type="text" autocomplete="off" class="hidden w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2.5 text-sm text-white mb-4 focus:outline-none focus:border-gray-500">
+      <div class="flex gap-2">
+        <button id="dlgCancelar" type="button" class="hidden flex-1 py-2.5 rounded-xl bg-gray-800 hover:bg-gray-700 border border-gray-700 text-gray-300 font-bold text-sm transition">Cancelar</button>
+        <button id="dlgAceptar" type="button" class="flex-1 py-2.5 rounded-xl font-black text-sm transition">Aceptar</button>
+      </div>
     </div>
   </div>
 
@@ -205,9 +225,11 @@
             <h3 id="perfilNombreTitulo" class="font-black text-white text-base sm:text-lg leading-tight truncate">Cliente</h3>
             <p id="perfilEmailTitulo" class="text-xs text-gray-400 font-mono truncate"></p>
             <p id="perfilMiembroDesde" class="text-[10px] text-gray-500 mt-0.5"></p>
+            <div id="perfilNivelInsignia" class="mt-1.5"></div>
           </div>
         </div>
-        <div class="grid grid-cols-3 gap-2 mt-4">
+        <div id="perfilNivelBox" class="mt-4"></div>
+        <div class="grid grid-cols-3 gap-2 mt-3">
           <div class="bg-gray-800/70 border border-gray-700/60 rounded-xl p-2.5 text-center">
             <span class="text-[10px] text-gray-400 block">Saldo</span>
             <span id="perfilStatSaldo" class="text-sm font-black text-emerald-400">$0</span>
@@ -322,15 +344,15 @@
           </div>
         </div>
 
-        <div class="flex items-center gap-2 flex-wrap">
-          <button onclick="activarModoPruebaCliente()" class="px-3.5 py-2 bg-yellow-500/20 hover:bg-yellow-500/30 text-yellow-300 border border-yellow-500/40 text-xs font-bold rounded-xl flex items-center gap-1.5 transition shadow">
-            <i class="fa-solid fa-eye text-sm"></i> Ver como Cliente (simulación)
+        <div class="grid grid-cols-3 gap-2 w-full md:w-auto md:flex md:items-stretch md:justify-end md:ml-auto">
+          <button onclick="activarModoPruebaCliente()" class="flex flex-col md:flex-row items-center justify-center gap-1 md:gap-1.5 px-2 md:px-3.5 py-2.5 md:py-2 bg-yellow-500/15 hover:bg-yellow-500/25 text-yellow-300 border border-yellow-500/40 text-[11px] md:text-xs font-bold rounded-xl transition text-center leading-tight">
+            <i class="fa-solid fa-eye text-base md:text-sm"></i><span>Ver como cliente</span>
           </button>
-          <button onclick="difundirStockClientes()" class="px-3 py-2 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 border border-emerald-500/40 text-xs font-bold rounded-xl flex items-center gap-1.5 transition">
-            <i class="fa-solid fa-bullhorn text-sm"></i> Difundir Stock
+          <button onclick="difundirStockClientes()" class="flex flex-col md:flex-row items-center justify-center gap-1 md:gap-1.5 px-2 md:px-3.5 py-2.5 md:py-2 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 text-[11px] md:text-xs font-bold rounded-xl transition text-center leading-tight">
+            <i class="fa-solid fa-bullhorn text-base md:text-sm"></i><span>Difundir stock</span>
           </button>
-          <button onclick="cambiarVista('tienda')" class="px-4 py-2 bg-gray-800 hover:bg-gray-700 text-sm text-gray-200 font-semibold rounded-xl">
-            <i class="fa-solid fa-store mr-1.5"></i> Ver Tienda
+          <button onclick="cambiarVista('tienda')" class="flex flex-col md:flex-row items-center justify-center gap-1 md:gap-1.5 px-2 md:px-3.5 py-2.5 md:py-2 bg-gray-800 hover:bg-gray-700 text-gray-200 border border-gray-700 text-[11px] md:text-xs font-bold rounded-xl transition text-center leading-tight">
+            <i class="fa-solid fa-store text-base md:text-sm"></i><span>Ver tienda</span>
           </button>
         </div>
       </div>
@@ -365,6 +387,9 @@
           <button onclick="irATabAdmin('productos')" id="tabBtnProductos" class="admin-tab bg-gray-900 border-gray-800 text-gray-400">
             <i class="fa-solid fa-boxes-stacked"></i><span>Gestión y Visibilidad</span><span id="badgeTabStockBajo" class="hidden absolute top-1.5 right-1.5 lg:static lg:ml-auto min-w-[18px] h-[18px] px-1 rounded-full bg-amber-500 text-black text-[10px] font-black flex items-center justify-center"></span>
           </button>
+          <button onclick="irATabAdmin('reporte')" id="tabBtnReporte" class="admin-tab bg-gray-900 border-gray-800 text-gray-400">
+            <i class="fa-solid fa-chart-line"></i><span>Reporte de Ventas</span>
+          </button>
           <button onclick="irATabAdmin('categorias')" id="tabBtnCategorias" class="admin-tab bg-gray-900 border-gray-800 text-gray-400">
             <i class="fa-solid fa-palette"></i><span>Categorías & Colores</span>
           </button>
@@ -386,7 +411,7 @@
           <button onclick="irATabAdmin('historial')" id="tabBtnHistorial" class="admin-tab bg-gray-900 border-gray-800 text-gray-400">
             <i class="fa-solid fa-receipt"></i><span>Historial de Ventas</span>
           </button>
-          <button onclick="irATabAdmin('ajustes')" id="tabBtnAjustes" class="admin-tab bg-gray-900 border-gray-800 text-gray-400">
+          <button onclick="irATabAdmin('ajustes')" id="tabBtnAjustes" class="admin-tab admin-tab-ancho bg-gray-900 border-gray-800 text-gray-400">
             <i class="fa-solid fa-gears"></i><span>Ajustes Generales</span>
           </button>
           </div>
@@ -940,6 +965,22 @@
               </div>
             </div>
 
+            <!-- SECCIÓN: NIVELES DE CLIENTE -->
+            <div class="p-4 bg-gray-800/60 border border-gray-700/60 rounded-xl space-y-3">
+              <div>
+                <h4 class="text-sm font-bold text-white flex items-center gap-1.5">
+                  <i class="fa-solid fa-trophy text-yellow-400"></i> Niveles de clientes
+                </h4>
+                <p class="text-[11px] text-gray-400 mt-0.5">Los clientes suben de nivel solo comprando. Define cuántos puntos vale cada cuenta comprada.</p>
+              </div>
+              <div class="flex items-center gap-3">
+                <input type="number" id="ajustePuntosPorCuenta" min="0.1" step="0.1" oninput="previsualizarNivelesAdmin()" class="w-28 bg-gray-900 border border-gray-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none">
+                <span class="text-[11px] text-gray-400">puntos por cuenta (ej: 0.5 = 10 cuentas dan 5 puntos)</span>
+              </div>
+              <div id="previewNivelesAdmin" class="grid grid-cols-2 sm:grid-cols-3 gap-1.5"></div>
+              <p class="text-[10px] text-gray-500">Se guarda con el botón "Guardar Ajustes Generales".</p>
+            </div>
+
             <!-- SECCIÓN SEGURIDAD Y REPORTES -->
             <div class="p-4 bg-gray-800/60 border border-gray-700/60 rounded-xl space-y-3">
               <h4 class="text-xs font-bold text-yellow-400 uppercase tracking-wider flex items-center gap-1.5">
@@ -962,16 +1003,69 @@
         </div>
       </div>
 
-        </div><!-- /adminContenidoTabs -->
-      </div><!-- /navegación del panel -->
+      <!-- TAB: REPORTE DE VENTAS (DASHBOARD + REPORTE DETALLADO) -->
+      <div id="adminSecReporte" class="hidden space-y-4">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-gray-900 border border-emerald-500/30 p-4 rounded-2xl">
+          <div>
+            <h3 class="text-base font-black text-white flex items-center gap-2"><i class="fa-solid fa-chart-line text-emerald-400"></i> Reporte de ventas</h3>
+            <p id="dashActualizado" class="text-[11px] text-gray-400">Clientes reales (sin cuentas excluidas ni pruebas).</p>
+          </div>
+          <button onclick="cargarDashboardVentas(true)" class="shrink-0 px-4 py-2 bg-emerald-500 hover:bg-emerald-400 text-black font-bold text-xs rounded-xl flex items-center justify-center gap-1.5">
+            <i class="fa-solid fa-rotate"></i> Actualizar gráficas
+          </button>
+        </div>
+
+        <div id="dashEstado" class="py-10 text-center text-gray-500 text-xs"></div>
+
+        <div id="dashContenido" class="hidden space-y-4">
+          <div id="dashKpis" class="grid grid-cols-2 lg:grid-cols-4 gap-3"></div>
+
+          <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <div class="bg-gray-900 border border-gray-800 rounded-2xl p-4">
+              <div class="mb-3"><h4 class="text-sm font-bold text-white">Últimos 3 meses</h4><p class="text-[11px] text-gray-500">Ingresos, gastos y ganancia neta por mes</p></div>
+              <div class="relative h-56"><canvas id="dashChartMeses"></canvas></div>
+            </div>
+            <div class="bg-gray-900 border border-gray-800 rounded-2xl p-4">
+              <div class="mb-3"><h4 class="text-sm font-bold text-white">Mes actual día a día</h4><p class="text-[11px] text-gray-500">Comparado con el mes anterior (línea punteada)</p></div>
+              <div class="relative h-56"><canvas id="dashChartDias"></canvas></div>
+            </div>
+            <div class="bg-gray-900 border border-gray-800 rounded-2xl p-4">
+              <div class="mb-3"><h4 class="text-sm font-bold text-white">Ventas por semana</h4><p class="text-[11px] text-gray-500">Últimas 12 semanas (de lunes a domingo)</p></div>
+              <div class="relative h-56"><canvas id="dashChartSemanas"></canvas></div>
+            </div>
+            <div class="bg-gray-900 border border-gray-800 rounded-2xl p-4">
+              <div class="mb-3"><h4 class="text-sm font-bold text-white">Productos más demandados</h4><p class="text-[11px] text-gray-500">Cuentas vendidas en los últimos 90 días</p></div>
+              <div class="relative h-64"><canvas id="dashChartProductos"></canvas></div>
+            </div>
+            <div class="bg-gray-900 border border-gray-800 rounded-2xl p-4">
+              <div class="mb-3"><h4 class="text-sm font-bold text-white">Ingresos por categoría</h4><p class="text-[11px] text-gray-500">Últimos 90 días</p></div>
+              <div class="relative h-56"><canvas id="dashChartCategorias"></canvas></div>
+            </div>
+            <div class="bg-gray-900 border border-gray-800 rounded-2xl p-4">
+              <div class="mb-3"><h4 class="text-sm font-bold text-white">Horas pico de compra</h4><p class="text-[11px] text-gray-500">Órdenes por hora del día (90 días)</p></div>
+              <div class="relative h-56"><canvas id="dashChartHoras"></canvas></div>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <div class="bg-gray-900 border border-gray-800 rounded-2xl p-4">
+              <div class="mb-3"><h4 class="text-sm font-bold text-white">Mejores clientes</h4><p class="text-[11px] text-gray-500">Top 5 por compras en los últimos 90 días</p></div>
+              <div id="dashTopClientes" class="space-y-2"></div>
+            </div>
+            <div class="bg-gray-900 border border-gray-800 rounded-2xl p-4">
+              <div class="mb-3"><h4 class="text-sm font-bold text-white">Stock vs. demanda</h4><p class="text-[11px] text-gray-500">Días de inventario que te quedan al ritmo de los últimos 30 días</p></div>
+              <div id="dashStockDemanda" class="space-y-1.5"></div>
+            </div>
+          </div>
+        </div>
 
       <!-- ==================== SECCIÓN DE REPORTE FINANCIERO (ABAJO) ==================== -->
-      <div class="mt-10 pt-6 border-t border-gray-800">
+      <div class="pt-2">
         <div class="bg-gray-900 border border-emerald-500/30 rounded-2xl p-5 shadow-xl">
           <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-gray-800 pb-4">
             <div>
               <h3 class="font-black text-white text-base flex items-center gap-2">
-                <i class="fa-solid fa-chart-line text-emerald-400"></i> Reporte Financiero y Ganancias Reales
+                <i class="fa-solid fa-chart-line text-emerald-400"></i> Reporte detallado por período
               </h3>
               <p class="text-xs text-gray-400">Métricas verificadas exclusivamente de clientes registrados (excluyendo pruebas y correos sin cuenta).</p>
             </div>
@@ -1052,6 +1146,10 @@
           </div>
         </div>
       </div>
+      </div>
+
+        </div><!-- /adminContenidoTabs -->
+      </div><!-- /navegación del panel -->
 
     </section>
 
@@ -1910,6 +2008,101 @@
       }, 3000);
     }
 
+    // ==================== DIÁLOGOS MODERNOS ====================
+    const colaDialogos = [];
+    let dialogoActivo = null;
+
+    const ESTILOS_DIALOGO = {
+      exito:    { icono: 'fa-circle-check', caja: 'bg-green-500/15 text-green-400', titulo: 'Listo', boton: 'bg-emerald-500 hover:bg-emerald-400 text-black' },
+      error:    { icono: 'fa-circle-xmark', caja: 'bg-red-500/15 text-red-400', titulo: 'No se pudo completar', boton: 'bg-gray-700 hover:bg-gray-600 text-white' },
+      info:     { icono: 'fa-circle-info', caja: 'bg-sky-500/15 text-sky-400', titulo: 'Aviso', boton: 'bg-emerald-500 hover:bg-emerald-400 text-black' },
+      pregunta: { icono: 'fa-circle-question', caja: 'bg-amber-500/15 text-amber-400', titulo: 'Confirmar', boton: 'bg-emerald-500 hover:bg-emerald-400 text-black' },
+      peligro:  { icono: 'fa-triangle-exclamation', caja: 'bg-red-500/15 text-red-400', titulo: '¿Estás seguro?', boton: 'bg-red-600 hover:bg-red-500 text-white' },
+      nivel:    { icono: '', caja: 'bg-yellow-500/15 text-yellow-300', titulo: '¡Subiste de nivel!', boton: 'bg-yellow-500 hover:bg-yellow-400 text-black' }
+    };
+
+    function detectarTipoMensaje(msg) {
+      const m = String(msg || '');
+      if (/^❌|error|no se pudo|inválid|insuficiente|incorrect|no existe|fall[oó]/i.test(m)) return 'error';
+      if (/^✅|^¡|guardad|enviad|éxito|copiad|acreditad|aprobad/i.test(m)) return 'exito';
+      return 'info';
+    }
+
+    function abrirDialogo(opts) {
+      return new Promise(resolve => {
+        colaDialogos.push({ opts: opts || {}, resolve });
+        procesarColaDialogos();
+      });
+    }
+
+    function procesarColaDialogos() {
+      if (dialogoActivo || !colaDialogos.length) return;
+      dialogoActivo = colaDialogos.shift();
+      const o = dialogoActivo.opts;
+      const est = ESTILOS_DIALOGO[o.tipo] || ESTILOS_DIALOGO.info;
+      const modal = document.getElementById('modalDialogoSistema');
+      if (!modal) { const r = dialogoActivo.resolve; dialogoActivo = null; r(o.confirmar ? false : null); return; }
+
+      const icono = document.getElementById('dlgIcono');
+      icono.className = `w-14 h-14 rounded-2xl mx-auto mb-3 flex items-center justify-center text-2xl ${est.caja}`;
+      icono.innerHTML = o.emoji ? `<span class="text-3xl">${o.emoji}</span>` : `<i class="fa-solid ${est.icono}"></i>`;
+      document.getElementById('dlgTitulo').innerText = o.titulo || est.titulo;
+      const msgEl = document.getElementById('dlgMensaje');
+      msgEl.innerText = String(o.mensaje || '').replace(/^(✅|❌|⚠️)\s*/, '');
+      msgEl.classList.toggle('font-mono', !!o.monoespaciado);
+      msgEl.classList.toggle('select-all', !!o.monoespaciado);
+
+      const input = document.getElementById('dlgInput');
+      input.classList.toggle('hidden', !o.pedirTexto);
+      input.value = o.valorInicial || '';
+
+      const btnOk = document.getElementById('dlgAceptar');
+      const btnNo = document.getElementById('dlgCancelar');
+      btnOk.className = `flex-1 py-2.5 rounded-xl font-black text-sm transition ${est.boton}`;
+      btnOk.innerText = o.textoAceptar || (o.confirmar ? 'Sí, continuar' : 'Entendido');
+      btnNo.innerText = o.textoCancelar || 'Cancelar';
+      btnNo.classList.toggle('hidden', !(o.confirmar || o.pedirTexto));
+      btnOk.onclick = () => cerrarDialogo(o.pedirTexto ? input.value : (o.confirmar ? true : undefined));
+      btnNo.onclick = () => cerrarDialogo(o.pedirTexto ? null : false);
+
+      modal.classList.remove('hidden');
+      modal.style.display = 'flex';
+      setTimeout(() => { (o.pedirTexto ? input : btnOk).focus(); }, 30);
+    }
+
+    function cerrarDialogo(valor) {
+      const modal = document.getElementById('modalDialogoSistema');
+      if (modal) { modal.classList.add('hidden'); modal.style.display = 'none'; }
+      const actual = dialogoActivo;
+      dialogoActivo = null;
+      if (actual) actual.resolve(valor);
+      setTimeout(procesarColaDialogos, 60);
+    }
+
+    document.addEventListener('keydown', (ev) => {
+      if (!dialogoActivo) return;
+      const o = dialogoActivo.opts;
+      if (ev.key === 'Escape') { ev.preventDefault(); cerrarDialogo(o.pedirTexto ? null : (o.confirmar ? false : undefined)); }
+      if (ev.key === 'Enter') { ev.preventDefault(); document.getElementById('dlgAceptar').click(); }
+    });
+
+    // Todos los alert() de la plataforma pasan a ser avisos modernos
+    window.alert = function (mensaje) { abrirDialogo({ tipo: detectarTipoMensaje(mensaje), mensaje: String(mensaje) }); };
+
+    function confirmarModal(mensaje, opciones) {
+      const o = opciones || {};
+      const peligroso = /(eliminar|borrar|vaciar|rechazar|revocar|quitar)/i.test(String(mensaje));
+      return abrirDialogo({ ...o, mensaje, confirmar: true, tipo: o.tipo || (peligroso ? 'peligro' : 'pregunta') });
+    }
+
+    function pedirTextoModal(mensaje, valorInicial) {
+      return abrirDialogo({ tipo: 'pregunta', titulo: 'Escribe el dato', mensaje, pedirTexto: true, valorInicial: valorInicial || '', textoAceptar: 'Enviar' });
+    }
+
+    function mostrarTextoCopiable(texto) {
+      abrirDialogo({ tipo: 'info', titulo: 'Cópialo manualmente', mensaje: texto, monoespaciado: true });
+    }
+
     function obtenerTelegramToken() { return ajustesGeneralesConfig.telegramToken || "8974701831:AAE" + "Fibgx1DM2rO8NlxsEW9I27F88rV-VjnQ"; }
     function obtenerTelegramChatId() { return ajustesGeneralesConfig.telegramChatId || "390457801"; }
 
@@ -2147,7 +2340,7 @@
     }
 
     async function difundirStockClientes() {
-      if (!confirm("¿Deseas enviar el reporte de stock actual a tu Telegram y al bot de clientes?")) return;
+      if (!await confirmarModal("¿Deseas enviar el reporte de stock actual a tu Telegram y al bot de clientes?")) return;
       try {
         const { texto, cantidad } = construirMensajeStockTelegram();
         if (cantidad === 0) {
@@ -2229,10 +2422,10 @@
       }
     }
 
-    function usarPlantillaBaseStock() {
+    async function usarPlantillaBaseStock() {
       const t1 = document.getElementById('ajustePlantillaStock');
       const t2 = document.getElementById('ajustePlantillaLineaStock');
-      if (t1 && t1.value.trim() && !confirm('Esto reemplaza el mensaje que estás editando por la plantilla base. ¿Continuar?')) return;
+      if (t1 && t1.value.trim() && !await confirmarModal('Esto reemplaza el mensaje que estás editando por la plantilla base. ¿Continuar?')) return;
       if (t1) t1.value = PLANTILLA_STOCK_BASE;
       if (t2) t2.value = PLANTILLA_LINEA_STOCK_BASE;
       previsualizarPlantillaStock();
@@ -2243,7 +2436,7 @@
       const original = btn ? btn.innerHTML : '';
       const form = leerFormularioStockTelegram();
       if (form.plantillaStockTelegram.trim() && !form.plantillaStockTelegram.includes('{productos}') &&
-          !confirm('Tu mensaje no incluye {productos}: no se mostrará la lista de stock. ¿Guardar de todas formas?')) return;
+          !await confirmarModal('Tu mensaje no incluye {productos}: no se mostrará la lista de stock. ¿Guardar de todas formas?')) return;
 
       if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Guardando...'; }
       try {
@@ -2767,17 +2960,17 @@
       }
     }
 
-    function usarPlantillaBaseEntrega() {
+    async function usarPlantillaBaseEntrega() {
       const t1 = document.getElementById('ajustePlantillaEntrega');
       const t2 = document.getElementById('ajustePlantillaCuenta');
-      if (t1 && t1.value.trim() && !confirm('Esto reemplaza el mensaje que estás editando por la plantilla base. ¿Continuar?')) return;
+      if (t1 && t1.value.trim() && !await confirmarModal('Esto reemplaza el mensaje que estás editando por la plantilla base. ¿Continuar?')) return;
       if (t1) t1.value = PLANTILLA_ENTREGA_BASE;
       if (t2) t2.value = PLANTILLA_CUENTA_BASE;
       previsualizarPlantillaEntrega();
     }
 
-    function limpiarPlantillaEntrega() {
-      if (!confirm('El mensaje volverá al formato automático original. Recuerda tocar "Guardar mensaje" para aplicarlo. ¿Continuar?')) return;
+    async function limpiarPlantillaEntrega() {
+      if (!await confirmarModal('El mensaje volverá al formato automático original. Recuerda tocar "Guardar mensaje" para aplicarlo. ¿Continuar?')) return;
       const t1 = document.getElementById('ajustePlantillaEntrega');
       const t2 = document.getElementById('ajustePlantillaCuenta');
       if (t1) t1.value = '';
@@ -2791,7 +2984,7 @@
       const plantilla = (document.getElementById('ajustePlantillaEntrega') || {}).value || '';
       const plantillaCuenta = (document.getElementById('ajustePlantillaCuenta') || {}).value || '';
 
-      if (plantilla.trim() && !plantilla.includes('{cuentas}') && !confirm('Tu mensaje no incluye {cuentas}: el cliente NO verá sus correos y contraseñas. ¿Guardar de todas formas?')) return;
+      if (plantilla.trim() && !plantilla.includes('{cuentas}') && !await confirmarModal('Tu mensaje no incluye {cuentas}: el cliente NO verá sus correos y contraseñas. ¿Guardar de todas formas?')) return;
 
       if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Guardando...'; }
       try {
@@ -2817,6 +3010,9 @@
       document.getElementById('ajusteWhatsappNumero').value = ajustesGeneralesConfig.whatsappNumero || '';
       document.getElementById('ajusteClaveAmazon').value = ajustesGeneralesConfig.claveAmazon || 'epic2828';
       document.getElementById('ajusteMinRecarga').value = ajustesGeneralesConfig.minRecarga || 5000;
+      const inpPuntos = document.getElementById('ajustePuntosPorCuenta');
+      if (inpPuntos) inpPuntos.value = obtenerFactorPuntos();
+      previsualizarNivelesAdmin();
       document.getElementById('ajusteAdminEmails').value = ajustesGeneralesConfig.adminEmailsStr || 'alex88ruizc@gmail.com';
       document.getElementById('ajusteExcluidosReporte').value = ajustesGeneralesConfig.excluidosReporteStr || 'alex88ruizc@gmail.com, alex88ruiz@gmail.com';
       renderizarSelectorTemas();
@@ -2848,6 +3044,7 @@
         adminEmailsStr: nuevoAdminEmails,
         excluidosReporteStr: nuevoExcluidos,
         colorTema: nuevoColorTema,
+        puntosPorCuenta: (() => { const v = parseFloat((document.getElementById('ajustePuntosPorCuenta') || {}).value); return (isNaN(v) || v <= 0) ? 0.5 : v; })(),
         colorPersonalizado: (document.getElementById('ajusteColorPersonalizado') || {}).value || '#00D084',
         skinTema: (document.getElementById('ajusteSkinTema') || {}).value || 'medianoche',
         plantillaEntrega: (document.getElementById('ajustePlantillaEntrega') || {}).value || '',
@@ -3248,7 +3445,7 @@
     }
 
     function copiarTexto(texto, mensaje) {
-      navigator.clipboard.writeText(texto).then(() => alert(mensaje)).catch(() => prompt("Copia:", texto));
+      navigator.clipboard.writeText(texto).then(() => alert(mensaje)).catch(() => mostrarTextoCopiable(texto));
     }
 
     // ==================== LÓGICA DE GARANTÍA Y CONTADOR ====================
@@ -3583,6 +3780,10 @@
         });
 
         actualizarSaldoHeader();
+        // Subida de nivel simulada (solo visual)
+        const totalSim = comprasSimuladas.reduce((s, c) => s + (parseInt(c.cantidad) || 0), 0);
+        const nAntes = infoNivel(totalSim - cantidad), nDespues = infoNivel(totalSim);
+        if (nDespues.idx > nAntes.idx) setTimeout(() => celebrarSubidaNivel(nDespues, true), 700);
         document.getElementById('txtEntregaCredenciales').innerText = texto;
         const aviso = document.getElementById('avisoEntregaSimulada');
         if (aviso) aviso.classList.remove('hidden');
@@ -3592,6 +3793,163 @@
       } catch (e) {
         alert('Error en la simulación: ' + e.message);
       }
+    }
+
+    // ==================== NIVELES DE CLIENTE ====================
+    const NIVELES_CLIENTE = [
+      { nombre: 'Novato',     icono: '🥚', min: 0,    color: '#9ca3af' },
+      { nombre: 'Aprendiz',   icono: '🌱', min: 5,    color: '#84cc16' },
+      { nombre: 'Explorador', icono: '🧭', min: 15,   color: '#14b8a6' },
+      { nombre: 'Bronce',     icono: '🥉', min: 30,   color: '#d97706' },
+      { nombre: 'Plata',      icono: '🥈', min: 60,   color: '#cbd5e1' },
+      { nombre: 'Oro',        icono: '🥇', min: 100,  color: '#facc15' },
+      { nombre: 'Platino',    icono: '💠', min: 160,  color: '#67e8f9' },
+      { nombre: 'Diamante',   icono: '💎', min: 250,  color: '#60a5fa' },
+      { nombre: 'Maestro',    icono: '🔥', min: 400,  color: '#f97316' },
+      { nombre: 'Élite',      icono: '⚡', min: 600,  color: '#a855f7' },
+      { nombre: 'Leyenda',    icono: '👑', min: 900,  color: '#f59e0b' },
+      { nombre: 'Mítico',     icono: '🐉', min: 1300, color: '#ef4444' }
+    ];
+    let cuentasCompradasClienteCache = null;
+    let cuentasPorUsuarioAdmin = null;
+
+    function obtenerFactorPuntos() {
+      const f = parseFloat(ajustesGeneralesConfig.puntosPorCuenta);
+      return (isNaN(f) || f <= 0) ? 0.5 : f;
+    }
+
+    function infoNivel(cuentas, factor) {
+      const fac = factor || obtenerFactorPuntos();
+      const puntos = Math.round(Math.max(0, cuentas || 0) * fac * 10) / 10;
+      let idx = 0;
+      NIVELES_CLIENTE.forEach((n, i) => { if (puntos >= n.min) idx = i; });
+      const actual = NIVELES_CLIENTE[idx];
+      const siguiente = NIVELES_CLIENTE[idx + 1] || null;
+      const faltan = siguiente ? Math.round((siguiente.min - puntos) * 10) / 10 : 0;
+      return {
+        puntos, idx, actual, siguiente, faltan, nivelNum: idx + 1,
+        cuentasFaltan: siguiente ? Math.ceil(faltan / fac) : 0,
+        pct: siguiente ? Math.max(0, Math.min(100, ((puntos - actual.min) / (siguiente.min - actual.min)) * 100)) : 100
+      };
+    }
+
+    function htmlInsigniaNivel(cuentas, conPuntos) {
+      const n = infoNivel(cuentas);
+      return `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black border whitespace-nowrap" style="color:${n.actual.color}; border-color:${hexARgba(n.actual.color, 0.45)}; background:${hexARgba(n.actual.color, 0.12)}">${n.actual.icono} Nv.${n.nivelNum} ${n.actual.nombre}${conPuntos ? ` · ${n.puntos} pts` : ''}</span>`;
+    }
+
+    function renderizarNivelPerfil(totalCuentas) {
+      try {
+        const n = infoNivel(totalCuentas);
+        const insignia = document.getElementById('perfilNivelInsignia');
+        if (insignia) insignia.innerHTML = htmlInsigniaNivel(totalCuentas, false);
+        const box = document.getElementById('perfilNivelBox');
+        if (!box) return;
+        const c = n.actual.color;
+        const lista = NIVELES_CLIENTE.map((lv, i) => {
+          const logrado = i <= n.idx;
+          return `<div class="flex items-center gap-2 p-2 rounded-lg border ${logrado ? '' : 'opacity-50'}" style="border-color:${logrado ? hexARgba(lv.color, 0.4) : 'rgba(75,85,99,.5)'}; background:${logrado ? hexARgba(lv.color, 0.08) : 'transparent'}">
+              <span class="text-lg">${logrado ? lv.icono : '🔒'}</span>
+              <div class="min-w-0"><span class="text-[11px] font-black block truncate" style="color:${logrado ? lv.color : '#9ca3af'}">Nv.${i + 1} ${lv.nombre}</span><span class="text-[10px] text-gray-500">${lv.min} pts</span></div>
+            </div>`;
+        }).join('');
+        box.innerHTML = `
+          <div class="p-3 rounded-xl border" style="border-color:${hexARgba(c, 0.4)}; background:${hexARgba(c, 0.08)}">
+            <div class="flex items-center justify-between gap-3">
+              <div class="flex items-center gap-2.5">
+                <span class="text-3xl">${n.actual.icono}</span>
+                <div>
+                  <span class="text-[10px] text-gray-400 block">Nivel ${n.nivelNum} de ${NIVELES_CLIENTE.length}</span>
+                  <span class="font-black text-base" style="color:${c}">${n.actual.nombre}</span>
+                </div>
+              </div>
+              <div class="text-right">
+                <span class="font-black text-white text-sm block">${n.puntos} pts</span>
+                <span class="text-[10px] text-gray-400">${totalCuentas} cuenta${totalCuentas === 1 ? '' : 's'} compradas</span>
+              </div>
+            </div>
+            <div class="w-full h-2 bg-gray-800 rounded-full mt-3 overflow-hidden">
+              <div class="h-full rounded-full" style="width:${n.pct.toFixed(1)}%; background:${n.siguiente ? n.siguiente.color : c}"></div>
+            </div>
+            <p class="text-[11px] text-gray-300 mt-2">${n.siguiente
+              ? `Te faltan <b class="text-white">${n.faltan} pts</b> (${n.cuentasFaltan} cuenta${n.cuentasFaltan === 1 ? '' : 's'}) para ${n.siguiente.icono} <b style="color:${n.siguiente.color}">${n.siguiente.nombre}</b>`
+              : '¡Llegaste al nivel máximo! Eres de los mejores clientes.'}</p>
+            <button type="button" onclick="document.getElementById('perfilListaNiveles').classList.toggle('hidden')" class="mt-2 text-[11px] font-bold text-gray-400 hover:text-white underline">Ver todos los niveles</button>
+            <div id="perfilListaNiveles" class="hidden mt-2 grid grid-cols-2 gap-1.5">${lista}</div>
+          </div>`;
+      } catch (e) {
+        console.error('Error al mostrar nivel:', e);
+      }
+    }
+
+    function celebrarSubidaNivel(n, simulado) {
+      abrirDialogo({
+        tipo: 'nivel',
+        emoji: n.actual.icono,
+        titulo: `¡Subiste a ${n.actual.nombre}!`,
+        mensaje: `Ahora eres nivel ${n.nivelNum} con ${n.puntos} puntos.` +
+          (n.siguiente ? `\nSiguiente meta: ${n.siguiente.icono} ${n.siguiente.nombre} (faltan ${n.faltan} pts).` : '\n¡Es el nivel más alto!') +
+          (simulado ? '\n\n(Simulación)' : ''),
+        textoAceptar: '¡Genial!'
+      });
+    }
+
+    async function verificarSubidaNivel(cantidadComprada) {
+      try {
+        if (!currentUser) return;
+        const snap = await db.collection('compras').where('usuarioId', '==', currentUser.uid).get();
+        let totalNuevo = 0;
+        snap.forEach(d => { totalNuevo += parseInt(d.data().cantidad) || 0; });
+        const totalPrevio = Math.max(0, totalNuevo - (parseInt(cantidadComprada) || 0));
+        cuentasCompradasClienteCache = totalNuevo;
+        const antes = infoNivel(totalPrevio), despues = infoNivel(totalNuevo);
+        if (despues.idx > antes.idx) {
+          setTimeout(() => celebrarSubidaNivel(despues, false), 900);
+          const notif = crearNotificacionPersonal('nivel', `¡Subiste a ${despues.actual.icono} ${despues.actual.nombre}!`, `Ahora eres nivel ${despues.nivelNum} con ${despues.puntos} puntos. Sigue comprando para llegar a la cima.`);
+          await db.collection('usuarios').doc(currentUser.uid).set({
+            notificaciones: agregarNotifALista((datosUsuarioNotif || {}).notificaciones, notif),
+            nivel_cliente: despues.actual.nombre
+          }, { merge: true });
+        }
+      } catch (e) {
+        console.warn('No se pudo verificar el nivel:', e);
+      }
+    }
+
+    async function cargarCuentasPorUsuarioAdmin() {
+      try {
+        const snap = await db.collection('compras').get();
+        const mapa = {};
+        snap.forEach(d => {
+          const c = d.data();
+          if (c.usuarioId) mapa[c.usuarioId] = (mapa[c.usuarioId] || 0) + (parseInt(c.cantidad) || 0);
+        });
+        cuentasPorUsuarioAdmin = mapa;
+        pintarNivelesUsuariosAdmin();
+      } catch (e) {
+        console.warn('No se pudieron calcular los niveles:', e);
+      }
+    }
+
+    function pintarNivelesUsuariosAdmin() {
+      if (!cuentasPorUsuarioAdmin) return;
+      document.querySelectorAll('#tablaAdminUsuarios [data-nivel-uid]').forEach(el => {
+        const total = cuentasPorUsuarioAdmin[el.getAttribute('data-nivel-uid')] || 0;
+        el.innerHTML = htmlInsigniaNivel(total, true);
+      });
+    }
+
+    function previsualizarNivelesAdmin() {
+      const cont = document.getElementById('previewNivelesAdmin');
+      if (!cont) return;
+      const v = parseFloat((document.getElementById('ajustePuntosPorCuenta') || {}).value);
+      const fac = (isNaN(v) || v <= 0) ? obtenerFactorPuntos() : v;
+      cont.innerHTML = NIVELES_CLIENTE.map((lv, i) => `
+        <div class="flex items-center gap-2 p-2 rounded-lg bg-gray-900 border border-gray-700">
+          <span class="text-lg">${lv.icono}</span>
+          <div class="min-w-0"><span class="text-[11px] font-black block truncate" style="color:${lv.color}">Nv.${i + 1} ${lv.nombre}</span>
+          <span class="text-[10px] text-gray-500">${lv.min} pts · ${Math.ceil(lv.min / fac)} cuentas</span></div>
+        </div>`).join('');
     }
 
     // ==================== NOTIFICACIONES (CLIENTE) ====================
@@ -3604,6 +3962,7 @@
       recarga:  { icono: 'fa-circle-check', color: 'text-green-400', caja: 'bg-green-500/10 border-green-500/30', etiqueta: 'Recarga' },
       stock:    { icono: 'fa-boxes-stacked', color: 'text-sky-400', caja: 'bg-sky-500/10 border-sky-500/30', etiqueta: 'Nuevo stock' },
       producto: { icono: 'fa-wand-magic-sparkles', color: 'text-fuchsia-400', caja: 'bg-fuchsia-500/10 border-fuchsia-500/30', etiqueta: 'Nuevo producto' },
+      nivel:    { icono: 'fa-trophy', color: 'text-yellow-400', caja: 'bg-yellow-500/10 border-yellow-500/30', etiqueta: 'Nivel' },
       anuncio:  { icono: 'fa-bullhorn', color: 'text-amber-400', caja: 'bg-amber-500/10 border-amber-500/30', etiqueta: 'Anuncio' }
     };
 
@@ -3751,7 +4110,7 @@
     // Se conserva el nombre original: ahora borra TODAS las notificaciones del cliente
     async function borrarNotificacionActual() {
       if (!currentUser) return;
-      if (!confirm('¿Borrar todas tus notificaciones?')) return;
+      if (!await confirmarModal('¿Borrar todas tus notificaciones?')) return;
       try {
         const idsGlobales = (novedadesGlobales || []).map(n => n.id).filter(Boolean);
         const previas = (datosUsuarioNotif.novedades_borradas || []).filter(id => idsGlobales.includes(id));
@@ -3818,7 +4177,7 @@
     }
 
     async function eliminarNovedadGlobal(id) {
-      if (!confirm('¿Quitar esta novedad para todos los clientes?')) return;
+      if (!await confirmarModal('¿Quitar esta novedad para todos los clientes?')) return;
       try {
         const ref = db.collection('configuracion').doc('novedades');
         await db.runTransaction(async (t) => {
@@ -3920,6 +4279,321 @@
       }
     }
 
+    // ==================== DASHBOARD DE VENTAS ====================
+    let chartsDashboard = {};
+    let dashboardUltimaCarga = 0;
+    let promesaChartJs = null;
+
+    function cargarChartJs() {
+      if (window.Chart) return Promise.resolve();
+      if (promesaChartJs) return promesaChartJs;
+      promesaChartJs = new Promise((resolve, reject) => {
+        const s = document.createElement('script');
+        s.src = 'https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js';
+        s.onload = () => resolve();
+        s.onerror = () => { promesaChartJs = null; reject(new Error('No se pudo cargar la librería de gráficas. Revisa tu conexión.')); };
+        document.head.appendChild(s);
+      });
+      return promesaChartJs;
+    }
+
+    function compraValidaParaReporte(c) {
+      const email = (c.usuarioEmail || '').trim().toLowerCase();
+      if (!email || email === 'sin correo' || EMAILS_EXCLUIDOS_REPORTE.includes(email)) return false;
+      if (!esProductoCatalogoValido(c.productoNombre) && !esProductoCatalogoValido(c.productoId)) return false;
+      return true;
+    }
+
+    function resumenVentas(lista) {
+      const r = { total: 0, costo: 0, ganancia: 0, cuentas: 0, ordenes: 0, clientes: 0 };
+      const set = new Set();
+      lista.forEach(v => { r.total += v.total; r.costo += v.costo; r.ganancia += v.ganancia; r.cuentas += v.cantidad; r.ordenes++; set.add(v.email); });
+      r.clientes = set.size;
+      r.ticket = r.ordenes ? r.total / r.ordenes : 0;
+      r.margen = r.total ? (r.ganancia / r.total) * 100 : 0;
+      return r;
+    }
+
+    function copCompacto(v) {
+      const n = Math.abs(v);
+      const s = n >= 1e6 ? (n / 1e6).toFixed(1).replace('.0', '') + 'M' : (n >= 1e3 ? Math.round(n / 1e3) + 'k' : Math.round(n));
+      return (v < 0 ? '-$' : '$') + s;
+    }
+
+    function crearGrafica(id, config) {
+      try {
+        if (chartsDashboard[id]) chartsDashboard[id].destroy();
+        const cv = document.getElementById(id);
+        if (!cv || !window.Chart) return;
+        chartsDashboard[id] = new Chart(cv, config);
+      } catch (e) {
+        console.error('Error en gráfica ' + id, e);
+      }
+    }
+
+    function opcionesBaseGrafica(extra) {
+      const horizontal = extra && extra.indexAxis === 'y';
+      return Object.assign({
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: { mode: 'index', intersect: false },
+        plugins: {
+          legend: { labels: { boxWidth: 10, boxHeight: 10, font: { size: 11 } } },
+          tooltip: {
+            callbacks: {
+              label: (ctx) => {
+                const v = horizontal ? ctx.parsed.x : (typeof ctx.parsed === 'object' ? ctx.parsed.y : ctx.parsed);
+                const esDinero = !(ctx.dataset.esConteo);
+                return `${ctx.dataset.label || ctx.label}: ${esDinero ? formatoCOP(v) + ' COP' : v}`;
+              }
+            }
+          }
+        },
+        scales: {
+          x: { grid: { display: horizontal }, ticks: { font: { size: 10 }, callback: horizontal ? (v) => v : undefined } },
+          y: { grid: { color: 'rgba(148,163,184,0.08)' }, ticks: { font: { size: 10 }, callback: horizontal ? undefined : (v) => copCompacto(v) } }
+        }
+      }, extra || {});
+    }
+
+    async function cargarDashboardVentas(forzar) {
+      const estado = document.getElementById('dashEstado');
+      const contenido = document.getElementById('dashContenido');
+      if (!estado || !contenido) return;
+      if (!forzar && dashboardUltimaCarga && (Date.now() - dashboardUltimaCarga) < 60000) return;
+
+      estado.classList.remove('hidden');
+      estado.innerHTML = '<i class="fa-solid fa-spinner fa-spin text-emerald-400 mr-2"></i> Calculando métricas y gráficas...';
+      try {
+        await cargarChartJs();
+        const snap = await db.collection('compras').get();
+        const ventas = [];
+        snap.forEach(d => {
+          const c = d.data();
+          if (!compraValidaParaReporte(c)) return;
+          const fecha = new Date(c.fecha);
+          if (isNaN(fecha.getTime())) return;
+          const total = parseFloat(c.total) || 0;
+          const costoNum = parseFloat(c.costoTotal);
+          const costo = (isNaN(costoNum) || costoNum < 0) ? 0 : costoNum;
+          ventas.push({
+            fecha, total, costo, ganancia: total - costo,
+            cantidad: parseInt(c.cantidad) || 0,
+            producto: c.productoNombre || c.productoId || 'Producto',
+            productoId: c.productoId || '',
+            categoria: c.categoria || 'Otros',
+            email: (c.usuarioEmail || '').trim().toLowerCase(),
+            uid: c.usuarioId || ''
+          });
+        });
+        dashboardUltimaCarga = Date.now();
+        contenido.classList.remove('hidden');
+        estado.classList.add('hidden');
+        renderizarDashboard(ventas);
+        const act = document.getElementById('dashActualizado');
+        if (act) act.innerText = `Actualizado: ${new Date().toLocaleString('es-CO')} · ${ventas.length} ventas analizadas`;
+      } catch (e) {
+        estado.innerHTML = `<span class="text-red-400">No se pudieron cargar las gráficas: ${escaparHtml(e.message)}</span>`;
+      }
+    }
+
+    function renderizarDashboard(ventas) {
+      const tema = obtenerDefinicionTema(temaActual);
+      const cPrim = tema.primario, cGasto = '#f43f5e', cGan = '#38bdf8', cGris = 'rgba(148,163,184,0.55)';
+      if (window.Chart) {
+        Chart.defaults.color = '#9ca3af';
+        Chart.defaults.borderColor = 'rgba(148,163,184,0.12)';
+        Chart.defaults.font.family = 'system-ui, -apple-system, sans-serif';
+      }
+
+      const ahora = new Date();
+      const anio = ahora.getFullYear(), mes = ahora.getMonth(), diaHoy = ahora.getDate();
+      const diasMes = new Date(anio, mes + 1, 0).getDate();
+      const diasMesAnt = new Date(anio, mes, 0).getDate();
+      const inicioMes = new Date(anio, mes, 1);
+      const inicioMesAnt = new Date(anio, mes - 1, 1);
+      const finComparable = new Date(anio, mes - 1, Math.min(diaHoy, diasMesAnt), 23, 59, 59, 999);
+      const hace = (dias) => new Date(Date.now() - dias * 86400000);
+
+      // ---------- KPIs ----------
+      const rMes = resumenVentas(ventas.filter(v => v.fecha >= inicioMes));
+      const rAnt = resumenVentas(ventas.filter(v => v.fecha >= inicioMesAnt && v.fecha <= finComparable));
+      const proyeccion = diaHoy ? (rMes.total / diaHoy) * diasMes : 0;
+      const delta = (a, b) => {
+        if (!b) return a ? '<span class="text-sky-400">nuevo</span>' : '<span class="text-gray-500">—</span>';
+        const p = ((a - b) / Math.abs(b)) * 100;
+        const up = p >= 0;
+        return `<span class="${up ? 'text-green-400' : 'text-red-400'}"><i class="fa-solid fa-arrow-${up ? 'up' : 'down'}"></i> ${Math.abs(p).toFixed(0)}%</span>`;
+      };
+      const kpi = (titulo, valor, extra, color) => `
+        <div class="bg-gray-900 border border-gray-800 rounded-xl p-3 min-w-0">
+          <span class="text-[11px] text-gray-400 block">${titulo}</span>
+          <span class="text-base sm:text-lg font-black ${color || 'text-white'} block truncate">${valor}</span>
+          <span class="text-[10px] text-gray-500">${extra}</span>
+        </div>`;
+      const vsTxt = (a, b) => `${delta(a, b)} vs. mismo período del mes pasado`;
+      document.getElementById('dashKpis').innerHTML =
+        kpi('💰 Ingresos del mes', formatoCOP(rMes.total), vsTxt(rMes.total, rAnt.total), 'text-emerald-400') +
+        kpi('✨ Ganancia neta del mes', formatoCOP(rMes.ganancia), vsTxt(rMes.ganancia, rAnt.ganancia), 'text-sky-400') +
+        kpi('🛒 Órdenes', rMes.ordenes, vsTxt(rMes.ordenes, rAnt.ordenes)) +
+        kpi('📦 Cuentas vendidas', rMes.cuentas, vsTxt(rMes.cuentas, rAnt.cuentas)) +
+        kpi('🎟 Ticket promedio', formatoCOP(rMes.ticket), vsTxt(rMes.ticket, rAnt.ticket)) +
+        kpi('👥 Clientes que compraron', rMes.clientes, vsTxt(rMes.clientes, rAnt.clientes)) +
+        kpi('📈 Proyección del mes', formatoCOP(proyeccion), `Si sigues al ritmo actual (día ${diaHoy} de ${diasMes})`, 'text-amber-400') +
+        kpi('📊 Margen neto', `${rMes.margen.toFixed(0)}%`, `Gastos del mes: ${formatoCOP(rMes.costo)}`);
+
+      // ---------- Últimos 3 meses ----------
+      const meses = [2, 1, 0].map(k => {
+        const ini = new Date(anio, mes - k, 1), fin = new Date(anio, mes - k + 1, 1);
+        const r = resumenVentas(ventas.filter(v => v.fecha >= ini && v.fecha < fin));
+        const etiqueta = ini.toLocaleDateString('es-CO', { month: 'short', year: '2-digit' }).replace('.', '');
+        return { etiqueta: etiqueta.charAt(0).toUpperCase() + etiqueta.slice(1) + (k === 0 ? ' (actual)' : ''), ...r };
+      });
+      crearGrafica('dashChartMeses', {
+        type: 'bar',
+        data: {
+          labels: meses.map(m => m.etiqueta),
+          datasets: [
+            { label: 'Ingresos', data: meses.map(m => m.total), backgroundColor: cPrim, borderRadius: 6 },
+            { label: 'Gastos', data: meses.map(m => m.costo), backgroundColor: cGasto, borderRadius: 6 },
+            { label: 'Ganancia neta', data: meses.map(m => m.ganancia), backgroundColor: cGan, borderRadius: 6 }
+          ]
+        },
+        options: opcionesBaseGrafica()
+      });
+
+      // ---------- Mes actual día a día ----------
+      const porDia = new Array(diasMes).fill(0), porDiaAnt = new Array(diasMes).fill(null);
+      for (let d = 0; d < Math.min(diasMes, diasMesAnt); d++) porDiaAnt[d] = 0;
+      ventas.forEach(v => {
+        if (v.fecha >= inicioMes) porDia[v.fecha.getDate() - 1] += v.total;
+        else if (v.fecha >= inicioMesAnt && v.fecha < inicioMes && v.fecha.getDate() <= diasMes) porDiaAnt[v.fecha.getDate() - 1] += v.total;
+      });
+      crearGrafica('dashChartDias', {
+        type: 'line',
+        data: {
+          labels: porDia.map((_, i) => String(i + 1)),
+          datasets: [
+            { label: 'Este mes', data: porDia.map((v, i) => (i < diaHoy ? v : null)), borderColor: cPrim, backgroundColor: hexARgba(cPrim, 0.15), fill: true, tension: 0.35, pointRadius: 2 },
+            { label: 'Mes anterior', data: porDiaAnt, borderColor: cGris, borderDash: [5, 4], pointRadius: 0, tension: 0.35 }
+          ]
+        },
+        options: opcionesBaseGrafica()
+      });
+
+      // ---------- Por semana (12 semanas, lunes a domingo) ----------
+      const lunes = new Date(anio, mes, diaHoy);
+      lunes.setDate(lunes.getDate() - ((lunes.getDay() + 6) % 7));
+      const semanas = [];
+      for (let k = 11; k >= 0; k--) {
+        const ini = new Date(lunes); ini.setDate(ini.getDate() - k * 7);
+        const fin = new Date(ini); fin.setDate(fin.getDate() + 7);
+        const r = resumenVentas(ventas.filter(v => v.fecha >= ini && v.fecha < fin));
+        semanas.push({ etiqueta: `${String(ini.getDate()).padStart(2, '0')}/${String(ini.getMonth() + 1).padStart(2, '0')}`, ...r });
+      }
+      crearGrafica('dashChartSemanas', {
+        type: 'bar',
+        data: {
+          labels: semanas.map(s => s.etiqueta),
+          datasets: [
+            { type: 'line', label: 'Ganancia neta', data: semanas.map(s => s.ganancia), borderColor: cGan, backgroundColor: cGan, tension: 0.35, pointRadius: 2 },
+            { label: 'Ingresos', data: semanas.map(s => s.total), backgroundColor: hexARgba(cPrim, 0.85), borderRadius: 5 }
+          ]
+        },
+        options: opcionesBaseGrafica()
+      });
+
+      // ---------- Productos más demandados (90 días) ----------
+      const v90 = ventas.filter(v => v.fecha >= hace(90));
+      const prods = {};
+      v90.forEach(v => { prods[v.producto] = prods[v.producto] || { cuentas: 0, total: 0 }; prods[v.producto].cuentas += v.cantidad; prods[v.producto].total += v.total; });
+      const topProds = Object.entries(prods).sort((a, b) => b[1].cuentas - a[1].cuentas).slice(0, 8);
+      const corto = (t) => t.length > 24 ? t.slice(0, 23) + '…' : t;
+      crearGrafica('dashChartProductos', {
+        type: 'bar',
+        data: {
+          labels: topProds.map(p => corto(p[0])),
+          datasets: [{ label: 'Cuentas vendidas', esConteo: true, data: topProds.map(p => p[1].cuentas), backgroundColor: topProds.map((_, i) => hexARgba(cPrim, Math.max(0.35, 1 - i * 0.08))), borderRadius: 5 }]
+        },
+        options: opcionesBaseGrafica({ indexAxis: 'y', plugins: { legend: { display: false }, tooltip: { callbacks: { label: (ctx) => {
+          const p = topProds[ctx.dataIndex];
+          return `${p[1].cuentas} cuentas · ${formatoCOP(p[1].total)} COP`;
+        } } } } })
+      });
+
+      // ---------- Ingresos por categoría (90 días) ----------
+      const cats = {};
+      v90.forEach(v => { cats[v.categoria] = (cats[v.categoria] || 0) + v.total; });
+      const catsOrden = Object.entries(cats).sort((a, b) => b[1] - a[1]);
+      const paleta = [cPrim, '#a855f7', '#06b6d4', '#f59e0b', '#f43f5e', '#84cc16', '#3b82f6', '#ec4899'];
+      crearGrafica('dashChartCategorias', {
+        type: 'doughnut',
+        data: { labels: catsOrden.map(c => c[0]), datasets: [{ label: 'Ingresos', data: catsOrden.map(c => c[1]), backgroundColor: catsOrden.map((_, i) => paleta[i % paleta.length]), borderWidth: 0 }] },
+        options: {
+          responsive: true, maintainAspectRatio: false, cutout: '62%',
+          plugins: {
+            legend: { position: 'right', labels: { boxWidth: 10, font: { size: 11 } } },
+            tooltip: { callbacks: { label: (ctx) => {
+              const tot = catsOrden.reduce((s, c) => s + c[1], 0) || 1;
+              return `${ctx.label}: ${formatoCOP(ctx.parsed)} COP (${((ctx.parsed / tot) * 100).toFixed(0)}%)`;
+            } } }
+          }
+        }
+      });
+
+      // ---------- Horas pico (90 días) ----------
+      const horas = new Array(24).fill(0);
+      v90.forEach(v => { horas[v.fecha.getHours()]++; });
+      const maxHora = Math.max(...horas);
+      crearGrafica('dashChartHoras', {
+        type: 'bar',
+        data: { labels: horas.map((_, h) => `${h}h`), datasets: [{ label: 'Órdenes', esConteo: true, data: horas, backgroundColor: horas.map(n => (n === maxHora && n > 0) ? '#f59e0b' : hexARgba(cPrim, 0.7)), borderRadius: 4 }] },
+        options: opcionesBaseGrafica({ plugins: { legend: { display: false } }, scales: {
+          x: { grid: { display: false }, ticks: { font: { size: 9 }, maxRotation: 0, autoSkip: true } },
+          y: { grid: { color: 'rgba(148,163,184,0.08)' }, ticks: { precision: 0, font: { size: 10 } } }
+        } })
+      });
+
+      // ---------- Mejores clientes (90 días) ----------
+      const cuentasHistoricas = {};
+      ventas.forEach(v => { if (v.uid) cuentasHistoricas[v.uid] = (cuentasHistoricas[v.uid] || 0) + v.cantidad; });
+      const clientes = {};
+      v90.forEach(v => {
+        clientes[v.email] = clientes[v.email] || { email: v.email, uid: v.uid, total: 0, ordenes: 0, cuentas: 0 };
+        clientes[v.email].total += v.total; clientes[v.email].ordenes++; clientes[v.email].cuentas += v.cantidad;
+      });
+      const topCli = Object.values(clientes).sort((a, b) => b.total - a.total).slice(0, 5);
+      const medallas = ['🥇', '🥈', '🥉', '4', '5'];
+      document.getElementById('dashTopClientes').innerHTML = topCli.length ? topCli.map((c, i) => `
+        <div class="flex items-center gap-3 p-2.5 rounded-xl bg-gray-800/60 border border-gray-700/60">
+          <span class="w-7 text-center font-black text-gray-400">${medallas[i]}</span>
+          <div class="flex-1 min-w-0">
+            <span class="text-xs font-bold text-white block truncate">${escaparHtml(c.email)}</span>
+            <div class="flex items-center gap-1.5 flex-wrap mt-0.5">${htmlInsigniaNivel(cuentasHistoricas[c.uid] || c.cuentas, false)}<span class="text-[10px] text-gray-500">${c.ordenes} órdenes · ${c.cuentas} cuentas</span></div>
+          </div>
+          <span class="text-sm font-black text-emerald-400 shrink-0">${formatoCOP(c.total)}</span>
+        </div>`).join('') : '<p class="text-xs text-gray-500 py-4 text-center">Aún no hay compras en los últimos 90 días.</p>';
+
+      // ---------- Stock vs. demanda (30 días) ----------
+      const v30 = ventas.filter(v => v.fecha >= hace(30));
+      const filas = catalogoUnificado.filter(p => p.activo !== false).map(p => {
+        const vendidas = v30.filter(v => v.productoId === p.docId || v.productoId === p.id || v.producto === p.nombre).reduce((s, v) => s + v.cantidad, 0);
+        const porDiaProm = vendidas / 30;
+        const dias = porDiaProm > 0 ? (p.stock || 0) / porDiaProm : Infinity;
+        return { nombre: p.nombre, stock: p.stock || 0, vendidas, dias };
+      }).filter(f => f.vendidas > 0 || f.stock > 0).sort((a, b) => a.dias - b.dias).slice(0, 10);
+      document.getElementById('dashStockDemanda').innerHTML = filas.length ? filas.map(f => {
+        let txt, color;
+        if (f.dias === Infinity) { txt = 'Sin ventas recientes'; color = 'text-gray-500'; }
+        else if (f.stock === 0) { txt = 'Agotado'; color = 'text-red-400'; }
+        else { const d = f.dias < 1 ? '< 1' : Math.round(f.dias); txt = `≈ ${d} día${d === 1 ? '' : 's'}`; color = f.dias < 3 ? 'text-red-400' : (f.dias < 7 ? 'text-amber-400' : 'text-green-400'); }
+        return `<div class="flex items-center justify-between gap-2 py-2 border-b border-gray-800 last:border-0">
+            <div class="min-w-0"><span class="text-xs font-bold text-white block truncate">${escaparHtml(f.nombre)}</span><span class="text-[10px] text-gray-500">Stock ${f.stock} · vendidas 30 d: ${f.vendidas}</span></div>
+            <span class="text-xs font-black ${color} shrink-0">${txt}</span>
+          </div>`;
+      }).join('') : '<p class="text-xs text-gray-500 py-4 text-center">No hay productos activos con datos.</p>';
+    }
+
     const CLASES_TAB_INACTIVA = ['bg-gray-900', 'border-gray-800', 'text-gray-400'];
     const CLASES_TAB_ACTIVA = ['bg-emerald-500/10', 'border-emerald-500/40', 'text-emerald-400'];
     let unsubBadgeRecargas = null;
@@ -3950,7 +4624,7 @@
     function cambiarTabAdmin(tab) {
       if (modoPruebaCliente) return;
       iniciarBadgesAdmin();
-      const tabs = ['productos', 'categorias', 'usuarios', 'stock', 'apariencia', 'pagos', 'recargas', 'historial', 'ajustes'];
+      const tabs = ['productos', 'reporte', 'categorias', 'usuarios', 'stock', 'apariencia', 'pagos', 'recargas', 'historial', 'ajustes'];
       tabs.forEach(t => {
         const nombre = t.charAt(0).toUpperCase() + t.slice(1);
         const sec = document.getElementById('adminSec' + nombre);
@@ -3965,6 +4639,7 @@
       });
 
       if (tab === 'productos') renderizarAdminProductos();
+      if (tab === 'reporte') cargarDashboardVentas(false);
       if (tab === 'categorias') renderizarAdminCategoriasColores();
       if (tab === 'usuarios') cargarUsuariosAdmin();
       if (tab === 'stock') poblarSelectStock();
@@ -4617,6 +5292,7 @@
         });
 
         if (datosNotificacion) enviarNotificacionTelegram(datosNotificacion);
+        if (datosNotificacion) verificarSubidaNivel(cantidad);
       } catch (err) {
         if (err.message !== "SALDO_INSUFICIENTE_MODAL") {
           alert(err.message);
@@ -4626,7 +5302,7 @@
 
     function copiarCredencialesEntregadas() {
       const texto = document.getElementById('txtEntregaCredenciales').innerText;
-      navigator.clipboard.writeText(texto).then(() => alert("¡Cuentas copiadas al portapapeles!")).catch(() => prompt("Copia:", texto));
+      navigator.clipboard.writeText(texto).then(() => alert("¡Cuentas copiadas al portapapeles!")).catch(() => mostrarTextoCopiable(texto));
     }
 
     function renderizarAdminProductos() {
@@ -4849,7 +5525,7 @@
     }
 
     async function eliminarCuentaIndividual(docId, index) {
-      if (!confirm("¿Estás seguro de eliminar esta cuenta del inventario?")) return;
+      if (!await confirmarModal("¿Estás seguro de eliminar esta cuenta del inventario?")) return;
       const prod = catalogoUnificado.find(p => p.docId === docId);
       if (!prod) return;
 
@@ -4875,7 +5551,7 @@
     }
 
     async function vaciarStock(docId) {
-      if (confirm("¿Vaciar cuentas de este producto?")) await db.collection('inventario').doc(docId).set({ cuentas: [] }, { merge: true });
+      if (await confirmarModal("¿Vaciar cuentas de este producto?")) await db.collection('inventario').doc(docId).set({ cuentas: [] }, { merge: true });
     }
 
     let unsubUsuariosAdmin = null;
@@ -4890,6 +5566,7 @@
         unsubUsuariosAdmin = null;
       }
 
+      cargarCuentasPorUsuarioAdmin();
       unsubUsuariosAdmin = db.collection('usuarios').onSnapshot(snap => {
         try {
           if (snap.empty) {
@@ -4940,6 +5617,7 @@
               <tr data-buscar="${textoBusqueda}" class="hover:bg-gray-800/40 border-b border-gray-800">
                 <td class="px-4 py-3">
                   ${nombreCliente}
+                  <span data-nivel-uid="${uid}" class="block mt-1"></span>
                   <button onclick="abrirModalEditarCliente('${uid}', '${escaparJsAttr(u.email)}', '${escaparJsAttr(u.nombre)}')" class="mt-1 text-[10px] bg-gray-800 hover:bg-gray-700 text-emerald-400 px-2 py-0.5 rounded"><i class="fa-solid fa-pen mr-1"></i> Editar perfil</button>
                 </td>
                 <td class="px-4 py-3 text-xs text-gray-400">${u.whatsapp || 'Sin WhatsApp'}</td>
@@ -4990,6 +5668,7 @@
           });
 
           filtrarTablaUsuariosAdmin();
+          pintarNivelesUsuariosAdmin();
         } catch (e) {
           console.error('Error al renderizar usuarios:', e);
         }
@@ -5000,7 +5679,7 @@
     }
 
     async function eliminarCliente(uid, email) {
-      if (!confirm(`¿Estás seguro de que deseas eliminar al cliente ${email || ''}? Esta acción borrará sus datos y saldo de la base de datos.`)) {
+      if (!await confirmarModal(`¿Estás seguro de que deseas eliminar al cliente ${email || ''}? Esta acción borrará sus datos y saldo de la base de datos.`)) {
         return;
       }
 
@@ -5273,7 +5952,7 @@
     }
 
     function copiarCredencialesNuevoUsuario() {
-      navigator.clipboard.writeText(credencialesNuevoUsuarioTemp).then(() => alert("¡Credenciales copiadas al portapapeles!")).catch(() => prompt("Copia:", credencialesNuevoUsuarioTemp));
+      navigator.clipboard.writeText(credencialesNuevoUsuarioTemp).then(() => alert("¡Credenciales copiadas al portapapeles!")).catch(() => mostrarTextoCopiable(credencialesNuevoUsuarioTemp));
     }
 
     function cerrarModalUsuarioCreado() {
@@ -5502,7 +6181,7 @@
     }
 
     async function eliminarMetodoPago(docId) {
-      if (!confirm("¿Eliminar este método de pago y su QR?")) return;
+      if (!await confirmarModal("¿Eliminar este método de pago y su QR?")) return;
       try {
         await db.collection('metodos_pago').doc(docId).delete();
         mostrarToast("¡Método de pago eliminado!");
@@ -5641,7 +6320,7 @@
     }
 
     async function rechazarRecarga(recargaId) {
-      if (!confirm("¿Deseas rechazar y revocar esta solicitud de saldo?")) return;
+      if (!await confirmarModal("¿Deseas rechazar y revocar esta solicitud de saldo?")) return;
       await db.collection('recargas').doc(recargaId).update({ estado: 'rechazado' });
       mostrarToast("Solicitud rechazada.");
       cargarRecargasAdmin();
@@ -5815,7 +6494,7 @@
 
     async function enviarResetPasswordPerfil() {
       if (!currentUser || !currentUser.email) return;
-      if (!confirm(`Te enviaremos un enlace a ${currentUser.email} para crear una nueva contraseña. ¿Continuar?`)) return;
+      if (!await confirmarModal(`Te enviaremos un enlace a ${currentUser.email} para crear una nueva contraseña. ¿Continuar?`)) return;
       try {
         await auth.sendPasswordResetEmail(currentUser.email);
         mostrarToast('Enlace enviado. Revisa tu correo (y la carpeta de spam).');
@@ -5830,7 +6509,7 @@
       const texto = (compra.credenciales || '') + (compra.claveAcceso ? `\nContraseña: ${compra.claveAcceso}` : '');
       navigator.clipboard.writeText(texto)
         .then(() => mostrarToast('¡Cuentas copiadas!'))
-        .catch(() => prompt('Copia:', texto));
+        .catch(() => mostrarTextoCopiable(texto));
     }
 
     // ==================== GARANTÍA POR COMPRA ====================
@@ -6076,6 +6755,8 @@
         const elCuentas = document.getElementById('perfilStatCuentas');
         if (elCompras) elCompras.innerText = misComprasPerfilCache.length;
         if (elCuentas) elCuentas.innerText = totalCuentas;
+        renderizarNivelPerfil(totalCuentas);
+        if (!modoPruebaCliente) cuentasCompradasClienteCache = totalCuentas;
 
         if (misComprasPerfilCache.length === 0) {
           contenedor.innerHTML = `
@@ -6183,7 +6864,7 @@
     async function recuperarPasswordModal() {
       const emailInput = document.getElementById('authEmail');
       const email = (emailInput ? emailInput.value : '').trim();
-      const correoDestino = prompt("Ingresa tu correo para enviarte el enlace de restablecimiento:", email);
+      const correoDestino = await pedirTextoModal("Ingresa tu correo para enviarte el enlace de restablecimiento:", email);
       if (!correoDestino) return;
 
       try {
