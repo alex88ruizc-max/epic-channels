@@ -94,7 +94,7 @@
         <div class="relative shrink-0">
           <button onclick="abrirModalNovedades()" title="Novedades y alertas" class="relative p-2 rounded-xl bg-gray-800 hover:bg-gray-700 text-gray-300 transition">
             <i class="fa-solid fa-bell text-emerald-400 text-xs sm:text-base"></i>
-            <span id="badgeNotifCount" class="absolute -top-1 -right-1 bg-red-500 text-white font-black text-[8px] w-3.5 h-3.5 rounded-full flex items-center justify-center shadow">1</span>
+            <span id="badgeNotifCount" class="hidden absolute -top-1 -right-1 bg-red-500 text-white font-black text-[8px] w-3.5 h-3.5 rounded-full flex items-center justify-center shadow">1</span>
           </button>
         </div>
 
@@ -508,6 +508,11 @@
               </div>
               <p class="text-[10px] text-gray-500 mt-1">Se guarda en cada cuenta. Al venderse, su costo se descuenta para calcular tu ganancia neta real.</p>
             </div>
+            <div>
+              <label for="txtStockClaveAcceso" class="block text-xs text-gray-400 mb-1">Contraseña de acceso de estas cuentas (opcional)</label>
+              <input type="text" id="txtStockClaveAcceso" autocomplete="off" placeholder="Vacío = se entrega la contraseña máster" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-sm text-white font-mono focus:outline-none">
+              <p id="txtStockClaveMasterInfo" class="text-[10px] text-gray-500 mt-1">Si lo dejas vacío, al cliente le llega la contraseña máster.</p>
+            </div>
             <div id="txtStockResumenInversion" class="p-3 rounded-xl bg-gray-800/60 border border-gray-700/60 text-xs text-gray-400">
               Pega las cuentas y escribe el costo para ver el cálculo de inversión.
             </div>
@@ -789,6 +794,25 @@
               </div>
             </div>
 
+            <!-- SECCIÓN: NOVEDADES PARA CLIENTES -->
+            <div class="p-4 bg-gray-800/60 border border-gray-700/60 rounded-xl space-y-3">
+              <div>
+                <h4 class="text-sm font-bold text-white flex items-center gap-1.5">
+                  <i class="fa-solid fa-bell text-amber-400"></i> Novedades para clientes
+                </h4>
+                <p class="text-[11px] text-gray-400 mt-0.5">Aparecen en la campana de tus clientes. Se publican solas cuando creas un producto o cargas stock (no en productos VIP). Aquí puedes publicar un anuncio propio.</p>
+              </div>
+              <input type="text" id="txtNovedadTitulo" maxlength="80" placeholder="Título (ej: ¡Promo fin de semana!)" class="w-full bg-gray-900 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none">
+              <textarea id="txtNovedadMensaje" rows="2" maxlength="300" placeholder="Mensaje (opcional)" class="w-full bg-gray-900 border border-gray-700 rounded-xl p-3 text-xs text-white focus:outline-none"></textarea>
+              <button type="button" onclick="publicarNovedadManual()" class="w-full sm:w-auto bg-amber-500 hover:bg-amber-400 text-black font-black py-2.5 px-5 rounded-xl text-xs transition flex items-center justify-center gap-2">
+                <i class="fa-solid fa-paper-plane"></i> Publicar novedad
+              </button>
+              <div>
+                <span class="block text-[11px] text-gray-400 mb-1">Publicadas (últimos 15 días)</span>
+                <div id="listaNovedadesAdmin" class="space-y-1.5 max-h-56 overflow-y-auto"></div>
+              </div>
+            </div>
+
             <!-- SECCIÓN: MENSAJE DE STOCK PARA TELEGRAM -->
             <div class="p-4 bg-gray-800/60 border border-gray-700/60 rounded-xl space-y-3">
               <div>
@@ -876,7 +900,7 @@
                   <input type="text" id="ajusteWhatsappNumero" placeholder="Ej: 573043956726" class="w-full bg-gray-900 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white font-mono focus:outline-none">
                 </div>
                 <div>
-                  <label class="block text-[11px] text-gray-400 mb-1">Clave de Acceso Amazon (Entrega)</label>
+                  <label class="block text-[11px] text-gray-400 mb-1">Contraseña máster (entrega de cuentas)</label>
                   <input type="text" id="ajusteClaveAmazon" placeholder="Ej: epic2828" class="w-full bg-gray-900 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white font-mono focus:outline-none">
                 </div>
                 <div>
@@ -1227,25 +1251,18 @@
           <i class="fa-solid fa-bullhorn"></i>
         </div>
         <div>
-          <h3 class="text-base font-black text-white">Novedades y Actualizaciones</h3>
-          <p class="text-[11px] text-gray-400">Últimas mejoras implementadas en la plataforma</p>
+          <h3 class="text-base font-black text-white">Notificaciones</h3>
+          <p class="text-[11px] text-gray-400">Novedades de la tienda y movimientos de tu saldo</p>
         </div>
       </div>
 
-      <div class="space-y-2.5 text-xs text-gray-300 max-h-60 overflow-y-auto pr-1 mb-4" id="contenedorItemsNovedades">
-        <div class="p-3 bg-gray-800/80 rounded-xl border border-gray-700/60">
-          <div class="flex items-center gap-2 mb-1">
-            <span class="text-[10px] font-bold bg-cyan-500/20 text-cyan-400 border border-cyan-500/40 px-2 py-0.5 rounded-full"><i class="fa-solid fa-robot mr-1"></i> Nueva Categoría</span>
-            <span class="text-[10px] text-gray-500">Reciente</span>
-          </div>
-          <p class="text-gray-300 font-bold">Inteligencia Artificial (IA)</p>
-          <p class="text-[11px] text-gray-400 mt-0.5">Se habilitó la categoría oficial de IA con colores cian futuristas y catálogo optimizado.</p>
-        </div>
+      <div class="space-y-2.5 text-xs text-gray-300 max-h-80 overflow-y-auto pr-1 mb-4" id="contenedorItemsNovedades">
+        <p class="text-center text-gray-500 py-6">Cargando notificaciones...</p>
       </div>
 
       <div class="space-y-2">
-        <button onclick="borrarNotificacionActual()" class="w-full py-2.5 bg-red-500/20 hover:bg-red-500/30 text-red-400 border border-red-500/40 font-bold text-xs rounded-xl transition flex items-center justify-center gap-1.5">
-          <i class="fa-solid fa-trash-can"></i> Borrar Notificación
+        <button id="btnBorrarTodasNotif" onclick="borrarNotificacionActual()" class="w-full py-2.5 bg-red-500/20 hover:bg-red-500/30 text-red-400 border border-red-500/40 font-bold text-xs rounded-xl transition flex items-center justify-center gap-1.5">
+          <i class="fa-solid fa-trash-can"></i> Borrar todas
         </button>
         <button onclick="cerrarModalNovedades()" class="w-full py-2 bg-gray-800 hover:bg-gray-700 text-gray-300 font-bold text-xs rounded-xl transition">
           Entendido
@@ -2699,7 +2716,7 @@
         const plantilla = (document.getElementById('ajustePlantillaEntrega') || {}).value || '';
         const plantillaCuenta = (document.getElementById('ajustePlantillaCuenta') || {}).value || '';
         const texto = construirFormatoEntrega(cuentasEjemplo, prodEjemplo, { total: 9000, saldo: 21000, cliente: 'cliente@ejemplo.com' }, { plantilla, plantillaCuenta });
-        box.innerText = (plantilla.trim() ? '' : '(Formato automático actual)\n\n') + texto;
+        box.innerText = (plantilla.trim() ? '' : '(Formato predeterminado)\n\n') + texto;
       } catch (e) {
         console.error('Error en vista previa de plantilla:', e);
       }
@@ -2761,6 +2778,7 @@
       restaurarTemaGuardado();
       cargarPlantillasEntregaEnForm();
       cargarPlantillaStockEnForm();
+      renderizarNovedadesAdmin();
     }
 
     async function guardarAjustesGeneralesAdmin(e) {
@@ -2870,7 +2888,8 @@
         const pass = item.pass || item.password || item.clave || '';
         const costoNum = parseFloat(item.costo);
         const costo = (isNaN(costoNum) || costoNum < 0) ? 0 : costoNum;
-        return { email, pass, costo };
+        const claveAcceso = String(item.claveAcceso || '').trim();
+        return { email, pass, costo, claveAcceso };
       }
       // Formato antiguo (string "correo:clave"): costo asumido = 0
       const s = String(item).trim();
@@ -2883,6 +2902,14 @@
         return { email: parts[0].trim(), pass: parts.slice(1).join(' ').trim(), costo: 0 };
       }
       return { email: s, pass: '', costo: 0 };
+    }
+
+    // Contraseña de acceso a entregar: la del lote o, si no tiene, la contraseña máster
+    function resolverClaveAccesoCuentas(cuentas) {
+      const master = ajustesGeneralesConfig.claveAmazon || 'epic2828';
+      const claves = (cuentas || []).map(raw => parseCredencialObj(raw).claveAcceso || master);
+      const unicas = Array.from(new Set(claves.filter(Boolean)));
+      return unicas.length ? unicas.join(' / ') : master;
     }
 
     // ==================== UTILIDADES: COSTOS, BÚSQUEDA Y CSV ====================
@@ -2967,6 +2994,8 @@
       try {
         const box = document.getElementById('txtStockResumenInversion');
         if (!box) return;
+        const infoMaster = document.getElementById('txtStockClaveMasterInfo');
+        if (infoMaster) infoMaster.innerHTML = `Si lo dejas vacío, al cliente le llega la contraseña máster: <b class="font-mono text-gray-300">${escaparHtml(ajustesGeneralesConfig.claveAmazon || 'epic2828')}</b>`;
         const txt = document.getElementById('txtStockLineas');
         const cantidad = txt ? txt.value.split('\n').map(l => l.trim()).filter(l => l).length : 0;
         const costo = leerCostoUnitarioStock();
@@ -3052,25 +3081,24 @@
     const PLANTILLA_ENTREGA_BASE =
 `✨ ¡Tus cuentas están listas!
 
-📦 Producto: {producto} (x{cantidad})
+📦 Producto: {producto}
+🔢 Cantidad: {cantidad}
+🛡 Garantía: {garantia}
+💰 Total Pagado: {total}
 
-{bloque_amazon}{cuentas}
+🔑 Cuentas Vendidas (Credenciales) de {producto}:
+{cuentas}
 
-📌 {texto_garantia}
+🔐 Contraseña: {contrasena}
 
-💰 Total pagado: {total}
-💳 Saldo restante: {saldo_restante}
+💳 Saldo Restante: {saldo_restante}
+⏰ Fecha y Hora: {fecha}`;
 
-¿Dudas? Escríbenos por WhatsApp: {soporte}`;
-
-    const PLANTILLA_CUENTA_BASE =
-`─── Cuenta #{n} ───
-• Correo: {correo}
-• Contraseña: {clave}`;
+    const PLANTILLA_CUENTA_BASE = `{correo} {clave}`;
 
     const VARIABLES_PLANTILLA_ENTREGA = [
       ['{producto}', 'Producto'], ['{cantidad}', 'Cantidad'], ['{cuentas}', 'Cuentas'],
-      ['{bloque_amazon}', 'Clave Amazon'], ['{texto_garantia}', 'Texto garantía'], ['{garantia}', 'Garantía corta'],
+      ['{contrasena}', 'Contraseña de acceso'], ['{bloque_amazon}', 'Clave Amazon'], ['{texto_garantia}', 'Texto garantía'], ['{garantia}', 'Garantía corta'],
       ['{total}', 'Total pagado'], ['{saldo_restante}', 'Saldo restante'], ['{cliente}', 'Correo cliente'],
       ['{fecha}', 'Fecha'], ['{soporte}', 'WhatsApp soporte']
     ];
@@ -3088,10 +3116,10 @@
       const bloqueCuentas = cuentas.map((raw, i) => {
         const c = parseCredencialObj(raw);
         return reemplazarVariablesPlantilla(tplCuenta, { n: i + 1, correo: c.email, clave: c.pass });
-      }).join('\n\n');
+      }).join(tplCuenta.includes('\n') ? '\n\n' : '\n');
 
       const tg = prodInfo.tipoGarantia;
-      const garantiaCorta = tg === '29d' ? '29 días' : (tg === '24h' ? '24 horas' : 'Sin garantía');
+      const garantiaCorta = tg === '29d' ? '29 Días' : (tg === '24h' ? '24 Horas' : 'Sin garantía');
       const textoGarantia = tg === '29d'
         ? 'Este producto cuenta con soporte y garantía de 29 días.'
         : (tg === '24h' ? 'Este producto cuenta con soporte y garantía de 24 horas.' : 'Este producto se entrega sin garantía directa de reemplazo.');
@@ -3109,7 +3137,8 @@
         saldo_restante: (ex.saldo !== undefined && ex.saldo !== null) ? `${formatoCOP(ex.saldo)} COP` : '',
         cliente: ex.cliente || ((currentUser && currentUser.email) || ''),
         fecha: new Date().toLocaleString('es-CO'),
-        soporte: ajustesGeneralesConfig.whatsappNumero || ''
+        soporte: ajustesGeneralesConfig.whatsappNumero || '',
+        contrasena: resolverClaveAccesoCuentas(cuentas)
       };
       return reemplazarVariablesPlantilla(plantilla, vars).replace(/\n{3,}/g, '\n\n').trim();
     }
@@ -3119,9 +3148,13 @@
       try {
         const plantilla = (overrides && overrides.plantilla !== undefined) ? overrides.plantilla : ajustesGeneralesConfig.plantillaEntrega;
         const plantillaCuenta = (overrides && overrides.plantillaCuenta !== undefined) ? overrides.plantillaCuenta : ajustesGeneralesConfig.plantillaCuentaEntrega;
-        if (String(plantilla || '').trim()) {
-          return construirEntregaConPlantilla(plantilla, plantillaCuenta, cuentas, prodInfo, extras);
-        }
+        // Sin plantilla guardada => formato predeterminado con íconos
+        const hayPlantilla = String(plantilla || '').trim() !== '';
+        return construirEntregaConPlantilla(
+          hayPlantilla ? plantilla : PLANTILLA_ENTREGA_BASE,
+          hayPlantilla ? plantillaCuenta : PLANTILLA_CUENTA_BASE,
+          cuentas, prodInfo, extras
+        );
       } catch (e) {
         console.error('Error en plantilla de entrega, se usa el formato automático:', e);
       }
@@ -3374,31 +3407,14 @@
               notificarInicioSesionTelegram(user.email, userSaldo);
             }
 
-            const notifBorrada = dataU.notificacion_borrada === true;
-            const badgeNotif = document.getElementById('badgeNotifCount');
-
             let primerIngreso = dataU.primer_ingreso;
-            const ahoraTiempo = new Date().getTime();
             if (!primerIngreso) {
               primerIngreso = new Date().toISOString();
               db.collection('usuarios').doc(user.uid).set({ primer_ingreso: primerIngreso }, { merge: true });
             }
-            const diffHoras = (ahoraTiempo - new Date(primerIngreso).getTime()) / 3600000;
-            const expiradoPorTiempo = diffHoras >= 1;
 
-            const minAlerta = ajustesGeneralesConfig.minRecarga || 5000;
-            if (userSaldo < minAlerta) {
-              badgeNotif.innerText = "!";
-              badgeNotif.classList.remove('bg-red-500', 'hidden');
-              badgeNotif.classList.add('bg-yellow-500', 'animate-bounce');
-              badgeNotif.title = `¡Atención! Tu saldo es menor a $${minAlerta.toLocaleString('es-CO')} COP`;
-            } else if (notifBorrada || expiradoPorTiempo) {
-              badgeNotif.classList.add('hidden');
-            } else {
-              badgeNotif.innerText = "1";
-              badgeNotif.classList.remove('hidden', 'yellow-500', 'animate-bounce');
-              badgeNotif.classList.add('bg-red-500');
-            }
+            datosUsuarioNotif = dataU;
+            renderizarNotificaciones();
 
           } else {
             userSaldo = 0;
@@ -3445,29 +3461,264 @@
       cambiarVista('admin');
     }
 
+    // ==================== NOTIFICACIONES (CLIENTE) ====================
+    let datosUsuarioNotif = {};
+    let novedadesGlobales = [];
+    let umbralPillsNotif = null;
+
+    const ESTILOS_NOTIF = {
+      saldo:    { icono: 'fa-wallet', color: 'text-green-400', caja: 'bg-green-500/10 border-green-500/30', etiqueta: 'Saldo' },
+      recarga:  { icono: 'fa-circle-check', color: 'text-green-400', caja: 'bg-green-500/10 border-green-500/30', etiqueta: 'Recarga' },
+      stock:    { icono: 'fa-boxes-stacked', color: 'text-sky-400', caja: 'bg-sky-500/10 border-sky-500/30', etiqueta: 'Nuevo stock' },
+      producto: { icono: 'fa-wand-magic-sparkles', color: 'text-fuchsia-400', caja: 'bg-fuchsia-500/10 border-fuchsia-500/30', etiqueta: 'Nuevo producto' },
+      anuncio:  { icono: 'fa-bullhorn', color: 'text-amber-400', caja: 'bg-amber-500/10 border-amber-500/30', etiqueta: 'Anuncio' }
+    };
+
+    function idNotif() { return 'n' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
+
+    function tiempoRelativo(iso) {
+      const t = new Date(iso).getTime();
+      if (!t) return '';
+      const min = Math.floor((Date.now() - t) / 60000);
+      if (min < 1) return 'Ahora';
+      if (min < 60) return `Hace ${min} min`;
+      const h = Math.floor(min / 60);
+      if (h < 24) return `Hace ${h} h`;
+      const d = Math.floor(h / 24);
+      if (d < 7) return `Hace ${d} día${d === 1 ? '' : 's'}`;
+      return new Date(t).toLocaleDateString('es-CO');
+    }
+
+    function obtenerNotificacionesVisibles() {
+      const d = datosUsuarioNotif || {};
+      const borradas = Array.isArray(d.novedades_borradas) ? d.novedades_borradas : [];
+      const limite = Date.now() - 15 * 24 * 3600000;
+      const personales = (Array.isArray(d.notificaciones) ? d.notificaciones : [])
+        .filter(n => n && n.id).map(n => ({ ...n, origen: 'personal' }));
+      const globales = (novedadesGlobales || [])
+        .filter(n => n && n.id && !borradas.includes(n.id) && new Date(n.fecha).getTime() >= limite)
+        .map(n => ({ ...n, origen: 'global' }));
+      return [...personales, ...globales].sort((a, b) => (new Date(b.fecha).getTime() || 0) - (new Date(a.fecha).getTime() || 0));
+    }
+
+    function renderizarNotificaciones() {
+      try {
+        if (!currentUser) return;
+        const lista = obtenerNotificacionesVisibles();
+        const vistasHasta = new Date((datosUsuarioNotif || {}).novedades_vistas_hasta || 0).getTime() || 0;
+        const noLeidas = lista.filter(n => (new Date(n.fecha).getTime() || 0) > vistasHasta).length;
+
+        const badge = document.getElementById('badgeNotifCount');
+        if (badge) {
+          badge.classList.remove('bg-yellow-500', 'animate-bounce');
+          if (noLeidas > 0) {
+            badge.innerText = noLeidas > 9 ? '9+' : String(noLeidas);
+            badge.title = `${noLeidas} notificación(es) nueva(s)`;
+            badge.classList.add('bg-red-500');
+            badge.classList.remove('hidden');
+          } else {
+            badge.classList.add('hidden');
+          }
+        }
+
+        const cont = document.getElementById('contenedorItemsNovedades');
+        if (!cont) return;
+        const umbral = umbralPillsNotif !== null ? umbralPillsNotif : vistasHasta;
+        let html = '';
+
+        const minAlerta = ajustesGeneralesConfig.minRecarga || 5000;
+        if (userSaldo < minAlerta) {
+          html += `
+            <div class="p-3 rounded-xl border bg-yellow-500/10 border-yellow-500/30 flex items-center gap-3">
+              <i class="fa-solid fa-triangle-exclamation text-yellow-400 text-base shrink-0"></i>
+              <div class="flex-1 min-w-0">
+                <p class="font-bold text-yellow-300">Tu saldo está bajo</p>
+                <p class="text-[11px] text-gray-400">Tienes ${formatoCOP(userSaldo)} COP. Recarga para seguir comprando.</p>
+              </div>
+              <button onclick="cerrarModalNovedades(); abrirModalRecarga();" class="shrink-0 px-2.5 py-1.5 rounded-lg bg-yellow-500 text-black font-bold text-[11px]">Recargar</button>
+            </div>`;
+        }
+
+        if (!lista.length) {
+          html += `<div class="text-center py-8"><i class="fa-regular fa-bell-slash text-2xl text-gray-600 mb-2"></i><p class="text-gray-500">No tienes notificaciones.</p></div>`;
+        } else {
+          html += lista.map(n => {
+            const e = ESTILOS_NOTIF[n.tipo] || ESTILOS_NOTIF.anuncio;
+            const esNueva = (new Date(n.fecha).getTime() || 0) > umbral;
+            return `
+              <div class="p-3 rounded-xl border ${e.caja} flex items-start gap-3">
+                <div class="w-8 h-8 rounded-lg bg-gray-900/60 flex items-center justify-center shrink-0"><i class="fa-solid ${e.icono} ${e.color}"></i></div>
+                <div class="flex-1 min-w-0">
+                  <div class="flex items-center gap-1.5 flex-wrap mb-0.5">
+                    <span class="text-[10px] font-bold ${e.color}">${e.etiqueta}</span>
+                    ${esNueva ? '<span class="text-[9px] font-black bg-red-500 text-white px-1.5 rounded-full">NUEVA</span>' : ''}
+                    <span class="text-[10px] text-gray-500">${tiempoRelativo(n.fecha)}</span>
+                  </div>
+                  <p class="font-bold text-white leading-snug">${escaparHtml(n.titulo || '')}</p>
+                  ${n.mensaje ? `<p class="text-[11px] text-gray-400 mt-0.5 leading-relaxed">${escaparHtml(n.mensaje)}</p>` : ''}
+                </div>
+                <button onclick="borrarNotificacionItem('${escaparJsAttr(n.id)}', '${n.origen}')" title="Borrar" class="shrink-0 w-7 h-7 rounded-lg text-gray-500 hover:text-red-400 hover:bg-red-500/10 flex items-center justify-center">
+                  <i class="fa-solid fa-xmark"></i>
+                </button>
+              </div>`;
+          }).join('');
+        }
+
+        cont.innerHTML = html;
+        const btnTodas = document.getElementById('btnBorrarTodasNotif');
+        if (btnTodas) btnTodas.classList.toggle('hidden', lista.length === 0);
+      } catch (e) {
+        console.error('Error al mostrar notificaciones:', e);
+      }
+    }
+
     function abrirModalNovedades() {
       const modal = document.getElementById('modalNovedades');
       modal.classList.remove('hidden');
       modal.style.display = 'flex';
+
+      umbralPillsNotif = new Date((datosUsuarioNotif || {}).novedades_vistas_hasta || 0).getTime() || 0;
+      renderizarNotificaciones();
+
+      // Marca todo como visto (las "NUEVA" se mantienen mientras el modal esté abierto)
+      if (currentUser && obtenerNotificacionesVisibles().some(n => (new Date(n.fecha).getTime() || 0) > umbralPillsNotif)) {
+        db.collection('usuarios').doc(currentUser.uid).set({ novedades_vistas_hasta: new Date().toISOString() }, { merge: true })
+          .catch(e => console.warn('No se pudo marcar como visto:', e));
+      }
     }
 
     function cerrarModalNovedades() {
       const modal = document.getElementById('modalNovedades');
       modal.classList.add('hidden');
       modal.style.display = 'none';
+      umbralPillsNotif = null;
+      renderizarNotificaciones();
     }
 
-    async function borrarNotificacionActual() {
+    async function borrarNotificacionItem(id, origen) {
       if (!currentUser) return;
       try {
+        const ref = db.collection('usuarios').doc(currentUser.uid);
+        if (origen === 'personal') {
+          const nuevas = (datosUsuarioNotif.notificaciones || []).filter(n => n.id !== id);
+          datosUsuarioNotif = { ...datosUsuarioNotif, notificaciones: nuevas };
+          renderizarNotificaciones();
+          await ref.set({ notificaciones: nuevas }, { merge: true });
+        } else {
+          const borradas = Array.from(new Set([...(datosUsuarioNotif.novedades_borradas || []), id]));
+          datosUsuarioNotif = { ...datosUsuarioNotif, novedades_borradas: borradas };
+          renderizarNotificaciones();
+          await ref.set({ novedades_borradas: firebase.firestore.FieldValue.arrayUnion(id) }, { merge: true });
+        }
+      } catch (e) {
+        alert('No se pudo borrar la notificación: ' + e.message);
+      }
+    }
+
+    // Se conserva el nombre original: ahora borra TODAS las notificaciones del cliente
+    async function borrarNotificacionActual() {
+      if (!currentUser) return;
+      if (!confirm('¿Borrar todas tus notificaciones?')) return;
+      try {
+        const idsGlobales = (novedadesGlobales || []).map(n => n.id).filter(Boolean);
+        const previas = (datosUsuarioNotif.novedades_borradas || []).filter(id => idsGlobales.includes(id));
+        const borradas = Array.from(new Set([...previas, ...idsGlobales]));
+        datosUsuarioNotif = { ...datosUsuarioNotif, notificaciones: [], novedades_borradas: borradas };
+        renderizarNotificaciones();
         await db.collection('usuarios').doc(currentUser.uid).set({
+          notificaciones: [],
+          novedades_borradas: borradas,
           notificacion_borrada: true
         }, { merge: true });
-        document.getElementById('badgeNotifCount').classList.add('hidden');
-        cerrarModalNovedades();
+        mostrarToast('Notificaciones borradas.');
       } catch (e) {
-        alert("Error al borrar notificación: " + e.message);
+        alert("Error al borrar notificaciones: " + e.message);
       }
+    }
+
+    // ==================== NOTIFICACIONES (ADMIN) ====================
+    function crearNotificacionPersonal(tipo, titulo, mensaje) {
+      return { id: idNotif(), tipo, titulo, mensaje, fecha: new Date().toISOString() };
+    }
+
+    function agregarNotifALista(listaActual, notif) {
+      return [notif, ...(Array.isArray(listaActual) ? listaActual : [])].slice(0, 30);
+    }
+
+    async function publicarNovedadGlobal({ tipo, titulo, mensaje, productoId, cantidad }) {
+      try {
+        const ref = db.collection('configuracion').doc('novedades');
+        await db.runTransaction(async (t) => {
+          const doc = await t.get(ref);
+          const ahora = Date.now();
+          let items = (doc.exists && Array.isArray(doc.data().items)) ? doc.data().items : [];
+          items = items.filter(n => n && (ahora - (new Date(n.fecha).getTime() || 0)) < 15 * 24 * 3600000);
+
+          let cant = parseInt(cantidad) || 0;
+          if (tipo === 'stock' && productoId) {
+            // Varias cargas del mismo producto en 12 h se agrupan en una sola novedad
+            const idx = items.findIndex(n => n.tipo === 'stock' && n.productoId === productoId && (ahora - (new Date(n.fecha).getTime() || 0)) < 12 * 3600000);
+            if (idx >= 0) { cant += parseInt(items[idx].cantidad) || 0; items.splice(idx, 1); }
+            mensaje = `Llegaron ${cant} cuenta${cant === 1 ? '' : 's'} nueva${cant === 1 ? '' : 's'}. ¡Ya están disponibles en la tienda!`;
+          }
+
+          items.unshift({
+            id: idNotif(), tipo, titulo, mensaje: mensaje || '',
+            productoId: productoId || null, cantidad: cant || null,
+            fecha: new Date().toISOString()
+          });
+          t.set(ref, { items: items.slice(0, 25) }, { merge: true });
+        });
+      } catch (e) {
+        console.warn('No se pudo publicar la novedad:', e);
+      }
+    }
+
+    async function publicarNovedadManual() {
+      const titulo = (document.getElementById('txtNovedadTitulo').value || '').trim();
+      const mensaje = (document.getElementById('txtNovedadMensaje').value || '').trim();
+      if (!titulo) { alert('Escribe al menos un título para la novedad.'); return; }
+      await publicarNovedadGlobal({ tipo: 'anuncio', titulo, mensaje });
+      document.getElementById('txtNovedadTitulo').value = '';
+      document.getElementById('txtNovedadMensaje').value = '';
+      mostrarToast('¡Novedad publicada para tus clientes!');
+    }
+
+    async function eliminarNovedadGlobal(id) {
+      if (!confirm('¿Quitar esta novedad para todos los clientes?')) return;
+      try {
+        const ref = db.collection('configuracion').doc('novedades');
+        await db.runTransaction(async (t) => {
+          const doc = await t.get(ref);
+          const items = (doc.exists && Array.isArray(doc.data().items)) ? doc.data().items : [];
+          t.set(ref, { items: items.filter(n => n.id !== id) }, { merge: true });
+        });
+        mostrarToast('Novedad eliminada.');
+      } catch (e) {
+        alert('No se pudo eliminar: ' + e.message);
+      }
+    }
+
+    function renderizarNovedadesAdmin() {
+      const cont = document.getElementById('listaNovedadesAdmin');
+      if (!cont) return;
+      const items = (novedadesGlobales || []).slice().sort((a, b) => (new Date(b.fecha).getTime() || 0) - (new Date(a.fecha).getTime() || 0));
+      if (!items.length) {
+        cont.innerHTML = '<p class="text-[11px] text-gray-500 py-2">No hay novedades publicadas.</p>';
+        return;
+      }
+      cont.innerHTML = items.map(n => {
+        const e = ESTILOS_NOTIF[n.tipo] || ESTILOS_NOTIF.anuncio;
+        return `
+          <div class="flex items-center gap-2 p-2 rounded-lg bg-gray-900 border border-gray-700">
+            <i class="fa-solid ${e.icono} ${e.color} shrink-0"></i>
+            <div class="flex-1 min-w-0">
+              <p class="text-xs font-bold text-white truncate">${escaparHtml(n.titulo || '')}</p>
+              <p class="text-[10px] text-gray-500">${e.etiqueta} · ${tiempoRelativo(n.fecha)}</p>
+            </div>
+            <button type="button" onclick="eliminarNovedadGlobal('${escaparJsAttr(n.id)}')" class="shrink-0 px-2 py-1 rounded bg-red-500/20 text-red-400 text-[10px]"><i class="fa-solid fa-trash-can"></i></button>
+          </div>`;
+      }).join('');
     }
 
     function abrirModalNuevoProducto() {
@@ -3600,6 +3851,11 @@
         snap.forEach(d => { snapshotInventario[d.id] = d.data(); });
         procesarYRenderizar();
       });
+      db.collection('configuracion').doc('novedades').onSnapshot(doc => {
+        novedadesGlobales = (doc.exists && Array.isArray(doc.data().items)) ? doc.data().items : [];
+        renderizarNotificaciones();
+        renderizarNovedadesAdmin();
+      }, err => console.warn('Novedades no disponibles:', err));
       db.collection('metodos_pago').onSnapshot(snap => {
         metodosPagoList = [];
         snap.forEach(d => {
@@ -3813,6 +4069,9 @@
         cerrarModalNuevoProducto();
 
         mostrarToast(esVip ? `¡Producto exclusivo (VIP) creado en "${categoria}"!` : `¡Producto creado en "${categoria}"!`);
+        if (!esVip) {
+          publicarNovedadGlobal({ tipo: 'producto', productoId: idGenerado, titulo: `Nuevo producto: ${nombre}`, mensaje: `${desc} — ${formatoCOP(precio)} c/u.` });
+        }
       } catch (err) {
         alert("Error al registrar producto: " + err.message);
       }
@@ -4171,6 +4430,7 @@
             precioUnitario: precioUnitario,
             total: totalPagar,
             costoTotal: costoTotalVenta,
+            claveAcceso: resolverClaveAccesoCuentas(cuentasEntregadas),
             gananciaNeta: totalPagar - costoTotalVenta,
             credenciales: credencialesPuras,
             tipoGarantia: prodInfo.tipoGarantia || '', // GUARDADO DE GARANTÍA
@@ -4863,8 +5123,17 @@
       const userRef = db.collection('usuarios').doc(uid);
       await db.runTransaction(async (t) => {
         const uDoc = await t.get(userRef);
-        t.update(userRef, { saldo: ((uDoc.exists && uDoc.data().saldo) || 0) + monto });
+        const datosU = uDoc.exists ? (uDoc.data() || {}) : {};
+        const nuevoSaldo = (datosU.saldo || 0) + monto;
+        t.update(userRef, {
+          saldo: nuevoSaldo,
+          notificaciones: agregarNotifALista(datosU.notificaciones, crearNotificacionPersonal(
+            'saldo', `Se acreditaron ${formatoCOP(monto)} COP a tu saldo`, `Tu nuevo saldo es ${formatoCOP(nuevoSaldo)} COP. ¡Ya puedes comprar!`
+          ))
+        });
       });
+      const inpMonto = document.getElementById(`inputSaldo_${uid}`);
+      if (inpMonto) inpMonto.value = '';
       mostrarToast("¡Saldo acreditado con éxito!");
     }
 
@@ -4907,10 +5176,14 @@
       if (lineas.length === 0) return;
 
       const costoUnitario = leerCostoUnitarioStock();
+      const claveAccesoLote = ((document.getElementById('txtStockClaveAcceso') || {}).value || '').trim();
       const nuevas = lineas.map(l => {
         let email = l, pass = '';
         if (l.includes(':')) { const p = l.split(':'); email = p[0].trim(); pass = p.slice(1).join(':').trim(); }
-        return { email, pass, costo: costoUnitario };
+        else if (/\s/.test(l)) { const p = l.split(/\s+/); email = p[0].trim(); pass = p.slice(1).join(' ').trim(); }
+        const cuenta = { email, pass, costo: costoUnitario };
+        if (claveAccesoLote) cuenta.claveAcceso = claveAccesoLote;
+        return cuenta;
       });
 
       if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i> Cargando...'; }
@@ -4929,11 +5202,18 @@
 
         document.getElementById('txtStockLineas').value = '';
         document.getElementById('txtStockCostoUnitario').value = '';
+        const inpClaveLote = document.getElementById('txtStockClaveAcceso');
+        if (inpClaveLote) inpClaveLote.value = '';
         actualizarResumenInversionStock();
 
         mostrarToast(inversion > 0
           ? `¡Agregadas ${nuevas.length} cuentas! Inversión: ${formatoCOP(inversion)} COP`
           : `¡Agregadas ${nuevas.length} cuentas al inventario!`);
+
+        // Novedad para clientes (no se publica para productos VIP ni ocultos)
+        if (prod && prod.activo !== false && !esProductoVip(prod)) {
+          publicarNovedadGlobal({ tipo: 'stock', productoId: docId, cantidad: nuevas.length, titulo: `Nuevo stock: ${prod.nombre}` });
+        }
 
         try {
           await enviarNotificacionStockTelegram({
@@ -5176,7 +5456,14 @@
       const userRef = db.collection('usuarios').doc(userId);
       await db.runTransaction(async (t) => {
         const uDoc = await t.get(userRef);
-        t.update(userRef, { saldo: ((uDoc.exists && uDoc.data().saldo) || 0) + monto });
+        const datosU = uDoc.exists ? (uDoc.data() || {}) : {};
+        const nuevoSaldo = (datosU.saldo || 0) + monto;
+        t.update(userRef, {
+          saldo: nuevoSaldo,
+          notificaciones: agregarNotifALista(datosU.notificaciones, crearNotificacionPersonal(
+            'recarga', `Recarga aprobada: +${formatoCOP(monto)} COP`, `Tu nuevo saldo es ${formatoCOP(nuevoSaldo)} COP.`
+          ))
+        });
         t.update(db.collection('recargas').doc(recargaId), { estado: 'aprobado' });
       });
       mostrarToast("Recarga aprobada con éxito.");
@@ -5370,7 +5657,7 @@
     function copiarCompraPerfil(indice) {
       const compra = misComprasPerfilCache[indice];
       if (!compra) return;
-      const texto = compra.credenciales || '';
+      const texto = (compra.credenciales || '') + (compra.claveAcceso ? `\nContraseña: ${compra.claveAcceso}` : '');
       navigator.clipboard.writeText(texto)
         .then(() => mostrarToast('¡Cuentas copiadas!'))
         .catch(() => prompt('Copia:', texto));
@@ -5661,6 +5948,7 @@
               </div>
               <div data-garantia-idx="${idx}">${renderTarjetaGarantia(idx)}</div>
               <div class="bg-gray-800/90 border border-gray-700 rounded-xl p-3 font-mono text-xs text-gray-200 select-all leading-relaxed">${lineasHtml}</div>
+              ${c.claveAcceso ? `<div class="text-xs text-gray-300 flex items-center gap-1.5"><i class="fa-solid fa-key text-emerald-400"></i> Contraseña: <span class="font-mono font-bold text-white select-all">${escaparHtml(c.claveAcceso)}</span></div>` : ''}
               <button onclick="copiarCompraPerfil(${idx})" class="w-full py-2 bg-gray-800 hover:bg-gray-700 border border-gray-700 text-emerald-400 font-bold text-xs rounded-xl flex items-center justify-center gap-2">
                 <i class="fa-solid fa-copy"></i> Copiar ${lineas.length > 1 ? `las ${lineas.length} cuentas` : 'cuenta'}
               </button>
