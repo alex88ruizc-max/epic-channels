@@ -130,6 +130,34 @@
     /* Texto de la entrega: letra clara y emojis a color (en algunos equipos salían como cuadros blancos) */
     @font-face { font-family: "EmojiColor"; src: local("Segoe UI Emoji"), local("Apple Color Emoji"), local("Noto Color Emoji"); unicode-range: U+1F000-1FFFF, U+2600-27BF, U+2B00-2BFF, U+2300-23FF, U+FE0F, U+200D; }
     .texto-entrega { font-family: "EmojiColor", ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace; font-variant-emoji: emoji; }
+    /* ===== Asistente de ayuda (botón flotante) ===== */
+    .asistente-fab { display:flex; align-items:center; gap:.5rem; padding:.5rem 1.05rem .5rem .5rem; border-radius:9999px; font-weight:800; box-shadow:0 12px 30px -10px rgba(16,185,129,.6); transition:transform .15s ease; cursor:pointer; }
+    .asistente-fab:hover { transform:translateY(-1px) scale(1.03); }
+    .asistente-fab:focus-visible, .asistente-chip:focus-visible { outline:3px solid #fff; outline-offset:2px; }
+    .asistente-fab-icono { position:relative; width:2.15rem; height:2.15rem; border-radius:9999px; background:rgba(255,255,255,.3); display:flex; align-items:center; justify-content:center; font-size:1rem; }
+    .asistente-punto { position:absolute; right:-1px; bottom:-1px; width:.62rem; height:.62rem; border-radius:9999px; background:#22c55e; border:2px solid #10b981; }
+    .asistente-punto::after { content:''; position:absolute; inset:-4px; border-radius:9999px; border:2px solid rgba(34,197,94,.6); animation:asistentePulso 2.4s ease-out infinite; }
+    @keyframes asistentePulso { 0% { transform:scale(.6); opacity:.9; } 100% { transform:scale(1.7); opacity:0; } }
+    @keyframes asistenteEntrada { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:none; } }
+    @keyframes asistenteSalto { 0%,80%,100% { transform:translateY(0); opacity:.5; } 40% { transform:translateY(-4px); opacity:1; } }
+    .asistente-saludo { display:none; align-items:flex-start; gap:.5rem; max-width:14.5rem; padding:.6rem .7rem; border-radius:1rem 1rem .25rem 1rem; background:#fff; color:#0f172a; font-size:.78rem; font-weight:700; line-height:1.3; box-shadow:0 14px 30px -10px rgba(0,0,0,.65); animation:asistenteEntrada .35s ease both; }
+    .asistente-saludo.visible { display:flex; }
+    .asistente-saludo button { background:none; border:0; padding:0; color:inherit; font:inherit; text-align:left; cursor:pointer; }
+    .asistente-panel { position:fixed; right:1.25rem; bottom:5.25rem; z-index:40; display:none; flex-direction:column; width:min(24rem, calc(100vw - 1.5rem)); max-height:min(34rem, calc(100vh - 7rem)); max-height:min(34rem, calc(100dvh - 7rem)); border-radius:1.25rem; overflow:hidden; }
+    .asistente-panel.abierto { display:flex; animation:asistenteEntrada .22s ease both; }
+    @media (max-width:640px) { .asistente-panel { right:.75rem; left:.75rem; width:auto; } }
+    .asistente-cuerpo { flex:1 1 auto; min-height:11rem; overflow-y:auto; padding:.9rem; display:flex; flex-direction:column; gap:.55rem; overscroll-behavior:contain; }
+    .asistente-burbuja { max-width:90%; padding:.55rem .75rem; border-radius:1rem; font-size:.8rem; line-height:1.45; overflow-wrap:anywhere; }
+    .asistente-burbuja.bot { align-self:flex-start; background:#1f2937; color:#e5e7eb; border-top-left-radius:.3rem; }
+    .asistente-burbuja.yo { align-self:flex-end; font-weight:700; border-top-right-radius:.3rem; }
+    .asistente-chips { display:flex; flex-wrap:wrap; gap:.4rem; align-self:flex-start; max-width:100%; }
+    .asistente-chip { padding:.42rem .8rem; border-radius:9999px; border-width:1px; font-size:.75rem; font-weight:700; cursor:pointer; text-align:left; line-height:1.25; transition:filter .12s ease; }
+    .asistente-chip:hover { filter:brightness(1.25); }
+    .asistente-escribiendo { align-self:flex-start; display:flex; gap:.25rem; padding:.72rem .85rem; background:#1f2937; border-radius:1rem; border-top-left-radius:.3rem; }
+    .asistente-escribiendo i { width:.4rem; height:.4rem; border-radius:9999px; background:#9ca3af; animation:asistenteSalto 1s infinite ease-in-out; }
+    .asistente-escribiendo i:nth-child(2) { animation-delay:.15s; }
+    .asistente-escribiendo i:nth-child(3) { animation-delay:.3s; }
+    @media (prefers-reduced-motion: reduce) { .asistente-punto::after, .asistente-escribiendo i { animation:none; } .asistente-fab, .asistente-chip { transition:none; } .asistente-panel.abierto, .asistente-saludo { animation:none; } }
   </style>
 </head>
 <body class="min-h-screen flex flex-col justify-between">
@@ -294,6 +322,7 @@
       <div class="p-5 bg-gradient-to-br from-emerald-900/40 to-gray-900 border border-emerald-500/40 rounded-2xl shadow-xl">
         <p class="text-[11px] font-bold text-emerald-300 uppercase tracking-wider">Se te debe</p>
         <p id="provDebe" class="text-4xl font-black text-white mt-1">$0</p>
+        <p id="provAvisoPago" class="hidden mt-2 text-[11px] font-bold text-amber-300 bg-amber-500/10 border border-amber-500/30 rounded-lg px-2.5 py-1.5"><i class="fa-solid fa-triangle-exclamation mr-1"></i>Agrega tu Nequi o tu DaviPlata más abajo para que podamos pagarte.</p>
         <div class="grid grid-cols-3 gap-2 mt-4 text-center">
           <div class="p-2 rounded-xl bg-gray-900/70 border border-gray-800"><p id="provEnRevision" class="text-base font-black text-amber-300">0</p><p class="text-[10px] text-gray-400 leading-tight">cuentas en revisión</p></div>
           <div class="p-2 rounded-xl bg-gray-900/70 border border-gray-800"><p id="provAprobadas" class="text-base font-black text-emerald-300">0</p><p class="text-[10px] text-gray-400 leading-tight">cuentas aprobadas</p></div>
@@ -321,6 +350,28 @@
       <div class="p-4 bg-gray-900 border border-gray-800 rounded-2xl">
         <h3 class="text-sm font-black text-white mb-3 flex items-center gap-2"><i class="fa-solid fa-clock-rotate-left text-sky-400"></i> Mis envíos</h3>
         <div id="provLotes" class="space-y-2"><p class="text-center text-gray-500 text-xs py-4">Aún no has enviado cuentas.</p></div>
+      </div>
+
+      <div id="provMetodosCaja" class="p-4 bg-gray-900 border border-gray-800 rounded-2xl">
+        <h3 class="text-sm font-black text-white mb-1 flex items-center gap-2"><i class="fa-solid fa-wallet text-emerald-400"></i> Cómo quieres que te paguemos</h3>
+        <p class="text-[11px] text-gray-400 mb-3">Pon tu Nequi o tu DaviPlata. Con esos datos te hacemos el pago.</p>
+        <form onsubmit="guardarMetodosPagoProveedor(event)" class="space-y-3" autocomplete="off">
+          <div>
+            <label class="block text-xs text-gray-400 mb-1">Nequi (número de celular)</label>
+            <input type="tel" id="provNequi" inputmode="numeric" maxlength="14" placeholder="3001234567" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white font-mono focus:outline-none">
+          </div>
+          <div>
+            <label class="block text-xs text-gray-400 mb-1">DaviPlata (llave o número)</label>
+            <input type="text" id="provDaviplata" maxlength="30" placeholder="3001234567 o tu llave" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white font-mono focus:outline-none">
+          </div>
+          <button type="submit" id="btnGuardarMetodosProv" class="w-full bg-emerald-500 hover:bg-emerald-400 text-black font-bold py-2.5 rounded-xl text-xs transition">Guardar mis datos de pago</button>
+        </form>
+      </div>
+
+      <div id="provPagosCaja" class="hidden p-4 bg-gray-900 border border-sky-500/30 rounded-2xl">
+        <h3 class="text-sm font-black text-white mb-1 flex items-center gap-2"><i class="fa-solid fa-money-check-dollar text-sky-400"></i> Pagos que te hemos hecho</h3>
+        <p class="text-[10px] text-gray-500 mb-3">El comprobante se puede ver durante 48 horas y luego se borra.</p>
+        <div id="provPagos" class="space-y-2"></div>
       </div>
 
       <div id="provTicketsCaja" class="hidden p-4 bg-gray-900 border border-amber-500/30 rounded-2xl">
@@ -390,6 +441,10 @@
 
       <!-- TAB: MIS CUENTAS -->
       <div id="perfilSecCuentas">
+        <div id="misReportesCaja" class="hidden mb-3 p-3 bg-gray-900 border border-amber-500/30 rounded-2xl">
+          <h4 class="text-xs font-bold text-white mb-2 flex items-center gap-2"><i class="fa-solid fa-ticket text-amber-400"></i> Mis reportes <span id="misReportesAbiertos" class="hidden px-2 py-0.5 rounded-full bg-amber-500 text-black text-[10px] font-black"></span></h4>
+          <div id="misReportes" class="space-y-2"></div>
+        </div>
         <div class="relative mb-3">
           <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-xs"></i>
           <input type="search" id="perfilBuscarCuentas" oninput="filtrarMisCuentasPerfil()" placeholder="Buscar por producto o correo de la cuenta..." autocomplete="off" class="w-full bg-gray-900 border border-gray-800 rounded-xl pl-8 pr-3 py-2.5 text-xs text-white focus:outline-none focus:border-gray-600">
@@ -573,6 +628,9 @@
           </button>
           <button onclick="irATabAdmin('proveedores')" id="tabBtnProveedores" class="solo-admin admin-tab bg-gray-900 border-gray-800 text-gray-400">
             <i class="fa-solid fa-truck-ramp-box"></i><span>Proveedores</span><span id="badgeTabProveedores" class="hidden ml-1 px-1.5 py-0.5 rounded-full bg-amber-500 text-black text-[9px] font-black"></span>
+          </button>
+          <button onclick="irATabAdmin('asistente')" id="tabBtnAsistente" class="solo-admin admin-tab bg-gray-900 border-gray-800 text-gray-400">
+            <i class="fa-solid fa-robot"></i><span>Asistente</span>
           </button>
           <button onclick="irATabAdmin('ajustes')" id="tabBtnAjustes" class="solo-admin admin-tab admin-tab-ancho bg-gray-900 border-gray-800 text-gray-400">
             <i class="fa-solid fa-gears"></i><span>Ajustes Generales</span>
@@ -1011,6 +1069,58 @@
       </div>
 
       <!-- TAB 8: AJUSTES GENERALES -->
+      <!-- ==================== ADMIN: ASISTENTE DE AYUDA ==================== -->
+      <div id="adminSecAsistente" class="hidden space-y-4 pb-28 sm:pb-0">
+        <div class="p-4 bg-gray-900 border border-gray-800 rounded-2xl">
+          <div class="flex items-start justify-between gap-3">
+            <div class="min-w-0">
+              <h3 class="text-base font-bold text-white mb-1 flex items-center gap-2"><i class="fa-solid fa-robot text-emerald-400"></i> Asistente de ayuda</h3>
+              <p class="text-xs text-gray-400">Edita lo que responde el botón de ayuda: cambia las respuestas, agrega preguntas nuevas o quita las que no quieras. Lo que guardes lo ven tus clientes al instante.</p>
+            </div>
+            <button type="button" onclick="abrirAsistente()" class="shrink-0 px-3 py-2 rounded-xl bg-gray-800 hover:bg-gray-700 border border-gray-700 text-gray-200 font-bold text-xs flex items-center gap-1.5"><i class="fa-solid fa-comment-dots text-emerald-400"></i> Probar</button>
+          </div>
+        </div>
+
+        <div class="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden">
+          <div class="p-4 flex items-center justify-between gap-3 border-b border-gray-800">
+            <div class="flex gap-1.5 text-xs font-bold">
+              <button type="button" id="astTabCliente" onclick="asistenteEditorTab('cliente')" class="px-3 py-1.5 rounded-lg border">Clientes</button>
+              <button type="button" id="astTabProveedor" onclick="asistenteEditorTab('proveedor')" class="px-3 py-1.5 rounded-lg border">Proveedores</button>
+            </div>
+            <button type="button" onclick="asistenteEditorNuevo()" class="shrink-0 px-3 py-2 bg-emerald-500 hover:bg-emerald-400 text-black font-bold text-xs rounded-xl transition flex items-center gap-1.5"><i class="fa-solid fa-plus"></i> Agregar pregunta</button>
+          </div>
+          <div id="listaAsistenteTemas" class="divide-y divide-gray-800"></div>
+          <p id="astResumen" class="px-4 py-2.5 text-[11px] text-gray-500 border-t border-gray-800"></p>
+        </div>
+
+        <details class="bg-gray-900 border border-gray-800 rounded-2xl">
+          <summary style="list-style:none" class="cursor-pointer p-4 flex items-center justify-between gap-3">
+            <span class="text-sm font-bold text-white flex items-center gap-2"><i class="fa-solid fa-message text-sky-400"></i> Mensajes generales</span>
+            <i class="fa-solid fa-chevron-down text-gray-500 text-xs"></i>
+          </summary>
+          <div class="px-4 pb-4 space-y-3">
+            <div><label class="block text-xs text-gray-400 mb-1">Bienvenida a clientes</label><textarea id="astMsgBienvenidaCliente" rows="2" maxlength="400" oninput="asistenteEditorMensaje()" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"></textarea></div>
+            <div><label class="block text-xs text-gray-400 mb-1">Bienvenida a proveedores</label><textarea id="astMsgBienvenidaProveedor" rows="2" maxlength="400" oninput="asistenteEditorMensaje()" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"></textarea></div>
+            <div><label class="block text-xs text-gray-400 mb-1">Cuando no entiende lo que escribieron</label><input type="text" id="astMsgNoEntendi" maxlength="300" oninput="asistenteEditorMensaje()" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"></div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div><label class="block text-xs text-gray-400 mb-1">Globo de saludo (clientes)</label><input type="text" id="astMsgSaludoCliente" maxlength="120" oninput="asistenteEditorMensaje()" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"></div>
+              <div><label class="block text-xs text-gray-400 mb-1">Globo de saludo (proveedores)</label><input type="text" id="astMsgSaludoProveedor" maxlength="120" oninput="asistenteEditorMensaje()" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"></div>
+            </div>
+          </div>
+        </details>
+
+        <div class="flex items-center justify-between gap-3 p-3 bg-gray-900 border border-gray-800 rounded-2xl">
+          <div class="min-w-0">
+            <p id="astEstado" class="text-[11px] font-bold text-gray-500">✓ Guardado</p>
+            <button type="button" onclick="asistenteEditorRestaurar()" class="text-[11px] text-gray-400 underline hover:text-white">Restaurar respuestas originales</button>
+          </div>
+          <div class="shrink-0 flex gap-2">
+            <button type="button" id="btnDescartarAsistente" onclick="asistenteEditorDescartar()" class="px-3 py-2 rounded-xl bg-gray-800 hover:bg-gray-700 border border-gray-700 text-gray-300 font-bold text-xs">Descartar</button>
+            <button type="button" id="btnGuardarAsistente" onclick="asistenteEditorGuardar()" class="px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-bold text-xs">Guardar cambios</button>
+          </div>
+        </div>
+      </div>
+
       <div id="adminSecProveedores" class="hidden space-y-4 pb-28 sm:pb-0">
         <div class="p-4 bg-gray-900 border border-gray-800 rounded-2xl">
           <h3 class="text-base font-bold text-white mb-1 flex items-center gap-2"><i class="fa-solid fa-truck-ramp-box text-emerald-400"></i> Proveedores de stock</h3>
@@ -1024,6 +1134,10 @@
         <div class="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden">
           <div class="p-4 border-b border-gray-800"><h4 class="font-bold text-white text-sm flex items-center gap-2"><i class="fa-solid fa-sack-dollar text-emerald-400"></i> Cuentas por proveedor <span id="totalDeudaProveedores" class="ml-auto text-emerald-300 text-xs font-black"></span></h4></div>
           <div id="listaProveedoresDeuda" class="divide-y divide-gray-800"><p class="px-4 py-6 text-center text-gray-500 text-sm">Aún no hay proveedores con envíos.</p></div>
+        </div>
+        <div class="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden">
+          <div class="p-4 border-b border-gray-800"><h4 class="font-bold text-white text-sm flex items-center gap-2"><i class="fa-solid fa-money-check-dollar text-sky-400"></i> Pagos a proveedores</h4><p class="text-[11px] text-gray-400 mt-0.5">Los comprobantes se pueden ver 48 horas; después se borran solos y queda el registro del pago.</p></div>
+          <div id="listaPagosProveedores" class="divide-y divide-gray-800"><p class="px-4 py-6 text-center text-gray-500 text-sm">Aún no hay pagos registrados.</p></div>
         </div>
       </div>
 
@@ -1492,14 +1606,38 @@
       </a>
     </div>
 
-    <!-- BOTÓN SOPORTE WHATSAPP -->
+    <!-- BOTÓN DE AYUDA (asistente con preguntas frecuentes; desde ahí también se llega a WhatsApp) -->
     <div id="btnFlotanteSoporte" class="hidden">
-      <button onclick="abrirSoporteWhatsapp()" class="flex items-center gap-2 bg-emerald-500 hover:bg-emerald-400 text-black font-black px-4 py-3 rounded-full shadow-2xl shadow-emerald-500/30 transition transform hover:scale-105">
-        <i class="fa-brands fa-whatsapp text-xl"></i>
-        <span class="text-xs uppercase tracking-wider">Soporte</span>
-      </button>
+      <div class="flex flex-col items-end gap-2">
+        <div id="asistenteSaludo" class="asistente-saludo" role="status">
+          <button type="button" onclick="abrirAsistente()"><span id="asistenteSaludoTxt">👋 ¡Hola! ¿Necesitas ayuda?</span></button>
+          <button type="button" onclick="cerrarSaludoAsistente()" aria-label="Cerrar saludo" class="text-gray-400 hover:text-gray-700 shrink-0"><i class="fa-solid fa-xmark text-xs"></i></button>
+        </div>
+        <button id="btnAsistente" type="button" onclick="alternarAsistente()" aria-label="Abrir asistente de ayuda" aria-expanded="false" aria-controls="asistentePanel" class="asistente-fab bg-emerald-500 text-black">
+          <span class="asistente-fab-icono"><i class="fa-solid fa-comment-dots"></i><span class="asistente-punto"></span></span>
+          <span class="text-sm">Ayuda</span>
+        </button>
+      </div>
     </div>
 
+  </div>
+
+  <!-- ==================== ASISTENTE DE AYUDA ==================== -->
+  <div id="asistentePanel" class="asistente-panel bg-gray-900 border border-emerald-500/30 shadow-2xl" role="dialog" aria-label="Asistente de ayuda" aria-hidden="true">
+    <div class="shrink-0 flex items-center gap-3 px-4 py-3 bg-gradient-to-r from-emerald-500/20 to-gray-900 border-b border-gray-800">
+      <div class="relative w-10 h-10 shrink-0 rounded-full bg-emerald-500 text-black flex items-center justify-center text-lg"><i class="fa-solid fa-robot"></i></div>
+      <div class="min-w-0 flex-grow">
+        <p class="text-sm font-black text-white leading-tight">Asistente Epic</p>
+        <p class="text-[11px] text-emerald-300 leading-tight">En línea · respuestas rápidas</p>
+      </div>
+      <button type="button" onclick="asistenteReiniciar()" aria-label="Empezar de nuevo" title="Empezar de nuevo" class="w-8 h-8 shrink-0 rounded-full bg-gray-800 hover:bg-gray-700 text-gray-300 flex items-center justify-center"><i class="fa-solid fa-rotate-left text-xs"></i></button>
+      <button type="button" onclick="cerrarAsistente()" aria-label="Cerrar" class="w-8 h-8 shrink-0 rounded-full bg-gray-800 hover:bg-gray-700 text-gray-300 flex items-center justify-center"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div id="asistenteCuerpo" class="asistente-cuerpo" aria-live="polite"></div>
+    <form onsubmit="return asistenteEnviarTexto(event)" class="shrink-0 flex items-center gap-2 p-3 border-t border-gray-800 bg-gray-900">
+      <input id="asistenteInput" type="text" maxlength="120" autocomplete="off" placeholder="Escribe tu duda (ej: recargar)" class="min-w-0 flex-grow bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500/60">
+      <button type="submit" aria-label="Enviar" class="w-9 h-9 shrink-0 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black flex items-center justify-center"><i class="fa-solid fa-paper-plane text-sm"></i></button>
+    </form>
   </div>
 
   <!-- ==================== MODALES ==================== -->
@@ -2093,6 +2231,50 @@
     </div>
   </div>
 
+  <!-- MODAL: EL CLIENTE REPORTA UNA CUENTA CON FOTO -->
+  <div id="modalReporteCuenta" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden items-center justify-center p-3 sm:p-4">
+    <div class="bg-gray-900 border border-amber-500/40 rounded-2xl max-w-md w-full shadow-2xl max-h-[92vh] flex flex-col overflow-hidden">
+      <div class="shrink-0 flex items-center justify-between gap-3 px-4 py-3 border-b border-gray-800">
+        <h3 class="text-base font-black text-white flex items-center gap-2"><i class="fa-solid fa-flag text-amber-400"></i> Reportar una cuenta</h3>
+        <button type="button" onclick="cerrarReporteCuenta()" aria-label="Cerrar" class="w-8 h-8 shrink-0 rounded-full bg-gray-800 hover:bg-gray-700 text-gray-300 flex items-center justify-center"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="overflow-y-auto px-4 py-3 space-y-3 flex-grow">
+        <div class="p-3 rounded-xl bg-gray-800/60 border border-gray-700">
+          <p id="rpProducto" class="text-[11px] text-gray-400"></p>
+          <p id="rpCuenta" class="text-sm font-mono font-bold text-white break-all"></p>
+        </div>
+        <div>
+          <label class="block text-xs text-gray-400 mb-1">¿Qué pasa con la cuenta?</label>
+          <select id="rpMotivo" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none">
+            <option>No inicia sesión</option>
+            <option>Contraseña incorrecta</option>
+            <option>Cuenta suspendida o bloqueada</option>
+            <option>Sin suscripción o sin plan activo</option>
+            <option>Cuenta repetida</option>
+            <option>Otro</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs text-gray-400 mb-1">Cuéntanos un poco más (opcional)</label>
+          <input type="text" id="rpDetalle" maxlength="200" autocomplete="off" placeholder="Ej: me sale error al poner la clave" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none">
+        </div>
+        <div>
+          <label class="block text-xs text-gray-400 mb-1">Foto del error <span class="text-amber-400 font-bold">(obligatoria)</span></label>
+          <label for="rpFoto" class="flex flex-col items-center justify-center gap-1 p-4 rounded-xl border-2 border-dashed border-gray-600 hover:border-amber-400 bg-gray-800/40 cursor-pointer text-center transition">
+            <i class="fa-solid fa-camera text-xl text-amber-400"></i>
+            <span class="text-xs font-bold text-white" id="rpFotoTexto">Toca para subir una captura de pantalla</span>
+            <span class="text-[10px] text-gray-400">Que se vea el mensaje de error al iniciar sesión</span>
+          </label>
+          <input type="file" id="rpFoto" accept="image/*" onchange="previsualizarFotoReporte()" class="hidden">
+          <img id="rpPreview" alt="Vista previa" class="hidden mt-2 max-h-48 w-full object-contain rounded-xl border border-gray-700 bg-black/40">
+        </div>
+      </div>
+      <div class="shrink-0 p-3 border-t border-gray-800">
+        <button type="button" id="btnEnviarReporte" onclick="enviarReporteCuenta()" class="w-full bg-amber-500 hover:bg-amber-400 text-black font-bold py-2.5 rounded-xl text-xs transition">Enviar reporte</button>
+      </div>
+    </div>
+  </div>
+
   <!-- MODAL: NUEVO TICKET DE CUENTA REPORTADA (administración y moderación) -->
   <div id="modalTicketCuenta" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden items-center justify-center p-3 sm:p-4">
     <div class="bg-gray-900 border border-amber-500/40 rounded-2xl max-w-md w-full shadow-2xl max-h-[92vh] flex flex-col overflow-hidden">
@@ -2124,6 +2306,10 @@
         <div>
           <label class="block text-xs text-gray-400 mb-1">Cliente que la reportó (opcional)</label>
           <input type="text" id="tkCliente" autocomplete="off" placeholder="correo del cliente" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none">
+        </div>
+        <div>
+          <label class="block text-xs text-gray-400 mb-1">Foto del error (opcional)</label>
+          <input type="file" id="tkFoto" accept="image/*" class="w-full text-[11px] text-gray-300 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:bg-gray-700 file:text-white file:text-xs">
         </div>
         <div>
           <label class="block text-xs text-gray-400 mb-1">Asignar a</label>
@@ -2169,6 +2355,46 @@
     </div>
   </div>
 
+  <!-- MODAL: PAGAR A UN PROVEEDOR Y ADJUNTAR EL COMPROBANTE (administración) -->
+  <div id="modalPagarProveedor" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden items-center justify-center p-3 sm:p-4">
+    <div class="bg-gray-900 border border-emerald-500/40 rounded-2xl max-w-md w-full shadow-2xl max-h-[92vh] flex flex-col overflow-hidden">
+      <div class="shrink-0 flex items-center justify-between gap-3 px-4 py-3 border-b border-gray-800">
+        <h3 class="text-base font-black text-white flex items-center gap-2"><i class="fa-solid fa-money-check-dollar text-emerald-400"></i> Pagar a proveedor</h3>
+        <button type="button" onclick="cerrarPagarProveedor()" aria-label="Cerrar" class="w-8 h-8 shrink-0 rounded-full bg-gray-800 hover:bg-gray-700 text-gray-300 flex items-center justify-center"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="overflow-y-auto px-4 py-3 space-y-3 flex-grow">
+        <div class="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-center">
+          <p id="pagarNombre" class="text-xs font-bold text-gray-300"></p>
+          <p id="pagarMonto" class="text-3xl font-black text-white mt-0.5">$0</p>
+          <p id="pagarDetalle" class="text-[11px] text-gray-400"></p>
+        </div>
+        <div>
+          <p class="text-xs text-gray-400 mb-1.5">Págale a:</p>
+          <div id="pagarMetodos" class="space-y-1.5"><p class="text-[11px] text-gray-500">Cargando sus datos de pago...</p></div>
+        </div>
+        <div>
+          <label class="block text-xs text-gray-400 mb-1">¿Por dónde le pagaste?</label>
+          <select id="pagarMedio" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none">
+            <option value="nequi">Nequi</option><option value="daviplata">DaviPlata</option><option value="otro">Otro</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs text-gray-400 mb-1">Comprobante (foto o captura)</label>
+          <label for="pagarFoto" class="flex flex-col items-center justify-center gap-1 p-3 rounded-xl border-2 border-dashed border-gray-600 hover:border-emerald-400 bg-gray-800/40 cursor-pointer text-center">
+            <i class="fa-solid fa-camera text-lg text-emerald-400"></i>
+            <span class="text-xs font-bold text-white" id="pagarFotoTexto">Toca para adjuntar el comprobante</span>
+            <span class="text-[10px] text-gray-400">El proveedor la verá 48 horas y luego se borra sola</span>
+          </label>
+          <input type="file" id="pagarFoto" accept="image/*" onchange="previsualizarComprobante()" class="hidden">
+          <img id="pagarPreview" alt="Vista previa" class="hidden mt-2 max-h-48 w-full object-contain rounded-xl border border-gray-700 bg-black/40">
+        </div>
+      </div>
+      <div class="shrink-0 p-3 border-t border-gray-800">
+        <button type="button" id="btnConfirmarPago" onclick="confirmarPagoProveedor()" class="w-full bg-emerald-500 hover:bg-emerald-400 text-black font-bold py-2.5 rounded-xl text-xs transition">Confirmar: ya le pagué</button>
+      </div>
+    </div>
+  </div>
+
   <!-- MODAL: ASIGNAR UN PAGO SIN IDENTIFICAR (administración) -->
   <div id="modalAsignarPago" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
     <div class="bg-gray-900 border border-emerald-500/40 rounded-2xl max-w-sm w-full p-5 relative">
@@ -2188,6 +2414,70 @@
       <h4 id="txtZoomQrTitulo" class="font-bold text-white text-sm mb-3">Código QR de Pago</h4>
       <img id="imgZoomQr" src="" alt="QR Ampliado" class="w-full aspect-square object-contain bg-white rounded-2xl p-2 mb-3 border border-gray-700">
       <p class="text-[11px] text-gray-400">Escanea desde tu app de banco favorita.</p>
+    </div>
+  </div>
+
+  <!-- MODAL: EDITAR UNA RESPUESTA DEL ASISTENTE (administrador) -->
+  <div id="modalAsistenteTema" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden items-center justify-center p-3 sm:p-4">
+    <div class="bg-gray-900 border border-emerald-500/40 rounded-2xl max-w-md w-full shadow-2xl max-h-[92vh] flex flex-col overflow-hidden">
+      <div class="shrink-0 flex items-center justify-between gap-3 px-4 py-3 border-b border-gray-800">
+        <h3 id="astModalTitulo" class="text-base font-black text-white flex items-center gap-2"><i class="fa-solid fa-robot text-emerald-400"></i> Respuesta</h3>
+        <button type="button" onclick="cerrarAsistenteTema()" aria-label="Cerrar" class="w-8 h-8 shrink-0 rounded-full bg-gray-800 hover:bg-gray-700 text-gray-300 flex items-center justify-center"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="overflow-y-auto px-4 py-3 space-y-3 flex-grow">
+        <div>
+          <label class="block text-xs text-gray-400 mb-1">Pregunta o texto del botón</label>
+          <input type="text" id="astTitulo" maxlength="45" autocomplete="off" placeholder="Ej: ¿Cuál es el horario?" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none">
+        </div>
+        <div>
+          <label class="block text-xs text-gray-400 mb-1">Respuesta</label>
+          <textarea id="astTexto" rows="6" maxlength="1500" oninput="asistenteEditorVistaPrevia()" placeholder="Escribe lo que responderá el asistente" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"></textarea>
+          <p class="text-[10px] text-gray-500 mt-1">Pon **texto** entre asteriscos dobles para resaltarlo. Puedes usar <b class="text-gray-300">{minimo}</b> y <b class="text-gray-300">{minutos}</b> de la recarga automática.</p>
+        </div>
+        <div>
+          <p class="text-[10px] font-bold text-gray-400 uppercase mb-1">Así se verá</p>
+          <div id="astVista" class="asistente-burbuja bot" style="max-width:100%"></div>
+        </div>
+        <div>
+          <label class="block text-xs text-gray-400 mb-1">Palabras clave (separadas por coma)</label>
+          <input type="text" id="astClaves" autocomplete="off" placeholder="horario, hora, atienden" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none">
+          <p class="text-[10px] text-gray-500 mt-1">Sirven para reconocer lo que escribe el cliente en la caja de texto.</p>
+        </div>
+        <label class="flex items-center gap-2 p-2.5 rounded-xl bg-gray-800/60 border border-gray-700/60 cursor-pointer"><input type="checkbox" id="astMenu" class="accent-emerald-500 w-4 h-4"><span class="text-xs text-white font-bold">Mostrarla como botón en el menú</span></label>
+        <details class="rounded-xl border border-gray-700/60 bg-gray-800/30">
+          <summary style="list-style:none" class="cursor-pointer px-3 py-2.5 text-xs font-bold text-gray-300 flex items-center justify-between"><span>Opciones avanzadas</span><i class="fa-solid fa-chevron-down text-gray-500 text-[10px]"></i></summary>
+          <div class="px-3 pb-3 space-y-3">
+            <div>
+              <label class="block text-xs text-gray-400 mb-1">¿Para quién es?</label>
+              <select id="astPara" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"><option value="cliente">Clientes</option><option value="proveedor">Proveedores</option><option value="ambos">Todos</option></select>
+            </div>
+            <div>
+              <p class="text-xs text-gray-400 mb-1">Botones que aparecen debajo de la respuesta</p>
+              <div class="grid grid-cols-2 gap-1.5 text-[11px] text-gray-200">
+                <label class="flex items-center gap-1.5"><input type="checkbox" class="ast-acc accent-emerald-500" value="recarga"> Abrir Recargar saldo</label>
+                <label class="flex items-center gap-1.5"><input type="checkbox" class="ast-acc accent-emerald-500" value="cuentas"> Abrir Mis Cuentas</label>
+                <label class="flex items-center gap-1.5"><input type="checkbox" class="ast-acc accent-emerald-500" value="catalogo"> Ir al catálogo</label>
+                <label class="flex items-center gap-1.5"><input type="checkbox" class="ast-acc accent-emerald-500" value="whatsapp"> Abrir WhatsApp</label>
+              </div>
+            </div>
+            <div>
+              <label class="block text-xs text-gray-400 mb-1">Botón hacia otra pregunta</label>
+              <select id="astRelacionada" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"></select>
+            </div>
+            <label class="flex items-start gap-2 text-[11px] text-gray-200 cursor-pointer"><input type="checkbox" id="astFlujo" class="accent-emerald-500 mt-0.5"><span>Después de responder, mostrar las cuentas del cliente para que genere un reporte (ticket con foto)</span></label>
+            <label class="flex items-start gap-2 text-[11px] text-gray-200 cursor-pointer"><input type="checkbox" id="astSolo" class="accent-emerald-500 mt-0.5"><span>Mostrarla solo a clientes que tienen cuentas alquiladas</span></label>
+            <label class="flex items-start gap-2 text-[11px] text-gray-200 cursor-pointer"><input type="checkbox" id="astMostrarMenu" class="accent-emerald-500 mt-0.5"><span>Después de responder, mostrar de nuevo todo el menú</span></label>
+            <div>
+              <label class="block text-xs text-gray-400 mb-1">Otra respuesta si la recarga automática está apagada (opcional)</label>
+              <textarea id="astAlterno" rows="3" maxlength="1500" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"></textarea>
+            </div>
+          </div>
+        </details>
+      </div>
+      <div class="shrink-0 grid grid-cols-2 gap-2 p-3 border-t border-gray-800">
+        <button type="button" onclick="cerrarAsistenteTema()" class="bg-gray-800 hover:bg-gray-700 text-gray-100 font-bold py-2.5 rounded-xl text-xs border border-gray-700">Cancelar</button>
+        <button type="button" onclick="guardarAsistenteTema()" class="bg-emerald-500 hover:bg-emerald-400 text-black font-bold py-2.5 rounded-xl text-xs">Aplicar</button>
+      </div>
     </div>
   </div>
 
@@ -2944,6 +3234,434 @@
       window.open(`https://wa.me/${numeroAdmin}?text=${mensaje}`, '_blank');
       cerrarSoporteWhatsapp();
     }
+
+    // ==================== ASISTENTE DE AYUDA (botón flotante) ====================
+    // Respuestas rápidas y superficiales. El administrador las edita en Admin → Asistente (se guardan en configuracion/asistente);
+    // si no hay nada guardado, o hay un error, se usan las de abajo. Para lo demás deriva a una persona por WhatsApp.
+    let asistenteAbierto = false;
+    let asistenteIniciado = false;
+    let asistenteCola = Promise.resolve();
+    let asistenteSesion = 0;
+    let asistenteDemora = 380;
+    let asistenteTimerSaludo = null, asistenteTimerOcultar = null;
+    let asistenteConfig = null, asistenteBase = null, asistenteConfigCargada = false, unsubAsistenteCfg = null;
+
+    // Botones de acción que se pueden activar en cada respuesta
+    const ASISTENTE_ACCIONES = {
+      recarga: { t: 'Abrir Recargar saldo', i: 'fa-bolt' },
+      cuentas: { t: 'Abrir Mis Cuentas', i: 'fa-box-archive' },
+      catalogo: { t: 'Ir al catálogo', i: 'fa-store' },
+      whatsapp: { t: 'Abrir WhatsApp', i: 'fa-brands fa-whatsapp' }
+    };
+    const ASISTENTE_MAX_TEMAS = 40;
+    function asistenteAccionValida(a) { return typeof a === 'string' && Object.prototype.hasOwnProperty.call(ASISTENTE_ACCIONES, a); }
+
+    // Respuestas originales. {minimo} y {minutos} se reemplazan con la configuración real de la recarga automática.
+    const ASISTENTE_PREDETERMINADO = {
+      bienvenidaCliente: '¡Hola! 👋 Soy el asistente de Epic Channels. Te ayudo con lo más común y, si hace falta, te conecto con una persona. ¿Qué necesitas?',
+      bienvenidaProveedor: '¡Hola! 👋 Soy el asistente de Epic Channels. Te ayudo con tus envíos, pagos y reportes. ¿Qué necesitas?',
+      noEntendi: 'No estoy seguro de haberte entendido. Elige una opción o habla con una persona:',
+      saludoCliente: '👋 ¡Hola! ¿Necesitas ayuda?',
+      saludoProveedor: '👋 ¿Dudas sobre tus envíos o pagos?',
+      temas: [
+        { id: 'comprar', para: 'cliente', titulo: 'Cómo comprar', icono: 'fa-cart-shopping',
+          claves: ['comprar', 'compra', 'como compro', 'adquirir', 'precio', 'catalogo', 'producto'],
+          texto: 'Comprar es muy fácil:\n**1)** Elige el producto en el catálogo.\n**2)** Indica la cantidad.\n**3)** Toca **Comprar Ahora**.\nSe descuenta de tu saldo y las cuentas te llegan al instante. Si te falta saldo, recargas en un minuto.',
+          acciones: ['catalogo'], relacionada: 'pago' },
+        { id: 'pago', para: 'cliente', titulo: 'Recargar con pago automático', icono: 'fa-bolt',
+          claves: ['recarga', 'recargar', 'recargo', 'saldo', 'pagar', 'pago', 'nequi', 'bre b', 'breb', 'llave', 'automatico', 'automatica', 'transferencia', 'davi', 'daviplata', 'deposito'],
+          texto: 'Así recargas con **pago automático** (Bre-B):\n**1)** Abre **Recargar saldo**.\n**2)** En **Recarga automática con Bre-B** elige un monto (mínimo {minimo}) y toca **Generar mi pago**.\n**3)** Te mostramos el valor **exacto** y la llave: págalo desde tu banco o Nequi en máximo {minutos} minutos.\n**4)** Toca **Ya pagué**. Tu saldo se acredita solo, normalmente en pocos minutos.\nImportante: paga el valor **exacto** que te muestran; así reconocemos tu pago.',
+          textoAlterno: 'Ahora mismo la recarga **automática** no está activa. Abre **Recargar saldo** y sigue el método manual: haces el pago y envías tu comprobante para que lo acreditemos.',
+          acciones: ['recarga'], relacionada: 'pago_problema' },
+        { id: 'cuentas', para: 'cliente', titulo: 'Dónde veo mis cuentas', icono: 'fa-box-archive',
+          claves: ['mis cuentas', 'donde veo', 'donde estan', 'ver mis cuentas', 'mis compras', 'historial', 'copiar', 'entrega'],
+          texto: 'Todas tus compras quedan guardadas en **Mi perfil → Mis Cuentas**, con un botón para copiarlas cuando quieras.',
+          acciones: ['cuentas'] },
+        { id: 'garantia', para: 'cliente', titulo: 'Garantía', icono: 'fa-shield-halved',
+          claves: ['garantia', 'reembolso', 'devolucion', 'reemplazo', 'cambiar la cuenta', 'cuanto dura'],
+          texto: 'Cada compra muestra su **garantía** y cuánto tiempo le queda, en **Mi perfil → Mis Cuentas**. Si una cuenta falla dentro de ese plazo, repórtala con una captura del error y la revisamos.',
+          acciones: ['cuentas'], relacionada: 'reportar' },
+        { id: 'reportar', para: 'cliente', titulo: 'Reportar un problema', icono: 'fa-flag',
+          claves: ['reportar', 'reporte', 'ticket', 'problema', 'falla', 'fallo', 'no funciona', 'no sirve', 'no inicia', 'no entra', 'no abre', 'error', 'contrasena incorrecta', 'clave incorrecta', 'suspendida', 'bloqueada', 'cuenta mala'],
+          texto: 'Lamento el inconveniente. Para reportar una cuenta necesitas una **captura de pantalla del error**; ten una a la mano.',
+          flujo: 'reportar' },
+        { id: 'alquiler', para: 'cliente', titulo: 'Mis cuentas alquiladas', icono: 'fa-clapperboard', solo: 'alquileres',
+          claves: ['netflix', 'codigo', 'alquiler', 'alquilada', 'alquiladas', 'pin'],
+          texto: 'Tus cuentas alquiladas están en la tarjeta **Mis cuentas** de la tienda. Ahí ves tu perfil y tu PIN, y el botón **Ver código** cuando Netflix te lo pida.',
+          acciones: ['catalogo'] },
+        { id: 'prov_subir', para: 'proveedor', titulo: 'Cómo subir cuentas', icono: 'fa-cloud-arrow-up',
+          claves: ['subir', 'cargar', 'enviar', 'stock', 'cuentas', 'lote', 'como subo'],
+          texto: 'Para subir cuentas:\n**1)** En **Subir stock** elige el producto.\n**2)** Pega las cuentas, una por línea (correo:clave).\n**3)** Toca **Enviar para aprobación**.\nQuedan en revisión hasta que las aprobemos.' },
+        { id: 'prov_pago', para: 'proveedor', titulo: 'Cuándo me pagan', icono: 'fa-money-check-dollar',
+          claves: ['pago', 'pagan', 'pagar', 'cobrar', 'nequi', 'daviplata', 'davi', 'comprobante', 'plata', 'deuda', 'cuando me pagan'],
+          texto: 'Cuando aprobamos tus cuentas, ves cuánto se te debe. Te pagamos por **Nequi** o **DaviPlata** (guarda tus datos en **Cómo quieres que te paguemos**) y verás el comprobante en **Pagos que te hemos hecho** durante 48 horas.' },
+        { id: 'prov_reportes', para: 'proveedor', titulo: 'Cuentas reportadas', icono: 'fa-ticket',
+          claves: ['reporte', 'reportes', 'reportada', 'reportadas', 'ticket', 'problema', 'falla', 'error'],
+          texto: 'Si un cliente reporta una de tus cuentas, aparece en **Cuentas reportadas** con el motivo y la foto del error, hasta que se resuelva.' },
+        { id: 'persona', para: 'ambos', titulo: 'Hablar con una persona', icono: 'fa-headset',
+          claves: ['persona', 'humano', 'asesor', 'agente', 'whatsapp', 'soporte', 'hablar', 'llamar', 'atencion'],
+          texto: 'Con gusto te atiende una persona. Te llevo a WhatsApp.',
+          acciones: ['whatsapp'] },
+        { id: 'pago_problema', para: 'cliente', titulo: 'No se acreditó mi recarga', icono: 'fa-circle-question', menu: false,
+          claves: ['no se acredito', 'no se acredita', 'no llego', 'no me llego', 'pague y no', 'no aparece mi saldo', 'recarga no', 'no se refleja', 'no se reflejo', 'no cargo'],
+          texto: 'Revisemos tu recarga:\n**1)** Confirma que pagaste el valor **exacto** que te mostró la recarga y dentro del tiempo.\n**2)** Abre la recarga y toca **Ya pagué**.\n**3)** Si pasaron más de 15 minutos, escríbenos por WhatsApp con tu comprobante.',
+          acciones: ['recarga', 'whatsapp'] },
+        { id: 'gracias', para: 'ambos', titulo: 'Gracias', icono: 'fa-heart', menu: false, mostrarMenu: true,
+          claves: ['gracias', 'genial', 'perfecto', 'excelente', 'listo'],
+          texto: '¡Con gusto! 😊 Si necesitas algo más, aquí estoy.' },
+        { id: 'saludo', para: 'ambos', titulo: 'Saludo', icono: 'fa-hand', menu: false, mostrarMenu: true,
+          claves: ['hola', 'buenas', 'buenos', 'hey', 'saludos'],
+          texto: '¡Hola! 👋 ¿Sobre qué quieres saber?' }
+      ]
+    };
+
+    // Revisa lo guardado: lo que venga mal formado se descarta y nunca rompe el asistente
+    function asistenteSanear(raw) {
+      if (!raw || typeof raw !== 'object' || !Array.isArray(raw.temas)) return null;
+      const txt = (v, max) => String(v == null ? '' : v).replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f]/g, '').slice(0, max).trim();
+      const def = ASISTENTE_PREDETERMINADO;
+      const ids = new Set();
+      const temas = [];
+      raw.temas.slice(0, ASISTENTE_MAX_TEMAS + 10).forEach(t => {
+        if (!t || typeof t !== 'object') return;
+        let id = txt(t.id, 40).replace(/[^a-zA-Z0-9_]/g, '');
+        if (id === 'menu') id = 'menu_';
+        const titulo = txt(t.titulo, 45), texto = txt(t.texto, 1500);
+        if (!id || ids.has(id) || !titulo || !texto) return;
+        ids.add(id);
+        const claves = [];
+        (Array.isArray(t.claves) ? t.claves : []).slice(0, 30).forEach(c => { const x = txt(c, 40); if (x && claves.indexOf(x) === -1) claves.push(x); });
+        temas.push({
+          id: id, para: ['cliente', 'proveedor', 'ambos'].indexOf(t.para) !== -1 ? t.para : 'cliente',
+          titulo: titulo, icono: /^fa-[a-z0-9-]{2,30}$/.test(String(t.icono || '')) ? t.icono : 'fa-circle-question',
+          claves: claves, texto: texto, textoAlterno: txt(t.textoAlterno, 1500),
+          activo: t.activo !== false, menu: t.menu !== false, mostrarMenu: t.mostrarMenu === true,
+          flujo: t.flujo === 'reportar' ? 'reportar' : '', solo: t.solo === 'alquileres' ? 'alquileres' : '',
+          acciones: (Array.isArray(t.acciones) ? t.acciones : []).filter((a, i, arr) => asistenteAccionValida(a) && arr.indexOf(a) === i),
+          relacionada: txt(t.relacionada, 40).replace(/[^a-zA-Z0-9_]/g, '')
+        });
+      });
+      if (!temas.length) return null;
+      return {
+        bienvenidaCliente: txt(raw.bienvenidaCliente, 400) || def.bienvenidaCliente,
+        bienvenidaProveedor: txt(raw.bienvenidaProveedor, 400) || def.bienvenidaProveedor,
+        noEntendi: txt(raw.noEntendi, 300) || def.noEntendi,
+        saludoCliente: txt(raw.saludoCliente, 120) || def.saludoCliente,
+        saludoProveedor: txt(raw.saludoProveedor, 120) || def.saludoProveedor,
+        temas: temas
+      };
+    }
+
+    function asistenteConfigActual() {
+      if (asistenteConfig) return asistenteConfig;
+      if (!asistenteBase) asistenteBase = asistenteSanear(ASISTENTE_PREDETERMINADO);
+      return asistenteBase;
+    }
+
+    function asistenteIniciarConfig() {
+      if (unsubAsistenteCfg || !currentUser) return;
+      try {
+        unsubAsistenteCfg = db.collection('configuracion').doc('asistente').onSnapshot(doc => {
+          asistenteConfig = doc.exists ? asistenteSanear(doc.data() || {}) : null;
+          asistenteConfigCargada = true;
+          if (typeof asistenteEditorAlCambiar === 'function') asistenteEditorAlCambiar();
+        }, err => { asistenteConfigCargada = true; console.warn('Asistente: se usan las respuestas originales.', err); });
+      } catch (e) { asistenteConfigCargada = true; console.warn(e); }
+    }
+
+    function asistenteDetenerConfig() {
+      try { if (unsubAsistenteCfg) unsubAsistenteCfg(); } catch (e) { /* nada */ }
+      unsubAsistenteCfg = null; asistenteConfig = null; asistenteConfigCargada = false;
+    }
+
+    // Espera (poco) a que llegue lo guardado, para que la bienvenida ya salga con las respuestas del administrador
+    function asistenteEsperarConfig(ms) {
+      return new Promise(resolve => {
+        const t0 = Date.now();
+        (function mirar() { if (asistenteConfigCargada || Date.now() - t0 >= ms) resolve(); else setTimeout(mirar, 40); })();
+      });
+    }
+
+    function asistenteAudiencia() { return esProveedorSesion() ? 'proveedor' : 'cliente'; }
+
+    function asistenteTemasVisibles() {
+      const aud = asistenteAudiencia();
+      return asistenteConfigActual().temas.filter(t => t.activo && (t.para === aud || t.para === 'ambos'));
+    }
+
+    function asistenteTemaPorId(id) { return asistenteTemasVisibles().find(t => t.id === id) || null; }
+
+    function asistenteNormalizar(t) {
+      return String(t == null ? '' : t).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim();
+    }
+
+    function asistenteFormatear(t) {
+      return escaparHtml(String(t == null ? '' : t)).replace(/\*\*(.+?)\*\*/g, '<b class="text-white">$1</b>').replace(/\n/g, '<br>');
+    }
+
+    function asistenteMenu() {
+      const tiene = typeof misAlquileres !== 'undefined' && misAlquileres.length > 0;
+      const items = asistenteTemasVisibles().filter(t => t.menu && (t.solo !== 'alquileres' || tiene));
+      const m = items.map(t => ({ t: t.titulo, i: t.icono, tema: t.id }));
+      // Siempre debe haber una salida hacia una persona, aunque el administrador quite esa pregunta
+      if (!items.some(t => (t.acciones || []).indexOf('whatsapp') !== -1)) m.push({ t: 'Hablar con una persona', i: 'fa-headset', fn: 'whatsapp' });
+      return m;
+    }
+
+    function asistenteTextoDe(t) {
+      let txt = t.texto;
+      const hayAuto = (typeof recargaAutoDisponible === 'function') ? recargaAutoDisponible() : true;
+      if (t.textoAlterno && !hayAuto) txt = t.textoAlterno;
+      const cfg = (typeof recargaAutoCfg !== 'undefined') ? recargaAutoCfg : { minimo: 5000, minutos: 30 };
+      return txt.replace(/\{minimo\}/g, formatoCOP(cfg.minimo)).replace(/\{minutos\}/g, String(cfg.minutos));
+    }
+
+    function asistenteChipsDe(t) {
+      const chips = [];
+      (t.acciones || []).forEach(a => { if (!asistenteAccionValida(a)) return; const d = ASISTENTE_ACCIONES[a]; chips.push({ t: d.t, i: d.i, fn: a }); });
+      const rel = t.relacionada ? asistenteTemaPorId(t.relacionada) : null;
+      if (rel && rel.id !== t.id) chips.push({ t: rel.titulo, i: rel.icono, tema: rel.id });
+      return chips;
+    }
+
+    // Elige la respuesta que más coincide con lo escrito: más palabras clave, luego la clave más larga, luego el orden de la lista
+    function asistenteBuscarTema(texto) {
+      const n = ' ' + asistenteNormalizar(texto) + ' ';
+      let mejor = null, mejorPuntos = 0, mejorLargo = 0;
+      asistenteTemasVisibles().forEach(t => {
+        let p = 0, largo = 0;
+        (t.claves || []).forEach(c0 => {
+          const c = asistenteNormalizar(c0);
+          if (!c) return;
+          if (n.indexOf(' ' + c + ' ') !== -1 || (c.length >= 5 && n.indexOf(c) !== -1)) { p += c.indexOf(' ') !== -1 ? 2 : 1; largo = Math.max(largo, c.length); }
+        });
+        if (p > mejorPuntos || (p === mejorPuntos && p > 0 && largo > mejorLargo)) { mejorPuntos = p; mejorLargo = largo; mejor = t.id; }
+      });
+      return mejor;
+    }
+
+    function asistenteCuerpo() { return document.getElementById('asistenteCuerpo'); }
+    function asistenteScroll() { const c = asistenteCuerpo(); if (c) c.scrollTop = c.scrollHeight; }
+    function asistenteQuitarChips() { document.querySelectorAll('#asistenteCuerpo .asistente-chips').forEach(e => e.remove()); }
+
+    function asistenteAgregarUsuario(texto) {
+      const c = asistenteCuerpo();
+      if (!c) return;
+      asistenteQuitarChips();
+      const b = document.createElement('div');
+      b.className = 'asistente-burbuja yo bg-emerald-500 text-black';
+      b.textContent = texto;
+      c.appendChild(b);
+      asistenteScroll();
+    }
+
+    function asistenteArmarChips(chips) {
+      const w = document.createElement('div');
+      w.className = 'asistente-chips';
+      chips.forEach(ch => {
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'asistente-chip border-emerald-500/40 bg-emerald-500/10 text-emerald-300';
+        if (ch.i) { const ic = document.createElement('i'); ic.className = (ch.i.indexOf('fa-brands') === 0 ? '' : 'fa-solid ') + ch.i + ' mr-1.5'; b.appendChild(ic); }
+        b.appendChild(document.createTextNode(ch.t));
+        b.addEventListener('click', () => asistenteClickChip(ch));
+        w.appendChild(b);
+      });
+      return w;
+    }
+
+    // Los mensajes del asistente salen en orden y con el efecto de "escribiendo"
+    function asistenteAgregarBot(texto, chips) {
+      const sesion = asistenteSesion;
+      asistenteCola = asistenteCola.then(() => new Promise(resolve => {
+        const c = asistenteCuerpo();
+        if (!c || sesion !== asistenteSesion) { resolve(); return; }
+        const esc = document.createElement('div');
+        esc.className = 'asistente-escribiendo';
+        esc.setAttribute('aria-label', 'Escribiendo');
+        esc.innerHTML = '<i></i><i></i><i></i>';
+        c.appendChild(esc);
+        asistenteScroll();
+        setTimeout(() => {
+          esc.remove();
+          if (sesion === asistenteSesion) {
+            const b = document.createElement('div');
+            b.className = 'asistente-burbuja bot';
+            b.innerHTML = asistenteFormatear(texto);
+            c.appendChild(b);
+            if (chips && chips.length) c.appendChild(asistenteArmarChips(chips));
+            asistenteScroll();
+          }
+          resolve();
+        }, asistenteDemora);
+      }));
+      return asistenteCola;
+    }
+
+    function asistenteClickChip(ch) {
+      asistenteAgregarUsuario(ch.t);
+      try {
+        if (ch.tema) asistenteResponderTema(ch.tema);
+        else if (ch.fn) asistenteEjecutar(ch.fn);
+        else if (typeof ch.run === 'function') ch.run();
+      } catch (e) { console.warn('Asistente:', e); }
+    }
+
+    function asistenteResponderTema(id) {
+      if (id === 'menu') { asistenteAgregarBot('¿En qué más te puedo ayudar?', asistenteMenu()); return; }
+      const t = asistenteTemaPorId(id);
+      if (!t) return;
+      let chips = asistenteChipsDe(t);
+      if (t.mostrarMenu) chips = asistenteMenu();
+      else if (t.flujo !== 'reportar') chips = chips.concat([{ t: 'Otra pregunta', i: 'fa-list', tema: 'menu' }]);
+      asistenteAgregarBot(asistenteTextoDe(t), chips);
+      if (t.flujo === 'reportar') asistenteEjecutar('listar_reportes');
+    }
+
+    function asistenteEjecutar(nombre) {
+      switch (nombre) {
+        case 'recarga': cerrarAsistente(); abrirModalRecarga(); break;
+        case 'cuentas': cerrarAsistente(); cambiarVista('mis-cuentas'); break;
+        case 'catalogo': cerrarAsistente(); cambiarVista('tienda'); break;
+        case 'whatsapp': cerrarAsistente(); abrirSoporteWhatsapp(); break;
+        case 'listar_reportes': asistenteListarReportes(); break;
+        default: break;
+      }
+    }
+
+    // Lista las cuentas compradas para generar el ticket sin salir del asistente
+    async function asistenteListarReportes() {
+      const sesion = asistenteSesion;
+      if (modoPruebaCliente) { asistenteAgregarBot('Estás en modo prueba, así que no se puede generar un reporte real.', asistenteMenu()); return; }
+      try { if (!misComprasPerfilCache.length) await cargarMisCuentas(); } catch (e) { console.warn(e); }
+      if (sesion !== asistenteSesion) return;
+      const items = [];
+      misComprasPerfilCache.forEach((c, idx) => {
+        if (!c || c.simulada) return;
+        String(c.credenciales || '').split('\n').map(l => l.trim()).filter(Boolean).forEach((l, j) => {
+          const cuenta = emailDeLineaCuenta(l);
+          if (cuenta) items.push({ idx: idx, j: j, cuenta: cuenta, abierto: misReportes.some(t => t.cuenta === cuenta && t.estado !== 'resuelto') });
+        });
+      });
+      if (!items.length) {
+        asistenteAgregarBot('Aún no tienes cuentas compradas, así que no hay nada que reportar.', [{ t: 'Ir al catálogo', i: 'fa-store', fn: 'catalogo' }, { t: 'Otra pregunta', i: 'fa-list', tema: 'menu' }]);
+        return;
+      }
+      const libres = items.filter(x => !x.abierto);
+      if (!libres.length) {
+        asistenteAgregarBot('Todas tus cuentas recientes ya tienen un reporte abierto. Puedes ver cómo va en **Mi perfil → Mis Cuentas**.', [{ t: 'Ver mis reportes', i: 'fa-ticket', fn: 'cuentas' }, { t: 'Otra pregunta', i: 'fa-list', tema: 'menu' }]);
+        return;
+      }
+      const chips = libres.slice(0, 6).map(x => ({
+        t: x.cuenta.length > 28 ? x.cuenta.slice(0, 27) + '…' : x.cuenta, i: 'fa-flag',
+        run: () => { cerrarAsistente(); abrirReporteCuenta(x.idx, x.j); }
+      }));
+      chips.push({ t: 'Ver todas mis cuentas', i: 'fa-box-archive', fn: 'cuentas' });
+      asistenteAgregarBot(libres.length > 6 ? 'Estas son tus cuentas más recientes. ¿Cuál tiene el problema?' : '¿Cuál cuenta tiene el problema?', chips);
+    }
+
+    function asistenteEnviarTexto(ev) {
+      if (ev && ev.preventDefault) ev.preventDefault();
+      const inp = document.getElementById('asistenteInput');
+      const txt = String((inp && inp.value) || '').trim().slice(0, 120);
+      if (!txt) return false;
+      inp.value = '';
+      asistenteAgregarUsuario(txt);
+      const id = asistenteBuscarTema(txt);
+      if (id) asistenteResponderTema(id);
+      else asistenteAgregarBot(asistenteConfigActual().noEntendi, asistenteMenu());
+      return false;
+    }
+
+    async function asistenteIniciar() {
+      asistenteIniciado = true;
+      const sesion = asistenteSesion;
+      await asistenteEsperarConfig(900);
+      if (sesion !== asistenteSesion || !asistenteIniciado) return;
+      const cfg = asistenteConfigActual();
+      asistenteAgregarBot(esProveedorSesion() ? cfg.bienvenidaProveedor : cfg.bienvenidaCliente, asistenteMenu());
+    }
+
+    function asistenteLimpiar() {
+      asistenteSesion++;
+      asistenteCola = Promise.resolve();
+      const c = asistenteCuerpo();
+      if (c) c.innerHTML = '';
+      asistenteIniciado = false;
+    }
+
+    function asistenteReiniciar() {
+      asistenteLimpiar();
+      if (asistenteAbierto) asistenteIniciar();
+    }
+
+    function abrirAsistente() {
+      if (!currentUser) return;
+      const p = document.getElementById('asistentePanel');
+      if (!p) return;
+      cerrarSaludoAsistente();
+      asistenteIniciarConfig();
+      p.classList.add('abierto');
+      p.setAttribute('aria-hidden', 'false');
+      asistenteAbierto = true;
+      const f = document.getElementById('btnAsistente');
+      if (f) f.setAttribute('aria-expanded', 'true');
+      if (!asistenteIniciado) asistenteIniciar(); else asistenteScroll();
+      try {
+        // En el celular no se abre el teclado solo: taparía las opciones
+        if (window.matchMedia && window.matchMedia('(pointer: fine)').matches) setTimeout(() => { const i = document.getElementById('asistenteInput'); if (i) i.focus(); }, 120);
+      } catch (e) { /* nada */ }
+    }
+
+    function cerrarAsistente() {
+      const p = document.getElementById('asistentePanel');
+      if (p) { p.classList.remove('abierto'); p.setAttribute('aria-hidden', 'true'); }
+      asistenteAbierto = false;
+      const f = document.getElementById('btnAsistente');
+      if (f) f.setAttribute('aria-expanded', 'false');
+    }
+
+    function alternarAsistente() { if (asistenteAbierto) cerrarAsistente(); else abrirAsistente(); }
+
+    function cerrarSaludoAsistente() {
+      clearTimeout(asistenteTimerOcultar);
+      const s = document.getElementById('asistenteSaludo');
+      if (s) s.classList.remove('visible');
+    }
+
+    // Un saludo discreto, una sola vez al día
+    function asistenteProgramarSaludo() {
+      clearTimeout(asistenteTimerSaludo);
+      try {
+        const hoy = new Date().toISOString().slice(0, 10);
+        let ultimo = '';
+        try { ultimo = localStorage.getItem('asistente_saludo') || ''; } catch (e) { /* nada */ }
+        if (ultimo === hoy) return;
+        asistenteIniciarConfig();
+        asistenteTimerSaludo = setTimeout(() => {
+          if (asistenteAbierto || !currentUser) return;
+          const s = document.getElementById('asistenteSaludo'), t = document.getElementById('asistenteSaludoTxt');
+          if (!s) return;
+          const cfg = asistenteConfigActual();
+          if (t) t.textContent = esProveedorSesion() ? cfg.saludoProveedor : cfg.saludoCliente;
+          s.classList.add('visible');
+          try { localStorage.setItem('asistente_saludo', hoy); } catch (e) { /* nada */ }
+          asistenteTimerOcultar = setTimeout(cerrarSaludoAsistente, 9000);
+        }, 2500);
+      } catch (e) { console.warn(e); }
+    }
+
+    // Al cerrar sesión se borra la conversación para la siguiente persona
+    function asistenteAlSalir() {
+      clearTimeout(asistenteTimerSaludo);
+      cerrarSaludoAsistente();
+      cerrarAsistente();
+      asistenteLimpiar();
+      asistenteDetenerConfig();
+    }
+
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && asistenteAbierto) cerrarAsistente(); });
+
 
     async function probarTelegram() {
       alert("Enviando mensaje de prueba a tu Telegram...");
@@ -4401,6 +5119,7 @@
         document.getElementById('navGuest').classList.add('hidden');
         document.getElementById('navUser').classList.remove('hidden');
         if (btnSoporte) btnSoporte.classList.remove('hidden');
+        try { asistenteProgramarSaludo(); } catch (e) { console.warn(e); }
         if (btnTelegramBot) btnTelegramBot.classList.remove('hidden');
         
         if (navSaldo) {
@@ -4421,6 +5140,7 @@
         iniciarLatidoConexion(user);
         iniciarMisAlquileres();
         iniciarRecargaAuto();
+        iniciarMisReportes();
 
         const userEmail = (user.email || '').trim().toLowerCase();
         const esAdmin = ADMIN_EMAILS.some(e => e.trim().toLowerCase() === userEmail);
@@ -4433,6 +5153,7 @@
           iniciarNetflixAdmin();
           iniciarPagosRecibidosAdmin();
           iniciarLotesProveedoresAdmin();
+          iniciarPagosProveedoresAdmin();
           iniciarTicketsStaff();
           recalcularProductoHotAdminSiVence();
         } else {
@@ -4442,6 +5163,7 @@
           detenerNetflixAdmin();
           detenerPagosRecibidosAdmin();
           detenerLotesProveedoresAdmin();
+          detenerPagosProveedoresAdmin();
           detenerTicketsStaff();
         }
 
@@ -4456,6 +5178,8 @@
             userProductosBloqueados = dataU.productos_bloqueados || [];
             userPermisosSubirStock = dataU.permisos_subir_stock || [];
             perfilNombreActual = dataU.nombre || '';
+            perfilPagoNequi = dataU.pagoNequi || '';
+            perfilPagoDaviplata = dataU.pagoDaviplata || '';
             aplicarRol(dataU.rol || 'cliente', user, false);
             if (rolActual === 'proveedor') renderizarProveedor();
             
@@ -4505,6 +5229,7 @@
         document.getElementById('navGuest').classList.remove('hidden');
         document.getElementById('navUser').classList.add('hidden');
         if (btnSoporte) btnSoporte.classList.add('hidden');
+        try { asistenteAlSalir(); } catch (e) { console.warn(e); }
         if (btnTelegramBot) btnTelegramBot.classList.add('hidden');
         if (navSaldo) {
           navSaldo.classList.add('hidden');
@@ -4524,8 +5249,10 @@
         document.body.classList.remove('modo-moderador', 'modo-proveedor');
         detenerProveedor();
         detenerLotesProveedoresAdmin();
+        detenerPagosProveedoresAdmin();
         detenerTicketsStaff();
         detenerTicketsProveedor();
+        detenerMisReportes();
         bloquearAccesoVisitante();
       }
     });
@@ -5480,7 +6207,7 @@
     function cambiarTabAdmin(tab) {
       if (modoPruebaCliente) return;
       iniciarBadgesAdmin();
-      const tabs = ['productos', 'reporte', 'categorias', 'usuarios', 'stock', 'apariencia', 'pagos', 'recargas', 'historial', 'netflix', 'ajustes', 'proveedores'];
+      const tabs = ['productos', 'reporte', 'categorias', 'usuarios', 'stock', 'apariencia', 'pagos', 'recargas', 'historial', 'netflix', 'ajustes', 'proveedores', 'asistente'];
       // El moderador no entra a la configuración general ni a los pagos a proveedores
       if (esModeradorSesion() && RESTRINGIDAS_MODERADOR.includes(tab)) tab = 'productos';
       tabs.forEach(t => {
@@ -5508,6 +6235,7 @@
       if (tab === 'netflix') renderizarNetflixAdmin();
       if (tab === 'ajustes') cargarDatosAjustesEnForm();
       if (tab === 'proveedores') renderizarAdminProveedores();
+      if (tab === 'asistente') cargarEditorAsistente();
     }
 
     async function iniciarSincronizacionTotal() {
@@ -7906,7 +8634,7 @@
     let rolActual = 'cliente';
     let perfilNombreActual = '';
     let escuchasModeradorActivas = false;
-    const RESTRINGIDAS_MODERADOR = ['categorias', 'apariencia', 'pagos', 'ajustes', 'proveedores'];
+    const RESTRINGIDAS_MODERADOR = ['categorias', 'apariencia', 'pagos', 'ajustes', 'proveedores', 'asistente'];
 
     function esModeradorSesion() { return rolActual === 'moderador' && !esAdminSesionActual(); }
     function esProveedorSesion() { return rolActual === 'proveedor' && !esAdminSesionActual(); }
@@ -7961,6 +8689,7 @@
       if (unsubProveedor || !currentUser) return;
       try {
         iniciarTicketsProveedor();
+        iniciarPagosProveedor();
         unsubProveedor = db.collection('stock_pendiente').where('proveedorUid', '==', currentUser.uid).onSnapshot(snap => {
           proveedorLotes = [];
           snap.forEach(d => proveedorLotes.push(Object.assign({ id: d.id }, d.data())));
@@ -7975,6 +8704,7 @@
       unsubProveedor = null;
       proveedorLotes = [];
       detenerTicketsProveedor();
+      detenerPagosProveedor();
     }
 
     function parsearCuentasProveedor(texto) {
@@ -8014,6 +8744,7 @@
       set('provAprobadas', String(suma(aprobados, l => l.cantidad)));
       set('provPagado', formatoCOP(pagado));
       set('provNombre', perfilNombreActual || (currentUser ? currentUser.email : ''));
+      renderizarMetodosPagoProveedor();
       set('provCorreo', currentUser ? currentUser.email : '');
 
       const sel = document.getElementById('provProducto');
@@ -8143,7 +8874,7 @@
             <div class="shrink-0 text-right"><p class="text-[10px] text-gray-400">Se le debe</p><p class="text-base font-black ${g.debe ? 'text-emerald-300' : 'text-gray-500'}">${formatoCOP(g.debe)}</p></div>
           </summary>
           <div class="px-4 pb-4 space-y-2">
-            ${g.debe > 0 ? `<button onclick="saldarProveedor('${escaparJsAttr(g.uid)}')" class="w-full py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-bold text-xs"><i class="fa-solid fa-circle-check mr-1"></i> Marcar saldado (${formatoCOP(g.debe)})</button>` : ''}
+            ${g.debe > 0 ? `<button onclick="abrirPagarProveedor('${escaparJsAttr(g.uid)}')" class="w-full py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-bold text-xs"><i class="fa-solid fa-money-check-dollar mr-1"></i> Pagar y adjuntar comprobante (${formatoCOP(g.debe)})</button>` : ''}
             ${g.lotes.map(l => `<div class="text-[11px] flex items-center justify-between gap-2 p-2 rounded-lg bg-gray-800/50"><span class="text-gray-300 truncate">${new Date(l.creadoEl).toLocaleDateString('es-CO', { day: '2-digit', month: '2-digit' })} · ${escaparHtml(l.productoNombre || l.productoId)} · ${l.cantidad}</span><span class="shrink-0 font-bold ${l.estado === 'aprobado' ? (l.pagado ? 'text-sky-300' : 'text-amber-300') : (l.estado === 'rechazado' ? 'text-red-300' : 'text-gray-400')}">${l.estado === 'aprobado' ? formatoCOP(l.monto || 0) + (l.pagado ? ' · pagado' : ' · por pagar') : (l.estado === 'rechazado' ? 'rechazado' : 'en revisión')}</span></div>`).join('')}
           </div>
         </details>`).join('');
@@ -8258,22 +8989,227 @@
       } catch (err) { alert('No se pudo rechazar: ' + err.message); }
     }
 
-    // El dinero se paga por fuera; aquí solo queda registrado que ya se saldó
-    async function saldarProveedor(uid) {
+    // ==================== PAGOS A PROVEEDORES CON COMPROBANTE (48 HORAS) ====================
+    const HORAS_COMPROBANTE = 48;
+    let perfilPagoNequi = '', perfilPagoDaviplata = '';
+    let unsubPagosProv = null, pagosProveedoresLista = [];
+    let unsubPagosProvAdmin = null, pagosAdminLista = [];
+    let pagoEnCurso = null;
+    const comprobantesLimpiados = {};
+
+    function comprobanteVigente(p) { return !!p && p.comprobante === true && Number(p.comprobanteExpiraMs) > Date.now(); }
+
+    function textoVenceComprobante(p) {
+      const h = Math.max(0, Math.ceil((Number(p.comprobanteExpiraMs) - Date.now()) / 3600000));
+      return h <= 1 ? 'vence en menos de 1 hora' : `vence en ${h} horas`;
+    }
+
+    async function verComprobantePago(id) {
+      try {
+        const d = await db.collection('comprobantes_pago').doc(id).get();
+        const x = d.exists ? (d.data() || {}) : null;
+        if (!x || !x.foto || Number(x.expiraMs) <= Date.now()) { alert('Este comprobante ya venció. Se guarda 48 horas y luego se borra.'); return; }
+        abrirFotoReporte(x.foto, 'Comprobante de pago');
+      } catch (err) {
+        alert('No se pudo abrir el comprobante: ' + err.message);
+      }
+    }
+
+    // ----- lo que hace el proveedor -----
+    function renderizarMetodosPagoProveedor() {
+      const nq = document.getElementById('provNequi'), dv = document.getElementById('provDaviplata');
+      if (nq && document.activeElement !== nq) nq.value = perfilPagoNequi;
+      if (dv && document.activeElement !== dv) dv.value = perfilPagoDaviplata;
+      const aviso = document.getElementById('provAvisoPago');
+      if (aviso) aviso.classList.toggle('hidden', !!(perfilPagoNequi || perfilPagoDaviplata));
+    }
+
+    async function guardarMetodosPagoProveedor(e) {
+      e.preventDefault();
+      if (!currentUser || !esProveedorSesion()) return;
+      const nequi = String((document.getElementById('provNequi') || {}).value || '').replace(/[^0-9]/g, '');
+      const davi = String((document.getElementById('provDaviplata') || {}).value || '').trim();
+      if (nequi && !/^3\d{9}$/.test(nequi)) { alert('El Nequi debe ser un celular de 10 números que empiece por 3.'); return; }
+      if (davi && !/^[A-Za-z0-9@._-]{6,30}$/.test(davi)) { alert('La llave de DaviPlata debe tener entre 6 y 30 letras o números, sin espacios.'); return; }
+      if (!nequi && !davi) { alert('Escribe tu Nequi o tu DaviPlata.'); return; }
+      const btn = document.getElementById('btnGuardarMetodosProv');
+      if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>'; }
+      try {
+        await db.collection('usuarios').doc(currentUser.uid).set({ pagoNequi: nequi, pagoDaviplata: davi, pagoActualizadoEl: new Date().toISOString() }, { merge: true });
+        perfilPagoNequi = nequi; perfilPagoDaviplata = davi;
+        renderizarMetodosPagoProveedor();
+        mostrarToast('Listo: guardamos tus datos de pago.');
+      } catch (err) {
+        alert('No se pudieron guardar: ' + err.message);
+      } finally {
+        if (btn) { btn.disabled = false; btn.innerHTML = 'Guardar mis datos de pago'; }
+      }
+    }
+
+    function iniciarPagosProveedor() {
+      if (unsubPagosProv || !currentUser) return;
+      try {
+        unsubPagosProv = db.collection('pagos_proveedores').where('proveedorUid', '==', currentUser.uid).onSnapshot(snap => {
+          pagosProveedoresLista = [];
+          snap.forEach(d => pagosProveedoresLista.push(Object.assign({ id: d.id }, d.data())));
+          pagosProveedoresLista.sort((a, b) => String(b.fecha).localeCompare(String(a.fecha)));
+          renderizarPagosProveedor();
+        }, err => console.warn('Mis pagos no disponibles:', err));
+      } catch (e) { console.warn(e); }
+    }
+
+    function detenerPagosProveedor() {
+      try { if (unsubPagosProv) unsubPagosProv(); } catch (e) { /* nada */ }
+      unsubPagosProv = null;
+      pagosProveedoresLista = [];
+    }
+
+    function etiquetaMedioPago(m) { return m === 'nequi' ? 'Nequi' : (m === 'daviplata' ? 'DaviPlata' : (m ? 'Otro' : '')); }
+
+    function botonComprobante(p) {
+      if (comprobanteVigente(p)) return `<button onclick="verComprobantePago('${escaparJsAttr(p.id)}')" class="px-2.5 py-1 rounded-lg text-[10px] font-bold bg-sky-500/15 hover:bg-sky-500/25 text-sky-300 border border-sky-500/30"><i class="fa-solid fa-image mr-1"></i>Ver comprobante · ${textoVenceComprobante(p)}</button>`;
+      if (p.comprobante === true) return '<span class="text-[10px] text-gray-500">Comprobante vencido (borrado)</span>';
+      return '<span class="text-[10px] text-gray-500">Sin comprobante</span>';
+    }
+
+    function renderizarPagosProveedor() {
+      const caja = document.getElementById('provPagosCaja'), cont = document.getElementById('provPagos');
+      if (!caja || !cont) return;
+      caja.classList.toggle('hidden', !pagosProveedoresLista.length);
+      cont.innerHTML = pagosProveedoresLista.slice(0, 10).map(p => {
+        const fecha = new Date(p.fecha).toLocaleDateString('es-CO', { day: '2-digit', month: '2-digit', year: 'numeric' });
+        return `<div class="p-3 rounded-xl bg-gray-800/50 border border-gray-700/60">
+          <div class="flex items-center justify-between gap-2"><p class="text-sm font-black text-white">${formatoCOP(p.monto || 0)}</p><p class="text-[10px] text-gray-400">${fecha}${p.medio ? ' · ' + etiquetaMedioPago(p.medio) : ''}</p></div>
+          <div class="mt-1.5">${botonComprobante(p)}</div>
+        </div>`;
+      }).join('');
+    }
+
+    // ----- lo que hace el administrador -----
+    function iniciarPagosProveedoresAdmin() {
+      if (unsubPagosProvAdmin) return;
+      try {
+        unsubPagosProvAdmin = db.collection('pagos_proveedores').onSnapshot(snap => {
+          pagosAdminLista = [];
+          snap.forEach(d => pagosAdminLista.push(Object.assign({ id: d.id }, d.data())));
+          pagosAdminLista.sort((a, b) => String(b.fecha).localeCompare(String(a.fecha)));
+          renderizarPagosProveedoresAdmin();
+        }, err => console.warn('Pagos a proveedores no disponibles:', err));
+      } catch (e) { console.warn(e); }
+    }
+
+    function detenerPagosProveedoresAdmin() {
+      try { if (unsubPagosProvAdmin) unsubPagosProvAdmin(); } catch (e) { /* nada */ }
+      unsubPagosProvAdmin = null;
+      pagosAdminLista = [];
+    }
+
+    function renderizarPagosProveedoresAdmin() {
+      const cont = document.getElementById('listaPagosProveedores');
+      if (!cont) return;
+      // Si el servidor se demora en borrar un comprobante vencido, el administrador lo borra al verlo
+      pagosAdminLista.forEach(p => {
+        if (p.comprobante === true && Number(p.comprobanteExpiraMs) <= Date.now() && !comprobantesLimpiados[p.id]) {
+          comprobantesLimpiados[p.id] = true;
+          db.collection('comprobantes_pago').doc(p.id).delete().catch(() => {});
+        }
+      });
+      if (!pagosAdminLista.length) { cont.innerHTML = '<p class="px-4 py-6 text-center text-gray-500 text-sm">Aún no hay pagos registrados.</p>'; return; }
+      cont.innerHTML = pagosAdminLista.slice(0, 15).map(p => {
+        const fecha = new Date(p.fecha).toLocaleString('es-CO', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+        return `<div class="px-4 py-3 flex items-center justify-between gap-3">
+          <div class="min-w-0"><p class="text-xs font-bold text-white truncate">${escaparHtml(p.proveedorNombre || '')}</p><p class="text-[10px] text-gray-400">${fecha}${p.medio ? ' · ' + etiquetaMedioPago(p.medio) : ''} · ${p.cantidadLotes || 0} ${(p.cantidadLotes || 0) === 1 ? 'lote' : 'lotes'}</p></div>
+          <div class="shrink-0 text-right space-y-1"><p class="text-sm font-black text-emerald-300">${formatoCOP(p.monto || 0)}</p>${botonComprobante(p)}</div>
+        </div>`;
+      }).join('');
+    }
+
+    function lineaMetodoPago(etiqueta, valor) {
+      return valor
+        ? `<div class="flex items-center gap-2 p-2.5 rounded-xl bg-gray-800/70 border border-gray-700"><span class="w-16 shrink-0 text-[10px] font-bold text-gray-400">${etiqueta}</span><span class="min-w-0 flex-grow font-mono text-sm text-white break-all select-all">${escaparHtml(valor)}</span><button type="button" data-copiar="${escaparHtml(valor)}" onclick="copiarCampoEntrega(this)" aria-label="Copiar" class="shrink-0 w-8 h-8 rounded-lg bg-gray-900 hover:bg-gray-700 border border-gray-700 text-gray-300 flex items-center justify-center"><i class="fa-solid fa-copy text-xs"></i></button></div>`
+        : `<div class="flex items-center gap-2 p-2.5 rounded-xl bg-gray-800/40 border border-gray-800"><span class="w-16 shrink-0 text-[10px] font-bold text-gray-500">${etiqueta}</span><span class="text-[11px] text-gray-500">No lo ha registrado</span></div>`;
+    }
+
+    async function abrirPagarProveedor(uid) {
       if (!esAdminSesionActual()) return;
       const lotes = lotesProveedores.filter(l => l.proveedorUid === uid && l.estado === 'aprobado' && !l.pagado);
-      if (!lotes.length) return;
+      if (!lotes.length) { alert('Este proveedor no tiene nada pendiente de pago.'); return; }
       const total = lotes.reduce((t, l) => t + (Number(l.monto) || 0), 0);
+      const cuentas = lotes.reduce((t, l) => t + (Number(l.cantidad) || 0), 0);
       const nombre = lotes[0].proveedorNombre || lotes[0].proveedorEmail || 'el proveedor';
-      if (!await confirmarModal(`¿Marcar como SALDADO ${formatoCOP(total)} a ${nombre}?\n\nEl pago lo haces tú por aparte; aquí solo queda registrado.`, { textoAceptar: 'Sí, ya le pagué' })) return;
+      pagoEnCurso = { uid: uid, nombre: nombre, total: total, ids: lotes.map(l => l.id) };
+      document.getElementById('pagarNombre').textContent = nombre;
+      document.getElementById('pagarMonto').textContent = formatoCOP(total);
+      document.getElementById('pagarDetalle').textContent = `${lotes.length} ${lotes.length === 1 ? 'lote' : 'lotes'} · ${cuentas} ${cuentas === 1 ? 'cuenta' : 'cuentas'}`;
+      document.getElementById('pagarMetodos').innerHTML = '<p class="text-[11px] text-gray-500">Cargando sus datos de pago...</p>';
+      document.getElementById('pagarFoto').value = '';
+      const pv = document.getElementById('pagarPreview'); pv.src = ''; pv.classList.add('hidden');
+      document.getElementById('pagarFotoTexto').textContent = 'Toca para adjuntar el comprobante';
+      const m = document.getElementById('modalPagarProveedor');
+      m.classList.remove('hidden'); m.style.display = 'flex';
       try {
+        const d = await db.collection('usuarios').doc(uid).get();
+        const u = d.exists ? (d.data() || {}) : {};
+        let aviso = '';
+        const cambio = u.pagoActualizadoEl ? Date.parse(u.pagoActualizadoEl) : 0;
+        if (cambio && Date.now() - cambio < 24 * 3600000) {
+          aviso = '<p class="text-[11px] font-bold text-red-300 bg-red-500/10 border border-red-500/30 rounded-lg px-2.5 py-1.5"><i class="fa-solid fa-triangle-exclamation mr-1"></i>Cambió sus datos de pago hace menos de 24 horas. Confírmalo con el proveedor antes de pagar.</p>';
+        }
+        if (pagoEnCurso && pagoEnCurso.uid === uid) {
+          document.getElementById('pagarMetodos').innerHTML = lineaMetodoPago('Nequi', u.pagoNequi) + lineaMetodoPago('DaviPlata', u.pagoDaviplata) + aviso;
+          document.getElementById('pagarMedio').value = u.pagoNequi ? 'nequi' : (u.pagoDaviplata ? 'daviplata' : 'otro');
+        }
+      } catch (err) {
+        document.getElementById('pagarMetodos').innerHTML = '<p class="text-[11px] text-red-300">No se pudieron cargar sus datos de pago.</p>';
+      }
+    }
+
+    function cerrarPagarProveedor() {
+      const m = document.getElementById('modalPagarProveedor');
+      if (m) { m.classList.add('hidden'); m.style.display = 'none'; }
+      pagoEnCurso = null;
+    }
+
+    function previsualizarComprobante() {
+      const f = (document.getElementById('pagarFoto').files || [])[0];
+      const pv = document.getElementById('pagarPreview');
+      if (!f) { pv.classList.add('hidden'); return; }
+      if (pv.dataset.url) { try { URL.revokeObjectURL(pv.dataset.url); } catch (e) { /* nada */ } }
+      const u = URL.createObjectURL(f);
+      pv.dataset.url = u; pv.src = u; pv.classList.remove('hidden');
+      document.getElementById('pagarFotoTexto').textContent = 'Comprobante listo · toca para cambiarlo';
+    }
+
+    async function confirmarPagoProveedor() {
+      if (!esAdminSesionActual() || !pagoEnCurso) return;
+      const pc = pagoEnCurso;
+      const lotes = lotesProveedores.filter(l => pc.ids.includes(l.id));
+      if (lotes.length !== pc.ids.length || lotes.some(l => l.pagado || l.estado !== 'aprobado')) { alert('Estos lotes cambiaron mientras tenías la ventana abierta. Ciérrala y ábrela de nuevo.'); return; }
+      const archivo = (document.getElementById('pagarFoto').files || [])[0];
+      if (!archivo && !await confirmarModal('No adjuntaste el comprobante. ¿Registrar el pago sin comprobante?', { textoAceptar: 'Sí, sin comprobante' })) return;
+      const btn = document.getElementById('btnConfirmarPago');
+      if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Guardando...'; }
+      try {
+        const foto = archivo ? await prepararFotoReporte(archivo) : '';
         const ahora = new Date().toISOString();
+        const expira = Date.now() + HORAS_COMPROBANTE * 3600000;
+        const pagoRef = db.collection('pagos_proveedores').doc();
         const lote = db.batch();
         lotes.forEach(l => lote.update(db.collection('stock_pendiente').doc(l.id), { pagado: true, pagadoEl: ahora, pagadoPor: currentUser.email }));
-        lote.set(db.collection('pagos_proveedores').doc(), { proveedorUid: uid, proveedorNombre: nombre, monto: total, lotes: lotes.map(l => l.id), cantidadLotes: lotes.length, fecha: ahora, por: currentUser.email });
+        lote.set(pagoRef, {
+          proveedorUid: pc.uid, proveedorNombre: pc.nombre, monto: pc.total, lotes: pc.ids, cantidadLotes: pc.ids.length,
+          fecha: ahora, por: currentUser.email, medio: document.getElementById('pagarMedio').value || 'otro',
+          comprobante: !!foto, comprobanteExpiraMs: foto ? expira : 0
+        });
+        if (foto) lote.set(db.collection('comprobantes_pago').doc(pagoRef.id), { proveedorUid: pc.uid, pagoId: pagoRef.id, foto: foto, creadoEl: ahora, expiraMs: expira });
         await lote.commit();
-        mostrarToast(`Saldado: ${formatoCOP(total)} a ${nombre}.`);
-      } catch (err) { alert('No se pudo registrar el pago: ' + err.message); }
+        cerrarPagarProveedor();
+        mostrarToast(`Pago registrado: ${formatoCOP(pc.total)} a ${pc.nombre}.${foto ? ' El comprobante se ve 48 horas.' : ''}`);
+      } catch (err) {
+        alert('No se pudo registrar el pago: ' + err.message);
+      } finally {
+        if (btn) { btn.disabled = false; btn.innerHTML = 'Confirmar: ya le pagué'; }
+      }
     }
 
     // ==================== WHATSAPP A CLIENTES CON CUENTA POR VENCER ====================
@@ -8316,6 +9252,179 @@
     function botonWhatsappFila(a) {
       if (!puedeEscribirWhatsappNf(a)) return '';
       return `<button onclick="event.stopPropagation();escribirWhatsappNf('${escaparHtml(a.id)}')" title="Escribir por WhatsApp" class="shrink-0 w-7 h-7 rounded-lg bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 border border-emerald-500/30 flex items-center justify-center"><i class="fa-brands fa-whatsapp"></i></button>`;
+    }
+
+    // ==================== REPORTE DEL CLIENTE CON FOTO ====================
+    function comprimirImagenAJpeg(archivo, maxLado, calidad) {
+      return new Promise((resolve, reject) => {
+        if (!archivo || !/^image\//.test(archivo.type || '')) { reject(new Error('El archivo debe ser una imagen.')); return; }
+        const url = URL.createObjectURL(archivo);
+        const img = new Image();
+        img.onload = () => {
+          try {
+            const esc = Math.min(1, maxLado / Math.max(img.naturalWidth, img.naturalHeight));
+            const ancho = Math.max(1, Math.round(img.naturalWidth * esc)), alto = Math.max(1, Math.round(img.naturalHeight * esc));
+            const cv = document.createElement('canvas');
+            cv.width = ancho; cv.height = alto;
+            const ctx = cv.getContext('2d');
+            ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, ancho, alto);
+            ctx.drawImage(img, 0, 0, ancho, alto);
+            URL.revokeObjectURL(url);
+            resolve(cv.toDataURL('image/jpeg', calidad));
+          } catch (e) { URL.revokeObjectURL(url); reject(e); }
+        };
+        img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('No se pudo leer la imagen. Prueba con otra.')); };
+        img.src = url;
+      });
+    }
+
+    // Reduce la foto hasta que pese poco (la base de datos tiene un límite por documento)
+    async function prepararFotoReporte(archivo) {
+      const intentos = [[1100, 0.6], [900, 0.5], [700, 0.45], [520, 0.4]];
+      for (const par of intentos) {
+        const d = await comprimirImagenAJpeg(archivo, par[0], par[1]);
+        if (d.length <= 650000) return d;
+      }
+      throw new Error('La imagen es demasiado pesada. Prueba con una captura de pantalla.');
+    }
+
+    function abrirFotoReporte(url, titulo) {
+      document.getElementById('imgZoomQr').src = url;
+      document.getElementById('txtZoomQrTitulo').innerText = titulo || 'Foto del error';
+      const modal = document.getElementById('modalZoomQr');
+      modal.classList.remove('hidden');
+      modal.style.display = 'flex';
+    }
+
+    const fotosTicketsCache = {};
+    async function verFotoTicket(id) {
+      try {
+        if (!fotosTicketsCache[id]) {
+          const d = await db.collection('tickets_fotos').doc(id).get();
+          if (!d.exists || !(d.data() || {}).foto) { alert('Este reporte no tiene foto.'); return; }
+          fotosTicketsCache[id] = d.data().foto;
+        }
+        abrirFotoReporte(fotosTicketsCache[id]);
+      } catch (err) {
+        alert('No se pudo abrir la foto: ' + err.message);
+      }
+    }
+
+    let misReportes = [];
+    let unsubMisReportes = null;
+    let reporteActual = null;
+
+    function iniciarMisReportes() {
+      if (unsubMisReportes || !currentUser) return;
+      try {
+        unsubMisReportes = db.collection('tickets_cuentas').where('clienteUid', '==', currentUser.uid).onSnapshot(snap => {
+          misReportes = [];
+          snap.forEach(d => misReportes.push(Object.assign({ id: d.id }, d.data())));
+          misReportes.sort((a, b) => String(b.creadoEl).localeCompare(String(a.creadoEl)));
+          renderizarMisReportes();
+          pintarBotonesReporte();
+        }, err => console.warn('Mis reportes no disponibles:', err));
+      } catch (e) { console.warn(e); }
+    }
+
+    function detenerMisReportes() {
+      try { if (unsubMisReportes) unsubMisReportes(); } catch (e) { /* nada */ }
+      unsubMisReportes = null;
+      misReportes = [];
+    }
+
+    function renderizarMisReportes() {
+      const caja = document.getElementById('misReportesCaja'), cont = document.getElementById('misReportes');
+      if (!caja || !cont) return;
+      caja.classList.toggle('hidden', !misReportes.length);
+      const abiertos = misReportes.filter(t => t.estado !== 'resuelto').length;
+      const b = document.getElementById('misReportesAbiertos');
+      if (b) { b.textContent = abiertos; b.classList.toggle('hidden', !abiertos); }
+      cont.innerHTML = misReportes.slice(0, 6).map(t => {
+        const resuelto = t.estado === 'resuelto';
+        const fecha = new Date(t.creadoEl).toLocaleDateString('es-CO', { day: '2-digit', month: '2-digit', year: 'numeric' });
+        return `<div class="p-2.5 rounded-xl bg-gray-800/50 border border-gray-700/60">
+          <div class="flex items-center justify-between gap-2"><p class="text-[11px] font-bold text-white break-all">${escaparHtml(t.cuenta || '')}</p><span class="shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-full border ${resuelto ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30' : 'bg-amber-500/15 text-amber-300 border-amber-500/30'}">${resuelto ? 'Resuelto' : 'En revisión'}</span></div>
+          <p class="text-[10px] text-gray-400">${escaparHtml(t.motivo || '')} · ${fecha}</p>
+          ${resuelto && t.resolucion ? `<p class="text-[11px] text-emerald-300 mt-0.5"><i class="fa-solid fa-circle-check mr-1"></i>${escaparHtml(t.resolucion)}</p>` : ''}
+        </div>`;
+      }).join('');
+    }
+
+    function emailDeLineaCuenta(l) {
+      const t = String(l || '').trim();
+      if (!t) return '';
+      return String(t.includes(':') ? t.split(':')[0] : t.split(/\s+/)[0]).trim().toLowerCase();
+    }
+
+    // Cada línea de cuenta comprada lleva su botón "Reportar" (o la marca de que ya está reportada)
+    function pintarBotonesReporte() {
+      document.querySelectorAll('[data-reporte-slot]').forEach(slot => {
+        const cuenta = slot.getAttribute('data-cuenta');
+        const abierto = misReportes.find(t => t.cuenta === cuenta && t.estado !== 'resuelto');
+        if (abierto) {
+          slot.innerHTML = '<span class="shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-full border bg-amber-500/15 text-amber-300 border-amber-500/30">Reportada</span>';
+        } else {
+          slot.innerHTML = `<button type="button" onclick="abrirReporteCuenta(${slot.getAttribute('data-idx')}, ${slot.getAttribute('data-j')})" class="shrink-0 px-2 py-1 rounded-lg text-[10px] font-bold bg-gray-900 hover:bg-gray-700 text-amber-300 border border-gray-700"><i class="fa-solid fa-flag mr-1"></i>Reportar</button>`;
+        }
+      });
+    }
+
+    function abrirReporteCuenta(idxCompra, idxLinea) {
+      const c = misComprasPerfilCache[idxCompra];
+      if (!c || c.simulada || modoPruebaCliente) return;
+      const lineas = String(c.credenciales || '').split('\n').map(l => l.trim()).filter(Boolean);
+      const cuenta = emailDeLineaCuenta(lineas[idxLinea]);
+      if (!cuenta) return;
+      reporteActual = { compraId: c.id, cuenta: cuenta, producto: c.productoNombre || '' };
+      document.getElementById('rpProducto').textContent = c.productoNombre || 'Producto';
+      document.getElementById('rpCuenta').textContent = cuenta;
+      document.getElementById('rpDetalle').value = '';
+      document.getElementById('rpMotivo').selectedIndex = 0;
+      document.getElementById('rpFoto').value = '';
+      const pv = document.getElementById('rpPreview'); pv.src = ''; pv.classList.add('hidden');
+      document.getElementById('rpFotoTexto').textContent = 'Toca para subir una captura de pantalla';
+      const m = document.getElementById('modalReporteCuenta');
+      m.classList.remove('hidden'); m.style.display = 'flex';
+    }
+
+    function cerrarReporteCuenta() {
+      const m = document.getElementById('modalReporteCuenta');
+      if (m) { m.classList.add('hidden'); m.style.display = 'none'; }
+      reporteActual = null;
+    }
+
+    function previsualizarFotoReporte() {
+      const f = (document.getElementById('rpFoto').files || [])[0];
+      const pv = document.getElementById('rpPreview');
+      if (!f) { pv.classList.add('hidden'); return; }
+      if (pv.dataset.url) { try { URL.revokeObjectURL(pv.dataset.url); } catch (e) { /* nada */ } }
+      const u = URL.createObjectURL(f);
+      pv.dataset.url = u; pv.src = u; pv.classList.remove('hidden');
+      document.getElementById('rpFotoTexto').textContent = 'Foto lista · toca para cambiarla';
+    }
+
+    async function enviarReporteCuenta() {
+      if (!reporteActual || !currentUser) return;
+      const archivo = (document.getElementById('rpFoto').files || [])[0];
+      if (!archivo) { alert('Sube una foto del error. Sin la foto no podemos revisar tu cuenta.'); return; }
+      const btn = document.getElementById('btnEnviarReporte');
+      if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Enviando...'; }
+      try {
+        const foto = await prepararFotoReporte(archivo);
+        const r = await llamarBackend('ticket_crear', {
+          compraId: reporteActual.compraId, cuenta: reporteActual.cuenta,
+          motivo: document.getElementById('rpMotivo').value,
+          detalle: document.getElementById('rpDetalle').value.trim(), foto: foto
+        });
+        if (!r.ok) { alert(r.error || 'No se pudo enviar el reporte.'); return; }
+        cerrarReporteCuenta();
+        mostrarToast('Reporte enviado. Lo revisaremos y te avisaremos aquí.');
+      } catch (err) {
+        alert(err.message || 'No se pudo enviar el reporte.');
+      } finally {
+        if (btn) { btn.disabled = false; btn.innerHTML = 'Enviar reporte'; }
+      }
     }
 
     // ==================== TICKETS DE CUENTAS REPORTADAS ====================
@@ -8369,12 +9478,29 @@
             <div class="min-w-0">
               <p class="text-xs font-bold text-white break-all"><i class="fa-solid fa-ticket mr-1 ${resuelto ? 'text-gray-500' : 'text-amber-400'}"></i>${escaparHtml(t.cuenta || '')}</p>
               <p class="text-[11px] text-gray-300">${escaparHtml(t.motivo || '')}${t.detalle ? ' · ' + escaparHtml(t.detalle) : ''}</p>
-              <p class="text-[10px] text-gray-400">${escaparHtml(t.productoNombre || 'Producto no identificado')} · ${asignado} · ${fecha}${t.clienteEmail ? ' · cliente ' + escaparHtml(t.clienteEmail) : ''}</p>
+              <p class="text-[10px] text-gray-400">${t.origen === 'cliente' ? '<span class="px-1.5 py-0.5 rounded bg-sky-500/20 text-sky-300 text-[9px] font-black mr-1">CLIENTE</span>' : ''}${escaparHtml(t.productoNombre || 'Producto no identificado')} · ${asignado} · ${fecha}${t.clienteEmail ? ' · cliente ' + escaparHtml(t.clienteEmail) : ''}</p>
+              ${textoGarantiaTicket(t)}
               ${resuelto ? `<p class="text-[10px] text-emerald-300 mt-0.5"><i class="fa-solid fa-circle-check mr-1"></i>Resuelto${t.resolucion ? ': ' + escaparHtml(t.resolucion) : ''}</p>` : ''}
             </div>
-            <button onclick="${resuelto ? 'reabrirTicket' : 'resolverTicket'}('${escaparJsAttr(t.id)}')" class="shrink-0 px-2.5 py-1.5 rounded-lg text-[11px] font-bold ${resuelto ? 'bg-gray-800 hover:bg-gray-700 text-gray-300 border border-gray-700' : 'bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 border border-emerald-500/30'}">${resuelto ? 'Reabrir' : 'Resolver'}</button>
+            <div class="shrink-0 flex flex-col gap-1.5">
+              ${t.tieneFoto ? `<button onclick="verFotoTicket('${escaparJsAttr(t.id)}')" class="px-2.5 py-1.5 rounded-lg text-[11px] font-bold bg-sky-500/15 hover:bg-sky-500/25 text-sky-300 border border-sky-500/30"><i class="fa-solid fa-image mr-1"></i>Ver foto</button>` : ''}
+              <button onclick="${resuelto ? 'reabrirTicket' : 'resolverTicket'}('${escaparJsAttr(t.id)}')" class="px-2.5 py-1.5 rounded-lg text-[11px] font-bold ${resuelto ? 'bg-gray-800 hover:bg-gray-700 text-gray-300 border border-gray-700' : 'bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 border border-emerald-500/30'}">${resuelto ? 'Reabrir' : 'Resolver'}</button>
+            </div>
           </div>`;
       }).join('');
+    }
+
+    // ¿La compra todavía tenía garantía cuando el cliente reportó la cuenta?
+    function textoGarantiaTicket(t) {
+      try {
+        if (!t.garantia || !t.fechaCompra) return '';
+        const g = estadoGarantiaCompra({ tipoGarantia: t.garantia, fecha: t.fechaCompra, productoId: t.productoId });
+        if (g.estado === 'sin') return '';
+        const compra = new Date(t.fechaCompra).toLocaleDateString('es-CO', { day: '2-digit', month: '2-digit' });
+        const reporte = new Date(t.creadoEl).getTime();
+        const dentro = g.vence && reporte <= g.vence.getTime();
+        return `<p class="text-[10px] mt-0.5 ${dentro ? 'text-emerald-300' : 'text-red-300'}"><i class="fa-solid fa-shield-halved mr-1"></i>Compra del ${compra} · garantía ${g.tipo === '29d' ? '29 días' : '24 horas'}: ${dentro ? 'reportada DENTRO del plazo' : 'reportada FUERA del plazo'}</p>`;
+      } catch (e) { return ''; }
     }
 
     // Busca el lote aprobado donde venía la cuenta (el más reciente si está repetida)
@@ -8391,7 +9517,7 @@
     }
 
     function abrirModalTicket() {
-      ['tkCuenta', 'tkDetalle', 'tkCliente'].forEach(id => { const e = document.getElementById(id); if (e) e.value = ''; });
+      ['tkCuenta', 'tkDetalle', 'tkCliente', 'tkFoto'].forEach(id => { const e = document.getElementById(id); if (e) e.value = ''; });
       const sel = document.getElementById('tkAsignar');
       if (sel) {
         const provs = {};
@@ -8445,8 +9571,13 @@
       const btn = document.getElementById('btnCrearTicket');
       if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>'; }
       try {
-        await db.collection('tickets_cuentas').add({
-          cuenta: cuenta,
+        const archivoFoto = ((document.getElementById('tkFoto') || {}).files || [])[0];
+        const fotoManual = archivoFoto ? await prepararFotoReporte(archivoFoto) : '';
+        const refTicket = db.collection('tickets_cuentas').doc();
+        const loteBatch = db.batch();
+        if (fotoManual) loteBatch.set(db.collection('tickets_fotos').doc(refTicket.id), { foto: fotoManual, clienteUid: '', creadoEl: new Date().toISOString() });
+        loteBatch.set(refTicket, {
+          cuenta: cuenta, tieneFoto: !!fotoManual,
           productoId: lote ? (lote.productoId || '') : '', productoNombre: lote ? (lote.productoNombre || '') : '',
           motivo: String((document.getElementById('tkMotivo') || {}).value || 'Otro'),
           detalle: String((document.getElementById('tkDetalle') || {}).value || '').trim().slice(0, 200),
@@ -8456,6 +9587,7 @@
           loteId: lote ? lote.id : '', costoUnitario: lote ? (Number(lote.costoUnitario) || 0) : 0,
           creadoPor: currentUser.email, creadoEl: new Date().toISOString()
         });
+        await loteBatch.commit();
         cerrarModalTicket();
         mostrarToast(prov.nombre ? `Ticket creado y asignado a ${prov.nombre}.` : 'Ticket creado (sin proveedor).');
       } catch (err) {
@@ -8470,8 +9602,14 @@
       const nota = window.prompt('¿Cómo se resolvió? (por ejemplo: "se reemplazó la cuenta"). Puedes dejarlo vacío:', '');
       if (nota === null) return;
       try {
-        await db.collection('tickets_cuentas').doc(id).update({ estado: 'resuelto', resolucion: String(nota).trim().slice(0, 200), resueltoPor: currentUser.email, resueltoEl: new Date().toISOString() });
-        mostrarToast('Ticket resuelto.');
+        const t = ticketsCuentas.find(x => x.id === id) || {};
+        // Se resuelve y se borra la foto en la misma operación: queda el historial, sin la imagen
+        const lote = db.batch();
+        lote.update(db.collection('tickets_cuentas').doc(id), { estado: 'resuelto', resolucion: String(nota).trim().slice(0, 200), resueltoPor: currentUser.email, resueltoEl: new Date().toISOString(), tieneFoto: false, fotoEliminada: t.tieneFoto === true || t.fotoEliminada === true });
+        lote.delete(db.collection('tickets_fotos').doc(id));
+        await lote.commit();
+        delete fotosTicketsCache[id];
+        mostrarToast('Ticket resuelto. La foto se eliminó y quedó el historial.');
       } catch (err) { alert('No se pudo resolver: ' + err.message); }
     }
 
@@ -8500,6 +9638,8 @@
           <p class="text-[11px] text-gray-300 mt-0.5">${escaparHtml(t.motivo || '')}${t.detalle ? ' · ' + escaparHtml(t.detalle) : ''}</p>
           <p class="text-[10px] text-gray-500">${escaparHtml(t.productoNombre || '')} · ${fecha}</p>
           ${resuelto && t.resolucion ? `<p class="text-[10px] text-emerald-300 mt-0.5">${escaparHtml(t.resolucion)}</p>` : ''}
+          ${resuelto && t.fotoEliminada ? `<p class="text-[10px] text-gray-500 mt-0.5"><i class="fa-solid fa-image mr-1"></i>La foto se eliminó al resolver.</p>` : ''}
+          ${t.tieneFoto ? `<button onclick="verFotoTicket('${escaparJsAttr(t.id)}')" class="mt-1.5 px-2.5 py-1 rounded-lg text-[10px] font-bold bg-sky-500/15 hover:bg-sky-500/25 text-sky-300 border border-sky-500/30"><i class="fa-solid fa-image mr-1"></i>Ver foto del error</button>` : ''}
         </div>`;
       }).join('');
     }
@@ -8520,6 +9660,248 @@
       try { if (unsubProvTickets) unsubProvTickets(); } catch (e) { /* nada */ }
       unsubProvTickets = null;
       proveedorTickets = [];
+    }
+
+
+    // ==================== EDITOR DEL ASISTENTE (Admin → Asistente) ====================
+    let asistenteBorrador = null;
+    let asistenteSucio = false;
+    let asistenteEditorTabActual = 'cliente';
+    let asistenteEditandoId = null;
+
+    function asistenteCopia(o) { return JSON.parse(JSON.stringify(o)); }
+
+    function asistenteEditorMarcar(sucio) {
+      asistenteSucio = sucio;
+      const e = document.getElementById('astEstado');
+      if (e) { e.textContent = sucio ? '● Cambios sin guardar' : '✓ Guardado'; e.className = 'text-[11px] font-bold ' + (sucio ? 'text-amber-400' : 'text-gray-500'); }
+      const g = document.getElementById('btnGuardarAsistente'), d = document.getElementById('btnDescartarAsistente');
+      if (g) g.disabled = !sucio; if (d) d.disabled = !sucio;
+      [g, d].forEach(b => { if (b) b.classList.toggle('opacity-40', !sucio); });
+    }
+
+    function cargarEditorAsistente() {
+      if (!esAdminSesionActual()) return;
+      asistenteIniciarConfig();
+      if (!asistenteSucio || !asistenteBorrador) {
+        asistenteBorrador = asistenteCopia(asistenteConfigActual());
+        asistenteSucio = false;
+      }
+      renderizarEditorAsistente();
+    }
+
+    // Si el administrador no tiene cambios a medias, la pantalla sigue a lo guardado
+    function asistenteEditorAlCambiar() {
+      const sec = document.getElementById('adminSecAsistente');
+      if (!sec || sec.classList.contains('hidden') || asistenteSucio) return;
+      asistenteBorrador = asistenteCopia(asistenteConfigActual());
+      renderizarEditorAsistente();
+    }
+
+    function asistenteEditorTab(t) { asistenteEditorTabActual = t === 'proveedor' ? 'proveedor' : 'cliente'; renderizarEditorAsistente(); }
+
+    function asistenteEditorTemasDeTab() {
+      const aud = asistenteEditorTabActual;
+      return asistenteBorrador.temas.filter(t => t.para === aud || t.para === 'ambos');
+    }
+
+    function renderizarEditorAsistente() {
+      if (!asistenteBorrador) return;
+      [['astTabCliente', 'cliente'], ['astTabProveedor', 'proveedor']].forEach(([id, t]) => {
+        const b = document.getElementById(id);
+        if (b) b.className = 'px-3 py-1.5 rounded-lg border ' + (asistenteEditorTabActual === t ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40' : 'bg-gray-800 text-gray-400 border-gray-700');
+      });
+      const cont = document.getElementById('listaAsistenteTemas');
+      if (!cont) return;
+      const lista = asistenteEditorTemasDeTab();
+      if (!lista.length) cont.innerHTML = '<p class="px-4 py-8 text-center text-gray-500 text-sm">No hay preguntas. Toca "Agregar pregunta".</p>';
+      else cont.innerHTML = lista.map((t, i) => {
+        const prev = String(t.texto).replace(/\*\*/g, '').replace(/\s+/g, ' ');
+        const etiquetas = [
+          t.para === 'ambos' ? '<span class="px-1.5 py-0.5 rounded bg-sky-500/20 text-sky-300 text-[9px] font-black">PARA TODOS</span>' : '',
+          t.menu ? '' : '<span class="px-1.5 py-0.5 rounded bg-gray-700 text-gray-300 text-[9px] font-black">SIN BOTÓN</span>',
+          t.activo ? '' : '<span class="px-1.5 py-0.5 rounded bg-red-500/20 text-red-300 text-[9px] font-black">OCULTA</span>'
+        ].filter(Boolean).join(' ');
+        const id = escaparJsAttr(t.id);
+        return `<div class="px-3 py-3 flex items-start gap-2 ${t.activo ? '' : 'opacity-50'}">
+          <div class="shrink-0 flex flex-col gap-0.5">
+            <button type="button" ${i === 0 ? 'disabled' : ''} onclick="asistenteEditorMover('${id}', -1)" aria-label="Subir" class="w-6 h-6 rounded bg-gray-800 hover:bg-gray-700 text-gray-300 text-[10px] disabled:opacity-30"><i class="fa-solid fa-chevron-up"></i></button>
+            <button type="button" ${i === lista.length - 1 ? 'disabled' : ''} onclick="asistenteEditorMover('${id}', 1)" aria-label="Bajar" class="w-6 h-6 rounded bg-gray-800 hover:bg-gray-700 text-gray-300 text-[10px] disabled:opacity-30"><i class="fa-solid fa-chevron-down"></i></button>
+          </div>
+          <div class="min-w-0 flex-grow">
+            <p class="text-xs font-bold text-white flex flex-wrap items-center gap-1.5"><i class="fa-solid ${escaparHtml(t.icono)} text-emerald-400"></i><span class="break-words">${escaparHtml(t.titulo)}</span> ${etiquetas}</p>
+            <p class="text-[11px] text-gray-400 mt-0.5" style="display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">${escaparHtml(prev)}</p>
+            <p class="text-[10px] text-gray-500 mt-0.5">${t.claves.length} ${t.claves.length === 1 ? 'palabra clave' : 'palabras clave'}</p>
+          </div>
+          <div class="shrink-0 flex flex-col gap-1.5">
+            <button type="button" onclick="asistenteEditorEditar('${id}')" class="px-2.5 py-1.5 rounded-lg text-[11px] font-bold bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 border border-emerald-500/30"><i class="fa-solid fa-pen mr-1"></i>Editar</button>
+            <div class="flex gap-1.5">
+              <button type="button" onclick="asistenteEditorAlternar('${id}')" title="${t.activo ? 'Ocultar' : 'Mostrar'}" aria-label="${t.activo ? 'Ocultar' : 'Mostrar'}" class="flex-1 py-1.5 rounded-lg text-[11px] bg-gray-800 hover:bg-gray-700 text-gray-300 border border-gray-700"><i class="fa-solid ${t.activo ? 'fa-eye' : 'fa-eye-slash'}"></i></button>
+              <button type="button" onclick="asistenteEditorEliminar('${id}')" title="Eliminar" aria-label="Eliminar" class="flex-1 py-1.5 rounded-lg text-[11px] bg-red-500/10 hover:bg-red-500/20 text-red-300 border border-red-500/30"><i class="fa-solid fa-trash"></i></button>
+            </div>
+          </div>
+        </div>`;
+      }).join('');
+
+      const botones = lista.filter(t => t.activo && t.menu).length;
+      const r = document.getElementById('astResumen');
+      if (r) r.textContent = `${asistenteBorrador.temas.length} de ${ASISTENTE_MAX_TEMAS} preguntas en total · ${botones} ${botones === 1 ? 'botón' : 'botones'} en el menú de esta pestaña${botones > 8 ? ' (con más de 8 se vuelve largo)' : ''}. El orden de la lista es el del menú.`;
+
+      const set = (id, v) => { const e = document.getElementById(id); if (e && document.activeElement !== e) e.value = v; };
+      set('astMsgBienvenidaCliente', asistenteBorrador.bienvenidaCliente);
+      set('astMsgBienvenidaProveedor', asistenteBorrador.bienvenidaProveedor);
+      set('astMsgNoEntendi', asistenteBorrador.noEntendi);
+      set('astMsgSaludoCliente', asistenteBorrador.saludoCliente);
+      set('astMsgSaludoProveedor', asistenteBorrador.saludoProveedor);
+      asistenteEditorMarcar(asistenteSucio);
+    }
+
+    function asistenteEditorMensaje() {
+      if (!asistenteBorrador) return;
+      const v = id => String((document.getElementById(id) || {}).value || '');
+      asistenteBorrador.bienvenidaCliente = v('astMsgBienvenidaCliente');
+      asistenteBorrador.bienvenidaProveedor = v('astMsgBienvenidaProveedor');
+      asistenteBorrador.noEntendi = v('astMsgNoEntendi');
+      asistenteBorrador.saludoCliente = v('astMsgSaludoCliente');
+      asistenteBorrador.saludoProveedor = v('astMsgSaludoProveedor');
+      asistenteEditorMarcar(true);
+    }
+
+    function asistenteEditorMover(id, dir) {
+      const todos = asistenteBorrador.temas;
+      const vista = asistenteEditorTemasDeTab();
+      const i = vista.findIndex(t => t.id === id), j = i + dir;
+      if (i < 0 || j < 0 || j >= vista.length) return;
+      const a = todos.indexOf(vista[i]), b = todos.indexOf(vista[j]);
+      const tmp = todos[a]; todos[a] = todos[b]; todos[b] = tmp;
+      asistenteEditorMarcar(true); renderizarEditorAsistente();
+    }
+
+    function asistenteEditorAlternar(id) {
+      const t = asistenteBorrador.temas.find(x => x.id === id);
+      if (!t) return;
+      t.activo = !t.activo;
+      asistenteEditorMarcar(true); renderizarEditorAsistente();
+    }
+
+    async function asistenteEditorEliminar(id) {
+      const t = asistenteBorrador.temas.find(x => x.id === id);
+      if (!t) return;
+      if (!await confirmarModal(`¿Eliminar la pregunta "${t.titulo}"? Dejará de responder el asistente. Si solo quieres esconderla, usa el ojo.`, { textoAceptar: 'Sí, eliminar' })) return;
+      asistenteBorrador.temas = asistenteBorrador.temas.filter(x => x.id !== id);
+      asistenteBorrador.temas.forEach(x => { if (x.relacionada === id) x.relacionada = ''; });
+      asistenteEditorMarcar(true); renderizarEditorAsistente();
+    }
+
+    function asistenteEditorNuevo() {
+      if (!asistenteBorrador) return;
+      if (asistenteBorrador.temas.length >= ASISTENTE_MAX_TEMAS) { alert(`Llegaste al máximo de ${ASISTENTE_MAX_TEMAS} preguntas. Elimina alguna para agregar otra.`); return; }
+      abrirAsistenteTema(null);
+    }
+
+    function asistenteEditorEditar(id) { if (asistenteBorrador && asistenteBorrador.temas.some(t => t.id === id)) abrirAsistenteTema(id); }
+
+    function abrirAsistenteTema(id) {
+      asistenteEditandoId = id;
+      const t = id ? asistenteBorrador.temas.find(x => x.id === id) : { titulo: '', texto: '', claves: [], menu: true, acciones: [], relacionada: '', flujo: '', solo: '', mostrarMenu: false, textoAlterno: '', para: asistenteEditorTabActual };
+      document.getElementById('astModalTitulo').innerHTML = `<i class="fa-solid fa-robot text-emerald-400"></i> ${id ? 'Editar respuesta' : 'Nueva pregunta'}`;
+      document.getElementById('astTitulo').value = t.titulo;
+      document.getElementById('astTexto').value = t.texto;
+      document.getElementById('astClaves').value = (t.claves || []).join(', ');
+      document.getElementById('astMenu').checked = t.menu !== false;
+      document.getElementById('astPara').value = t.para;
+      document.getElementById('astFlujo').checked = t.flujo === 'reportar';
+      document.getElementById('astSolo').checked = t.solo === 'alquileres';
+      document.getElementById('astMostrarMenu').checked = t.mostrarMenu === true;
+      document.getElementById('astAlterno').value = t.textoAlterno || '';
+      document.querySelectorAll('.ast-acc').forEach(c => { c.checked = (t.acciones || []).indexOf(c.value) !== -1; });
+      const sel = document.getElementById('astRelacionada');
+      sel.innerHTML = '<option value="">Ninguno</option>' + asistenteBorrador.temas.filter(x => x.id !== id).map(x => `<option value="${escaparHtml(x.id)}">${escaparHtml(x.titulo)}</option>`).join('');
+      sel.value = t.relacionada || '';
+      asistenteEditorVistaPrevia();
+      const m = document.getElementById('modalAsistenteTema');
+      m.classList.remove('hidden'); m.style.display = 'flex';
+    }
+
+    function cerrarAsistenteTema() {
+      const m = document.getElementById('modalAsistenteTema');
+      if (m) { m.classList.add('hidden'); m.style.display = 'none'; }
+      asistenteEditandoId = null;
+    }
+
+    function asistenteEditorVistaPrevia() {
+      const v = document.getElementById('astVista'), t = document.getElementById('astTexto');
+      if (!v || !t) return;
+      const cfg = (typeof recargaAutoCfg !== 'undefined') ? recargaAutoCfg : { minimo: 5000, minutos: 30 };
+      const txt = String(t.value || '').replace(/\{minimo\}/g, formatoCOP(cfg.minimo)).replace(/\{minutos\}/g, String(cfg.minutos));
+      v.innerHTML = txt.trim() ? asistenteFormatear(txt) : '<span class="text-gray-500">Aquí verás la respuesta.</span>';
+    }
+
+    function guardarAsistenteTema() {
+      const titulo = String(document.getElementById('astTitulo').value || '').trim();
+      const texto = String(document.getElementById('astTexto').value || '').trim();
+      if (!titulo) { alert('Escribe la pregunta o el texto del botón.'); return; }
+      if (!texto) { alert('Escribe la respuesta.'); return; }
+      const claves = [];
+      String(document.getElementById('astClaves').value || '').split(/[,\n]/).forEach(c => { const x = c.trim().slice(0, 40); if (x && claves.indexOf(x) === -1) claves.push(x); });
+      const datos = {
+        titulo: titulo.slice(0, 45), texto: texto.slice(0, 1500), claves: claves.slice(0, 30),
+        menu: document.getElementById('astMenu').checked, para: document.getElementById('astPara').value,
+        acciones: Array.from(document.querySelectorAll('.ast-acc:checked')).map(c => c.value),
+        relacionada: document.getElementById('astRelacionada').value || '',
+        flujo: document.getElementById('astFlujo').checked ? 'reportar' : '',
+        solo: document.getElementById('astSolo').checked ? 'alquileres' : '',
+        mostrarMenu: document.getElementById('astMostrarMenu').checked,
+        textoAlterno: String(document.getElementById('astAlterno').value || '').trim().slice(0, 1500)
+      };
+      if (asistenteEditandoId) {
+        const t = asistenteBorrador.temas.find(x => x.id === asistenteEditandoId);
+        if (!t) { cerrarAsistenteTema(); return; }
+        Object.assign(t, datos);
+      } else {
+        if (asistenteBorrador.temas.length >= ASISTENTE_MAX_TEMAS) { alert(`Llegaste al máximo de ${ASISTENTE_MAX_TEMAS} preguntas.`); return; }
+        let id = 't_' + Date.now().toString(36);
+        while (asistenteBorrador.temas.some(x => x.id === id)) id += 'x';
+        // Las nuevas van antes de las de apoyo (sin botón) y de "Hablar con una persona", para que el menú quede ordenado
+        const nueva = Object.assign({ id: id, icono: 'fa-circle-question', activo: true }, datos);
+        const posPersona = asistenteBorrador.temas.findIndex(x => x.id === 'persona');
+        if (posPersona >= 0) asistenteBorrador.temas.splice(posPersona, 0, nueva); else asistenteBorrador.temas.push(nueva);
+      }
+      cerrarAsistenteTema();
+      asistenteEditorMarcar(true); renderizarEditorAsistente();
+    }
+
+    async function asistenteEditorGuardar() {
+      if (!esAdminSesionActual() || !asistenteBorrador) return;
+      asistenteEditorMensaje();
+      const limpio = asistenteSanear(asistenteBorrador);
+      if (!limpio || !limpio.temas.length) { alert('Debe quedar al menos una pregunta con título y respuesta.'); return; }
+      const btn = document.getElementById('btnGuardarAsistente');
+      if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Guardando...'; }
+      try {
+        await db.collection('configuracion').doc('asistente').set(Object.assign({}, limpio, { actualizadoEl: new Date().toISOString(), actualizadoPor: currentUser.email }));
+        asistenteConfig = limpio; asistenteBorrador = asistenteCopia(limpio);
+        asistenteEditorMarcar(false); renderizarEditorAsistente();
+        mostrarToast('Listo: el asistente ya responde con lo que guardaste.');
+      } catch (err) {
+        alert('No se pudo guardar: ' + err.message);
+      } finally {
+        if (btn) { btn.innerHTML = 'Guardar cambios'; btn.disabled = !asistenteSucio; }
+      }
+    }
+
+    async function asistenteEditorDescartar() {
+      if (!asistenteSucio) return;
+      if (!await confirmarModal('¿Descartar los cambios que no has guardado?', { textoAceptar: 'Sí, descartar' })) return;
+      asistenteBorrador = asistenteCopia(asistenteConfigActual());
+      asistenteEditorMarcar(false); renderizarEditorAsistente();
+    }
+
+    async function asistenteEditorRestaurar() {
+      if (!asistenteBorrador) return;
+      if (!await confirmarModal('¿Volver a las respuestas originales? Se pierden tus cambios y las preguntas que agregaste. Después toca "Guardar cambios" para que lo vean los clientes.', { textoAceptar: 'Sí, restaurar' })) return;
+      asistenteBorrador = asistenteCopia(asistenteSanear(ASISTENTE_PREDETERMINADO));
+      asistenteEditorMarcar(true); renderizarEditorAsistente();
     }
 
     // ==================== MI PERFIL ====================
@@ -8937,13 +10319,15 @@
       contenedor.innerHTML = `<p class="text-gray-500 text-center py-8 text-xs"><i class="fa-solid fa-spinner fa-spin text-emerald-400 mr-2"></i>Cargando tus compras...</p>`;
 
       try {
-        misComprasPerfilCache = [];
+        // Se arma en una lista local: si la pantalla pide las compras dos veces seguidas, no se duplican
+        const comprasNuevas = [];
         if (modoPruebaCliente) {
-          misComprasPerfilCache = comprasSimuladas.map(c => ({ ...c }));
+          comprasSimuladas.forEach(c => comprasNuevas.push({ ...c }));
         } else {
           const snap = await db.collection('compras').where('usuarioId', '==', currentUser.uid).get();
-          snap.forEach(d => misComprasPerfilCache.push({ id: d.id, ...d.data() }));
+          snap.forEach(d => comprasNuevas.push({ id: d.id, ...d.data() }));
         }
+        misComprasPerfilCache = comprasNuevas;
         misComprasPerfilCache.sort((a, b) => (new Date(b.fecha).getTime() || 0) - (new Date(a.fecha).getTime() || 0));
 
         const totalCuentas = misComprasPerfilCache.reduce((s, c) => s + (parseInt(c.cantidad) || 0), 0);
@@ -8981,7 +10365,7 @@
 
           const lineas = String(c.credenciales || '').split('\n').map(l => l.trim()).filter(Boolean);
           const lineasHtml = lineas.length
-            ? lineas.map(l => `<div class="py-1 border-b border-gray-700/40 last:border-0 break-all">${escaparHtml(l)}</div>`).join('')
+            ? lineas.map((l, j) => `<div class="py-1 border-b border-gray-700/40 last:border-0 flex items-center justify-between gap-2"><span class="break-all min-w-0">${escaparHtml(l)}</span>${(c.simulada || modoPruebaCliente) ? '' : `<span data-reporte-slot data-cuenta="${escaparHtml(emailDeLineaCuenta(l))}" data-idx="${idx}" data-j="${j}"></span>`}</div>`).join('')
             : '<div class="text-gray-500">Sin credenciales registradas.</div>';
 
           const estadoGar = estadoGarantiaCompra(c).estado;
@@ -9008,6 +10392,7 @@
         });
 
         contenedor.innerHTML = html;
+        pintarBotonesReporte();
         renderFiltrosGarantiaPerfil();
         filtrarMisCuentasPerfil();
         iniciarRelojGarantiasPerfil();
