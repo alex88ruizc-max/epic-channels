@@ -127,6 +127,9 @@
     body.modo-proveedor #btnSoporte,
     body.modo-proveedor #btnTelegramBot,
     body.modo-proveedor #navUser > *:not([title="Cerrar sesión"]) { display: none !important; }
+    /* Texto de la entrega: letra clara y emojis a color (en algunos equipos salían como cuadros blancos) */
+    @font-face { font-family: "EmojiColor"; src: local("Segoe UI Emoji"), local("Apple Color Emoji"), local("Noto Color Emoji"); unicode-range: U+1F000-1FFFF, U+2600-27BF, U+2B00-2BFF, U+2300-23FF, U+FE0F, U+200D; }
+    .texto-entrega { font-family: "EmojiColor", ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace; font-variant-emoji: emoji; }
   </style>
 </head>
 <body class="min-h-screen flex flex-col justify-between">
@@ -318,6 +321,11 @@
       <div class="p-4 bg-gray-900 border border-gray-800 rounded-2xl">
         <h3 class="text-sm font-black text-white mb-3 flex items-center gap-2"><i class="fa-solid fa-clock-rotate-left text-sky-400"></i> Mis envíos</h3>
         <div id="provLotes" class="space-y-2"><p class="text-center text-gray-500 text-xs py-4">Aún no has enviado cuentas.</p></div>
+      </div>
+
+      <div id="provTicketsCaja" class="hidden p-4 bg-gray-900 border border-amber-500/30 rounded-2xl">
+        <h3 class="text-sm font-black text-white mb-3 flex items-center gap-2"><i class="fa-solid fa-ticket text-amber-400"></i> Cuentas reportadas <span id="provTicketsAbiertos" class="hidden px-2 py-0.5 rounded-full bg-amber-500 text-black text-[10px] font-black"></span></h3>
+        <div id="provTickets" class="space-y-2"></div>
       </div>
 
       <div class="p-4 bg-gray-900 border border-gray-800 rounded-2xl flex items-center justify-between gap-3">
@@ -702,6 +710,22 @@
           </button>
         </div>
 
+        <div class="bg-gray-900 border border-amber-500/30 rounded-2xl overflow-hidden">
+          <div class="p-4 flex items-center justify-between gap-3 border-b border-gray-800">
+            <div class="min-w-0">
+              <h4 class="font-bold text-white text-sm flex items-center gap-2"><i class="fa-solid fa-ticket text-amber-400"></i> Tickets de cuentas <span id="badgeTickets" class="hidden px-2 py-0.5 rounded-full bg-amber-500 text-black text-[10px] font-black"></span></h4>
+              <p class="text-[11px] text-gray-400 mt-0.5">Reporta una cuenta con problemas: se asigna sola a quien la subió.</p>
+            </div>
+            <button onclick="abrirModalTicket()" class="shrink-0 px-3 py-2 bg-amber-500 hover:bg-amber-400 text-black font-bold text-xs rounded-xl transition flex items-center gap-1.5"><i class="fa-solid fa-plus"></i> Nuevo ticket</button>
+          </div>
+          <div class="px-4 pt-3 flex gap-1.5 text-[11px] font-bold">
+            <button id="tkFiltroAbiertos" onclick="filtrarTickets('abiertos')" class="px-3 py-1 rounded-lg border">Abiertos</button>
+            <button id="tkFiltroResueltos" onclick="filtrarTickets('resueltos')" class="px-3 py-1 rounded-lg border">Resueltos</button>
+            <button id="tkFiltroTodos" onclick="filtrarTickets('todos')" class="px-3 py-1 rounded-lg border">Todos</button>
+          </div>
+          <div id="listaTickets" class="mt-2 max-h-80 overflow-y-auto divide-y divide-gray-800"><p class="px-4 py-6 text-center text-gray-500 text-sm">No hay tickets.</p></div>
+        </div>
+
         <div class="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden">
           <div class="p-4 border-b border-gray-800">
             <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -723,14 +747,13 @@
                   <th class="px-4 py-3">WhatsApp</th>
                   <th class="px-4 py-3">Saldo Actual</th>
                   <th class="px-4 py-3 text-center">Permisos Catálogo</th>
-                  <th class="px-4 py-3 text-center">Permisos Stock</th>
                   <th class="px-4 py-3 text-center">Registro</th>
                   <th class="px-4 py-3 text-center">Último Acceso</th>
                   <th class="px-4 py-3 text-right">Acciones</th>
                 </tr>
               </thead>
               <tbody id="tablaAdminUsuarios" class="divide-y divide-gray-800">
-                <tr><td colspan="8" class="px-4 py-8 text-center text-gray-500">Cargando usuarios...</td></tr>
+                <tr><td colspan="7" class="px-4 py-8 text-center text-gray-500">Cargando usuarios...</td></tr>
               </tbody>
             </table>
           </div>
@@ -992,7 +1015,7 @@
         <div class="p-4 bg-gray-900 border border-gray-800 rounded-2xl">
           <h3 class="text-base font-bold text-white mb-1 flex items-center gap-2"><i class="fa-solid fa-truck-ramp-box text-emerald-400"></i> Proveedores de stock</h3>
           <p class="text-xs text-gray-400">Aprueba lo que suben, ponles el costo por cuenta y márcalos como saldados cuando les pagues (el pago lo haces por aparte).</p>
-          <p class="text-[11px] text-gray-500 mt-2">Para crear un proveedor: <b class="text-gray-300">Usuarios Registrados → Crear usuario</b> con el rol "Proveedor", y luego su botón de <b class="text-gray-300">permisos de stock</b> para elegir qué productos puede subir.</p>
+          <p class="text-[11px] text-gray-500 mt-2">Para crear un proveedor: <b class="text-gray-300">Usuarios Registrados → Crear usuario</b> con el rol "Proveedor", y luego, con su botón <b class="text-gray-300">Editar</b>, marca qué productos puede subir.</p>
         </div>
         <div class="bg-gray-900 border border-amber-500/30 rounded-2xl overflow-hidden">
           <div class="p-4 border-b border-gray-800"><h4 class="font-bold text-white text-sm flex items-center gap-2"><i class="fa-solid fa-hourglass-half text-amber-400"></i> Por aprobar <span id="badgeProvPorAprobar" class="hidden px-2 py-0.5 rounded-full bg-amber-500 text-black text-[10px] font-black"></span></h4></div>
@@ -1664,6 +1687,7 @@
             <option value="proveedor">Proveedor de stock (solo sube cuentas)</option>
             <option value="moderador">Moderador (casi todo, sin configuración)</option>
           </select>
+          <p class="text-[10px] text-gray-500 mt-1">Si es proveedor, elige sus productos después, en Editar.</p>
         </div>
         <div>
           <label class="block text-xs text-gray-400 mb-1">Contraseña Temporal</label>
@@ -1748,25 +1772,6 @@
     </div>
   </div>
 
-  <!-- MODAL: PERMISOS PARA SUBIR STOCK -->
-  <div id="modalPermisosStockCliente" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
-    <div class="bg-gray-900 border border-blue-500/40 rounded-2xl max-w-md w-full p-6 relative shadow-2xl">
-      <button onclick="cerrarModalPermisosStockCliente()" class="absolute top-4 right-4 text-gray-400 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
-      <div class="w-12 h-12 bg-blue-500/10 text-blue-400 rounded-2xl flex items-center justify-center mb-3 text-xl">
-        <i class="fa-solid fa-boxes-packing"></i>
-      </div>
-      <h3 class="text-base font-black text-white mb-1">Permisos para Subir Stock por Producto</h3>
-      <p id="txtPermisosStockClienteEmail" class="text-xs text-blue-400 font-mono mb-4 break-all">cliente@ejemplo.com</p>
-      
-      <div id="listaCheckboxesStockPermiso" class="max-h-60 overflow-y-auto space-y-2 bg-gray-800/60 p-3 rounded-xl border border-gray-700/60 mb-4 text-xs"></div>
-
-      <div class="flex gap-2">
-        <button onclick="guardarPermisosStockClienteActual()" class="w-full py-2.5 bg-blue-500 hover:bg-blue-400 text-black font-bold text-xs rounded-xl transition">Guardar</button>
-        <button onclick="cerrarModalPermisosStockCliente()" class="w-full py-2.5 bg-gray-800 hover:bg-gray-700 text-gray-300 font-bold text-xs rounded-xl transition">Cancelar</button>
-      </div>
-    </div>
-  </div>
-
   <!-- MODAL: EDITAR CLIENTE -->
   <div id="modalEditarCliente" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
     <div class="bg-gray-900 border border-emerald-500/40 rounded-2xl max-w-sm w-full p-6 relative shadow-2xl max-h-[92vh] overflow-y-auto">
@@ -1805,11 +1810,16 @@
         </div>
         <div class="solo-admin">
           <label class="block text-xs text-gray-400 mb-1">Rol</label>
-          <select id="editClienteRol" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none">
+          <select id="editClienteRol" onchange="editClienteCambioRol()" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none">
             <option value="cliente">Cliente (normal)</option>
             <option value="proveedor">Proveedor de stock</option>
             <option value="moderador">Moderador</option>
           </select>
+        </div>
+        <div id="editClienteBloqueStock" class="solo-admin hidden">
+          <label class="block text-xs text-gray-400 mb-1">Productos que puede subir</label>
+          <div id="editClienteListaStock" class="max-h-44 overflow-y-auto space-y-1.5 bg-gray-800/60 p-2.5 rounded-xl border border-gray-700/60"></div>
+          <p class="text-[10px] text-gray-500 mt-1">Sus envíos quedan en revisión hasta que tú los apruebes.</p>
         </div>
         <button type="submit" id="btnGuardarEdicionCliente" class="w-full bg-emerald-500 hover:bg-emerald-400 text-black font-bold py-2.5 rounded-xl text-xs transition mt-2">Guardar cambios</button>
       </form>
@@ -2083,6 +2093,49 @@
     </div>
   </div>
 
+  <!-- MODAL: NUEVO TICKET DE CUENTA REPORTADA (administración y moderación) -->
+  <div id="modalTicketCuenta" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden items-center justify-center p-3 sm:p-4">
+    <div class="bg-gray-900 border border-amber-500/40 rounded-2xl max-w-md w-full shadow-2xl max-h-[92vh] flex flex-col overflow-hidden">
+      <div class="shrink-0 flex items-center justify-between gap-3 px-4 py-3 border-b border-gray-800">
+        <h3 class="text-base font-black text-white flex items-center gap-2"><i class="fa-solid fa-ticket text-amber-400"></i> Reportar una cuenta</h3>
+        <button type="button" onclick="cerrarModalTicket()" aria-label="Cerrar" class="w-8 h-8 shrink-0 rounded-full bg-gray-800 hover:bg-gray-700 text-gray-300 flex items-center justify-center"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="overflow-y-auto px-4 py-3 space-y-3 flex-grow">
+        <div>
+          <label class="block text-xs text-gray-400 mb-1">Correo de la cuenta con problemas</label>
+          <input type="text" id="tkCuenta" oninput="actualizarInfoTicket()" autocomplete="off" placeholder="correo@gmail.com" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white font-mono focus:outline-none">
+          <p id="tkInfo" class="text-[11px] mt-1.5 text-gray-500">Escribe el correo y te digo quién la subió.</p>
+        </div>
+        <div>
+          <label class="block text-xs text-gray-400 mb-1">Motivo</label>
+          <select id="tkMotivo" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none">
+            <option>No inicia sesión</option>
+            <option>Contraseña incorrecta</option>
+            <option>Cuenta suspendida o bloqueada</option>
+            <option>Sin suscripción o sin plan activo</option>
+            <option>Cuenta repetida</option>
+            <option>Otro</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs text-gray-400 mb-1">Detalle (opcional)</label>
+          <input type="text" id="tkDetalle" maxlength="200" autocomplete="off" placeholder="Qué pasó exactamente" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none">
+        </div>
+        <div>
+          <label class="block text-xs text-gray-400 mb-1">Cliente que la reportó (opcional)</label>
+          <input type="text" id="tkCliente" autocomplete="off" placeholder="correo del cliente" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none">
+        </div>
+        <div>
+          <label class="block text-xs text-gray-400 mb-1">Asignar a</label>
+          <select id="tkAsignar" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"><option value="">Automático (quien la subió)</option></select>
+        </div>
+      </div>
+      <div class="shrink-0 p-3 border-t border-gray-800">
+        <button type="button" id="btnCrearTicket" onclick="crearTicketCuenta()" class="w-full bg-amber-500 hover:bg-amber-400 text-black font-bold py-2.5 rounded-xl text-xs transition">Crear ticket</button>
+      </div>
+    </div>
+  </div>
+
   <!-- MODAL: REVISAR Y APROBAR UN LOTE DE UN PROVEEDOR (administración) -->
   <div id="modalAprobarLote" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden items-center justify-center p-3 sm:p-4">
     <div class="bg-gray-900 border border-emerald-500/40 rounded-2xl max-w-md w-full shadow-2xl max-h-[90vh] flex flex-col overflow-hidden">
@@ -2256,35 +2309,41 @@
   </div>
 
   <!-- MODAL: ENTREGA DE CUENTAS -->
-  <div id="modalEntrega" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
-    <div class="bg-gray-900 border border-emerald-500/50 rounded-2xl max-w-md w-full p-6 text-center">
-      <div class="w-12 h-12 bg-emerald-500/20 text-emerald-400 rounded-full flex items-center justify-center mx-auto mb-3 text-xl">
-        <i class="fa-solid fa-check"></i>
-      </div>
-      <h3 class="text-xl font-black text-white mb-1">¡Compra Exitosa!</h3>
-      <p class="text-xs text-gray-400 mb-3">Tus cuentas han sido entregadas y archivadas en tu panel.</p>
-      <div id="avisoEntregaSimulada" class="hidden mb-3 p-2.5 rounded-xl bg-yellow-500/10 border border-yellow-500/40 text-yellow-300 text-[11px] font-bold">
-        🧪 Compra simulada: no se descontó stock ni saldo real, no se guardó la venta y no se envió nada a Telegram. Las cuentas son de ejemplo.
-      </div>
-
-      <div class="bg-gray-800 border border-gray-700 p-4 rounded-xl text-left font-mono text-xs text-gray-200 break-all mb-3 select-all max-h-48 overflow-y-auto whitespace-pre-line leading-relaxed" id="txtEntregaCredenciales"></div>
-
-      <div class="mb-4 p-3 bg-blue-500/10 border border-blue-500/30 rounded-xl text-left flex items-start gap-3">
-        <i class="fa-brands fa-telegram text-blue-400 text-lg mt-0.5"></i>
-        <div class="text-[11px] text-gray-300">
-          <span class="font-bold text-blue-400 block mb-0.5">Consulta stock y cuentas:</span>
-          Consulta el stock disponible desde nuestro bot:
-          <a id="linkModalEntregaBot" href="https://t.me/epic_ventas_bot" target="_blank" class="block mt-1 font-bold text-blue-400 underline hover:text-blue-300">
-            👉 Abrir Bot de Telegram
-          </a>
+  <div id="modalEntrega" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden items-center justify-center p-3 sm:p-4">
+    <div class="bg-gray-900 border border-emerald-500/50 rounded-2xl max-w-md w-full shadow-2xl max-h-[92vh] flex flex-col overflow-hidden">
+      <div class="shrink-0 flex items-center gap-3 px-4 py-3 border-b border-gray-800">
+        <div class="w-9 h-9 shrink-0 bg-emerald-500/20 text-emerald-400 rounded-full flex items-center justify-center text-base"><i class="fa-solid fa-check"></i></div>
+        <div class="min-w-0 flex-grow">
+          <h3 class="text-base font-black text-white leading-tight">¡Compra exitosa!</h3>
+          <p class="text-[11px] text-gray-400 leading-tight">Tus cuentas quedan guardadas en tu perfil.</p>
         </div>
+        <button type="button" onclick="cerrarModalEntrega()" aria-label="Cerrar" class="w-8 h-8 shrink-0 rounded-full bg-gray-800 hover:bg-gray-700 text-gray-300 hover:text-white flex items-center justify-center"><i class="fa-solid fa-xmark"></i></button>
       </div>
 
-      <div class="space-y-2">
-        <button onclick="copiarCredencialesEntregadas()" class="w-full bg-gray-800 hover:bg-gray-700 text-emerald-400 font-bold py-2 rounded-xl text-xs flex items-center justify-center gap-2 border border-gray-700">
-          <i class="fa-solid fa-copy"></i> Copiar Cuentas
+      <div class="overflow-y-auto px-4 py-3 space-y-3 flex-grow">
+        <div id="avisoEntregaSimulada" class="hidden p-2.5 rounded-xl bg-yellow-500/10 border border-yellow-500/40 text-yellow-300 text-[11px] font-bold leading-snug">
+          Compra simulada: no se descontó stock ni saldo real, no se guardó la venta y no se envió nada a Telegram. Las cuentas son de ejemplo.
+        </div>
+
+        <div id="entregaVisual" class="space-y-2.5"></div>
+
+        <details class="rounded-xl border border-gray-700 bg-gray-800/40">
+          <summary style="list-style:none" class="cursor-pointer px-3 py-2 text-[11px] font-bold text-gray-300 flex items-center justify-between"><span><i class="fa-brands fa-whatsapp mr-1.5 text-emerald-400"></i>Mensaje listo para pegar</span><i class="fa-solid fa-chevron-down text-gray-500 text-[10px]"></i></summary>
+          <div class="texto-entrega px-3 pb-3 text-left text-[12px] text-gray-100 break-words select-all whitespace-pre-line leading-relaxed" id="txtEntregaCredenciales"></div>
+        </details>
+
+        <a id="linkModalEntregaBot" href="https://t.me/epic_ventas_bot" target="_blank" rel="noopener" class="flex items-center gap-2.5 p-2.5 bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/30 rounded-xl text-[11px] text-gray-300 transition">
+          <i class="fa-brands fa-telegram text-blue-400 text-lg"></i>
+          <span class="min-w-0 flex-grow"><b class="text-blue-400">Consulta el stock</b> desde nuestro bot de Telegram</span>
+          <i class="fa-solid fa-arrow-up-right-from-square text-blue-400 text-[10px]"></i>
+        </a>
+      </div>
+
+      <div class="shrink-0 grid grid-cols-2 gap-2 p-3 border-t border-gray-800">
+        <button onclick="copiarCredencialesEntregadas()" class="bg-emerald-500 hover:bg-emerald-400 text-black font-black py-2.5 rounded-xl text-xs flex items-center justify-center gap-2 transition">
+          <i class="fa-solid fa-copy"></i> Copiar cuentas
         </button>
-        <button onclick="cerrarModalEntrega()" class="w-full bg-emerald-500 hover:bg-emerald-400 text-black font-bold py-2 rounded-xl text-sm">
+        <button onclick="cerrarModalEntrega()" class="bg-gray-800 hover:bg-gray-700 text-gray-100 font-bold py-2.5 rounded-xl text-xs border border-gray-700 transition">
           Entendido
         </button>
       </div>
@@ -4374,6 +4433,7 @@
           iniciarNetflixAdmin();
           iniciarPagosRecibidosAdmin();
           iniciarLotesProveedoresAdmin();
+          iniciarTicketsStaff();
           recalcularProductoHotAdminSiVence();
         } else {
           document.getElementById('btnAdminTab').classList.add('hidden');
@@ -4382,6 +4442,7 @@
           detenerNetflixAdmin();
           detenerPagosRecibidosAdmin();
           detenerLotesProveedoresAdmin();
+          detenerTicketsStaff();
         }
 
         // El rol recordado de la última vez evita que un proveedor vea la tienda mientras llega su ficha
@@ -4396,6 +4457,7 @@
             userPermisosSubirStock = dataU.permisos_subir_stock || [];
             perfilNombreActual = dataU.nombre || '';
             aplicarRol(dataU.rol || 'cliente', user, false);
+            if (rolActual === 'proveedor') renderizarProveedor();
             
             if (!esAdmin) {
               // Si el navegador bloquea el almacenamiento, no se rompe la carga del saldo ni del catálogo
@@ -4462,6 +4524,8 @@
         document.body.classList.remove('modo-moderador', 'modo-proveedor');
         detenerProveedor();
         detenerLotesProveedoresAdmin();
+        detenerTicketsStaff();
+        detenerTicketsProveedor();
         bloquearAccesoVisitante();
       }
     });
@@ -4561,12 +4625,9 @@
         const totalSim = comprasSimuladas.reduce((s, c) => s + (parseInt(c.cantidad) || 0), 0);
         const nAntes = infoNivel(totalSim - cantidad), nDespues = infoNivel(totalSim);
         if (nDespues.idx > nAntes.idx) setTimeout(() => celebrarSubidaNivel(nDespues, true), 700);
-        document.getElementById('txtEntregaCredenciales').innerText = texto;
+        mostrarEntregaCompleta(texto, cuentasDemo, prodInfo, { total: totalPagar, saldo: saldoSimulado });
         const aviso = document.getElementById('avisoEntregaSimulada');
         if (aviso) aviso.classList.remove('hidden');
-        const modalE = document.getElementById('modalEntrega');
-        modalE.classList.remove('hidden');
-        modalE.style.display = 'flex';
       } catch (e) {
         alert('Error en la simulación: ' + e.message);
       }
@@ -6117,10 +6178,7 @@
             fecha: new Date().toLocaleString('es-CO')
           };
 
-          document.getElementById('txtEntregaCredenciales').innerText = textoEntregaFinal;
-          const modalE = document.getElementById('modalEntrega');
-          modalE.classList.remove('hidden');
-          modalE.style.display = 'flex';
+          mostrarEntregaCompleta(textoEntregaFinal, cuentasEntregadas, prodInfo, { total: totalPagar, saldo: nuevoSaldoUsuario });
         });
 
         if (datosNotificacion) enviarNotificacionTelegram(datosNotificacion);
@@ -6166,11 +6224,9 @@
     function mostrarEntregaDeCompra(c, prodInfo) {
       const cuentas = String(c.credenciales || '').split('\n').map(l => l.trim()).filter(Boolean);
       if (c.claveAcceso) claveMasterRuntime = String(c.claveAcceso).split(' / ')[0];
-      const texto = construirFormatoEntrega(cuentas, prodInfo, { total: Number(c.total) || 0, saldo: userSaldo, cliente: currentUser.email });
-      document.getElementById('txtEntregaCredenciales').innerText = texto;
-      const modalE = document.getElementById('modalEntrega');
-      modalE.classList.remove('hidden');
-      modalE.style.display = 'flex';
+      const extrasC = { total: Number(c.total) || 0, saldo: userSaldo, cliente: currentUser.email };
+      const texto = construirFormatoEntrega(cuentas, prodInfo, extrasC);
+      mostrarEntregaCompleta(texto, cuentas, prodInfo, extrasC);
       return cuentas.length;
     }
 
@@ -6204,10 +6260,7 @@
 
         if (r.claveMaster) claveMasterRuntime = String(r.claveMaster);
         const textoEntregaFinal = construirFormatoEntrega(cuentasEntregadas, prodInfo, { total: totalPagar, saldo: nuevoSaldoUsuario, cliente: currentUser.email });
-        document.getElementById('txtEntregaCredenciales').innerText = textoEntregaFinal;
-        const modalE = document.getElementById('modalEntrega');
-        modalE.classList.remove('hidden');
-        modalE.style.display = 'flex';
+        mostrarEntregaCompleta(textoEntregaFinal, cuentasEntregadas, prodInfo, { total: totalPagar, saldo: nuevoSaldoUsuario });
 
         // El aviso de venta a Telegram lo envía el servidor seguro
         verificarSubidaNivel(cuentasEntregadas.length);
@@ -6224,9 +6277,70 @@
       }
     }
 
+    let textoEntregaActual = '';
+
     function copiarCredencialesEntregadas() {
-      const texto = document.getElementById('txtEntregaCredenciales').innerText;
-      navigator.clipboard.writeText(texto).then(() => alert("¡Cuentas copiadas al portapapeles!")).catch(() => mostrarTextoCopiable(texto));
+      const texto = textoEntregaActual || document.getElementById('txtEntregaCredenciales').innerText;
+      navigator.clipboard.writeText(texto).then(() => mostrarToast('¡Cuentas copiadas!')).catch(() => mostrarTextoCopiable(texto));
+    }
+
+    function copiarCampoEntrega(btn) {
+      const v = btn && btn.getAttribute('data-copiar');
+      if (v) copiarTexto(v, 'Copiado');
+    }
+
+    // Tarjetas con cada cuenta (correo y clave con su botón de copiar), en vez de un bloque de texto
+    function pintarEntregaVisual(cuentas, prodInfo, extras) {
+      const cont = document.getElementById('entregaVisual');
+      if (!cont) return;
+      try {
+        const ex = extras || {};
+        const lista = (cuentas || []).map(parseCredencialObj);
+        const tg = prodInfo.tipoGarantia;
+        const garantia = tg === '29d' ? '29 días' : (tg === '24h' ? '24 horas' : 'Sin garantía');
+        const chip = (icono, txt) => `<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-gray-900/70 border border-gray-700 text-gray-200"><i class="fa-solid ${icono} mr-1 text-emerald-400"></i>${txt}</span>`;
+        const fila = (etiqueta, valor) => `
+          <div class="flex items-center gap-2">
+            <span class="w-12 shrink-0 text-[10px] text-gray-400">${etiqueta}</span>
+            <span class="min-w-0 flex-grow font-mono text-[12px] text-white break-all select-all">${escaparHtml(valor)}</span>
+            <button type="button" data-copiar="${escaparHtml(valor)}" onclick="copiarCampoEntrega(this)" aria-label="Copiar" class="shrink-0 w-7 h-7 rounded-lg bg-gray-900 hover:bg-gray-700 border border-gray-700 text-gray-300 flex items-center justify-center"><i class="fa-solid fa-copy text-[11px]"></i></button>
+          </div>`;
+        let html = `
+          <div class="p-3 rounded-xl bg-gradient-to-br from-emerald-500/10 to-gray-800/40 border border-emerald-500/30">
+            <p class="text-[10px] font-bold text-emerald-300 uppercase tracking-wider">Tu compra</p>
+            <p class="text-sm font-black text-white leading-snug mt-0.5">${escaparHtml(prodInfo.nombre || '')}</p>
+            <div class="flex flex-wrap gap-1.5 mt-2">
+              ${chip('fa-box', lista.length + (lista.length === 1 ? ' cuenta' : ' cuentas'))}
+              ${chip('fa-shield-halved', 'Garantía: ' + garantia)}
+              ${(ex.total !== undefined && ex.total !== null) ? chip('fa-coins', formatoCOP(ex.total)) : ''}
+            </div>
+          </div>`;
+        const acceso = prodInfo.esAmazon ? obtenerClaveMaster() : resolverClaveAccesoCuentas(cuentas || []);
+        if (acceso) {
+          html += `<div class="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/30">${fila(prodInfo.esAmazon ? 'Acceso' : 'Clave', String(acceso))}<p class="text-[10px] text-amber-200 mt-1 ml-14">${prodInfo.esAmazon ? 'Clave de acceso de Amazon para todas tus cuentas' : 'Contraseña de tus cuentas'}</p></div>`;
+        }
+        lista.forEach((c, i) => {
+          html += `<div class="p-3 rounded-xl bg-gray-800/70 border border-gray-700 space-y-1.5">
+            <p class="text-[10px] font-black text-emerald-400 uppercase tracking-wider">Cuenta ${i + 1}</p>
+            ${c.email ? fila('Correo', c.email) : ''}
+            ${c.pass ? fila(prodInfo.esAmazon ? 'Códigos' : 'Clave', c.pass) : ''}
+          </div>`;
+        });
+        cont.innerHTML = html;
+      } catch (e) {
+        console.warn('No se pudo dibujar la entrega visual:', e);
+        cont.innerHTML = '';
+      }
+    }
+
+    // Muestra la ventana de entrega: tarjetas + el mensaje completo para pegar
+    function mostrarEntregaCompleta(texto, cuentas, prodInfo, extras) {
+      textoEntregaActual = texto;
+      document.getElementById('txtEntregaCredenciales').innerText = texto;
+      pintarEntregaVisual(cuentas, prodInfo, extras);
+      const modalE = document.getElementById('modalEntrega');
+      modalE.classList.remove('hidden');
+      modalE.style.display = 'flex';
     }
 
     function renderizarAdminProductos() {
@@ -6503,7 +6617,7 @@
       unsubUsuariosAdmin = db.collection('usuarios').onSnapshot(snap => {
         try {
           if (snap.empty) {
-            tbody.innerHTML = '<tr><td colspan="8" class="text-center py-4 text-gray-500">No hay usuarios.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="7" class="text-center py-4 text-gray-500">No hay usuarios.</td></tr>';
             filtrarTablaUsuariosAdmin();
             return;
           }
@@ -6516,7 +6630,6 @@
             const uid = doc.id;
             const permitidos = u.productos_permitidos || [];
             const bloqueados = u.productos_bloqueados || [];
-            const stockPermitidos = u.permisos_subir_stock || [];
             const nombreCliente = u.nombre ? `<span class="font-bold text-white block">${u.nombre}</span><span class="text-[11px] text-gray-400 font-mono">${u.email || ''}</span>` : (u.email ? `<span class="font-bold text-white block">${u.email}</span>` : `<span class="font-bold text-amber-300 block"><i class="fa-solid fa-triangle-exclamation mr-1"></i>Ficha incompleta (sin correo)</span><span class="text-[10px] text-gray-500 font-mono block">${uid}</span>`);
 
             let fechaRegStr = 'N/A';
@@ -6569,11 +6682,6 @@
                     <i class="fa-solid fa-list-check mr-1"></i> Catálogo
                   </button>
                 </td>
-                <td class="px-4 py-3 text-center">
-                  <button onclick="abrirModalPermisosStockCliente('${uid}', '${escaparJsAttr(u.email)}', ${JSON.stringify(stockPermitidos).replace(/"/g, '&quot;')})" class="px-2.5 py-1 rounded-lg text-xs font-bold ${stockPermitidos.length > 0 ? 'bg-purple-500/20 text-purple-300 border border-purple-500/40' : 'bg-gray-800 text-gray-400 border border-gray-700'} transition">
-                    <i class="fa-solid fa-boxes-packing mr-1"></i> Stock (${stockPermitidos.length})
-                  </button>
-                </td>
                 <td class="px-4 py-3 text-center text-xs text-gray-300 whitespace-nowrap">${fechaRegStr}</td>
                 <td class="px-4 py-3 text-center text-xs whitespace-nowrap">
                   <div class="flex flex-col items-center">
@@ -6608,7 +6716,7 @@
         }
       }, err => {
         console.error('Error escuchando usuarios:', err);
-        tbody.innerHTML = `<tr><td colspan="8" class="px-4 py-8 text-center text-red-400 text-xs">Error al cargar usuarios: ${err.message}</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="7" class="px-4 py-8 text-center text-red-400 text-xs">Error al cargar usuarios: ${err.message}</td></tr>`;
       });
     }
 
@@ -6653,10 +6761,13 @@
         editClienteOriginal = {
           email: d.email || '', nombre: d.nombre || '',
           whatsapp: whatsappEsVacio(d.whatsapp) ? '' : String(d.whatsapp),
-          saldo: Number(d.saldo) || 0, perfilCompleto: !!d.email, cargado: true, rol: d.rol || 'cliente'
+          saldo: Number(d.saldo) || 0, perfilCompleto: !!d.email, cargado: true, rol: d.rol || 'cliente',
+          permisos: Array.isArray(d.permisos_subir_stock) ? d.permisos_subir_stock : []
         };
         const selRolEd = document.getElementById('editClienteRol');
         if (selRolEd) selRolEd.value = editClienteOriginal.rol;
+        renderizarListaStockEditar(editClienteOriginal.permisos);
+        editClienteCambioRol();
         if (btnGuardarEd) { btnGuardarEd.disabled = false; btnGuardarEd.innerHTML = 'Guardar cambios'; }
         set('editClienteEmail', editClienteOriginal.email);
         set('editClienteNombre', editClienteOriginal.nombre);
@@ -6751,8 +6862,19 @@
         }
         if (esAdminSesionActual()) {
           const selRol = document.getElementById('editClienteRol');
-          const rolNuevo = selRol ? selRol.value : (orig.rol || 'cliente');
-          if (rolNuevo !== (orig.rol || 'cliente')) await db.collection('usuarios').doc(uid).set({ rol: rolNuevo }, { merge: true });
+          const rolAntes = orig.rol || 'cliente';
+          const rolNuevo = selRol ? selRol.value : rolAntes;
+          const cambios = {};
+          if (rolNuevo !== rolAntes) cambios.rol = rolNuevo;
+          if (rolNuevo === 'proveedor') {
+            const marcados = Array.from(document.querySelectorAll('.chk-stock-editar:checked')).map(c => c.value).sort();
+            const antes = (orig.permisos || []).slice().sort();
+            if (rolAntes !== 'proveedor' || JSON.stringify(marcados) !== JSON.stringify(antes)) { cambios.permisos_subir_stock = marcados; cambios.puede_subir_stock = false; }
+          } else if (rolAntes === 'proveedor') {
+            // Deja de ser proveedor: ya no puede subir nada
+            cambios.permisos_subir_stock = []; cambios.puede_subir_stock = false;
+          }
+          if (Object.keys(cambios).length) await db.collection('usuarios').doc(uid).set(cambios, { merge: true });
         }
         usuariosNetflixCache = null;
         mostrarToast(password ? '¡Cliente actualizado! Recuerda pasarle la contraseña nueva.' : '¡Cliente actualizado con éxito!');
@@ -6839,61 +6961,23 @@
       }
     }
 
-    function abrirModalPermisosStockCliente(uid, email, stockPermitidosActuales) {
-      clienteStockUidActual = uid;
-      document.getElementById('txtPermisosStockClienteEmail').innerText = email;
-      const contenedor = document.getElementById('listaCheckboxesStockPermiso');
-      const permitidos = stockPermitidosActuales || [];
-
-      let html = '';
-      catalogoUnificado.forEach(p => {
-        const estaMarcado = permitidos.includes(p.id) || permitidos.includes(p.docId);
-
-        html += `
-          <label class="flex items-center justify-between p-2.5 rounded-lg bg-gray-900 border border-gray-700/60 cursor-pointer hover:border-blue-500/50">
-            <div class="flex items-center gap-2.5">
-              <input type="checkbox" value="${p.docId}" class="chk-stock-permiso rounded accent-blue-500 w-4 h-4 cursor-pointer" ${estaMarcado ? 'checked' : ''}>
-              <div>
-                <span class="font-bold text-white block">${p.nombre}</span>
-                <span class="text-[10px] text-gray-400">${p.categoria} (Stock: ${p.stock})</span>
-              </div>
-            </div>
-            <span class="text-[9px] px-2 py-0.5 rounded-full ${estaMarcado ? 'bg-blue-500/20 text-blue-300' : 'bg-gray-800 text-gray-500'} font-bold">
-              ${estaMarcado ? 'Habilitado' : 'Sin permiso'}
-            </span>
-          </label>
-        `;
-      });
-
-      contenedor.innerHTML = html;
-      const modal = document.getElementById('modalPermisosStockCliente');
-      modal.classList.remove('hidden');
-      modal.style.display = 'flex';
+    function renderizarListaStockEditar(seleccion) {
+      const cont = document.getElementById('editClienteListaStock');
+      if (!cont) return;
+      const marcados = new Set(seleccion || []);
+      cont.innerHTML = catalogoUnificado.map(p => `
+        <label class="flex items-center gap-2 p-2 rounded-lg bg-gray-900 border border-gray-700/60 cursor-pointer">
+          <input type="checkbox" value="${escaparHtml(p.docId)}" class="chk-stock-editar rounded accent-emerald-500 w-4 h-4 cursor-pointer" ${marcados.has(p.docId) ? 'checked' : ''}>
+          <span class="text-xs text-white font-bold min-w-0 truncate">${escaparHtml(p.nombre)}</span>
+          <span class="text-[10px] text-gray-500 ml-auto shrink-0">${escaparHtml(p.categoria || '')}</span>
+        </label>`).join('') || '<p class="text-[11px] text-gray-500">No hay productos.</p>';
     }
 
-    function cerrarModalPermisosStockCliente() {
-      clienteStockUidActual = null;
-      const modal = document.getElementById('modalPermisosStockCliente');
-      modal.classList.add('hidden');
-      modal.style.display = 'none';
-    }
-
-    async function guardarPermisosStockClienteActual() {
-      if (!clienteStockUidActual) return;
-      const inputs = document.querySelectorAll('.chk-stock-permiso:checked');
-      const seleccionados = Array.from(inputs).map(c => c.value);
-
-      try {
-        await db.collection('usuarios').doc(clienteStockUidActual).set({
-          permisos_subir_stock: seleccionados,
-          puede_subir_stock: seleccionados.length > 0
-        }, { merge: true });
-
-        mostrarToast("¡Permisos de subida de stock guardados!");
-        cerrarModalPermisosStockCliente();
-      } catch (e) {
-        alert("Error al guardar permisos: " + e.message);
-      }
+    // La lista de productos solo aparece cuando el rol es "Proveedor"
+    function editClienteCambioRol() {
+      const sel = document.getElementById('editClienteRol');
+      const bloque = document.getElementById('editClienteBloqueStock');
+      if (bloque) bloque.classList.toggle('hidden', !(sel && sel.value === 'proveedor'));
     }
 
     // ==================== CREAR CLIENTE DESDE EL PANEL (CON RECUPERACIÓN) ====================
@@ -7845,13 +7929,15 @@
         if (btnAdmin) btnAdmin.classList.remove('hidden');
         if (!escuchasModeradorActivas) {
           escuchasModeradorActivas = true;
-          try { escucharUsuariosEnLinea(); escucharTotalRecaudadoHoyEnVivo(); iniciarInventarioPrivadoAdmin(); iniciarNetflixAdmin(); } catch (e) { console.warn(e); }
+          try { escucharUsuariosEnLinea(); escucharTotalRecaudadoHoyEnVivo(); iniciarInventarioPrivadoAdmin(); iniciarNetflixAdmin(); iniciarLotesProveedoresAdmin(); iniciarTicketsStaff(); } catch (e) { console.warn(e); }
         }
       } else if (anterior === 'moderador') {
         escuchasModeradorActivas = false;
         if (btnAdmin) btnAdmin.classList.add('hidden');
         detenerInventarioPrivadoAdmin();
         detenerNetflixAdmin();
+        detenerLotesProveedoresAdmin();
+        detenerTicketsStaff();
         const vAdm = document.getElementById('vistaAdmin');
         if (vAdm && !vAdm.classList.contains('hidden')) cambiarVista('tienda');
       }
@@ -7874,6 +7960,7 @@
     function iniciarProveedor() {
       if (unsubProveedor || !currentUser) return;
       try {
+        iniciarTicketsProveedor();
         unsubProveedor = db.collection('stock_pendiente').where('proveedorUid', '==', currentUser.uid).onSnapshot(snap => {
           proveedorLotes = [];
           snap.forEach(d => proveedorLotes.push(Object.assign({ id: d.id }, d.data())));
@@ -7887,6 +7974,7 @@
       try { if (unsubProveedor) unsubProveedor(); } catch (e) { /* nada */ }
       unsubProveedor = null;
       proveedorLotes = [];
+      detenerTicketsProveedor();
     }
 
     function parsearCuentasProveedor(texto) {
@@ -8037,6 +8125,7 @@
         g.debe = ap.filter(l => !l.pagado).reduce((t, l) => t + (Number(l.monto) || 0), 0);
         g.pagado = ap.filter(l => l.pagado).reduce((t, l) => t + (Number(l.monto) || 0), 0);
         g.enRevision = g.lotes.filter(l => l.estado === 'pendiente').reduce((t, l) => t + (Number(l.cantidad) || 0), 0);
+        g.reportes = ticketsCuentas.filter(t => t.proveedorUid === g.uid && t.estado !== 'resuelto').length;
         totalDeuda += g.debe;
         g.lotes.sort((a, b) => String(b.creadoEl).localeCompare(String(a.creadoEl)));
         return g;
@@ -8050,7 +8139,7 @@
       contD.innerHTML = arr.map(g => `
         <details class="group">
           <summary style="list-style:none" class="cursor-pointer p-4 flex items-center justify-between gap-3">
-            <div class="min-w-0"><p class="text-white font-bold text-sm truncate">${escaparHtml(g.nombre)}</p><p class="text-[11px] text-gray-400 truncate">${escaparHtml(g.email)}${g.enRevision ? ' · <span class="text-amber-300">' + g.enRevision + ' en revisión</span>' : ''} · pagado ${formatoCOP(g.pagado)}</p></div>
+            <div class="min-w-0"><p class="text-white font-bold text-sm truncate">${escaparHtml(g.nombre)}</p><p class="text-[11px] text-gray-400 truncate">${escaparHtml(g.email)}${g.enRevision ? ' · <span class="text-amber-300">' + g.enRevision + ' en revisión</span>' : ''}${g.reportes ? ' · <span class="text-red-300">' + g.reportes + (g.reportes === 1 ? ' reporte abierto' : ' reportes abiertos') + '</span>' : ''} · pagado ${formatoCOP(g.pagado)}</p></div>
             <div class="shrink-0 text-right"><p class="text-[10px] text-gray-400">Se le debe</p><p class="text-base font-black ${g.debe ? 'text-emerald-300' : 'text-gray-500'}">${formatoCOP(g.debe)}</p></div>
           </summary>
           <div class="px-4 pb-4 space-y-2">
@@ -8227,6 +8316,210 @@
     function botonWhatsappFila(a) {
       if (!puedeEscribirWhatsappNf(a)) return '';
       return `<button onclick="event.stopPropagation();escribirWhatsappNf('${escaparHtml(a.id)}')" title="Escribir por WhatsApp" class="shrink-0 w-7 h-7 rounded-lg bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 border border-emerald-500/30 flex items-center justify-center"><i class="fa-brands fa-whatsapp"></i></button>`;
+    }
+
+    // ==================== TICKETS DE CUENTAS REPORTADAS ====================
+    let ticketsCuentas = [];
+    let unsubTickets = null;
+    let filtroTicketsActual = 'abiertos';
+    let proveedorTickets = [];
+    let unsubProvTickets = null;
+
+    function iniciarTicketsStaff() {
+      if (unsubTickets) return;
+      try {
+        unsubTickets = db.collection('tickets_cuentas').onSnapshot(snap => {
+          ticketsCuentas = [];
+          snap.forEach(d => ticketsCuentas.push(Object.assign({ id: d.id }, d.data())));
+          ticketsCuentas.sort((a, b) => String(b.creadoEl).localeCompare(String(a.creadoEl)));
+          renderizarTickets();
+          renderizarAdminProveedores();
+        }, err => console.warn('Tickets no disponibles:', err));
+      } catch (e) { console.warn(e); }
+    }
+
+    function detenerTicketsStaff() {
+      try { if (unsubTickets) unsubTickets(); } catch (e) { /* nada */ }
+      unsubTickets = null;
+      ticketsCuentas = [];
+    }
+
+    function filtrarTickets(f) { filtroTicketsActual = f; renderizarTickets(); }
+
+    function renderizarTickets() {
+      const cont = document.getElementById('listaTickets');
+      if (!cont) return;
+      const abiertos = ticketsCuentas.filter(t => t.estado !== 'resuelto').length;
+      const badge = document.getElementById('badgeTickets');
+      if (badge) { badge.textContent = abiertos; badge.classList.toggle('hidden', !abiertos); }
+      [['tkFiltroAbiertos', 'abiertos'], ['tkFiltroResueltos', 'resueltos'], ['tkFiltroTodos', 'todos']].forEach(([id, f]) => {
+        const b = document.getElementById(id);
+        if (b) b.className = 'px-3 py-1 rounded-lg border ' + (filtroTicketsActual === f ? 'bg-amber-500/20 text-amber-300 border-amber-500/40' : 'bg-gray-800 text-gray-400 border-gray-700');
+      });
+      const lista = ticketsCuentas.filter(t => filtroTicketsActual === 'todos' || (filtroTicketsActual === 'abiertos' ? t.estado !== 'resuelto' : t.estado === 'resuelto'));
+      if (!lista.length) { cont.innerHTML = `<p class="px-4 py-6 text-center text-gray-500 text-sm">${filtroTicketsActual === 'abiertos' ? 'No hay tickets abiertos.' : 'No hay tickets.'}</p>`; return; }
+      cont.innerHTML = lista.map(t => {
+        const resuelto = t.estado === 'resuelto';
+        const fecha = new Date(t.creadoEl).toLocaleDateString('es-CO', { day: '2-digit', month: '2-digit', year: 'numeric' });
+        const asignado = t.proveedorNombre
+          ? `Asignado a <b class="text-amber-300">${escaparHtml(t.proveedorNombre)}</b>`
+          : '<span class="text-gray-500">Sin proveedor (cuenta propia)</span>';
+        return `
+          <div class="px-4 py-3 flex items-start justify-between gap-3">
+            <div class="min-w-0">
+              <p class="text-xs font-bold text-white break-all"><i class="fa-solid fa-ticket mr-1 ${resuelto ? 'text-gray-500' : 'text-amber-400'}"></i>${escaparHtml(t.cuenta || '')}</p>
+              <p class="text-[11px] text-gray-300">${escaparHtml(t.motivo || '')}${t.detalle ? ' · ' + escaparHtml(t.detalle) : ''}</p>
+              <p class="text-[10px] text-gray-400">${escaparHtml(t.productoNombre || 'Producto no identificado')} · ${asignado} · ${fecha}${t.clienteEmail ? ' · cliente ' + escaparHtml(t.clienteEmail) : ''}</p>
+              ${resuelto ? `<p class="text-[10px] text-emerald-300 mt-0.5"><i class="fa-solid fa-circle-check mr-1"></i>Resuelto${t.resolucion ? ': ' + escaparHtml(t.resolucion) : ''}</p>` : ''}
+            </div>
+            <button onclick="${resuelto ? 'reabrirTicket' : 'resolverTicket'}('${escaparJsAttr(t.id)}')" class="shrink-0 px-2.5 py-1.5 rounded-lg text-[11px] font-bold ${resuelto ? 'bg-gray-800 hover:bg-gray-700 text-gray-300 border border-gray-700' : 'bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 border border-emerald-500/30'}">${resuelto ? 'Reabrir' : 'Resolver'}</button>
+          </div>`;
+      }).join('');
+    }
+
+    // Busca el lote aprobado donde venía la cuenta (el más reciente si está repetida)
+    function buscarLoteDeCuenta(email) {
+      const e = String(email || '').trim().toLowerCase();
+      if (!e) return null;
+      const candidatos = [];
+      lotesProveedores.forEach(l => {
+        if (l.estado !== 'aprobado') return;
+        if ((l.cuentas || []).some(raw => String(parseCredencialObj(raw).email || '').trim().toLowerCase() === e)) candidatos.push(l);
+      });
+      candidatos.sort((a, b) => String(b.aprobadoEl || b.creadoEl).localeCompare(String(a.aprobadoEl || a.creadoEl)));
+      return candidatos[0] || null;
+    }
+
+    function abrirModalTicket() {
+      ['tkCuenta', 'tkDetalle', 'tkCliente'].forEach(id => { const e = document.getElementById(id); if (e) e.value = ''; });
+      const sel = document.getElementById('tkAsignar');
+      if (sel) {
+        const provs = {};
+        lotesProveedores.forEach(l => { if (l.proveedorUid) provs[l.proveedorUid] = l.proveedorNombre || l.proveedorEmail || 'Proveedor'; });
+        sel.innerHTML = '<option value="">Automático (quien la subió)</option><option value="__ninguno">Sin proveedor (cuenta propia)</option>' +
+          Object.keys(provs).map(u => `<option value="${escaparHtml(u)}">${escaparHtml(provs[u])}</option>`).join('');
+      }
+      actualizarInfoTicket();
+      const m = document.getElementById('modalTicketCuenta');
+      m.classList.remove('hidden'); m.style.display = 'flex';
+    }
+
+    function cerrarModalTicket() {
+      const m = document.getElementById('modalTicketCuenta');
+      if (m) { m.classList.add('hidden'); m.style.display = 'none'; }
+    }
+
+    function actualizarInfoTicket() {
+      const info = document.getElementById('tkInfo');
+      if (!info) return;
+      const email = (document.getElementById('tkCuenta') || {}).value || '';
+      if (!email.trim()) { info.className = 'text-[11px] mt-1.5 text-gray-500'; info.textContent = 'Escribe el correo y te digo quién la subió.'; return; }
+      const lote = buscarLoteDeCuenta(email);
+      if (lote) {
+        const f = new Date(lote.aprobadoEl || lote.creadoEl).toLocaleDateString('es-CO', { day: '2-digit', month: '2-digit', year: 'numeric' });
+        info.className = 'text-[11px] mt-1.5 text-emerald-300';
+        info.innerHTML = `<i class="fa-solid fa-circle-check mr-1"></i>La subió <b>${escaparHtml(lote.proveedorNombre || lote.proveedorEmail || 'un proveedor')}</b> · ${escaparHtml(lote.productoNombre || '')} · lote del ${f}.`;
+      } else {
+        info.className = 'text-[11px] mt-1.5 text-amber-300';
+        info.textContent = 'No está en ningún lote de proveedores (cuenta propia). Puedes asignarla a mano.';
+      }
+    }
+
+    async function crearTicketCuenta() {
+      if (!esStaffSesion()) return;
+      const cuenta = String((document.getElementById('tkCuenta') || {}).value || '').trim().toLowerCase();
+      if (!/^\S+@\S+\.\S+$/.test(cuenta)) { alert('Escribe el correo de la cuenta con problemas.'); return; }
+      const lote = buscarLoteDeCuenta(cuenta);
+      const elegido = (document.getElementById('tkAsignar') || {}).value || '';
+      let prov = { uid: '', nombre: '', email: '' };
+      if (elegido === '__ninguno') { /* sin proveedor */ }
+      else if (elegido) {
+        const l = lotesProveedores.find(x => x.proveedorUid === elegido);
+        prov = { uid: elegido, nombre: l ? (l.proveedorNombre || l.proveedorEmail || '') : '', email: l ? (l.proveedorEmail || '') : '' };
+      } else if (lote) {
+        prov = { uid: lote.proveedorUid || '', nombre: lote.proveedorNombre || lote.proveedorEmail || '', email: lote.proveedorEmail || '' };
+      }
+      if (ticketsCuentas.some(t => t.cuenta === cuenta && t.estado !== 'resuelto')) {
+        if (!await confirmarModal('Esta cuenta ya tiene un ticket abierto. ¿Crear otro de todas formas?', { textoAceptar: 'Sí, crear' })) return;
+      }
+      const btn = document.getElementById('btnCrearTicket');
+      if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>'; }
+      try {
+        await db.collection('tickets_cuentas').add({
+          cuenta: cuenta,
+          productoId: lote ? (lote.productoId || '') : '', productoNombre: lote ? (lote.productoNombre || '') : '',
+          motivo: String((document.getElementById('tkMotivo') || {}).value || 'Otro'),
+          detalle: String((document.getElementById('tkDetalle') || {}).value || '').trim().slice(0, 200),
+          clienteEmail: String((document.getElementById('tkCliente') || {}).value || '').trim().toLowerCase().slice(0, 120),
+          estado: 'abierto',
+          proveedorUid: prov.uid, proveedorNombre: prov.nombre, proveedorEmail: prov.email,
+          loteId: lote ? lote.id : '', costoUnitario: lote ? (Number(lote.costoUnitario) || 0) : 0,
+          creadoPor: currentUser.email, creadoEl: new Date().toISOString()
+        });
+        cerrarModalTicket();
+        mostrarToast(prov.nombre ? `Ticket creado y asignado a ${prov.nombre}.` : 'Ticket creado (sin proveedor).');
+      } catch (err) {
+        alert('No se pudo crear el ticket: ' + err.message);
+      } finally {
+        if (btn) { btn.disabled = false; btn.innerHTML = 'Crear ticket'; }
+      }
+    }
+
+    async function resolverTicket(id) {
+      if (!esStaffSesion()) return;
+      const nota = window.prompt('¿Cómo se resolvió? (por ejemplo: "se reemplazó la cuenta"). Puedes dejarlo vacío:', '');
+      if (nota === null) return;
+      try {
+        await db.collection('tickets_cuentas').doc(id).update({ estado: 'resuelto', resolucion: String(nota).trim().slice(0, 200), resueltoPor: currentUser.email, resueltoEl: new Date().toISOString() });
+        mostrarToast('Ticket resuelto.');
+      } catch (err) { alert('No se pudo resolver: ' + err.message); }
+    }
+
+    async function reabrirTicket(id) {
+      if (!esStaffSesion()) return;
+      try {
+        await db.collection('tickets_cuentas').doc(id).update({ estado: 'abierto', resolucion: '', resueltoPor: '', resueltoEl: '' });
+        mostrarToast('Ticket reabierto.');
+      } catch (err) { alert('No se pudo reabrir: ' + err.message); }
+    }
+
+    // ----- lo que ve el proveedor -----
+    function renderizarTicketsProveedor() {
+      const caja = document.getElementById('provTicketsCaja');
+      const cont = document.getElementById('provTickets');
+      if (!caja || !cont) return;
+      caja.classList.toggle('hidden', !proveedorTickets.length);
+      const abiertos = proveedorTickets.filter(t => t.estado !== 'resuelto').length;
+      const b = document.getElementById('provTicketsAbiertos');
+      if (b) { b.textContent = abiertos; b.classList.toggle('hidden', !abiertos); }
+      cont.innerHTML = proveedorTickets.map(t => {
+        const resuelto = t.estado === 'resuelto';
+        const fecha = new Date(t.creadoEl).toLocaleDateString('es-CO', { day: '2-digit', month: '2-digit', year: 'numeric' });
+        return `<div class="p-3 rounded-xl bg-gray-800/50 border border-gray-700/60">
+          <div class="flex items-center justify-between gap-2"><p class="text-xs font-bold text-white break-all">${escaparHtml(t.cuenta || '')}</p><span class="shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-full border ${resuelto ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30' : 'bg-amber-500/15 text-amber-300 border-amber-500/30'}">${resuelto ? 'Resuelto' : 'Abierto'}</span></div>
+          <p class="text-[11px] text-gray-300 mt-0.5">${escaparHtml(t.motivo || '')}${t.detalle ? ' · ' + escaparHtml(t.detalle) : ''}</p>
+          <p class="text-[10px] text-gray-500">${escaparHtml(t.productoNombre || '')} · ${fecha}</p>
+          ${resuelto && t.resolucion ? `<p class="text-[10px] text-emerald-300 mt-0.5">${escaparHtml(t.resolucion)}</p>` : ''}
+        </div>`;
+      }).join('');
+    }
+
+    function iniciarTicketsProveedor() {
+      if (unsubProvTickets || !currentUser) return;
+      try {
+        unsubProvTickets = db.collection('tickets_cuentas').where('proveedorUid', '==', currentUser.uid).onSnapshot(snap => {
+          proveedorTickets = [];
+          snap.forEach(d => proveedorTickets.push(Object.assign({ id: d.id }, d.data())));
+          proveedorTickets.sort((a, b) => String(b.creadoEl).localeCompare(String(a.creadoEl)));
+          renderizarTicketsProveedor();
+        }, err => console.warn('Mis reportes no disponibles:', err));
+      } catch (e) { console.warn(e); }
+    }
+
+    function detenerTicketsProveedor() {
+      try { if (unsubProvTickets) unsubProvTickets(); } catch (e) { /* nada */ }
+      unsubProvTickets = null;
+      proveedorTickets = [];
     }
 
     // ==================== MI PERFIL ====================
