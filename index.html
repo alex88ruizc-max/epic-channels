@@ -2,7 +2,7 @@
 <html lang="es" class="dark">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, interactive-widget=resizes-content">
   <title>Epic Channels | Portal Privado</title>
   
   <!-- Tailwind CSS -->
@@ -143,7 +143,10 @@
     .asistente-saludo { display:none; align-items:flex-start; gap:.5rem; max-width:14.5rem; padding:.6rem .7rem; border-radius:1rem 1rem .25rem 1rem; background:#fff; color:#0f172a; font-size:.78rem; font-weight:700; line-height:1.3; box-shadow:0 14px 30px -10px rgba(0,0,0,.65); animation:asistenteEntrada .35s ease both; }
     .asistente-saludo.visible { display:flex; }
     .asistente-saludo button { background:none; border:0; padding:0; color:inherit; font:inherit; text-align:left; cursor:pointer; }
-    .asistente-panel { position:fixed; right:1.25rem; bottom:5.25rem; z-index:40; display:none; flex-direction:column; width:min(24rem, calc(100vw - 1.5rem)); max-height:min(34rem, calc(100vh - 7rem)); max-height:min(34rem, calc(100dvh - 7rem)); border-radius:1.25rem; overflow:hidden; }
+    .asistente-panel { position:fixed; right:1.25rem; bottom:5.25rem; z-index:60; display:none; flex-direction:column; width:min(24rem, calc(100vw - 1.5rem)); max-height:min(34rem, calc(100vh - 11.5rem)); max-height:min(34rem, calc(100dvh - 11.5rem)); border-radius:1.25rem; overflow:hidden; }
+    .asistente-panel.tecleando { bottom:.5rem; max-height:calc(100vh - 6rem); max-height:calc(100dvh - 6rem); }
+    .asistente-panel.tecleando .asistente-cuerpo { min-height:0; }
+    @media (max-height: 600px) { .asistente-cuerpo { min-height:0; } }
     .asistente-panel.abierto { display:flex; animation:asistenteEntrada .22s ease both; }
     @media (max-width:640px) { .asistente-panel { right:.75rem; left:.75rem; width:auto; } }
     .asistente-cuerpo { flex:1 1 auto; min-height:11rem; overflow-y:auto; padding:.9rem; display:flex; flex-direction:column; gap:.55rem; overscroll-behavior:contain; }
@@ -158,6 +161,9 @@
     .asistente-escribiendo i:nth-child(2) { animation-delay:.15s; }
     .asistente-escribiendo i:nth-child(3) { animation-delay:.3s; }
     @media (prefers-reduced-motion: reduce) { .asistente-punto::after, .asistente-escribiendo i { animation:none; } .asistente-fab, .asistente-chip { transition:none; } .asistente-panel.abierto, .asistente-saludo { animation:none; } }
+    /* Ventanas emergentes autojustables: nunca más altas que la pantalla (ni con el teclado abierto); si hay más contenido, se desplaza por dentro */
+    div.fixed.inset-0[id^="modal"] { overscroll-behavior: contain; }
+    div.fixed.inset-0[id^="modal"] > div { max-height: 92vh; max-height: 92dvh; overflow-y: auto; overscroll-behavior: contain; }
     /* El botón flotante de ayuda no debe tapar los últimos botones de la tienda ni del panel */
     #vistaTienda, #vistaAdmin { padding-bottom: 5.5rem; }
   </style>
@@ -631,6 +637,9 @@
           <button onclick="irATabAdmin('proveedores')" id="tabBtnProveedores" class="solo-admin admin-tab bg-gray-900 border-gray-800 text-gray-400">
             <i class="fa-solid fa-truck-ramp-box"></i><span>Proveedores</span><span id="badgeTabProveedores" class="hidden ml-1 px-1.5 py-0.5 rounded-full bg-amber-500 text-black text-[9px] font-black"></span>
           </button>
+          <button onclick="irATabAdmin('buscar')" id="tabBtnBuscar" class="admin-tab bg-gray-900 border-gray-800 text-gray-400">
+            <i class="fa-solid fa-magnifying-glass"></i><span>Buscar cuenta</span>
+          </button>
           <button onclick="irATabAdmin('asistente')" id="tabBtnAsistente" class="solo-admin admin-tab bg-gray-900 border-gray-800 text-gray-400">
             <i class="fa-solid fa-robot"></i><span>Asistente</span>
           </button>
@@ -1072,6 +1081,24 @@
       </div>
 
       <!-- TAB 8: AJUSTES GENERALES -->
+      <!-- ==================== ADMIN: BUSCAR UNA CUENTA ==================== -->
+      <div id="adminSecBuscar" class="hidden space-y-4 pb-28 sm:pb-0">
+        <div class="p-4 bg-gray-900 border border-gray-800 rounded-2xl">
+          <h3 class="text-base font-bold text-white mb-1 flex items-center gap-2"><i class="fa-solid fa-magnifying-glass text-sky-400"></i> Buscar una cuenta</h3>
+          <p class="text-xs text-gray-400">Escribe el correo completo (o pega la línea correo:clave). Te digo si existe, si está en stock o vendida, a quién, su garantía y cuándo se subió.</p>
+          <form onsubmit="return buscarCuentaAdmin(event)" class="flex gap-2 mt-3" autocomplete="off">
+            <input type="search" id="txtBuscarCuenta" placeholder="correo@gmail.com" autocomplete="off" autocapitalize="none" spellcheck="false" class="min-w-0 flex-grow bg-gray-800 border border-gray-700 rounded-xl px-3 py-2.5 text-xs text-white font-mono focus:outline-none focus:border-sky-500/60">
+            <button type="submit" id="btnBuscarCuenta" class="shrink-0 px-4 py-2.5 rounded-xl bg-sky-500 hover:bg-sky-400 text-black font-bold text-xs">Buscar</button>
+          </form>
+          <div id="bcAviso" class="hidden mt-3 p-3 rounded-xl bg-amber-500/10 border border-amber-500/30">
+            <p class="text-[11px] text-amber-200 leading-snug">Para encontrar <b>compras anteriores</b> al instante, hay que prepararlas una sola vez (solo el administrador).</p>
+            <button type="button" id="btnPrepararBuscador" onclick="bcPrepararIndice()" class="mt-2 px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-black font-bold text-[11px]">Preparar buscador</button>
+          </div>
+          <button type="button" id="bcActualizar" onclick="bcPrepararIndice()" class="hidden mt-2 text-[11px] text-gray-400 underline hover:text-white">Actualizar buscador (agrega las compras nuevas)</button>
+        </div>
+        <div id="bcResultado" class="space-y-3"></div>
+      </div>
+
       <!-- ==================== ADMIN: ASISTENTE DE AYUDA ==================== -->
       <div id="adminSecAsistente" class="hidden space-y-4 pb-28 sm:pb-0">
         <div class="p-4 bg-gray-900 border border-gray-800 rounded-2xl">
@@ -2471,6 +2498,35 @@
     </div>
   </div>
 
+  <!-- MODAL: RESOLVER UN TICKET (administración y moderación) -->
+  <div id="modalResolverTicket" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden items-center justify-center p-3 sm:p-4">
+    <div class="bg-gray-900 border border-emerald-500/40 rounded-2xl max-w-md w-full shadow-2xl max-h-[92vh] flex flex-col overflow-hidden">
+      <div class="shrink-0 flex items-center justify-between gap-3 px-4 py-3 border-b border-gray-800">
+        <h3 class="text-base font-black text-white flex items-center gap-2"><i class="fa-solid fa-circle-check text-emerald-400"></i> Resolver ticket</h3>
+        <button type="button" onclick="cerrarResolverTicket()" aria-label="Cerrar" class="w-8 h-8 shrink-0 rounded-full bg-gray-800 hover:bg-gray-700 text-gray-300 flex items-center justify-center"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="overflow-y-auto px-4 py-3 space-y-3 flex-grow">
+        <p id="rtResumen" class="text-xs text-gray-200 break-all"></p>
+        <div class="space-y-1.5">
+          <label class="flex items-start gap-2 p-2.5 rounded-xl bg-gray-800/60 border border-gray-700/60 cursor-pointer"><input type="radio" name="rtResultado" value="cerrar" onchange="rtCambioResultado()" class="mt-0.5 accent-emerald-500"><span class="text-xs text-white"><b>Solo cerrar el ticket</b><span class="block text-[10px] text-gray-400">No cambia nada en la compra del cliente.</span></span></label>
+          <label id="rtOpcArreglada" class="flex items-start gap-2 p-2.5 rounded-xl bg-gray-800/60 border border-gray-700/60 cursor-pointer"><input type="radio" name="rtResultado" value="arreglada" onchange="rtCambioResultado()" class="mt-0.5 accent-emerald-500"><span class="text-xs text-white"><b>Se arregló la misma cuenta</b><span class="block text-[10px] text-gray-400">Por ejemplo, se cambió la clave o se volvió a activar.</span></span></label>
+          <label id="rtOpcReemplazo" class="flex items-start gap-2 p-2.5 rounded-xl bg-gray-800/60 border border-gray-700/60 cursor-pointer"><input type="radio" name="rtResultado" value="reemplazo" onchange="rtCambioResultado()" class="mt-0.5 accent-emerald-500"><span class="text-xs text-white"><b>Se entregó una cuenta nueva</b><span class="block text-[10px] text-gray-400">La compra del cliente pasa a mostrar la cuenta nueva, enlazada a la anterior.</span></span></label>
+        </div>
+        <div id="rtBloqueNueva" class="hidden space-y-2 p-3 rounded-xl bg-gray-800/50 border border-gray-700/60">
+          <div><label class="block text-xs text-gray-400 mb-1">Cuenta nueva (correo:clave)</label><input type="text" id="rtCuentaNueva" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="nueva@gmail.com:clave" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white font-mono focus:outline-none"></div>
+          <label class="flex items-start gap-2 text-[11px] text-gray-200 cursor-pointer"><input type="checkbox" id="rtDesdeStock" class="accent-emerald-500 mt-0.5"><span>O tomar una del stock de este producto <span id="rtStockInfo" class="text-gray-400"></span></span></label>
+        </div>
+        <p id="rtAvisoServidor" class="hidden text-[11px] leading-snug p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-200"><i class="fa-solid fa-triangle-exclamation mr-1"></i>El servidor publicado es una versión anterior: por ahora solo puedes <b>cerrar el ticket</b> (con tu nota). Las otras dos opciones se activan al actualizar el servidor.</p>
+        <p id="rtGarantia" class="text-[11px] leading-snug p-2.5 rounded-xl bg-sky-500/10 border border-sky-500/30 text-sky-200"></p>
+        <div><label class="block text-xs text-gray-400 mb-1">Nota para el cliente (opcional)</label><input type="text" id="rtNota" maxlength="200" autocomplete="off" placeholder="Ej: ya te cambiamos la cuenta" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"></div>
+      </div>
+      <div class="shrink-0 grid grid-cols-2 gap-2 p-3 border-t border-gray-800">
+        <button type="button" onclick="cerrarResolverTicket()" class="bg-gray-800 hover:bg-gray-700 text-gray-100 font-bold py-2.5 rounded-xl text-xs border border-gray-700">Cancelar</button>
+        <button type="button" id="btnResolverTicket" onclick="confirmarResolverTicket()" class="bg-emerald-500 hover:bg-emerald-400 text-black font-bold py-2.5 rounded-xl text-xs">Resolver</button>
+      </div>
+    </div>
+  </div>
+
   <!-- MODAL: EDITAR UNA RESPUESTA DEL ASISTENTE (administrador) -->
   <div id="modalAsistenteTema" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden items-center justify-center p-3 sm:p-4">
     <div class="bg-gray-900 border border-emerald-500/40 rounded-2xl max-w-md w-full shadow-2xl max-h-[92vh] flex flex-col overflow-hidden">
@@ -3337,7 +3393,7 @@
           acciones: ['cuentas'], relacionada: 'reportar' },
         { id: 'reportar', para: 'cliente', titulo: 'Reportar un problema', icono: 'fa-flag',
           claves: ['reportar', 'reporte', 'ticket', 'problema', 'falla', 'fallo', 'no funciona', 'no sirve', 'no inicia', 'no entra', 'no abre', 'error', 'contrasena incorrecta', 'clave incorrecta', 'suspendida', 'bloqueada', 'cuenta mala'],
-          texto: 'Lamento el inconveniente. Para reportar una cuenta necesitas una **captura de pantalla del error**; ten una a la mano.',
+          texto: 'Lamento el inconveniente. Puedes reportar las cuentas que tengan **garantía vigente**: en Mis Cuentas su botón **Reportar** se ve en amarillo. Necesitas una **captura del error**; ten una a la mano.',
           flujo: 'reportar' },
         { id: 'alquiler', para: 'cliente', titulo: 'Mis cuentas alquiladas', icono: 'fa-clapperboard', solo: 'alquileres',
           claves: ['netflix', 'codigo', 'alquiler', 'alquilada', 'alquiladas', 'pin'],
@@ -3594,14 +3650,18 @@
         if (!c || c.simulada) return;
         String(c.credenciales || '').split('\n').map(l => l.trim()).filter(Boolean).forEach((l, j) => {
           const cuenta = emailDeLineaCuenta(l);
-          if (cuenta) items.push({ idx: idx, j: j, cuenta: cuenta, abierto: misReportes.some(t => t.cuenta === cuenta && t.estado !== 'resuelto') });
+          if (cuenta) items.push({ idx: idx, j: j, cuenta: cuenta, abierto: misReportes.some(t => t.cuenta === cuenta && t.estado !== 'resuelto'), puede: estadoGarantiaCuenta(c, cuenta).puedeReportar });
         });
       });
       if (!items.length) {
         asistenteAgregarBot('Aún no tienes cuentas compradas, así que no hay nada que reportar.', [{ t: 'Ir al catálogo', i: 'fa-store', fn: 'catalogo' }, { t: 'Otra pregunta', i: 'fa-list', tema: 'menu' }]);
         return;
       }
-      const libres = items.filter(x => !x.abierto);
+      const libres = items.filter(x => !x.abierto && x.puede);
+      if (!libres.length && items.some(x => !x.abierto && !x.puede)) {
+        asistenteAgregarBot('Ahora mismo ninguna de tus cuentas está en garantía, así que no se pueden reportar desde aquí. Si necesitas ayuda, habla con una persona.', [{ t: 'Hablar con una persona', i: 'fa-headset', tema: 'persona' }, { t: 'Otra pregunta', i: 'fa-list', tema: 'menu' }]);
+        return;
+      }
       if (!libres.length) {
         asistenteAgregarBot('Todas tus cuentas recientes ya tienen un reporte abierto. Puedes ver cómo va en **Mi perfil → Mis Cuentas**.', [{ t: 'Ver mis reportes', i: 'fa-ticket', fn: 'cuentas' }, { t: 'Otra pregunta', i: 'fa-list', tema: 'menu' }]);
         return;
@@ -3651,6 +3711,7 @@
 
     function abrirAsistente() {
       if (!currentUser) return;
+      if (typeof ventanasAbiertas === 'function' && ventanasAbiertas().length) return;
       const p = document.getElementById('asistentePanel');
       if (!p) return;
       cerrarSaludoAsistente();
@@ -6261,7 +6322,7 @@
     function cambiarTabAdmin(tab) {
       if (modoPruebaCliente) return;
       iniciarBadgesAdmin();
-      const tabs = ['productos', 'reporte', 'categorias', 'usuarios', 'stock', 'apariencia', 'pagos', 'recargas', 'historial', 'netflix', 'ajustes', 'proveedores', 'asistente'];
+      const tabs = ['productos', 'reporte', 'categorias', 'usuarios', 'stock', 'apariencia', 'pagos', 'recargas', 'historial', 'netflix', 'ajustes', 'proveedores', 'asistente', 'buscar'];
       // El moderador no entra a la configuración general ni a los pagos a proveedores
       if (esModeradorSesion() && RESTRINGIDAS_MODERADOR.includes(tab)) tab = 'productos';
       tabs.forEach(t => {
@@ -6290,6 +6351,7 @@
       if (tab === 'ajustes') cargarDatosAjustesEnForm();
       if (tab === 'proveedores') renderizarAdminProveedores();
       if (tab === 'asistente') cargarEditorAsistente();
+      if (tab === 'buscar') prepararBuscadorAdmin();
     }
 
     async function iniciarSincronizacionTotal() {
@@ -6942,7 +7004,9 @@
             gananciaNeta: totalPagar - costoTotalVenta,
             credenciales: credencialesPuras,
             tipoGarantia: prodInfo.tipoGarantia || '', // GUARDADO DE GARANTÍA
-            fecha: new Date().toISOString()
+            fecha: new Date().toISOString(),
+            correos: cuentasEntregadas.map(c => String(parseCredencialObj(c).email || '').trim().toLowerCase()).filter((v, i, a) => v && a.indexOf(v) === i),
+            cuentasInfo: cuentasEntregadas.filter(c => c && typeof c === 'object' && c.subidoEl).map(c => ({ e: String(parseCredencialObj(c).email || '').trim().toLowerCase(), s: String(c.subidoEl) }))
           });
 
           // TEXTO DE GARANTÍA DINÁMICO PARA TELEGRAM
@@ -7345,9 +7409,11 @@
       } else {
         contenedor.innerHTML = prod.cuentas.map((raw, i) => {
           const c = parseCredencialObj(raw);
+          const subida = (raw && typeof raw === 'object' && raw.subidoEl) ? formatearFechaHoraCorta(new Date(raw.subidoEl)) : '';
           return `
             <div class="flex items-center justify-between gap-2 p-1.5 bg-gray-800/60 rounded-lg border border-gray-700/50 mb-1">
-              <div class="truncate"><span class="text-gray-500 mr-1.5">${i + 1}.</span>${c.email} : ${c.pass}${c.costo > 0 ? `<span class="ml-2 text-[10px] text-amber-400 font-sans">(costo ${formatoCOP(c.costo)})</span>` : ''}</div>
+              <div class="min-w-0"><div class="truncate"><span class="text-gray-500 mr-1.5">${i + 1}.</span>${c.email} : ${c.pass}${c.costo > 0 ? `<span class="ml-2 text-[10px] text-amber-400 font-sans">(costo ${formatoCOP(c.costo)})</span>` : ''}</div>
+              <div class="text-[10px] font-sans mt-0.5 ${subida ? 'text-sky-300' : 'text-gray-500'}"><i class="fa-regular fa-calendar mr-1"></i>${subida ? 'Subida el ' + subida : 'Sin fecha de subida registrada'}</div></div>
               <button onclick="eliminarCuentaIndividual('${docId}', ${i})" title="Eliminar esta cuenta" class="px-2 py-1 bg-red-500/20 hover:bg-red-500/40 text-red-400 rounded text-xs transition shrink-0">
                 <i class="fa-solid fa-trash-can"></i>
               </button>
@@ -8003,11 +8069,12 @@
 
       const costoUnitario = leerCostoUnitarioStock();
       const claveAccesoLote = ((document.getElementById('txtStockClaveAcceso') || {}).value || '').trim();
+      const ahoraSubida = new Date().toISOString();
       const nuevas = lineas.map(l => {
         let email = l, pass = '';
         if (l.includes(':')) { const p = l.split(':'); email = p[0].trim(); pass = p.slice(1).join(':').trim(); }
         else if (/\s/.test(l)) { const p = l.split(/\s+/); email = p[0].trim(); pass = p.slice(1).join(' ').trim(); }
-        const cuenta = { email, pass, costo: costoUnitario };
+        const cuenta = { email, pass, costo: costoUnitario, subidoEl: ahoraSubida };
         if (claveAccesoLote) cuenta.claveAcceso = claveAccesoLote;
         return cuenta;
       }).filter((c, i, arr) => arr.findIndex(o => JSON.stringify(o) === JSON.stringify(c)) === i);
@@ -8986,11 +9053,13 @@
       el.textContent = isFinite(costo) && costo >= 0 && (document.getElementById('aprobarLoteCosto').value !== '') ? `Total que se le debe: ${formatoCOP(costo * l.cantidad)} (${l.cantidad} × ${formatoCOP(costo)})` : '';
     }
 
-    function credencialDesdeLinea(linea, costo) {
+    function credencialDesdeLinea(linea, costo, subidoEl) {
       let email = linea, pass = '';
       if (linea.includes(':')) { const p = linea.split(':'); email = p[0].trim(); pass = p.slice(1).join(':').trim(); }
       else if (/\s/.test(linea)) { const p = linea.split(/\s+/); email = p[0].trim(); pass = p.slice(1).join(' ').trim(); }
-      return { email: email, pass: pass, costo: costo };
+      const o = { email: email, pass: pass, costo: costo };
+      if (subidoEl) o.subidoEl = subidoEl;
+      return o;
     }
 
     async function aprobarLoteProveedor() {
@@ -9024,7 +9093,8 @@
           const inv = invDoc.exists ? (invDoc.data() || {}) : {};
           const legado = Array.isArray(inv.cuentas) ? inv.cuentas : [];
           const priv = (privDoc.exists && Array.isArray(privDoc.data().cuentas)) ? privDoc.data().cuentas : [];
-          const nuevas = (datos.cuentas || []).map(x => credencialDesdeLinea(String(x), costo));
+          const ahoraSubida = new Date().toISOString();
+          const nuevas = (datos.cuentas || []).map(x => credencialDesdeLinea(String(x), costo, ahoraSubida));
           const todas = priv.concat(legado).concat(nuevas);
           if (privDoc.exists || inventarioSeguroActivo()) {
             t.set(privRef, { cuentas: todas }, { merge: true });
@@ -9421,28 +9491,45 @@
           <div class="flex items-center justify-between gap-2"><p class="text-[11px] font-bold text-white break-all">${escaparHtml(t.cuenta || '')}</p><span class="shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-full border ${resuelto ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30' : 'bg-amber-500/15 text-amber-300 border-amber-500/30'}">${resuelto ? 'Resuelto' : 'En revisión'}</span></div>
           <p class="text-[10px] text-gray-400">${escaparHtml(t.motivo || '')} · ${fecha}</p>
           ${resuelto && t.resolucion ? `<p class="text-[11px] text-emerald-300 mt-0.5"><i class="fa-solid fa-circle-check mr-1"></i>${escaparHtml(t.resolucion)}</p>` : ''}
+          ${resuelto && t.cuentaNueva ? `<p class="text-[11px] text-sky-300 mt-0.5"><i class="fa-solid fa-link mr-1"></i>Tu cuenta nueva: <span class="font-mono break-all">${escaparHtml(t.cuentaNueva)}</span> (ya está en tus compras)</p>` : ''}
         </div>`;
       }).join('');
     }
 
+    // Identificador de una cuenta dentro de una línea. Igual que en el servidor: tolera "Correo: x Clave: y", usuarios y separadores como ; | ,
     function emailDeLineaCuenta(l) {
       const t = String(l || '').trim();
       if (!t) return '';
-      return String(t.includes(':') ? t.split(':')[0] : t.split(/\s+/)[0]).trim().toLowerCase();
+      const base = String(t.split(/[:;|,\s]/)[0] || '').trim();
+      if (base.indexOf('@') !== -1) return base.toLowerCase();
+      const m = t.match(/(?:correo|e-?mail|usuario|user|cuenta)\s*[:=]\s*([^\s:;|,]+)/i);
+      if (m) return m[1].toLowerCase();
+      return base.toLowerCase();
     }
 
     // Cada línea de cuenta comprada lleva su botón "Reportar" (o la marca de que ya está reportada)
     function pintarBotonesReporte() {
       document.querySelectorAll('[data-reporte-slot]').forEach(slot => {
         const cuenta = slot.getAttribute('data-cuenta');
+        const idx = parseInt(slot.getAttribute('data-idx'), 10), j = slot.getAttribute('data-j');
+        const c = misComprasPerfilCache[idx];
         const abierto = misReportes.find(t => t.cuenta === cuenta && t.estado !== 'resuelto');
         if (abierto) {
           slot.innerHTML = '<span class="shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-full border bg-amber-500/15 text-amber-300 border-amber-500/30">Reportada</span>';
+          return;
+        }
+        const g = c ? estadoGarantiaCuenta(c, cuenta) : { puedeReportar: false, estado: 'sin' };
+        if (g.puedeReportar) {
+          slot.innerHTML = `<button type="button" onclick="abrirReporteCuenta(${idx}, ${j})" class="shrink-0 px-2.5 py-1 rounded-lg text-[10px] font-black bg-yellow-400 hover:bg-yellow-300 text-black border border-yellow-300 shadow shadow-yellow-500/20 transition"><i class="fa-solid fa-flag mr-1"></i>Reportar</button>`;
         } else {
-          slot.innerHTML = `<button type="button" onclick="abrirReporteCuenta(${slot.getAttribute('data-idx')}, ${slot.getAttribute('data-j')})" class="shrink-0 px-2 py-1 rounded-lg text-[10px] font-bold bg-gray-900 hover:bg-gray-700 text-amber-300 border border-gray-700"><i class="fa-solid fa-flag mr-1"></i>Reportar</button>`;
+          const txt = g.estado === 'sin' ? 'Sin garantía' : 'Fuera de garantía';
+          slot.innerHTML = `<span class="shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-full border bg-gray-800 text-gray-500 border-gray-700 cursor-not-allowed" title="${txt}">${txt}</span>`;
         }
       });
     }
+
+    // Los botones cambian solos cuando pasa el tiempo, sin recargar la página
+    setInterval(() => { try { if (misComprasPerfilCache.length && document.querySelector('[data-reporte-slot]')) pintarBotonesReporte(); } catch (e) { /* nada */ } }, 60000);
 
     function abrirReporteCuenta(idxCompra, idxLinea) {
       const c = misComprasPerfilCache[idxCompra];
@@ -9450,6 +9537,7 @@
       const lineas = String(c.credenciales || '').split('\n').map(l => l.trim()).filter(Boolean);
       const cuenta = emailDeLineaCuenta(lineas[idxLinea]);
       if (!cuenta) return;
+      if (!estadoGarantiaCuenta(c, cuenta).puedeReportar) { alert('Esta cuenta ya no está en garantía, por eso no se puede reportar desde aquí. Si necesitas ayuda, habla con una persona desde el botón Ayuda.'); return; }
       reporteActual = { compraId: c.id, cuenta: cuenta, producto: c.productoNombre || '' };
       document.getElementById('rpProducto').textContent = c.productoNombre || 'Producto';
       document.getElementById('rpCuenta').textContent = cuenta;
@@ -9554,7 +9642,8 @@
               <p class="text-[11px] text-gray-300">${escaparHtml(t.motivo || '')}${t.detalle ? ' · ' + escaparHtml(t.detalle) : ''}</p>
               <p class="text-[10px] text-gray-400">${t.origen === 'cliente' ? '<span class="px-1.5 py-0.5 rounded bg-sky-500/20 text-sky-300 text-[9px] font-black mr-1">CLIENTE</span>' : ''}${escaparHtml(t.productoNombre || 'Producto no identificado')} · ${asignado} · ${fecha}${t.clienteEmail ? ' · cliente ' + escaparHtml(t.clienteEmail) : ''}</p>
               ${textoGarantiaTicket(t)}
-              ${resuelto ? `<p class="text-[10px] text-emerald-300 mt-0.5"><i class="fa-solid fa-circle-check mr-1"></i>Resuelto${t.resolucion ? ': ' + escaparHtml(t.resolucion) : ''}</p>` : ''}
+              ${resuelto ? `<p class="text-[10px] text-emerald-300 mt-0.5"><i class="fa-solid fa-circle-check mr-1"></i>Resuelto${t.resolucion ? ': ' + escaparHtml(t.resolucion) : ''}${t.garantiaReiniciada ? ' · garantía reiniciada' : ''}</p>` : ''}
+              ${t.cuentaNueva ? `<p class="text-[10px] text-sky-300 mt-0.5"><i class="fa-solid fa-link mr-1"></i>Reemplazada por <span class="font-mono break-all">${escaparHtml(t.cuentaNueva)}</span> (enlazada a ${escaparHtml(t.cuenta || '')})</p>` : ''}
             </div>
             <div class="shrink-0 flex flex-col gap-1.5">
               ${t.tieneFoto ? `<button onclick="verFotoTicket('${escaparJsAttr(t.id)}')" class="px-2.5 py-1.5 rounded-lg text-[11px] font-bold bg-sky-500/15 hover:bg-sky-500/25 text-sky-300 border border-sky-500/30"><i class="fa-solid fa-image mr-1"></i>Ver foto</button>` : ''}
@@ -9564,16 +9653,19 @@
       }).join('');
     }
 
-    // ¿La compra todavía tenía garantía cuando el cliente reportó la cuenta?
+    // ¿La compra todavía tenía garantía cuando el cliente reportó la cuenta? (solo lo ve el personal)
     function textoGarantiaTicket(t) {
       try {
-        if (!t.garantia || !t.fechaCompra) return '';
-        const g = estadoGarantiaCompra({ tipoGarantia: t.garantia, fecha: t.fechaCompra, productoId: t.productoId });
-        if (g.estado === 'sin') return '';
+        if (t.garantia !== '24h' && t.garantia !== '29d') return '';
+        if (!t.fechaCompra) return '';
         const compra = new Date(t.fechaCompra).toLocaleDateString('es-CO', { day: '2-digit', month: '2-digit' });
         const reporte = new Date(t.creadoEl).getTime();
-        const dentro = g.vence && reporte <= g.vence.getTime();
-        return `<p class="text-[10px] mt-0.5 ${dentro ? 'text-emerald-300' : 'text-red-300'}"><i class="fa-solid fa-shield-halved mr-1"></i>Compra del ${compra} · garantía ${g.tipo === '29d' ? '29 días' : '24 horas'}: ${dentro ? 'reportada DENTRO del plazo' : 'reportada FUERA del plazo'}</p>`;
+        const vence = t.garantiaVence ? new Date(t.garantiaVence).getTime() : new Date(t.fechaCompra).getTime() + (t.garantia === '29d' ? 29 : 1) * 24 * 3600000;
+        const dentro = reporte <= vence;
+        const enMargen = !dentro && reporte <= vence + MARGEN_REPORTE_HORAS * 3600000;
+        const color = dentro ? 'text-emerald-300' : (enMargen ? 'text-amber-300' : 'text-red-300');
+        const veredicto = dentro ? 'reportada DENTRO del plazo' : (enMargen ? `reportada ${MARGEN_REPORTE_HORAS} h después de vencer (margen interno)` : 'reportada FUERA del plazo');
+        return `<p class="text-[10px] mt-0.5 ${color}"><i class="fa-solid fa-shield-halved mr-1"></i>Compra del ${compra} · garantía ${t.garantia === '29d' ? '29 días' : '24 horas'}: ${veredicto}</p>`;
       } catch (e) { return ''; }
     }
 
@@ -9671,20 +9763,112 @@
       }
     }
 
-    async function resolverTicket(id) {
+    let resolviendoTicketId = null;
+
+    function stockLibreDeProducto(productoId) {
+      const p = catalogoUnificado.find(x => x.docId === productoId);
+      return p ? (p.cuentas || []).filter(c => !(c && typeof c === 'object' && c.alquilerId)).length : 0;
+    }
+
+    function resolverTicket(id) {
       if (!esStaffSesion()) return;
-      const nota = window.prompt('¿Cómo se resolvió? (por ejemplo: "se reemplazó la cuenta"). Puedes dejarlo vacío:', '');
-      if (nota === null) return;
+      const t = ticketsCuentas.find(x => x.id === id);
+      if (!t) return;
+      resolviendoTicketId = id;
+      const enlazado = !!t.compraId;
+      document.getElementById('rtResumen').innerHTML = `<b class="font-mono">${escaparHtml(t.cuenta || '')}</b>${t.clienteEmail ? ' · cliente ' + escaparHtml(t.clienteEmail) : ''}${t.productoNombre ? '<br><span class="text-gray-400">' + escaparHtml(t.productoNombre) + '</span>' : ''}`;
+      document.querySelectorAll('input[name="rtResultado"]').forEach(r => { r.checked = r.value === 'cerrar'; });
+      ['rtOpcArreglada', 'rtOpcReemplazo'].forEach(i => {
+        const e = document.getElementById(i);
+        if (!e) return;
+        e.classList.toggle('opacity-40', !enlazado);
+        const inp = e.querySelector('input'); if (inp) inp.disabled = !enlazado;
+        e.title = enlazado ? '' : 'Este ticket no está enlazado a una compra';
+      });
+      document.getElementById('rtNota').value = '';
+      document.getElementById('rtCuentaNueva').value = '';
+      document.getElementById('rtDesdeStock').checked = false;
+      const libres = stockLibreDeProducto(t.productoId);
+      document.getElementById('rtStockInfo').textContent = t.productoId ? `(${libres} ${libres === 1 ? 'disponible' : 'disponibles'})` : '';
+      rtCambioResultado();
+      const avisoSrv = document.getElementById('rtAvisoServidor'); if (avisoSrv) avisoSrv.classList.add('hidden');
+      const m = document.getElementById('modalResolverTicket');
+      m.classList.remove('hidden'); m.style.display = 'flex';
+      rtComprobarServidor(id);
+    }
+
+    // Con un servidor antiguo solo queda "cerrar el ticket": el cambio de cuenta y el reinicio de garantía los hace el servidor
+    async function rtComprobarServidor(id) {
+      if (!enlazadoATicket(id)) return;
+      const tiene = await servidorTiene('ticket_resolver');
+      if (tiene !== false || resolviendoTicketId !== id) return;
+      document.querySelectorAll('input[name="rtResultado"]').forEach(r => { r.checked = r.value === 'cerrar'; if (r.value !== 'cerrar') r.disabled = true; });
+      ['rtOpcArreglada', 'rtOpcReemplazo'].forEach(i => { const e = document.getElementById(i); if (e) e.classList.add('opacity-40'); });
+      const aviso = document.getElementById('rtAvisoServidor'); if (aviso) aviso.classList.remove('hidden');
+      rtCambioResultado();
+    }
+
+    function enlazadoATicket(id) {
+      const t = ticketsCuentas.find(x => x.id === id);
+      return !!(t && t.compraId);
+    }
+
+    function cerrarResolverTicket() {
+      const m = document.getElementById('modalResolverTicket');
+      if (m) { m.classList.add('hidden'); m.style.display = 'none'; }
+      resolviendoTicketId = null;
+    }
+
+    function rtResultadoActual() {
+      const r = document.querySelector('input[name="rtResultado"]:checked');
+      return r ? r.value : 'cerrar';
+    }
+
+    function rtCambioResultado() {
+      const t = ticketsCuentas.find(x => x.id === resolviendoTicketId) || {};
+      const r = rtResultadoActual();
+      document.getElementById('rtBloqueNueva').classList.toggle('hidden', r !== 'reemplazo');
+      let txt;
+      if (r === 'cerrar') txt = 'Se cierra el ticket y se borra la foto. La compra del cliente no cambia.';
+      else if (t.garantia === '24h') txt = 'Garantía de 24 horas: vuelve a empezar desde ahora para esa cuenta (el cliente tendrá otras 24 horas).' + (r === 'reemplazo' ? ' La cuenta nueva queda enlazada a la anterior.' : '');
+      else if (t.garantia === '29d') txt = 'Garantía de 29 días: sigue el mismo tiempo de la compra, no se reinicia.' + (r === 'reemplazo' ? ' La cuenta nueva queda enlazada a la anterior.' : '');
+      else txt = 'Este producto no tiene garantía, así que no se reinicia nada.' + (r === 'reemplazo' ? ' La cuenta nueva queda enlazada a la anterior.' : '');
+      document.getElementById('rtGarantia').textContent = txt;
+    }
+
+    async function confirmarResolverTicket() {
+      if (!esStaffSesion() || !resolviendoTicketId) return;
+      const id = resolviendoTicketId;
+      const t = ticketsCuentas.find(x => x.id === id);
+      if (!t) { cerrarResolverTicket(); return; }
+      const resultado = rtResultadoActual();
+      const nota = String(document.getElementById('rtNota').value || '').trim().slice(0, 200);
+      const nueva = String(document.getElementById('rtCuentaNueva').value || '').trim();
+      const desdeStock = document.getElementById('rtDesdeStock').checked;
+      if (resultado === 'reemplazo' && !nueva && !desdeStock) { alert('Escribe la cuenta nueva (correo:clave) o marca "tomar una del stock".'); return; }
+      const btn = document.getElementById('btnResolverTicket');
+      if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>'; }
       try {
-        const t = ticketsCuentas.find(x => x.id === id) || {};
-        // Se resuelve y se borra la foto en la misma operación: queda el historial, sin la imagen
-        const lote = db.batch();
-        lote.update(db.collection('tickets_cuentas').doc(id), { estado: 'resuelto', resolucion: String(nota).trim().slice(0, 200), resueltoPor: currentUser.email, resueltoEl: new Date().toISOString(), tieneFoto: false, fotoEliminada: t.tieneFoto === true || t.fotoEliminada === true });
-        lote.delete(db.collection('tickets_fotos').doc(id));
-        await lote.commit();
+        if (resultado === 'cerrar') {
+          // Se cierra y se borra la foto en la misma operación: queda el historial, sin la imagen
+          const lote = db.batch();
+          lote.update(db.collection('tickets_cuentas').doc(id), { estado: 'resuelto', resolucion: nota, resueltoPor: currentUser.email, resueltoEl: new Date().toISOString(), resultado: 'cerrar', tieneFoto: false, fotoEliminada: t.tieneFoto === true || t.fotoEliminada === true });
+          lote.delete(db.collection('tickets_fotos').doc(id));
+          await lote.commit();
+          mostrarToast('Ticket resuelto. La foto se eliminó y quedó el historial.');
+        } else {
+          const r = await llamarBackend('ticket_resolver', { ticketId: id, resultado: resultado, nota: nota, cuentaNueva: nueva, desdeStock: !nueva && desdeStock });
+          if (esErrorServidorAntiguo(r)) { capsServidor = []; capsServidorEn = Date.now(); alert(textoServidorAntiguo('ticket_resolver') + '\n\nPor ahora elige "Solo cerrar el ticket".'); rtComprobarServidor(id); return; }
+          if (!r.ok) { alert(r.error || 'No se pudo resolver el ticket.'); return; }
+          mostrarToast(r.cuentaNueva ? `Ticket resuelto. ${r.cuentaNueva} quedó enlazada a ${t.cuenta}${r.garantiaReiniciada ? ' y su garantía se reinició.' : '.'}` : (r.garantiaReiniciada ? 'Ticket resuelto. La garantía de esa cuenta se reinició.' : 'Ticket resuelto.'));
+        }
         delete fotosTicketsCache[id];
-        mostrarToast('Ticket resuelto. La foto se eliminó y quedó el historial.');
-      } catch (err) { alert('No se pudo resolver: ' + err.message); }
+        cerrarResolverTicket();
+      } catch (err) {
+        alert('No se pudo resolver: ' + err.message);
+      } finally {
+        if (btn) { btn.disabled = false; btn.innerHTML = 'Resolver'; }
+      }
     }
 
     async function reabrirTicket(id) {
@@ -10096,9 +10280,17 @@
       return (ids || []).map(id => netflixCuentasAdmin.find(x => x.id === id)).filter(a => a && a.estado !== 'asignado' && !a.enTienda);
     }
 
-    function abrirPasarATienda(ids) {
+    async function abrirPasarATienda(ids) {
       const lista = perfilesPasablesATienda(ids);
       if (!lista.length) { alert('No hay perfiles libres para pasar a la tienda. Deben estar sin asignar y no estar ya a la venta.'); return; }
+      // Con un servidor antiguo, el cliente compraría el perfil pero no quedaría asignado a su cuenta: se evita
+      const tiene = await servidorTiene('alquiler_tienda');
+      if (tiene !== true) {
+        alert(tiene === false
+          ? textoServidorAntiguo('alquiler_tienda') + '\n\nMientras tanto, asigna los perfiles a mano desde Alquileres.'
+          : 'No pude comprobar el servidor ahora mismo (¿sin internet?). Por seguridad no se pasa nada a la tienda. Intenta de nuevo en un momento.');
+        return;
+      }
       pasarTiendaIds = lista.map(a => a.id);
       const r = document.getElementById('ptResumen');
       if (r) r.textContent = lista.length === 1
@@ -10128,6 +10320,7 @@
 
     async function confirmarPasarATienda() {
       if (pasandoATienda) return;
+      if ((await servidorTiene('alquiler_tienda')) !== true) { alert(textoServidorAntiguo('alquiler_tienda')); return; }
       pasandoATienda = true;
       const btn = document.getElementById('btnPasarTienda');
       const textoBtn = btn ? btn.innerHTML : '';
@@ -10229,6 +10422,344 @@
       if (!a) return;
       if (a.enTienda) { if (await sacarDeTienda(a.id)) actualizarBloqueTiendaNf(); }
       else abrirPasarATienda([a.id]);
+    }
+
+
+    // ==================== BUSCADOR DE CUENTAS (administración y moderación) ====================
+    let bcIndexado = null;
+    let bcComprasCache = null;
+    let bcBuscando = false;
+
+    let bcIndexadoDesde = '';
+
+    async function prepararBuscadorAdmin() {
+      if (!esStaffSesion()) return;
+      try {
+        const d = await db.collection('configuracion').doc('buscador').get();
+        const dd = d.exists ? (d.data() || {}) : {};
+        bcIndexado = dd.indexado === true;
+        bcIndexadoDesde = String(dd.indexadoDesde || dd.indexadoEl || '');
+      } catch (e) { bcIndexado = null; }
+      const aviso = document.getElementById('bcAviso');
+      if (aviso) aviso.classList.toggle('hidden', !(bcIndexado === false && esAdminSesionActual()));
+      const act = document.getElementById('bcActualizar');
+      if (act) act.classList.toggle('hidden', !(bcIndexado === true && esAdminSesionActual()));
+    }
+
+    // Guarda en cada compra anterior la lista de correos para poder buscarla al instante (una sola vez)
+    async function bcPrepararIndice() {
+      if (!esAdminSesionActual()) return;
+      if (!await confirmarModal('Voy a revisar las compras que todavía no tienen su lista de correos y guardársela para que el buscador las encuentre al instante. Puede tardar unos segundos. ¿Seguir?', { textoAceptar: 'Sí, preparar' })) return;
+      const btn = document.getElementById('btnPrepararBuscador');
+      if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Preparando...'; }
+      const inicioPreparacion = new Date().toISOString();
+      try {
+        const snap = await db.collection('compras').get();
+        const pend = [];
+        snap.forEach(d => {
+          const c = d.data() || {};
+          if (Array.isArray(c.correos)) return;
+          const correos = [];
+          String(c.credenciales || '').split('\n').forEach(l => { const e = emailDeLineaCuenta(l); if (e && correos.indexOf(e) === -1) correos.push(e); });
+          pend.push({ id: d.id, correos: correos });
+        });
+        for (let i = 0; i < pend.length; i += 400) {
+          const lote = db.batch();
+          pend.slice(i, i + 400).forEach(x => lote.update(db.collection('compras').doc(x.id), { correos: x.correos }));
+          await lote.commit();
+        }
+        await db.collection('configuracion').doc('buscador').set({ indexado: true, indexadoEl: new Date().toISOString(), indexadoDesde: inicioPreparacion, indexadoPor: currentUser.email, total: snap.size }, { merge: true });
+        bcIndexado = true; bcComprasCache = null; bcIndexadoDesde = inicioPreparacion;
+        prepararBuscadorAdmin();
+        mostrarToast(`Listo: ${pend.length} compras preparadas. El buscador ya es instantáneo.`);
+      } catch (err) {
+        alert('No se pudo preparar el buscador: ' + err.message);
+      } finally {
+        if (btn) { btn.disabled = false; btn.innerHTML = 'Preparar buscador'; }
+      }
+    }
+
+    function bcFecha(iso) { const d = iso ? new Date(iso) : null; return d && !isNaN(d.getTime()) ? formatearFechaHoraCorta(d) : ''; }
+
+    // Busca en lo que ya está cargado en pantalla: stock, lotes de proveedores, alquileres y tickets
+    function bcBuscarLocal(q) {
+      const coincide = q.indexOf('@') !== -1 ? (v) => v === q : (v) => v.indexOf(q) !== -1;
+      const r = { stock: [], lotes: [], alquileres: [], tickets: [] };
+      catalogoUnificado.forEach(p => {
+        (p.cuentas || []).forEach(raw => {
+          const c = parseCredencialObj(raw), e = String(c.email || '').trim().toLowerCase();
+          if (e && coincide(e)) r.stock.push({ producto: p.nombre, productoId: p.docId, email: e, subidoEl: (raw && typeof raw === 'object') ? (raw.subidoEl || '') : '', costo: c.costo || 0 });
+        });
+      });
+      lotesProveedores.forEach(l => {
+        (l.cuentas || []).forEach(linea => {
+          const e = emailDeLineaCuenta(linea);
+          if (e && coincide(e)) r.lotes.push({ lote: l, email: e });
+        });
+      });
+      netflixCuentasAdmin.forEach(a => { const e = String(a.correo || '').trim().toLowerCase(); if (e && coincide(e)) r.alquileres.push(a); });
+      ticketsCuentas.forEach(t => { if (coincide(String(t.cuenta || '').toLowerCase()) || coincide(String(t.cuentaNueva || '').toLowerCase())) r.tickets.push(t); });
+      return r;
+    }
+
+    async function bcBuscarCompras(q) {
+      const lista = [];
+      try {
+        const snap = await db.collection('compras').where('correos', 'array-contains', q).get();
+        snap.forEach(d => lista.push(Object.assign({ id: d.id }, d.data())));
+      } catch (e) { console.warn('Búsqueda de compras:', e); }
+      if (bcIndexado === true) {
+        // Las compras hechas después de preparar el buscador con un servidor antiguo no traen la lista de correos: se revisan aparte
+        if (bcIndexadoDesde) {
+          try {
+            const rec = await db.collection('compras').where('fecha', '>=', bcIndexadoDesde).get();
+            rec.forEach(d => {
+              const c = d.data() || {};
+              if (Array.isArray(c.correos)) return; // esas ya las trae la consulta directa
+              const hay = String(c.credenciales || '').split('\n').some(l => emailDeLineaCuenta(l) === q) ||
+                (Array.isArray(c.reemplazos) && c.reemplazos.some(r => r && (r.anterior === q || r.nueva === q)));
+              if (hay && !lista.some(x => x.id === d.id)) lista.push(Object.assign({ id: d.id }, c));
+            });
+          } catch (e) { console.warn('Compras recientes:', e); }
+        }
+        return lista;
+      }
+      if (lista.length) return lista;
+      // Si todavía no se preparó el buscador, se revisan todas las compras una vez (queda guardado un rato)
+      if (!bcComprasCache || Date.now() - bcComprasCache.en > 5 * 60000) {
+        const snap = await db.collection('compras').get();
+        const docs = [];
+        snap.forEach(d => docs.push(Object.assign({ id: d.id }, d.data())));
+        bcComprasCache = { en: Date.now(), docs: docs };
+      }
+      return bcComprasCache.docs.filter(c =>
+        String(c.credenciales || '').split('\n').some(l => emailDeLineaCuenta(l) === q) ||
+        (Array.isArray(c.correos) && c.correos.indexOf(q) !== -1) ||
+        (Array.isArray(c.reemplazos) && c.reemplazos.some(r => r && (r.anterior === q || r.nueva === q))));
+    }
+
+    function bcTextoGarantia(c, q) {
+      const g = estadoGarantiaCuenta(c, q);
+      if (g.estado === 'sin') return { txt: 'Sin garantía', color: 'text-gray-400', g: g };
+      const reinicio = g.reiniciada ? ' · reiniciada tras un ticket' : '';
+      if (g.estado === 'vigente') return { txt: `Vigente hasta ${formatearFechaHoraCorta(g.vence)} (quedan ${formatearTiempoRestante(g.restanteMs)})${reinicio}`, color: 'text-emerald-300', g: g };
+      if (g.enMargen) return { txt: `Venció el ${formatearFechaHoraCorta(g.vence)} · dentro del margen extra de ${MARGEN_REPORTE_HORAS} h (aún puede reportar)${reinicio}`, color: 'text-amber-300', g: g };
+      return { txt: `Vencida el ${formatearFechaHoraCorta(g.vence)}${reinicio}`, color: 'text-red-300', g: g };
+    }
+
+    async function buscarCuentaAdmin(ev) {
+      if (ev && ev.preventDefault) ev.preventDefault();
+      if (!esStaffSesion() || bcBuscando) return false;
+      const q = emailDeLineaCuenta((document.getElementById('txtBuscarCuenta') || {}).value || '');
+      const cont = document.getElementById('bcResultado');
+      if (!cont) return false;
+      if (q.length < 3) { cont.innerHTML = '<p class="px-2 text-xs text-gray-500">Escribe al menos 3 letras del correo.</p>'; return false; }
+      bcBuscando = true;
+      const btn = document.getElementById('btnBuscarCuenta');
+      if (btn) btn.disabled = true;
+      cont.innerHTML = '<p class="px-2 py-4 text-xs text-gray-400"><i class="fa-solid fa-spinner fa-spin mr-2 text-sky-400"></i>Buscando...</p>';
+      try {
+        const local = bcBuscarLocal(q);
+        const completo = q.indexOf('@') === -1 || /@.+\..+/.test(q);
+        const compras = completo ? await bcBuscarCompras(q) : [];
+        cont.innerHTML = bcHtmlResultado(q, local, compras, completo);
+      } catch (err) {
+        cont.innerHTML = `<p class="px-2 text-xs text-red-300">No se pudo buscar: ${escaparHtml(err.message)}</p>`;
+      } finally {
+        bcBuscando = false;
+        if (btn) btn.disabled = false;
+      }
+      return false;
+    }
+
+    function bcHtmlResultado(q, local, compras, completo) {
+      const tarjeta = (titulo, icono, color, cuerpo) => `<div class="p-4 bg-gray-900 border border-gray-800 rounded-2xl"><p class="text-[11px] font-black uppercase tracking-wide ${color} mb-2"><i class="fa-solid ${icono} mr-1.5"></i>${titulo}</p>${cuerpo}</div>`;
+      const fila = (k, v) => `<p class="text-xs text-gray-300 mt-0.5"><span class="text-gray-500">${k}:</span> ${v}</p>`;
+      const chips = [];
+      if (local.stock.length) chips.push(['En stock', 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30']);
+      if (compras.length) chips.push(['Vendida', 'bg-amber-500/15 text-amber-300 border-amber-500/30']);
+      if (compras.some(c => (c.reemplazos || []).some(r => r.anterior === q))) chips.push(['Reemplazada', 'bg-sky-500/15 text-sky-300 border-sky-500/30']);
+      if (compras.some(c => (c.reemplazos || []).some(r => r.nueva === q))) chips.push(['Es un reemplazo', 'bg-sky-500/15 text-sky-300 border-sky-500/30']);
+      if (local.alquileres.length) chips.push(['Alquiler', 'bg-red-500/15 text-red-300 border-red-500/30']);
+      if (local.lotes.length) chips.push(['De un proveedor', 'bg-purple-500/15 text-purple-300 border-purple-500/30']);
+      const hay = chips.length || local.tickets.length;
+      let html = `<div class="px-1"><p class="text-sm font-black text-white font-mono break-all">${escaparHtml(q)}</p><div class="flex flex-wrap gap-1.5 mt-1.5">${hay ? chips.map(c => `<span class="text-[10px] font-bold px-2 py-0.5 rounded-full border ${c[1]}">${c[0]}</span>`).join('') : '<span class="text-[11px] font-bold px-2 py-0.5 rounded-full border bg-red-500/15 text-red-300 border-red-500/30">No existe en la plataforma</span>'}</div>${completo ? '' : '<p class="text-[11px] text-amber-300 mt-2">Para buscar en las ventas escribe el correo completo.</p>'}</div>`;
+
+      local.stock.slice(0, 25).forEach(x => {
+        const lote = local.lotes.filter(l => l.lote.estado === 'aprobado' && l.email === x.email)[0];
+        const subida = bcFecha(x.subidoEl) || (lote ? bcFecha(lote.lote.aprobadoEl || lote.lote.creadoEl) + ' (según el lote del proveedor)' : '');
+        html += tarjeta('En stock', 'fa-box', 'text-emerald-400', fila('Producto', escaparHtml(x.producto)) + fila('Subida', subida ? escaparHtml(subida) : '<span class="text-gray-500">sin fecha registrada</span>') + (x.costo > 0 ? fila('Costo', escaparHtml(formatoCOP(x.costo))) : '') + fila('Estado', 'disponible para vender'));
+      });
+
+      compras.slice(0, 25).forEach(c => {
+        const gar = bcTextoGarantia(c, q);
+        const info = (Array.isArray(c.cuentasInfo) ? c.cuentasInfo : []).find(i => i && String(i.e).toLowerCase() === q);
+        const lote = local.lotes.filter(l => l.lote.estado === 'aprobado' && l.email === q)[0];
+        const subida = (info && bcFecha(info.s)) || (lote ? bcFecha(lote.lote.aprobadoEl || lote.lote.creadoEl) + ' (según el lote del proveedor)' : '');
+        const anterior = (c.reemplazos || []).find(r => r && r.nueva === q), siguiente = (c.reemplazos || []).find(r => r && r.anterior === q);
+        const enlace = (anterior ? `<p class="text-xs text-sky-300 mt-0.5"><i class="fa-solid fa-link mr-1"></i>Reemplazo de <span class="font-mono">${escaparHtml(anterior.anterior)}</span> (${escaparHtml(bcFecha(anterior.fecha))})</p>` : '') + (siguiente ? `<p class="text-xs text-sky-300 mt-0.5"><i class="fa-solid fa-link mr-1"></i>Reemplazada por <span class="font-mono">${escaparHtml(siguiente.nueva)}</span> (${escaparHtml(bcFecha(siguiente.fecha))})</p>` : '');
+        const btnTicket = `<button type="button" onclick="abrirTicketParaCuenta('${escaparJsAttr(q)}')" class="mt-3 px-3 py-1.5 rounded-lg text-[11px] font-black border ${gar.g.puedeReportar ? 'bg-yellow-400 hover:bg-yellow-300 text-black border-yellow-300' : 'bg-gray-800 hover:bg-gray-700 text-gray-300 border-gray-700'}"><i class="fa-solid fa-flag mr-1"></i>Crear ticket${gar.g.puedeReportar ? ' (en garantía)' : ''}</button>`;
+        html += tarjeta('Vendida', 'fa-cart-shopping', 'text-amber-400',
+          fila('Producto', escaparHtml(c.productoNombre || '')) + fila('Cliente', escaparHtml(c.usuarioEmail || c.usuarioId || '')) + fila('Comprada', escaparHtml(bcFecha(c.fecha))) +
+          `<p class="text-xs mt-0.5 ${gar.color}"><i class="fa-solid fa-shield-halved mr-1"></i>${escaparHtml(gar.txt)}</p>` +
+          fila('Subida', subida ? escaparHtml(subida) : '<span class="text-gray-500">sin fecha registrada</span>') + enlace + btnTicket);
+      });
+
+      if (completo && !compras.length && !local.stock.length && local.lotes.length) {
+        html += tarjeta('Sin vender todavía', 'fa-circle-info', 'text-gray-400', '<p class="text-xs text-gray-300">Aparece en un lote de proveedor pero no está en el stock ni en ninguna compra (por ejemplo, un lote pendiente o rechazado).</p>');
+      }
+
+      local.lotes.slice(0, 15).forEach(x => {
+        const l = x.lote;
+        const estado = { pendiente: 'En revisión', aprobado: 'Aprobado', rechazado: 'Rechazado' }[l.estado] || l.estado;
+        html += tarjeta('Lote de proveedor', 'fa-truck-ramp-box', 'text-purple-400',
+          fila('Proveedor', escaparHtml(l.proveedorNombre || l.proveedorEmail || '')) + fila('Producto', escaparHtml(l.productoNombre || '')) + fila('Estado del lote', escaparHtml(estado)) +
+          fila('Enviado', escaparHtml(bcFecha(l.creadoEl))) + (l.aprobadoEl ? fila('Aprobado (subido al stock)', escaparHtml(bcFecha(l.aprobadoEl))) : '') + (l.estado === 'aprobado' ? fila('Costo', escaparHtml(formatoCOP(l.costoUnitario || 0)) + (l.pagado ? ' · pagado' : ' · por pagar')) : ''));
+      });
+
+      local.alquileres.slice(0, 15).forEach(a => {
+        const est = estadoNetflix(a), st = ESTILO_NETFLIX[est.clave] || ESTILO_NETFLIX.sin_fecha;
+        html += tarjeta('Alquiler', 'fa-tv', 'text-red-400',
+          fila('Plataforma', escaparHtml(plataformaNf(a))) + (a.tipo === 'compartida' ? fila('Perfil', escaparHtml(a.perfil || '')) : '') + fila('Estado', escaparHtml(st.txt)) +
+          (a.estado === 'asignado' ? fila('Cliente', escaparHtml(a.clienteNombre || a.clienteEmail || '')) + (a.proximoPago ? fila('Próximo pago', escaparHtml(a.proximoPago.split('-').reverse().join('/'))) : '') : ''));
+      });
+
+      if (local.tickets.length) {
+        html += tarjeta('Tickets de esta cuenta', 'fa-ticket', 'text-yellow-400', local.tickets.slice(0, 15).map(t => {
+          const res = t.estado === 'resuelto';
+          return `<div class="py-1.5 border-b border-gray-800 last:border-0"><p class="text-xs text-white"><span class="font-bold ${res ? 'text-emerald-300' : 'text-amber-300'}">${res ? 'Resuelto' : 'Abierto'}</span> · ${escaparHtml(t.motivo || '')} · ${escaparHtml(bcFecha(t.creadoEl))}</p>${t.proveedorNombre ? `<p class="text-[11px] text-gray-400">Proveedor: ${escaparHtml(t.proveedorNombre)}</p>` : ''}${res && t.resolucion ? `<p class="text-[11px] text-emerald-300">${escaparHtml(t.resolucion)}</p>` : ''}${t.cuentaNueva ? `<p class="text-[11px] text-sky-300"><i class="fa-solid fa-link mr-1"></i>Reemplazo: <span class="font-mono">${escaparHtml(t.cuentaNueva)}</span></p>` : ''}</div>`;
+        }).join(''));
+      }
+      return html;
+    }
+
+    function abrirTicketParaCuenta(cuenta) {
+      abrirModalTicket();
+      const i = document.getElementById('tkCuenta');
+      if (i) { i.value = cuenta; actualizarInfoTicket(); }
+    }
+
+
+    // ==================== VENTANAS EMERGENTES: SIEMPRE SE PUEDEN CERRAR ====================
+    const CIERRE_VENTANAS = {
+      modalPassword: 'cerrarModalPassword', modalSaldoInsuficiente: 'cerrarModalSaldoInsuficiente', modalNovedades: 'cerrarModalNovedades',
+      modalNuevoProducto: 'cerrarModalNuevoProducto', modalNuevoCliente: 'cerrarModalNuevoCliente', modalEditarProducto: 'cerrarModalEditarProducto',
+      modalVerStock: 'cerrarModalVerStock', modalEditarCliente: 'cerrarModalEditarCliente', modalPermisosCliente: 'cerrarModalPermisosCliente',
+      modalUsuarioCreado: 'cerrarModalUsuarioCreado', modalZoomQr: 'cerrarZoomQr', modalAsignarPago: 'cerrarAsignarPago',
+      modalAprobarLote: 'cerrarAprobarLote', modalPagarProveedor: 'cerrarPagarProveedor', modalReporteCuenta: 'cerrarReporteCuenta',
+      modalTicketCuenta: 'cerrarModalTicket', modalResolverTicket: 'cerrarResolverTicket', modalAsistenteTema: 'cerrarAsistenteTema',
+      modalAuth: 'cerrarModalAuth', modalRecarga: 'cerrarModalRecarga', modalEntrega: 'cerrarModalEntrega',
+      modalNetflixCliente: 'cerrarModalNetflixCliente', modalNetflixGestion: 'cerrarGestionNetflix', modalSoporte: 'cerrarSoporteWhatsapp'
+    };
+
+    function ventanasAbiertas() {
+      return Array.from(document.querySelectorAll('div.fixed.inset-0[id^="modal"]')).filter(el =>
+        el.id !== 'modalDialogoSistema' && !el.classList.contains('hidden') && el.style.display !== 'none' && getComputedStyle(el).display !== 'none');
+    }
+
+    function cerrarVentana(el) {
+      if (!el) return;
+      const f = CIERRE_VENTANAS[el.id];
+      try {
+        if (typeof f === 'string' && typeof window[f] === 'function') window[f]();
+        else if (/^modalNetflix|^modalPasarTienda/.test(el.id) && typeof nfCerrar === 'function') nfCerrar(el.id);
+      } catch (e) { console.warn('Cerrar ventana:', e); }
+      // Si por cualquier motivo sigue abierta, se cierra a la fuerza: nunca hay que refrescar la página
+      if (!el.classList.contains('hidden') && el.style.display !== 'none') { el.classList.add('hidden'); el.style.display = 'none'; }
+    }
+
+    // ¿Escribiste algo en esta ventana desde que se abrió? Entonces tocar fuera NO la cierra (para no perder lo que llenabas)
+    function ventanaConTexto(el) { return el.dataset.sucio === '1'; }
+
+    document.addEventListener('input', function (e) {
+      if (!e.isTrusted || !e.target || !e.target.closest) return;
+      const v = e.target.closest('div.fixed.inset-0[id^="modal"]');
+      if (v) v.dataset.sucio = '1';
+    }, true);
+
+    // Cada vez que una ventana se vuelve a abrir, empieza "limpia"
+    (function vigilarAperturaDeVentanas() {
+      const visible = (el) => !el.classList.contains('hidden') && el.style.display !== 'none' && getComputedStyle(el).display !== 'none';
+      document.querySelectorAll('div.fixed.inset-0[id^="modal"]').forEach(el => {
+        el.dataset.abierta = visible(el) ? '1' : '0';
+        new MutationObserver(() => {
+          const ahora = visible(el) ? '1' : '0';
+          if (ahora !== el.dataset.abierta) { el.dataset.abierta = ahora; if (ahora === '1') delete el.dataset.sucio; }
+        }).observe(el, { attributes: true, attributeFilter: ['class', 'style'] });
+      });
+    })();
+
+    document.addEventListener('keydown', function (e) {
+      if (e.key !== 'Escape' || e.defaultPrevented) return;
+      if (typeof dialogoActivo !== 'undefined' && dialogoActivo) return;
+      const v = ventanasAbiertas();
+      if (v.length) cerrarVentana(v[v.length - 1]);
+    });
+
+    let ultimoToqueFondo = null;
+    document.addEventListener('pointerdown', function (e) { ultimoToqueFondo = e.target; }, true);
+    document.addEventListener('click', function (e) {
+      const el = e.target;
+      // Solo cuenta si se tocó el fondo oscuro (no un botón ni un texto de adentro) y el toque empezó ahí mismo
+      if (!el || !el.matches || !el.matches('div.fixed.inset-0[id^="modal"]') || ultimoToqueFondo !== el) return;
+      if (el.id === 'modalDialogoSistema' || ventanaConTexto(el)) return;
+      cerrarVentana(el);
+    });
+
+    // El asistente se cierra al tocar fuera de él; y mientras escribes sube para no quedar bajo el teclado
+    document.addEventListener('pointerdown', function (e) {
+      if (!asistenteAbierto) return;
+      const panel = document.getElementById('asistentePanel'), fab = document.getElementById('btnFlotanteSoporte');
+      if (panel && panel.contains(e.target)) return;
+      if (fab && fab.contains(e.target)) return;
+      if (e.target && e.target.closest && e.target.closest('div.fixed.inset-0[id^="modal"]')) return;
+      cerrarAsistente();
+    });
+    document.addEventListener('focusin', function (e) {
+      if (e.target && e.target.id === 'asistenteInput') { const p = document.getElementById('asistentePanel'); if (p) p.classList.add('tecleando'); asistenteScroll(); }
+    });
+    document.addEventListener('focusout', function (e) {
+      if (e.target && e.target.id === 'asistenteInput') { const p = document.getElementById('asistentePanel'); if (p) p.classList.remove('tecleando'); }
+    });
+
+
+    // ==================== COMPATIBILIDAD CON EL SERVIDOR PUBLICADO ====================
+    // El servidor (Apps Script) se actualiza aparte de la página. Esto averigua qué funciones tiene el que está publicado,
+    // para que la página no deje cosas a medias si todavía es una versión antigua.
+    let capsServidor = null, capsServidorEn = 0;
+
+    const FUNCIONES_SERVIDOR = {
+      ticket_resolver: 'resolver tickets entregando una cuenta nueva o reiniciando la garantía',
+      alquiler_tienda: 'vender perfiles de Netflix por la tienda',
+      compras_indexadas: 'guardar en cada compra la lista de correos y la fecha de subida'
+    };
+
+    // Devuelve la lista de funciones del servidor; [] si es una versión antigua; null si no se pudo comprobar
+    async function capacidadesServidor(forzar) {
+      if (!forzar && capsServidor !== null && Date.now() - capsServidorEn < 10 * 60000) return capsServidor;
+      try {
+        const r = await llamarBackend('ping', {});
+        if (r && r.ok) {
+          capsServidor = Array.isArray(r.capacidades) ? r.capacidades.slice(0, 40).map(String) : [];
+          capsServidorEn = Date.now();
+          return capsServidor;
+        }
+      } catch (e) { console.warn('No se pudo comprobar el servidor:', e); }
+      return null;
+    }
+
+    // true: lo tiene · false: servidor antiguo · null: no se pudo comprobar
+    async function servidorTiene(funcion) {
+      const c = await capacidadesServidor();
+      return c === null ? null : c.indexOf(funcion) !== -1;
+    }
+
+    function textoServidorAntiguo(funcion) {
+      return `Esta función (${FUNCIONES_SERVIDOR[funcion] || funcion}) necesita que el servidor esté actualizado y el que está publicado es una versión anterior.\n\nPuedes seguir usando todo lo demás. Cuando puedas, actualiza el servidor (Apps Script) con el archivo EpicChannels-Servidor.txt.`;
+    }
+
+    function esErrorServidorAntiguo(r) {
+      return !!(r && r.ok === false && /Acci[oó]n no reconocida/i.test(String(r.error || '')));
     }
 
     // ==================== MI PERFIL ====================
@@ -10436,15 +10967,52 @@
       return { tipo: 'ninguna', inferida: true };
     }
 
+    // Margen interno: se acepta el reporte hasta 4 horas después de que venza la garantía. El cliente no lo ve.
+    const MARGEN_REPORTE_HORAS = 4;
+
+    function reiniciosDeCompra(c) { return Array.isArray(c && c.reinicios) ? c.reinicios : []; }
+
+    // Garantía de UNA cuenta de la compra. En garantías de 24 h, un ticket resuelto la reinicia; en las de 29 días sigue el mismo tiempo.
+    function estadoGarantiaCuenta(c, cuenta) {
+      const { tipo, inferida } = resolverTipoGarantiaCompra(c);
+      const fecha = c.fecha ? new Date(c.fecha) : null;
+      if ((tipo !== '24h' && tipo !== '29d') || !fecha || isNaN(fecha.getTime())) {
+        return { estado: 'sin', tipo, inferida, puedeReportar: false, enMargen: false, reiniciada: false };
+      }
+      let desde = fecha.getTime(), reiniciada = false;
+      if (tipo === '24h') {
+        const id = String(cuenta || '').toLowerCase();
+        reiniciosDeCompra(c).forEach(r => {
+          const d = new Date(r && r.desde).getTime();
+          if (r && String(r.cuenta || '').toLowerCase() === id && d && d > desde) { desde = d; reiniciada = true; }
+        });
+      }
+      const totalMs = tipo === '29d' ? 29 * 24 * 3600000 : 24 * 3600000;
+      const vence = new Date(desde + totalMs);
+      const restanteMs = vence.getTime() - Date.now();
+      const margenMs = MARGEN_REPORTE_HORAS * 3600000;
+      return {
+        estado: restanteMs > 0 ? 'vigente' : 'vencida', tipo, inferida, desde: new Date(desde), vence, restanteMs, totalMs, reiniciada,
+        puedeReportar: restanteMs + margenMs > 0, enMargen: restanteMs <= 0 && restanteMs + margenMs > 0
+      };
+    }
+
+    // Garantía de la compra completa (la tarjeta del perfil). Cuenta como vigente mientras alguna cuenta lo esté.
     function estadoGarantiaCompra(c) {
       const { tipo, inferida } = resolverTipoGarantiaCompra(c);
       const fecha = c.fecha ? new Date(c.fecha) : null;
       if (tipo === 'ninguna' || (tipo !== '24h' && tipo !== '29d') || !fecha || isNaN(fecha.getTime())) {
         return { estado: 'sin', tipo, inferida };
       }
+      let desde = fecha.getTime();
+      if (tipo === '24h') reiniciosDeCompra(c).forEach(r => { const d = new Date(r && r.desde).getTime(); if (d && d > desde) desde = d; });
       const totalMs = tipo === '29d' ? 29 * 24 * 3600000 : 24 * 3600000;
-      const vence = new Date(fecha.getTime() + totalMs);
+      const vence = new Date(desde + totalMs);
       const restanteMs = vence.getTime() - Date.now();
+      // Durante el margen interno se sigue mostrando como vigente (con "menos de 1 hora"), para que el cliente no lo note
+      if (restanteMs <= 0 && restanteMs + MARGEN_REPORTE_HORAS * 3600000 > 0) {
+        return { estado: 'vigente', tipo, inferida, vence, restanteMs: 59 * 60000, totalMs, pct: 1, enMargen: true };
+      }
       return {
         estado: restanteMs > 0 ? 'vigente' : 'vencida',
         tipo, inferida, vence, restanteMs, totalMs,
@@ -10490,7 +11058,7 @@
                 </div>
               </div>
               <div class="text-right">
-                <span class="text-white font-black text-sm block">${formatearTiempoRestante(g.restanteMs)}</span>
+                <span class="text-white font-black text-sm block">${g.enMargen ? 'Menos de 1 h' : formatearTiempoRestante(g.restanteMs)}</span>
                 <span class="text-[10px] text-gray-400">restantes</span>
               </div>
             </div>
@@ -10498,7 +11066,7 @@
               <div class="h-full ${colorBarra} rounded-full" style="width:${g.pct.toFixed(1)}%"></div>
             </div>
             <div class="flex items-center justify-between gap-2 mt-2.5">
-              <span class="text-[10px] text-gray-400">Vence: ${formatearFechaHoraCorta(g.vence)}</span>
+              <span class="text-[10px] text-gray-400">${g.enMargen ? 'Vence en breve' : 'Vence: ' + formatearFechaHoraCorta(g.vence)}</span>
               <button onclick="reclamarGarantiaCompra(${idx})" class="shrink-0 px-3 py-1.5 bg-gray-900 hover:bg-gray-800 border border-gray-700 ${colorTxt} font-bold text-[11px] rounded-lg flex items-center gap-1.5">
                 <i class="fa-brands fa-whatsapp"></i> Reclamar garantía
               </button>
@@ -10692,7 +11260,15 @@
 
           const lineas = String(c.credenciales || '').split('\n').map(l => l.trim()).filter(Boolean);
           const lineasHtml = lineas.length
-            ? lineas.map((l, j) => `<div class="py-1 border-b border-gray-700/40 last:border-0 flex items-center justify-between gap-2"><span class="break-all min-w-0">${escaparHtml(l)}</span>${(c.simulada || modoPruebaCliente) ? '' : `<span data-reporte-slot data-cuenta="${escaparHtml(emailDeLineaCuenta(l))}" data-idx="${idx}" data-j="${j}"></span>`}</div>`).join('')
+            ? lineas.map((l, j) => {
+                const ident = emailDeLineaCuenta(l);
+                const reemp = (Array.isArray(c.reemplazos) ? c.reemplazos : []).find(r => r && String(r.nueva || '').toLowerCase() === ident);
+                const gl = estadoGarantiaCuenta(c, ident);
+                const notas = [];
+                if (reemp) notas.push(`<span class="text-sky-300"><i class="fa-solid fa-link mr-1"></i>Reemplazo de ${escaparHtml(reemp.anterior)}</span>`);
+                if (gl.reiniciada && gl.estado === 'vigente') notas.push(`<span class="text-emerald-300"><i class="fa-solid fa-shield-halved mr-1"></i>Garantía hasta ${formatearFechaHoraCorta(gl.vence)}</span>`);
+                return `<div class="py-1 border-b border-gray-700/40 last:border-0"><div class="flex items-center justify-between gap-2"><span class="break-all min-w-0">${escaparHtml(l)}</span>${(c.simulada || modoPruebaCliente) ? '' : `<span data-reporte-slot data-cuenta="${escaparHtml(ident)}" data-idx="${idx}" data-j="${j}"></span>`}</div>${notas.length ? `<div class="text-[10px] mt-0.5 flex flex-wrap gap-x-3">${notas.join('')}</div>` : ''}</div>`;
+              }).join('')
             : '<div class="text-gray-500">Sin credenciales registradas.</div>';
 
           const estadoGar = estadoGarantiaCompra(c).estado;
@@ -11021,7 +11597,13 @@
         const urlForm = inp ? inp.value.trim() : '';
         if (urlForm && urlForm !== obtenerBackendUrl()) ajustesGeneralesConfig.backendUrl = urlForm;
         const r = await llamarBackend('ping', {});
-        if (r && r.ok) alert('Conexión correcta con el servidor seguro.\nUsuario verificado: ' + (r.email || '') + (r.firestore ? '\nAcceso a la base de datos: OK' : '\nAcceso a la base de datos: FALLÓ') + (r.telegram ? '\nTelegram: configurado' : '\nTelegram: falta el token o el chat en Ajustes'));
+        if (r && r.ok) {
+          capsServidor = Array.isArray(r.capacidades) ? r.capacidades.map(String) : []; capsServidorEn = Date.now();
+          const faltan = Object.keys(FUNCIONES_SERVIDOR).filter(f => capsServidor.indexOf(f) === -1);
+          const estado = !faltan.length ? '\nServidor: actualizado' + (r.version ? ' (' + r.version + ')' : '')
+            : '\nServidor: versión anterior. Todavía no tiene: ' + faltan.map(f => FUNCIONES_SERVIDOR[f]).join('; ') + '.';
+          alert('Conexión correcta con el servidor seguro.\nUsuario verificado: ' + (r.email || '') + (r.firestore ? '\nAcceso a la base de datos: OK' : '\nAcceso a la base de datos: FALLÓ') + (r.telegram ? '\nTelegram: configurado' : '\nTelegram: falta el token o el chat en Ajustes') + estado);
+        }
         else alert('El servidor respondió con un error: ' + ((r && r.error) || 'desconocido'));
       } catch (e) {
         alert('No se pudo conectar: ' + e.message);
