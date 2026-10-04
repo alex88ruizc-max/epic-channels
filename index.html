@@ -757,6 +757,30 @@
 
       <!-- TAB 5: MÉTODOS DE PAGO & QR -->
       <div id="adminSecPagos" class="hidden space-y-6">
+        <div id="cardRecargaAuto" class="p-5 bg-gray-900 border border-emerald-500/40 rounded-2xl shadow-xl max-w-2xl">
+          <h3 class="text-sm font-bold text-white mb-1 flex items-center gap-2"><i class="fa-solid fa-bolt text-emerald-400"></i> Recargas automáticas (Bre-B)</h3>
+          <p class="text-xs text-gray-400 mb-3">La plataforma lee en tu Gmail los correos de Nequi y acredita el saldo sola. Cada pedido lleva un monto único, por ejemplo $50.026.</p>
+          <div class="space-y-3">
+            <label class="flex items-center gap-2 text-xs text-white font-bold cursor-pointer"><input type="checkbox" id="chkRecargaAuto" class="w-4 h-4 accent-emerald-500"> Activar recargas automáticas</label>
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="block text-[11px] text-gray-400 mb-1">Minutos para pagar</label>
+                <input type="number" id="recargaAutoMinutos" min="5" max="120" value="30" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none">
+              </div>
+              <div>
+                <label class="block text-[11px] text-gray-400 mb-1">Monto mínimo (COP)</label>
+                <input type="number" id="recargaAutoMinimo" min="1000" step="500" value="5000" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none">
+              </div>
+            </div>
+            <p id="recargaAutoEstadoAdmin" class="text-[11px] text-gray-400"></p>
+            <div class="flex flex-wrap gap-2">
+              <button type="button" onclick="guardarRecargaAutoAdmin()" class="bg-emerald-500 hover:bg-emerald-400 text-black font-bold py-2 px-4 rounded-xl text-xs transition"><i class="fa-solid fa-floppy-disk mr-1"></i> Guardar</button>
+              <button type="button" id="btnDiagRecarga" onclick="diagnosticoRecargaAuto()" class="bg-gray-800 hover:bg-gray-700 text-gray-200 font-bold py-2 px-4 rounded-xl text-xs transition"><i class="fa-solid fa-magnifying-glass mr-1"></i> Probar con mis correos</button>
+            </div>
+            <div id="diagRecargaAuto" class="hidden text-[11px] text-gray-300 bg-gray-800/60 border border-gray-700 rounded-xl p-3"></div>
+          </div>
+        </div>
+
         <div class="p-5 bg-gray-900 border border-purple-500/40 rounded-2xl shadow-xl max-w-2xl">
           <h3 class="text-sm font-bold text-white mb-2 flex items-center gap-2">
             <i class="fa-solid fa-qrcode text-purple-400"></i> Registrar / Modificar Método de Pago con QR
@@ -778,6 +802,14 @@
             <div>
               <label class="block text-[11px] text-gray-400 mb-1">Llave / Número / Identificador (Texto para copiar)</label>
               <input type="text" id="pagoLlave" required placeholder="Ej: @EPIC2828BB o 3001234567" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white font-mono focus:outline-none">
+            </div>
+            <div>
+              <label class="block text-[11px] text-gray-400 mb-1">Recarga automática</label>
+              <select id="pagoAuto" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none">
+                <option value="">Manual (el cliente solo copia la llave)</option>
+                <option value="breb">Bre-B automática (Nequi): se acredita sola</option>
+              </select>
+              <p class="text-[10px] text-gray-500 mt-1">Si eliges Bre-B automática, esta llave es la que ven los clientes al recargar. Puedes cambiarla cuando quieras.</p>
             </div>
             <div>
               <label class="block text-[11px] text-gray-400 mb-1">Subir Imagen del Código QR</label>
@@ -847,6 +879,19 @@
               </tbody>
             </table>
           </div>
+        </div>
+
+        <div class="bg-gray-900 border border-amber-500/30 rounded-2xl overflow-hidden mt-4">
+          <div class="p-4 border-b border-gray-800">
+            <h4 class="font-bold text-white text-sm flex items-center gap-2"><i class="fa-solid fa-triangle-exclamation text-amber-400"></i> Pagos sin identificar <span id="badgePagosSinId" class="hidden px-2 py-0.5 rounded-full bg-amber-500 text-black text-[10px] font-black"></span></h4>
+            <p class="text-[11px] text-gray-400 mt-1">Pagos que llegaron a tu Bre-B pero no coinciden con ningún pedido (otro monto, tarde o sin pedido).</p>
+          </div>
+          <div id="listaPagosSinIdentificar" class="divide-y divide-gray-800"><p class="px-4 py-6 text-center text-gray-500 text-sm">No hay pagos sin identificar.</p></div>
+        </div>
+
+        <div class="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden mt-4">
+          <div class="p-4 border-b border-gray-800"><h4 class="font-bold text-white text-sm flex items-center gap-2"><i class="fa-solid fa-bolt text-emerald-400"></i> Últimas recargas automáticas</h4></div>
+          <div id="listaRecargasAuto" class="divide-y divide-gray-800"><p class="px-4 py-6 text-center text-gray-500 text-sm">Aún no hay recargas automáticas.</p></div>
         </div>
       </div>
 
@@ -1869,21 +1914,85 @@
     <div class="bg-gray-900 border border-gray-800 rounded-2xl max-w-md w-full p-6 relative max-h-[90vh] overflow-y-auto">
       <button onclick="cerrarModalRecarga()" class="absolute top-4 right-4 text-gray-400 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
       <h3 class="text-xl font-bold text-white mb-1 flex items-center gap-2"><i class="fa-solid fa-wallet text-emerald-400"></i> Recargar Saldo</h3>
-      <p class="text-xs text-gray-400 mb-4">Transfiere a través de nuestras cuentas oficiales escaneando el código QR o copiando la llave.</p>
-      
-      <div id="contenedorMetodosPagoClientes" class="space-y-3 mb-4">
-        <div class="text-center py-4 text-xs text-gray-500">Cargando métodos de pago...</div>
+      <p class="text-xs text-gray-400 mb-4">Recarga con Bre-B y tu saldo se acredita solo, o usa otro método con comprobante.</p>
+
+      <!-- RECARGA AUTOMÁTICA -->
+      <div id="recargaAutoCaja" class="hidden mb-4">
+        <div class="p-3.5 rounded-2xl border border-emerald-500/40 bg-emerald-500/5">
+          <p class="text-[11px] font-bold text-emerald-300 uppercase tracking-wider mb-2"><i class="fa-solid fa-bolt mr-1"></i> Recarga automática con Bre-B</p>
+
+          <div id="recargaAutoForm">
+            <p class="text-xs text-gray-300 mb-2">Elige cuánto quieres recargar. Te daremos un monto exacto para pagar y tu saldo se acredita solo en 1 o 2 minutos.</p>
+            <div class="grid grid-cols-4 gap-1.5 mb-2">
+              <button type="button" onclick="recargaAutoElegir(10000)" class="py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 border border-gray-700 text-[11px] font-bold text-white">$10.000</button>
+              <button type="button" onclick="recargaAutoElegir(20000)" class="py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 border border-gray-700 text-[11px] font-bold text-white">$20.000</button>
+              <button type="button" onclick="recargaAutoElegir(50000)" class="py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 border border-gray-700 text-[11px] font-bold text-white">$50.000</button>
+              <button type="button" onclick="recargaAutoElegir(100000)" class="py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 border border-gray-700 text-[11px] font-bold text-white">$100.000</button>
+            </div>
+            <div class="flex gap-2">
+              <input type="number" id="recargaAutoMonto" min="1000" step="1000" placeholder="Otro monto" class="w-full min-w-0 bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none">
+              <button type="button" id="btnRecargaAutoCrear" onclick="recargaAutoCrear()" class="shrink-0 bg-emerald-500 hover:bg-emerald-400 text-black font-bold px-4 rounded-xl text-xs transition">Generar mi pago</button>
+            </div>
+            <p id="recargaAutoMin" class="text-[10px] text-gray-500 mt-1"></p>
+          </div>
+
+          <div id="recargaAutoPedido" class="hidden">
+            <p class="text-xs text-gray-400 text-center">Envía exactamente</p>
+            <div class="text-center my-1"><span id="recAutoMonto" class="text-3xl font-black text-white">$0</span></div>
+            <button type="button" onclick="recargaAutoCopiarMonto()" class="mx-auto block px-3 py-1 rounded-lg bg-gray-800 hover:bg-gray-700 border border-gray-700 text-[11px] font-bold text-gray-200"><i class="fa-solid fa-copy mr-1"></i> Copiar monto</button>
+            <div class="mt-3 p-3 bg-gray-800/70 rounded-xl flex items-center justify-between gap-2">
+              <div class="min-w-0">
+                <span id="recAutoNombre" class="block text-[10px] text-gray-400 font-bold uppercase tracking-wider">Llave Bre-B</span>
+                <span id="recAutoLlave" class="font-mono font-black text-white text-sm select-all break-all">—</span>
+                <span id="recAutoTitular" class="text-[10px] text-gray-400 block"></span>
+              </div>
+              <div class="flex flex-col gap-1 shrink-0">
+                <button type="button" onclick="recargaAutoCopiarLlave()" class="px-2.5 py-1 rounded-lg bg-blue-500 hover:bg-blue-400 text-black text-[11px] font-black"><i class="fa-solid fa-copy mr-1"></i>Copiar</button>
+                <button type="button" id="recAutoQr" onclick="recargaAutoVerQr()" class="hidden px-2.5 py-1 rounded-lg bg-gray-700 hover:bg-gray-600 text-white text-[11px] font-bold">Ver QR</button>
+              </div>
+            </div>
+            <p id="recAutoReloj" class="text-center text-sm font-bold text-amber-300 mt-3"></p>
+            <p class="text-[10px] text-amber-200 bg-amber-500/10 border border-amber-500/30 rounded-lg p-2 mt-2 leading-snug"><i class="fa-solid fa-triangle-exclamation mr-1"></i> El monto debe ser <b>exacto</b>, con los pesos de más. Si envías otro valor, no se acredita solo.</p>
+            <div class="grid grid-cols-2 gap-2 mt-3">
+              <button type="button" id="btnRecargaAutoYaPague" onclick="recargaAutoYaPague()" class="bg-emerald-500 hover:bg-emerald-400 text-black font-bold py-2.5 rounded-xl text-xs transition">Ya pagué</button>
+              <button type="button" onclick="recargaAutoCancelar()" class="bg-gray-800 hover:bg-gray-700 text-gray-300 font-bold py-2.5 rounded-xl text-xs transition">Cancelar pedido</button>
+            </div>
+            <p id="recAutoEstado" class="text-[11px] text-center text-gray-400 mt-2 leading-snug"></p>
+          </div>
+        </div>
       </div>
 
-      <form onsubmit="reportarRecarga(event)" class="space-y-3 pt-2 border-t border-gray-800">
-        <div>
-          <label class="block text-xs text-gray-400 mb-1">Monto transferido (COP)</label>
-          <input type="number" id="recargaMonto" required min="1000" placeholder="Monto transferido" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none">
+      <!-- MÉTODO MANUAL (el de siempre) -->
+      <details id="recargaManualDetalle" open class="rounded-xl">
+        <summary id="recargaManualResumen" style="list-style:none" class="hidden cursor-pointer px-3 py-2 rounded-xl bg-gray-800/60 border border-gray-700 text-[11px] font-bold text-gray-300 flex items-center justify-between"><span><i class="fa-brands fa-whatsapp mr-1.5 text-emerald-400"></i>Otro método (manual, con comprobante por WhatsApp)</span><i class="fa-solid fa-chevron-down text-gray-500 text-[10px]"></i></summary>
+        <div class="pt-3">
+          <p class="text-xs text-gray-400 mb-3">Transfiere a través de nuestras cuentas oficiales escaneando el código QR o copiando la llave.</p>
+          <div id="contenedorMetodosPagoClientes" class="space-y-3 mb-4">
+            <div class="text-center py-4 text-xs text-gray-500">Cargando métodos de pago...</div>
+          </div>
+          <form onsubmit="reportarRecarga(event)" class="space-y-3 pt-2 border-t border-gray-800">
+            <div>
+              <label class="block text-xs text-gray-400 mb-1">Monto transferido (COP)</label>
+              <input type="number" id="recargaMonto" required min="1000" placeholder="Monto transferido" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none">
+            </div>
+            <button type="submit" class="w-full bg-emerald-500 hover:bg-emerald-400 text-black font-bold py-2.5 rounded-xl text-sm transition flex items-center justify-center gap-2">
+              <i class="fa-brands fa-whatsapp text-base"></i> Notificar y Enviar Comprobante
+            </button>
+          </form>
         </div>
-        <button type="submit" class="w-full bg-emerald-500 hover:bg-emerald-400 text-black font-bold py-2.5 rounded-xl text-sm transition flex items-center justify-center gap-2">
-          <i class="fa-brands fa-whatsapp text-base"></i> Notificar y Enviar Comprobante
-        </button>
-      </form>
+      </details>
+    </div>
+  </div>
+
+  <!-- MODAL: ASIGNAR UN PAGO SIN IDENTIFICAR (administración) -->
+  <div id="modalAsignarPago" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+    <div class="bg-gray-900 border border-emerald-500/40 rounded-2xl max-w-sm w-full p-5 relative">
+      <button onclick="cerrarAsignarPago()" class="absolute top-4 right-4 text-gray-400 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
+      <h3 class="text-base font-black text-white mb-1">Acreditar pago a un cliente</h3>
+      <p id="asignarPagoInfo" class="text-xs text-gray-300 mb-3"></p>
+      <label class="block text-xs text-gray-400 mb-1">Correo del cliente</label>
+      <input type="email" id="asignarPagoEmail" placeholder="cliente@correo.com" autocomplete="off" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none mb-3">
+      <button type="button" id="btnAsignarPago" onclick="confirmarAsignarPago()" class="w-full bg-emerald-500 hover:bg-emerald-400 text-black font-bold py-2.5 rounded-xl text-sm transition">Acreditar saldo</button>
     </div>
   </div>
 
@@ -4120,6 +4229,7 @@
 
         iniciarLatidoConexion(user);
         iniciarMisAlquileres();
+        iniciarRecargaAuto();
 
         const userEmail = (user.email || '').trim().toLowerCase();
         const esAdmin = ADMIN_EMAILS.some(e => e.trim().toLowerCase() === userEmail);
@@ -4130,12 +4240,14 @@
           iniciarInventarioPrivadoAdmin();
           iniciarSecretosAdmin();
           iniciarNetflixAdmin();
+          iniciarPagosRecibidosAdmin();
           recalcularProductoHotAdminSiVence();
         } else {
           document.getElementById('btnAdminTab').classList.add('hidden');
           detenerInventarioPrivadoAdmin();
           detenerSecretosAdmin();
           detenerNetflixAdmin();
+          detenerPagosRecibidosAdmin();
         }
 
         db.collection('usuarios').doc(user.uid).onSnapshot(doc => {
@@ -4204,6 +4316,8 @@
         document.getElementById('btnAdminTab').classList.add('hidden');
         detenerMisAlquileres();
         detenerNetflixAdmin();
+        detenerRecargaAuto();
+        detenerPagosRecibidosAdmin();
         bloquearAccesoVisitante();
       }
     });
@@ -5229,6 +5343,7 @@
         });
         renderizarMetodosPagoEnClientes();
         cargarMetodosPagoAdmin();
+        renderizarRecargaAuto();
       });
     }
 
@@ -6862,6 +6977,7 @@
       document.getElementById('pagoNombre').value = '';
       document.getElementById('pagoTitular').value = '';
       document.getElementById('pagoLlave').value = '';
+      if (document.getElementById('pagoAuto')) document.getElementById('pagoAuto').value = '';
       document.getElementById('pagoQrFile').value = '';
       document.getElementById('previewQrImg').src = '';
       document.getElementById('contenedorPreviewQr').classList.add('hidden');
@@ -6874,11 +6990,17 @@
       const nombre = document.getElementById('pagoNombre').value.trim();
       const titular = document.getElementById('pagoTitular').value.trim();
       const llave = document.getElementById('pagoLlave').value.trim();
+      const auto = (document.getElementById('pagoAuto') || {}).value || '';
+      if (auto) {
+        const otro = metodosPagoList.find(m => m.auto === auto && m.docId !== docId);
+        if (otro) { alert('Ya hay un método marcado como automático: «' + otro.nombre + '». Quítale la marca primero (déjalo en "Manual").'); return; }
+      }
 
       const dataGuardar = {
         nombre: nombre,
         titular: titular,
         llave: llave,
+        auto: auto,
         fechaActualizado: new Date().toISOString()
       };
 
@@ -6917,7 +7039,7 @@
         tbody.innerHTML += `
           <tr class="hover:bg-gray-800/40">
             <td class="px-4 py-3">${qrHtml}</td>
-            <td class="px-4 py-3 font-bold text-white">${m.nombre}</td>
+            <td class="px-4 py-3 font-bold text-white">${m.nombre}${m.auto ? ' <span class="ml-1 px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 text-[9px] font-black align-middle">AUTOMÁTICA</span>' : ''}</td>
             <td class="px-4 py-3 text-xs text-gray-400">${m.titular || 'N/A'}</td>
             <td class="px-4 py-3 font-mono text-emerald-400 text-xs">${m.llave}</td>
             <td class="px-4 py-3 text-right space-x-2">
@@ -6936,6 +7058,7 @@
       document.getElementById('pagoNombre').value = m.nombre;
       document.getElementById('pagoTitular').value = m.titular || '';
       document.getElementById('pagoLlave').value = m.llave;
+      if (document.getElementById('pagoAuto')) document.getElementById('pagoAuto').value = m.auto || '';
       if (m.qrImage) {
         document.getElementById('previewQrImg').src = m.qrImage;
         document.getElementById('contenedorPreviewQr').classList.remove('hidden');
@@ -6961,7 +7084,9 @@
       const contenedor = document.getElementById('contenedorMetodosPagoClientes');
       if (!contenedor) return;
 
-      if (metodosPagoList.length === 0) {
+      // Si la recarga automática está disponible, su llave se muestra arriba y no se repite aquí
+      const listaManual = recargaAutoDisponible() ? metodosPagoList.filter(m => !m.auto) : metodosPagoList;
+      if (listaManual.length === 0) {
         contenedor.innerHTML = `
           <div class="p-3 bg-gray-800/80 border border-gray-700 rounded-xl text-center text-xs text-gray-400">
             Contacta a soporte por WhatsApp para recargar tu saldo.
@@ -6970,7 +7095,7 @@
         return;
       }
 
-      contenedor.innerHTML = metodosPagoList.map((m) => {
+      contenedor.innerHTML = listaManual.map((m) => {
         const qrHtml = m.qrImage ? `
           <div class="shrink-0 text-center">
             <img src="${m.qrImage}" onclick="abrirZoomQr('${m.qrImage}', '${m.nombre}')" class="w-14 h-14 object-contain rounded-xl border border-gray-700 bg-white p-1 cursor-pointer hover:scale-105 transition shadow" title="Toca para ampliar">
@@ -7091,6 +7216,351 @@
       await db.collection('recargas').doc(recargaId).update({ estado: 'rechazado' });
       mostrarToast("Solicitud rechazada.");
       cargarRecargasAdmin();
+    }
+
+    // ==================== RECARGAS AUTOMÁTICAS (BRE-B) ====================
+    let recargaAutoCfg = { activa: false, minutos: 30, minimo: 5000 };
+    let recargaEstadoSrv = null;
+    let unsubRecargaCfg = null, unsubPedidosRecarga = null, unsubRecargaEstado = null, unsubPagosSinId = null, unsubPagosAcred = null;
+    let pedidoRecargaActivo = null;
+    const pedidosRecargaVistos = {};
+    const recargasAvisadas = {};
+    let relojRecargaTimer = null;
+    let pagosSinIdentificar = [];
+    let pagoAsignandoTxn = '';
+
+    function metodoRecargaAuto() { return metodosPagoList.find(m => m.auto === 'breb') || null; }
+    function recargaAutoDisponible() { return recargaAutoCfg.activa && !!metodoRecargaAuto() && !modoPruebaCliente; }
+
+    function iniciarRecargaAuto() {
+      detenerRecargaAuto();
+      try {
+        unsubRecargaCfg = db.collection('configuracion').doc('recarga_auto').onSnapshot(doc => {
+          const d = doc.exists ? (doc.data() || {}) : {};
+          recargaAutoCfg = { activa: d.activa === true, minutos: parseInt(d.minutos, 10) || 30, minimo: parseInt(d.minimo, 10) || 5000 };
+          renderizarRecargaAuto();
+          renderizarMetodosPagoEnClientes();
+          renderizarRecargaAutoAdmin();
+        }, err => console.warn('Recarga automática no disponible:', err));
+        if (currentUser) {
+          unsubPedidosRecarga = db.collection('pedidos_recarga').where('usuarioId', '==', currentUser.uid).onSnapshot(snap => {
+            let activo = null;
+            snap.forEach(doc => {
+              const p = Object.assign({ id: doc.id }, doc.data());
+              const antes = pedidosRecargaVistos[p.id];
+              if (p.estado === 'pendiente' && (!activo || String(p.creadoEl) > String(activo.creadoEl))) activo = p;
+              if (antes === 'pendiente' && p.estado === 'acreditado') recargaAutoAcreditada(p);
+              pedidosRecargaVistos[p.id] = p.estado;
+            });
+            pedidoRecargaActivo = activo;
+            renderizarRecargaAuto();
+          }, err => console.warn('Pedidos de recarga no disponibles:', err));
+        }
+      } catch (e) { console.warn(e); }
+    }
+
+    function detenerRecargaAuto() {
+      [unsubRecargaCfg, unsubPedidosRecarga].forEach(f => { try { if (f) f(); } catch (e) { /* nada */ } });
+      unsubRecargaCfg = null; unsubPedidosRecarga = null;
+      pedidoRecargaActivo = null;
+      if (relojRecargaTimer) { clearInterval(relojRecargaTimer); relojRecargaTimer = null; }
+    }
+
+    function renderizarRecargaAuto() {
+      const caja = document.getElementById('recargaAutoCaja');
+      if (!caja) return;
+      const metodo = metodoRecargaAuto();
+      const activa = recargaAutoDisponible();
+      caja.classList.toggle('hidden', !activa);
+      const det = document.getElementById('recargaManualDetalle');
+      const res = document.getElementById('recargaManualResumen');
+      if (res) res.classList.toggle('hidden', !activa);
+      if (det && !activa) det.open = true;
+      if (!activa) {
+        if (relojRecargaTimer) { clearInterval(relojRecargaTimer); relojRecargaTimer = null; }
+        return;
+      }
+      const minEl = document.getElementById('recargaAutoMin');
+      if (minEl) minEl.textContent = `Monto mínimo: ${formatoCOP(recargaAutoCfg.minimo)} COP · Tienes ${recargaAutoCfg.minutos} minutos para pagar.`;
+      const inp = document.getElementById('recargaAutoMonto');
+      if (inp) inp.min = String(recargaAutoCfg.minimo);
+
+      const form = document.getElementById('recargaAutoForm');
+      const ped = document.getElementById('recargaAutoPedido');
+      if (pedidoRecargaActivo) {
+        if (form) form.classList.add('hidden');
+        if (ped) ped.classList.remove('hidden');
+        const set = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v; };
+        set('recAutoMonto', formatoCOP(pedidoRecargaActivo.monto));
+        set('recAutoNombre', metodo ? metodo.nombre : 'Llave Bre-B');
+        set('recAutoLlave', metodo ? metodo.llave : '—');
+        set('recAutoTitular', metodo && metodo.titular ? 'Titular: ' + metodo.titular : '');
+        const qr = document.getElementById('recAutoQr');
+        if (qr) qr.classList.toggle('hidden', !(metodo && metodo.qrImage));
+        actualizarRelojRecarga();
+        if (!relojRecargaTimer) relojRecargaTimer = setInterval(actualizarRelojRecarga, 1000);
+      } else {
+        if (form) form.classList.remove('hidden');
+        if (ped) ped.classList.add('hidden');
+        if (relojRecargaTimer) { clearInterval(relojRecargaTimer); relojRecargaTimer = null; }
+      }
+    }
+
+    function actualizarRelojRecarga() {
+      const el = document.getElementById('recAutoReloj');
+      if (!el || !pedidoRecargaActivo) return;
+      const resta = Date.parse(pedidoRecargaActivo.venceEl) - Date.now();
+      if (resta > 0) {
+        const m = Math.floor(resta / 60000), seg = Math.floor((resta % 60000) / 1000);
+        el.textContent = `Tienes ${m}:${String(seg).padStart(2, '0')} para pagar`;
+        el.className = 'text-center text-sm font-bold text-amber-300 mt-3';
+      } else {
+        el.textContent = 'El tiempo terminó. Si ya pagaste, toca "Ya pagué"; si no, cancela y genera otro pedido.';
+        el.className = 'text-center text-xs font-bold text-red-300 mt-3';
+      }
+    }
+
+    function recargaAutoElegir(n) {
+      const inp = document.getElementById('recargaAutoMonto');
+      if (inp) inp.value = String(n);
+    }
+
+    function recargaAutoEstadoTxt(t) { const e = document.getElementById('recAutoEstado'); if (e) e.textContent = t || ''; }
+
+    async function recargaAutoCrear() {
+      const inp = document.getElementById('recargaAutoMonto');
+      const monto = parseInt(inp && inp.value, 10);
+      if (!(monto >= recargaAutoCfg.minimo)) { alert(`El monto mínimo es ${formatoCOP(recargaAutoCfg.minimo)} COP.`); return; }
+      const btn = document.getElementById('btnRecargaAutoCrear');
+      if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>'; }
+      try {
+        const r = await llamarBackend('recarga_crear', { monto: monto });
+        if (!r.ok) { alert(r.error || 'No se pudo crear el pedido.'); return; }
+        pedidoRecargaActivo = r.pedido;
+        pedidosRecargaVistos[r.pedido.id] = 'pendiente';
+        recargaAutoEstadoTxt('');
+        renderizarRecargaAuto();
+        if (r.reutilizado) mostrarToast('Ya tenías un pedido activo; te lo mostramos.');
+      } catch (e) {
+        alert(e.message);
+      } finally {
+        if (btn) { btn.disabled = false; btn.innerHTML = 'Generar mi pago'; }
+      }
+    }
+
+    async function recargaAutoYaPague() {
+      if (!pedidoRecargaActivo) return;
+      const btn = document.getElementById('btnRecargaAutoYaPague');
+      if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Buscando...'; }
+      recargaAutoEstadoTxt('Buscando tu pago...');
+      try {
+        const r = await llamarBackend('recarga_verificar', { id: pedidoRecargaActivo.id });
+        if (!r.ok) { recargaAutoEstadoTxt(r.error || 'No se pudo revisar.'); return; }
+        if (r.estado === 'acreditado') { recargaAutoAcreditada(Object.assign({}, pedidoRecargaActivo, { monto: r.acreditado || pedidoRecargaActivo.monto })); return; }
+        if (r.estado === 'pendiente') recargaAutoEstadoTxt('Todavía no vemos tu pago. Puede tardar 1 o 2 minutos desde que pagas. Deja esta ventana abierta: se acredita sola.');
+        else recargaAutoEstadoTxt('Este pedido ya no está activo. Genera uno nuevo.');
+      } catch (e) {
+        recargaAutoEstadoTxt(e.message);
+      } finally {
+        if (btn) { btn.disabled = false; btn.innerHTML = 'Ya pagué'; }
+      }
+    }
+
+    async function recargaAutoCancelar() {
+      if (!pedidoRecargaActivo) return;
+      if (!await confirmarModal('¿Cancelar este pedido? Si ya pagaste, no lo canceles: espera a que se acredite.', { textoAceptar: 'Sí, cancelar' })) return;
+      try {
+        const r = await llamarBackend('recarga_cancelar', { id: pedidoRecargaActivo.id });
+        if (!r.ok) { alert(r.error || 'No se pudo cancelar.'); return; }
+        pedidoRecargaActivo = null;
+        recargaAutoEstadoTxt('');
+        renderizarRecargaAuto();
+      } catch (e) { alert(e.message); }
+    }
+
+    function recargaAutoAcreditada(p) {
+      if (!p || recargasAvisadas[p.id]) return;
+      recargasAvisadas[p.id] = true;
+      pedidosRecargaVistos[p.id] = 'acreditado';
+      pedidoRecargaActivo = null;
+      renderizarRecargaAuto();
+      cerrarModalRecarga();
+      mostrarToast(`¡Recarga acreditada! +${formatoCOP(p.monto)} COP`);
+    }
+
+    function recargaAutoCopiarMonto() { if (pedidoRecargaActivo) copiarTexto(String(pedidoRecargaActivo.monto), 'Monto copiado: ' + formatoCOP(pedidoRecargaActivo.monto)); }
+    function recargaAutoCopiarLlave() { const m = metodoRecargaAuto(); if (m) copiarTexto(String(m.llave), '¡' + m.nombre + ' copiada!'); }
+    function recargaAutoVerQr() { const m = metodoRecargaAuto(); if (m && m.qrImage) abrirZoomQr(m.qrImage, m.nombre); }
+
+    // ---------- Administración ----------
+    function iniciarPagosRecibidosAdmin() {
+      detenerPagosRecibidosAdmin();
+      try {
+        unsubRecargaEstado = db.collection('configuracion').doc('recarga_estado').onSnapshot(doc => {
+          recargaEstadoSrv = doc.exists ? doc.data() : null;
+          renderizarRecargaAutoAdmin();
+        }, err => console.warn(err));
+        unsubPagosSinId = db.collection('pagos_recibidos').where('estado', '==', 'sin_identificar').onSnapshot(snap => {
+          pagosSinIdentificar = [];
+          snap.forEach(d => pagosSinIdentificar.push(Object.assign({ id: d.id }, d.data())));
+          pagosSinIdentificar.sort((a, b) => String(b.recibidoEl).localeCompare(String(a.recibidoEl)));
+          renderizarPagosSinIdentificar();
+        }, err => console.warn('Pagos sin identificar no disponibles:', err));
+        unsubPagosAcred = db.collection('pagos_recibidos').where('estado', '==', 'acreditado').limit(40).onSnapshot(snap => {
+          const lista = [];
+          snap.forEach(d => lista.push(Object.assign({ id: d.id }, d.data())));
+          lista.sort((a, b) => String(b.recibidoEl).localeCompare(String(a.recibidoEl)));
+          renderizarRecargasAuto(lista.slice(0, 12));
+        }, err => console.warn(err));
+      } catch (e) { console.warn(e); }
+    }
+
+    function detenerPagosRecibidosAdmin() {
+      [unsubRecargaEstado, unsubPagosSinId, unsubPagosAcred].forEach(f => { try { if (f) f(); } catch (e) { /* nada */ } });
+      unsubRecargaEstado = null; unsubPagosSinId = null; unsubPagosAcred = null;
+    }
+
+    function renderizarRecargaAutoAdmin() {
+      const chk = document.getElementById('chkRecargaAuto');
+      if (chk && document.activeElement !== chk) chk.checked = recargaAutoCfg.activa;
+      const mi = document.getElementById('recargaAutoMinutos');
+      if (mi && document.activeElement !== mi) mi.value = recargaAutoCfg.minutos;
+      const mn = document.getElementById('recargaAutoMinimo');
+      if (mn && document.activeElement !== mn) mn.value = recargaAutoCfg.minimo;
+      renderizarEstadoRecargaAdmin();
+    }
+
+    function renderizarEstadoRecargaAdmin() {
+      const el = document.getElementById('recargaAutoEstadoAdmin');
+      if (!el) return;
+      if (!recargaAutoCfg.activa) { el.innerHTML = '<span class="text-gray-500">Apagada. Los clientes recargan con el método manual.</span>'; return; }
+      const metodo = metodoRecargaAuto();
+      let txt = metodo ? `<span class="text-emerald-400">Activa</span> · llave que ven los clientes: <b class="font-mono text-white">${escaparHtml(metodo.llave)}</b>` : '<span class="text-amber-400">Activa, pero falta marcar un método de pago como "Bre-B automática".</span>';
+      if (recargaEstadoSrv && recargaEstadoSrv.ultimoEscaneo) {
+        const min = Math.max(0, Math.round((Date.now() - Date.parse(recargaEstadoSrv.ultimoEscaneo)) / 60000));
+        const sano = min <= 12;
+        txt += ` · Último escaneo de Gmail: ${min <= 0 ? 'ahora' : 'hace ' + min + ' min'}${sano ? '' : ' <span class="text-amber-400">(lento: revisa el activador del servidor)</span>'}`;
+      } else {
+        txt += ' · <span class="text-amber-400">Aún no hay escaneos: ejecuta crearActivadores en el servidor.</span>';
+      }
+      el.innerHTML = txt;
+    }
+
+    async function guardarRecargaAutoAdmin() {
+      if (!esAdminSesionActual()) return;
+      const activa = !!document.getElementById('chkRecargaAuto').checked;
+      const minutos = Math.max(5, Math.min(120, parseInt(document.getElementById('recargaAutoMinutos').value, 10) || 30));
+      const minimo = Math.max(1000, parseInt(document.getElementById('recargaAutoMinimo').value, 10) || 5000);
+      if (activa && !metodoRecargaAuto()) { alert('Primero marca un método de pago como "Bre-B automática" (en el formulario de abajo) y guárdalo.'); return; }
+      const datos = { activa: activa, minutos: minutos, minimo: minimo, actualizadoEl: new Date().toISOString() };
+      if (activa && !recargaAutoCfg.activa) datos.activadaEl = new Date().toISOString();
+      try {
+        await db.collection('configuracion').doc('recarga_auto').set(datos, { merge: true });
+        mostrarToast(activa ? 'Recargas automáticas activadas.' : 'Recargas automáticas apagadas.');
+      } catch (err) { alert('No se pudo guardar: ' + err.message); }
+    }
+
+    async function diagnosticoRecargaAuto() {
+      const caja = document.getElementById('diagRecargaAuto');
+      const btn = document.getElementById('btnDiagRecarga');
+      if (!caja) return;
+      caja.classList.remove('hidden');
+      caja.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i> Leyendo tus correos de Nequi...';
+      if (btn) btn.disabled = true;
+      try {
+        const r = await llamarBackend('recarga_diagnostico', {});
+        if (!r.ok) { caja.textContent = r.error || 'No se pudo hacer la prueba.'; return; }
+        if (!r.correos.length) { caja.innerHTML = 'No hay correos de notificaciones@nequi.com.co en los últimos 7 días. Haz un pago de prueba y vuelve a intentar.'; return; }
+        const filas = r.correos.map(c => {
+          const fecha = new Date(c.fecha).toLocaleString('es-CO', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+          const lectura = c.leido ? `${formatoCOP(c.monto)} · ${escaparHtml(c.pagador || '—')}` : `<span class="text-gray-500">No es una venta aprobada (${escaparHtml(c.motivo)})</span>`;
+          const ver = !c.leido ? '' : (c.verificado ? `<span class="text-emerald-400">✔ de Nequi (${escaparHtml(c.via)})</span>` : `<span class="text-amber-400">✖ no verificado (${escaparHtml(c.via)})</span>`);
+          return `<tr><td class="pr-2 py-0.5 text-gray-400">${fecha}</td><td class="pr-2">${lectura}</td><td>${ver}</td></tr>`;
+        }).join('');
+        const fallan = r.correos.some(c => c.leido && !c.verificado);
+        caja.innerHTML = `<table class="w-full">${filas}</table>` + (fallan
+          ? '<p class="mt-2 text-amber-300">Hay correos reales que no se pudieron verificar, así que no se acreditarían solos. Abre uno en Gmail → ⋮ → "Mostrar original" y mándame la línea "Authentication-Results".</p>'
+          : '<p class="mt-2 text-emerald-300">Todo bien: se leen y se verifican correctamente.</p>');
+      } catch (e) {
+        caja.textContent = e.message;
+      } finally {
+        if (btn) btn.disabled = false;
+      }
+    }
+
+    function renderizarPagosSinIdentificar() {
+      const cont = document.getElementById('listaPagosSinIdentificar');
+      const badge = document.getElementById('badgePagosSinId');
+      if (badge) { badge.textContent = pagosSinIdentificar.length; badge.classList.toggle('hidden', !pagosSinIdentificar.length); }
+      if (!cont) return;
+      if (!pagosSinIdentificar.length) { cont.innerHTML = '<p class="px-4 py-6 text-center text-gray-500 text-sm">No hay pagos sin identificar.</p>'; return; }
+      cont.innerHTML = pagosSinIdentificar.map(p => {
+        const fecha = new Date(p.fechaPago || p.recibidoEl).toLocaleString('es-CO', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+        return `
+          <div class="p-4">
+            <div class="flex items-start justify-between gap-3">
+              <div class="min-w-0">
+                <p class="text-white font-black text-base">${formatoCOP(p.monto)} <span class="text-[11px] font-normal text-gray-400">· ${fecha}</span></p>
+                <p class="text-[11px] text-gray-300 mt-0.5">${escaparHtml(p.pagador || '—')} · ${escaparHtml(p.banco || '—')} · ref ${escaparHtml(p.referencia || '—')}</p>
+                <p class="text-[11px] text-amber-300 mt-0.5">${escaparHtml(p.motivo || '')}</p>
+                ${p.sugeridoEmail ? `<p class="text-[11px] text-emerald-300 mt-0.5"><i class="fa-solid fa-lightbulb mr-1"></i>Posible cliente: <b>${escaparHtml(p.sugeridoEmail)}</b></p>` : ''}
+              </div>
+              <div class="flex flex-col gap-1.5 shrink-0">
+                <button onclick="abrirAsignarPago('${escaparJsAttr(p.id)}')" class="px-3 py-1.5 bg-emerald-500 hover:bg-emerald-400 text-black font-bold rounded-lg text-xs">Acreditar a...</button>
+                <button onclick="descartarPago('${escaparJsAttr(p.id)}')" class="px-3 py-1.5 bg-red-500/15 hover:bg-red-500/25 text-red-300 border border-red-500/30 font-bold rounded-lg text-xs">Descartar</button>
+              </div>
+            </div>
+          </div>`;
+      }).join('');
+    }
+
+    function renderizarRecargasAuto(lista) {
+      const cont = document.getElementById('listaRecargasAuto');
+      if (!cont) return;
+      if (!lista.length) { cont.innerHTML = '<p class="px-4 py-6 text-center text-gray-500 text-sm">Aún no hay recargas automáticas.</p>'; return; }
+      cont.innerHTML = lista.map(p => {
+        const fecha = new Date(p.recibidoEl).toLocaleString('es-CO', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+        return `<div class="px-4 py-2.5 flex items-center justify-between gap-3 text-xs"><div class="min-w-0"><span class="text-white font-bold">${escaparHtml(p.usuarioEmail || '—')}</span> <span class="text-gray-500">· ${escaparHtml(p.pagador || '')}</span></div><div class="shrink-0 text-right"><span class="text-emerald-400 font-black">${formatoCOP(p.monto)}</span> <span class="text-[10px] text-gray-500 block">${fecha}</span></div></div>`;
+      }).join('');
+    }
+
+    function abrirAsignarPago(txn) {
+      const p = pagosSinIdentificar.find(x => x.id === txn);
+      if (!p) return;
+      pagoAsignandoTxn = txn;
+      document.getElementById('asignarPagoInfo').innerHTML = `Pago de <b class="text-white">${formatoCOP(p.monto)}</b> de ${escaparHtml(p.pagador || '—')}. Se sumará completo al saldo del cliente.`;
+      document.getElementById('asignarPagoEmail').value = p.sugeridoEmail || '';
+      const m = document.getElementById('modalAsignarPago');
+      m.classList.remove('hidden'); m.style.display = 'flex';
+    }
+
+    function cerrarAsignarPago() {
+      const m = document.getElementById('modalAsignarPago');
+      m.classList.add('hidden'); m.style.display = 'none';
+      pagoAsignandoTxn = '';
+    }
+
+    async function confirmarAsignarPago() {
+      const email = (document.getElementById('asignarPagoEmail').value || '').trim().toLowerCase();
+      if (!pagoAsignandoTxn || !/^\S+@\S+\.\S+$/.test(email)) { alert('Escribe el correo del cliente.'); return; }
+      const btn = document.getElementById('btnAsignarPago');
+      btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
+      try {
+        const r = await llamarBackend('pago_asignar', { txn: pagoAsignandoTxn, email: email });
+        if (!r.ok) { alert(r.error || 'No se pudo acreditar.'); return; }
+        cerrarAsignarPago();
+        mostrarToast(`Acreditado ${formatoCOP(r.monto)} a ${email}.`);
+      } catch (e) { alert(e.message); }
+      finally { btn.disabled = false; btn.innerHTML = 'Acreditar saldo'; }
+    }
+
+    async function descartarPago(txn) {
+      if (!await confirmarModal('¿Descartar este pago? No se acreditará a nadie (úsalo si ya lo resolviste por otro lado).', { textoAceptar: 'Sí, descartar' })) return;
+      try {
+        const r = await llamarBackend('pago_descartar', { txn: txn });
+        if (!r.ok) { alert(r.error || 'No se pudo descartar.'); return; }
+        mostrarToast('Pago descartado.');
+      } catch (e) { alert(e.message); }
     }
 
     // ==================== MI PERFIL ====================
@@ -7703,7 +8173,7 @@
     }
 
     function cerrarSesion() { auth.signOut().then(() => bloquearAccesoVisitante()); }
-    function abrirModalRecarga() { if (!currentUser) { abrirModalAuth('login'); return; } document.getElementById('modalRecarga').classList.remove('hidden'); document.getElementById('modalRecarga').style.display = 'flex'; }
+    function abrirModalRecarga() { if (!currentUser) { abrirModalAuth('login'); return; } document.getElementById('modalRecarga').classList.remove('hidden'); document.getElementById('modalRecarga').style.display = 'flex'; renderizarRecargaAuto(); }
     function cerrarModalRecarga() { document.getElementById('modalRecarga').classList.add('hidden'); document.getElementById('modalRecarga').style.display = 'none'; }
     function cerrarModalEntrega() {
       document.getElementById('modalEntrega').classList.add('hidden');
