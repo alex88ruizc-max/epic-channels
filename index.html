@@ -166,6 +166,21 @@
     div.fixed.inset-0[id^="modal"] > div { max-height: 92vh; max-height: 92dvh; overflow-y: auto; overscroll-behavior: contain; }
     /* El botón flotante de ayuda no debe tapar los últimos botones de la tienda ni del panel */
     #vistaTienda, #vistaAdmin { padding-bottom: 5.5rem; }
+  
+    /* ===== Netflix: tarjetas destacadas en la tienda ===== */
+    .nf-hero { position: relative; overflow: hidden; border-radius: 1.25rem; padding: 1.25rem 1.25rem 1.1rem;
+      background: radial-gradient(120% 140% at 0% 0%, rgba(229,9,20,.55) 0%, rgba(120,4,10,.35) 38%, rgba(11,15,25,0) 72%), linear-gradient(135deg, #2a0407 0%, #12060a 55%, #0b0f19 100%);
+      border: 1px solid rgba(229,9,20,.6); box-shadow: 0 0 0 1px rgba(229,9,20,.18), 0 22px 50px -22px rgba(229,9,20,.7); }
+    .nf-hero::after { content: ''; position: absolute; right: -40px; top: -40px; width: 190px; height: 190px; border-radius: 50%; background: radial-gradient(circle, rgba(255,60,70,.28), transparent 70%); pointer-events: none; }
+    .nf-wordmark { font-family: 'Arial Black', Impact, system-ui, sans-serif; font-weight: 900; letter-spacing: .32em; color: #e50914; text-shadow: 0 0 22px rgba(229,9,20,.6); line-height: 1; }
+    .nf-chip { display: inline-flex; align-items: center; gap: .35rem; padding: .22rem .65rem; border-radius: 999px; font-size: 10px; font-weight: 800; color: #fecaca; background: rgba(229,9,20,.14); border: 1px solid rgba(229,9,20,.4); }
+    .nf-card { position: relative; overflow: hidden; background: radial-gradient(110% 80% at 0% 0%, rgba(229,9,20,.22), transparent 60%), linear-gradient(165deg, #1b080b 0%, #0d0f17 75%); border: 1px solid rgba(229,9,20,.55); box-shadow: 0 16px 38px -20px rgba(229,9,20,.65); transition: transform .15s, border-color .15s, box-shadow .15s; }
+    .nf-card::before { content: ''; position: absolute; left: 0; right: 0; top: 0; height: 3px; background: linear-gradient(90deg, #8f060d, #e50914, #ff555e, #e50914, #8f060d); }
+    .nf-card:hover { transform: translateY(-2px); border-color: rgba(255,85,94,.85); box-shadow: 0 20px 44px -18px rgba(229,9,20,.8); }
+    .nf-btn { background: linear-gradient(180deg, #f01723, #c20710); color: #fff; box-shadow: 0 8px 20px -10px rgba(229,9,20,.9); }
+    .nf-btn:hover { background: linear-gradient(180deg, #ff2a36, #d8101a); }
+    @media (prefers-reduced-motion: no-preference) { .nf-glow { animation: nfGlow 3.4s ease-in-out infinite; } }
+    @keyframes nfGlow { 0%, 100% { box-shadow: 0 16px 38px -20px rgba(229,9,20,.55); } 50% { box-shadow: 0 18px 46px -16px rgba(229,9,20,.9); } }
   </style>
 </head>
 <body class="min-h-screen flex flex-col justify-between">
@@ -362,8 +377,9 @@
 
       <div id="provMetodosCaja" class="p-4 bg-gray-900 border border-gray-800 rounded-2xl">
         <h3 class="text-sm font-black text-white mb-1 flex items-center gap-2"><i class="fa-solid fa-wallet text-emerald-400"></i> Cómo quieres que te paguemos</h3>
-        <p class="text-[11px] text-gray-400 mb-3">Pon tu Nequi o tu DaviPlata. Con esos datos te hacemos el pago.</p>
+        <p id="provMetodosAyuda" class="text-[11px] text-gray-400 mb-3">Pon tu Nequi o tu DaviPlata. Con esos datos te hacemos el pago.</p>
         <form onsubmit="guardarMetodosPagoProveedor(event)" class="space-y-3" autocomplete="off">
+          <div id="provMetodosCampos" class="space-y-3">
           <div>
             <label class="block text-xs text-gray-400 mb-1">Nequi (número de celular)</label>
             <input type="tel" id="provNequi" inputmode="numeric" maxlength="14" placeholder="3001234567" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white font-mono focus:outline-none">
@@ -371,6 +387,7 @@
           <div>
             <label class="block text-xs text-gray-400 mb-1">DaviPlata (llave o número)</label>
             <input type="text" id="provDaviplata" maxlength="30" placeholder="3001234567 o tu llave" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white font-mono focus:outline-none">
+          </div>
           </div>
           <button type="submit" id="btnGuardarMetodosProv" class="w-full bg-emerald-500 hover:bg-emerald-400 text-black font-bold py-2.5 rounded-xl text-xs transition">Guardar mis datos de pago</button>
         </form>
@@ -419,7 +436,7 @@
           </div>
         </div>
         <div id="perfilNivelBox" class="mt-4"></div>
-        <div class="grid grid-cols-3 gap-2 mt-3">
+        <div id="perfilStatsCliente" class="grid grid-cols-3 gap-2 mt-3">
           <div class="bg-gray-800/70 border border-gray-700/60 rounded-xl p-2.5 text-center">
             <span class="text-[10px] text-gray-400 block">Saldo</span>
             <span id="perfilStatSaldo" class="text-sm font-black text-emerald-400">$0</span>
@@ -437,6 +454,22 @@
           <i class="fa-solid fa-circle-info shrink-0"></i>
           <span>Completa tu nombre y WhatsApp para que soporte pueda ayudarte más rápido.</span>
           <button onclick="cambiarTabPerfil('datos')" class="ml-auto shrink-0 underline font-bold">Completar</button>
+        </div>
+      </div>
+
+      <!-- Panel de control (solo administrador y moderador) -->
+      <div id="perfilAdminPanel" class="hidden mb-4 rounded-2xl overflow-hidden border border-emerald-500/30 bg-gradient-to-br from-emerald-500/10 via-gray-900 to-gray-900">
+        <div class="p-4 flex items-center gap-3">
+          <div class="w-11 h-11 shrink-0 rounded-2xl bg-gradient-to-br from-amber-300 to-amber-500 text-black flex items-center justify-center shadow-lg shadow-amber-500/20"><i class="fa-solid fa-crown text-lg"></i></div>
+          <div class="min-w-0">
+            <p id="perfilAdminRol" class="text-sm font-black text-white leading-tight">Administrador</p>
+            <p id="perfilAdminSub" class="text-[11px] text-gray-400 leading-snug">Acceso total a la plataforma</p>
+          </div>
+        </div>
+        <div id="perfilAdminStats" class="grid grid-cols-2 sm:grid-cols-3 gap-2 px-4 pb-3"></div>
+        <div class="px-4 pb-4">
+          <p class="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-2">Accesos rápidos</p>
+          <div id="perfilAdminAcciones" class="grid grid-cols-3 gap-1.5"></div>
         </div>
       </div>
 
@@ -616,6 +649,9 @@
           <button onclick="irATabAdmin('usuarios')" id="tabBtnUsuarios" class="admin-tab bg-gray-900 border-gray-800 text-gray-400">
             <i class="fa-solid fa-users"></i><span>Usuarios Registrados</span>
           </button>
+          <button onclick="irATabAdmin('tickets')" id="tabBtnTickets" class="admin-tab bg-gray-900 border-gray-800 text-gray-400">
+            <i class="fa-solid fa-ticket"></i><span>Tickets</span><span id="badgeTabTickets" class="hidden absolute top-1.5 right-1.5 lg:static lg:ml-auto min-w-[18px] h-[18px] px-1 rounded-full bg-amber-500 text-black text-[10px] font-black flex items-center justify-center"></span>
+          </button>
           <button onclick="irATabAdmin('stock')" id="tabBtnStock" class="admin-tab bg-gray-900 border-gray-800 text-gray-400">
             <i class="fa-solid fa-key"></i><span>Cargar Cuentas (Stock)</span>
           </button>
@@ -768,6 +804,34 @@
         </div>
       </div>
 
+
+      <!-- ==================== ADMIN: TICKETS ==================== -->
+      <div id="adminSecTickets" class="hidden space-y-4 pb-28 sm:pb-0">
+        <div class="p-4 rounded-2xl border border-amber-500/30 bg-gradient-to-br from-amber-500/10 via-gray-900 to-gray-900">
+          <div class="flex items-start justify-between gap-3">
+            <div class="min-w-0">
+              <h3 class="text-base font-black text-white flex items-center gap-2"><i class="fa-solid fa-ticket text-amber-400"></i> Tickets de cuentas <span id="badgeTickets" class="hidden px-2 py-0.5 rounded-full bg-amber-500 text-black text-[10px] font-black"></span></h3>
+              <p class="text-xs text-gray-400 mt-1 leading-relaxed">Cuentas reportadas por los clientes. Al resolver, la respuesta (cuenta nueva, contraseña o captura) le llega al cliente dentro de su ticket.</p>
+            </div>
+            <button onclick="abrirModalTicket()" class="shrink-0 px-3 py-2 bg-amber-500 hover:bg-amber-400 text-black font-bold text-xs rounded-xl transition flex items-center gap-1.5"><i class="fa-solid fa-plus"></i> Nuevo</button>
+          </div>
+          <div class="grid grid-cols-3 gap-2 mt-3">
+            <div class="rounded-xl bg-gray-900/70 border border-amber-500/20 p-2.5 text-center"><span class="text-[10px] text-gray-400 block">Abiertos</span><span id="tkStatAbiertos" class="text-lg font-black text-amber-300">0</span></div>
+            <div class="rounded-xl bg-gray-900/70 border border-emerald-500/20 p-2.5 text-center"><span class="text-[10px] text-gray-400 block">Resueltos</span><span id="tkStatResueltos" class="text-lg font-black text-emerald-300">0</span></div>
+            <div class="rounded-xl bg-gray-900/70 border border-gray-700 p-2.5 text-center"><span class="text-[10px] text-gray-400 block">Sin proveedor</span><span id="tkStatSinProv" class="text-lg font-black text-white">0</span></div>
+          </div>
+        </div>
+        <div class="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden">
+          <div class="px-4 pt-3 flex flex-wrap items-center gap-1.5 text-[11px] font-bold">
+            <button id="tkFiltroAbiertos" onclick="filtrarTickets('abiertos')" class="px-3 py-1 rounded-lg border">Abiertos</button>
+            <button id="tkFiltroResueltos" onclick="filtrarTickets('resueltos')" class="px-3 py-1 rounded-lg border">Resueltos</button>
+            <button id="tkFiltroTodos" onclick="filtrarTickets('todos')" class="px-3 py-1 rounded-lg border">Todos</button>
+          </div>
+          <div class="px-4 pt-3"><input type="search" id="tkBuscar" oninput="renderizarTickets()" autocomplete="off" placeholder="Buscar por cuenta, cliente, producto o proveedor" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-amber-500/60"></div>
+          <div id="listaTickets" class="mt-2 max-h-[68vh] overflow-y-auto divide-y divide-gray-800"><p class="px-4 py-6 text-center text-gray-500 text-sm">No hay tickets.</p></div>
+        </div>
+      </div>
+
       <!-- TAB 2: USUARIOS REGISTRADOS Y PERMISOS -->
       <div id="adminSecUsuarios" class="hidden space-y-6">
         <div class="flex justify-between items-center bg-gray-900 border border-emerald-500/30 p-4 rounded-2xl">
@@ -780,21 +844,6 @@
           </button>
         </div>
 
-        <div class="bg-gray-900 border border-amber-500/30 rounded-2xl overflow-hidden">
-          <div class="p-4 flex items-center justify-between gap-3 border-b border-gray-800">
-            <div class="min-w-0">
-              <h4 class="font-bold text-white text-sm flex items-center gap-2"><i class="fa-solid fa-ticket text-amber-400"></i> Tickets de cuentas <span id="badgeTickets" class="hidden px-2 py-0.5 rounded-full bg-amber-500 text-black text-[10px] font-black"></span></h4>
-              <p class="text-[11px] text-gray-400 mt-0.5">Reporta una cuenta con problemas: se asigna sola a quien la subió.</p>
-            </div>
-            <button onclick="abrirModalTicket()" class="shrink-0 px-3 py-2 bg-amber-500 hover:bg-amber-400 text-black font-bold text-xs rounded-xl transition flex items-center gap-1.5"><i class="fa-solid fa-plus"></i> Nuevo ticket</button>
-          </div>
-          <div class="px-4 pt-3 flex gap-1.5 text-[11px] font-bold">
-            <button id="tkFiltroAbiertos" onclick="filtrarTickets('abiertos')" class="px-3 py-1 rounded-lg border">Abiertos</button>
-            <button id="tkFiltroResueltos" onclick="filtrarTickets('resueltos')" class="px-3 py-1 rounded-lg border">Resueltos</button>
-            <button id="tkFiltroTodos" onclick="filtrarTickets('todos')" class="px-3 py-1 rounded-lg border">Todos</button>
-          </div>
-          <div id="listaTickets" class="mt-2 max-h-80 overflow-y-auto divide-y divide-gray-800"><p class="px-4 py-6 text-center text-gray-500 text-sm">No hay tickets.</p></div>
-        </div>
 
         <div class="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden">
           <div class="p-4 border-b border-gray-800">
@@ -1156,6 +1205,18 @@
           <h3 class="text-base font-bold text-white mb-1 flex items-center gap-2"><i class="fa-solid fa-truck-ramp-box text-emerald-400"></i> Proveedores de stock</h3>
           <p class="text-xs text-gray-400">Aprueba lo que suben, ponles el costo por cuenta y márcalos como saldados cuando les pagues (el pago lo haces por aparte).</p>
           <p class="text-[11px] text-gray-500 mt-2">Para crear un proveedor: <b class="text-gray-300">Usuarios Registrados → Crear usuario</b> con el rol "Proveedor", y luego, con su botón <b class="text-gray-300">Editar</b>, marca qué productos puede subir.</p>
+        </div>
+        <div id="adminMetodosPagoProv" class="bg-gray-900 border border-emerald-500/30 rounded-2xl overflow-hidden">
+          <div class="p-4 border-b border-gray-800">
+            <h4 class="font-bold text-white text-sm flex items-center gap-2"><i class="fa-solid fa-wallet text-emerald-400"></i> Medios de pago para proveedores</h4>
+            <p class="text-[11px] text-gray-400 mt-0.5 leading-relaxed">Tú decides con qué medios te dan sus datos los proveedores: agrega bancos, billeteras o lo que uses, y oculta los que no quieras.</p>
+          </div>
+          <div id="editorMetodosPagoProv" class="p-4 space-y-2.5"><p class="text-[11px] text-gray-500">Cargando...</p></div>
+          <div class="px-4 pb-4 flex flex-wrap gap-2">
+            <button type="button" onclick="medAgregar()" class="px-3 py-2 rounded-xl bg-gray-800 hover:bg-gray-700 border border-gray-700 text-emerald-300 font-bold text-xs flex items-center gap-1.5"><i class="fa-solid fa-plus"></i> Agregar medio</button>
+            <button type="button" onclick="medRestaurar()" class="px-3 py-2 rounded-xl bg-gray-800 hover:bg-gray-700 border border-gray-700 text-gray-300 font-bold text-xs">Restaurar Nequi y DaviPlata</button>
+            <button type="button" id="btnGuardarMetodosAdmin" onclick="medGuardar()" disabled class="ml-auto px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-bold text-xs opacity-50">Guardar cambios</button>
+          </div>
         </div>
         <div class="bg-gray-900 border border-amber-500/30 rounded-2xl overflow-hidden">
           <div class="p-4 border-b border-gray-800"><h4 class="font-bold text-white text-sm flex items-center gap-2"><i class="fa-solid fa-hourglass-half text-amber-400"></i> Por aprobar <span id="badgeProvPorAprobar" class="hidden px-2 py-0.5 rounded-full bg-amber-500 text-black text-[10px] font-black"></span></h4></div>
@@ -2507,18 +2568,36 @@
       </div>
       <div class="overflow-y-auto px-4 py-3 space-y-3 flex-grow">
         <p id="rtResumen" class="text-xs text-gray-200 break-all"></p>
+        <p id="rtMotivoCliente" class="hidden text-[11px] text-amber-200 bg-amber-500/10 border border-amber-500/30 rounded-xl px-2.5 py-1.5 leading-snug"></p>
+        <p class="text-[11px] font-bold text-gray-400 uppercase tracking-wider">¿Qué le respondes al cliente?</p>
         <div class="space-y-1.5">
           <label class="flex items-start gap-2 p-2.5 rounded-xl bg-gray-800/60 border border-gray-700/60 cursor-pointer"><input type="radio" name="rtResultado" value="cerrar" onchange="rtCambioResultado()" class="mt-0.5 accent-emerald-500"><span class="text-xs text-white"><b>Solo cerrar el ticket</b><span class="block text-[10px] text-gray-400">No cambia nada en la compra del cliente.</span></span></label>
-          <label id="rtOpcArreglada" class="flex items-start gap-2 p-2.5 rounded-xl bg-gray-800/60 border border-gray-700/60 cursor-pointer"><input type="radio" name="rtResultado" value="arreglada" onchange="rtCambioResultado()" class="mt-0.5 accent-emerald-500"><span class="text-xs text-white"><b>Se arregló la misma cuenta</b><span class="block text-[10px] text-gray-400">Por ejemplo, se cambió la clave o se volvió a activar.</span></span></label>
-          <label id="rtOpcReemplazo" class="flex items-start gap-2 p-2.5 rounded-xl bg-gray-800/60 border border-gray-700/60 cursor-pointer"><input type="radio" name="rtResultado" value="reemplazo" onchange="rtCambioResultado()" class="mt-0.5 accent-emerald-500"><span class="text-xs text-white"><b>Se entregó una cuenta nueva</b><span class="block text-[10px] text-gray-400">La compra del cliente pasa a mostrar la cuenta nueva, enlazada a la anterior.</span></span></label>
+          <label id="rtOpcFuncional" class="flex items-start gap-2 p-2.5 rounded-xl bg-gray-800/60 border border-gray-700/60 cursor-pointer"><input type="radio" name="rtResultado" value="funcional" onchange="rtCambioResultado()" class="mt-0.5 accent-emerald-500"><span class="text-xs text-white"><b>La cuenta sí funciona</b><span class="block text-[10px] text-gray-400">Le avisas que está bien. Puedes adjuntar una captura como prueba.</span></span></label>
+          <label id="rtOpcArreglada" class="flex items-start gap-2 p-2.5 rounded-xl bg-gray-800/60 border border-gray-700/60 cursor-pointer"><input type="radio" name="rtResultado" value="arreglada" onchange="rtCambioResultado()" class="mt-0.5 accent-emerald-500"><span class="text-xs text-white"><b>Se arregló la misma cuenta</b><span class="block text-[10px] text-gray-400">Por ejemplo, cambiaste la contraseña o la volviste a activar.</span></span></label>
+          <label id="rtOpcReemplazo" class="flex items-start gap-2 p-2.5 rounded-xl bg-gray-800/60 border border-gray-700/60 cursor-pointer"><input type="radio" name="rtResultado" value="reemplazo" onchange="rtCambioResultado()" class="mt-0.5 accent-emerald-500"><span class="text-xs text-white"><b>Entregar una cuenta nueva</b><span class="block text-[10px] text-gray-400">Para cuentas suspendidas. Queda enlazada a la anterior.</span></span></label>
+        </div>
+        <div id="rtBloqueClave" class="hidden space-y-1 p-3 rounded-xl bg-gray-800/50 border border-gray-700/60">
+          <label class="block text-xs text-gray-400">Contraseña nueva (opcional)</label>
+          <input type="text" id="rtClaveNueva" maxlength="80" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="Si la cambiaste, escríbela aquí" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white font-mono focus:outline-none">
+          <p class="text-[10px] text-gray-500">El cliente la verá en su ticket y se actualiza en su compra.</p>
         </div>
         <div id="rtBloqueNueva" class="hidden space-y-2 p-3 rounded-xl bg-gray-800/50 border border-gray-700/60">
           <div><label class="block text-xs text-gray-400 mb-1">Cuenta nueva (correo:clave)</label><input type="text" id="rtCuentaNueva" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="nueva@gmail.com:clave" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white font-mono focus:outline-none"></div>
-          <label class="flex items-start gap-2 text-[11px] text-gray-200 cursor-pointer"><input type="checkbox" id="rtDesdeStock" class="accent-emerald-500 mt-0.5"><span>O tomar una del stock de este producto <span id="rtStockInfo" class="text-gray-400"></span></span></label>
+          <label id="rtDesdeStockCaja" class="flex items-start gap-2 text-[11px] text-gray-200 cursor-pointer"><input type="checkbox" id="rtDesdeStock" class="accent-emerald-500 mt-0.5"><span>O tomar una del stock de este producto <span id="rtStockInfo" class="text-gray-400"></span></span></label>
         </div>
-        <p id="rtAvisoServidor" class="hidden text-[11px] leading-snug p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-200"><i class="fa-solid fa-triangle-exclamation mr-1"></i>El servidor publicado es una versión anterior: por ahora solo puedes <b>cerrar el ticket</b> (con tu nota). Las otras dos opciones se activan al actualizar el servidor.</p>
+        <p id="rtAvisoServidor" class="hidden text-[11px] leading-snug p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-200"><i class="fa-solid fa-circle-info mr-1"></i>Como moderador, la respuesta le llega al cliente dentro de su ticket, pero la compra solo la modifica el administrador.</p>
         <p id="rtGarantia" class="text-[11px] leading-snug p-2.5 rounded-xl bg-sky-500/10 border border-sky-500/30 text-sky-200"></p>
-        <div><label class="block text-xs text-gray-400 mb-1">Nota para el cliente (opcional)</label><input type="text" id="rtNota" maxlength="200" autocomplete="off" placeholder="Ej: ya te cambiamos la cuenta" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"></div>
+        <div><label class="block text-xs text-gray-400 mb-1">Mensaje para el cliente (opcional)</label><textarea id="rtNota" rows="2" maxlength="300" autocomplete="off" placeholder="Ej: ya te cambiamos la cuenta, prueba entrar de nuevo" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none resize-none"></textarea></div>
+        <div>
+          <label class="block text-xs text-gray-400 mb-1">Captura para el cliente (opcional)</label>
+          <label for="rtFoto" class="flex flex-col items-center justify-center gap-1 p-3 rounded-xl border-2 border-dashed border-gray-600 hover:border-emerald-400 bg-gray-800/40 cursor-pointer text-center">
+            <i class="fa-solid fa-camera text-lg text-emerald-400"></i>
+            <span class="text-xs font-bold text-white" id="rtFotoTexto">Toca para adjuntar una captura</span>
+            <span class="text-[10px] text-gray-400">El cliente la ve en su ticket durante 30 días</span>
+          </label>
+          <input type="file" id="rtFoto" accept="image/*" onchange="rtPrevisualizarFoto()" class="hidden">
+          <img id="rtFotoPreview" alt="Vista previa" class="hidden mt-2 max-h-40 w-full object-contain rounded-xl border border-gray-700 bg-black/40">
+        </div>
       </div>
       <div class="shrink-0 grid grid-cols-2 gap-2 p-3 border-t border-gray-800">
         <button type="button" onclick="cerrarResolverTicket()" class="bg-gray-800 hover:bg-gray-700 text-gray-100 font-bold py-2.5 rounded-xl text-xs border border-gray-700">Cancelar</button>
@@ -5005,6 +5084,10 @@
 
     // extras (opcional): { total, saldo, cliente } · overrides (opcional): { plantilla, plantillaCuenta } para la vista previa
     function construirFormatoEntrega(cuentas, prodInfo, extras, overrides) {
+      // Netflix se entrega sin contraseña y con el paso a paso para entrar por código
+      if (prodInfo && esProductoNetflix(prodInfo)) {
+        try { return construirEntregaNetflix(cuentas, prodInfo, extras); } catch (e) { console.warn('Entrega de Netflix:', e); }
+      }
       try {
         const plantilla = (overrides && overrides.plantilla !== undefined) ? overrides.plantilla : ajustesGeneralesConfig.plantillaEntrega;
         const plantillaCuenta = (overrides && overrides.plantillaCuenta !== undefined) ? overrides.plantillaCuenta : ajustesGeneralesConfig.plantillaCuentaEntrega;
@@ -5295,6 +5378,7 @@
             perfilNombreActual = dataU.nombre || '';
             perfilPagoNequi = dataU.pagoNequi || '';
             perfilPagoDaviplata = dataU.pagoDaviplata || '';
+            perfilPagoMetodos = (dataU.pagoMetodos && typeof dataU.pagoMetodos === 'object') ? dataU.pagoMetodos : {};
             aplicarRol(dataU.rol || 'cliente', user, false);
             if (rolActual === 'proveedor') renderizarProveedor();
             
@@ -5519,6 +5603,8 @@
     }
 
     function renderizarNivelPerfil(totalCuentas) {
+      // El administrador y el moderador no tienen nivel de cliente: ven su panel de control
+      if (esStaffSesion() && !modoPruebaCliente) { try { renderizarPerfilAdmin(); } catch (e) { console.warn(e); } return; }
       try {
         const n = infoNivel(totalCuentas);
         const insignia = document.getElementById('perfilNivelInsignia');
@@ -6300,6 +6386,8 @@
       if (unsubBadgeRecargas) return;
       try {
         unsubBadgeRecargas = db.collection('recargas').where('estado', '==', 'pendiente').onSnapshot(snap => {
+          recargasPendientesN = snap.size;
+          try { renderizarPerfilAdmin(); } catch (e) { /* nada */ }
           const b = document.getElementById('badgeTabRecargas');
           if (!b) return;
           b.innerText = snap.size > 9 ? '9+' : String(snap.size);
@@ -6322,7 +6410,7 @@
     function cambiarTabAdmin(tab) {
       if (modoPruebaCliente) return;
       iniciarBadgesAdmin();
-      const tabs = ['productos', 'reporte', 'categorias', 'usuarios', 'stock', 'apariencia', 'pagos', 'recargas', 'historial', 'netflix', 'ajustes', 'proveedores', 'asistente', 'buscar'];
+      const tabs = ['productos', 'reporte', 'categorias', 'usuarios', 'tickets', 'stock', 'apariencia', 'pagos', 'recargas', 'historial', 'netflix', 'ajustes', 'proveedores', 'asistente', 'buscar'];
       // El moderador no entra a la configuración general ni a los pagos a proveedores
       if (esModeradorSesion() && RESTRINGIDAS_MODERADOR.includes(tab)) tab = 'productos';
       tabs.forEach(t => {
@@ -6351,6 +6439,7 @@
       if (tab === 'ajustes') cargarDatosAjustesEnForm();
       if (tab === 'proveedores') renderizarAdminProveedores();
       if (tab === 'asistente') cargarEditorAsistente();
+      if (tab === 'tickets') { renderizarTickets(); limpiarFotosRespuestaVencidas(); }
       if (tab === 'buscar') prepararBuscadorAdmin();
     }
 
@@ -6801,6 +6890,8 @@
       });
 
       filtrados.sort((a, b) => {
+        const nfA = esProductoNetflix(a), nfB = esProductoNetflix(b);
+        if (nfA !== nfB) return nfA ? -1 : 1;
         if (a.id === 'correo_hotmail') return 1;
         if (b.id === 'correo_hotmail') return -1;
         return 0;
@@ -6813,7 +6904,10 @@
         return;
       }
 
+      let bannerNfPuesto = false;
       filtrados.forEach(prod => {
+        const esNf = esProductoNetflix(prod);
+        if (esNf && !bannerNfPuesto) { bannerNfPuesto = true; grid.innerHTML = htmlBannerNetflixTienda() + grid.innerHTML; }
         const stockDisponible = prod.stock;
         const agotado = stockDisponible <= 0;
         const minRequerido = prod.minCompra || 5;
@@ -6844,13 +6938,13 @@
           : '';
 
         grid.innerHTML += `
-          <div class="bg-gray-900 border ${cardBorder} rounded-2xl p-4 sm:p-5 flex flex-col justify-between transition relative">
+          <div class="${esNf ? 'nf-card nf-glow' : 'bg-gray-900 border ' + cardBorder} rounded-2xl p-4 sm:p-5 flex flex-col justify-between transition relative">
             <div>
               ${hotBadgeHtml}
               <div class="flex justify-between items-start mb-3">
-                <span class="text-[11px] font-bold ${badgeStyle} px-3 py-1 rounded-full flex items-center gap-1">
+                ${esNf ? `<span class="nf-wordmark text-[13px]">NETFLIX</span>` : `<span class="text-[11px] font-bold ${badgeStyle} px-3 py-1 rounded-full flex items-center gap-1">
                   <i class="fa-solid ${badgeIcon}"></i> ${badgeText}
-                </span>
+                </span>`}
                 <span class="text-xs ${agotado ? 'text-red-400' : 'text-emerald-400'} font-medium">
                   <i class="fa-solid fa-boxes-stacked mr-1"></i> Stock: ${stockDisponible}
                 </span>
@@ -6861,14 +6955,15 @@
                 ${imagenProdHtml}
               </div>
 
-              <div class="text-xs font-bold text-emerald-400 mb-1.5">
-                <i class="fa-solid fa-tag mr-1"></i> $${(prod.precio || 0).toLocaleString('es-CO')} <span class="text-[10px] text-gray-400 font-normal">c/u</span>
+              <div class="${esNf ? 'text-lg font-black text-white' : 'text-xs font-bold text-emerald-400'} mb-1.5">
+                ${esNf ? '' : '<i class="fa-solid fa-tag mr-1"></i> '}$${(prod.precio || 0).toLocaleString('es-CO')} <span class="text-[10px] text-gray-400 font-normal">c/u</span>
               </div>
+              ${esNf ? '<div class="mb-2"><span class="nf-chip"><i class="fa-solid fa-key"></i> Acceso por código · sin contraseña</span></div>' : ''}
               <p class="text-xs text-gray-400 mb-2 leading-relaxed">${prod.descripcion}</p>
               
               <div class="mb-4">
-                <span class="inline-flex items-center gap-1.5 text-xs font-medium text-emerald-300 bg-emerald-500/10 border border-emerald-500/30 px-3 py-1 rounded-xl shadow-sm">
-                  <i class="fa-solid fa-layer-group text-[11px] text-emerald-400"></i>
+                <span class="inline-flex items-center gap-1.5 text-xs font-medium ${esNf ? 'text-red-200 bg-red-500/10 border border-red-500/30' : 'text-emerald-300 bg-emerald-500/10 border border-emerald-500/30'} px-3 py-1 rounded-xl shadow-sm">
+                  <i class="fa-solid fa-layer-group text-[11px] ${esNf ? 'text-red-400' : 'text-emerald-400'}"></i>
                   ${stockDisponible > 0 && stockDisponible < minRequerido 
                     ? `<span class="text-amber-400 font-bold">¡Últimas ${stockDisponible} cuentas disponibles!</span>` 
                     : `Compra mínima: <strong class="text-white font-black text-xs">${minRequerido} cuentas</strong>`}
@@ -6887,7 +6982,7 @@
                   <button type="button" onclick="cambiarCantidad('${prod.docId}', 1, ${stockDisponible}, ${limiteInferior})" ${agotado ? 'disabled' : ''} class="w-7 h-7 flex items-center justify-center rounded-lg bg-gray-700/60 hover:bg-gray-700 text-gray-200 font-black text-sm disabled:opacity-40">+</button>
                 </div>
               </div>
-              <button onclick="comprarProducto('${prod.docId}')" ${agotado ? 'disabled' : ''} class="w-full py-2.5 rounded-xl text-xs font-bold ${agotado ? 'bg-gray-800 text-gray-500 cursor-not-allowed' : estiloCat.btn} transition flex items-center justify-center gap-1.5">
+              <button onclick="comprarProducto('${prod.docId}')" ${agotado ? 'disabled' : ''} class="w-full py-2.5 rounded-xl text-xs font-bold ${agotado ? 'bg-gray-800 text-gray-500 cursor-not-allowed' : (esNf ? 'nf-btn' : estiloCat.btn)} transition flex items-center justify-center gap-1.5">
                 <i class="fa-solid fa-cart-shopping"></i> ${agotado ? 'Agotado' : 'Comprar Ahora'}
               </button>
             </div>
@@ -7161,7 +7256,8 @@
               ${(ex.total !== undefined && ex.total !== null) ? chip('fa-coins', formatoCOP(ex.total)) : ''}
             </div>
           </div>`;
-        const acceso = prodInfo.esAmazon ? obtenerClaveMaster() : resolverClaveAccesoCuentas(cuentas || []);
+        const esNf = esProductoNetflix(prodInfo);
+        const acceso = esNf ? '' : (prodInfo.esAmazon ? obtenerClaveMaster() : resolverClaveAccesoCuentas(cuentas || []));
         if (acceso) {
           html += `<div class="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/30">${fila(prodInfo.esAmazon ? 'Acceso' : 'Clave', String(acceso))}<p class="text-[10px] text-amber-200 mt-1 ml-14">${prodInfo.esAmazon ? 'Clave de acceso de Amazon para todas tus cuentas' : 'Contraseña de tus cuentas'}</p></div>`;
         }
@@ -7169,9 +7265,10 @@
           html += `<div class="p-3 rounded-xl bg-gray-800/70 border border-gray-700 space-y-1.5">
             <p class="text-[10px] font-black text-emerald-400 uppercase tracking-wider">Cuenta ${i + 1}</p>
             ${c.email ? fila('Correo', c.email) : ''}
-            ${c.pass ? fila(prodInfo.esAmazon ? 'Códigos' : (/^(Perfil:|Cuenta completa)/.test(c.pass) ? 'Perfil' : 'Clave'), c.pass) : ''}
+            ${esNf ? (/^(Perfil:|Cuenta completa)/i.test(String(c.pass || '')) ? fila('Perfil', c.pass) : '') : (c.pass ? fila(prodInfo.esAmazon ? 'Códigos' : (/^(Perfil:|Cuenta completa)/.test(c.pass) ? 'Perfil' : 'Clave'), c.pass) : '')}
           </div>`;
         });
+        if (esNf) html += htmlGuiaNetflix(true);
         cont.innerHTML = html;
       } catch (e) {
         console.warn('No se pudo dibujar la entrega visual:', e);
@@ -8973,6 +9070,7 @@
     }
 
     function renderizarAdminProveedores() {
+      try { iniciarMetodosPagoProv(); } catch (e) { /* nada */ }
       const pend = lotesProveedores.filter(l => l.estado === 'pendiente').sort((a, b) => String(a.creadoEl).localeCompare(String(b.creadoEl)));
       const badge = document.getElementById('badgeProvPorAprobar');
       const badgeTab = document.getElementById('badgeTabProveedores');
@@ -9160,33 +9258,213 @@
     }
 
     // ----- lo que hace el proveedor -----
+    // ==================== MEDIOS DE PAGO PARA PROVEEDORES (los define el administrador) ====================
+    const METODOS_PAGO_PROV_BASE = [
+      { id: 'nequi', nombre: 'Nequi', etiqueta: 'Nequi (número de celular)', ayuda: '3001234567', tipo: 'celular', activo: true },
+      { id: 'daviplata', nombre: 'DaviPlata', etiqueta: 'DaviPlata (llave o número)', ayuda: '3001234567 o tu llave', tipo: 'llave', activo: true }
+    ];
+    const TIPOS_METODO_PAGO = { celular: 'Celular (10 números)', llave: 'Llave o usuario', cuenta: 'Número de cuenta', texto: 'Texto libre' };
+    let metodosPagoProv = METODOS_PAGO_PROV_BASE.map(m => Object.assign({}, m));
+    let unsubMetodosPagoProv = null;
+    let perfilPagoMetodos = {};
+    let firmaCamposPago = '';
+    let metodosEditor = [], metodosEditorSucio = false;
+
+    function slugMetodoPago(t) { return String(t || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '').slice(0, 24); }
+
+    // Deja la lista siempre válida, aunque el dato guardado venga dañado
+    function sanearMetodosPagoProv(lista) {
+      const out = [], usados = {};
+      (Array.isArray(lista) ? lista : []).slice(0, 12).forEach(it => {
+        if (!it || typeof it !== 'object') return;
+        const nombre = String(it.nombre || '').replace(/[<>]/g, '').trim().slice(0, 30);
+        if (!nombre) return;
+        let id = slugMetodoPago(it.id || nombre) || 'metodo';
+        let k = 2; const base = id;
+        while (usados[id]) { id = base.slice(0, 20) + '_' + k; k++; }
+        usados[id] = true;
+        out.push({
+          id: id, nombre: nombre,
+          etiqueta: String(it.etiqueta || nombre).replace(/[<>]/g, '').trim().slice(0, 60) || nombre,
+          ayuda: String(it.ayuda || '').replace(/[<>]/g, '').trim().slice(0, 40),
+          tipo: TIPOS_METODO_PAGO[it.tipo] ? it.tipo : 'texto',
+          activo: it.activo !== false
+        });
+      });
+      return out.length ? out : METODOS_PAGO_PROV_BASE.map(m => Object.assign({}, m));
+    }
+
+    function iniciarMetodosPagoProv() {
+      if (unsubMetodosPagoProv || !db) return;
+      try {
+        unsubMetodosPagoProv = db.collection('configuracion').doc('metodos_pago_proveedor').onSnapshot(doc => {
+          metodosPagoProv = doc.exists ? sanearMetodosPagoProv((doc.data() || {}).lista) : METODOS_PAGO_PROV_BASE.map(m => Object.assign({}, m));
+          try { renderizarMetodosPagoProveedor(); } catch (e) { console.warn(e); }
+          if (!metodosEditorSucio) { metodosEditor = metodosPagoProv.map(m => Object.assign({}, m)); try { renderizarEditorMetodosPagoProv(); } catch (e) { console.warn(e); } }
+        }, err => console.warn('Medios de pago de proveedores no disponibles:', err));
+      } catch (e) { console.warn(e); }
+    }
+
+    function nombreMetodoPago(id) {
+      const m = metodosPagoProv.find(x => x.id === id);
+      return m ? m.nombre : (id === 'nequi' ? 'Nequi' : (id === 'daviplata' ? 'DaviPlata' : ''));
+    }
+
+    function valorPagoDePerfil(id) {
+      if (id === 'nequi') return perfilPagoNequi;
+      if (id === 'daviplata') return perfilPagoDaviplata;
+      return String((perfilPagoMetodos || {})[id] || '');
+    }
+    function valorPagoDeUsuario(u, id) {
+      if (id === 'nequi') return String(u.pagoNequi || '');
+      if (id === 'daviplata') return String(u.pagoDaviplata || '');
+      return String(((u.pagoMetodos && typeof u.pagoMetodos === 'object') ? u.pagoMetodos : {})[id] || '');
+    }
+    function inputIdMetodo(id) { return id === 'nequi' ? 'provNequi' : (id === 'daviplata' ? 'provDaviplata' : 'provMetodo_' + id); }
+
     function renderizarMetodosPagoProveedor() {
-      const nq = document.getElementById('provNequi'), dv = document.getElementById('provDaviplata');
-      if (nq && document.activeElement !== nq) nq.value = perfilPagoNequi;
-      if (dv && document.activeElement !== dv) dv.value = perfilPagoDaviplata;
+      iniciarMetodosPagoProv();
+      const cont = document.getElementById('provMetodosCampos');
+      const activos = metodosPagoProv.filter(m => m.activo);
+      if (cont) {
+        const firma = activos.map(m => [m.id, m.etiqueta, m.ayuda, m.tipo].join('|')).join(';');
+        if (firma !== firmaCamposPago) {
+          firmaCamposPago = firma;
+          cont.innerHTML = activos.length ? activos.map(m => `<div>
+            <label class="block text-xs text-gray-400 mb-1">${escaparHtml(m.etiqueta)}</label>
+            <input type="${m.tipo === 'celular' ? 'tel' : 'text'}" id="${inputIdMetodo(m.id)}" ${m.tipo === 'celular' || m.tipo === 'cuenta' ? 'inputmode="numeric"' : ''} maxlength="${m.tipo === 'celular' ? 14 : (m.tipo === 'llave' ? 30 : 60)}" placeholder="${escaparHtml(m.ayuda)}" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white font-mono focus:outline-none">
+          </div>`).join('') : '<p class="text-[11px] text-gray-500">Por ahora no hay medios de pago disponibles. Escríbele al administrador.</p>';
+        }
+        activos.forEach(m => { const e = document.getElementById(inputIdMetodo(m.id)); if (e && document.activeElement !== e) e.value = valorPagoDePerfil(m.id); });
+      }
+      const ayuda = document.getElementById('provMetodosAyuda');
+      if (ayuda && activos.length) ayuda.textContent = 'Pon ' + activos.map(m => m.nombre).join(', ').replace(/, ([^,]*)$/, ' o $1') + '. Con esos datos te hacemos el pago.';
       const aviso = document.getElementById('provAvisoPago');
-      if (aviso) aviso.classList.toggle('hidden', !!(perfilPagoNequi || perfilPagoDaviplata));
+      if (aviso) aviso.classList.toggle('hidden', activos.some(m => valorPagoDePerfil(m.id)));
+    }
+
+    function validarValorMetodoPago(m, v) {
+      if (!v) return '';
+      if (m.tipo === 'celular') return /^3\d{9}$/.test(v) ? '' : `El ${m.nombre} debe ser un celular de 10 números que empiece por 3.`;
+      if (m.tipo === 'llave') return /^[A-Za-z0-9@._-]{6,30}$/.test(v) ? '' : `La llave de ${m.nombre} debe tener entre 6 y 30 letras o números, sin espacios.`;
+      if (m.tipo === 'cuenta') return /^[0-9][0-9 -]{4,28}[0-9]$/.test(v) ? '' : `El número de ${m.nombre} debe tener solo números (entre 6 y 30).`;
+      return /^[\p{L}\p{N} .@_\-\/,#]{4,60}$/u.test(v) ? '' : `Revisa tu dato de ${m.nombre}: entre 4 y 60 letras o números.`;
     }
 
     async function guardarMetodosPagoProveedor(e) {
       e.preventDefault();
       if (!currentUser || !esProveedorSesion()) return;
-      const nequi = String((document.getElementById('provNequi') || {}).value || '').replace(/[^0-9]/g, '');
-      const davi = String((document.getElementById('provDaviplata') || {}).value || '').trim();
-      if (nequi && !/^3\d{9}$/.test(nequi)) { alert('El Nequi debe ser un celular de 10 números que empiece por 3.'); return; }
-      if (davi && !/^[A-Za-z0-9@._-]{6,30}$/.test(davi)) { alert('La llave de DaviPlata debe tener entre 6 y 30 letras o números, sin espacios.'); return; }
-      if (!nequi && !davi) { alert('Escribe tu Nequi o tu DaviPlata.'); return; }
+      const activos = metodosPagoProv.filter(m => m.activo);
+      const valores = {};
+      let alguno = false;
+      for (const m of activos) {
+        let v = String((document.getElementById(inputIdMetodo(m.id)) || {}).value || '').trim();
+        if (m.tipo === 'celular') v = v.replace(/[^0-9]/g, '');
+        const err = validarValorMetodoPago(m, v);
+        if (err) { alert(err); return; }
+        valores[m.id] = v;
+        if (v) alguno = true;
+      }
+      if (!alguno) { alert('Escribe al menos uno de tus datos de pago.'); return; }
       const btn = document.getElementById('btnGuardarMetodosProv');
       if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>'; }
       try {
-        await db.collection('usuarios').doc(currentUser.uid).set({ pagoNequi: nequi, pagoDaviplata: davi, pagoActualizadoEl: new Date().toISOString() }, { merge: true });
-        perfilPagoNequi = nequi; perfilPagoDaviplata = davi;
+        const datos = { pagoActualizadoEl: new Date().toISOString() };
+        const otros = Object.assign({}, perfilPagoMetodos || {});
+        let hayOtros = false;
+        activos.forEach(m => {
+          if (m.id === 'nequi') datos.pagoNequi = valores.nequi;
+          else if (m.id === 'daviplata') datos.pagoDaviplata = valores.daviplata;
+          else { otros[m.id] = valores[m.id]; hayOtros = true; }
+        });
+        if (hayOtros) datos.pagoMetodos = otros;
+        await db.collection('usuarios').doc(currentUser.uid).set(datos, { merge: true });
+        if (datos.pagoNequi !== undefined) perfilPagoNequi = datos.pagoNequi;
+        if (datos.pagoDaviplata !== undefined) perfilPagoDaviplata = datos.pagoDaviplata;
+        if (hayOtros) perfilPagoMetodos = otros;
         renderizarMetodosPagoProveedor();
         mostrarToast('Listo: guardamos tus datos de pago.');
       } catch (err) {
         alert('No se pudieron guardar: ' + err.message);
       } finally {
         if (btn) { btn.disabled = false; btn.innerHTML = 'Guardar mis datos de pago'; }
+      }
+    }
+
+    // ----- Editor del administrador -----
+    function renderizarEditorMetodosPagoProv() {
+      const cont = document.getElementById('editorMetodosPagoProv');
+      if (!cont) return;
+      cont.innerHTML = metodosEditor.map((m, i) => `
+        <div class="p-3 rounded-xl bg-gray-800/50 border ${m.activo ? 'border-gray-700' : 'border-gray-800 opacity-70'} space-y-2" data-metodo-fila="${i}">
+          <div class="flex items-center gap-2">
+            <input type="text" value="${escaparHtml(m.nombre)}" maxlength="30" placeholder="Nombre (ej: Bancolombia)" oninput="medEditarCampo(${i}, 'nombre', this.value)" class="min-w-0 flex-grow bg-gray-800 border border-gray-700 rounded-lg px-2.5 py-1.5 text-xs font-bold text-white focus:outline-none">
+            <label class="shrink-0 flex items-center gap-1 text-[10px] text-gray-300 cursor-pointer"><input type="checkbox" ${m.activo ? 'checked' : ''} onchange="medEditarCampo(${i}, 'activo', this.checked)" class="accent-emerald-500"> Activo</label>
+            <button type="button" onclick="medQuitar(${i})" aria-label="Quitar" class="shrink-0 w-7 h-7 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-300 border border-red-500/30 flex items-center justify-center"><i class="fa-solid fa-trash text-[11px]"></i></button>
+          </div>
+          <input type="text" value="${escaparHtml(m.etiqueta)}" maxlength="60" placeholder="Lo que ve el proveedor (ej: Cuenta de ahorros Bancolombia)" oninput="medEditarCampo(${i}, 'etiqueta', this.value)" class="w-full bg-gray-800 border border-gray-700 rounded-lg px-2.5 py-1.5 text-[11px] text-white focus:outline-none">
+          <div class="grid grid-cols-2 gap-2">
+            <input type="text" value="${escaparHtml(m.ayuda)}" maxlength="40" placeholder="Ejemplo (opcional)" oninput="medEditarCampo(${i}, 'ayuda', this.value)" class="min-w-0 bg-gray-800 border border-gray-700 rounded-lg px-2.5 py-1.5 text-[11px] text-white focus:outline-none">
+            <select onchange="medEditarCampo(${i}, 'tipo', this.value)" class="min-w-0 bg-gray-800 border border-gray-700 rounded-lg px-2 py-1.5 text-[11px] text-white focus:outline-none">${Object.keys(TIPOS_METODO_PAGO).map(k => `<option value="${k}" ${m.tipo === k ? 'selected' : ''}>${TIPOS_METODO_PAGO[k]}</option>`).join('')}</select>
+          </div>
+        </div>`).join('') || '<p class="text-[11px] text-gray-500">No hay medios de pago. Agrega uno o restaura los originales.</p>';
+      const g = document.getElementById('btnGuardarMetodosAdmin');
+      if (g) { g.disabled = !metodosEditorSucio; g.classList.toggle('opacity-50', !metodosEditorSucio); }
+    }
+
+    function medEditarCampo(i, campo, valor) {
+      if (!metodosEditor[i]) return;
+      metodosEditor[i][campo] = valor;
+      metodosEditorSucio = true;
+      const g = document.getElementById('btnGuardarMetodosAdmin');
+      if (g) { g.disabled = false; g.classList.remove('opacity-50'); }
+      if (campo === 'activo') renderizarEditorMetodosPagoProv();
+    }
+
+    function medAgregar() {
+      if (metodosEditor.length >= 12) { alert('Puedes tener hasta 12 medios de pago.'); return; }
+      metodosEditor.push({ id: '', nombre: '', etiqueta: '', ayuda: '', tipo: 'texto', activo: true });
+      metodosEditorSucio = true;
+      renderizarEditorMetodosPagoProv();
+      const filas = document.querySelectorAll('[data-metodo-fila]'); const ult = filas[filas.length - 1];
+      if (ult) { const inp = ult.querySelector('input[type=text]'); if (inp) inp.focus(); }
+    }
+
+    async function medQuitar(i) {
+      const m = metodosEditor[i];
+      if (!m) return;
+      if (!await confirmarModal(`¿Quitar "${m.nombre || 'este medio de pago'}" de la lista? Los datos que los proveedores ya guardaron no se borran.`, { textoAceptar: 'Sí, quitar' })) return;
+      metodosEditor.splice(i, 1);
+      metodosEditorSucio = true;
+      renderizarEditorMetodosPagoProv();
+    }
+
+    async function medRestaurar() {
+      if (!await confirmarModal('Se vuelve a la lista original: solo Nequi y DaviPlata. ¿Restaurar?', { textoAceptar: 'Sí, restaurar' })) return;
+      metodosEditor = METODOS_PAGO_PROV_BASE.map(m => Object.assign({}, m));
+      metodosEditorSucio = true;
+      renderizarEditorMetodosPagoProv();
+    }
+
+    async function medGuardar() {
+      if (!esAdminSesionActual()) return;
+      const sinNombre = metodosEditor.some(m => !String(m.nombre || '').trim());
+      if (sinNombre) { alert('Todos los medios de pago necesitan un nombre.'); return; }
+      const lista = sanearMetodosPagoProv(metodosEditor.map(m => Object.assign({}, m)));
+      if (!lista.some(m => m.activo)) { alert('Deja al menos un medio de pago activo.'); return; }
+      const btn = document.getElementById('btnGuardarMetodosAdmin');
+      if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>'; }
+      try {
+        await db.collection('configuracion').doc('metodos_pago_proveedor').set({ lista: lista, actualizadoEl: new Date().toISOString(), actualizadoPor: currentUser.email });
+        metodosPagoProv = lista; metodosEditor = lista.map(m => Object.assign({}, m)); metodosEditorSucio = false;
+        renderizarEditorMetodosPagoProv();
+        renderizarMetodosPagoProveedor();
+        mostrarToast('Listo: los proveedores ya ven los medios de pago actualizados.');
+      } catch (err) {
+        alert('No se pudo guardar: ' + err.message);
+      } finally {
+        if (btn) { btn.innerHTML = 'Guardar cambios'; }
+        renderizarEditorMetodosPagoProv();
       }
     }
 
@@ -9208,7 +9486,7 @@
       pagosProveedoresLista = [];
     }
 
-    function etiquetaMedioPago(m) { return m === 'nequi' ? 'Nequi' : (m === 'daviplata' ? 'DaviPlata' : (m ? 'Otro' : '')); }
+    function etiquetaMedioPago(m) { return nombreMetodoPago(m) || (m ? 'Otro' : ''); }
 
     function botonComprobante(p) {
       if (comprobanteVigente(p)) return `<button onclick="verComprobantePago('${escaparJsAttr(p.id)}')" class="px-2.5 py-1 rounded-lg text-[10px] font-bold bg-sky-500/15 hover:bg-sky-500/25 text-sky-300 border border-sky-500/30"><i class="fa-solid fa-image mr-1"></i>Ver comprobante · ${textoVenceComprobante(p)}</button>`;
@@ -9270,8 +9548,8 @@
 
     function lineaMetodoPago(etiqueta, valor) {
       return valor
-        ? `<div class="flex items-center gap-2 p-2.5 rounded-xl bg-gray-800/70 border border-gray-700"><span class="w-16 shrink-0 text-[10px] font-bold text-gray-400">${etiqueta}</span><span class="min-w-0 flex-grow font-mono text-sm text-white break-all select-all">${escaparHtml(valor)}</span><button type="button" data-copiar="${escaparHtml(valor)}" onclick="copiarCampoEntrega(this)" aria-label="Copiar" class="shrink-0 w-8 h-8 rounded-lg bg-gray-900 hover:bg-gray-700 border border-gray-700 text-gray-300 flex items-center justify-center"><i class="fa-solid fa-copy text-xs"></i></button></div>`
-        : `<div class="flex items-center gap-2 p-2.5 rounded-xl bg-gray-800/40 border border-gray-800"><span class="w-16 shrink-0 text-[10px] font-bold text-gray-500">${etiqueta}</span><span class="text-[11px] text-gray-500">No lo ha registrado</span></div>`;
+        ? `<div class="flex items-center gap-2 p-2.5 rounded-xl bg-gray-800/70 border border-gray-700"><span class="w-20 shrink-0 text-[10px] font-bold text-gray-400">${etiqueta}</span><span class="min-w-0 flex-grow font-mono text-sm text-white break-all select-all">${escaparHtml(valor)}</span><button type="button" data-copiar="${escaparHtml(valor)}" onclick="copiarCampoEntrega(this)" aria-label="Copiar" class="shrink-0 w-8 h-8 rounded-lg bg-gray-900 hover:bg-gray-700 border border-gray-700 text-gray-300 flex items-center justify-center"><i class="fa-solid fa-copy text-xs"></i></button></div>`
+        : `<div class="flex items-center gap-2 p-2.5 rounded-xl bg-gray-800/40 border border-gray-800"><span class="w-20 shrink-0 text-[10px] font-bold text-gray-500">${etiqueta}</span><span class="text-[11px] text-gray-500">No lo ha registrado</span></div>`;
     }
 
     async function abrirPagarProveedor(uid) {
@@ -9282,6 +9560,7 @@
       const cuentas = lotes.reduce((t, l) => t + (Number(l.cantidad) || 0), 0);
       const nombre = lotes[0].proveedorNombre || lotes[0].proveedorEmail || 'el proveedor';
       pagoEnCurso = { uid: uid, nombre: nombre, total: total, ids: lotes.map(l => l.id) };
+      iniciarMetodosPagoProv();
       document.getElementById('pagarNombre').textContent = nombre;
       document.getElementById('pagarMonto').textContent = formatoCOP(total);
       document.getElementById('pagarDetalle').textContent = `${lotes.length} ${lotes.length === 1 ? 'lote' : 'lotes'} · ${cuentas} ${cuentas === 1 ? 'cuenta' : 'cuentas'}`;
@@ -9300,8 +9579,13 @@
           aviso = '<p class="text-[11px] font-bold text-red-300 bg-red-500/10 border border-red-500/30 rounded-lg px-2.5 py-1.5"><i class="fa-solid fa-triangle-exclamation mr-1"></i>Cambió sus datos de pago hace menos de 24 horas. Confírmalo con el proveedor antes de pagar.</p>';
         }
         if (pagoEnCurso && pagoEnCurso.uid === uid) {
-          document.getElementById('pagarMetodos').innerHTML = lineaMetodoPago('Nequi', u.pagoNequi) + lineaMetodoPago('DaviPlata', u.pagoDaviplata) + aviso;
-          document.getElementById('pagarMedio').value = u.pagoNequi ? 'nequi' : (u.pagoDaviplata ? 'daviplata' : 'otro');
+          // Se muestran los medios activos y también los ocultos que el proveedor tenga guardados
+          const lista = metodosPagoProv.filter(m => m.activo || valorPagoDeUsuario(u, m.id));
+          document.getElementById('pagarMetodos').innerHTML = lista.map(m => lineaMetodoPago(escaparHtml(m.nombre) + (m.activo ? '' : ' (oculto)'), valorPagoDeUsuario(u, m.id))).join('') + aviso;
+          const sel = document.getElementById('pagarMedio');
+          sel.innerHTML = metodosPagoProv.map(m => `<option value="${escaparHtml(m.id)}">${escaparHtml(m.nombre)}</option>`).join('') + '<option value="otro">Otro</option>';
+          const conDato = metodosPagoProv.find(m => m.activo && valorPagoDeUsuario(u, m.id)) || metodosPagoProv.find(m => valorPagoDeUsuario(u, m.id));
+          sel.value = conDato ? conDato.id : 'otro';
         }
       } catch (err) {
         document.getElementById('pagarMetodos').innerHTML = '<p class="text-[11px] text-red-300">No se pudieron cargar sus datos de pago.</p>';
@@ -9490,10 +9774,46 @@
         return `<div class="p-2.5 rounded-xl bg-gray-800/50 border border-gray-700/60">
           <div class="flex items-center justify-between gap-2"><p class="text-[11px] font-bold text-white break-all">${escaparHtml(t.cuenta || '')}</p><span class="shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-full border ${resuelto ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30' : 'bg-amber-500/15 text-amber-300 border-amber-500/30'}">${resuelto ? 'Resuelto' : 'En revisión'}</span></div>
           <p class="text-[10px] text-gray-400">${escaparHtml(t.motivo || '')} · ${fecha}</p>
-          ${resuelto && t.resolucion ? `<p class="text-[11px] text-emerald-300 mt-0.5"><i class="fa-solid fa-circle-check mr-1"></i>${escaparHtml(t.resolucion)}</p>` : ''}
-          ${resuelto && t.cuentaNueva ? `<p class="text-[11px] text-sky-300 mt-0.5"><i class="fa-solid fa-link mr-1"></i>Tu cuenta nueva: <span class="font-mono break-all">${escaparHtml(t.cuentaNueva)}</span> (ya está en tus compras)</p>` : ''}
+          ${resuelto ? htmlRespuestaTicket(t) : ''}
         </div>`;
       }).join('');
+    }
+
+    // Lo que soporte le responde al cliente dentro de su ticket: mensaje, cuenta nueva o contraseña nueva y captura
+    function htmlRespuestaTicket(t) {
+      const tipo = t.respuestaTipo || t.resultado || '';
+      const esNf = esNombreNetflix(t.productoNombre);
+      const fila = (etq, val) => `<div class="flex items-center gap-2 mt-1.5"><span class="w-14 shrink-0 text-[10px] text-gray-400">${etq}</span><span class="min-w-0 flex-grow font-mono text-[12px] text-white break-all select-all">${escaparHtml(val)}</span><button type="button" data-copiar="${escaparHtml(val)}" onclick="copiarCampoEntrega(this)" aria-label="Copiar" class="shrink-0 w-7 h-7 rounded-lg bg-gray-900 hover:bg-gray-700 border border-gray-700 text-gray-300 flex items-center justify-center"><i class="fa-solid fa-copy text-[11px]"></i></button></div>`;
+      let titulo = '', cuerpo = '';
+      if (tipo === 'reemplazo' && t.respuestaCuenta) {
+        titulo = 'Te entregamos una cuenta nueva';
+        if (esNf) {
+          const n = perfilNetflixDeCredencial(t.respuestaCuenta);
+          cuerpo = fila('Correo', n.email) + (n.perfil ? fila('Perfil', n.perfil) : '') + '<p class="text-[10px] text-red-200 mt-1.5">Esta cuenta se usa sin contraseña: entra con un código de inicio de sesión.</p>';
+        } else {
+          const o = parseCredencialObj(t.respuestaCuenta);
+          cuerpo = fila('Correo', o.email) + fila('Clave', o.pass);
+        }
+        cuerpo += '<p class="text-[10px] text-gray-400 mt-1.5">Ya quedó en tus compras.</p>';
+      } else if (tipo === 'reemplazo' && t.cuentaNueva) {
+        titulo = 'Te entregamos una cuenta nueva';
+        cuerpo = `<p class="text-[11px] text-sky-300 mt-1">Tu cuenta nueva: <span class="font-mono break-all">${escaparHtml(t.cuentaNueva)}</span> (ya está en tus compras)</p>`;
+      } else if (tipo === 'arreglada') {
+        titulo = 'Arreglamos tu cuenta';
+        if (t.respuestaClave && !esNf) cuerpo = fila('Clave', t.respuestaClave) + '<p class="text-[10px] text-gray-400 mt-1.5">Es la contraseña nueva. Ya quedó en tus compras.</p>';
+      } else if (tipo === 'funcional') {
+        titulo = 'Revisamos tu cuenta y funciona correctamente';
+      } else if (t.cuentaNueva) {
+        titulo = 'Te entregamos una cuenta nueva';
+        cuerpo = `<p class="text-[11px] text-sky-300 mt-1">Tu cuenta nueva: <span class="font-mono break-all">${escaparHtml(t.cuentaNueva)}</span> (ya está en tus compras)</p>`;
+      } else if (!t.resolucion) {
+        titulo = 'Ticket resuelto';
+      }
+      const mensaje = t.resolucion ? `<p class="text-[11px] text-emerald-200 mt-1.5 leading-snug">${escaparHtml(t.resolucion)}</p>` : '';
+      const captura = t.respuestaFoto ? `<button type="button" onclick="verFotoRespuesta('${escaparJsAttr(t.id)}')" class="mt-2 px-2.5 py-1.5 rounded-lg text-[11px] font-bold bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 border border-emerald-500/30"><i class="fa-solid fa-camera mr-1"></i>Ver captura de soporte</button>` : (t.respuestaFotoVencida ? '<p class="text-[10px] text-gray-500 mt-1.5">La captura ya venció.</p>' : '');
+      return `<div class="mt-2 p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30">
+        <p class="text-[11px] font-black text-emerald-300"><i class="fa-solid fa-circle-check mr-1"></i>${escaparHtml(titulo || 'Respuesta de soporte')}</p>${mensaje}${cuerpo}${captura}
+      </div>`;
     }
 
     // Identificador de una cuenta dentro de una línea. Igual que en el servidor: tolera "Correo: x Clave: y", usuarios y separadores como ; | ,
@@ -9605,6 +9925,7 @@
           ticketsCuentas.sort((a, b) => String(b.creadoEl).localeCompare(String(a.creadoEl)));
           renderizarTickets();
           renderizarAdminProveedores();
+          if (!limpiezaCapturasHecha) { limpiezaCapturasHecha = true; limpiarFotosRespuestaVencidas(); }
         }, err => console.warn('Tickets no disponibles:', err));
       } catch (e) { console.warn(e); }
     }
@@ -9617,24 +9938,36 @@
 
     function filtrarTickets(f) { filtroTicketsActual = f; renderizarTickets(); }
 
+    const ETIQUETA_RESULTADO_TICKET = { cerrar: 'ticket cerrado', funcional: 'la cuenta funciona', arreglada: 'misma cuenta arreglada', reemplazo: 'cuenta nueva entregada' };
+
     function renderizarTickets() {
+      const abiertos = ticketsCuentas.filter(t => t.estado !== 'resuelto').length;
+      ['badgeTickets', 'badgeTabTickets'].forEach(idB => {
+        const b = document.getElementById(idB);
+        if (b) { b.textContent = (idB === 'badgeTabTickets' && abiertos > 9) ? '9+' : abiertos; b.classList.toggle('hidden', !abiertos); }
+      });
+      const setT = (idE, v) => { const e = document.getElementById(idE); if (e) e.textContent = v; };
+      setT('tkStatAbiertos', abiertos); setT('tkStatResueltos', ticketsCuentas.length - abiertos);
+      setT('tkStatSinProv', ticketsCuentas.filter(t => t.estado !== 'resuelto' && !t.proveedorNombre).length);
+      try { renderizarPerfilAdmin(); } catch (e) { /* el perfil del administrador se dibuja aparte */ }
       const cont = document.getElementById('listaTickets');
       if (!cont) return;
-      const abiertos = ticketsCuentas.filter(t => t.estado !== 'resuelto').length;
-      const badge = document.getElementById('badgeTickets');
-      if (badge) { badge.textContent = abiertos; badge.classList.toggle('hidden', !abiertos); }
       [['tkFiltroAbiertos', 'abiertos'], ['tkFiltroResueltos', 'resueltos'], ['tkFiltroTodos', 'todos']].forEach(([id, f]) => {
         const b = document.getElementById(id);
         if (b) b.className = 'px-3 py-1 rounded-lg border ' + (filtroTicketsActual === f ? 'bg-amber-500/20 text-amber-300 border-amber-500/40' : 'bg-gray-800 text-gray-400 border-gray-700');
       });
-      const lista = ticketsCuentas.filter(t => filtroTicketsActual === 'todos' || (filtroTicketsActual === 'abiertos' ? t.estado !== 'resuelto' : t.estado === 'resuelto'));
-      if (!lista.length) { cont.innerHTML = `<p class="px-4 py-6 text-center text-gray-500 text-sm">${filtroTicketsActual === 'abiertos' ? 'No hay tickets abiertos.' : 'No hay tickets.'}</p>`; return; }
+      const q = String((document.getElementById('tkBuscar') || {}).value || '').trim().toLowerCase();
+      const lista = ticketsCuentas
+        .filter(t => filtroTicketsActual === 'todos' || (filtroTicketsActual === 'abiertos' ? t.estado !== 'resuelto' : t.estado === 'resuelto'))
+        .filter(t => !q || [t.cuenta, t.clienteEmail, t.productoNombre, t.proveedorNombre, t.motivo].some(x => String(x || '').toLowerCase().indexOf(q) !== -1));
+      if (!lista.length) { cont.innerHTML = `<p class="px-4 py-6 text-center text-gray-500 text-sm">${q ? 'Ningún ticket coincide con la búsqueda.' : (filtroTicketsActual === 'abiertos' ? 'No hay tickets abiertos.' : 'No hay tickets.')}</p>`; return; }
       cont.innerHTML = lista.map(t => {
         const resuelto = t.estado === 'resuelto';
         const fecha = new Date(t.creadoEl).toLocaleDateString('es-CO', { day: '2-digit', month: '2-digit', year: 'numeric' });
         const asignado = t.proveedorNombre
           ? `Asignado a <b class="text-amber-300">${escaparHtml(t.proveedorNombre)}</b>`
           : '<span class="text-gray-500">Sin proveedor (cuenta propia)</span>';
+        const tipoRes = t.respuestaTipo || t.resultado;
         return `
           <div class="px-4 py-3 flex items-start justify-between gap-3">
             <div class="min-w-0">
@@ -9642,11 +9975,13 @@
               <p class="text-[11px] text-gray-300">${escaparHtml(t.motivo || '')}${t.detalle ? ' · ' + escaparHtml(t.detalle) : ''}</p>
               <p class="text-[10px] text-gray-400">${t.origen === 'cliente' ? '<span class="px-1.5 py-0.5 rounded bg-sky-500/20 text-sky-300 text-[9px] font-black mr-1">CLIENTE</span>' : ''}${escaparHtml(t.productoNombre || 'Producto no identificado')} · ${asignado} · ${fecha}${t.clienteEmail ? ' · cliente ' + escaparHtml(t.clienteEmail) : ''}</p>
               ${textoGarantiaTicket(t)}
-              ${resuelto ? `<p class="text-[10px] text-emerald-300 mt-0.5"><i class="fa-solid fa-circle-check mr-1"></i>Resuelto${t.resolucion ? ': ' + escaparHtml(t.resolucion) : ''}${t.garantiaReiniciada ? ' · garantía reiniciada' : ''}</p>` : ''}
-              ${t.cuentaNueva ? `<p class="text-[10px] text-sky-300 mt-0.5"><i class="fa-solid fa-link mr-1"></i>Reemplazada por <span class="font-mono break-all">${escaparHtml(t.cuentaNueva)}</span> (enlazada a ${escaparHtml(t.cuenta || '')})</p>` : ''}
+              ${resuelto ? `<p class="text-[10px] text-emerald-300 mt-0.5"><i class="fa-solid fa-circle-check mr-1"></i>Resuelto${ETIQUETA_RESULTADO_TICKET[tipoRes] ? ' · ' + ETIQUETA_RESULTADO_TICKET[tipoRes] : ''}${t.resolucion ? ': ' + escaparHtml(t.resolucion) : ''}${t.garantiaReiniciada ? ' · garantía reiniciada' : ''}</p>` : ''}
+              ${resuelto && t.respuestaCuenta ? `<p class="text-[10px] text-sky-300 mt-0.5 break-all"><i class="fa-solid fa-link mr-1"></i>Cuenta entregada: <span class="font-mono">${escaparHtml(t.respuestaCuenta)}</span></p>` : (t.cuentaNueva ? `<p class="text-[10px] text-sky-300 mt-0.5"><i class="fa-solid fa-link mr-1"></i>Reemplazada por <span class="font-mono break-all">${escaparHtml(t.cuentaNueva)}</span> (enlazada a ${escaparHtml(t.cuenta || '')})</p>` : '')}
+              ${resuelto && t.respuestaClave ? `<p class="text-[10px] text-sky-300 mt-0.5"><i class="fa-solid fa-key mr-1"></i>Contraseña nueva: <span class="font-mono">${escaparHtml(t.respuestaClave)}</span></p>` : ''}
             </div>
             <div class="shrink-0 flex flex-col gap-1.5">
               ${t.tieneFoto ? `<button onclick="verFotoTicket('${escaparJsAttr(t.id)}')" class="px-2.5 py-1.5 rounded-lg text-[11px] font-bold bg-sky-500/15 hover:bg-sky-500/25 text-sky-300 border border-sky-500/30"><i class="fa-solid fa-image mr-1"></i>Ver foto</button>` : ''}
+              ${t.respuestaFoto ? `<button onclick="verFotoRespuesta('${escaparJsAttr(t.id)}')" class="px-2.5 py-1.5 rounded-lg text-[11px] font-bold bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 border border-emerald-500/30"><i class="fa-solid fa-camera mr-1"></i>Captura</button>` : ''}
               <button onclick="${resuelto ? 'reabrirTicket' : 'resolverTicket'}('${escaparJsAttr(t.id)}')" class="px-2.5 py-1.5 rounded-lg text-[11px] font-bold ${resuelto ? 'bg-gray-800 hover:bg-gray-700 text-gray-300 border border-gray-700' : 'bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 border border-emerald-500/30'}">${resuelto ? 'Reabrir' : 'Resolver'}</button>
             </div>
           </div>`;
@@ -9764,6 +10099,8 @@
     }
 
     let resolviendoTicketId = null;
+    let limpiezaCapturasHecha = false;
+    const DIAS_FOTO_RESPUESTA = 30;
 
     function stockLibreDeProducto(productoId) {
       const p = catalogoUnificado.find(x => x.docId === productoId);
@@ -9776,8 +10113,11 @@
       if (!t) return;
       resolviendoTicketId = id;
       const enlazado = !!t.compraId;
+      const admin = esAdminSesionActual();
       document.getElementById('rtResumen').innerHTML = `<b class="font-mono">${escaparHtml(t.cuenta || '')}</b>${t.clienteEmail ? ' · cliente ' + escaparHtml(t.clienteEmail) : ''}${t.productoNombre ? '<br><span class="text-gray-400">' + escaparHtml(t.productoNombre) + '</span>' : ''}`;
-      document.querySelectorAll('input[name="rtResultado"]').forEach(r => { r.checked = r.value === 'cerrar'; });
+      const mot = document.getElementById('rtMotivoCliente');
+      if (mot) { const txtM = [t.motivo, t.detalle].filter(Boolean).join(' · '); mot.textContent = txtM ? 'Reportó: ' + txtM : ''; mot.classList.toggle('hidden', !txtM); }
+      document.querySelectorAll('input[name="rtResultado"]').forEach(r => { r.checked = r.value === 'cerrar'; r.disabled = false; });
       ['rtOpcArreglada', 'rtOpcReemplazo'].forEach(i => {
         const e = document.getElementById(i);
         if (!e) return;
@@ -9785,38 +10125,42 @@
         const inp = e.querySelector('input'); if (inp) inp.disabled = !enlazado;
         e.title = enlazado ? '' : 'Este ticket no está enlazado a una compra';
       });
+      const caja = document.getElementById('rtDesdeStockCaja'); if (caja) caja.classList.toggle('hidden', !admin);
+      const av = document.getElementById('rtAvisoServidor'); if (av) av.classList.toggle('hidden', admin);
       document.getElementById('rtNota').value = '';
+      document.getElementById('rtClaveNueva').value = '';
       document.getElementById('rtCuentaNueva').value = '';
       document.getElementById('rtDesdeStock').checked = false;
+      rtLimpiarFoto();
       const libres = stockLibreDeProducto(t.productoId);
       document.getElementById('rtStockInfo').textContent = t.productoId ? `(${libres} ${libres === 1 ? 'disponible' : 'disponibles'})` : '';
       rtCambioResultado();
-      const avisoSrv = document.getElementById('rtAvisoServidor'); if (avisoSrv) avisoSrv.classList.add('hidden');
       const m = document.getElementById('modalResolverTicket');
       m.classList.remove('hidden'); m.style.display = 'flex';
-      rtComprobarServidor(id);
     }
 
-    // Con un servidor antiguo solo queda "cerrar el ticket": el cambio de cuenta y el reinicio de garantía los hace el servidor
-    async function rtComprobarServidor(id) {
-      if (!enlazadoATicket(id)) return;
-      const tiene = await servidorTiene('ticket_resolver');
-      if (tiene !== false || resolviendoTicketId !== id) return;
-      document.querySelectorAll('input[name="rtResultado"]').forEach(r => { r.checked = r.value === 'cerrar'; if (r.value !== 'cerrar') r.disabled = true; });
-      ['rtOpcArreglada', 'rtOpcReemplazo'].forEach(i => { const e = document.getElementById(i); if (e) e.classList.add('opacity-40'); });
-      const aviso = document.getElementById('rtAvisoServidor'); if (aviso) aviso.classList.remove('hidden');
-      rtCambioResultado();
+    function rtLimpiarFoto() {
+      const f = document.getElementById('rtFoto'), pv = document.getElementById('rtFotoPreview'), tx = document.getElementById('rtFotoTexto');
+      if (f) f.value = '';
+      if (pv) { if (pv.dataset.url) { try { URL.revokeObjectURL(pv.dataset.url); } catch (e) { /* nada */ } } pv.removeAttribute('src'); pv.dataset.url = ''; pv.classList.add('hidden'); }
+      if (tx) tx.textContent = 'Toca para adjuntar una captura';
     }
 
-    function enlazadoATicket(id) {
-      const t = ticketsCuentas.find(x => x.id === id);
-      return !!(t && t.compraId);
+    function rtPrevisualizarFoto() {
+      const f = (document.getElementById('rtFoto').files || [])[0];
+      const pv = document.getElementById('rtFotoPreview');
+      if (!f) { rtLimpiarFoto(); return; }
+      if (pv.dataset.url) { try { URL.revokeObjectURL(pv.dataset.url); } catch (e) { /* nada */ } }
+      const u = URL.createObjectURL(f);
+      pv.dataset.url = u; pv.src = u; pv.classList.remove('hidden');
+      document.getElementById('rtFotoTexto').textContent = 'Captura lista · toca para cambiarla';
     }
 
     function cerrarResolverTicket() {
       const m = document.getElementById('modalResolverTicket');
       if (m) { m.classList.add('hidden'); m.style.display = 'none'; }
       resolviendoTicketId = null;
+      try { rtLimpiarFoto(); } catch (e) { /* nada */ }
     }
 
     function rtResultadoActual() {
@@ -9828,11 +10172,16 @@
       const t = ticketsCuentas.find(x => x.id === resolviendoTicketId) || {};
       const r = rtResultadoActual();
       document.getElementById('rtBloqueNueva').classList.toggle('hidden', r !== 'reemplazo');
+      document.getElementById('rtBloqueClave').classList.toggle('hidden', r !== 'arreglada');
       let txt;
-      if (r === 'cerrar') txt = 'Se cierra el ticket y se borra la foto. La compra del cliente no cambia.';
-      else if (t.garantia === '24h') txt = 'Garantía de 24 horas: vuelve a empezar desde ahora para esa cuenta (el cliente tendrá otras 24 horas).' + (r === 'reemplazo' ? ' La cuenta nueva queda enlazada a la anterior.' : '');
-      else if (t.garantia === '29d') txt = 'Garantía de 29 días: sigue el mismo tiempo de la compra, no se reinicia.' + (r === 'reemplazo' ? ' La cuenta nueva queda enlazada a la anterior.' : '');
-      else txt = 'Este producto no tiene garantía, así que no se reinicia nada.' + (r === 'reemplazo' ? ' La cuenta nueva queda enlazada a la anterior.' : '');
+      if (r === 'cerrar') txt = 'Se cierra el ticket y se borra la foto del error. La compra del cliente no cambia.';
+      else if (r === 'funcional') txt = 'Se cierra el ticket y el cliente ve tu mensaje (y la captura, si la adjuntas) diciendo que su cuenta funciona. No cambia nada en su compra.';
+      else {
+        const union = r === 'reemplazo' ? ' La cuenta nueva queda enlazada a la anterior.' : '';
+        if (t.garantia === '24h') txt = 'Garantía de 24 horas: vuelve a empezar desde ahora para esa cuenta (el cliente tendrá otras 24 horas).' + union;
+        else if (t.garantia === '29d') txt = 'Garantía de 29 días: sigue el mismo tiempo de la compra, no se reinicia.' + union;
+        else txt = 'Este producto no tiene garantía, así que no se reinicia nada.' + union;
+      }
       document.getElementById('rtGarantia').textContent = txt;
     }
 
@@ -9841,34 +10190,155 @@
       const id = resolviendoTicketId;
       const t = ticketsCuentas.find(x => x.id === id);
       if (!t) { cerrarResolverTicket(); return; }
+      const admin = esAdminSesionActual();
       const resultado = rtResultadoActual();
-      const nota = String(document.getElementById('rtNota').value || '').trim().slice(0, 200);
+      const nota = String(document.getElementById('rtNota').value || '').replace(/[\u0000-\u001f]/g, ' ').trim().slice(0, 300);
+      const claveNueva = String(document.getElementById('rtClaveNueva').value || '').trim().slice(0, 80);
       const nueva = String(document.getElementById('rtCuentaNueva').value || '').trim();
-      const desdeStock = document.getElementById('rtDesdeStock').checked;
-      if (resultado === 'reemplazo' && !nueva && !desdeStock) { alert('Escribe la cuenta nueva (correo:clave) o marca "tomar una del stock".'); return; }
+      const desdeStock = admin && !nueva && document.getElementById('rtDesdeStock').checked;
+      const archivo = (document.getElementById('rtFoto').files || [])[0];
+      let lineaNueva = '';
+      if (resultado === 'reemplazo') {
+        if (nueva) {
+          const o = parseCredencialObj(nueva);
+          if (!o.email || !o.pass) { alert('Escribe la cuenta nueva como correo:clave.'); return; }
+          lineaNueva = o.email + ':' + o.pass;
+        } else if (!desdeStock) { alert(admin ? 'Escribe la cuenta nueva (correo:clave) o marca "tomar una del stock".' : 'Escribe la cuenta nueva (correo:clave).'); return; }
+      }
       const btn = document.getElementById('btnResolverTicket');
       if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>'; }
       try {
-        if (resultado === 'cerrar') {
-          // Se cierra y se borra la foto en la misma operación: queda el historial, sin la imagen
-          const lote = db.batch();
-          lote.update(db.collection('tickets_cuentas').doc(id), { estado: 'resuelto', resolucion: nota, resueltoPor: currentUser.email, resueltoEl: new Date().toISOString(), resultado: 'cerrar', tieneFoto: false, fotoEliminada: t.tieneFoto === true || t.fotoEliminada === true });
-          lote.delete(db.collection('tickets_fotos').doc(id));
-          await lote.commit();
-          mostrarToast('Ticket resuelto. La foto se eliminó y quedó el historial.');
+        const foto = archivo ? await prepararFotoReporte(archivo) : '';
+        const ahora = new Date().toISOString(), quien = currentUser.email;
+        const tRef = db.collection('tickets_cuentas').doc(id);
+        const cambios = {
+          estado: 'resuelto', resolucion: nota, resueltoPor: quien, resueltoEl: ahora, resultado: resultado, respuestaTipo: resultado,
+          respuestaCuenta: lineaNueva, respuestaClave: (resultado === 'arreglada' ? claveNueva : ''), respuestaFoto: !!foto, respuestaFotoEl: foto ? ahora : '', respuestaFotoVencida: false,
+          garantiaReiniciada: false, cuentaNueva: lineaNueva ? emailDeLineaCuenta(lineaNueva) : '', tieneFoto: false, fotoEliminada: t.tieneFoto === true || t.fotoEliminada === true
+        };
+        const fotoRef = db.collection('tickets_fotos').doc(id + '_resp');
+        const datosFoto = { foto: foto, clienteUid: t.clienteUid || '', ticketId: id, creadoEl: ahora };
+        const tocaCompra = admin && !!t.compraId && (resultado === 'arreglada' || resultado === 'reemplazo');
+        let resumen;
+        if (tocaCompra) {
+          resumen = await db.runTransaction(async (tx) => {
+            const tDoc = await tx.get(tRef);
+            if (!tDoc.exists) throw new Error('No encontré ese ticket.');
+            if ((tDoc.data() || {}).estado === 'resuelto') throw new Error('Ese ticket ya estaba resuelto.');
+            const cRef = db.collection('compras').doc(t.compraId);
+            const cDoc = await tx.get(cRef);
+            if (!cDoc.exists) throw new Error('No encontré la compra de este ticket. Puedes cerrarlo sin cambios.');
+            const c = cDoc.data() || {};
+            const viejo = String(t.cuenta || '').toLowerCase();
+            const lineas = String(c.credenciales || '').split('\n');
+            const pos = lineas.findIndex(l => emailDeLineaCuenta(l) === viejo);
+            if (pos < 0) throw new Error('No encontré esa cuenta en la compra del cliente. Puedes cerrar el ticket sin cambios.');
+            const tipoG = resolverTipoGarantiaCompra(c).tipo;
+            let lineaFinal = lineaNueva, infoSubida = '', stockInfo = null;
+            if (resultado === 'reemplazo' && !lineaFinal) {
+              const prod = t.productoId || c.productoId;
+              if (!prod) throw new Error('No encontré el producto para sacar la cuenta del stock.');
+              const invRef = db.collection('inventario').doc(prod), privRef = db.collection('inventario_privado').doc(prod);
+              const invDoc = await tx.get(invRef), privDoc = await tx.get(privRef);
+              if (!invDoc.exists) throw new Error('No encontré el producto para sacar la cuenta del stock.');
+              const inv = invDoc.data() || {};
+              const legado = Array.isArray(inv.cuentas) ? inv.cuentas : [];
+              const priv = (privDoc.exists && Array.isArray((privDoc.data() || {}).cuentas)) ? privDoc.data().cuentas : [];
+              const todas = priv.concat(legado);
+              const i = todas.findIndex(x => !(x && typeof x === 'object' && x.alquilerId));
+              if (i < 0) throw new Error('No hay cuentas libres en el stock de este producto para reemplazar.');
+              const elegida = todas.splice(i, 1)[0];
+              const o = parseCredencialObj(elegida);
+              lineaFinal = o.email + ':' + o.pass;
+              if (elegida && typeof elegida === 'object' && elegida.subidoEl) infoSubida = String(elegida.subidoEl);
+              stockInfo = { invRef: invRef, privRef: privRef, todas: todas, privado: privDoc.exists || inventarioSeguroActivo() };
+            }
+            const datosC = {};
+            let identNueva = viejo;
+            if (resultado === 'reemplazo') {
+              identNueva = emailDeLineaCuenta(lineaFinal);
+              lineas[pos] = lineaFinal;
+              datosC.credenciales = lineas.join('\n');
+              datosC.reemplazos = (Array.isArray(c.reemplazos) ? c.reemplazos : []).concat([{ anterior: viejo, nueva: identNueva, fecha: ahora, ticketId: id, por: quien }]);
+              datosC.correos = (Array.isArray(c.correos) ? c.correos : []).concat([viejo, identNueva]).filter((v, i, a) => v && a.indexOf(v) === i);
+              const info = (Array.isArray(c.cuentasInfo) ? c.cuentasInfo : []).slice();
+              if (infoSubida) info.push({ e: identNueva, s: infoSubida });
+              datosC.cuentasInfo = info;
+              cambios.cuentaNueva = identNueva; cambios.respuestaCuenta = lineaFinal;
+            } else if (claveNueva) {
+              const base = parseCredencialObj(lineas[pos]);
+              lineas[pos] = (base.email || viejo) + ':' + claveNueva;
+              datosC.credenciales = lineas.join('\n');
+            }
+            if (tipoG === '24h') {
+              datosC.reinicios = (Array.isArray(c.reinicios) ? c.reinicios : []).concat([{ cuenta: identNueva, desde: ahora, ticketId: id }]);
+              cambios.garantiaReiniciada = true;
+            }
+            if (Object.keys(datosC).length) tx.update(cRef, datosC);
+            if (stockInfo) {
+              if (stockInfo.privado) {
+                tx.set(stockInfo.privRef, { cuentas: stockInfo.todas }, { merge: true });
+                tx.set(stockInfo.invRef, { stock: stockInfo.todas.length, cuentas: firebase.firestore.FieldValue.delete() }, { merge: true });
+              } else {
+                tx.set(stockInfo.invRef, { cuentas: stockInfo.todas, stock: stockInfo.todas.length }, { merge: true });
+              }
+            }
+            tx.update(tRef, cambios);
+            tx.delete(db.collection('tickets_fotos').doc(id));
+            if (foto) tx.set(fotoRef, datosFoto);
+            return { cuentaNueva: cambios.cuentaNueva, garantiaReiniciada: cambios.garantiaReiniciada };
+          });
         } else {
-          const r = await llamarBackend('ticket_resolver', { ticketId: id, resultado: resultado, nota: nota, cuentaNueva: nueva, desdeStock: !nueva && desdeStock });
-          if (esErrorServidorAntiguo(r)) { capsServidor = []; capsServidorEn = Date.now(); alert(textoServidorAntiguo('ticket_resolver') + '\n\nPor ahora elige "Solo cerrar el ticket".'); rtComprobarServidor(id); return; }
-          if (!r.ok) { alert(r.error || 'No se pudo resolver el ticket.'); return; }
-          mostrarToast(r.cuentaNueva ? `Ticket resuelto. ${r.cuentaNueva} quedó enlazada a ${t.cuenta}${r.garantiaReiniciada ? ' y su garantía se reinició.' : '.'}` : (r.garantiaReiniciada ? 'Ticket resuelto. La garantía de esa cuenta se reinició.' : 'Ticket resuelto.'));
+          // Solo el ticket: la respuesta queda dentro de él y el cliente la ve ahí
+          const lote = db.batch();
+          lote.update(tRef, cambios);
+          lote.delete(db.collection('tickets_fotos').doc(id));
+          if (foto) lote.set(fotoRef, datosFoto);
+          await lote.commit();
+          resumen = { cuentaNueva: cambios.cuentaNueva, garantiaReiniciada: false };
         }
-        delete fotosTicketsCache[id];
+        let msg = 'Ticket resuelto.';
+        if (resultado === 'reemplazo' && resumen.cuentaNueva) msg = `Ticket resuelto. ${resumen.cuentaNueva} quedó enlazada a ${t.cuenta}${resumen.garantiaReiniciada ? ' y su garantía se reinició.' : '.'}`;
+        else if (resumen.garantiaReiniciada) msg = 'Ticket resuelto. La garantía de esa cuenta se reinició.';
+        if (!admin && (resultado === 'arreglada' || resultado === 'reemplazo')) msg += ' El cliente la ve en su ticket; la compra la actualiza el administrador.';
+        mostrarToast(msg);
+        delete fotosTicketsCache[id]; delete fotosTicketsCache[id + '_resp'];
         cerrarResolverTicket();
       } catch (err) {
         alert('No se pudo resolver: ' + err.message);
       } finally {
         if (btn) { btn.disabled = false; btn.innerHTML = 'Resolver'; }
       }
+    }
+
+    async function verFotoRespuesta(id) {
+      try {
+        const k = id + '_resp';
+        if (!fotosTicketsCache[k]) {
+          const d = await db.collection('tickets_fotos').doc(k).get();
+          if (!d.exists || !(d.data() || {}).foto) { alert('La captura ya no está disponible.'); return; }
+          fotosTicketsCache[k] = d.data().foto;
+        }
+        abrirFotoReporte(fotosTicketsCache[k], 'Captura de soporte');
+      } catch (err) {
+        alert('No se pudo abrir la captura: ' + err.message);
+      }
+    }
+
+    // Las capturas de respuesta se guardan 30 días y luego se borran solas (las borra quien abra los tickets)
+    async function limpiarFotosRespuestaVencidas() {
+      if (!esStaffSesion()) return;
+      try {
+        const limite = Date.now() - DIAS_FOTO_RESPUESTA * 86400000;
+        const vencidos = ticketsCuentas.filter(t => t.respuestaFoto === true && t.respuestaFotoEl && Date.parse(t.respuestaFotoEl) < limite);
+        if (!vencidos.length) return;
+        const lote = db.batch();
+        vencidos.slice(0, 200).forEach(t => {
+          lote.delete(db.collection('tickets_fotos').doc(t.id + '_resp'));
+          lote.update(db.collection('tickets_cuentas').doc(t.id), { respuestaFoto: false, respuestaFotoVencida: true });
+        });
+        await lote.commit();
+      } catch (e) { console.warn('Limpieza de capturas:', e); }
     }
 
     async function reabrirTicket(id) {
@@ -10762,6 +11232,126 @@
       return !!(r && r.ok === false && /Acci[oó]n no reconocida/i.test(String(r.error || '')));
     }
 
+
+
+    // ==================== PERFIL DEL ADMINISTRADOR / MODERADOR ====================
+    let recargasPendientesN = 0;
+
+    function irAPanelAdmin(tab) { cambiarVista('admin'); cambiarTabAdmin(tab); }
+
+    function renderizarPerfilAdmin() {
+      const caja = document.getElementById('perfilAdminPanel');
+      if (!caja) return;
+      const staff = esStaffSesion() && !modoPruebaCliente;
+      caja.classList.toggle('hidden', !staff);
+      ['perfilNivelBox', 'perfilStatsCliente'].forEach(i => { const e = document.getElementById(i); if (e) e.classList.toggle('hidden', staff); });
+      if (!staff) return;
+      const admin = esAdminSesionActual();
+      try { iniciarBadgesAdmin(); } catch (e) { /* nada */ }
+      const ins = document.getElementById('perfilNivelInsignia');
+      if (ins) ins.innerHTML = `<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black border ${admin ? 'text-amber-300 border-amber-400/40 bg-amber-400/10' : 'text-sky-300 border-sky-400/40 bg-sky-400/10'}"><i class="fa-solid ${admin ? 'fa-crown' : 'fa-shield-halved'}"></i> ${admin ? 'Administrador' : 'Moderador'}</span>`;
+      const desde = document.getElementById('perfilMiembroDesde'); if (desde) desde.innerText = admin ? 'Administrador de Epic Channels' : 'Equipo de Epic Channels';
+      const rol = document.getElementById('perfilAdminRol'); if (rol) rol.textContent = admin ? 'Panel de control' : 'Panel del equipo';
+      const sub = document.getElementById('perfilAdminSub'); if (sub) sub.textContent = admin ? 'Acceso total · tu cuenta no compra como un cliente' : 'Gestionas tickets, recargas y stock';
+
+      const abiertos = ticketsCuentas.filter(t => t.estado !== 'resuelto').length;
+      const bajo = catalogoUnificado.filter(p => p.activo !== false && (p.stock < (parseInt(p.minCompra) || 1) || p.stock < 3)).length;
+      const porAprobar = lotesProveedores.filter(l => l.estado === 'pendiente').length;
+      const porPagar = lotesProveedores.filter(l => l.estado === 'aprobado' && !l.pagado).reduce((t, l) => t + (Number(l.monto) || 0), 0);
+      const stats = [
+        { n: abiertos, t: 'Tickets abiertos', c: 'amber', i: 'fa-ticket', tab: 'tickets' },
+        { n: recargasPendientesN, t: 'Recargas por revisar', c: 'sky', i: 'fa-money-bill-transfer', tab: 'recargas' },
+        { n: bajo, t: 'Stock bajo', c: 'red', i: 'fa-box-open', tab: 'productos' }
+      ];
+      if (admin) {
+        stats.push({ n: porAprobar, t: 'Lotes por aprobar', c: 'purple', i: 'fa-hourglass-half', tab: 'proveedores' });
+        stats.push({ n: formatoCOP(porPagar), t: 'Por pagar a proveedores', c: 'emerald', i: 'fa-hand-holding-dollar', tab: 'proveedores', ancho: true });
+      }
+      const COL = { amber: 'text-amber-300 border-amber-500/30', sky: 'text-sky-300 border-sky-500/30', red: 'text-red-300 border-red-500/30', purple: 'text-purple-300 border-purple-500/30', emerald: 'text-emerald-300 border-emerald-500/30' };
+      const cs = document.getElementById('perfilAdminStats');
+      if (cs) cs.innerHTML = stats.map(x => `<button type="button" onclick="irAPanelAdmin('${x.tab}')" class="text-left rounded-xl bg-gray-900/70 border ${COL[x.c]} p-2.5 hover:bg-gray-800/80 transition ${x.ancho ? 'col-span-2 sm:col-span-1' : ''}"><span class="text-[10px] text-gray-400 flex items-center gap-1"><i class="fa-solid ${x.i}"></i> ${x.t}</span><span class="text-lg font-black ${COL[x.c].split(' ')[0]}">${x.n}</span></button>`).join('');
+
+      const acc = [['tickets', 'fa-ticket', 'Tickets'], ['recargas', 'fa-money-bill-transfer', 'Recargas'], ['stock', 'fa-key', 'Cargar stock'], ['buscar', 'fa-magnifying-glass', 'Buscar cuenta'], ['usuarios', 'fa-users', 'Usuarios']];
+      if (admin) acc.splice(1, 0, ['proveedores', 'fa-truck-ramp-box', 'Proveedores']);
+      acc.push(admin ? ['reporte', 'fa-chart-line', 'Reporte'] : ['productos', 'fa-boxes-stacked', 'Productos']);
+      if (admin) { acc.push(['netflix', 'fa-tv', 'Alquileres'], ['ajustes', 'fa-gear', 'Ajustes']); }
+      const ca = document.getElementById('perfilAdminAcciones');
+      if (ca) ca.innerHTML = acc.map(a => `<button type="button" onclick="irAPanelAdmin('${a[0]}')" class="flex flex-col items-center justify-center gap-1 py-2.5 rounded-xl bg-gray-900/70 border border-gray-700 hover:border-emerald-500/50 hover:bg-gray-800 text-gray-200 text-[10px] font-bold transition"><i class="fa-solid ${a[1]} text-sm text-emerald-400"></i><span class="text-center leading-tight">${a[2]}</span></button>`).join('');
+    }
+
+    // ==================== NETFLIX EN LA TIENDA: SIN CONTRASEÑA ====================
+    function esNombreNetflix(t) { return /netflix/i.test(String(t || '')); }
+    function esProductoNetflix(p) {
+      return !!p && (esNombreNetflix(p.nombre) || esNombreNetflix(p.productoNombre) || esNombreNetflix(p.id) || esNombreNetflix(p.productoId));
+    }
+
+    // En Netflix solo se entrega el correo (y el perfil con su PIN, si lo hay). Nunca una contraseña.
+    function perfilNetflixDeCredencial(raw) {
+      const c = parseCredencialObj(raw);
+      const pass = String(c.pass || '');
+      return { email: c.email || '', perfil: /^(Perfil:|Cuenta completa)/i.test(pass) ? pass : '' };
+    }
+
+    function textoLineaNetflix(linea) {
+      const n = perfilNetflixDeCredencial(linea);
+      return n.email ? n.email + (n.perfil ? ' · ' + n.perfil : '') : String(linea || '').split(':')[0];
+    }
+
+    function pasosNetflixSinClave() {
+      return [
+        'Abre Netflix (la app o netflix.com) y toca "Iniciar sesión".',
+        'Escribe el correo de tu cuenta (cópialo desde aquí).',
+        'Elige "Usar un código de inicio de sesión" en lugar de poner contraseña.',
+        'Pide el código: te llega al correo de la cuenta. Lo ves en la tarjeta roja "Netflix · Mis cuentas" de la tienda o nos lo pides por WhatsApp.',
+        'Escribe el código y entra a tu perfil. No cambies el correo, la contraseña ni el PIN.'
+      ];
+    }
+
+    function htmlGuiaNetflix(abierta) {
+      const pasos = pasosNetflixSinClave().map((t, i) => `<li class="flex gap-2.5"><span class="shrink-0 w-5 h-5 rounded-full bg-red-600 text-white text-[10px] font-black flex items-center justify-center mt-0.5">${i + 1}</span><span class="text-[12px] text-gray-200 leading-snug">${escaparHtml(t)}</span></li>`).join('');
+      return `<details ${abierta ? 'open' : ''} class="rounded-xl border border-red-500/40 bg-gradient-to-br from-red-600/15 to-gray-900/40 overflow-hidden">
+        <summary class="cursor-pointer select-none px-3 py-2.5 flex items-center gap-2 text-[12px] font-black text-white"><i class="fa-solid fa-key text-red-400"></i> Cómo entrar a tu Netflix <span class="ml-auto nf-chip">Sin contraseña</span></summary>
+        <ol class="px-3 pb-3 pt-1 space-y-2">${pasos}</ol>
+      </details>`;
+    }
+
+    function construirEntregaNetflix(cuentas, prodInfo, extras) {
+      const ex = extras || {};
+      const tg = prodInfo.tipoGarantia;
+      const garantia = tg === '29d' ? 'garantía de 29 días' : (tg === '24h' ? 'garantía de 24 horas' : '');
+      let t = '🎬 ¡Tu Netflix está listo!\n\n';
+      t += '📦 ' + (prodInfo.nombre || 'Netflix') + '\n';
+      (cuentas || []).forEach((raw, i) => {
+        const n = perfilNetflixDeCredencial(raw);
+        t += '\n' + (cuentas.length > 1 ? '— Cuenta ' + (i + 1) + ' —\n' : '');
+        t += '📧 Correo: ' + n.email + '\n';
+        if (n.perfil) t += '👤 ' + n.perfil + '\n';
+      });
+      t += '\n🔐 Esta cuenta se usa SIN contraseña. Así entras:\n';
+      pasosNetflixSinClave().forEach((p, i) => { t += (i + 1) + '. ' + p + '\n'; });
+      if (garantia) t += '\n🛡️ Tienes ' + garantia + '.';
+      if (ex.total !== undefined && ex.total !== null) t += '\n💰 Total: ' + formatoCOP(ex.total) + ' COP';
+      return t.trim();
+    }
+
+    function htmlBannerNetflixTienda() {
+      return `<div class="col-span-full nf-hero">
+        <div class="relative flex items-center justify-between gap-3">
+          <div class="min-w-0">
+            <p class="nf-wordmark text-2xl sm:text-3xl">NETFLIX</p>
+            <p class="text-sm sm:text-base font-black text-white mt-2.5 leading-snug">Tu perfil listo para ver</p>
+            <p class="text-xs text-red-100/80 mt-1 leading-relaxed">Entras con un código de inicio de sesión, sin escribir contraseña. Al comprar te explicamos el paso a paso.</p>
+          </div>
+          <div class="shrink-0 hidden sm:flex w-14 h-14 rounded-2xl bg-red-600/20 border border-red-500/40 items-center justify-center"><i class="fa-solid fa-clapperboard text-2xl text-red-400"></i></div>
+        </div>
+        <div class="relative flex flex-wrap gap-1.5 mt-3.5">
+          <span class="nf-chip"><i class="fa-solid fa-key"></i> Acceso por código</span>
+          <span class="nf-chip"><i class="fa-solid fa-bolt"></i> Entrega inmediata</span>
+          <span class="nf-chip"><i class="fa-solid fa-headset"></i> Soporte por WhatsApp</span>
+        </div>
+      </div>`;
+    }
+
     // ==================== MI PERFIL ====================
     let misComprasPerfilCache = [];
     let perfilDatosCache = {};
@@ -10823,6 +11413,7 @@
 
       const aviso = document.getElementById('perfilAvisoDatos');
       if (aviso) aviso.classList.toggle('hidden', !!nombre && !whatsappEsVacio(d.whatsapp));
+      try { renderizarPerfilAdmin(); } catch (e) { console.warn(e); }
     }
 
     function rellenarFormularioPerfil() {
@@ -10942,7 +11533,14 @@
     function copiarCompraPerfil(indice) {
       const compra = misComprasPerfilCache[indice];
       if (!compra) return;
-      const texto = (compra.credenciales || '') + (compra.claveAcceso ? `\nContraseña: ${compra.claveAcceso}` : '');
+      let texto = (compra.credenciales || '') + (compra.claveAcceso ? `\nContraseña: ${compra.claveAcceso}` : '');
+      // Netflix se entrega sin contraseña: se copia el correo (y el perfil) con el paso a paso
+      if (esProductoNetflix({ nombre: compra.productoNombre, id: compra.productoId })) {
+        try {
+          const cuentasNf = String(compra.credenciales || '').split('\n').map(l => l.trim()).filter(Boolean);
+          texto = construirEntregaNetflix(cuentasNf, { nombre: compra.productoNombre, tipoGarantia: compra.tipoGarantia }, {});
+        } catch (e) { console.warn(e); }
+      }
       navigator.clipboard.writeText(texto)
         .then(() => mostrarToast('¡Cuentas copiadas!'))
         .catch(() => mostrarTextoCopiable(texto));
@@ -11259,6 +11857,7 @@
           }
 
           const lineas = String(c.credenciales || '').split('\n').map(l => l.trim()).filter(Boolean);
+          const esNfC = esProductoNetflix({ nombre: c.productoNombre, id: c.productoId });
           const lineasHtml = lineas.length
             ? lineas.map((l, j) => {
                 const ident = emailDeLineaCuenta(l);
@@ -11267,7 +11866,7 @@
                 const notas = [];
                 if (reemp) notas.push(`<span class="text-sky-300"><i class="fa-solid fa-link mr-1"></i>Reemplazo de ${escaparHtml(reemp.anterior)}</span>`);
                 if (gl.reiniciada && gl.estado === 'vigente') notas.push(`<span class="text-emerald-300"><i class="fa-solid fa-shield-halved mr-1"></i>Garantía hasta ${formatearFechaHoraCorta(gl.vence)}</span>`);
-                return `<div class="py-1 border-b border-gray-700/40 last:border-0"><div class="flex items-center justify-between gap-2"><span class="break-all min-w-0">${escaparHtml(l)}</span>${(c.simulada || modoPruebaCliente) ? '' : `<span data-reporte-slot data-cuenta="${escaparHtml(ident)}" data-idx="${idx}" data-j="${j}"></span>`}</div>${notas.length ? `<div class="text-[10px] mt-0.5 flex flex-wrap gap-x-3">${notas.join('')}</div>` : ''}</div>`;
+                return `<div class="py-1 border-b border-gray-700/40 last:border-0"><div class="flex items-center justify-between gap-2"><span class="break-all min-w-0">${escaparHtml(esNfC ? textoLineaNetflix(l) : l)}</span>${(c.simulada || modoPruebaCliente) ? '' : `<span data-reporte-slot data-cuenta="${escaparHtml(ident)}" data-idx="${idx}" data-j="${j}"></span>`}</div>${notas.length ? `<div class="text-[10px] mt-0.5 flex flex-wrap gap-x-3">${notas.join('')}</div>` : ''}</div>`;
               }).join('')
             : '<div class="text-gray-500">Sin credenciales registradas.</div>';
 
@@ -11287,7 +11886,8 @@
               </div>
               <div data-garantia-idx="${idx}">${renderTarjetaGarantia(idx)}</div>
               <div class="bg-gray-800/90 border border-gray-700 rounded-xl p-3 font-mono text-xs text-gray-200 select-all leading-relaxed">${lineasHtml}</div>
-              ${c.claveAcceso ? `<div class="text-xs text-gray-300 flex items-center gap-1.5"><i class="fa-solid fa-key text-emerald-400"></i> Contraseña: <span class="font-mono font-bold text-white select-all">${escaparHtml(c.claveAcceso)}</span></div>` : ''}
+              ${esNfC ? htmlGuiaNetflix(false) : ''}
+              ${(c.claveAcceso && !esNfC) ? `<div class="text-xs text-gray-300 flex items-center gap-1.5"><i class="fa-solid fa-key text-emerald-400"></i> Contraseña: <span class="font-mono font-bold text-white select-all">${escaparHtml(c.claveAcceso)}</span></div>` : ''}
               <button onclick="copiarCompraPerfil(${idx})" class="w-full py-2 bg-gray-800 hover:bg-gray-700 border border-gray-700 text-emerald-400 font-bold text-xs rounded-xl flex items-center justify-center gap-2">
                 <i class="fa-solid fa-copy"></i> Copiar ${lineas.length > 1 ? `las ${lineas.length} cuentas` : 'cuenta'}
               </button>
@@ -12112,7 +12712,7 @@
         ? `Códigos de acceso, días restantes y renovación de tu${n === 1 ? ' cuenta' : 's ' + n + ' cuentas'}.`
         : `Días restantes y renovación de tu${n === 1 ? ' cuenta' : 's ' + n + ' cuentas'} (${plataformasCli.join(', ')}).`;
       return `
-        <div onclick="abrirModalNetflixCliente()" role="button" tabindex="0" class="cursor-pointer bg-gray-900 border border-red-500/50 shadow-xl shadow-red-500/10 hover:border-red-400 rounded-2xl p-4 sm:p-5 flex flex-col justify-between transition relative">
+        <div onclick="abrirModalNetflixCliente()" role="button" tabindex="0" class="cursor-pointer nf-card nf-glow rounded-2xl p-4 sm:p-5 flex flex-col justify-between transition relative">
           <div>
             <div class="flex justify-between items-start mb-3">
               <span class="text-[11px] font-bold bg-red-500/15 text-red-300 px-3 py-1 rounded-full flex items-center gap-1"><i class="fa-solid fa-tv"></i> Streaming</span>
@@ -12122,7 +12722,7 @@
             <p class="text-xs text-gray-400 mt-1 leading-relaxed">${escaparHtml(subtituloTienda)}</p>
             ${resumen ? `<p class="text-xs text-gray-300 mt-3"><i class="fa-regular fa-calendar mr-1 text-red-400"></i> ${resumen}</p>` : ''}
           </div>
-          <div class="mt-4 w-full py-2.5 rounded-xl text-xs font-bold bg-red-600 hover:bg-red-500 text-white transition flex items-center justify-center gap-1.5">
+          <div class="mt-4 w-full py-2.5 rounded-xl text-xs font-bold nf-btn transition flex items-center justify-center gap-1.5">
             <i class="fa-solid fa-key"></i> Abrir mis cuentas
           </div>
         </div>`;
