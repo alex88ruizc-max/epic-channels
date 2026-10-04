@@ -158,6 +158,8 @@
     .asistente-escribiendo i:nth-child(2) { animation-delay:.15s; }
     .asistente-escribiendo i:nth-child(3) { animation-delay:.3s; }
     @media (prefers-reduced-motion: reduce) { .asistente-punto::after, .asistente-escribiendo i { animation:none; } .asistente-fab, .asistente-chip { transition:none; } .asistente-panel.abierto, .asistente-saludo { animation:none; } }
+    /* El botón flotante de ayuda no debe tapar los últimos botones de la tienda ni del panel */
+    #vistaTienda, #vistaAdmin { padding-bottom: 5.5rem; }
   </style>
 </head>
 <body class="min-h-screen flex flex-col justify-between">
@@ -657,6 +659,7 @@
               <option value="por_vencer">Vencen en 3 días o menos</option>
               <option value="activas">Activas</option>
               <option value="sin_asignar">Sin asignar</option>
+              <option value="en_tienda">A la venta en la tienda</option>
               <option value="pendientes">Pendientes de migrar</option>
               <option value="limpieza">Por limpiar (cambiar clave)</option>
             </select>
@@ -719,7 +722,7 @@
                   <th class="px-4 py-3">Stock Disponible</th>
                   <th class="px-4 py-3 text-center">Visibilidad Pública</th>
                   <th class="px-4 py-3 text-center">Editar</th>
-                  <th class="px-4 py-3 text-right">Vaciar Stock</th>
+                  <th class="solo-admin px-4 py-3 text-right">Eliminar</th>
                 </tr>
               </thead>
               <tbody id="tablaAdminProductos" class="divide-y divide-gray-800">
@@ -1787,9 +1790,26 @@
           </div>
         </div>
 
+        <div class="grid grid-cols-1 gap-2">
+          <label class="flex items-center justify-between gap-3 p-3 rounded-xl bg-gray-800/60 border border-gray-700/60 cursor-pointer">
+            <span class="min-w-0"><span class="block text-xs font-bold text-white">Visible en la tienda</span><span class="block text-[10px] text-gray-400">Si lo apagas, los clientes no lo ven ni lo pueden comprar.</span></span>
+            <input type="checkbox" id="editProdActivo" class="accent-emerald-500 w-5 h-5 shrink-0">
+          </label>
+          <label id="editProdFilaVip" class="flex items-center justify-between gap-3 p-3 rounded-xl bg-gray-800/60 border border-gray-700/60 cursor-pointer">
+            <span class="min-w-0"><span class="block text-xs font-bold text-white">Producto VIP</span><span class="block text-[10px] text-gray-400">Solo lo ven los clientes a los que se lo autorizas.</span></span>
+            <input type="checkbox" id="editProdVip" class="accent-yellow-500 w-5 h-5 shrink-0">
+          </label>
+        </div>
+
         <div class="flex gap-2 pt-2">
           <button type="submit" class="w-full bg-emerald-500 hover:bg-emerald-400 text-black font-bold py-2.5 rounded-xl text-xs transition">Guardar Cambios</button>
           <button type="button" onclick="cerrarModalEditarProducto()" class="w-full bg-gray-800 hover:bg-gray-700 text-gray-300 font-bold py-2.5 rounded-xl text-xs transition">Cancelar</button>
+        </div>
+
+        <div class="mt-2 pt-3 border-t border-gray-800 space-y-2">
+          <button type="button" onclick="vaciarStock(document.getElementById('editProdDocId').value)" class="w-full bg-gray-800 hover:bg-gray-700 text-amber-300 border border-amber-500/30 font-bold py-2 rounded-xl text-xs transition"><i class="fa-solid fa-box-open mr-1"></i> Vaciar el stock de este producto</button>
+          <button type="button" id="btnEditProdEliminar" onclick="eliminarProducto(document.getElementById('editProdDocId').value)" class="solo-admin w-full bg-gray-800 hover:bg-red-500/20 text-red-400 border border-red-500/30 font-bold py-2 rounded-xl text-xs transition"><i class="fa-solid fa-trash-can mr-1"></i> Eliminar producto</button>
+          <p id="editProdNotaBase" class="hidden text-[10px] text-gray-500 text-center">Es un producto base del catálogo: no se elimina, pero puedes ocultarlo.</p>
         </div>
       </form>
     </div>
@@ -2106,6 +2126,10 @@
         <div id="nfVistaVence" class="p-2.5 bg-gray-800/60 border border-gray-700 rounded-xl text-[11px] text-gray-300"></div>
         <p class="text-[10px] text-gray-500 -mt-1">Inicio = día del último pago. El próximo pago se calcula solo.</p>
         </div>
+        <div id="nfBloqueTienda" class="hidden p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 space-y-2">
+          <p id="nfTiendaTexto" class="text-[11px] text-emerald-200 leading-snug"></p>
+          <button type="button" id="nfBtnTienda" onclick="nfAccionTienda()" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2 rounded-xl text-xs transition"><i class="fa-solid fa-store mr-1"></i> <span id="nfBtnTiendaTxt">Pasar a la tienda</span></button>
+        </div>
         <div>
           <button type="button" id="nfBtnNota" onclick="nfMostrarNota(true, true)" class="text-[11px] font-bold text-gray-400 hover:text-white"><i class="fa-solid fa-plus mr-1"></i>Agregar nota</button>
           <div id="nfBloqueNota" class="hidden">
@@ -2119,6 +2143,36 @@
       </form>
       <div class="shrink-0 p-3 border-t border-gray-800">
         <button type="submit" form="nfForm" id="btnGuardarNetflixCuenta" class="w-full bg-red-600 hover:bg-red-500 text-white font-black py-2.5 rounded-xl text-xs transition">Guardar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: PASAR PERFILES DE ALQUILER A LA TIENDA -->
+  <div id="modalPasarTienda" onclick="if (event.target === this) nfCerrar('modalPasarTienda')" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden items-center justify-center p-3 sm:p-4">
+    <div class="bg-gray-900 border border-emerald-500/40 rounded-2xl max-w-md w-full shadow-2xl max-h-[92vh] flex flex-col overflow-hidden">
+      <div class="shrink-0 flex items-center justify-between gap-3 px-4 py-3 border-b border-gray-800">
+        <h3 class="text-base font-black text-white flex items-center gap-2"><i class="fa-solid fa-store text-emerald-400"></i> Pasar a la tienda</h3>
+        <button type="button" onclick="nfCerrar('modalPasarTienda')" aria-label="Cerrar" class="w-8 h-8 shrink-0 rounded-full bg-gray-800 hover:bg-gray-700 text-gray-300 flex items-center justify-center"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="overflow-y-auto px-4 py-3 space-y-3 flex-grow">
+        <p id="ptResumen" class="text-xs font-bold text-white"></p>
+        <p class="text-[11px] text-gray-400 leading-snug">Cuando un cliente lo compre, el perfil queda <b class="text-gray-200">asignado a él en Alquileres</b>, con su fecha de pago y el botón <b class="text-gray-200">Ver código</b>. El precio es el del producto que elijas.</p>
+        <div>
+          <label class="block text-xs text-gray-400 mb-1">¿En qué producto de la tienda lo pongo?</label>
+          <select id="ptProducto" onchange="ptCambioProducto()" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"></select>
+        </div>
+        <div id="ptNuevo" class="hidden space-y-2 p-3 rounded-xl bg-gray-800/50 border border-gray-700/60">
+          <div><label class="block text-xs text-gray-400 mb-1">Nombre del producto nuevo</label><input type="text" id="ptNombre" maxlength="60" autocomplete="off" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"></div>
+          <div><label class="block text-xs text-gray-400 mb-1">Precio de venta (COP)</label><input type="number" id="ptPrecio" min="0" step="500" placeholder="Ej: 32000" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"></div>
+        </div>
+        <div>
+          <label class="block text-xs text-gray-400 mb-1">Duración que recibe quien lo compre</label>
+          <select id="ptPlan" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"><option value="1">1 mes</option><option value="2">2 meses</option><option value="3">3 meses</option></select>
+        </div>
+      </div>
+      <div class="shrink-0 grid grid-cols-2 gap-2 p-3 border-t border-gray-800">
+        <button type="button" onclick="nfCerrar('modalPasarTienda')" class="bg-gray-800 hover:bg-gray-700 text-gray-100 font-bold py-2.5 rounded-xl text-xs border border-gray-700">Cancelar</button>
+        <button type="button" id="btnPasarTienda" onclick="confirmarPasarATienda()" class="bg-emerald-500 hover:bg-emerald-400 text-black font-bold py-2.5 rounded-xl text-xs">Pasar a la tienda</button>
       </div>
     </div>
   </div>
@@ -6437,7 +6491,7 @@
       }
     }
 
-    async function crearNuevoProductoAdmin(e) {
+    async function crearNuevoProductoAdminInterno(e) {
       e.preventDefault();
       const nombre = document.getElementById('nuevoProdNombre').value.trim();
       const desc = document.getElementById('nuevoProdDesc').value.trim();
@@ -7051,7 +7105,7 @@
           html += `<div class="p-3 rounded-xl bg-gray-800/70 border border-gray-700 space-y-1.5">
             <p class="text-[10px] font-black text-emerald-400 uppercase tracking-wider">Cuenta ${i + 1}</p>
             ${c.email ? fila('Correo', c.email) : ''}
-            ${c.pass ? fila(prodInfo.esAmazon ? 'Códigos' : 'Clave', c.pass) : ''}
+            ${c.pass ? fila(prodInfo.esAmazon ? 'Códigos' : (/^(Perfil:|Cuenta completa)/.test(c.pass) ? 'Perfil' : 'Clave'), c.pass) : ''}
           </div>`;
         });
         cont.innerHTML = html;
@@ -7077,6 +7131,9 @@
       try {
         let html = '';
         let conteoBajo = 0;
+        // Productos con el mismo nombre (por ejemplo, creados varias veces por error)
+        const conteoNombres = {};
+        catalogoUnificado.forEach(q => { const k = nombreProductoNormalizado(q.nombre); conteoNombres[k] = (conteoNombres[k] || 0) + 1; });
 
         catalogoUnificado.forEach(p => {
           const stock = p.stock;
@@ -7085,13 +7142,14 @@
           const minimo = parseInt(p.minCompra) || 1;
           const stockBajo = esActivo && (stock < minimo || stock < 3);
           if (stockBajo) conteoBajo++;
+          const repetido = conteoNombres[nombreProductoNormalizado(p.nombre)] > 1;
 
           let txtG = '24 Horas';
           if (p.tipoGarantia === '29d') txtG = '29 Días';
           else if (p.tipoGarantia === 'ninguna') txtG = 'Sin garantía';
           else if (p.tipoGarantia === '') txtG = 'Sin definir';
 
-          const textoBusqueda = construirAtributoBusqueda(p.nombre, p.categoria, txtG, p.docId, esVip ? 'vip' : '', esActivo ? 'activo' : 'oculto', stockBajo ? 'stock bajo' : '');
+          const textoBusqueda = construirAtributoBusqueda(p.nombre, p.categoria, txtG, p.docId, esVip ? 'vip' : '', esActivo ? 'activo' : 'oculto', stockBajo ? 'stock bajo' : '', repetido ? 'repetido' : '');
 
           const insigniaStockBajo = stockBajo
             ? `<span class="mt-1 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black bg-amber-500/15 text-amber-400 border border-amber-500/40 animate-pulse" title="Stock menor a la compra mínima (${minimo}) o menor a 3 unidades"><i class="fa-solid fa-triangle-exclamation"></i> Stock Bajo</span>`
@@ -7106,6 +7164,7 @@
                     <div class="flex items-center gap-1.5 flex-wrap">
                       <span class="font-bold text-white text-sm leading-snug">${p.nombre}</span>
                       ${esVip ? `<span class="text-[9px] px-1.5 py-0.2 rounded bg-yellow-500/10 text-yellow-400 border border-yellow-500/30 font-bold uppercase">VIP</span>` : ''}
+                      ${repetido ? `<span class="text-[9px] px-1.5 py-0.5 rounded bg-red-500/15 text-red-300 border border-red-500/40 font-black uppercase" title="Hay otro producto con el mismo nombre">Repetido</span>` : ''}
                     </div>
                     <span class="inline-block mt-0.5 text-[10px] text-gray-400 bg-gray-800 border border-gray-700/60 px-2 py-0.5 rounded font-medium">Mín. compra: ${p.minCompra} u.</span>
                   </div>
@@ -7131,8 +7190,8 @@
                   <i class="fa-solid fa-pen-to-square mr-1"></i> Editar
                 </button>
               </td>
-              <td class="px-4 py-3 text-right whitespace-nowrap">
-                <button onclick="vaciarStock('${p.docId}')" class="text-xs text-red-400 hover:text-red-300 p-1.5 rounded bg-gray-800"><i class="fa-solid fa-trash-can"></i></button>
+              <td class="solo-admin px-4 py-3 text-right whitespace-nowrap">
+                <button onclick="eliminarProducto('${p.docId}')" title="Eliminar producto" aria-label="Eliminar producto" class="text-xs text-red-400 hover:text-red-300 p-1.5 rounded bg-gray-800"><i class="fa-solid fa-trash-can"></i></button>
               </td>
             </tr>
           `;
@@ -7197,6 +7256,13 @@
         quitarImagenProductoEdit();
       }
 
+      const personalizado = esProductoPersonalizado(prod.docId);
+      const chkAct = document.getElementById('editProdActivo'); if (chkAct) chkAct.checked = prod.activo !== false;
+      const chkVip = document.getElementById('editProdVip'); if (chkVip) chkVip.checked = prod.esVip === true;
+      const filaVip = document.getElementById('editProdFilaVip'); if (filaVip) filaVip.classList.toggle('hidden', !personalizado);
+      const bElim = document.getElementById('btnEditProdEliminar'); if (bElim) bElim.classList.toggle('hidden', !personalizado);
+      const notaBase = document.getElementById('editProdNotaBase'); if (notaBase) notaBase.classList.toggle('hidden', personalizado);
+
       const modal = document.getElementById('modalEditarProducto');
       modal.classList.remove('hidden');
       modal.style.display = 'flex';
@@ -7253,6 +7319,10 @@
           updateData.imagenUrl = imagenProductoBase64Temporal;
         }
 
+        const chkAct = document.getElementById('editProdActivo');
+        if (chkAct) updateData.activo = chkAct.checked;
+        if (esProductoPersonalizado(docId)) { const chkVip = document.getElementById('editProdVip'); if (chkVip) updateData.esVip = chkVip.checked; }
+
         await db.collection('inventario').doc(docId).set(updateData, { merge: true });
         await db.collection('configuracion').doc('precios').set({ [docId]: precio }, { merge: true });
         await db.collection('configuracion').doc('minimos').set({ [docId]: minCompra }, { merge: true });
@@ -7297,12 +7367,14 @@
 
       try {
         const objetivo = JSON.stringify((prod.cuentas || [])[index]);
+        let quitada = null;
         const nuevasCuentas = await modificarCuentasProducto(docId, (lista) => {
           const idx = (JSON.stringify(lista[index]) === objetivo) ? index : lista.findIndex(c => JSON.stringify(c) === objetivo);
           if (idx < 0) throw new Error('La cuenta ya no está en el inventario (pudo venderse). Recarga la lista.');
-          lista.splice(idx, 1);
+          quitada = lista.splice(idx, 1)[0];
           return lista;
         });
+        await liberarAlquileresDeCuentas([quitada]);
         prod.cuentas = nuevasCuentas;
         verDetalleCuentas(docId);
       } catch (e) {
@@ -7322,6 +7394,8 @@
     async function vaciarStock(docId) {
       if (!await confirmarModal("¿Vaciar cuentas de este producto?")) return;
       try {
+        const prodV = catalogoUnificado.find(x => x.docId === docId);
+        await liberarAlquileresDeCuentas(prodV ? prodV.cuentas : []);
         await modificarCuentasProducto(docId, () => []);
         mostrarToast('Stock vaciado.');
       } catch (e) {
@@ -9904,6 +9978,259 @@
       asistenteEditorMarcar(true); renderizarEditorAsistente();
     }
 
+
+    // ==================== PRODUCTOS: CREAR SIN DUPLICAR, ELIMINAR ====================
+    let creandoProducto = false;
+
+    function nombreProductoNormalizado(n) {
+      return String(n || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, ' ').trim();
+    }
+
+    // Los productos base vienen con la página; los que creas tú viven solo en la base de datos
+    function esProductoPersonalizado(docId) {
+      return !PRODUCTOS_BASE_CATALOGO.some(b => b.id === docId || (b.aliases || []).indexOf(docId) !== -1);
+    }
+
+    function nombreProductoDe(docId) {
+      const p = docId ? catalogoUnificado.find(x => x.docId === docId) : null;
+      return p ? p.nombre : '';
+    }
+
+    // Puerta de entrada del formulario: un solo envío a la vez y aviso si ya existe uno igual
+    async function crearNuevoProductoAdmin(e) {
+      if (e && e.preventDefault) e.preventDefault();
+      if (creandoProducto) return;
+      creandoProducto = true;
+      const form = e && e.target && e.target.querySelectorAll ? e.target : null;
+      const botones = form ? Array.from(form.querySelectorAll('button[type="submit"]')) : [];
+      const textos = botones.map(b => b.innerHTML);
+      try {
+        const nombre = String((document.getElementById('nuevoProdNombre') || {}).value || '').trim();
+        const precio = parseFloat((document.getElementById('nuevoProdPrecio') || {}).value);
+        if (!nombre) { alert('Escribe el nombre del producto.'); return; }
+        if (!(precio > 0)) { alert('Escribe un precio mayor a cero.'); return; }
+        const igual = catalogoUnificado.find(p => nombreProductoNormalizado(p.nombre) === nombreProductoNormalizado(nombre));
+        if (igual && !await confirmarModal(`Ya existe un producto llamado "${igual.nombre}". ¿Crear otro igual?`, { textoAceptar: 'Sí, crear otro' })) return;
+        botones.forEach(b => { b.disabled = true; b.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Creando... no toques otra vez'; });
+        await crearNuevoProductoAdminInterno({ preventDefault() {} });
+      } finally {
+        creandoProducto = false;
+        botones.forEach((b, i) => { b.disabled = false; b.innerHTML = textos[i]; });
+      }
+    }
+
+    function quitarNovedadesDeProducto(docId) {
+      try {
+        const ref = db.collection('configuracion').doc('novedades');
+        db.runTransaction(async (t) => {
+          const d = await t.get(ref);
+          if (!d.exists || !Array.isArray(d.data().items)) return;
+          const items = d.data().items.filter(n => !(n && n.productoId === docId));
+          if (items.length !== d.data().items.length) t.set(ref, { items: items }, { merge: true });
+        }).catch(err => console.warn('Novedades:', err));
+      } catch (e) { console.warn(e); }
+    }
+
+    async function eliminarProducto(docId) {
+      if (!esAdminSesionActual()) return;
+      const p = catalogoUnificado.find(x => x.docId === docId);
+      if (!p) return;
+      if (!esProductoPersonalizado(docId)) {
+        alert(`"${p.nombre}" es un producto base del catálogo y no se puede eliminar. Puedes ocultarlo con el botón Activo/Oculto, o vaciar su stock desde Editar.`);
+        return;
+      }
+      const n = (p.cuentas || []).length;
+      const msg = n
+        ? `¿Eliminar el producto "${p.nombre}" y sus ${n} ${n === 1 ? 'cuenta' : 'cuentas'} en stock? No se puede deshacer. Las ventas anteriores se conservan.`
+        : `¿Eliminar el producto "${p.nombre}"? No se puede deshacer.`;
+      if (!await confirmarModal(msg, { textoAceptar: 'Sí, eliminar producto' })) return;
+      try {
+        await liberarAlquileresDeCuentas(p.cuentas);
+        const lote = db.batch();
+        lote.delete(db.collection('inventario').doc(docId));
+        lote.delete(db.collection('inventario_privado').doc(docId));
+        lote.set(db.collection('configuracion').doc('precios'), { [docId]: firebase.firestore.FieldValue.delete() }, { merge: true });
+        lote.set(db.collection('configuracion').doc('minimos'), { [docId]: firebase.firestore.FieldValue.delete() }, { merge: true });
+        await lote.commit();
+        quitarNovedadesDeProducto(docId);
+        cerrarModalEditarProducto();
+        mostrarToast(`Producto "${p.nombre}" eliminado.`);
+      } catch (err) {
+        alert('No se pudo eliminar el producto: ' + err.message);
+      }
+    }
+
+    // ==================== PERFILES DE ALQUILER A LA VENTA EN LA TIENDA ====================
+    let pasarTiendaIds = [];
+    let pasandoATienda = false;
+
+    function textoPerfilAlquiler(a) {
+      if (a.tipo === 'compartida') return 'Perfil: ' + String(a.perfil || 'Perfil') + (a.pin ? ' · PIN: ' + a.pin : '');
+      return 'Cuenta completa · pide el código en Mis cuentas';
+    }
+
+    // Si un perfil sale del stock (o el producto se borra), vuelve a quedar libre en Alquileres
+    async function liberarAlquileresDeCuentas(cuentas) {
+      const ids = [];
+      (cuentas || []).forEach(c => {
+        if (c && typeof c === 'object' && c.alquilerId && ids.indexOf(c.alquilerId) === -1 && netflixCuentasAdmin.some(x => x.id === c.alquilerId)) ids.push(c.alquilerId);
+      });
+      if (!ids.length) return 0;
+      const lote = db.batch(), ahora = new Date().toISOString();
+      ids.forEach(id => lote.update(db.collection('alquileres').doc(id), { enTienda: false, productoTiendaId: '', actualizadoEl: ahora }));
+      await lote.commit();
+      return ids.length;
+    }
+
+    async function quitarPerfilesDeStock(lista) {
+      const porProducto = {};
+      (lista || []).forEach(a => { if (a.productoTiendaId) (porProducto[a.productoTiendaId] = porProducto[a.productoTiendaId] || []).push(a.id); });
+      for (const prod of Object.keys(porProducto)) {
+        if (!catalogoUnificado.some(x => x.docId === prod)) continue; // el producto ya no existe: no se vuelve a crear
+        const ids = new Set(porProducto[prod]);
+        await modificarCuentasProducto(prod, l => l.filter(c => !(c && typeof c === 'object' && ids.has(c.alquilerId))));
+      }
+    }
+
+    function perfilesPasablesATienda(ids) {
+      return (ids || []).map(id => netflixCuentasAdmin.find(x => x.id === id)).filter(a => a && a.estado !== 'asignado' && !a.enTienda);
+    }
+
+    function abrirPasarATienda(ids) {
+      const lista = perfilesPasablesATienda(ids);
+      if (!lista.length) { alert('No hay perfiles libres para pasar a la tienda. Deben estar sin asignar y no estar ya a la venta.'); return; }
+      pasarTiendaIds = lista.map(a => a.id);
+      const r = document.getElementById('ptResumen');
+      if (r) r.textContent = lista.length === 1
+        ? (lista[0].tipo === 'compartida' ? `${lista[0].perfil || 'Perfil'} · ${lista[0].correo}` : lista[0].correo)
+        : `${lista.length} perfiles libres de ${lista[0].correo}`;
+      const sel = document.getElementById('ptProducto');
+      if (sel) {
+        const prods = catalogoUnificado.slice().sort((x, y) => String(x.nombre).localeCompare(String(y.nombre), 'es'));
+        sel.innerHTML = '<option value="">Elige un producto...</option>' +
+          prods.map(p => `<option value="${escaparHtml(p.docId)}">${escaparHtml(p.nombre)} · ${escaparHtml(formatoCOP(p.precio || 0))}</option>`).join('') +
+          (esAdminSesionActual() ? '<option value="__nuevo__">➕ Crear un producto nuevo</option>' : '');
+        sel.value = '';
+      }
+      const plan = [1, 2, 3].indexOf(parseInt(lista[0].plan, 10)) !== -1 ? String(parseInt(lista[0].plan, 10)) : '1';
+      const pl = document.getElementById('ptPlan'); if (pl) pl.value = plan;
+      const nom = document.getElementById('ptNombre'); if (nom) nom.value = 'Netflix Perfil ' + (plan === '1' ? '1 mes' : plan + ' meses');
+      const pre = document.getElementById('ptPrecio'); if (pre) pre.value = Number(lista[0].precio) > 0 ? String(Math.round(Number(lista[0].precio))) : '';
+      nfCerrar('modalNetflixCuenta');
+      ptCambioProducto();
+      nfAbrir('modalPasarTienda');
+    }
+
+    function ptCambioProducto() {
+      const sel = document.getElementById('ptProducto'), nuevo = document.getElementById('ptNuevo');
+      if (nuevo) nuevo.classList.toggle('hidden', !(sel && sel.value === '__nuevo__'));
+    }
+
+    async function confirmarPasarATienda() {
+      if (pasandoATienda) return;
+      pasandoATienda = true;
+      const btn = document.getElementById('btnPasarTienda');
+      const textoBtn = btn ? btn.innerHTML : '';
+      if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Pasando...'; }
+      let marcados = [];
+      try {
+        const lista = perfilesPasablesATienda(pasarTiendaIds);
+        if (!lista.length) throw new Error('Esos perfiles ya no están libres.');
+        const plan = [1, 2, 3].indexOf(parseInt((document.getElementById('ptPlan') || {}).value, 10)) !== -1 ? parseInt(document.getElementById('ptPlan').value, 10) : 1;
+        let prodId = (document.getElementById('ptProducto') || {}).value || '';
+        if (!prodId) throw new Error('Elige a qué producto pasarlos.');
+        const ahora = new Date().toISOString();
+        if (prodId === '__nuevo__') {
+          if (!esAdminSesionActual()) throw new Error('Solo el administrador puede crear productos.');
+          const nombre = String((document.getElementById('ptNombre') || {}).value || '').trim();
+          const precio = Number((document.getElementById('ptPrecio') || {}).value);
+          if (!nombre) throw new Error('Escribe el nombre del producto nuevo.');
+          if (!(precio > 0)) throw new Error('Escribe el precio de venta.');
+          const igual = catalogoUnificado.find(p => nombreProductoNormalizado(p.nombre) === nombreProductoNormalizado(nombre));
+          if (igual) { prodId = igual.docId; }
+          else {
+            prodId = 'prod_' + Date.now();
+            await db.collection('inventario').doc(prodId).set({
+              nombre: nombre, categoria: 'Streaming',
+              descripcion: 'Perfil de Netflix. Al comprarlo queda asignado a tu cuenta, con su fecha de pago y el botón Ver código.',
+              precio: precio, minCompra: 1, stock: 0, activo: true, esVip: false, tipoGarantia: '', imagenUrl: '', fechaCreacion: ahora
+            });
+            try {
+              await db.collection('configuracion').doc('precios').set({ [prodId]: precio }, { merge: true });
+              await db.collection('configuracion').doc('minimos').set({ [prodId]: 1 }, { merge: true });
+            } catch (confErr) { console.warn('Aviso de permisos en configuracion:', confErr); }
+          }
+        }
+        // 1) se marcan los perfiles como "a la venta"
+        const lote = db.batch();
+        lista.forEach(a => lote.update(db.collection('alquileres').doc(a.id), { enTienda: true, productoTiendaId: prodId, planTienda: plan, enTiendaDesde: ahora, actualizadoEl: ahora }));
+        await lote.commit();
+        marcados = lista;
+        // 2) se ponen en el stock del producto
+        const nuevas = lista.map(a => ({ email: a.correo, pass: textoPerfilAlquiler(a), alquilerId: a.id, costo: 0 }));
+        await modificarCuentasProducto(prodId, l => l.concat(nuevas));
+        marcados = [];
+        nfCerrar('modalPasarTienda');
+        mostrarToast(lista.length === 1 ? 'Listo: el perfil ya está a la venta en la tienda.' : `Listo: ${lista.length} perfiles a la venta en la tienda.`);
+      } catch (err) {
+        if (marcados.length) {
+          // si no se pudo poner en el stock, los perfiles no se quedan marcados a medias
+          try {
+            const rev = db.batch();
+            marcados.forEach(a => rev.update(db.collection('alquileres').doc(a.id), { enTienda: false, productoTiendaId: '' }));
+            await rev.commit();
+          } catch (e2) { console.warn(e2); }
+        }
+        alert('No se pudo pasar a la tienda: ' + err.message);
+      } finally {
+        pasandoATienda = false;
+        if (btn) { btn.disabled = false; btn.innerHTML = textoBtn; }
+      }
+    }
+
+    async function sacarDeTienda(id, silencioso) {
+      const a = netflixCuentasAdmin.find(x => x.id === id);
+      if (!a || !a.enTienda) return true;
+      if (!silencioso && !await confirmarModal(`¿Sacar ${a.tipo === 'compartida' ? (a.perfil || 'el perfil') : a.correo} de la tienda? Dejará de poder comprarse y queda libre en Alquileres.`, { textoAceptar: 'Sí, sacar' })) return false;
+      try {
+        await quitarPerfilesDeStock([a]);
+        await db.collection('alquileres').doc(a.id).update({ enTienda: false, productoTiendaId: '', actualizadoEl: new Date().toISOString() });
+        if (!silencioso) mostrarToast('Listo: ya no está a la venta.');
+        return true;
+      } catch (err) {
+        alert('No se pudo sacar de la tienda: ' + err.message);
+        return false;
+      }
+    }
+
+    // Bloque de la ventana "Editar cuenta": estado en la tienda y botón
+    function actualizarBloqueTiendaNf() {
+      const bloque = document.getElementById('nfBloqueTienda');
+      if (!bloque) return;
+      const a = netflixEditandoId ? netflixCuentasAdmin.find(x => x.id === netflixEditandoId) : null;
+      const visible = !!a && a.estado !== 'asignado';
+      bloque.classList.toggle('hidden', !visible);
+      if (!visible) return;
+      const txt = document.getElementById('nfTiendaTexto'), btn = document.getElementById('nfBtnTienda'), btnTxt = document.getElementById('nfBtnTiendaTxt');
+      if (a.enTienda) {
+        const nom = nombreProductoDe(a.productoTiendaId);
+        if (txt) txt.innerHTML = 'Este perfil está <b>a la venta en la tienda</b>' + (nom ? ' en «' + escaparHtml(nom) + '»' : '') + '. Cuando alguien lo compre, queda asignado a ese cliente automáticamente.';
+        if (btnTxt) btnTxt.textContent = 'Sacar de la tienda';
+        if (btn) btn.className = 'w-full bg-gray-800 hover:bg-gray-700 text-emerald-300 border border-emerald-500/30 font-bold py-2 rounded-xl text-xs transition';
+      } else {
+        if (txt) txt.textContent = 'Si quieres venderlo en la tienda, pásalo al stock: el cliente lo compra solo y queda asignado a su cuenta.';
+        if (btnTxt) btnTxt.textContent = 'Pasar a la tienda';
+        if (btn) btn.className = 'w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2 rounded-xl text-xs transition';
+      }
+    }
+
+    async function nfAccionTienda() {
+      const a = netflixEditandoId ? netflixCuentasAdmin.find(x => x.id === netflixEditandoId) : null;
+      if (!a) return;
+      if (a.enTienda) { if (await sacarDeTienda(a.id)) actualizarBloqueTiendaNf(); }
+      else abrirPasarATienda([a.id]);
+    }
+
     // ==================== MI PERFIL ====================
     let misComprasPerfilCache = [];
     let perfilDatosCache = {};
@@ -10895,6 +11222,7 @@
       vence_hoy:   { txt: 'Vence hoy',   chip: 'bg-orange-500/15 text-orange-400 border-orange-500/30', barra: 'bg-orange-500' },
       vencida:     { txt: 'Vencida',     chip: 'bg-red-500/15 text-red-400 border-red-500/30',         barra: 'bg-red-500' },
       sin_asignar: { txt: 'Sin asignar', chip: 'bg-gray-700/40 text-gray-300 border-gray-600/50',      barra: 'bg-gray-500' },
+      en_tienda:   { txt: 'En tienda',   chip: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30', barra: 'bg-emerald-500' },
       sin_fecha:   { txt: 'Sin fecha',   chip: 'bg-gray-700/40 text-gray-300 border-gray-600/50',      barra: 'bg-gray-500' }
     };
 
@@ -10949,7 +11277,7 @@
     }
 
     function estadoNetflix(a) {
-      if (!a || a.estado !== 'asignado') return { clave: 'sin_asignar', dias: null };
+      if (!a || a.estado !== 'asignado') return { clave: (a && a.enTienda) ? 'en_tienda' : 'sin_asignar', dias: null };
       if (!esFechaNetflix(a.proximoPago)) return { clave: 'sin_fecha', dias: null };
       const d = diasNetflix(hoyNetflix(), a.proximoPago);
       if (d < 0) return { clave: 'vencida', dias: d };
@@ -11432,7 +11760,7 @@
       b.innerText = n > 9 ? '9+' : String(n);
     }
 
-    const ORDEN_NETFLIX = { vencida: 0, vence_hoy: 1, por_vencer: 2, activa: 3, sin_fecha: 4, sin_asignar: 5 };
+    const ORDEN_NETFLIX = { vencida: 0, vence_hoy: 1, por_vencer: 2, activa: 3, sin_fecha: 4, en_tienda: 5, sin_asignar: 6 };
 
     function filtrarNetflixAdmin() {
       const q = normalizarBusqueda((document.getElementById('txtNetflixBuscar') || {}).value || '');
@@ -11445,6 +11773,7 @@
         if (f === 'por_vencer' && !(est === 'por_vencer' || est === 'vence_hoy')) return false;
         if (f === 'vencidas' && est !== 'vencida') return false;
         if (f === 'sin_asignar' && est !== 'sin_asignar') return false;
+        if (f === 'en_tienda' && est !== 'en_tienda') return false;
         if (f === 'pendientes' && !(a.estado === 'asignado' && !a.clienteUid)) return false;
         if (f === 'limpieza' && a.limpiezaPendiente !== true) return false;
         if (q) {
@@ -11492,7 +11821,7 @@
           tile(cuenta('activa', 'por_vencer', 'vence_hoy'), 'Al día', 'text-green-400') +
           tile(cuenta('por_vencer', 'vence_hoy'), 'Vencen en 3 días o menos', 'text-amber-400') +
           tile(vencidas, 'Vencidas', 'text-red-400') +
-          tile(cuenta('sin_asignar'), `Sin asignar${pendientes ? ' · ' + pendientes + ' por migrar' : ''}`, 'text-gray-300');
+          tile(cuenta('sin_asignar'), `Sin asignar${cuenta('en_tienda') ? ' · ' + cuenta('en_tienda') + ' en tienda' : ''}${pendientes ? ' · ' + pendientes + ' por migrar' : ''}`, 'text-gray-300');
       }
       const alerta = document.getElementById('alertaNetflixVencidas');
       if (alerta) {
@@ -11544,12 +11873,14 @@
       const todos = netflixCuentasAdmin.filter(x => x.tipo === 'compartida' && x.correo === correo);
       const ocupados = todos.filter(x => x.estado === 'asignado').length;
       const pendPin = todos.filter(x => x.pinPendiente === true).length;
+      const libresTienda = todos.filter(x => x.estado !== 'asignado' && !x.enTienda).map(x => x.id);
       return `
         <div class="p-3 bg-gray-900/60 border border-sky-500/30 rounded-2xl">
           <div class="flex flex-wrap items-start justify-between gap-2">
             <p class="font-mono text-xs text-white break-all select-all">${escaparHtml(correo)}</p>
             <div class="flex items-center gap-1.5 shrink-0">
               <span class="text-[10px] font-bold px-2 py-0.5 rounded-full border bg-sky-500/15 text-sky-300 border-sky-500/30"><i class="${iconoPlataformaNf(todos[0])} mr-1"></i>${escaparHtml(plataformaNf(todos[0]))} · Compartida · ${ocupados}/${todos.length}</span>
+              ${libresTienda.length ? `<button onclick="abrirPasarATienda(['${libresTienda.join("','")}'])" class="px-2 py-0.5 rounded-lg text-[10px] font-bold flex items-center gap-1 transition bg-emerald-600 hover:bg-emerald-500 text-white"><i class="fa-solid fa-store"></i> Pasar ${libresTienda.length === 1 ? '1 libre' : libresTienda.length + ' libres'} a la tienda</button>` : ''}
               <button onclick="eliminarCuentaCompartidaNetflix('${escaparJsAttr(correo)}')" class="px-2 py-0.5 rounded-lg text-[10px] font-bold flex items-center gap-1 transition hover:bg-red-500/20 text-red-400 border border-red-500/40"><i class="fa-solid fa-trash-can"></i> Eliminar cuenta</button>
             </div>
           </div>
@@ -11701,6 +12032,7 @@
     // Borra los registros y deja en el historial a quienes la tenían asignada
     async function borrarDocsNetflix(lista, motivo) {
       try {
+        await quitarPerfilesDeStock(lista.filter(a => a.enTienda && a.productoTiendaId));
         const ahora = new Date().toISOString();
         const lote = db.batch();
         lista.forEach(a => {
@@ -11754,6 +12086,9 @@
           : btn('bg-red-500/15 hover:bg-red-500/25 text-red-300 border border-red-500/30', `quitarNetflix('${id}')`, 'fa-user-minus', 'Quitar');
       } else {
         botones += btn('bg-red-600 hover:bg-red-500 text-white', `abrirModalNetflixCuenta('${id}', true)`, 'fa-user-plus', 'Asignar');
+        botones += a.enTienda
+          ? btn('bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 border border-emerald-500/30', `sacarDeTienda('${id}')`, 'fa-store-slash', 'Sacar de la tienda')
+          : btn('bg-emerald-600 hover:bg-emerald-500 text-white', `abrirPasarATienda(['${id}'])`, 'fa-store', 'Pasar a la tienda');
         // Tras "No renovó" en una cuenta individual: el enlace para restablecer la clave llega aquí
         if (a.limpiezaPendiente === true && a.tipo !== 'compartida' && esNetflixNf(a)) {
           botones += `<button id="btnOtpNf_a_${id}" onclick="pedirCodigoNetflix('${id}','a')" class="px-2.5 py-1.5 rounded-lg text-[11px] font-bold flex items-center gap-1 transition bg-emerald-500 hover:bg-emerald-400 text-black"><i class="fa-solid fa-key"></i> Código</button>`;
@@ -11781,6 +12116,7 @@
           ${(a.tipo === 'compartida' && a.pinPendiente === true) ? `<p class="text-[11px] text-yellow-300 mt-1"><i class="fa-solid fa-key mr-1"></i> Pendiente: pon el PIN <b class="font-mono">${escaparHtml(a.pin || '')}</b> en el perfil «${escaparHtml(a.perfil || '')}» dentro de Netflix.</p>` : ''}
           ${asignada ? `<p class="text-[11px] text-gray-400 mt-1">Plan ${plan} ${plan === 1 ? 'mes' : 'meses'} · ${Number(a.precio) > 0 ? escaparHtml(formatoCOP(a.precio)) : '<span class="text-amber-400">sin precio</span>'} · Pago: <b class="text-gray-200">${fechaCortaNetflix(a.proximoPago)}</b>${diasTxt ? ' · ' + diasTxt : ''}</p>` : ''}
           ${a.limpiezaPendiente === true ? '<p class="text-[11px] text-yellow-300 mt-1"><i class="fa-solid fa-broom mr-1"></i> Pendiente: cambiar clave y cerrar sesiones antes de reasignarla.</p>' : ''}
+          ${(a.enTienda && !asignada) ? `<p class="text-[11px] mt-1 text-emerald-300"><i class="fa-solid fa-store mr-1"></i> A la venta en la tienda${nombreProductoDe(a.productoTiendaId) ? ': <b>' + escaparHtml(nombreProductoDe(a.productoTiendaId)) + '</b>' : ''} · plan ${parseInt(a.planTienda, 10) || 1} ${(parseInt(a.planTienda, 10) || 1) === 1 ? 'mes' : 'meses'}</p>` : ''}
           ${a.notas ? `<p class="text-[10px] text-gray-500 mt-1">${escaparHtml(a.notas)}</p>` : ''}
           <div class="flex flex-wrap gap-1.5 mt-3">${botones}</div>
           <div id="resNf_a_${id}" class="mt-3"></div>
@@ -11788,7 +12124,17 @@
     }
 
     // ---------- Agregar / editar / asignar ----------
-    function abrirModalNetflixCuenta(id, modoAsignar) {
+    // Si el perfil está a la venta y lo vas a asignar a mano, primero se saca de la tienda
+    async function abrirModalNetflixCuenta(id, modoAsignar) {
+      const a = id ? netflixCuentasAdmin.find(x => x.id === id) : null;
+      if (a && modoAsignar && a.enTienda && a.estado !== 'asignado') {
+        if (!await confirmarModal('Este perfil está a la venta en la tienda. ¿Sacarlo de la tienda y asignarlo a mano?', { textoAceptar: 'Sí, asignar' })) return;
+        if (!(await sacarDeTienda(id, true))) return;
+      }
+      return abrirModalNetflixCuentaBase(id, modoAsignar);
+    }
+
+    function abrirModalNetflixCuentaBase(id, modoAsignar) {
       netflixEditandoId = id || null;
       const a = id ? netflixCuentasAdmin.find(x => x.id === id) : null;
       const set = (campo, valor) => { const el = document.getElementById(campo); if (el) el.value = valor; };
@@ -11815,6 +12161,7 @@
       if (elim) elim.classList.toggle('hidden', !a);
       // Si la cuenta ya tiene fecha de pago, se respeta; si no, se calcula sola
       nfProximoManual = !!(a && esFechaNetflix(a.proximoPago));
+      actualizarBloqueTiendaNf();
       nfAbrir('modalNetflixCuenta');
       nfCambioPlataforma();
       nfCambioTipo();
@@ -12015,6 +12362,10 @@
       if (crudoDe('nfInicio') && !inicio) { alert('La fecha de inicio no es válida. Escríbela como día/mes/año, por ejemplo 21/10/2026.'); return; }
       if (crudoDe('nfProximo') && !proximo) { alert('La fecha del próximo pago no es válida. Escríbela como día/mes/año, por ejemplo 21/10/2026.'); return; }
       const asignada = !!cliente || !!(previa && previa.estado === 'asignado');
+      if (previa && previa.enTienda && previa.estado !== 'asignado' && asignada) {
+        if (!await confirmarModal('Este perfil está a la venta en la tienda. ¿Sacarlo de la tienda y asignarlo a este cliente?', { textoAceptar: 'Sí, asignar' })) return;
+        if (!(await sacarDeTienda(previa.id, true))) return;
+      }
 
       const datos = {
         correo: correo, plan: plan, precio: precio, notas: val('nfNotas'), tipo: tipoFinal, plataforma: plataformaSel,
