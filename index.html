@@ -761,6 +761,13 @@
           <h3 class="text-sm font-bold text-white mb-1 flex items-center gap-2"><i class="fa-solid fa-bolt text-emerald-400"></i> Recargas automáticas (Bre-B)</h3>
           <p class="text-xs text-gray-400 mb-3">La plataforma lee en tu Gmail los correos de Nequi y acredita el saldo sola. Cada pedido lleva un monto único, por ejemplo $50.026.</p>
           <div class="space-y-3">
+            <div>
+              <label class="block text-[11px] text-gray-400 mb-1">Método de pago que verán los clientes (tu llave Bre-B de Nequi Negocios)</label>
+              <select id="selRecargaMetodo" onchange="selRecargaMetodoTocado = true" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none">
+                <option value="">Elige un método de pago...</option>
+              </select>
+              <p class="text-[10px] text-gray-500 mt-1">Si cambias la llave más adelante, edítala en "Métodos de pago" y se actualiza sola para los clientes.</p>
+            </div>
             <label class="flex items-center gap-2 text-xs text-white font-bold cursor-pointer"><input type="checkbox" id="chkRecargaAuto" class="w-4 h-4 accent-emerald-500"> Activar recargas automáticas</label>
             <div class="grid grid-cols-2 gap-3">
               <div>
@@ -5344,6 +5351,7 @@
         renderizarMetodosPagoEnClientes();
         cargarMetodosPagoAdmin();
         renderizarRecargaAuto();
+        renderizarSelectorMetodoRecarga();
       });
     }
 
@@ -7420,7 +7428,21 @@
       unsubRecargaEstado = null; unsubPagosSinId = null; unsubPagosAcred = null;
     }
 
+    let selRecargaMetodoTocado = false;
+
+    function renderizarSelectorMetodoRecarga() {
+      const sel = document.getElementById('selRecargaMetodo');
+      if (!sel) return;
+      const actual = metodoRecargaAuto();
+      const previo = sel.value;
+      sel.innerHTML = '<option value="">Elige un método de pago...</option>' +
+        metodosPagoList.map(m => `<option value="${escaparHtml(m.docId)}">${escaparHtml(m.nombre || 'Método')} · ${escaparHtml(m.llave || '')}</option>`).join('');
+      const quiere = (selRecargaMetodoTocado && previo) ? previo : (actual ? actual.docId : '');
+      sel.value = metodosPagoList.some(m => m.docId === quiere) ? quiere : '';
+    }
+
     function renderizarRecargaAutoAdmin() {
+      renderizarSelectorMetodoRecarga();
       const chk = document.getElementById('chkRecargaAuto');
       if (chk && document.activeElement !== chk) chk.checked = recargaAutoCfg.activa;
       const mi = document.getElementById('recargaAutoMinutos');
@@ -7451,12 +7473,24 @@
       const activa = !!document.getElementById('chkRecargaAuto').checked;
       const minutos = Math.max(5, Math.min(120, parseInt(document.getElementById('recargaAutoMinutos').value, 10) || 30));
       const minimo = Math.max(1000, parseInt(document.getElementById('recargaAutoMinimo').value, 10) || 5000);
-      if (activa && !metodoRecargaAuto()) { alert('Primero marca un método de pago como "Bre-B automática" (en el formulario de abajo) y guárdalo.'); return; }
+      const metodoId = (document.getElementById('selRecargaMetodo') || {}).value || '';
+      const elegido = metodosPagoList.find(m => m.docId === metodoId) || metodoRecargaAuto();
+      if (activa && !elegido) { alert('Primero elige arriba el método de pago (tu llave Bre-B) que verán los clientes.'); return; }
       const datos = { activa: activa, minutos: minutos, minimo: minimo, actualizadoEl: new Date().toISOString() };
       if (activa && !recargaAutoCfg.activa) datos.activadaEl = new Date().toISOString();
       try {
-        await db.collection('configuracion').doc('recarga_auto').set(datos, { merge: true });
-        mostrarToast(activa ? 'Recargas automáticas activadas.' : 'Recargas automáticas apagadas.');
+        const lote = db.batch();
+        // Un solo método queda marcado como automático; el resto vuelve a manual
+        if (metodoId) {
+          metodosPagoList.forEach(m => {
+            if (m.docId === metodoId && m.auto !== 'breb') lote.set(db.collection('metodos_pago').doc(m.docId), { auto: 'breb' }, { merge: true });
+            else if (m.docId !== metodoId && m.auto === 'breb') lote.set(db.collection('metodos_pago').doc(m.docId), { auto: '' }, { merge: true });
+          });
+        }
+        lote.set(db.collection('configuracion').doc('recarga_auto'), datos, { merge: true });
+        await lote.commit();
+        selRecargaMetodoTocado = false;
+        mostrarToast(activa ? 'Recargas automáticas activadas.' : 'Configuración guardada (recargas automáticas apagadas).');
       } catch (err) { alert('No se pudo guardar: ' + err.message); }
     }
 
