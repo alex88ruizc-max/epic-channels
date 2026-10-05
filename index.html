@@ -189,6 +189,25 @@
   
     /* Número de novedades sin leer en el botón del asistente */
     .asistente-badge-nov { position:absolute; top:-6px; right:-6px; min-width:20px; height:20px; padding:0 5px; border-radius:9999px; background:#ef4444; color:#fff; font-size:11px; font-weight:900; display:flex; align-items:center; justify-content:center; border:2px solid #0b0f19; box-shadow:0 4px 10px -2px rgba(239,68,68,.7); }
+  
+    /* ===== Menú del panel: cuadros uniformes y configurables ===== */
+    #adminMenuGrid .admin-tab { min-height: 76px; }
+    #adminMenuGrid .admin-tab > span:not([id]) { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    #adminMenuGrid.estilo-compacto .admin-tab { min-height: 62px; padding: .55rem .3rem; font-size: 10px; gap: .3rem; }
+    #adminMenuGrid.estilo-compacto .admin-tab i { font-size: .95rem; }
+    @media (max-width: 1023px) {
+      #adminMenuGrid.estilo-lista .admin-tab { flex-direction: row; justify-content: flex-start; text-align: left; min-height: 52px; padding: .6rem .8rem; gap: .65rem; font-size: 12px; }
+      #adminMenuGrid .admin-tab-grande { grid-column: 1 / -1; flex-direction: row; justify-content: center; min-height: 58px; gap: .6rem; font-size: 13px; }
+    }
+    #adminMenuGrid .admin-tab-destacado { color: #fff !important; font-weight: 900; border-width: 1px; }
+    #adminMenuGrid .admin-tab-destacado i { color: #fff !important; font-size: 1.2rem; }
+    #adminMenuGrid .dest-rojo { background: linear-gradient(135deg, #8f060d, #e50914 55%, #ff4d57) !important; border-color: rgba(255,110,118,.7) !important; box-shadow: 0 10px 26px -12px rgba(229,9,20,.9); }
+    #adminMenuGrid .dest-dorado { background: linear-gradient(135deg, #a16207, #f59e0b 55%, #fde047) !important; border-color: rgba(253,224,71,.7) !important; color: #1a1205 !important; box-shadow: 0 10px 26px -12px rgba(245,158,11,.9); }
+    #adminMenuGrid .dest-dorado i { color: #1a1205 !important; }
+    #adminMenuGrid .dest-verde { background: linear-gradient(135deg, #047857, #10b981 55%, #6ee7b7) !important; border-color: rgba(110,231,183,.7) !important; box-shadow: 0 10px 26px -12px rgba(16,185,129,.9); }
+    #adminMenuGrid .dest-azul { background: linear-gradient(135deg, #1d4ed8, #3b82f6 55%, #7dd3fc) !important; border-color: rgba(125,211,252,.7) !important; box-shadow: 0 10px 26px -12px rgba(59,130,246,.9); }
+    #adminMenuGrid .dest-morado { background: linear-gradient(135deg, #6d28d9, #a855f7 55%, #f0abfc) !important; border-color: rgba(240,171,252,.7) !important; box-shadow: 0 10px 26px -12px rgba(168,85,247,.9); }
+    #adminMenuGrid .admin-tab-destacado[aria-current="page"] { outline: 2px solid rgba(255,255,255,.85); outline-offset: 2px; }
   </style>
 </head>
 <body class="min-h-screen flex flex-col justify-between">
@@ -496,9 +515,14 @@
 
       <!-- TAB: MIS CUENTAS -->
       <div id="perfilSecCuentas">
-        <div id="misReportesCaja" class="hidden mb-3 p-3 bg-gray-900 border border-amber-500/30 rounded-2xl">
-          <h4 class="text-xs font-bold text-white mb-2 flex items-center gap-2"><i class="fa-solid fa-ticket text-amber-400"></i> Mis reportes <span id="misReportesAbiertos" class="hidden px-2 py-0.5 rounded-full bg-amber-500 text-black text-[10px] font-black"></span></h4>
-          <div id="misReportes" class="space-y-2"></div>
+        <div id="misReportesCaja" class="hidden mb-3">
+          <button type="button" onclick="abrirMisReportes()" class="relative w-full flex items-center gap-3 p-3 rounded-2xl bg-amber-400/10 hover:bg-amber-400/15 border border-amber-400/40 text-left transition">
+            <span class="w-9 h-9 shrink-0 rounded-xl bg-amber-400 text-black flex items-center justify-center"><i class="fa-solid fa-ticket"></i></span>
+            <span class="min-w-0 flex-grow"><span class="block text-xs font-black text-white">Mis reportes</span><span id="misReportesResumen" class="block text-[11px] text-amber-200/90 truncate"></span></span>
+            <span id="misReportesAbiertos" class="hidden px-2 py-0.5 rounded-full bg-amber-500 text-black text-[10px] font-black"></span>
+            <span id="misReportesNuevas" class="hidden absolute -top-1.5 -right-1.5 min-w-[20px] h-5 px-1 rounded-full bg-red-500 text-white text-[11px] font-black flex items-center justify-center border-2 border-gray-950"></span>
+            <i class="fa-solid fa-chevron-right text-amber-300 text-xs"></i>
+          </button>
         </div>
         <div id="perfilNetflixCaja" class="hidden mb-3 p-3 rounded-2xl border border-red-500/40 bg-gradient-to-br from-red-600/10 to-gray-900">
           <h4 class="text-xs font-black text-white mb-2.5 flex items-center gap-2"><span class="nf-wordmark text-[12px]">NETFLIX</span> Mis cuentas asignadas</h4>
@@ -667,7 +691,7 @@
       <div class="lg:grid lg:grid-cols-[230px_minmax(0,1fr)] lg:gap-6 lg:items-start">
         <nav class="mb-6 lg:mb-0 lg:sticky lg:top-24 p-2 bg-gray-900/40 border border-gray-800 rounded-2xl">
           <span class="hidden lg:block text-[10px] font-bold text-gray-500 uppercase tracking-wider px-2 pt-1 pb-2">Secciones</span>
-          <div class="grid grid-cols-3 lg:grid-cols-1 gap-1.5">
+          <div id="adminMenuGrid" class="grid grid-cols-3 lg:grid-cols-1 gap-1.5">
           <button onclick="irATabAdmin('productos')" id="tabBtnProductos" class="admin-tab bg-gray-900 border-gray-800 text-gray-400">
             <i class="fa-solid fa-boxes-stacked"></i><span>Gestión y Visibilidad</span><span id="badgeTabStockBajo" class="hidden absolute top-1.5 right-1.5 lg:static lg:ml-auto min-w-[18px] h-[18px] px-1 rounded-full bg-amber-500 text-black text-[10px] font-black flex items-center justify-center"></span>
           </button>
@@ -698,7 +722,7 @@
           <button onclick="irATabAdmin('historial')" id="tabBtnHistorial" class="admin-tab bg-gray-900 border-gray-800 text-gray-400">
             <i class="fa-solid fa-receipt"></i><span>Historial de Ventas</span>
           </button>
-          <button onclick="irATabAdmin('netflix')" id="tabBtnNetflix" class="admin-tab admin-tab-ancho bg-gray-900 border-gray-800 text-gray-400">
+          <button onclick="irATabAdmin('netflix')" id="tabBtnNetflix" class="admin-tab bg-gray-900 border-gray-800 text-gray-400">
             <i class="fa-solid fa-tv"></i><span>Alquileres</span><span id="badgeTabNetflix" class="hidden lg:static lg:ml-auto min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-[10px] font-black flex items-center justify-center"></span>
           </button>
           <button onclick="irATabAdmin('proveedores')" id="tabBtnProveedores" class="solo-admin admin-tab bg-gray-900 border-gray-800 text-gray-400">
@@ -719,7 +743,10 @@
           <button onclick="irATabAdmin('asistente')" id="tabBtnAsistente" class="solo-admin admin-tab bg-gray-900 border-gray-800 text-gray-400">
             <i class="fa-solid fa-robot"></i><span>Asistente</span>
           </button>
-          <button onclick="irATabAdmin('ajustes')" id="tabBtnAjustes" class="solo-admin admin-tab admin-tab-ancho bg-gray-900 border-gray-800 text-gray-400">
+          <button onclick="irATabAdmin('vista')" id="tabBtnVista" class="admin-tab bg-gray-900 border-gray-800 text-gray-400">
+            <i class="fa-solid fa-table-cells-large"></i><span>Vista del panel</span>
+          </button>
+          <button onclick="irATabAdmin('ajustes')" id="tabBtnAjustes" class="solo-admin admin-tab bg-gray-900 border-gray-800 text-gray-400">
             <i class="fa-solid fa-gears"></i><span>Ajustes Generales</span>
           </button>
           </div>
@@ -912,7 +939,7 @@
           </div>
           <div class="overflow-x-auto">
             <table class="w-full text-left text-sm text-gray-300">
-              <thead class="bg-gray-800/60 text-xs uppercase text-gray-400">
+              <thead class="hidden md:table-header-group bg-gray-800/60 text-xs uppercase text-gray-400">
                 <tr>
                   <th class="px-4 py-3">Cliente / Correo</th>
                   <th class="px-4 py-3">WhatsApp</th>
@@ -1235,6 +1262,34 @@
         <div id="bcResultado" class="space-y-3"></div>
       </div>
 
+      <!-- ==================== ADMIN: VISTA DEL PANEL ==================== -->
+      <div id="adminSecVista" class="hidden space-y-4 pb-28 sm:pb-0">
+        <div class="p-4 rounded-2xl border border-emerald-500/30 bg-gradient-to-br from-emerald-500/10 via-gray-900 to-gray-900">
+          <h3 class="text-base font-black text-white flex items-center gap-2"><i class="fa-solid fa-table-cells-large text-emerald-400"></i> Vista del panel</h3>
+          <p class="text-xs text-gray-400 mt-1 leading-relaxed">Arma el menú a tu gusto: cómo se ven los cuadros, cuál resalta y en qué orden salen. Los cambios se ven al instante arriba; toca <b class="text-gray-200">Guardar</b> para dejarlos fijos en todos tus dispositivos.</p>
+        </div>
+        <div class="bg-gray-900 border border-gray-800 rounded-2xl p-4 space-y-4">
+          <div><p class="text-xs font-bold text-white mb-2">Estilo de los cuadros</p><div id="vpEstilos" class="grid grid-cols-3 gap-2"></div></div>
+          <div><p class="text-xs font-bold text-white mb-2">Cuadros por fila en el celular</p><div id="vpColumnas" class="grid grid-cols-3 gap-2"></div></div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div><p class="text-xs font-bold text-white mb-2">Cuadro grande destacado</p><select id="vpDestacado" onchange="vpCambiar('destacado', this.value)" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"></select></div>
+            <div><p class="text-xs font-bold text-white mb-2">Color del destacado</p><div id="vpColores" class="flex flex-wrap gap-2"></div></div>
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div><p class="text-xs font-bold text-white mb-2">Sección que abre al entrar</p><select id="vpInicio" onchange="vpCambiar('inicio', this.value)" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"></select></div>
+            <label class="flex items-center justify-between gap-3 p-3 rounded-xl bg-gray-800/60 border border-gray-700/60 cursor-pointer self-end"><span class="text-xs font-bold text-white">Íconos de colores</span><input type="checkbox" id="vpIconos" onchange="vpCambiar('iconos', this.checked)" class="accent-emerald-500 w-5 h-5"></label>
+          </div>
+        </div>
+        <div class="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden">
+          <div class="px-4 py-3 border-b border-gray-800"><h4 class="text-sm font-black text-white">Orden y cuadros visibles</h4><p class="text-[11px] text-gray-400 mt-0.5">Mueve con las flechas. El ojo oculta un cuadro del menú (la sección sigue existiendo). "Ajustes Generales" queda siempre de último y en grande.</p></div>
+          <div id="vpOrden" class="p-3 space-y-1.5 max-h-[60vh] overflow-y-auto"></div>
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+          <button type="button" onclick="restaurarVistaPanel()" class="py-3 rounded-xl bg-gray-800 hover:bg-gray-700 border border-gray-700 text-gray-200 font-bold text-xs">Volver a la vista original</button>
+          <button type="button" id="btnGuardarVistaPanel" onclick="guardarVistaPanel()" class="py-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-black text-xs"><i class="fa-solid fa-floppy-disk mr-1"></i>Guardar vista</button>
+        </div>
+      </div>
+
       <!-- ==================== ADMIN: NOVEDADES PARA CLIENTES ==================== -->
       <div id="adminSecNovedades" class="hidden space-y-4 pb-28 sm:pb-0">
         <div class="p-4 rounded-2xl border border-sky-500/30 bg-gradient-to-br from-sky-500/10 via-gray-900 to-gray-900">
@@ -1251,6 +1306,18 @@
             <button type="button" onclick="copiarNovedadBorrador()" class="py-2.5 rounded-xl bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/40 text-emerald-300 font-bold text-[11px] flex items-center justify-center gap-1.5"><i class="fa-brands fa-whatsapp"></i> Copiar</button>
             <button type="button" onclick="guardarNovedadCliente(true)" class="py-2.5 rounded-xl bg-sky-500 hover:bg-sky-400 text-black font-black text-[11px] flex items-center justify-center gap-1.5"><i class="fa-solid fa-bullhorn"></i> Difundir</button>
           </div>
+        </div>
+        <div class="bg-gray-900 border border-emerald-500/30 rounded-2xl overflow-hidden">
+          <div class="px-4 py-3 border-b border-gray-800">
+            <div class="flex items-center gap-2"><i class="fa-solid fa-wand-magic-sparkles text-emerald-400"></i><h4 class="text-sm font-black text-white">Actualizaciones de la página</h4><span id="actPendientes" class="ml-auto text-[11px] text-gray-400"></span></div>
+            <p class="text-[11px] text-gray-400 mt-1 leading-relaxed">Cada versión nueva trae aquí, sola, la lista de mejoras para tus clientes, ya redactada. Cópiala para WhatsApp o difúndela.</p>
+            <div class="flex flex-wrap items-center gap-2 mt-2.5">
+              <button type="button" id="btnComprobarVersion" onclick="comprobarActualizacionPagina(true)" class="px-3 py-2 rounded-xl bg-gray-800 hover:bg-gray-700 border border-gray-700 text-gray-100 font-bold text-[11px]"><i class="fa-solid fa-arrows-rotate mr-1"></i>Comprobar actualizaciones de la página</button>
+              <span id="txtVersionPagina" class="text-[10px] text-gray-500"></span>
+            </div>
+            <div id="resultadoVersion" class="hidden mt-2"></div>
+          </div>
+          <div id="listaActualizaciones" class="divide-y divide-gray-800"></div>
         </div>
         <div class="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden">
           <div class="px-4 py-3 border-b border-gray-800 flex items-center gap-2"><i class="fa-solid fa-clock-rotate-left text-gray-400"></i><h4 class="text-sm font-black text-white">Tus novedades</h4><span id="novTotal" class="ml-auto text-[11px] text-gray-400"></span></div>
@@ -2768,6 +2835,16 @@
   </div>
 
 
+  <!-- AVISO: HAY UNA VERSIÓN NUEVA DE LA PÁGINA -->
+  <div id="avisoVersionNueva" class="hidden fixed left-1/2 -translate-x-1/2 z-[240] w-[calc(100%-1.5rem)] max-w-md" style="bottom:calc(5.5rem + env(safe-area-inset-bottom));">
+    <div class="flex items-center gap-3 p-3 rounded-2xl bg-sky-600 text-white shadow-2xl shadow-sky-900/50 border border-sky-400/60">
+      <i class="fa-solid fa-arrows-rotate text-lg shrink-0"></i>
+      <p class="min-w-0 flex-grow text-xs font-bold leading-snug">Hay una versión nueva de la página con mejoras.</p>
+      <button type="button" onclick="recargarVersionNueva()" class="shrink-0 px-3 py-1.5 rounded-xl bg-white text-sky-700 font-black text-xs">Actualizar</button>
+      <button type="button" onclick="document.getElementById('avisoVersionNueva').classList.add('hidden')" aria-label="Cerrar" class="shrink-0 text-white/80"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+  </div>
+
   <!-- VISOR DE IMÁGENES A PANTALLA COMPLETA (comprobantes, fotos de tickets, capturas, productos, QR) -->
   <div id="modalVisorImagen" class="fixed inset-0 z-[250] hidden flex-col bg-black" role="dialog" aria-modal="true">
     <div class="shrink-0 flex items-center justify-between gap-3 px-4 py-3" style="padding-top:max(.75rem, env(safe-area-inset-top));">
@@ -2873,6 +2950,49 @@
         <button type="button" onclick="regenerarEnlaceCodigo()" class="w-full py-2 rounded-xl bg-gray-800 hover:bg-gray-700 border border-gray-700 text-gray-300 font-bold text-[11px]"><i class="fa-solid fa-rotate mr-1"></i>Generar uno nuevo (el actual deja de servir)</button>
         <p class="text-[10px] text-gray-500 leading-relaxed">Quien tenga este enlace puede ver los códigos de esta cuenta sin iniciar sesión, mientras el mes esté pagado. Al renovar, el enlace cambia solo. Si lo compartiste por error, genera uno nuevo.</p>
       </div>
+    </div>
+  </div>
+
+
+  <!-- MODAL: CARGAR SALDO A UN CLIENTE (celular) -->
+  <div id="modalSaldoCliente" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden items-center justify-center p-3 sm:p-4">
+    <div class="bg-gray-900 border border-emerald-500/40 rounded-2xl max-w-sm w-full shadow-2xl overflow-hidden">
+      <div class="flex items-center justify-between gap-3 px-4 py-3 border-b border-gray-800">
+        <h3 class="text-base font-black text-white"><i class="fa-solid fa-wallet text-emerald-400 mr-1.5"></i>Cargar saldo</h3>
+        <button type="button" onclick="cerrarSaldoCliente()" aria-label="Cerrar" class="w-8 h-8 rounded-full bg-gray-800 hover:bg-gray-700 text-gray-300 flex items-center justify-center"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="p-4 space-y-3">
+        <p id="scNombre" class="text-xs text-gray-300"></p>
+        <input type="number" id="scMonto" min="0" step="1000" placeholder="Monto en COP" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500/60">
+        <div id="scRapidos" class="grid grid-cols-4 gap-1.5"></div>
+        <p class="text-[10px] text-gray-500">Si el cliente tiene crédito pendiente, primero se paga la deuda.</p>
+        <button type="button" onclick="confirmarSaldoCliente()" class="w-full py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-black text-xs">Cargar saldo</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: HISTORIAL DE RECARGAS DE UN CLIENTE -->
+  <div id="modalRecargasCliente" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden items-center justify-center p-3 sm:p-4">
+    <div class="bg-gray-900 border border-sky-500/40 rounded-2xl max-w-md w-full shadow-2xl max-h-[92vh] flex flex-col overflow-hidden">
+      <div class="shrink-0 flex items-center justify-between gap-3 px-4 py-3 border-b border-gray-800">
+        <div class="min-w-0"><h3 class="text-base font-black text-white"><i class="fa-solid fa-receipt text-sky-400 mr-1.5"></i>Recargas</h3><p id="rcNombre" class="text-[11px] text-gray-400 truncate"></p></div>
+        <button type="button" onclick="cerrarRecargasCliente()" aria-label="Cerrar" class="w-8 h-8 shrink-0 rounded-full bg-gray-800 hover:bg-gray-700 text-gray-300 flex items-center justify-center"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="overflow-y-auto p-4 space-y-3">
+        <div id="rcResumen" class="grid grid-cols-3 gap-2"></div>
+        <div id="rcLista" class="space-y-2"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: MIS REPORTES (cliente) -->
+  <div id="modalMisReportes" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden items-end sm:items-center justify-center p-0 sm:p-4" onclick="if(event.target===this)cerrarMisReportes()">
+    <div class="bg-gray-900 border border-amber-400/40 rounded-t-3xl sm:rounded-2xl max-w-md w-full shadow-2xl max-h-[88vh] flex flex-col overflow-hidden">
+      <div class="shrink-0 flex items-center justify-between gap-3 px-4 py-3 border-b border-gray-800">
+        <h3 class="text-base font-black text-white flex items-center gap-2"><i class="fa-solid fa-ticket text-amber-400"></i> Mis reportes</h3>
+        <button type="button" onclick="cerrarMisReportes()" aria-label="Cerrar" class="w-8 h-8 shrink-0 rounded-full bg-gray-800 hover:bg-gray-700 text-gray-300 flex items-center justify-center"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div id="misReportes" class="overflow-y-auto p-4 space-y-2.5"></div>
     </div>
   </div>
 
@@ -5684,6 +5804,7 @@
           if (doc.exists) {
             const dataU = doc.data();
             userSaldo = dataU.saldo || 0;
+            try { if (dataU.vistaPanel) recibirVistaPanelDeCuenta(dataU.vistaPanel); } catch (e) { /* nada */ }
             userDeuda = Math.max(0, Number(dataU.deuda) || 0);
             userCupo = Math.max(0, Number(dataU.cupoCredito) || 0);
             try { renderizarCreditoCliente(); } catch (e) { /* nada */ }
@@ -6490,7 +6611,8 @@
         renderizarNetflixCliente();
       } else if (vista === 'admin' && !modoPruebaCliente) {
         document.getElementById('vistaAdmin').classList.remove('hidden');
-        cambiarTabAdmin('productos');
+        try { aplicarVistaPanel(); } catch (e) { /* nada */ }
+        cambiarTabAdmin(seccionInicioPanel());
       }
       if (vista !== 'admin' || modoPruebaCliente) {
         try { fijarRuta(vista === 'netflix' && !vNf ? 'tienda' : (vista === 'admin' ? 'tienda' : vista)); } catch (e) { /* nada */ }
@@ -6502,7 +6624,7 @@
     // epicchannels.quest/#tienda · #mis-cuentas · #mis-cuentas/datos · #netflix · #admin/tickets ...
     // Funcionan para guardar, compartir y con el botón "atrás". Si la sección no le corresponde a quien abre el enlace, va a la tienda.
     const RUTAS_VISTAS = ['tienda', 'mis-cuentas', 'netflix', 'proveedor', 'admin'];
-    const TABS_ADMIN_RUTA = ['productos', 'reporte', 'categorias', 'usuarios', 'tickets', 'stock', 'apariencia', 'pagos', 'recargas', 'historial', 'netflix', 'ajustes', 'proveedores', 'asistente', 'buscar', 'promociones', 'cortes', 'novedades'];
+    const TABS_ADMIN_RUTA = ['productos', 'reporte', 'categorias', 'usuarios', 'tickets', 'stock', 'apariencia', 'pagos', 'recargas', 'historial', 'netflix', 'ajustes', 'proveedores', 'asistente', 'buscar', 'promociones', 'cortes', 'novedades', 'vista'];
     const TABS_PERFIL_RUTA = ['cuentas', 'recargas', 'datos', 'seguridad'];
     let aplicandoRuta = false, rutaActual = '', rutaPendienteStaff = '';
 
@@ -6896,7 +7018,7 @@
     function cambiarTabAdmin(tab) {
       if (modoPruebaCliente) return;
       iniciarBadgesAdmin();
-      const tabs = ['productos', 'reporte', 'categorias', 'usuarios', 'tickets', 'stock', 'apariencia', 'pagos', 'recargas', 'historial', 'netflix', 'ajustes', 'proveedores', 'asistente', 'buscar', 'promociones', 'cortes', 'novedades'];
+      const tabs = ['productos', 'reporte', 'categorias', 'usuarios', 'tickets', 'stock', 'apariencia', 'pagos', 'recargas', 'historial', 'netflix', 'ajustes', 'proveedores', 'asistente', 'buscar', 'promociones', 'cortes', 'novedades', 'vista'];
       // El moderador no entra a la configuración general ni a los pagos a proveedores
       if (esModeradorSesion() && RESTRINGIDAS_MODERADOR.includes(tab)) tab = 'productos';
       tabs.forEach(t => {
@@ -6927,7 +7049,8 @@
       if (tab === 'asistente') cargarEditorAsistente();
       if (tab === 'tickets') { renderizarTickets(); limpiarFotosRespuestaVencidas(); }
       if (tab === 'promociones') { renderizarPromoProductos(); renderizarPromoActivas(); }
-      if (tab === 'novedades') { iniciarNovedadesClientes(); renderizarNovedadesAdmin(); }
+      if (tab === 'vista') renderizarEditorVistaPanel();
+      if (tab === 'novedades') { iniciarNovedadesClientes(); renderizarNovedadesAdmin(); renderizarActualizacionesPagina(); }
       if (tab === 'cortes') { try { iniciarNetflixAdmin(); } catch (e) { /* nada */ } renderizarCortes(); }
       if (tab === 'buscar') prepararBuscadorAdmin();
       try { const vAdm = document.getElementById('vistaAdmin'); if (vAdm && !vAdm.classList.contains('hidden')) fijarRuta('admin/' + tab); } catch (e) { /* nada */ }
@@ -8192,16 +8315,45 @@
 
             const textoBusqueda = construirAtributoBusqueda(u.email, u.nombre, u.whatsapp, enLinea ? 'en linea' : 'inactivo');
 
+            const iniciales = String(u.nombre || u.email || '?').trim().split(/\s+/).slice(0, 2).map(x => x.charAt(0).toUpperCase()).join('') || '?';
+            const deudaU = Number(u.deuda) || 0;
+            const waU = String(u.whatsapp || '').replace(/\D/g, '');
             html += `
               <tr data-buscar="${textoBusqueda}" class="hover:bg-gray-800/40 border-b border-gray-800">
-                <td class="px-4 py-3">
+                <td colspan="7" class="md:hidden p-0">
+                  <div class="p-3.5">
+                    <div class="flex items-start gap-3">
+                      <div class="relative shrink-0 w-11 h-11 rounded-full bg-gradient-to-br from-emerald-500/30 to-sky-500/20 border border-emerald-500/40 text-emerald-200 flex items-center justify-center text-sm font-black">${escaparHtml(iniciales)}${enLinea ? '<span class="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-emerald-400 border-2 border-gray-900"></span>' : ''}</div>
+                      <div class="min-w-0 flex-grow">
+                        <p class="text-sm font-black text-white truncate">${escaparHtml(u.nombre || u.email || 'Ficha incompleta')}</p>
+                        <p class="text-[11px] text-gray-400 font-mono truncate">${escaparHtml(u.email || uid)}</p>
+                        <div class="flex flex-wrap items-center gap-1.5 mt-1">${u.rol === 'proveedor' ? '<span class="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 text-[9px] font-black">PROVEEDOR</span>' : (u.rol === 'moderador' ? '<span class="px-1.5 py-0.5 rounded bg-sky-500/20 text-sky-300 text-[9px] font-black">MODERADOR</span>' : '')}<span data-nivel-uid="${uid}"></span>${deudaU > 0 ? `<span class="px-1.5 py-0.5 rounded bg-violet-500/20 text-violet-200 text-[9px] font-black">DEBE ${formatoCOP(deudaU)}</span>` : ''}</div>
+                      </div>
+                      <div class="shrink-0 text-right"><p class="text-[10px] text-gray-500">Saldo</p><p class="text-base font-black text-emerald-400">${formatoCOP(u.saldo || 0)}</p></div>
+                    </div>
+                    <div class="grid grid-cols-3 gap-1.5 mt-3 text-center">
+                      <div class="rounded-lg bg-gray-800/60 py-1.5"><p class="text-[9px] text-gray-500 uppercase">Registro</p><p class="text-[11px] text-gray-200 font-bold">${fechaRegStr}</p></div>
+                      <div class="rounded-lg bg-gray-800/60 py-1.5"><p class="text-[9px] text-gray-500 uppercase">Último acceso</p><p class="text-[11px] ${enLinea ? 'text-emerald-300' : 'text-gray-200'} font-bold">${enLinea ? 'En línea' : escaparHtml(ultimoAccesoStr)}</p></div>
+                      <div class="rounded-lg bg-gray-800/60 py-1.5"><p class="text-[9px] text-gray-500 uppercase">WhatsApp</p>${waU.length >= 10 ? `<a href="https://wa.me/${waU.length === 10 ? '57' + waU : waU}" target="_blank" rel="noopener" class="text-[11px] text-emerald-300 font-bold">${escaparHtml(u.whatsapp)}</a>` : '<p class="text-[11px] text-gray-500">—</p>'}</div>
+                    </div>
+                    <div class="grid grid-cols-4 gap-1.5 mt-2.5">
+                      <button onclick="abrirModalEditarCliente('${uid}', '${escaparJsAttr(u.email)}', '${escaparJsAttr(u.nombre)}')" class="py-2 rounded-lg bg-gray-800 hover:bg-gray-700 border border-gray-700 text-emerald-300 text-[10px] font-bold flex flex-col items-center gap-0.5"><i class="fa-solid fa-pen"></i>Editar</button>
+                      <button onclick="abrirSaldoCliente('${uid}', '${escaparJsAttr(u.nombre || u.email || '')}')" class="py-2 rounded-lg bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/40 text-emerald-300 text-[10px] font-bold flex flex-col items-center gap-0.5"><i class="fa-solid fa-plus"></i>Saldo</button>
+                      <button onclick="verRecargasCliente('${uid}', '${escaparJsAttr(u.nombre || u.email || '')}')" class="py-2 rounded-lg bg-gray-800 hover:bg-gray-700 border border-gray-700 text-sky-300 text-[10px] font-bold flex flex-col items-center gap-0.5"><i class="fa-solid fa-receipt"></i>Recargas</button>
+                      <button onclick="abrirModalPermisosCliente('${uid}', '${escaparJsAttr(u.email)}', ${JSON.stringify(permitidos).replace(/"/g, '&quot;')}, ${JSON.stringify(bloqueados).replace(/"/g, '&quot;')})" class="py-2 rounded-lg bg-gray-800 hover:bg-gray-700 border border-gray-700 text-blue-300 text-[10px] font-bold flex flex-col items-center gap-0.5"><i class="fa-solid fa-list-check"></i>Catálogo</button>
+                    </div>
+                    <button onclick="eliminarCliente('${uid}', '${escaparJsAttr(u.email)}')" class="solo-admin mt-2 w-full py-1.5 rounded-lg text-[10px] font-bold text-red-300/80 hover:text-red-300 hover:bg-red-500/10"><i class="fa-solid fa-trash-can mr-1"></i>Eliminar cliente</button>
+                  </div>
+                </td>
+                <td class="hidden md:table-cell px-4 py-3">
                   ${nombreCliente}
                   ${u.rol === 'proveedor' ? '<span class="inline-block mt-1 px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 text-[9px] font-black">PROVEEDOR</span>' : (u.rol === 'moderador' ? '<span class="inline-block mt-1 px-1.5 py-0.5 rounded bg-sky-500/20 text-sky-300 text-[9px] font-black">MODERADOR</span>' : '')}
                   <span data-nivel-uid="${uid}" class="block mt-1"></span>
                   <button onclick="abrirModalEditarCliente('${uid}', '${escaparJsAttr(u.email)}', '${escaparJsAttr(u.nombre)}')" class="mt-1 text-[10px] bg-gray-800 hover:bg-gray-700 text-emerald-400 px-2 py-0.5 rounded"><i class="fa-solid fa-pen mr-1"></i> Editar perfil</button>
+                  <button onclick="verRecargasCliente('${uid}', '${escaparJsAttr(u.nombre || u.email || '')}')" class="mt-1 text-[10px] bg-gray-800 hover:bg-gray-700 text-sky-300 px-2 py-0.5 rounded"><i class="fa-solid fa-receipt mr-1"></i> Recargas</button>
                 </td>
-                <td class="px-4 py-3 text-xs text-gray-400">${u.whatsapp || 'Sin WhatsApp'}</td>
-                <td class="px-4 py-3">
+                <td class="hidden md:table-cell px-4 py-3 text-xs text-gray-400">${u.whatsapp || 'Sin WhatsApp'}</td>
+                <td class="hidden md:table-cell px-4 py-3">
                   <div class="flex items-center gap-2">
                     <span class="font-bold text-emerald-400">$${(u.saldo || 0).toLocaleString('es-CO')}</span>
                     <div class="flex items-center gap-1">
@@ -8210,19 +8362,19 @@
                     </div>
                   </div>
                 </td>
-                <td class="px-4 py-3 text-center">
+                <td class="hidden md:table-cell px-4 py-3 text-center">
                   <button onclick="abrirModalPermisosCliente('${uid}', '${escaparJsAttr(u.email)}', ${JSON.stringify(permitidos).replace(/"/g, '&quot;')}, ${JSON.stringify(bloqueados).replace(/"/g, '&quot;')})" class="px-2.5 py-1 rounded-lg text-xs font-bold bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 border border-blue-500/40 transition">
                     <i class="fa-solid fa-list-check mr-1"></i> Catálogo
                   </button>
                 </td>
-                <td class="px-4 py-3 text-center text-xs text-gray-300 whitespace-nowrap">${fechaRegStr}</td>
-                <td class="px-4 py-3 text-center text-xs whitespace-nowrap">
+                <td class="hidden md:table-cell px-4 py-3 text-center text-xs text-gray-300 whitespace-nowrap">${fechaRegStr}</td>
+                <td class="hidden md:table-cell px-4 py-3 text-center text-xs whitespace-nowrap">
                   <div class="flex flex-col items-center">
                     <div>${badgeEstado}</div>
                     <span class="text-[10px] text-gray-500 mt-0.5">${ultimoAccesoStr}</span>
                   </div>
                 </td>
-                <td class="px-4 py-3 text-right">
+                <td class="hidden md:table-cell px-4 py-3 text-right">
                   <button onclick="eliminarCliente('${uid}', '${escaparJsAttr(u.email)}')" class="solo-admin px-2.5 py-1 bg-red-500/20 hover:bg-red-500/40 text-red-400 rounded text-xs transition" title="Eliminar cliente">
                     <i class="fa-solid fa-trash-can"></i> Eliminar
                   </button>
@@ -10366,9 +10518,11 @@
           snap.forEach(d => reales.push(Object.assign({ id: d.id }, d.data())));
           reales.sort((a, b) => String(b.creadoEl).localeCompare(String(a.creadoEl)));
           if (modoPruebaCliente && respaldoRealSim) { respaldoRealSim.reportes = reales; return; }
+          const antes = (misReportes || []).filter(t => t.estado === 'resuelto').length;
           misReportes = reales;
           renderizarMisReportes();
           pintarBotonesReporte();
+          if (reales.filter(t => t.estado === 'resuelto').length !== antes && document.getElementById('listaMisCuentas') && !document.getElementById('vistaMisCuentas').classList.contains('hidden')) { try { cargarMisCuentas(); } catch (e) { /* nada */ } }
         }, err => console.warn('Mis reportes no disponibles:', err));
       } catch (e) { console.warn(e); }
     }
@@ -10379,22 +10533,60 @@
       misReportes = [];
     }
 
-    function renderizarMisReportes() {
+    // Respuestas que el cliente ya vio (se guarda en su dispositivo)
+    let repVistasMemoria = {};
+    function claveRepVistas() { return 'repVistas_' + ((currentUser && currentUser.uid) || ''); }
+    // Si nunca ha abierto sus reportes, solo cuentan como nuevas las respuestas de los últimos 3 días
+    function repVistasHasta() {
+      let v = repVistasMemoria[claveRepVistas()] || '';
+      try { v = localStorage.getItem(claveRepVistas()) || v; } catch (e) { /* nada */ }
+      return v || new Date(Date.now() - 3 * 86400000).toISOString();
+    }
+    function respuestasNuevas() { const h = repVistasHasta(); return misReportes.filter(t => t.estado === 'resuelto' && String(t.resueltoEl || '') > h); }
+    function marcarRespuestasVistas() {
+      const ult = misReportes.filter(t => t.estado === 'resuelto').map(t => String(t.resueltoEl || '')).sort().pop();
+      if (!ult) return;
+      repVistasMemoria[claveRepVistas()] = ult;
+      try { localStorage.setItem(claveRepVistas(), ult); } catch (e) { /* nada */ }
+    }
+
+    function abrirMisReportes() {
+      renderizarMisReportes(true);
+      const m = document.getElementById('modalMisReportes'); if (!m) return;
+      m.classList.remove('hidden'); m.style.display = 'flex';
+    }
+    function cerrarMisReportes() {
+      const m = document.getElementById('modalMisReportes'); if (m) { m.classList.add('hidden'); m.style.display = 'none'; }
+      marcarRespuestasVistas(); renderizarMisReportes(); pintarBotonesReporte();
+    }
+    function verReporteDeCuenta() { abrirMisReportes(); }
+
+    function renderizarMisReportes(abriendo) {
       const caja = document.getElementById('misReportesCaja'), cont = document.getElementById('misReportes');
       if (!caja || !cont) return;
       caja.classList.toggle('hidden', !misReportes.length);
-      const abiertos = misReportes.filter(t => t.estado !== 'resuelto').length;
+      const abiertos = misReportes.filter(t => t.estado !== 'resuelto');
+      const nuevas = respuestasNuevas();
       const b = document.getElementById('misReportesAbiertos');
-      if (b) { b.textContent = abiertos; b.classList.toggle('hidden', !abiertos); }
-      cont.innerHTML = misReportes.slice(0, 6).map(t => {
-        const resuelto = t.estado === 'resuelto';
-        const fecha = new Date(t.creadoEl).toLocaleDateString('es-CO', { day: '2-digit', month: '2-digit', year: 'numeric' });
-        return `<div class="p-2.5 rounded-xl bg-gray-800/50 border border-gray-700/60">
-          <div class="flex items-center justify-between gap-2"><p class="text-[11px] font-bold text-white break-all">${escaparHtml(t.cuenta || '')}</p><span class="shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-full border ${resuelto ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30' : 'bg-amber-500/15 text-amber-300 border-amber-500/30'}">${resuelto ? 'Resuelto' : 'En revisión'}</span></div>
-          <p class="text-[10px] text-gray-400">${escaparHtml(t.motivo || '')} · ${fecha}</p>
-          ${resuelto ? htmlRespuestaTicket(t) : ''}
-        </div>`;
-      }).join('');
+      if (b) { b.textContent = abiertos.length + ' abierto' + (abiertos.length === 1 ? '' : 's'); b.classList.toggle('hidden', !abiertos.length); }
+      const bn = document.getElementById('misReportesNuevas');
+      if (bn) { bn.textContent = nuevas.length > 9 ? '9+' : nuevas.length; bn.classList.toggle('hidden', !nuevas.length); }
+      const res = document.getElementById('misReportesResumen');
+      if (res) {
+        const partes = [];
+        if (nuevas.length) partes.push(nuevas.length === 1 ? '1 respuesta nueva' : nuevas.length + ' respuestas nuevas');
+        if (abiertos.length) partes.push(abiertos.length + ' en revisión');
+        res.textContent = partes.length ? partes.join(' · ') : 'Todo resuelto · toca para ver el historial';
+      }
+      const idsNuevas = nuevas.map(t => t.id);
+      const fechaDe = t => new Date(t.creadoEl).toLocaleDateString('es-CO', { day: '2-digit', month: '2-digit', year: 'numeric' });
+      const cabeza = (t, chip) => `<div class="flex items-center justify-between gap-2"><p class="text-[12px] font-bold text-white break-all">${escaparHtml(t.cuenta || '')}</p>${chip}</div><p class="text-[10px] text-gray-400">${escaparHtml(t.motivo || '')}${t.productoNombre ? ' · ' + escaparHtml(t.productoNombre) : ''} · ${fechaDe(t)}</p>`;
+      const nuevasHtml = nuevas.map(t => `<div class="p-3 rounded-2xl bg-emerald-500/10 border border-emerald-400/50">${cabeza(t, '<span class="shrink-0 text-[10px] font-black px-2 py-0.5 rounded-full bg-red-500 text-white">Nueva respuesta</span>')}${htmlRespuestaTicket(t)}</div>`);
+      const abiertosHtml = abiertos.map(t => `<div class="p-3 rounded-2xl bg-gray-800/50 border border-amber-500/30">${cabeza(t, '<span class="shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-full border bg-amber-500/15 text-amber-300 border-amber-500/30">En revisión</span>')}<p class="text-[10px] text-gray-500 mt-1">Te avisamos aquí y en tu campana cuando haya respuesta.</p></div>`);
+      const viejos = misReportes.filter(t => t.estado === 'resuelto' && idsNuevas.indexOf(t.id) === -1);
+      const viejosHtml = viejos.slice(0, 20).map(t => `<details class="rounded-2xl bg-gray-800/40 border border-gray-700/60"><summary class="cursor-pointer select-none p-3 list-none">${cabeza(t, '<span class="shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-full border bg-emerald-500/15 text-emerald-300 border-emerald-500/30">Resuelto</span>')}<p class="text-[10px] text-sky-300 mt-1">Toca para ver la respuesta</p></summary><div class="px-3 pb-3">${htmlRespuestaTicket(t)}</div></details>`);
+      const sec = (t, items) => items.length ? `<p class="text-[10px] font-black text-gray-400 uppercase tracking-wider pt-1">${t}</p>` + items.join('') : '';
+      cont.innerHTML = (sec('Respuestas nuevas', nuevasHtml) + sec('En revisión', abiertosHtml) + sec('Anteriores', viejosHtml)) || '<p class="text-center text-gray-500 text-sm py-6">No tienes reportes.</p>';
     }
 
     // Lo que soporte le responde al cliente dentro de su ticket: mensaje, cuenta nueva o contraseña nueva y captura
@@ -10453,7 +10645,7 @@
         const c = misComprasPerfilCache[idx];
         const abierto = misReportes.find(t => t.cuenta === cuenta && t.estado !== 'resuelto');
         if (abierto) {
-          slot.innerHTML = '<span class="shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-full border bg-amber-500/15 text-amber-300 border-amber-500/30">Reportada</span>';
+          slot.innerHTML = '<button type="button" onclick="abrirMisReportes()" class="shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-full border bg-amber-500/15 text-amber-300 border-amber-500/30"><i class="fa-solid fa-hourglass-half mr-1"></i>En revisión</button>';
           return;
         }
         const g = c ? estadoGarantiaCuenta(c, cuenta) : { puedeReportar: false, estado: 'sin' };
@@ -13263,10 +13455,10 @@
           const l = doc.exists && Array.isArray((doc.data() || {}).lista) ? doc.data().lista : [];
           novedadesClientes = l.filter(n => n && n.id && (n.mensaje || n.titulo)).map(n => ({
             id: String(n.id), titulo: String(n.titulo || '').slice(0, 80), mensaje: String(n.mensaje || '').slice(0, 1000),
-            fecha: String(n.fecha || ''), difundida: n.difundida === true, difundidaEl: String(n.difundidaEl || '')
+            fecha: String(n.fecha || ''), difundida: n.difundida === true, difundidaEl: String(n.difundidaEl || ''), plantillaId: String(n.plantillaId || '')
           })).sort((a, b) => String(b.difundidaEl || b.fecha).localeCompare(String(a.difundidaEl || a.fecha)));
           actualizarBadgeNovedades();
-          try { renderizarNovedadesAdmin(); } catch (e) { /* nada */ }
+          try { renderizarNovedadesAdmin(); renderizarActualizacionesPagina(); } catch (e) { /* nada */ }
         }, err => console.warn('Novedades no disponibles:', err));
       } catch (e) { console.warn(e); }
     }
@@ -13443,6 +13635,314 @@
       l.forEach((n, i) => asistenteAgregarBot(textoNovedadBot(n), i === l.length - 1 ? asistenteMenu() : null));
       marcarNovedadesVistas();
     }
+
+
+    // ==================== VISTA DEL PANEL (menú configurable) ====================
+    const TABS_MENU_INFO = {
+      netflix: ['Alquileres', '#f87171'], productos: ['Gestión y Visibilidad', '#34d399'], reporte: ['Reporte de Ventas', '#60a5fa'], usuarios: ['Usuarios Registrados', '#a78bfa'],
+      tickets: ['Tickets', '#fbbf24'], recargas: ['Solicitudes de Saldo', '#34d399'], stock: ['Cargar Cuentas (Stock)', '#facc15'], historial: ['Historial de Ventas', '#94a3b8'],
+      cortes: ['Cortes', '#f87171'], buscar: ['Buscar cuenta', '#38bdf8'], proveedores: ['Proveedores', '#fb923c'], promociones: ['Promociones', '#f472b6'],
+      novedades: ['Novedades', '#38bdf8'], categorias: ['Categorías & Colores', '#c084fc'], apariencia: ['Apariencia y Logo', '#f472b6'], pagos: ['Métodos de Pago & QR', '#2dd4bf'],
+      asistente: ['Asistente', '#34d399'], vista: ['Vista del panel', '#a3e635'], ajustes: ['Ajustes Generales', '#cbd5e1']
+    };
+    const ORDEN_MENU_BASE = ['netflix', 'productos', 'reporte', 'usuarios', 'tickets', 'recargas', 'stock', 'historial', 'cortes', 'buscar', 'proveedores', 'promociones', 'novedades', 'categorias', 'apariencia', 'pagos', 'asistente', 'vista', 'ajustes'];
+    const VISTA_PANEL_BASE = { estilo: 'tarjeta', columnas: 3, destacado: 'netflix', color: 'rojo', iconos: true, inicio: 'productos', orden: ORDEN_MENU_BASE.slice(), ocultos: [] };
+    let vistaPanel = null, vistaPanelGuardada = null;
+
+    function sanearVistaPanel(v) {
+      const b = Object.assign({}, VISTA_PANEL_BASE, (v && typeof v === 'object') ? v : {});
+      b.estilo = ['tarjeta', 'lista', 'compacto'].indexOf(b.estilo) !== -1 ? b.estilo : 'tarjeta';
+      b.columnas = [2, 3, 4].indexOf(parseInt(b.columnas, 10)) !== -1 ? parseInt(b.columnas, 10) : 3;
+      b.destacado = (b.destacado === 'ninguno' || TABS_MENU_INFO[b.destacado]) && b.destacado !== 'ajustes' ? b.destacado : 'netflix';
+      b.color = ['rojo', 'dorado', 'verde', 'azul', 'morado'].indexOf(b.color) !== -1 ? b.color : 'rojo';
+      b.iconos = b.iconos !== false;
+      b.inicio = TABS_MENU_INFO[b.inicio] ? b.inicio : 'productos';
+      const orden = (Array.isArray(b.orden) ? b.orden : []).filter((t, i, a) => TABS_MENU_INFO[t] && a.indexOf(t) === i && t !== 'ajustes');
+      ORDEN_MENU_BASE.forEach(t => { if (t !== 'ajustes' && orden.indexOf(t) === -1) orden.push(t); });
+      orden.push('ajustes');
+      b.orden = orden;
+      b.ocultos = (Array.isArray(b.ocultos) ? b.ocultos : []).filter(t => TABS_MENU_INFO[t] && t !== 'vista' && t !== 'ajustes');
+      return b;
+    }
+
+    function vistaPanelActual() {
+      if (vistaPanel) return vistaPanel;
+      let cache = null;
+      try { cache = JSON.parse(localStorage.getItem('vistaPanel') || 'null'); } catch (e) { /* nada */ }
+      vistaPanel = sanearVistaPanel(vistaPanelGuardada || cache);
+      return vistaPanel;
+    }
+    function seccionInicioPanel() {
+      const v = vistaPanelActual();
+      const ok = !(esModeradorSesion() && RESTRINGIDAS_MODERADOR.indexOf(v.inicio) !== -1);
+      return ok ? v.inicio : 'productos';
+    }
+
+    // Aplica la vista elegida al menú (orden, tamaño, destacado, ocultos)
+    function aplicarVistaPanel() {
+      const grid = document.getElementById('adminMenuGrid');
+      if (!grid) return;
+      const v = vistaPanelActual();
+      grid.classList.remove('grid-cols-2', 'grid-cols-3', 'grid-cols-4', 'estilo-tarjeta', 'estilo-lista', 'estilo-compacto');
+      grid.classList.add('grid-cols-' + (v.estilo === 'lista' ? Math.min(v.columnas, 2) : v.columnas), 'estilo-' + v.estilo);
+      v.orden.forEach(t => {
+        const b = document.getElementById('tabBtn' + t.charAt(0).toUpperCase() + t.slice(1));
+        if (!b) return;
+        grid.appendChild(b);
+        const dest = t === v.destacado;
+        b.classList.toggle('admin-tab-grande', dest || t === 'ajustes');
+        b.classList.toggle('admin-tab-destacado', dest);
+        ['dest-rojo', 'dest-dorado', 'dest-verde', 'dest-azul', 'dest-morado'].forEach(c => b.classList.toggle(c, dest && c === 'dest-' + v.color));
+        b.classList.toggle('hidden', v.ocultos.indexOf(t) !== -1);
+        const ic = b.querySelector('i');
+        if (ic) ic.style.color = (!dest && v.iconos) ? TABS_MENU_INFO[t][1] : '';
+      });
+    }
+
+    function renderizarEditorVistaPanel() {
+      const v = vistaPanelActual();
+      const caja = (sel, txt, sub, onclick) => `<button type="button" onclick="${onclick}" class="p-2.5 rounded-xl border text-left transition ${sel ? 'border-emerald-400 bg-emerald-500/10' : 'border-gray-700 bg-gray-800/60 hover:border-gray-500'}"><span class="block text-xs font-black ${sel ? 'text-emerald-300' : 'text-white'}">${txt}</span><span class="block text-[10px] text-gray-400 mt-0.5">${sub}</span></button>`;
+      const e = document.getElementById('vpEstilos');
+      if (e) e.innerHTML = caja(v.estilo === 'tarjeta', 'Tarjetas', 'Ícono arriba, texto abajo', "vpCambiar('estilo','tarjeta')") + caja(v.estilo === 'lista', 'Lista', 'Ícono y texto en línea', "vpCambiar('estilo','lista')") + caja(v.estilo === 'compacto', 'Compacto', 'Más cuadros en pantalla', "vpCambiar('estilo','compacto')");
+      const c = document.getElementById('vpColumnas');
+      if (c) c.innerHTML = [2, 3, 4].map(n => caja(v.columnas === n, n + ' por fila', n === 2 ? 'Más grandes' : (n === 3 ? 'Normal' : 'Más pequeños'), `vpCambiar('columnas',${n})`)).join('');
+      const d = document.getElementById('vpDestacado');
+      if (d) { d.innerHTML = '<option value="ninguno">Ninguno</option>' + ORDEN_MENU_BASE.filter(t => t !== 'ajustes').map(t => `<option value="${t}">${escaparHtml(TABS_MENU_INFO[t][0])}</option>`).join(''); d.value = v.destacado; }
+      const col = document.getElementById('vpColores');
+      const COL = { rojo: '#e50914', dorado: '#f59e0b', verde: '#10b981', azul: '#3b82f6', morado: '#a855f7' };
+      if (col) col.innerHTML = Object.keys(COL).map(k => `<button type="button" onclick="vpCambiar('color','${k}')" aria-label="${k}" title="${k}" class="w-9 h-9 rounded-full border-2 ${v.color === k ? 'border-white scale-110' : 'border-gray-700'} transition" style="background:${COL[k]}"></button>`).join('');
+      const ini = document.getElementById('vpInicio');
+      if (ini) { ini.innerHTML = ORDEN_MENU_BASE.filter(t => !(esModeradorSesion() && RESTRINGIDAS_MODERADOR.indexOf(t) !== -1)).map(t => `<option value="${t}">${escaparHtml(TABS_MENU_INFO[t][0])}</option>`).join(''); ini.value = v.inicio; }
+      const icn = document.getElementById('vpIconos'); if (icn) icn.checked = v.iconos;
+      const o = document.getElementById('vpOrden');
+      if (o) {
+        const lista = v.orden.filter(t => t !== 'ajustes' && !(esModeradorSesion() && RESTRINGIDAS_MODERADOR.indexOf(t) !== -1));
+        const btn = (fn, i, ic, dis) => `<button type="button" onclick="${fn}(${i})" ${dis ? 'disabled' : ''} class="w-8 h-8 shrink-0 rounded-lg bg-gray-900 hover:bg-gray-700 border border-gray-700 text-gray-200 flex items-center justify-center disabled:opacity-30"><i class="fa-solid ${ic} text-[11px]"></i></button>`;
+        o.innerHTML = lista.map((t, i) => {
+          const oculto = v.ocultos.indexOf(t) !== -1;
+          return `<div class="flex items-center gap-2 p-2 rounded-xl ${t === v.destacado ? 'bg-red-500/10 border border-red-500/30' : 'bg-gray-800/60 border border-gray-700/60'} ${oculto ? 'opacity-50' : ''}">
+            <span class="w-6 text-center text-[11px] font-black text-gray-400">${i + 1}</span>
+            <span class="min-w-0 flex-grow text-xs font-bold text-white truncate">${escaparHtml(TABS_MENU_INFO[t][0])}${t === v.destacado ? ' <span class="text-[10px] text-red-300">· destacado</span>' : ''}</span>
+            ${t === 'vista' ? '<span class="w-8"></span>' : `<button type="button" onclick="vpOcultar('${t}')" title="${oculto ? 'Mostrar' : 'Ocultar'}" class="w-8 h-8 shrink-0 rounded-lg bg-gray-900 hover:bg-gray-700 border border-gray-700 ${oculto ? 'text-gray-500' : 'text-emerald-300'} flex items-center justify-center"><i class="fa-solid ${oculto ? 'fa-eye-slash' : 'fa-eye'} text-[11px]"></i></button>`}
+            ${btn('vpSubir', i, 'fa-chevron-up', i === 0)}${btn('vpBajar', i, 'fa-chevron-down', i === lista.length - 1)}
+          </div>`;
+        }).join('') + `<div class="flex items-center gap-2 p-2 rounded-xl bg-gray-800/30 border border-dashed border-gray-700 text-xs text-gray-400"><span class="w-6 text-center text-[11px] font-black">∞</span>Ajustes Generales (siempre de último)</div>`;
+      }
+    }
+
+    function vpCambiar(campo, valor) {
+      const v = Object.assign({}, vistaPanelActual()); v[campo] = valor;
+      vistaPanel = sanearVistaPanel(v);
+      aplicarVistaPanel(); renderizarEditorVistaPanel();
+      try { cambiarTabAdmin('vista'); } catch (e) { /* nada */ }
+    }
+    function vpMover(i, j) {
+      const v = Object.assign({}, vistaPanelActual());
+      const visibles = v.orden.filter(t => t !== 'ajustes' && !(esModeradorSesion() && RESTRINGIDAS_MODERADOR.indexOf(t) !== -1));
+      if (j < 0 || j >= visibles.length) return;
+      const a = visibles[i], b = visibles[j];
+      const orden = v.orden.slice(); const ia = orden.indexOf(a), ib = orden.indexOf(b);
+      orden[ia] = b; orden[ib] = a;
+      vpCambiar('orden', orden);
+    }
+    function vpSubir(i) { vpMover(i, i - 1); }
+    function vpBajar(i) { vpMover(i, i + 1); }
+    function vpOcultar(t) {
+      const v = vistaPanelActual();
+      const oc = v.ocultos.indexOf(t) !== -1 ? v.ocultos.filter(x => x !== t) : v.ocultos.concat([t]);
+      vpCambiar('ocultos', oc);
+    }
+
+    async function guardarVistaPanel() {
+      if (!currentUser) return;
+      const v = vistaPanelActual();
+      try { localStorage.setItem('vistaPanel', JSON.stringify(v)); } catch (e) { /* nada */ }
+      try {
+        await db.collection('usuarios').doc(currentUser.uid).set({ vistaPanel: v }, { merge: true });
+        vistaPanelGuardada = v;
+        mostrarToast('Vista guardada: así se verá tu panel en todos tus dispositivos.');
+      } catch (err) { mostrarToast('Guardada en este dispositivo. (No se pudo guardar en tu cuenta: ' + err.message + ')'); }
+    }
+    async function restaurarVistaPanel() {
+      if (!await confirmarModal('¿Volver a la vista original del menú?', { textoAceptar: 'Sí, volver' })) return;
+      vistaPanel = sanearVistaPanel(null);
+      aplicarVistaPanel(); renderizarEditorVistaPanel();
+      await guardarVistaPanel();
+    }
+    // Llega la vista guardada en la cuenta (se aplica si no hay cambios sin guardar)
+    function recibirVistaPanelDeCuenta(v) {
+      if (!v || typeof v !== 'object') return;
+      vistaPanelGuardada = sanearVistaPanel(v);
+      const actual = JSON.stringify(vistaPanel || null);
+      if (!vistaPanel || actual === JSON.stringify(sanearVistaPanel(JSON.parse(localStorage.getItem('vistaPanel') || 'null')))) {
+        vistaPanel = vistaPanelGuardada;
+        try { localStorage.setItem('vistaPanel', JSON.stringify(vistaPanel)); } catch (e) { /* nada */ }
+        aplicarVistaPanel();
+      }
+    }
+
+
+    // ==================== CLIENTES: SALDO Y RECARGAS DESDE LA TARJETA ====================
+    let scUid = '';
+    function abrirSaldoCliente(uid, nombre) {
+      scUid = uid;
+      document.getElementById('scNombre').innerHTML = 'Cliente: <b class="text-white">' + escaparHtml(nombre || uid) + '</b>';
+      const inp = document.getElementById('scMonto'); inp.value = '';
+      document.getElementById('scRapidos').innerHTML = [5000, 10000, 20000, 50000].map(n => `<button type="button" onclick="document.getElementById('scMonto').value='${n}'" class="py-2 rounded-lg bg-gray-800 hover:bg-gray-700 border border-gray-700 text-gray-200 text-[11px] font-bold">${formatoCOP(n)}</button>`).join('');
+      const m = document.getElementById('modalSaldoCliente'); m.classList.remove('hidden'); m.style.display = 'flex';
+      setTimeout(() => inp.focus(), 80);
+    }
+    function cerrarSaldoCliente() { const m = document.getElementById('modalSaldoCliente'); if (m) { m.classList.add('hidden'); m.style.display = 'none'; } }
+    async function confirmarSaldoCliente() {
+      const monto = Math.round(Number(document.getElementById('scMonto').value) || 0);
+      if (!(monto > 0)) { alert('Escribe un monto válido.'); return; }
+      // Usa el mismo proceso de siempre (con el abono a la deuda incluido)
+      let inp = document.getElementById('inputSaldo_' + scUid);
+      if (!inp) { inp = document.createElement('input'); inp.type = 'hidden'; inp.id = 'inputSaldo_' + scUid; document.body.appendChild(inp); }
+      inp.value = String(monto);
+      cerrarSaldoCliente();
+      await adminCargarSaldo(scUid);
+    }
+
+    async function verRecargasCliente(uid, nombre) {
+      document.getElementById('rcNombre').textContent = nombre || uid;
+      const lista = document.getElementById('rcLista'), res = document.getElementById('rcResumen');
+      lista.innerHTML = '<p class="text-center text-gray-500 text-sm py-6"><i class="fa-solid fa-spinner fa-spin mr-1"></i>Cargando...</p>'; res.innerHTML = '';
+      const m = document.getElementById('modalRecargasCliente'); m.classList.remove('hidden'); m.style.display = 'flex';
+      try {
+        const snap = await db.collection('recargas').where('usuarioId', '==', uid).get();
+        const r = []; snap.forEach(d => r.push(Object.assign({ id: d.id }, d.data() || {})));
+        r.sort((a, b) => String(b.fecha).localeCompare(String(a.fecha)));
+        const aprob = r.filter(x => x.estado === 'aprobado');
+        const tarjeta = (t, v, c) => `<div class="rounded-xl p-2.5 bg-gray-800/60 border border-gray-700/60"><span class="text-[10px] text-gray-400 block">${t}</span><span class="text-sm font-black ${c}">${v}</span></div>`;
+        res.innerHTML = tarjeta('Recargado', formatoCOP(aprob.reduce((t, x) => t + (Number(x.monto) || 0), 0)), 'text-emerald-300') + tarjeta('Aprobadas', aprob.length, 'text-white') + tarjeta('En revisión', r.filter(x => x.estado === 'pendiente').length, 'text-amber-300');
+        const EST = { aprobado: ['Aprobada', 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30'], pendiente: ['En revisión', 'bg-amber-500/15 text-amber-300 border-amber-500/30'], rechazado: ['Rechazada', 'bg-red-500/15 text-red-300 border-red-500/30'] };
+        lista.innerHTML = r.length ? r.slice(0, 100).map(x => {
+          const e = EST[x.estado] || ['—', 'bg-gray-800 text-gray-400 border-gray-700'];
+          const auto = /autom|bre-b/i.test(String(x.metodo || ''));
+          return `<div class="p-3 rounded-xl bg-gray-800/50 border border-gray-700/60 flex items-center gap-3"><span class="w-9 h-9 shrink-0 rounded-lg ${auto ? 'bg-emerald-500/15' : 'bg-gray-800'} flex items-center justify-center"><i class="fa-solid ${auto ? 'fa-bolt text-emerald-300' : 'fa-file-invoice-dollar text-gray-300'}"></i></span><div class="min-w-0 flex-grow"><p class="text-sm font-black text-white">${formatoCOP(x.monto || 0)}</p><p class="text-[10px] text-gray-400 truncate">${escaparHtml(bcFecha(x.fecha))} · ${escaparHtml(x.metodo || (auto ? 'Automática' : 'Con comprobante'))}</p>${Number(x.abonoCredito) > 0 ? `<p class="text-[10px] text-violet-300">${formatoCOP(x.abonoCredito)} pagaron su crédito</p>` : ''}</div><span class="shrink-0 px-2 py-0.5 rounded-full text-[10px] font-bold border ${e[1]}">${e[0]}</span></div>`;
+        }).join('') : '<p class="text-center text-gray-500 text-sm py-6">Este cliente no tiene recargas.</p>';
+      } catch (err) { lista.innerHTML = `<p class="text-center text-red-300 text-sm py-6">No se pudieron cargar: ${escaparHtml(err.message)}</p>`; }
+    }
+    function cerrarRecargasCliente() { const m = document.getElementById('modalRecargasCliente'); if (m) { m.classList.add('hidden'); m.style.display = 'none'; } }
+
+
+    // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
+    // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
+    const VERSION_PAGINA = '2026-10-05i';
+    const ACTUALIZACIONES_PAGINA = [
+      { id: 'act_20261005_reportes', fecha: '2026-10-05', titulo: 'Tus reportes, más cómodos', mensaje: 'En **Mis Cuentas** ahora tienes un botón **Mis reportes** con un número rojo cuando te respondemos. Y si te cambiamos una cuenta, la verás destacada como **Usa esta cuenta**, con la anterior tachada.' },
+      { id: 'act_20261005_tienda', fecha: '2026-10-05', titulo: '¡Tienda renovada!', mensaje: 'Ahora Netflix sale destacado en rojo, hay **combos** con varias cuentas en una (y te mostramos cuánto ahorras), **promociones** con precio rebajado y productos **VIP**. ¡Pásate por la tienda!' },
+      { id: 'act_20261005_netflix', fecha: '2026-10-05', titulo: 'Netflix sin contraseña', mensaje: 'Tu Netflix se entrega con el correo y tu perfil con PIN. Entras con un **código de inicio de sesión**: en la compra tienes el paso a paso y el botón **Pedir código**.' },
+      { id: 'act_20261005_enlace', fecha: '2026-10-05', titulo: 'Tu enlace para ver el código', mensaje: 'Cada cuenta de Netflix tiene su **enlace propio** para ver el código sin iniciar sesión. Compártelo con quien ve en tu televisor. Cambia solo cada vez que renuevas el mes.' },
+      { id: 'act_20261005_panel', fecha: '2026-10-05', titulo: 'Tu cuenta, más clara', mensaje: 'Renovamos **Mi cuenta**: ves tu saldo, tus compras y tus cuentas de Netflix con los días que te quedan. Y ahora tienes el **historial de tus recargas** (aprobadas, en revisión y rechazadas).' },
+      { id: 'act_20261005_garantia', fecha: '2026-10-05', titulo: 'Garantía por ticket', mensaje: 'Si una cuenta falla, toca **Reportar garantía** en Mis Cuentas y adjunta una foto. La respuesta (cuenta nueva, contraseña o captura) te llega **dentro de tu ticket**, con aviso en tu campana.' },
+      { id: 'act_20261005_imagenes', fecha: '2026-10-05', titulo: 'Imágenes en grande', mensaje: 'Ahora las fotos, comprobantes y códigos QR se abren a **pantalla completa** y con un toque los puedes ampliar.' },
+      { id: 'act_20261005_novedades', fecha: '2026-10-05', titulo: 'Novedades en el asistente', mensaje: 'Cuando tengamos algo nuevo verás un **número rojo** en el botón **Ayuda**. Ábrelo y la novedad te sale de primero.' }
+    ];
+
+    function actualizacionDifundida(a) { return (novedadesClientes || []).some(n => n.plantillaId === a.id && n.difundida); }
+
+    function renderizarActualizacionesPagina() {
+      const cont = document.getElementById('listaActualizaciones');
+      if (!cont) return;
+      const v = document.getElementById('txtVersionPagina'); if (v) v.textContent = 'Versión de esta página: ' + VERSION_PAGINA;
+      const pend = ACTUALIZACIONES_PAGINA.filter(a => !actualizacionDifundida(a)).length;
+      const pe = document.getElementById('actPendientes'); if (pe) pe.textContent = pend ? pend + ' sin difundir' : 'Todas difundidas ✓';
+      const b = (cls, fn, ic, t) => `<button type="button" onclick="${fn}" class="px-2.5 py-1.5 rounded-lg text-[11px] font-bold flex items-center gap-1 ${cls}"><i class="${ic}"></i> ${t}</button>`;
+      cont.innerHTML = ACTUALIZACIONES_PAGINA.map(a => {
+        const dif = actualizacionDifundida(a);
+        return `<div class="px-4 py-3 ${dif ? 'opacity-70' : ''}">
+          <div class="flex items-start justify-between gap-2"><p class="text-sm font-black text-white">${escaparHtml(a.titulo)}</p><span class="shrink-0 px-2 py-0.5 rounded-full text-[10px] font-bold border ${dif ? 'bg-sky-500/15 text-sky-300 border-sky-500/30' : 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30'}">${dif ? 'Difundida' : 'Nueva'}</span></div>
+          <p class="text-xs text-gray-300 mt-1 leading-relaxed">${asistenteFormatear(a.mensaje)}</p>
+          <div class="flex flex-wrap gap-1.5 mt-2.5">
+            ${b('bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 border border-emerald-500/40', `copiarActualizacion('${a.id}')`, 'fa-brands fa-whatsapp', 'Copiar')}
+            ${b('bg-sky-500 hover:bg-sky-400 text-black', `difundirActualizacion('${a.id}')`, 'fa-solid fa-bullhorn', dif ? 'Difundir otra vez' : 'Difundir')}
+          </div>
+        </div>`;
+      }).join('') + (ACTUALIZACIONES_PAGINA.length > 1 ? `<div class="px-4 py-3 flex flex-wrap gap-2">${b('bg-gray-800 hover:bg-gray-700 text-gray-100 border border-gray-700', 'copiarTodasActualizaciones()', 'fa-solid fa-copy', 'Copiar todas en un mensaje')}${pend ? b('bg-sky-500/20 hover:bg-sky-500/30 text-sky-200 border border-sky-500/40', 'difundirActualizacionesPendientes()', 'fa-solid fa-bullhorn', 'Difundir las ' + pend + ' nuevas') : ''}</div>` : '');
+    }
+
+    function copiarActualizacion(id) {
+      const a = ACTUALIZACIONES_PAGINA.find(x => x.id === id);
+      if (a) copiarTexto(textoNovedadWhatsapp(a), 'Mensaje copiado: pégalo en WhatsApp');
+    }
+    function copiarTodasActualizaciones() {
+      const t = '📢 *Novedades de Epic Channels*\n\n' + ACTUALIZACIONES_PAGINA.map(a => '✅ *' + a.titulo + '*\n' + a.mensaje.replace(/\*\*(.+?)\*\*/g, '*$1*')).join('\n\n') + '\n\n👉 epicchannels.quest';
+      copiarTexto(t, 'Resumen copiado: pégalo en WhatsApp');
+    }
+
+    async function guardarNovedadDePlantilla(a) {
+      const ahora = new Date().toISOString();
+      const ref = db.collection('configuracion').doc('novedades_clientes');
+      await db.runTransaction(async (t) => {
+        const d = await t.get(ref);
+        let l = d.exists && Array.isArray((d.data() || {}).lista) ? d.data().lista.slice() : [];
+        const i = l.findIndex(n => n && n.plantillaId === a.id);
+        if (i >= 0) l[i] = Object.assign({}, l[i], { difundida: true, difundidaEl: ahora });
+        else l = [{ id: 'nov_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), plantillaId: a.id, titulo: a.titulo, mensaje: a.mensaje, fecha: ahora, difundida: true, difundidaEl: ahora, creadaPor: currentUser.email }].concat(l);
+        t.set(ref, { lista: l.slice(0, 30) }, { merge: true });
+      });
+      await publicarNovedadGlobal({ tipo: 'anuncio', titulo: a.titulo, mensaje: a.mensaje.replace(/\*\*(.+?)\*\*/g, '$1') });
+    }
+
+    async function difundirActualizacion(id) {
+      if (!esAdminSesionActual()) return;
+      const a = ACTUALIZACIONES_PAGINA.find(x => x.id === id);
+      if (!a) return;
+      if (!await confirmarModal(`¿Difundir "${a.titulo}"? Les llega a todos tus clientes como notificación y en el asistente.`, { tipo: 'pregunta', textoAceptar: 'Sí, difundir' })) return;
+      try { await guardarNovedadDePlantilla(a); mostrarToast('¡Difundida!'); } catch (err) { alert('No se pudo difundir: ' + err.message); }
+    }
+    async function difundirActualizacionesPendientes() {
+      if (!esAdminSesionActual()) return;
+      const pend = ACTUALIZACIONES_PAGINA.filter(a => !actualizacionDifundida(a));
+      if (!pend.length) return;
+      if (!await confirmarModal(`¿Difundir las ${pend.length} actualizaciones nuevas? Les llegan a todos tus clientes.`, { tipo: 'pregunta', textoAceptar: 'Sí, difundir' })) return;
+      try { for (const a of pend.slice().reverse()) await guardarNovedadDePlantilla(a); mostrarToast('¡Listo! Se difundieron ' + pend.length + ' novedades.'); } catch (err) { alert('No se pudo difundir: ' + err.message); }
+    }
+
+    // ----- ¿Hay una versión más nueva publicada? -----
+    async function leerVersionPublicada() {
+      const base = /^https?:/.test(location.origin || '') ? location.origin + location.pathname : '';
+      if (!base) return null;
+      const r = await fetch(base + '?comprobar=' + Date.now(), { cache: 'no-store' });
+      if (!r.ok) throw new Error('No se pudo revisar (' + r.status + ').');
+      const t = await r.text();
+      const m = t.match(/const VERSION_PAGINA = '([^']+)'/);
+      return m ? m[1] : null;
+    }
+
+    async function comprobarActualizacionPagina(manual) {
+      const caja = document.getElementById('resultadoVersion');
+      const btn = document.getElementById('btnComprobarVersion');
+      if (manual && btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i>Comprobando...'; }
+      try {
+        const publicada = await leerVersionPublicada();
+        const hayNueva = !!publicada && publicada > VERSION_PAGINA;
+        if (hayNueva) { const a = document.getElementById('avisoVersionNueva'); if (a) a.classList.remove('hidden'); }
+        if (manual && caja) {
+          caja.classList.remove('hidden');
+          caja.innerHTML = hayNueva
+            ? `<div class="p-2.5 rounded-xl bg-sky-500/15 border border-sky-500/40 text-[11px] text-sky-100 flex items-center gap-2"><i class="fa-solid fa-circle-up"></i><span class="flex-grow">Hay una versión nueva (${escaparHtml(publicada)}). Actualiza para ver sus mejoras.</span><button type="button" onclick="recargarVersionNueva()" class="px-2.5 py-1 rounded-lg bg-sky-500 text-black font-black">Actualizar</button></div>`
+            : `<div class="p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-[11px] text-emerald-200"><i class="fa-solid fa-circle-check mr-1"></i>Tienes la versión más reciente${publicada ? ' (' + escaparHtml(publicada) + ')' : ''}.</div>`;
+        }
+        return hayNueva;
+      } catch (e) {
+        if (manual && caja) { caja.classList.remove('hidden'); caja.innerHTML = `<div class="p-2.5 rounded-xl bg-red-500/10 border border-red-500/30 text-[11px] text-red-200">${escaparHtml(e.message || 'No se pudo comprobar. Revisa tu internet.')}</div>`; }
+        return false;
+      } finally {
+        if (manual && btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-arrows-rotate mr-1"></i>Comprobar actualizaciones de la página'; }
+      }
+    }
+
+    // Recarga sin usar la copia guardada del navegador
+    function recargarVersionNueva() {
+      try { location.replace(location.pathname + '?v=' + Date.now() + location.hash); } catch (e) { location.reload(); }
+    }
+
+    // Revisión automática: al abrir y cada 30 minutos (todos los usuarios)
+    setTimeout(() => { comprobarActualizacionPagina(false); }, 15000);
+    setInterval(() => { comprobarActualizacionPagina(false); }, 30 * 60000);
 
     // ==================== NETFLIX EN LA TIENDA: SIN CONTRASEÑA ====================
     function esNombreNetflix(t) { return /netflix/i.test(String(t || '')); }
@@ -14015,9 +14515,19 @@
                 const reemp = (Array.isArray(c.reemplazos) ? c.reemplazos : []).find(r => r && String(r.nueva || '').toLowerCase() === ident);
                 const gl = estadoGarantiaCuenta(c, ident);
                 const notas = [];
-                if (reemp) notas.push(`<span class="text-sky-300"><i class="fa-solid fa-link mr-1"></i>Reemplazo de ${escaparHtml(reemp.anterior)}</span>`);
                 if (gl.reiniciada && gl.estado === 'vigente') notas.push(`<span class="text-emerald-300"><i class="fa-solid fa-shield-halved mr-1"></i>Garantía hasta ${formatearFechaHoraCorta(gl.vence)}</span>`);
-                return `<div class="py-1 border-b border-gray-700/40 last:border-0"><div class="flex items-center justify-between gap-2"><span class="break-all min-w-0">${escaparHtml(esNfC ? textoLineaNetflix(l) : l)}</span>${false ? '' : `<span data-reporte-slot data-cuenta="${escaparHtml(ident)}" data-idx="${idx}" data-j="${j}"></span>`}</div>${notas.length ? `<div class="text-[10px] mt-0.5 flex flex-wrap gap-x-3">${notas.join('')}</div>` : ''}</div>`;
+                const tkResp = misReportes.filter(t => t.estado === 'resuelto' && String(t.cuenta || '').toLowerCase() === (reemp ? String(reemp.anterior || '').toLowerCase() : ident)).sort((x, y) => String(y.resueltoEl).localeCompare(String(x.resueltoEl)))[0];
+                const respNueva = tkResp && String(tkResp.resueltoEl || '') > repVistasHasta();
+                const avisoResp = tkResp ? `<button type="button" onclick="verReporteDeCuenta()" class="mt-1 text-[10px] font-bold ${respNueva ? 'text-white bg-red-500/80 px-2 py-0.5 rounded-full' : 'text-sky-300'}"><i class="fa-solid fa-comment-dots mr-1"></i>${respNueva ? 'Nueva respuesta de soporte: toca para verla' : 'Ver respuesta de soporte'}</button>` : '';
+                if (reemp) {
+                  return `<div class="my-1 p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-400/50">
+                    <p class="text-[10px] font-black text-emerald-300 uppercase tracking-wider mb-1"><i class="fa-solid fa-circle-check mr-1"></i>Usa esta cuenta</p>
+                    <div class="flex items-center justify-between gap-2"><span class="break-all min-w-0 text-white font-bold">${escaparHtml(esNfC ? textoLineaNetflix(l) : l)}</span><span data-reporte-slot data-cuenta="${escaparHtml(ident)}" data-idx="${idx}" data-j="${j}"></span></div>
+                    <p class="text-[10px] text-gray-400 mt-1">Reemplazó a <span class="line-through text-gray-500">${escaparHtml(reemp.anterior)}</span> <span class="text-red-300/80">(ya no funciona)</span></p>
+                    ${notas.length ? `<div class="text-[10px] mt-0.5 flex flex-wrap gap-x-3">${notas.join('')}</div>` : ''}${avisoResp}
+                  </div>`;
+                }
+                return `<div class="py-1 border-b border-gray-700/40 last:border-0"><div class="flex items-center justify-between gap-2"><span class="break-all min-w-0">${escaparHtml(esNfC ? textoLineaNetflix(l) : l)}</span>${false ? '' : `<span data-reporte-slot data-cuenta="${escaparHtml(ident)}" data-idx="${idx}" data-j="${j}"></span>`}</div>${notas.length ? `<div class="text-[10px] mt-0.5 flex flex-wrap gap-x-3">${notas.join('')}</div>` : ''}${avisoResp}</div>`;
               }).join('')
             : '<div class="text-gray-500">Sin credenciales registradas.</div>';
 
