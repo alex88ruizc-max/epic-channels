@@ -1907,6 +1907,15 @@
             <span class="min-w-0"><span class="block text-xs font-bold text-white">Producto VIP</span><span class="block text-[10px] text-gray-400">Solo lo ven los clientes a los que se lo autorizas.</span></span>
             <input type="checkbox" id="editProdVip" class="accent-yellow-500 w-5 h-5 shrink-0">
           </label>
+          <div class="p-3 rounded-xl bg-sky-500/5 border border-sky-500/30 space-y-2">
+            <label for="editProdStockDe" class="block"><span class="block text-xs font-bold text-white"><i class="fa-solid fa-arrows-rotate text-sky-400 mr-1"></i> Tomar stock de otro producto</span><span class="block text-[10px] text-gray-400">Para vender las cuentas de otro producto con este nombre y precio.</span></label>
+            <select id="editProdStockDe" onchange="actualizarVistaStockCompartido()" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"></select>
+            <div id="editProdStockModoCaja" class="hidden space-y-1.5">
+              <label class="flex items-start gap-2 text-[11px] text-gray-200 cursor-pointer"><input type="radio" name="editProdStockModo" value="respaldo" onchange="actualizarVistaStockCompartido()" class="accent-sky-500 mt-0.5"><span><b>Solo cuando se le acabe su stock</b></span></label>
+              <label class="flex items-start gap-2 text-[11px] text-gray-200 cursor-pointer"><input type="radio" name="editProdStockModo" value="compartido" onchange="actualizarVistaStockCompartido()" class="accent-sky-500 mt-0.5"><span><b>Siempre del otro producto</b></span></label>
+              <p id="editProdStockNota" class="text-[10px] text-sky-200 leading-snug"></p>
+            </div>
+          </div>
         </div>
 
         <div class="flex gap-2 pt-2">
@@ -6845,6 +6854,7 @@
       });
 
       catalogoUnificado = Array.from(mapaProds.values());
+      aplicarStockCompartido();
 
       renderizarFiltrosCategorias();
       actualizarSelectCategoriasAdmin();
@@ -6943,13 +6953,14 @@
 
         const cardBorder = esHot 
           ? 'border-red-500/50 shadow-xl shadow-red-500/10' 
-          : estiloCat.border;
+          : (esProductoVip(prod) ? 'border-amber-400/60 shadow-xl shadow-amber-500/10' : estiloCat.border);
         
         const badgeStyle = estiloCat.badge;
         const badgeIcon = obtenerIconoCategoria(prod.categoria);
         const badgeText = prod.categoria;
 
-        const hotBadgeHtml = esHot ? `<div class="mb-3 inline-flex items-center gap-1.5 bg-red-500/10 text-red-400 border border-red-500/30 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider"><i class="fa-solid fa-fire animate-pulse text-red-500"></i> Producto Más Vendido / HOT</div>` : '';
+        const esVipTienda = esProductoVip(prod);
+        const hotBadgeHtml = (esVipTienda ? `<div class="mb-3 mr-1.5 inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider text-black bg-gradient-to-r from-amber-300 via-yellow-400 to-amber-500 shadow-md shadow-amber-500/30"><i class="fa-solid fa-crown"></i> VIP</div>` : '') + (esHot ? `<div class="mb-3 inline-flex items-center gap-1.5 bg-red-500/10 text-red-400 border border-red-500/30 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider"><i class="fa-solid fa-fire animate-pulse text-red-500"></i> Producto Más Vendido / HOT</div>` : '');
 
         const imagenProdHtml = prod.imagenUrl 
           ? `<img src="${prod.imagenUrl}" alt="${prod.nombre}" class="w-10 h-10 rounded-full object-cover border border-gray-700/80 shadow-md shrink-0">` 
@@ -7048,6 +7059,7 @@
       }
 
       // Respaldo (modo anterior): solo funciona mientras las reglas de Firestore sigan abiertas
+      if (prodInfo.stockDe) { alert('Este producto necesita el servidor seguro para venderse. Intenta de nuevo en un momento.'); return; }
       const invRef = db.collection('inventario').doc(docId);
       const privRef = db.collection('inventario_privado').doc(docId);
       const userRef = db.collection('usuarios').doc(currentUser.uid);
@@ -7358,6 +7370,7 @@
                     <span class="px-2.5 py-0.5 rounded text-xs font-semibold ${stock > 0 ? 'bg-emerald-500/10 text-emerald-400' : 'bg-red-500/10 text-red-400'}">${stock} disponibles</span>
                     ${stock > 0 ? `<button onclick="verDetalleCuentas('${p.docId}')" class="ml-2 text-[11px] bg-gray-800 hover:bg-gray-700 text-gray-300 px-2 py-0.5 rounded">Ver</button>` : ''}
                   </div>
+                  ${p.stockDe ? `<span class="mt-1 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-sky-500/10 text-sky-300 border border-sky-500/30" title="${escaparHtml(MODOS_STOCK_COMPARTIDO[p.stockModo] || '')}"><i class="fa-solid fa-arrows-rotate"></i> ${p.stockModo === 'compartido' ? '' : (p.stockPropio || 0) + ' propias + '}${p.stockDeCantidad} de ${escaparHtml(p.stockDeNombre)}</span>` : ''}
                   ${insigniaStockBajo}
                 </div>
               </td>
@@ -7440,6 +7453,12 @@
       const chkVip = document.getElementById('editProdVip'); if (chkVip) chkVip.checked = prod.esVip === true;
       const filaVip = document.getElementById('editProdFilaVip'); if (filaVip) filaVip.classList.toggle('hidden', !personalizado);
       const bElim = document.getElementById('btnEditProdEliminar'); if (bElim) bElim.classList.toggle('hidden', !personalizado);
+      poblarOpcionesStockCompartido(prod.docId);
+      const selSD = document.getElementById('editProdStockDe');
+      const dInvSD = snapshotInventario[prod.docId] || {};
+      if (selSD) { selSD.value = String(dInvSD.stockDe || ''); if (selSD.value !== String(dInvSD.stockDe || '')) selSD.value = ''; }
+      document.querySelectorAll('input[name="editProdStockModo"]').forEach(r => { r.checked = r.value === (dInvSD.stockModo === 'compartido' ? 'compartido' : 'respaldo'); });
+      actualizarVistaStockCompartido();
       const notaBase = document.getElementById('editProdNotaBase'); if (notaBase) notaBase.classList.toggle('hidden', personalizado);
 
       const modal = document.getElementById('modalEditarProducto');
@@ -7501,6 +7520,23 @@
         const chkAct = document.getElementById('editProdActivo');
         if (chkAct) updateData.activo = chkAct.checked;
         if (esProductoPersonalizado(docId)) { const chkVip = document.getElementById('editProdVip'); if (chkVip) updateData.esVip = chkVip.checked; }
+
+        // Stock compartido: necesita el servidor actualizado (es quien entrega las cuentas)
+        const selSD = document.getElementById('editProdStockDe');
+        const fuenteSD = selSD ? String(selSD.value || '') : '';
+        const antesSD = String((snapshotInventario[docId] || {}).stockDe || '');
+        if (fuenteSD) {
+          if (fuenteSD === docId) { alert('Un producto no puede tomar stock de sí mismo.'); return; }
+          if (fuenteSD !== antesSD || !antesSD) {
+            const tiene = await servidorTiene('stock_compartido');
+            if (tiene !== true) { alert(tiene === false ? 'Para tomar stock de otro producto necesitas actualizar el servidor (Apps Script) con el archivo nuevo. Mientras tanto no se guardó esa opción.' : 'No pude comprobar el servidor ahora mismo. Intenta guardar de nuevo en un momento.'); return; }
+          }
+          updateData.stockDe = fuenteSD;
+          updateData.stockModo = ((document.querySelector('input[name="editProdStockModo"]:checked') || {}).value === 'compartido') ? 'compartido' : 'respaldo';
+        } else if (antesSD) {
+          updateData.stockDe = '';
+          updateData.stockModo = '';
+        }
 
         await db.collection('inventario').doc(docId).set(updateData, { merge: true });
         await db.collection('configuracion').doc('precios').set({ [docId]: precio }, { merge: true });
@@ -11451,6 +11487,60 @@
         renderizarCatalogo();
         mostrarToast('Listo: orden automático.');
       } catch (err) { alert('No se pudo restaurar: ' + err.message); }
+    }
+
+
+    // ==================== INSIGNIA VIP ====================
+    function esProductoVip(prod) {
+      if (!prod) return false;
+      return prod.esVip === true || PRODUCTOS_VIP_EXCLUSIVOS.some(k => k === prod.id || k === prod.docId || (prod.aliases && prod.aliases.includes(k)));
+    }
+
+    // ==================== STOCK COMPARTIDO ENTRE PRODUCTOS ====================
+    // Un producto puede vender cuentas de otro: "respaldo" (cuando se le acaban las suyas) o "compartido" (siempre del otro)
+    const MODOS_STOCK_COMPARTIDO = { respaldo: 'Solo cuando se le acabe su stock', compartido: 'Siempre del otro producto' };
+
+    function libresParaPrestar(p) {
+      if (Array.isArray(p.cuentas) && p.cuentas.length) return p.cuentas.filter(c => !(c && typeof c === 'object' && c.alquilerId)).length;
+      return Math.max(0, parseInt(p.stockPropio !== undefined ? p.stockPropio : p.stock, 10) || 0);
+    }
+
+    function aplicarStockCompartido() {
+      try {
+        const porId = {};
+        catalogoUnificado.forEach(p => { p.stockPropio = p.stock; p.stockDe = ''; p.stockModo = ''; p.stockDeNombre = ''; p.stockDeCantidad = 0; porId[p.docId] = p; });
+        catalogoUnificado.forEach(p => {
+          const d = snapshotInventario[p.docId] || {};
+          const fuente = String(d.stockDe || '');
+          if (!fuente || fuente === p.docId || !porId[fuente]) return;
+          const src = porId[fuente];
+          const modo = d.stockModo === 'compartido' ? 'compartido' : 'respaldo';
+          const prestadas = libresParaPrestar(src);
+          p.stockDe = fuente; p.stockModo = modo; p.stockDeNombre = src.nombre || fuente; p.stockDeCantidad = prestadas;
+          p.stock = (modo === 'compartido' ? 0 : (parseInt(p.stockPropio, 10) || 0)) + prestadas;
+        });
+      } catch (e) { console.warn('Stock compartido:', e); }
+    }
+
+    function poblarOpcionesStockCompartido(docId) {
+      const sel = document.getElementById('editProdStockDe');
+      if (!sel) return;
+      const lista = catalogoUnificado.filter(p => p.docId !== docId && !String((snapshotInventario[p.docId] || {}).stockDe || ''));
+      sel.innerHTML = '<option value="">No, solo su propio stock</option>' + lista.map(p => `<option value="${escaparHtml(p.docId)}">${escaparHtml(p.nombre || p.docId)}${p.activo === false ? ' (oculto)' : ''} · ${libresParaPrestar(p)} en stock</option>`).join('');
+    }
+
+    function actualizarVistaStockCompartido() {
+      const sel = document.getElementById('editProdStockDe'), caja = document.getElementById('editProdStockModoCaja');
+      if (!sel || !caja) return;
+      caja.classList.toggle('hidden', !sel.value);
+      const nota = document.getElementById('editProdStockNota');
+      if (nota) {
+        const src = catalogoUnificado.find(p => p.docId === sel.value);
+        const modo = (document.querySelector('input[name="editProdStockModo"]:checked') || {}).value || 'respaldo';
+        nota.textContent = !src ? '' : (modo === 'compartido'
+          ? `Se venderán solo cuentas de "${src.nombre}". Las cuentas propias de este producto se quedan guardadas.`
+          : `Primero vende sus propias cuentas. Cuando se acaben, toma de "${src.nombre}".`) + ' Precio, garantía y nombre siguen siendo los de este producto. Los perfiles de Alquileres nunca se prestan.';
+      }
     }
 
     // ==================== NETFLIX EN LA TIENDA: SIN CONTRASEÑA ====================
