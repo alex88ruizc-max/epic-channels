@@ -380,6 +380,7 @@
 
     <!-- VISTA: MI PERFIL (antes "Mis Cuentas"; se conserva el id vistaMisCuentas) -->
     <section id="vistaProveedor" class="hidden pb-24 sm:pb-6 max-w-2xl mx-auto space-y-4">
+      <div id="provReferidosCaja" class="hidden"></div>
       <div class="p-5 bg-gradient-to-br from-emerald-900/40 to-gray-900 border border-emerald-500/40 rounded-2xl shadow-xl">
         <p class="text-[11px] font-bold text-emerald-300 uppercase tracking-wider">Se te debe</p>
         <p id="provDebe" class="text-4xl font-black text-white mt-1">$0</p>
@@ -491,7 +492,8 @@
             <button type="button" onclick="cambiarTabPerfil('recargas')" class="py-2.5 rounded-xl bg-gray-800 hover:bg-gray-700 border border-gray-700 text-gray-100 font-bold text-xs flex items-center justify-center gap-1.5"><i class="fa-solid fa-receipt"></i> Mis recargas</button>
           </div>
           <div id="perfilNivelBox" class="mt-3"></div>
-          <div id="perfilCreditoCaja" class="hidden mt-3 p-3 rounded-xl border border-violet-500/40 bg-gradient-to-br from-violet-500/10 to-gray-900"></div>
+          <div id="perfilReferidosCaja" class="hidden mt-3"></div>
+        <div id="perfilCreditoCaja" class="hidden mt-3 p-3 rounded-xl border border-violet-500/40 bg-gradient-to-br from-violet-500/10 to-gray-900"></div>
           <div id="perfilAvisoDatos" class="hidden mt-3 p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-[11px] flex items-center gap-2">
             <i class="fa-solid fa-circle-info shrink-0"></i>
             <span>Completa tu nombre y WhatsApp para identificarte rápido cuando reportes una cuenta con un ticket.</span>
@@ -917,6 +919,37 @@
 
       <!-- TAB 2: USUARIOS REGISTRADOS Y PERMISOS -->
       <div id="adminSecUsuarios" class="hidden space-y-6">
+        <div id="adminReferidosCaja" class="solo-admin bg-gray-900 border border-sky-500/30 rounded-2xl overflow-hidden">
+          <button type="button" onclick="document.getElementById('refCuerpo').classList.toggle('hidden')" class="w-full text-left p-4 flex items-center gap-3">
+            <span class="w-9 h-9 shrink-0 rounded-xl bg-sky-500/15 text-sky-300 flex items-center justify-center"><i class="fa-solid fa-user-group"></i></span>
+            <span class="min-w-0 flex-grow"><span class="block font-bold text-white text-sm">Referidos y comisiones</span><span id="refResumen" class="block text-[11px] text-gray-400 truncate">Toca para configurar</span></span>
+            <span id="refBadgePend" class="hidden px-2 py-0.5 rounded-full bg-sky-500 text-black text-[10px] font-black"></span>
+          </button>
+          <div id="refCuerpo" class="hidden border-t border-gray-800 p-4 space-y-3">
+            <label class="flex items-center justify-between gap-3 p-2.5 rounded-xl bg-gray-800/60 border border-gray-700/60"><span class="text-xs font-bold text-white">Programa de referidos activo</span><input type="checkbox" id="refActivo" class="accent-sky-500 w-5 h-5"></label>
+            <div><p class="text-xs font-bold text-white mb-1">Bono por cliente nuevo referido</p><input type="number" id="refBonoRegistro" min="0" step="500" placeholder="Ej: 2000 (0 = sin bono)" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"></div>
+            <div>
+              <p class="text-xs font-bold text-white mb-1">Comisión por stock que suba un proveedor referido</p>
+              <select id="refModoProv" onchange="pintarModoReferidos()" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"><option value="bloque">Pago por cada bloque de cuentas de sus referidos</option><option value="ninguno">Sin comisión por stock</option></select>
+              <div id="refModoBloque" class="space-y-2 mt-2">
+                <div class="grid grid-cols-2 gap-2">
+                  <label class="text-[10px] text-gray-400">Bloque (cuentas de sus referidos)<input type="number" id="refCuentasBloque" min="1" placeholder="50" class="mt-1 w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"></label>
+                  <label class="text-[10px] text-gray-400">Pago por bloque ($)<input type="number" id="refMontoBloque" min="0" step="500" placeholder="5000" class="mt-1 w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"></label>
+                  <label class="text-[10px] text-gray-400">Meta propia (cuentas que él mismo sube)<input type="number" id="refMetaPropia" min="0" placeholder="50" class="mt-1 w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"></label>
+                  <label class="text-[10px] text-gray-400">Máximo de pagos por periodo<input type="number" id="refMaxPagos" min="1" max="20" placeholder="2" class="mt-1 w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"></label>
+                </div>
+                <label class="block text-[10px] text-gray-400">Periodo<select id="refPeriodo" class="mt-1 w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"><option value="mes">Mensual (del 1 al último día del mes)</option><option value="semana">Semanal (lunes a domingo)</option></select></label>
+                <p id="refEjemplo" class="text-[10px] text-sky-200 leading-snug p-2 rounded-lg bg-sky-500/10 border border-sky-500/30"></p>
+              </div>
+            </div>
+            <label class="flex items-center justify-between gap-3 p-2.5 rounded-xl bg-gray-800/60 border border-gray-700/60"><span class="text-xs text-white"><b>Acreditar solo al saldo</b><span class="block text-[10px] text-gray-400">Si está apagado, quedan pendientes para que las revises.</span></span><input type="checkbox" id="refAuto" class="accent-sky-500 w-5 h-5"></label>
+            <button type="button" onclick="guardarConfigReferidos()" class="w-full py-2.5 rounded-xl bg-sky-500 hover:bg-sky-400 text-black font-black text-xs">Guardar configuración</button>
+            <div class="pt-2 border-t border-gray-800">
+              <div class="flex items-center gap-2 mb-2"><p class="text-xs font-black text-white">Comisiones</p><div class="ml-auto flex gap-1 text-[10px] font-bold" id="refFiltros"></div></div>
+              <div id="refLista" class="space-y-2 max-h-80 overflow-y-auto"></div>
+            </div>
+          </div>
+        </div>
         <div id="adminRegaloRevendedor" class="solo-admin bg-gray-900 border border-fuchsia-500/30 rounded-2xl p-4 space-y-2.5">
           <h4 class="font-bold text-white text-sm flex items-center gap-2"><i class="fa-solid fa-medal text-fuchsia-300"></i> Regalo para revendedores</h4>
           <p class="text-[11px] text-gray-400 leading-relaxed">Cuando un cliente con insignia <b class="text-fuchsia-200">Revendedor</b> compra más del límite de un mismo producto en el mismo día, recibe 1 cuenta de regalo (una vez por producto al día).</p>
@@ -2390,6 +2423,14 @@
           </select>
           <p id="editClienteRolInfo" class="hidden mt-1.5 text-[10px] text-gray-400 leading-snug"></p>
         </div>
+        <div id="editClienteReferidoCaja" class="solo-admin p-3 rounded-xl border border-sky-500/30 bg-sky-500/5 space-y-2">
+          <p class="text-xs font-black text-white"><i class="fa-solid fa-user-group text-sky-300 mr-1"></i> Referidos</p>
+          <div>
+            <label class="block text-[11px] text-gray-400 mb-1">Lo recomendó (correo)</label>
+            <input type="email" id="editClienteReferidoPor" autocomplete="off" placeholder="Vacío = nadie lo recomendó" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none">
+          </div>
+          <p id="editClienteReferidos" class="text-[11px] text-gray-400">Cargando sus referidos...</p>
+        </div>
         <div id="editClienteBloqueCategorias" class="solo-admin hidden">
           <label class="block text-xs text-gray-400 mb-1">Categorías que puede ver (además de Netflix y VIP)</label>
           <div id="editClienteListaCategorias" class="max-h-44 overflow-y-auto space-y-1.5 bg-gray-800/60 p-2.5 rounded-xl border border-gray-700/60"></div>
@@ -3246,9 +3287,15 @@
           <span id="authErrorMsg"></span>
         </div>
 
-        <div id="grupoAuthWhatsapp" class="hidden">
-          <label class="block text-xs text-gray-400 mb-1">Número de WhatsApp</label>
-          <input type="tel" id="authWhatsapp" placeholder="Ej: 3001234567" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none">
+        <div id="grupoAuthWhatsapp" class="hidden space-y-3">
+          <div>
+            <label class="block text-xs text-gray-400 mb-1">Número de WhatsApp</label>
+            <input type="tel" id="authWhatsapp" placeholder="Ej: 3001234567" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none">
+          </div>
+          <div>
+            <label class="block text-xs text-gray-400 mb-1">¿Quién te recomendó? (opcional)</label>
+            <input type="email" id="authReferido" autocomplete="off" placeholder="Correo de quien te invitó" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none">
+          </div>
         </div>
         <div id="grupoAuthCaptcha" class="pt-2 hidden">
           <label class="block text-xs text-gray-400 mb-1">Verificación de Seguridad</label>
@@ -5811,6 +5858,7 @@
         if (btnSoporte) btnSoporte.classList.remove('hidden');
         try { asistenteProgramarSaludo(); } catch (e) { console.warn(e); }
         try { iniciarNovedadesClientes(); } catch (e) { console.warn(e); }
+        try { leerCfgReferidos().then(() => { iniciarMisComisiones(); renderizarMisReferidos(); }); } catch (e) { console.warn(e); }
         if (btnTelegramBot) btnTelegramBot.classList.remove('hidden');
         
         if (navSaldo) {
@@ -5945,6 +5993,7 @@
         if (btnSoporte) btnSoporte.classList.add('hidden');
         try { asistenteAlSalir(); } catch (e) { console.warn(e); }
         try { detenerMisRecargas(); } catch (e) { /* nada */ }
+        try { detenerMisComisiones(); } catch (e) { /* nada */ }
         if (btnTelegramBot) btnTelegramBot.classList.add('hidden');
         if (navSaldo) {
           navSaldo.classList.add('hidden');
@@ -6367,7 +6416,8 @@
         const desde = new Date(Date.now() - 15 * 24 * 3600000).toISOString();
         unsubRegistros = db.collection('usuarios').where('fechaRegistro', '>=', desde).onSnapshot(snap => {
           const lista = [];
-          snap.forEach(d => { const u = d.data() || {}; if (!u.rol || u.rol === 'cliente') lista.push({ uid: d.id, email: u.email || '', nombre: u.nombre || '', whatsapp: u.whatsapp || '', fechaRegistro: u.fechaRegistro }); });
+          snap.forEach(d => { const u = d.data() || {}; if (!u.rol || u.rol === 'cliente') lista.push({ uid: d.id, email: u.email || '', nombre: u.nombre || '', whatsapp: u.whatsapp || '', fechaRegistro: u.fechaRegistro, referidoPorEmail: u.referidoPorEmail || '', referidoProcesado: u.referidoProcesado === true }); });
+          try { procesarReferidosNuevos(lista); } catch (e) { /* nada */ }
           lista.forEach(u => {
             if (!avisadosEquipo['reg_' + u.uid] && Date.parse(u.fechaRegistro) > inicioSesionEquipo) mostrarToast('Nuevo cliente registrado: ' + (u.email || u.nombre));
             avisadosEquipo['reg_' + u.uid] = true;
@@ -7106,7 +7156,7 @@
       if (tab === 'productos') renderizarAdminProductos();
       if (tab === 'reporte') cargarDashboardVentas(false);
       if (tab === 'categorias') renderizarAdminCategoriasColores();
-      if (tab === 'usuarios') { cargarUsuariosAdmin(); cargarRegaloRevendedor(); }
+      if (tab === 'usuarios') { cargarUsuariosAdmin(); cargarRegaloRevendedor(); cargarPanelReferidos(); }
       if (tab === 'stock') { poblarSelectStock(); cargarAportantesStock(); }
       if (tab === 'apariencia') cargarDatosAparienciaAdmin();
       if (tab === 'pagos') cargarMetodosPagoAdmin();
@@ -8538,6 +8588,7 @@
         editClienteOriginal.categoriasPermitidas = Array.isArray(d.categoriasPermitidas) ? d.categoriasPermitidas : [];
         if (selRolEd) selRolEd.value = valorSelectTipoCuenta(editClienteOriginal.rol, editClienteOriginal.tipoCuenta);
         if (esAdminSesionActual()) cargarCreditoEditar(uid, d);
+        if (esAdminSesionActual()) cargarReferidosEditar(uid, d);
         renderizarListaStockEditar(editClienteOriginal.permisos);
         editClienteCambioRol();
         if (btnGuardarEd) { btnGuardarEd.disabled = false; btnGuardarEd.innerHTML = 'Guardar cambios'; }
@@ -8640,6 +8691,19 @@
           const cambios = {};
           if (rolNuevo !== rolAntes) cambios.rol = rolNuevo;
           if (tipoNuevo !== (orig.tipoCuenta || '')) cambios.tipoCuenta = tipoNuevo;
+          // Quién lo recomendó
+          const refNuevo = String((document.getElementById('editClienteReferidoPor') || {}).value || '').trim().toLowerCase();
+          if (refNuevo !== (orig.referidoPorEmail || '')) {
+            if (!refNuevo) { cambios.referidoPorEmail = ''; cambios.referidoPorUid = ''; }
+            else {
+              if (refNuevo === String(orig.email || '').toLowerCase()) { alert('Un cliente no puede ser su propio referido.'); return; }
+              const qRef = await db.collection('usuarios').where('email', '==', refNuevo).limit(1).get();
+              let refUid = ''; qRef.forEach(x => { refUid = x.id; });
+              if (!refUid) { alert('No encontré ningún usuario con el correo ' + refNuevo + '.'); return; }
+              if (esCorreoAdmin(refNuevo)) { alert('Tu cuenta de administrador no participa en referidos.'); return; }
+              cambios.referidoPorEmail = refNuevo; cambios.referidoPorUid = refUid; cambios.referidoProcesado = true;
+            }
+          }
           if (tipoNuevo === 'normal') {
             const cats = Array.from(document.querySelectorAll('.chk-categoria-editar:checked')).map(c => c.value).sort();
             if (JSON.stringify(cats) !== JSON.stringify((orig.categoriasPermitidas || []).slice().sort())) cambios.categoriasPermitidas = cats;
@@ -9067,6 +9131,7 @@
           : `¡Agregadas ${nuevas.length} cuentas al inventario!`);
 
         registrarCargaStock(docId, prod ? prod.nombre : docId, nuevas, costoUnitario, aporteCarga);
+        if (aporteCarga) { setTimeout(() => { try { actualizarComisionesPorStock(aporteCarga.uid); } catch (e) { console.warn(e); } }, 1500); }
         // Novedad para clientes (no se publica para productos VIP ni ocultos)
         if (prod && prod.activo !== false && !esProductoVip(prod)) {
           publicarNovedadGlobal({ tipo: 'stock', productoId: docId, cantidad: nuevas.length, titulo: `Nuevo stock: ${prod.nombre}` });
@@ -9834,6 +9899,7 @@
           snap.forEach(d => proveedorLotes.push(Object.assign({ id: d.id }, d.data())));
           proveedorLotes.sort((a, b) => String(b.creadoEl).localeCompare(String(a.creadoEl)));
           renderizarProveedor();
+          try { renderizarMisReferidos(); } catch (e) { /* nada */ }
         }, err => console.warn('Mis envíos no disponibles:', err));
       } catch (e) { console.warn(e); }
     }
@@ -10111,6 +10177,7 @@
           try { publicarNovedadGlobal({ tipo: 'stock', productoId: l.productoId, cantidad: l.cantidad, titulo: `Nuevo stock: ${prod.nombre}` }); } catch (en) { console.warn(en); }
         }
         cerrarAprobarLote();
+        try { actualizarComisionesPorStock(l.proveedorUid); } catch (e) { console.warn(e); }
         mostrarToast(`Lote aprobado: ${l.cantidad} cuentas cargadas. Se le deben ${formatoCOP(monto)} a ${l.proveedorNombre || 'el proveedor'}.`);
       } catch (err) {
         alert('No se pudo aprobar: ' + err.message);
@@ -13962,7 +14029,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-05m';
+    const VERSION_PAGINA = '2026-10-05o';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261005_tarjetas', fecha: '2026-10-05', titulo: 'Tienda con más estilo', mensaje: 'Cada producto ahora tiene su **tarjeta con el color de su marca**: Prime Video, Disney+, YouTube, Spotify y más. ¡Míralas en la tienda!' },
       { id: 'act_20261005_reportes', fecha: '2026-10-05', titulo: 'Tus reportes, más cómodos', mensaje: 'En **Mis Cuentas** ahora tienes un botón **Mis reportes** con un número rojo cuando te respondemos. Y si te cambiamos una cuenta, la verás destacada como **Usa esta cuenta**, con la anterior tachada.' },
@@ -14262,6 +14329,279 @@
         pintarBotonesEstiloTarjetas(); renderizarCatalogo();
         mostrarToast(estilo === 'marca' ? 'Tarjetas de marca activadas.' : 'Tarjetas clásicas activadas.');
       } catch (err) { alert('No se pudo guardar: ' + err.message); }
+    }
+
+
+    // ==================== REFERIDOS Y COMISIONES ====================
+    // Quien recomienda gana: un bono por cliente nuevo y una comisión por el stock que suba un proveedor referido.
+    // Las comisiones quedan "a favor": pendientes para revisar, o se acreditan solas al saldo si así se configura.
+    function esCorreoAdmin(e) { return ADMIN_EMAILS.some(x => x.trim().toLowerCase() === String(e || '').trim().toLowerCase()); }
+    let cfgReferidos = null, comisionesRef = [], unsubComisionesRef = null, filtroRef = 'pendiente', misComisiones = [], unsubMisComisiones = null;
+    const CFG_REF_BASE = { activo: false, bonoRegistro: 0, modoProv: 'bloque', cuentasBloque: 50, montoBloque: 5000, metaPropia: 50, maxPagos: 2, periodo: 'mes', auto: false };
+
+    async function leerCfgReferidos() {
+      try { const d = await db.collection('configuracion').doc('referidos').get(); cfgReferidos = Object.assign({}, CFG_REF_BASE, d.exists ? (d.data() || {}) : {}); }
+      catch (e) { cfgReferidos = Object.assign({}, CFG_REF_BASE); }
+      return cfgReferidos;
+    }
+
+    // ----- Crear una comisión (una sola vez por origen) -----
+    async function crearComisionReferido(datos) {
+      const cfg = cfgReferidos || await leerCfgReferidos();
+      if (!cfg.activo || !(datos.monto > 0) || !datos.beneficiarioUid) return null;
+      if (esCorreoAdmin(datos.beneficiarioEmail)) return null;
+      const ref = db.collection('comisiones_referidos').doc(datos.id);
+      const ahora = new Date().toISOString();
+      try {
+        const creada = await db.runTransaction(async (t) => {
+          const ya = await t.get(ref);
+          if (ya.exists) return false;
+          const doc = Object.assign({}, datos, { estado: cfg.auto ? 'acreditada' : 'pendiente', fecha: ahora, creadaPor: (currentUser && currentUser.email) || '' });
+          delete doc.id;
+          if (cfg.auto) {
+            const uRef = db.collection('usuarios').doc(datos.beneficiarioUid);
+            const u = await t.get(uRef);
+            const du = u.exists ? (u.data() || {}) : {};
+            t.update(uRef, { saldo: (Number(du.saldo) || 0) + datos.monto, notificaciones: agregarNotifALista(du.notificaciones, crearNotificacionPersonal('saldo', `Ganaste ${formatoCOP(datos.monto)} por referidos`, datos.detalle || 'Comisión por recomendar a alguien.')) });
+            doc.resueltoEl = ahora;
+          }
+          t.set(ref, doc);
+          return true;
+        });
+        return creada;
+      } catch (e) { console.warn('Comisión de referido:', e); return null; }
+    }
+
+    // ----- Cliente nuevo que puso el correo de quien lo recomendó -----
+    async function procesarReferidosNuevos(lista) {
+      if (!esAdminSesionActual()) return;
+      const cfg = cfgReferidos || await leerCfgReferidos();
+      for (const u of lista) {
+        if (!u.referidoPorEmail || u.referidoProcesado) continue;
+        try {
+          const q = await db.collection('usuarios').where('email', '==', u.referidoPorEmail).limit(1).get();
+          let refUid = '', refEmail = ''; q.forEach(x => { refUid = x.id; refEmail = (x.data() || {}).email || ''; });
+          const cambios = { referidoProcesado: true };
+          if (refUid && refUid !== u.uid && !esCorreoAdmin(refEmail)) {
+            cambios.referidoPorUid = refUid;
+            if (cfg.activo && Number(cfg.bonoRegistro) > 0) await crearComisionReferido({ id: 'reg_' + u.uid, beneficiarioUid: refUid, beneficiarioEmail: refEmail, referidoUid: u.uid, referidoEmail: u.email, tipo: 'registro', monto: Math.round(Number(cfg.bonoRegistro)), detalle: 'Se registró ' + (u.email || 'un cliente') + ' con tu recomendación.' });
+          }
+          await db.collection('usuarios').doc(u.uid).set(cambios, { merge: true });
+        } catch (e) { console.warn('Referido nuevo:', e); }
+      }
+    }
+
+    // ----- Comisión por stock: meta propia + tope por periodo, sin acumular -----
+    // Quien recomienda cobra por los bloques que suben sus referidos, pero solo tantas veces como bloques
+    // haya subido él mismo (meta propia), con un máximo por periodo. Lo que no cobra en el periodo se pierde.
+    function inicioPeriodoRef(cfg) {
+      const d = new Date();
+      if (cfg.periodo === 'semana') d.setDate(d.getDate() - ((d.getDay() + 6) % 7)); else d.setDate(1);
+      d.setHours(0, 0, 0, 0);
+      return d;
+    }
+    function clavePeriodoRef(cfg) {
+      const d = inicioPeriodoRef(cfg);
+      return (cfg.periodo === 'semana' ? 'S' : 'M') + d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + (cfg.periodo === 'semana' ? '-' + String(d.getDate()).padStart(2, '0') : '');
+    }
+    async function cuentasSubidasEnPeriodo(uids, desdeISO) {
+      const set = new Set(uids), porUid = {};
+      uids.forEach(u => { porUid[u] = 0; });
+      // Lotes aprobados en el periodo (se leen de la base para incluir el que se acaba de aprobar)
+      try {
+        const lotes = await db.collection('stock_pendiente').where('aprobadoEl', '>=', desdeISO).get();
+        lotes.forEach(d => { const l = d.data() || {}; if (l.estado === 'aprobado' && set.has(l.proveedorUid)) porUid[l.proveedorUid] += parseInt(l.cantidad, 10) || (l.cuentas || []).length; });
+      } catch (e) {
+        (lotesProveedores || []).forEach(l => { if (l.estado === 'aprobado' && set.has(l.proveedorUid) && String(l.aprobadoEl || l.creadoEl) >= desdeISO) porUid[l.proveedorUid] += parseInt(l.cantidad, 10) || (l.cuentas || []).length; });
+      }
+      try {
+        const snap = await db.collection('cargas_stock').where('fecha', '>=', desdeISO).get();
+        snap.forEach(d => { const c = d.data() || {}; if (set.has(c.porUid)) porUid[c.porUid] += parseInt(c.cantidad, 10) || 0; });
+      } catch (e) { console.warn('Cargas del periodo:', e); }
+      return porUid;
+    }
+    function reglasStock(cfg) {
+      const N = Math.max(1, parseInt(cfg.cuentasBloque, 10) || 50);
+      return { N: N, monto: Math.max(0, Math.round(Number(cfg.montoBloque) || 0)), meta: Math.max(0, parseInt(cfg.metaPropia === undefined ? N : cfg.metaPropia, 10) || 0), tope: Math.max(1, parseInt(cfg.maxPagos, 10) || 2) };
+    }
+    async function recalcularComisionStock(refUid) {
+      if (!esAdminSesionActual() || !refUid) return;
+      const cfg = await leerCfgReferidos();
+      if (!cfg.activo || cfg.modoProv !== 'bloque') return;
+      const R = reglasStock(cfg);
+      if (!(R.monto > 0)) return;
+      try {
+        const bDoc = await db.collection('usuarios').doc(refUid).get();
+        const benef = bDoc.exists ? (bDoc.data() || {}) : {};
+        if (esCorreoAdmin(benef.email)) return;
+        const q = await db.collection('usuarios').where('referidoPorUid', '==', refUid).get();
+        const refs = []; q.forEach(x => refs.push(x.id));
+        if (!refs.length) return;
+        const desde = inicioPeriodoRef(cfg).toISOString(), P = clavePeriodoRef(cfg);
+        const conteo = await cuentasSubidasEnPeriodo([refUid].concat(refs), desde);
+        const propias = conteo[refUid] || 0;
+        const deReferidos = refs.reduce((t, u) => t + (conteo[u] || 0), 0);
+        const bloquesReferidos = Math.floor(deReferidos / R.N);
+        const bloquesPropios = R.meta > 0 ? Math.floor(propias / R.meta) : R.tope;
+        const permitidos = Math.min(bloquesReferidos, bloquesPropios, R.tope);
+        let pagados = 0;
+        const ya = await db.collection('comisiones_referidos').where('beneficiarioUid', '==', refUid).get();
+        ya.forEach(d => { const c = d.data() || {}; if (c.tipo === 'stock' && c.periodo === P && c.estado !== 'anulada') pagados += parseInt(c.bloques, 10) || 1; });
+        const nuevos = permitidos - pagados;
+        if (nuevos <= 0) return;
+        await crearComisionReferido({
+          id: 'stock_' + refUid + '_' + P + '_' + (pagados + 1), beneficiarioUid: refUid, beneficiarioEmail: benef.email || '', referidoUid: refs.join(','), referidoEmail: refs.length + ' referidos',
+          tipo: 'stock', periodo: P, bloques: nuevos, monto: nuevos * R.monto,
+          detalle: `${nuevos === 1 ? '1 pago' : nuevos + ' pagos'} de ${formatoCOP(R.monto)} · tus referidos subieron ${deReferidos} cuentas (${bloquesReferidos} ${bloquesReferidos === 1 ? 'bloque' : 'bloques'}) y tú ${propias} (meta ${R.meta}) · máx. ${R.tope} por periodo`
+        });
+      } catch (e) { console.warn('Comisión por stock:', e); }
+    }
+    // Al aprobar o cargar stock de alguien: se revisa a quien lo recomendó y a él mismo (por si recomienda a otros)
+    async function actualizarComisionesPorStock(uid) {
+      if (!esAdminSesionActual() || !uid) return;
+      try {
+        const d = await db.collection('usuarios').doc(uid).get();
+        const u = d.exists ? (d.data() || {}) : {};
+        if (u.referidoPorUid) await recalcularComisionStock(u.referidoPorUid);
+        await recalcularComisionStock(uid);
+      } catch (e) { console.warn(e); }
+    }
+
+    // ----- Panel del administrador -----
+    async function cargarPanelReferidos() {
+      const cfg = await leerCfgReferidos();
+      const set = (id, v) => { const e = document.getElementById(id); if (!e) return; if (e.type === 'checkbox') e.checked = !!v; else e.value = v; };
+      set('refActivo', cfg.activo); set('refBonoRegistro', cfg.bonoRegistro || ''); set('refModoProv', cfg.modoProv || 'bloque');
+      set('refCuentasBloque', cfg.cuentasBloque || 50); set('refMontoBloque', cfg.montoBloque || ''); set('refAuto', cfg.auto);
+      set('refMetaPropia', cfg.metaPropia === undefined ? (cfg.cuentasBloque || 50) : cfg.metaPropia); set('refMaxPagos', cfg.maxPagos || 2); set('refPeriodo', cfg.periodo || 'mes');
+      if (cfg.modoProv === 'porcentaje') set('refModoProv', 'bloque');
+      ['refCuentasBloque', 'refMontoBloque', 'refMetaPropia', 'refMaxPagos', 'refPeriodo'].forEach(id => { const e = document.getElementById(id); if (e && !e.dataset.ej) { e.dataset.ej = '1'; e.addEventListener('input', pintarEjemploReferidos); e.addEventListener('change', pintarEjemploReferidos); } });
+      pintarEjemploReferidos();
+      pintarModoReferidos();
+      if (!unsubComisionesRef) {
+        try {
+          unsubComisionesRef = db.collection('comisiones_referidos').onSnapshot(snap => {
+            comisionesRef = []; snap.forEach(d => comisionesRef.push(Object.assign({ id: d.id }, d.data() || {})));
+            comisionesRef.sort((a, b) => String(b.fecha).localeCompare(String(a.fecha)));
+            renderizarComisionesAdmin();
+          }, err => console.warn('Comisiones:', err));
+        } catch (e) { console.warn(e); }
+      }
+      renderizarComisionesAdmin();
+    }
+    function pintarModoReferidos() {
+      const m = (document.getElementById('refModoProv') || {}).value;
+      const b = document.getElementById('refModoBloque');
+      if (b) b.classList.toggle('hidden', m !== 'bloque');
+    }
+    function pintarEjemploReferidos() {
+      const e = document.getElementById('refEjemplo'); if (!e) return;
+      const v = id => (document.getElementById(id) || {}).value;
+      const N = Math.max(1, parseInt(v('refCuentasBloque'), 10) || 50), monto = Math.round(Number(v('refMontoBloque')) || 0), meta = parseInt(v('refMetaPropia'), 10) || 0, tope = Math.max(1, parseInt(v('refMaxPagos'), 10) || 2);
+      const per = v('refPeriodo') === 'semana' ? 'la semana' : 'el mes';
+      e.innerHTML = `Ejemplo: en ${per} los referidos de Karen suben ${N * 4} cuentas (4 bloques) y ella sube ${meta || N}. ` +
+        (meta > 0 ? `Cobra <b>${Math.min(4, 1, tope)} pago</b> (${formatoCOP(monto)}), porque su meta permite 1. Si ella sube ${meta * 2}, cobra <b>${Math.min(4, 2, tope)}</b>.` : `Cobra <b>${Math.min(4, tope)} pagos</b>.`) +
+        ` Nunca más de ${tope} por periodo, y lo que no cobra no pasa al siguiente.`;
+    }
+    async function guardarConfigReferidos() {
+      if (!esAdminSesionActual()) return;
+      const v = id => document.getElementById(id);
+      const cfg = {
+        activo: v('refActivo').checked, bonoRegistro: Math.max(0, Math.round(Number(v('refBonoRegistro').value) || 0)), modoProv: v('refModoProv').value,
+        cuentasBloque: Math.max(1, parseInt(v('refCuentasBloque').value, 10) || 50), montoBloque: Math.max(0, Math.round(Number(v('refMontoBloque').value) || 0)),
+        metaPropia: Math.max(0, parseInt(v('refMetaPropia').value, 10) || 0), maxPagos: Math.max(1, Math.min(20, parseInt(v('refMaxPagos').value, 10) || 2)), periodo: v('refPeriodo').value === 'semana' ? 'semana' : 'mes', auto: v('refAuto').checked
+      };
+      try { await db.collection('configuracion').doc('referidos').set(cfg, { merge: true }); cfgReferidos = Object.assign({}, CFG_REF_BASE, cfg); renderizarComisionesAdmin(); mostrarToast('Referidos: configuración guardada.'); }
+      catch (err) { alert('No se pudo guardar: ' + err.message); }
+    }
+    function filtrarComisiones(f) { filtroRef = f; renderizarComisionesAdmin(); }
+    function renderizarComisionesAdmin() {
+      const cont = document.getElementById('refLista'); if (!cont) return;
+      const pend = comisionesRef.filter(c => c.estado === 'pendiente');
+      const cfg = cfgReferidos || CFG_REF_BASE;
+      const res = document.getElementById('refResumen');
+      if (res) res.textContent = (cfg.activo ? 'Activo' : 'Apagado') + ' · ' + (pend.length ? pend.length + ' pendientes por ' + formatoCOP(pend.reduce((t, c) => t + (Number(c.monto) || 0), 0)) : 'sin comisiones pendientes');
+      const bp = document.getElementById('refBadgePend'); if (bp) { bp.textContent = pend.length; bp.classList.toggle('hidden', !pend.length); }
+      const fl = document.getElementById('refFiltros');
+      if (fl) fl.innerHTML = [['pendiente', 'Pendientes'], ['todas', 'Todas']].map(([k, t]) => `<button type="button" onclick="filtrarComisiones('${k}')" class="px-2 py-1 rounded-lg border ${filtroRef === k ? 'bg-sky-500/20 text-sky-300 border-sky-500/40' : 'bg-gray-800 text-gray-400 border-gray-700'}">${t}</button>`).join('');
+      const lista = filtroRef === 'todas' ? comisionesRef : pend;
+      const EST = { pendiente: 'bg-amber-500/15 text-amber-300 border-amber-500/30', acreditada: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30', pagada: 'bg-sky-500/15 text-sky-300 border-sky-500/30', anulada: 'bg-gray-800 text-gray-500 border-gray-700' };
+      cont.innerHTML = lista.length ? lista.slice(0, 60).map(c => `<div class="p-2.5 rounded-xl bg-gray-800/50 border border-gray-700/60">
+        <div class="flex items-start justify-between gap-2"><div class="min-w-0"><p class="text-xs font-black text-white truncate">${escaparHtml(c.beneficiarioEmail || c.beneficiarioUid)}</p><p class="text-[10px] text-gray-400">${c.tipo === 'stock' ? 'Stock de ' : 'Registro de '}${escaparHtml(c.referidoEmail || '')} · ${escaparHtml(bcFecha(c.fecha))}</p><p class="text-[10px] text-gray-500">${escaparHtml(c.detalle || '')}</p></div>
+        <div class="shrink-0 text-right"><p class="text-sm font-black text-sky-300">${formatoCOP(c.monto || 0)}</p><span class="inline-block mt-0.5 px-1.5 py-0.5 rounded-full text-[9px] font-bold border ${EST[c.estado] || EST.anulada}">${escaparHtml(c.estado)}</span></div></div>
+        ${c.estado === 'pendiente' ? `<div class="flex gap-1.5 mt-2"><button type="button" onclick="resolverComision('${escaparJsAttr(c.id)}','acreditada')" class="flex-1 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-black text-[10px] font-black">Acreditar al saldo</button><button type="button" onclick="resolverComision('${escaparJsAttr(c.id)}','pagada')" class="flex-1 py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 border border-gray-700 text-gray-200 text-[10px] font-bold">Pagada por fuera</button><button type="button" onclick="resolverComision('${escaparJsAttr(c.id)}','anulada')" class="px-2.5 py-1.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 text-red-300 text-[10px] font-bold">Anular</button></div>` : ''}
+      </div>`).join('') : `<p class="text-[11px] text-gray-500 text-center py-3">${filtroRef === 'pendiente' ? 'No hay comisiones pendientes.' : 'Todavía no hay comisiones.'}</p>`;
+    }
+    async function resolverComision(id, estado) {
+      if (!esAdminSesionActual()) return;
+      const c = comisionesRef.find(x => x.id === id); if (!c || c.estado !== 'pendiente') return;
+      const preg = { acreditada: `¿Sumar ${formatoCOP(c.monto)} al saldo de ${c.beneficiarioEmail}?`, pagada: `¿Marcar como pagada por fuera (${formatoCOP(c.monto)})? No cambia su saldo.`, anulada: '¿Anular esta comisión?' };
+      if (!await confirmarModal(preg[estado], { textoAceptar: 'Sí' })) return;
+      try {
+        const ref = db.collection('comisiones_referidos').doc(id);
+        await db.runTransaction(async (t) => {
+          const d = await t.get(ref);
+          if (!d.exists || (d.data() || {}).estado !== 'pendiente') throw new Error('Esta comisión ya fue resuelta.');
+          if (estado === 'acreditada') {
+            const uRef = db.collection('usuarios').doc(c.beneficiarioUid);
+            const u = await t.get(uRef); const du = u.exists ? (u.data() || {}) : {};
+            t.update(uRef, { saldo: (Number(du.saldo) || 0) + (Number(c.monto) || 0), notificaciones: agregarNotifALista(du.notificaciones, crearNotificacionPersonal('saldo', `Ganaste ${formatoCOP(c.monto)} por referidos`, c.detalle || 'Comisión por recomendar a alguien.')) });
+          }
+          t.update(ref, { estado: estado, resueltoEl: new Date().toISOString(), resueltoPor: currentUser.email });
+        });
+        mostrarToast(estado === 'acreditada' ? 'Comisión acreditada al saldo.' : (estado === 'pagada' ? 'Comisión marcada como pagada.' : 'Comisión anulada.'));
+      } catch (err) { alert(err.message); }
+    }
+
+    // ----- Editar cliente: referidos -----
+    async function cargarReferidosEditar(uid, d) {
+      const inp = document.getElementById('editClienteReferidoPor'); if (inp) inp.value = String(d.referidoPorEmail || '');
+      if (editClienteOriginal) { editClienteOriginal.referidoPorEmail = String(d.referidoPorEmail || '').toLowerCase(); editClienteOriginal.email = d.email || editClienteOriginal.email; }
+      const out = document.getElementById('editClienteReferidos'); if (!out) return;
+      try {
+        const q = await db.collection('usuarios').where('referidoPorUid', '==', uid).get();
+        const l = []; q.forEach(x => l.push((x.data() || {}).email || x.id));
+        out.innerHTML = l.length ? `<b class="text-sky-200">Ha recomendado a ${l.length}:</b> ${l.slice(0, 8).map(escaparHtml).join(', ')}${l.length > 8 ? '…' : ''}` : 'Todavía no ha recomendado a nadie.';
+      } catch (e) { out.textContent = ''; }
+    }
+
+    // ----- Lo que ve quien recomienda -----
+    function iniciarMisComisiones() {
+      if (unsubMisComisiones || !currentUser || esAdminSesionActual()) return;
+      try {
+        unsubMisComisiones = db.collection('comisiones_referidos').where('beneficiarioUid', '==', currentUser.uid).onSnapshot(snap => {
+          misComisiones = []; snap.forEach(d => misComisiones.push(d.data() || {}));
+          renderizarMisReferidos();
+        }, err => console.warn('Mis comisiones:', err));
+      } catch (e) { console.warn(e); }
+    }
+    function detenerMisComisiones() { if (unsubMisComisiones) { try { unsubMisComisiones(); } catch (e) { /* nada */ } unsubMisComisiones = null; } misComisiones = []; }
+    function renderizarMisReferidos() {
+      const acred = misComisiones.filter(c => c.estado === 'acreditada' || c.estado === 'pagada').reduce((t, c) => t + (Number(c.monto) || 0), 0);
+      const pend = misComisiones.filter(c => c.estado === 'pendiente').reduce((t, c) => t + (Number(c.monto) || 0), 0);
+      const personas = new Set(misComisiones.map(c => c.referidoUid)).size;
+      const correo = (currentUser && currentUser.email) || '';
+      const html = `<div class="p-3 rounded-2xl border border-sky-500/40 bg-gradient-to-br from-sky-500/10 to-gray-900">
+        <div class="flex items-center justify-between gap-2"><p class="text-[11px] font-black text-sky-200 uppercase tracking-wider"><i class="fa-solid fa-user-group mr-1"></i>Mis referidos</p>${personas ? `<span class="text-[11px] text-gray-300">${personas} con comisiones</span>` : ''}</div>
+        <div class="grid grid-cols-2 gap-2 mt-2"><div class="rounded-xl bg-gray-900/70 p-2"><p class="text-[10px] text-gray-400">Ganado</p><p class="text-sm font-black text-emerald-300">${formatoCOP(acred)}</p></div><div class="rounded-xl bg-gray-900/70 p-2"><p class="text-[10px] text-gray-400">Pendiente</p><p class="text-sm font-black text-amber-300">${formatoCOP(pend)}</p></div></div>
+        ${metaRefHtml()}
+        <p class="text-[10px] text-gray-400 mt-2">Para recomendar, pide que al registrarse escriban tu correo: <b class="text-white">${escaparHtml(correo)}</b> <button type="button" onclick="copiarTexto('${escaparJsAttr(correo)}','Correo copiado')" class="ml-1 text-sky-300 underline">copiar</button></p>
+      </div>`;
+      const mostrar = !!cfgReferidos && cfgReferidos.activo || misComisiones.length > 0;
+      ['perfilReferidosCaja', 'provReferidosCaja'].forEach(id => { const e = document.getElementById(id); if (!e) return; e.classList.toggle('hidden', !mostrar || esStaffSesion()); e.innerHTML = mostrar ? html : ''; });
+    }
+
+
+    // Meta propia del periodo (lo que el proveedor ve en su panel)
+    function metaRefHtml() {
+      const cfg = cfgReferidos;
+      if (!cfg || !cfg.activo || cfg.modoProv !== 'bloque' || !esProveedorSesion()) return '';
+      const R = reglasStock(cfg);
+      if (!(R.meta > 0)) return '';
+      const desde = inicioPeriodoRef(cfg).toISOString();
+      const propias = (proveedorLotes || []).filter(l => l.estado === 'aprobado' && String(l.aprobadoEl || l.creadoEl) >= desde).reduce((t, l) => t + (parseInt(l.cantidad, 10) || 0), 0);
+      const pct = Math.min(100, Math.round(propias / R.meta * 100));
+      return `<div class="mt-2 p-2 rounded-xl bg-gray-900/70"><div class="flex justify-between text-[10px] text-gray-300"><span>Tu meta de ${cfg.periodo === 'semana' ? 'esta semana' : 'este mes'} para cobrar comisiones</span><b class="${propias >= R.meta ? 'text-emerald-300' : 'text-white'}">${propias}/${R.meta}</b></div><div class="mt-1 h-1.5 rounded-full bg-gray-800 overflow-hidden"><div class="h-full ${propias >= R.meta ? 'bg-emerald-400' : 'bg-sky-400'}" style="width:${pct}%"></div></div><p class="text-[10px] text-gray-500 mt-1">Cobras hasta ${R.tope} ${R.tope === 1 ? 'pago' : 'pagos'} de ${formatoCOP(R.monto)} por periodo: uno por cada ${R.meta} cuentas tuyas y cada ${R.N} de tus referidos.</p></div>`;
     }
 
     // ==================== NETFLIX EN LA TIENDA: SIN CONTRASEÑA ====================
@@ -14975,7 +15315,8 @@
             permisos_subir_stock: [],
             notificacion_borrada: false,
             primer_ingreso: new Date().toISOString(),
-            fechaRegistro: new Date().toISOString() 
+            fechaRegistro: new Date().toISOString(),
+            referidoPorEmail: (function () { const r = String((document.getElementById('authReferido') || {}).value || '').trim().toLowerCase(); return /^\S+@\S+\.\S+$/.test(r) && r !== email.trim().toLowerCase() ? r.slice(0, 120) : ''; })()
           });
           cerrarModalAuth();
         } catch (err) { alert(err.message); }
