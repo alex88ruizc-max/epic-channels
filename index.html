@@ -322,7 +322,7 @@
           </div>
         </div>
         <button onclick="abrirModalRecarga()" class="w-full md:w-auto justify-center shrink-0 px-5 py-2.5 bg-gradient-to-r from-pink-600 via-purple-600 to-blue-600 hover:from-pink-500 hover:via-purple-500 hover:to-blue-500 text-white font-bold text-sm rounded-xl shadow-xl flex items-center gap-2.5 transition">
-          <i class="fa-solid fa-wallet text-pink-300 text-base"></i> Recargar Saldo
+          <i class="fa-solid fa-wallet text-pink-300 text-base"></i> <span id="txtBotonRecarga">Recargar Saldo</span>
         </button>
       </div>
 
@@ -948,6 +948,26 @@
               <i class="fa-solid fa-floppy-disk"></i> Guardar Cambios de Apariencia
             </button>
           </form>
+        </div>
+
+        <div class="p-5 bg-gray-900 border border-emerald-500/30 rounded-2xl shadow-xl max-w-xl">
+          <h3 class="text-sm font-bold text-white mb-1 flex items-center gap-2"><i class="fa-solid fa-font text-emerald-400"></i> Textos de la tienda</h3>
+          <p class="text-xs text-gray-400 mb-4">Cambia cualquier texto que ven los clientes. Si dejas un campo vacío, se usa el texto original (el que ves en gris).</p>
+          <div id="editorTextosTienda" class="space-y-2.5"></div>
+          <div class="flex flex-wrap gap-2 mt-4">
+            <button type="button" onclick="guardarTextosTienda()" id="btnGuardarTextosTienda" class="bg-emerald-500 hover:bg-emerald-400 text-black font-bold py-2.5 px-5 rounded-xl text-xs transition flex items-center gap-2"><i class="fa-solid fa-floppy-disk"></i> Guardar textos</button>
+            <button type="button" onclick="restaurarTextosTienda()" class="bg-gray-800 hover:bg-gray-700 border border-gray-700 text-gray-300 font-bold py-2.5 px-4 rounded-xl text-xs">Volver a los originales</button>
+          </div>
+        </div>
+
+        <div class="p-5 bg-gray-900 border border-emerald-500/30 rounded-2xl shadow-xl max-w-xl">
+          <h3 class="text-sm font-bold text-white mb-1 flex items-center gap-2"><i class="fa-solid fa-arrow-down-up-across-line text-emerald-400"></i> Orden de los productos en la tienda</h3>
+          <p class="text-xs text-gray-400 mb-4">Mueve cada producto con las flechas. Así aparecerán en la tienda, de arriba hacia abajo. Los ocultos no se ven, pero conservan su lugar.</p>
+          <div id="editorOrdenTienda" class="space-y-1.5 max-h-[60vh] overflow-y-auto pr-1"></div>
+          <div class="flex flex-wrap gap-2 mt-4">
+            <button type="button" onclick="guardarOrdenTienda()" id="btnGuardarOrdenTienda" class="bg-emerald-500 hover:bg-emerald-400 text-black font-bold py-2.5 px-5 rounded-xl text-xs transition flex items-center gap-2"><i class="fa-solid fa-floppy-disk"></i> Guardar orden</button>
+            <button type="button" onclick="restaurarOrdenTienda()" class="bg-gray-800 hover:bg-gray-700 border border-gray-700 text-gray-300 font-bold py-2.5 px-4 rounded-xl text-xs">Orden automático</button>
+          </div>
         </div>
       </div>
 
@@ -6503,8 +6523,11 @@
       const logoImg = document.getElementById('imgLogoMarca');
 
       if (tituloEl) {
-        tituloEl.innerHTML = `${aparienciaConfig.titulo || 'Catálogo Oficial'} <span id="txtCatInsignia" class="text-[10px] sm:text-xs bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 px-2 py-0.5 rounded-full">${aparienciaConfig.insignia || 'Mayorista 24/7'}</span>`;
+        tituloEl.innerHTML = `${escaparHtml(aparienciaConfig.titulo || 'Catálogo Oficial')} <span id="txtCatInsignia" class="text-[10px] sm:text-xs bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 px-2 py-0.5 rounded-full">${escaparHtml(aparienciaConfig.insignia || 'Mayorista 24/7')}</span>`;
       }
+      const btnRec = document.getElementById('txtBotonRecarga');
+      if (btnRec) btnRec.textContent = tt('botonRecarga');
+      try { renderizarFiltrosCategorias(); renderizarCatalogo(); } catch (e) { /* el catálogo se dibuja cuando llegue */ }
       if (subEl) {
         subEl.innerText = aparienciaConfig.subtitulo || 'Cuentas streaming y correos electrónicos con entrega directa a tu saldo.';
       }
@@ -6605,6 +6628,8 @@
       document.getElementById('inputAparienciaTitulo').value = aparienciaConfig.titulo || '';
       document.getElementById('inputAparienciaInsignia').value = aparienciaConfig.insignia || '';
       document.getElementById('inputAparienciaSub').value = aparienciaConfig.subtitulo || '';
+      renderizarEditorTextosTienda();
+      cargarEditorOrdenTienda();
       if (aparienciaConfig.logoUrl) {
         document.getElementById('previewLogoImg').src = aparienciaConfig.logoUrl;
         document.getElementById('contenedorPreviewLogo').classList.remove('hidden');
@@ -6845,7 +6870,7 @@
 
       const categorias = Array.from(new Set(catalogoUnificado.map(p => p.categoria).filter(Boolean)));
       
-      let html = `<button onclick="filtrarCategoria('todas')" class="btn-cat ${categoriaActiva === 'todas' ? 'active bg-emerald-500 text-black font-bold' : 'bg-gray-800 text-gray-300 font-medium'} px-4 py-1.5 rounded-xl whitespace-nowrap flex items-center gap-2"><i class="fa-solid fa-border-all"></i> Todas</button>`;
+      let html = `<button onclick="filtrarCategoria('todas')" class="btn-cat ${categoriaActiva === 'todas' ? 'active bg-emerald-500 text-black font-bold' : 'bg-gray-800 text-gray-300 font-medium'} px-4 py-1.5 rounded-xl whitespace-nowrap flex items-center gap-2"><i class="fa-solid fa-border-all"></i> ${ttH('filtroTodas')}</button>`;
 
       categorias.forEach(cat => {
         const esActiva = categoriaActiva === cat;
@@ -6889,17 +6914,12 @@
         return p.categoria === categoriaActiva;
       });
 
-      filtrados.sort((a, b) => {
-        const nfA = esProductoNetflix(a), nfB = esProductoNetflix(b);
-        if (nfA !== nfB) return nfA ? -1 : 1;
-        if (a.id === 'correo_hotmail') return 1;
-        if (b.id === 'correo_hotmail') return -1;
-        return 0;
-      });
+      const ordenados = ordenarParaTienda(filtrados);
+      filtrados.length = 0; ordenados.forEach(x => filtrados.push(x));
 
       if (filtrados.length === 0) {
         grid.innerHTML += catalogoCargado
-          ? `<p class="col-span-full text-center text-gray-500 py-12">No hay productos visibles en esta categoría.</p>`
+          ? `<p class="col-span-full text-center text-gray-500 py-12">${ttH('textoVacio')}</p>`
           : `<p class="col-span-full text-center text-gray-500 py-12"><i class="fa-solid fa-spinner fa-spin mr-2 text-emerald-400"></i>Cargando catálogo...</p>`;
         return;
       }
@@ -6944,7 +6964,7 @@
                   <i class="fa-solid ${badgeIcon}"></i> ${badgeText}
                 </span>`}
                 <span class="text-xs ${agotado ? 'text-red-400' : 'text-emerald-400'} font-medium">
-                  <i class="fa-solid fa-boxes-stacked mr-1"></i> Stock: ${stockDisponible}
+                  <i class="fa-solid fa-boxes-stacked mr-1"></i> ${ttH('textoStock')} ${stockDisponible}
                 </span>
               </div>
 
@@ -6956,22 +6976,22 @@
               <div class="${esNf ? 'text-lg font-black text-white' : 'text-xs font-bold text-emerald-400'} mb-1.5">
                 ${esNf ? '' : '<i class="fa-solid fa-tag mr-1"></i> '}$${(prod.precio || 0).toLocaleString('es-CO')} <span class="text-[10px] text-gray-400 font-normal">c/u</span>
               </div>
-              ${esNf ? '<div class="mb-2"><span class="nf-chip"><i class="fa-solid fa-key"></i> Acceso por código · sin contraseña</span></div>' : ''}
+              ${esNf && tt('chipNetflix') !== '-' ? `<div class="mb-2"><span class="nf-chip"><i class="fa-solid fa-key"></i> ${ttH('chipNetflix')}</span></div>` : ''}
               <p class="text-xs text-gray-400 mb-2 leading-relaxed">${prod.descripcion}</p>
               
               <div class="mb-4">
                 <span class="inline-flex items-center gap-1.5 text-xs font-medium ${esNf ? 'text-red-200 bg-red-500/10 border border-red-500/30' : 'text-emerald-300 bg-emerald-500/10 border border-emerald-500/30'} px-3 py-1 rounded-xl shadow-sm">
                   <i class="fa-solid fa-layer-group text-[11px] ${esNf ? 'text-red-400' : 'text-emerald-400'}"></i>
                   ${stockDisponible > 0 && stockDisponible < minRequerido 
-                    ? `<span class="text-amber-400 font-bold">¡Últimas ${stockDisponible} cuentas disponibles!</span>` 
-                    : `Compra mínima: <strong class="text-white font-black text-xs">${minRequerido} cuentas</strong>`}
+                    ? `<span class="text-amber-400 font-bold">${escaparHtml(tt('textoUltimas').replace(/\{n\}/g, stockDisponible + ' ' + ttUnidad(stockDisponible)))}</span>` 
+                    : `${ttH('textoMinimo')} <strong class="text-white font-black text-xs">${minRequerido} ${escaparHtml(ttUnidad(minRequerido))}</strong>`}
                 </span>
               </div>
             </div>
             <div class="pt-3 border-t border-gray-800 flex flex-col gap-2.5 mt-2">
               <div class="flex items-center justify-between">
                 <div>
-                  <span class="text-[10px] text-gray-400 block leading-none">Total a Pagar</span>
+                  <span class="text-[10px] text-gray-400 block leading-none">${ttH('textoTotal')}</span>
                   <span id="txtTotal_${prod.docId}" class="text-base font-black text-white">$${totalInicial.toLocaleString('es-CO')}</span>
                 </div>
                 <div class="flex items-center bg-gray-800 border border-gray-700 rounded-xl p-0.5">
@@ -6981,7 +7001,7 @@
                 </div>
               </div>
               <button onclick="comprarProducto('${prod.docId}')" ${agotado ? 'disabled' : ''} class="w-full py-2.5 rounded-xl text-xs font-bold ${agotado ? 'bg-gray-800 text-gray-500 cursor-not-allowed' : (esNf ? 'nf-btn' : estiloCat.btn)} transition flex items-center justify-center gap-1.5">
-                <i class="fa-solid fa-cart-shopping"></i> ${agotado ? 'Agotado' : 'Comprar Ahora'}
+                <i class="fa-solid fa-cart-shopping"></i> ${agotado ? ttH('botonAgotado') : ttH('botonComprar')}
               </button>
             </div>
           </div>
@@ -11275,6 +11295,162 @@
       if (admin) { acc.push(['netflix', 'fa-tv', 'Alquileres'], ['ajustes', 'fa-gear', 'Ajustes']); }
       const ca = document.getElementById('perfilAdminAcciones');
       if (ca) ca.innerHTML = acc.map(a => `<button type="button" onclick="irAPanelAdmin('${a[0]}')" class="flex flex-col items-center justify-center gap-1 py-2.5 rounded-xl bg-gray-900/70 border border-gray-700 hover:border-emerald-500/50 hover:bg-gray-800 text-gray-200 text-[10px] font-bold transition"><i class="fa-solid ${a[1]} text-sm text-emerald-400"></i><span class="text-center leading-tight">${a[2]}</span></button>`).join('');
+    }
+
+
+    // ==================== TEXTOS EDITABLES DE LA TIENDA ====================
+    const TEXTOS_TIENDA_BASE = {
+      botonRecarga: { def: 'Recargar Saldo', etq: 'Botón de recargar saldo', max: 30 },
+      filtroTodas: { def: 'Todas', etq: 'Filtro "todas las categorías"', max: 20 },
+      botonComprar: { def: 'Comprar Ahora', etq: 'Botón de comprar', max: 24 },
+      botonAgotado: { def: 'Agotado', etq: 'Botón cuando no hay stock', max: 24 },
+      textoStock: { def: 'Stock:', etq: 'Etiqueta de stock', max: 20 },
+      textoTotal: { def: 'Total a Pagar', etq: 'Etiqueta del total', max: 24 },
+      textoMinimo: { def: 'Compra mínima:', etq: 'Etiqueta de compra mínima', max: 30 },
+      unidadUna: { def: 'cuenta', etq: 'Unidad (una)', max: 16 },
+      unidadVarias: { def: 'cuentas', etq: 'Unidad (varias)', max: 16 },
+      textoUltimas: { def: '¡Últimas {n} disponibles!', etq: 'Aviso de pocas unidades ({n} = cantidad)', max: 50 },
+      chipNetflix: { def: 'Acceso por código · sin contraseña', etq: 'Etiqueta de Netflix (escribe - para ocultarla)', max: 50 },
+      textoVacio: { def: 'No hay productos visibles en esta categoría.', etq: 'Categoría sin productos', max: 80 }
+    };
+
+    // Texto que ve el cliente: el editado por el administrador o el original
+    function tt(clave) {
+      const base = TEXTOS_TIENDA_BASE[clave];
+      const t = (aparienciaConfig && aparienciaConfig.textos && typeof aparienciaConfig.textos === 'object') ? aparienciaConfig.textos[clave] : '';
+      const v = String(t || '').replace(/[<>]/g, '').trim();
+      return v ? v.slice(0, base ? base.max : 80) : (base ? base.def : '');
+    }
+    function ttH(clave) { return escaparHtml(tt(clave)); }
+    function ttUnidad(n) { return n === 1 ? tt('unidadUna') : tt('unidadVarias'); }
+
+    function renderizarEditorTextosTienda() {
+      const cont = document.getElementById('editorTextosTienda');
+      if (!cont) return;
+      const actuales = (aparienciaConfig && aparienciaConfig.textos) || {};
+      cont.innerHTML = Object.keys(TEXTOS_TIENDA_BASE).map(k => {
+        const b = TEXTOS_TIENDA_BASE[k];
+        return `<div><label class="block text-[11px] text-gray-400 mb-1">${escaparHtml(b.etq)}</label><input type="text" data-texto-tienda="${k}" maxlength="${b.max}" value="${escaparHtml(String(actuales[k] || ''))}" placeholder="${escaparHtml(b.def)}" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500/60"></div>`;
+      }).join('');
+    }
+
+    async function guardarTextosTienda() {
+      if (!esAdminSesionActual()) return;
+      const textos = {};
+      document.querySelectorAll('[data-texto-tienda]').forEach(inp => {
+        const k = inp.getAttribute('data-texto-tienda');
+        if (!TEXTOS_TIENDA_BASE[k]) return;
+        textos[k] = String(inp.value || '').replace(/[<>]/g, '').trim().slice(0, TEXTOS_TIENDA_BASE[k].max);
+      });
+      const btn = document.getElementById('btnGuardarTextosTienda');
+      if (btn) btn.disabled = true;
+      try {
+        await db.collection('configuracion').doc('apariencia').set({ textos: textos }, { merge: true });
+        aparienciaConfig = Object.assign({}, aparienciaConfig, { textos: textos });
+        renderizarApariencia(); renderizarFiltrosCategorias(); renderizarCatalogo();
+        mostrarToast('Listo: los textos de la tienda se actualizaron.');
+      } catch (err) {
+        alert('No se pudieron guardar los textos: ' + err.message);
+      } finally { if (btn) btn.disabled = false; }
+    }
+
+    async function restaurarTextosTienda() {
+      if (!await confirmarModal('Todos los textos de la tienda vuelven a los originales. ¿Seguir?', { textoAceptar: 'Sí, restaurar' })) return;
+      document.querySelectorAll('[data-texto-tienda]').forEach(inp => { inp.value = ''; });
+      await guardarTextosTienda();
+    }
+
+    // ==================== ORDEN DE LOS PRODUCTOS EN LA TIENDA ====================
+    let ordenTiendaEditor = [];
+
+    function ordenTiendaGuardado() {
+      const o = aparienciaConfig && aparienciaConfig.ordenProductos;
+      return Array.isArray(o) ? o.map(String).slice(0, 400) : [];
+    }
+
+    // Orden automático (Netflix primero, correos Hotmail al final) cuando no hay uno guardado
+    function compararOrdenAutomatico(a, b) {
+      const nfA = esProductoNetflix(a), nfB = esProductoNetflix(b);
+      if (nfA !== nfB) return nfA ? -1 : 1;
+      if (a.id === 'correo_hotmail') return 1;
+      if (b.id === 'correo_hotmail') return -1;
+      return 0;
+    }
+
+    function ordenarParaTienda(lista) {
+      const orden = ordenTiendaGuardado();
+      const pos = {};
+      orden.forEach((id, i) => { if (pos[id] === undefined) pos[id] = i; });
+      const idx = new Map(lista.map((p, i) => [p, i]));
+      return lista.slice().sort((a, b) => {
+        const pa = pos[a.docId], pb = pos[b.docId];
+        if (pa !== undefined && pb !== undefined) return pa - pb;
+        if (pa !== undefined) return -1;
+        if (pb !== undefined) return 1;
+        return compararOrdenAutomatico(a, b) || (idx.get(a) - idx.get(b));
+      });
+    }
+
+    function cargarEditorOrdenTienda() {
+      ordenTiendaEditor = ordenarParaTienda(catalogoUnificado.slice()).map(p => p.docId);
+      renderizarEditorOrdenTienda();
+    }
+
+    function renderizarEditorOrdenTienda() {
+      const cont = document.getElementById('editorOrdenTienda');
+      if (!cont) return;
+      const porId = {};
+      catalogoUnificado.forEach(p => { porId[p.docId] = p; });
+      ordenTiendaEditor = ordenTiendaEditor.filter(id => porId[id]);
+      catalogoUnificado.forEach(p => { if (ordenTiendaEditor.indexOf(p.docId) === -1) ordenTiendaEditor.push(p.docId); });
+      const n = ordenTiendaEditor.length;
+      if (!n) { cont.innerHTML = '<p class="text-[11px] text-gray-500">Todavía no hay productos.</p>'; return; }
+      const btn = (fn, i, icono, dis, etq) => `<button type="button" onclick="${fn}(${i})" ${dis ? 'disabled' : ''} aria-label="${etq}" class="w-8 h-8 shrink-0 rounded-lg bg-gray-900 hover:bg-gray-700 border border-gray-700 text-gray-200 flex items-center justify-center disabled:opacity-30"><i class="fa-solid ${icono} text-[11px]"></i></button>`;
+      cont.innerHTML = ordenTiendaEditor.map((id, i) => {
+        const p = porId[id];
+        const oculto = p.activo === false;
+        return `<div class="flex items-center gap-2 p-2 rounded-xl ${esProductoNetflix(p) ? 'bg-red-500/10 border border-red-500/30' : 'bg-gray-800/60 border border-gray-700/60'} ${oculto ? 'opacity-50' : ''}">
+          <span class="w-6 shrink-0 text-center text-[11px] font-black text-gray-400">${i + 1}</span>
+          <div class="min-w-0 flex-grow"><p class="text-xs font-bold text-white truncate">${escaparHtml(p.nombre || id)}</p><p class="text-[10px] text-gray-400 truncate">${escaparHtml(p.categoria || '')}${oculto ? ' · oculto' : ''}</p></div>
+          ${btn('ordenAlInicio', i, 'fa-angles-up', i === 0, 'Subir al inicio')}${btn('ordenSubir', i, 'fa-chevron-up', i === 0, 'Subir')}${btn('ordenBajar', i, 'fa-chevron-down', i === n - 1, 'Bajar')}
+        </div>`;
+      }).join('');
+    }
+
+    function moverOrden(i, j) {
+      if (i < 0 || j < 0 || i >= ordenTiendaEditor.length || j >= ordenTiendaEditor.length) return;
+      const [x] = ordenTiendaEditor.splice(i, 1);
+      ordenTiendaEditor.splice(j, 0, x);
+      renderizarEditorOrdenTienda();
+    }
+    function ordenSubir(i) { moverOrden(i, i - 1); }
+    function ordenBajar(i) { moverOrden(i, i + 1); }
+    function ordenAlInicio(i) { moverOrden(i, 0); }
+
+    async function guardarOrdenTienda() {
+      if (!esAdminSesionActual()) return;
+      const btn = document.getElementById('btnGuardarOrdenTienda');
+      if (btn) btn.disabled = true;
+      try {
+        const orden = ordenTiendaEditor.slice(0, 400);
+        await db.collection('configuracion').doc('apariencia').set({ ordenProductos: orden }, { merge: true });
+        aparienciaConfig = Object.assign({}, aparienciaConfig, { ordenProductos: orden });
+        renderizarCatalogo();
+        mostrarToast('Listo: la tienda ya muestra los productos en ese orden.');
+      } catch (err) {
+        alert('No se pudo guardar el orden: ' + err.message);
+      } finally { if (btn) btn.disabled = false; }
+    }
+
+    async function restaurarOrdenTienda() {
+      if (!await confirmarModal('Se borra tu orden y la tienda vuelve al orden automático (Netflix primero). ¿Seguir?', { textoAceptar: 'Sí, automático' })) return;
+      try {
+        await db.collection('configuracion').doc('apariencia').set({ ordenProductos: [] }, { merge: true });
+        aparienciaConfig = Object.assign({}, aparienciaConfig, { ordenProductos: [] });
+        cargarEditorOrdenTienda();
+        renderizarCatalogo();
+        mostrarToast('Listo: orden automático.');
+      } catch (err) { alert('No se pudo restaurar: ' + err.message); }
     }
 
     // ==================== NETFLIX EN LA TIENDA: SIN CONTRASEÑA ====================
