@@ -186,6 +186,9 @@
     .combo-card { position: relative; overflow: hidden; background: radial-gradient(120% 90% at 100% 0%, rgba(251,191,36,.16), transparent 55%), radial-gradient(100% 80% at 0% 100%, rgba(168,85,247,.14), transparent 60%), linear-gradient(165deg, #141024 0%, #0d0f17 80%); border: 1px solid rgba(251,191,36,.45); box-shadow: 0 16px 38px -22px rgba(251,191,36,.55); }
     .combo-card::before { content: ''; position: absolute; left: 0; right: 0; top: 0; height: 3px; background: linear-gradient(90deg, #a855f7, #f59e0b, #fde68a, #f59e0b, #a855f7); }
     .combo-chip { display: inline-flex; align-items: center; gap: .35rem; padding: .25rem .7rem; border-radius: 999px; font-size: 10px; font-weight: 900; letter-spacing: .06em; text-transform: uppercase; color: #1a1205; background: linear-gradient(90deg, #fde68a, #f59e0b); box-shadow: 0 6px 16px -8px rgba(245,158,11,.9); }
+  
+    /* Número de novedades sin leer en el botón del asistente */
+    .asistente-badge-nov { position:absolute; top:-6px; right:-6px; min-width:20px; height:20px; padding:0 5px; border-radius:9999px; background:#ef4444; color:#fff; font-size:11px; font-weight:900; display:flex; align-items:center; justify-content:center; border:2px solid #0b0f19; box-shadow:0 4px 10px -2px rgba(239,68,68,.7); }
   </style>
 </head>
 <body class="min-h-screen flex flex-col justify-between">
@@ -703,6 +706,9 @@
           </button>
           <button onclick="irATabAdmin('buscar')" id="tabBtnBuscar" class="admin-tab bg-gray-900 border-gray-800 text-gray-400">
             <i class="fa-solid fa-magnifying-glass"></i><span>Buscar cuenta</span>
+          </button>
+          <button onclick="irATabAdmin('novedades')" id="tabBtnNovedades" class="solo-admin admin-tab bg-gray-900 border-gray-800 text-gray-400">
+            <i class="fa-solid fa-bullhorn"></i><span>Novedades</span>
           </button>
           <button onclick="irATabAdmin('cortes')" id="tabBtnCortes" class="admin-tab bg-gray-900 border-gray-800 text-gray-400">
             <i class="fa-solid fa-scissors"></i><span>Cortes</span><span id="badgeTabCortes" class="hidden absolute top-1.5 right-1.5 lg:static lg:ml-auto min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-[10px] font-black flex items-center justify-center"></span>
@@ -1227,6 +1233,29 @@
           <button type="button" id="bcActualizar" onclick="bcPrepararIndice()" class="hidden mt-2 text-[11px] text-gray-400 underline hover:text-white">Actualizar buscador (agrega las compras nuevas)</button>
         </div>
         <div id="bcResultado" class="space-y-3"></div>
+      </div>
+
+      <!-- ==================== ADMIN: NOVEDADES PARA CLIENTES ==================== -->
+      <div id="adminSecNovedades" class="hidden space-y-4 pb-28 sm:pb-0">
+        <div class="p-4 rounded-2xl border border-sky-500/30 bg-gradient-to-br from-sky-500/10 via-gray-900 to-gray-900">
+          <h3 class="text-base font-black text-white flex items-center gap-2"><i class="fa-solid fa-bullhorn text-sky-400"></i> Novedades para clientes</h3>
+          <p class="text-xs text-gray-400 mt-1 leading-relaxed">Escribe un aviso y decide cómo llega: <b class="text-gray-200">Copiar</b> para pegarlo en WhatsApp, o <b class="text-gray-200">Difundir</b> para que les llegue a todos como notificación y aparezca de primero en el asistente con un <span class="inline-flex items-center justify-center w-4 h-4 rounded-full bg-red-500 text-white text-[9px] font-black align-middle">1</span>.</p>
+        </div>
+        <div class="bg-gray-900 border border-gray-800 rounded-2xl p-4 space-y-2.5">
+          <p class="text-xs font-bold text-white"><i class="fa-solid fa-pen-to-square text-sky-400 mr-1"></i> Escribe tu mensaje</p>
+          <input type="text" id="novTitulo" maxlength="80" placeholder="Título (opcional), ej: ¡Llegó el combo Netflix + Prime!" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-sky-500/60">
+          <textarea id="novMensaje" rows="5" maxlength="1000" oninput="actualizarContadorNovedad()" placeholder="Escribe aquí lo que quieras contarle a tus clientes: promociones, productos nuevos, cambios, horarios..." class="w-full bg-gray-800 border border-gray-700 rounded-xl p-3 text-xs text-white focus:outline-none focus:border-sky-500/60 resize-y"></textarea>
+          <div class="flex items-center justify-between gap-2 text-[10px] text-gray-500"><span>Usa **texto** para resaltar en negrita.</span><span id="novContador">0/1000</span></div>
+          <div class="grid grid-cols-3 gap-2">
+            <button type="button" onclick="guardarNovedadCliente(false)" class="py-2.5 rounded-xl bg-gray-800 hover:bg-gray-700 border border-gray-700 text-gray-100 font-bold text-[11px] flex items-center justify-center gap-1.5"><i class="fa-solid fa-floppy-disk"></i> Guardar</button>
+            <button type="button" onclick="copiarNovedadBorrador()" class="py-2.5 rounded-xl bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/40 text-emerald-300 font-bold text-[11px] flex items-center justify-center gap-1.5"><i class="fa-brands fa-whatsapp"></i> Copiar</button>
+            <button type="button" onclick="guardarNovedadCliente(true)" class="py-2.5 rounded-xl bg-sky-500 hover:bg-sky-400 text-black font-black text-[11px] flex items-center justify-center gap-1.5"><i class="fa-solid fa-bullhorn"></i> Difundir</button>
+          </div>
+        </div>
+        <div class="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden">
+          <div class="px-4 py-3 border-b border-gray-800 flex items-center gap-2"><i class="fa-solid fa-clock-rotate-left text-gray-400"></i><h4 class="text-sm font-black text-white">Tus novedades</h4><span id="novTotal" class="ml-auto text-[11px] text-gray-400"></span></div>
+          <div id="listaNovedadesClientes" class="divide-y divide-gray-800"><p class="px-4 py-6 text-center text-gray-500 text-sm">Todavía no hay novedades.</p></div>
+        </div>
       </div>
 
       <!-- ==================== ADMIN: CORTES ==================== -->
@@ -1839,7 +1868,8 @@
           <button type="button" onclick="abrirAsistente()"><span id="asistenteSaludoTxt">👋 ¡Hola! ¿Necesitas ayuda?</span></button>
           <button type="button" onclick="cerrarSaludoAsistente()" aria-label="Cerrar saludo" class="text-gray-400 hover:text-gray-700 shrink-0"><i class="fa-solid fa-xmark text-xs"></i></button>
         </div>
-        <button id="btnAsistente" type="button" onclick="alternarAsistente()" aria-label="Abrir asistente de ayuda" aria-expanded="false" aria-controls="asistentePanel" class="asistente-fab bg-emerald-500 text-black">
+        <button id="btnAsistente" type="button" onclick="alternarAsistente()" aria-label="Abrir asistente de ayuda" aria-expanded="false" aria-controls="asistentePanel" class="asistente-fab bg-emerald-500 text-black relative">
+          <span id="asistenteBadgeNov" class="asistente-badge-nov hidden">1</span>
           <span class="asistente-fab-icono"><i class="fa-solid fa-comment-dots"></i><span class="asistente-punto"></span></span>
           <span class="text-sm">Ayuda</span>
         </button>
@@ -3818,6 +3848,7 @@
     }
 
     function asistenteIniciarConfig() {
+      try { iniciarNovedadesClientes(); } catch (e) { /* nada */ }
       if (unsubAsistenteCfg || !currentUser) return;
       try {
         unsubAsistenteCfg = db.collection('configuracion').doc('asistente').onSnapshot(doc => {
@@ -3864,6 +3895,9 @@
       const m = items.map(t => ({ t: t.titulo, i: t.icono, tema: t.id }));
       // Siempre debe haber una salida hacia una persona, aunque el administrador quite esa pregunta
       if (!items.some(t => (t.acciones || []).indexOf('whatsapp') !== -1)) m.push({ t: 'Hablar con una persona', i: 'fa-headset', fn: 'whatsapp' });
+      // Novedades siempre de primero
+      const sinVer = (typeof novedadesSinVer === 'function') ? novedadesSinVer().length : 0;
+      m.unshift({ t: sinVer ? `Novedades (${sinVer})` : 'Novedades', i: 'fa-bullhorn', fn: 'novedades' });
       return m;
     }
 
@@ -3984,6 +4018,7 @@
         case 'catalogo': cerrarAsistente(); cambiarVista('tienda'); break;
         case 'whatsapp': cerrarAsistente(); abrirSoporteWhatsapp(); break;
         case 'listar_reportes': asistenteListarReportes(); break;
+        case 'novedades': asistenteListarNovedades(); break;
         default: break;
       }
     }
@@ -4042,6 +4077,7 @@
       await asistenteEsperarConfig(900);
       if (sesion !== asistenteSesion || !asistenteIniciado) return;
       const cfg = asistenteConfigActual();
+      try { asistenteMostrarNovedadesNuevas(); } catch (e) { console.warn(e); }
       asistenteAgregarBot(esProveedorSesion() ? cfg.bienvenidaProveedor : cfg.bienvenidaCliente, asistenteMenu());
     }
 
@@ -4070,7 +4106,9 @@
       asistenteAbierto = true;
       const f = document.getElementById('btnAsistente');
       if (f) f.setAttribute('aria-expanded', 'true');
-      if (!asistenteIniciado) asistenteIniciar(); else asistenteScroll();
+      if (!asistenteIniciado) asistenteIniciar();
+      else { let hubo = false; try { hubo = asistenteMostrarNovedadesNuevas(); } catch (e) { /* nada */ } if (hubo) asistenteAgregarBot('¿En qué más te ayudo?', asistenteMenu()); else asistenteScroll(); }
+      actualizarBadgeNovedades();
       try {
         // En el celular no se abre el teclado solo: taparía las opciones
         if (window.matchMedia && window.matchMedia('(pointer: fine)').matches) setTimeout(() => { const i = document.getElementById('asistenteInput'); if (i) i.focus(); }, 120);
@@ -4083,6 +4121,7 @@
       asistenteAbierto = false;
       const f = document.getElementById('btnAsistente');
       if (f) f.setAttribute('aria-expanded', 'false');
+      try { actualizarBadgeNovedades(); } catch (e) { /* nada */ }
     }
 
     function alternarAsistente() { if (asistenteAbierto) cerrarAsistente(); else abrirAsistente(); }
@@ -4107,7 +4146,8 @@
           const s = document.getElementById('asistenteSaludo'), t = document.getElementById('asistenteSaludoTxt');
           if (!s) return;
           const cfg = asistenteConfigActual();
-          if (t) t.textContent = esProveedorSesion() ? cfg.saludoProveedor : cfg.saludoCliente;
+          const nNov = (typeof novedadesSinVer === 'function') ? novedadesSinVer().length : 0;
+          if (t) t.textContent = nNov ? (nNov === 1 ? '📢 Tienes una novedad nueva' : `📢 Tienes ${nNov} novedades nuevas`) : (esProveedorSesion() ? cfg.saludoProveedor : cfg.saludoCliente);
           s.classList.add('visible');
           try { localStorage.setItem('asistente_saludo', hoy); } catch (e) { /* nada */ }
           asistenteTimerOcultar = setTimeout(cerrarSaludoAsistente, 9000);
@@ -5589,6 +5629,7 @@
         document.getElementById('navUser').classList.remove('hidden');
         if (btnSoporte) btnSoporte.classList.remove('hidden');
         try { asistenteProgramarSaludo(); } catch (e) { console.warn(e); }
+        try { iniciarNovedadesClientes(); } catch (e) { console.warn(e); }
         if (btnTelegramBot) btnTelegramBot.classList.remove('hidden');
         
         if (navSaldo) {
@@ -6461,7 +6502,7 @@
     // epicchannels.quest/#tienda · #mis-cuentas · #mis-cuentas/datos · #netflix · #admin/tickets ...
     // Funcionan para guardar, compartir y con el botón "atrás". Si la sección no le corresponde a quien abre el enlace, va a la tienda.
     const RUTAS_VISTAS = ['tienda', 'mis-cuentas', 'netflix', 'proveedor', 'admin'];
-    const TABS_ADMIN_RUTA = ['productos', 'reporte', 'categorias', 'usuarios', 'tickets', 'stock', 'apariencia', 'pagos', 'recargas', 'historial', 'netflix', 'ajustes', 'proveedores', 'asistente', 'buscar', 'promociones', 'cortes'];
+    const TABS_ADMIN_RUTA = ['productos', 'reporte', 'categorias', 'usuarios', 'tickets', 'stock', 'apariencia', 'pagos', 'recargas', 'historial', 'netflix', 'ajustes', 'proveedores', 'asistente', 'buscar', 'promociones', 'cortes', 'novedades'];
     const TABS_PERFIL_RUTA = ['cuentas', 'recargas', 'datos', 'seguridad'];
     let aplicandoRuta = false, rutaActual = '', rutaPendienteStaff = '';
 
@@ -6855,7 +6896,7 @@
     function cambiarTabAdmin(tab) {
       if (modoPruebaCliente) return;
       iniciarBadgesAdmin();
-      const tabs = ['productos', 'reporte', 'categorias', 'usuarios', 'tickets', 'stock', 'apariencia', 'pagos', 'recargas', 'historial', 'netflix', 'ajustes', 'proveedores', 'asistente', 'buscar', 'promociones', 'cortes'];
+      const tabs = ['productos', 'reporte', 'categorias', 'usuarios', 'tickets', 'stock', 'apariencia', 'pagos', 'recargas', 'historial', 'netflix', 'ajustes', 'proveedores', 'asistente', 'buscar', 'promociones', 'cortes', 'novedades'];
       // El moderador no entra a la configuración general ni a los pagos a proveedores
       if (esModeradorSesion() && RESTRINGIDAS_MODERADOR.includes(tab)) tab = 'productos';
       tabs.forEach(t => {
@@ -6886,6 +6927,7 @@
       if (tab === 'asistente') cargarEditorAsistente();
       if (tab === 'tickets') { renderizarTickets(); limpiarFotosRespuestaVencidas(); }
       if (tab === 'promociones') { renderizarPromoProductos(); renderizarPromoActivas(); }
+      if (tab === 'novedades') { iniciarNovedadesClientes(); renderizarNovedadesAdmin(); }
       if (tab === 'cortes') { try { iniciarNetflixAdmin(); } catch (e) { /* nada */ } renderizarCortes(); }
       if (tab === 'buscar') prepararBuscadorAdmin();
       try { const vAdm = document.getElementById('vistaAdmin'); if (vAdm && !vAdm.classList.contains('hidden')) fijarRuta('admin/' + tab); } catch (e) { /* nada */ }
@@ -9446,7 +9488,7 @@
     let inicioEnPanelPendiente = false;
     let perfilNombreActual = '';
     let escuchasModeradorActivas = false;
-    const RESTRINGIDAS_MODERADOR = ['categorias', 'apariencia', 'pagos', 'ajustes', 'proveedores', 'asistente', 'promociones'];
+    const RESTRINGIDAS_MODERADOR = ['categorias', 'apariencia', 'pagos', 'ajustes', 'proveedores', 'asistente', 'promociones', 'novedades'];
 
     function esModeradorSesion() { return rolActual === 'moderador' && !esAdminSesionActual(); }
     function esProveedorSesion() { return rolActual === 'proveedor' && !esAdminSesionActual(); }
@@ -13207,6 +13249,199 @@
       if (!r) return;
       const act = (metodosPagoProv || []).filter(m => m.activo).map(m => m.nombre);
       r.textContent = act.length ? 'Activos: ' + act.join(', ') + ' · toca para editar' : 'Ningún medio activo · toca para configurar';
+    }
+
+
+    // ==================== NOVEDADES PARA CLIENTES ====================
+    // Se guardan en configuracion/novedades_clientes. Al "Difundir" llegan a la campana de todos y al asistente.
+    let novedadesClientes = [], unsubNovedadesClientes = null, novedadesMemoriaVistas = {};
+
+    function iniciarNovedadesClientes() {
+      if (unsubNovedadesClientes || !db) return;
+      try {
+        unsubNovedadesClientes = db.collection('configuracion').doc('novedades_clientes').onSnapshot(doc => {
+          const l = doc.exists && Array.isArray((doc.data() || {}).lista) ? doc.data().lista : [];
+          novedadesClientes = l.filter(n => n && n.id && (n.mensaje || n.titulo)).map(n => ({
+            id: String(n.id), titulo: String(n.titulo || '').slice(0, 80), mensaje: String(n.mensaje || '').slice(0, 1000),
+            fecha: String(n.fecha || ''), difundida: n.difundida === true, difundidaEl: String(n.difundidaEl || '')
+          })).sort((a, b) => String(b.difundidaEl || b.fecha).localeCompare(String(a.difundidaEl || a.fecha)));
+          actualizarBadgeNovedades();
+          try { renderizarNovedadesAdmin(); } catch (e) { /* nada */ }
+        }, err => console.warn('Novedades no disponibles:', err));
+      } catch (e) { console.warn(e); }
+    }
+
+    function novedadesDifundidas() { return novedadesClientes.filter(n => n.difundida && n.difundidaEl); }
+
+    // Lo que cada cliente ya vio se guarda en su dispositivo
+    function claveNovVistas() { return 'novVistas_' + ((currentUser && currentUser.uid) || 'visitante'); }
+    function novVistasHasta() {
+      try { return localStorage.getItem(claveNovVistas()) || novedadesMemoriaVistas[claveNovVistas()] || ''; } catch (e) { return novedadesMemoriaVistas[claveNovVistas()] || ''; }
+    }
+    function marcarNovedadesVistas() {
+      const l = novedadesDifundidas();
+      if (!l.length) return;
+      const ultima = l.map(n => n.difundidaEl).sort().pop();
+      novedadesMemoriaVistas[claveNovVistas()] = ultima;
+      try { localStorage.setItem(claveNovVistas(), ultima); } catch (e) { /* nada */ }
+      actualizarBadgeNovedades();
+    }
+    function novedadesSinVer() {
+      const h = novVistasHasta();
+      return novedadesDifundidas().filter(n => n.difundidaEl > h);
+    }
+
+    function actualizarBadgeNovedades() {
+      const b = document.getElementById('asistenteBadgeNov');
+      if (!b) return;
+      const n = currentUser && !modoPruebaCliente ? novedadesSinVer().length : 0;
+      b.textContent = n > 9 ? '9+' : String(n);
+      b.classList.toggle('hidden', n === 0 || asistenteAbierto);
+      // El saludo del asistente avisa la novedad
+      if (n > 0 && !asistenteAbierto) {
+        const sal = document.getElementById('asistenteSaludo'), t = document.getElementById('asistenteSaludoTxt');
+        if (sal && t) { t.textContent = n === 1 ? '📢 Tienes una novedad nueva' : `📢 Tienes ${n} novedades nuevas`; sal.classList.add('visible'); }
+      }
+    }
+
+    function textoNovedadWhatsapp(n) {
+      return (n.titulo ? '📢 *' + n.titulo + '*\n\n' : '📢 ') + String(n.mensaje || '').replace(/\*\*(.+?)\*\*/g, '*$1*') + '\n\n👉 epicchannels.quest';
+    }
+
+    // ----- Panel del administrador -----
+    function actualizarContadorNovedad() {
+      const t = document.getElementById('novMensaje'), c = document.getElementById('novContador');
+      if (t && c) c.textContent = t.value.length + '/1000';
+    }
+
+    function leerBorradorNovedad() {
+      return {
+        titulo: String((document.getElementById('novTitulo') || {}).value || '').replace(/[<>]/g, '').trim().slice(0, 80),
+        mensaje: String((document.getElementById('novMensaje') || {}).value || '').replace(/[<>]/g, '').trim().slice(0, 1000)
+      };
+    }
+
+    function copiarNovedadBorrador() {
+      const b = leerBorradorNovedad();
+      if (!b.mensaje && !b.titulo) { alert('Escribe el mensaje primero.'); return; }
+      copiarTexto(textoNovedadWhatsapp(b), 'Mensaje copiado: pégalo en WhatsApp');
+    }
+
+    async function guardarNovedadCliente(difundir) {
+      if (!esAdminSesionActual()) return;
+      const b = leerBorradorNovedad();
+      if (!b.mensaje) { alert('Escribe el mensaje de la novedad.'); return; }
+      if (difundir && !await confirmarModal('¿Difundir esta novedad? Les llega a todos tus clientes como notificación y aparece de primero en el asistente.', { tipo: 'pregunta', textoAceptar: 'Sí, difundir' })) return;
+      const ahora = new Date().toISOString();
+      const nueva = { id: 'nov_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), titulo: b.titulo, mensaje: b.mensaje, fecha: ahora, difundida: !!difundir, difundidaEl: difundir ? ahora : '', creadaPor: currentUser.email };
+      try {
+        const ref = db.collection('configuracion').doc('novedades_clientes');
+        await db.runTransaction(async (t) => {
+          const d = await t.get(ref);
+          const l = d.exists && Array.isArray((d.data() || {}).lista) ? d.data().lista : [];
+          t.set(ref, { lista: [nueva].concat(l).slice(0, 30) }, { merge: true });
+        });
+        if (difundir) await publicarNovedadGlobal({ tipo: 'anuncio', titulo: b.titulo || 'Novedad', mensaje: b.mensaje.replace(/\*\*(.+?)\*\*/g, '$1') });
+        document.getElementById('novTitulo').value = ''; document.getElementById('novMensaje').value = ''; actualizarContadorNovedad();
+        mostrarToast(difundir ? '¡Novedad difundida! Ya les llegó a tus clientes.' : 'Novedad guardada. Puedes copiarla o difundirla cuando quieras.');
+      } catch (err) { alert('No se pudo guardar: ' + err.message); }
+    }
+
+    async function modificarNovedadCliente(id, cambio) {
+      const ref = db.collection('configuracion').doc('novedades_clientes');
+      let resultado = null;
+      await db.runTransaction(async (t) => {
+        const d = await t.get(ref);
+        const l = d.exists && Array.isArray((d.data() || {}).lista) ? d.data().lista.slice() : [];
+        const i = l.findIndex(n => n && n.id === id);
+        if (i < 0) throw new Error('No encontré esa novedad.');
+        if (cambio === null) { resultado = l[i]; l.splice(i, 1); }
+        else { l[i] = Object.assign({}, l[i], cambio); resultado = l[i]; }
+        t.set(ref, { lista: l }, { merge: true });
+      });
+      return resultado;
+    }
+
+    function copiarNovedadCliente(id) {
+      const n = novedadesClientes.find(x => x.id === id);
+      if (n) copiarTexto(textoNovedadWhatsapp(n), 'Mensaje copiado: pégalo en WhatsApp');
+    }
+
+    async function difundirNovedadCliente(id) {
+      if (!esAdminSesionActual()) return;
+      const n = novedadesClientes.find(x => x.id === id);
+      if (!n) return;
+      if (!await confirmarModal(n.difundida ? '¿Difundirla otra vez? Vuelve a aparecer como nueva para todos.' : '¿Difundir esta novedad? Les llega a todos tus clientes como notificación y aparece de primero en el asistente.', { tipo: 'pregunta', textoAceptar: 'Sí, difundir' })) return;
+      try {
+        await modificarNovedadCliente(id, { difundida: true, difundidaEl: new Date().toISOString() });
+        await publicarNovedadGlobal({ tipo: 'anuncio', titulo: n.titulo || 'Novedad', mensaje: n.mensaje.replace(/\*\*(.+?)\*\*/g, '$1') });
+        mostrarToast('¡Novedad difundida!');
+      } catch (err) { alert('No se pudo difundir: ' + err.message); }
+    }
+
+    async function retirarNovedadCliente(id) {
+      if (!esAdminSesionActual()) return;
+      if (!await confirmarModal('¿Retirarla del asistente? Deja de aparecer como novedad (la notificación que ya llegó se queda).', { textoAceptar: 'Sí, retirar' })) return;
+      try { await modificarNovedadCliente(id, { difundida: false }); mostrarToast('Retirada del asistente.'); } catch (err) { alert('No se pudo: ' + err.message); }
+    }
+
+    function editarNovedadCliente(id) {
+      const n = novedadesClientes.find(x => x.id === id);
+      if (!n) return;
+      document.getElementById('novTitulo').value = n.titulo; document.getElementById('novMensaje').value = n.mensaje; actualizarContadorNovedad();
+      document.getElementById('novMensaje').focus();
+      mostrarToast('Mensaje cargado arriba: ajústalo y guárdalo o difúndelo como uno nuevo.');
+    }
+
+    async function eliminarNovedadCliente(id) {
+      if (!esAdminSesionActual()) return;
+      if (!await confirmarModal('¿Eliminar esta novedad?', { textoAceptar: 'Sí, eliminar' })) return;
+      try { await modificarNovedadCliente(id, null); mostrarToast('Novedad eliminada.'); } catch (err) { alert('No se pudo eliminar: ' + err.message); }
+    }
+
+    function renderizarNovedadesAdmin() {
+      const cont = document.getElementById('listaNovedadesClientes');
+      if (!cont) return;
+      const tot = document.getElementById('novTotal'); if (tot) tot.textContent = novedadesClientes.length ? novedadesClientes.length + ' guardadas' : '';
+      if (!novedadesClientes.length) { cont.innerHTML = '<p class="px-4 py-6 text-center text-gray-500 text-sm">Todavía no hay novedades. Escribe la primera arriba.</p>'; return; }
+      const b = (cls, fn, ic, t) => `<button type="button" onclick="${fn}" class="px-2.5 py-1.5 rounded-lg text-[11px] font-bold flex items-center gap-1 ${cls}"><i class="${ic}"></i> ${t}</button>`;
+      cont.innerHTML = novedadesClientes.map(n => {
+        const id = escaparJsAttr(n.id);
+        return `<div class="px-4 py-3">
+          <div class="flex items-start justify-between gap-2">
+            <div class="min-w-0">${n.titulo ? `<p class="text-sm font-black text-white">${escaparHtml(n.titulo)}</p>` : ''}<p class="text-[10px] text-gray-500">${escaparHtml(bcFecha(n.difundidaEl || n.fecha))}</p></div>
+            <span class="shrink-0 px-2 py-0.5 rounded-full text-[10px] font-bold border ${n.difundida ? 'bg-sky-500/15 text-sky-300 border-sky-500/30' : 'bg-gray-800 text-gray-400 border-gray-700'}">${n.difundida ? 'Difundida' : 'Sin difundir'}</span>
+          </div>
+          <p class="text-xs text-gray-300 mt-1.5 leading-relaxed whitespace-pre-line">${asistenteFormatear(n.mensaje)}</p>
+          <div class="flex flex-wrap gap-1.5 mt-2.5">
+            ${b('bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 border border-emerald-500/40', `copiarNovedadCliente('${id}')`, 'fa-brands fa-whatsapp', 'Copiar')}
+            ${b('bg-sky-500 hover:bg-sky-400 text-black', `difundirNovedadCliente('${id}')`, 'fa-solid fa-bullhorn', n.difundida ? 'Difundir otra vez' : 'Difundir')}
+            ${b('bg-gray-800 hover:bg-gray-700 text-gray-200 border border-gray-700', `editarNovedadCliente('${id}')`, 'fa-solid fa-pen', 'Reutilizar')}
+            ${n.difundida ? b('bg-gray-800 hover:bg-gray-700 text-gray-300 border border-gray-700', `retirarNovedadCliente('${id}')`, 'fa-solid fa-eye-slash', 'Retirar') : ''}
+            ${b('bg-red-500/10 hover:bg-red-500/20 text-red-300 border border-red-500/30', `eliminarNovedadCliente('${id}')`, 'fa-solid fa-trash', '')}
+          </div>
+        </div>`;
+      }).join('');
+    }
+
+    // ----- En el asistente -----
+    function textoNovedadBot(n) { return '📢 ' + (n.titulo ? '**' + n.titulo + '**\n' : '') + n.mensaje + '\n\n🗓 ' + bcFecha(n.difundidaEl); }
+
+    // Al abrir el asistente, lo que el cliente no ha visto sale de primero
+    function asistenteMostrarNovedadesNuevas() {
+      if (modoPruebaCliente) return false;
+      const nuevas = novedadesSinVer().slice(0, 3);
+      if (!nuevas.length) return false;
+      nuevas.forEach((n, i) => asistenteAgregarBot((i === 0 ? (nuevas.length === 1 ? '¡Tenemos una novedad para ti!\n\n' : `¡Tenemos ${nuevas.length} novedades para ti!\n\n`) : '') + textoNovedadBot(n)));
+      marcarNovedadesVistas();
+      return true;
+    }
+
+    function asistenteListarNovedades() {
+      const l = novedadesDifundidas().slice(0, 5);
+      if (!l.length) { asistenteAgregarBot('Por ahora no hay novedades. Cuando haya algo nuevo te avisaré aquí con un número rojo.', asistenteMenu()); return; }
+      l.forEach((n, i) => asistenteAgregarBot(textoNovedadBot(n), i === l.length - 1 ? asistenteMenu() : null));
+      marcarNovedadesVistas();
     }
 
     // ==================== NETFLIX EN LA TIENDA: SIN CONTRASEÑA ====================
