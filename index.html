@@ -2470,7 +2470,7 @@
       </div>
 
       <!-- MÉTODO MANUAL (el de siempre) -->
-      <details id="recargaManualDetalle" open ontoggle="actualizarEtiquetaManual()" class="group rounded-xl">
+      <details id="recargaManualDetalle" open ontoggle="if (typeof actualizarEtiquetaManual === 'function') actualizarEtiquetaManual()" class="group rounded-xl">
         <summary id="recargaManualResumen" style="list-style:none" class="hidden cursor-pointer px-3 py-2 rounded-xl bg-gray-800/60 border border-gray-700 text-[11px] font-bold text-gray-300 flex items-center justify-between gap-2"><span><i class="fa-brands fa-whatsapp mr-1.5 text-emerald-400"></i>Otro método (manual, con comprobante por WhatsApp)</span><span class="shrink-0 flex items-center gap-1 text-gray-400"><span id="recargaManualAccion">Ocultar</span><i class="fa-solid fa-chevron-down text-[10px] transition group-open:rotate-180"></i></span></summary>
         <div class="pt-3">
           <p class="text-xs text-gray-400 mb-3">Transfiere a través de nuestras cuentas oficiales escaneando el código QR o copiando la llave.</p>
@@ -5549,9 +5549,17 @@
           poblarSelectStock();
         });
 
-        // El administrador entra directo a su panel; el moderador también (cuando llega su rol)
+        // Si llegó con un enlace (#tienda, #admin/tickets...) se abre esa sección.
+        // Si no, el administrador entra directo a su panel; el moderador también (cuando llega su rol).
+        const rutaPedida = leerRuta();
         inicioEnPanelPendiente = true;
-        if (esAdmin) { inicioEnPanelPendiente = false; cambiarVista('admin'); }
+        rutaPendienteStaff = '';
+        if (rutaValida(rutaPedida)) {
+          inicioEnPanelPendiente = false;
+          if (rutaPedida.split('/')[0] === 'admin' && !esAdmin && rolActual !== 'moderador') { rutaPendienteStaff = rutaPedida; cambiarVista('tienda'); }
+          else aplicarRuta(rutaPedida);
+        }
+        else if (esAdmin) { inicioEnPanelPendiente = false; cambiarVista('admin'); }
         else if (rolActual === 'moderador') { inicioEnPanelPendiente = false; cambiarVista('admin'); }
         else cambiarVista('tienda');
       } else {
@@ -6271,7 +6279,61 @@
         document.getElementById('vistaAdmin').classList.remove('hidden');
         cambiarTabAdmin('productos');
       }
+      if (vista !== 'admin' || modoPruebaCliente) {
+        try { fijarRuta(vista === 'netflix' && !vNf ? 'tienda' : (vista === 'admin' ? 'tienda' : vista)); } catch (e) { /* nada */ }
+      }
     }
+
+
+    // ==================== ENLACES PROPIOS PARA CADA SECCIÓN ====================
+    // epicchannels.quest/#tienda · #mis-cuentas · #mis-cuentas/datos · #netflix · #admin/tickets ...
+    // Funcionan para guardar, compartir y con el botón "atrás". Si la sección no le corresponde a quien abre el enlace, va a la tienda.
+    const RUTAS_VISTAS = ['tienda', 'mis-cuentas', 'netflix', 'proveedor', 'admin'];
+    const TABS_ADMIN_RUTA = ['productos', 'reporte', 'categorias', 'usuarios', 'tickets', 'stock', 'apariencia', 'pagos', 'recargas', 'historial', 'netflix', 'ajustes', 'proveedores', 'asistente', 'buscar', 'promociones'];
+    const TABS_PERFIL_RUTA = ['cuentas', 'datos', 'seguridad'];
+    let aplicandoRuta = false, rutaActual = '', rutaPendienteStaff = '';
+
+    function leerRuta() {
+      try { return decodeURIComponent(String(window.location.hash || '').replace(/^#\/?/, '')).trim().toLowerCase().slice(0, 60); } catch (e) { return ''; }
+    }
+
+    function rutaValida(r) { return RUTAS_VISTAS.indexOf(String(r || '').split('/')[0]) !== -1; }
+
+    function fijarRuta(r) {
+      try {
+        rutaActual = r;
+        const nuevo = '#' + r;
+        if (window.location.hash === nuevo) return;
+        if (aplicandoRuta || !window.history || !history.pushState) history.replaceState(null, '', nuevo);
+        else history.pushState(null, '', nuevo);
+      } catch (e) { /* el navegador no deja cambiar la dirección: no pasa nada */ }
+    }
+
+    function aplicarRuta(r) {
+      r = r || leerRuta();
+      if (!rutaValida(r)) return false;
+      const partes = r.split('/');
+      const vista = partes[0], sub = partes[1] || '';
+      aplicandoRuta = true;
+      try {
+        cambiarVista(vista);
+        const vAdm = document.getElementById('vistaAdmin');
+        if (vista === 'admin' && sub && TABS_ADMIN_RUTA.indexOf(sub) !== -1 && vAdm && !vAdm.classList.contains('hidden')) cambiarTabAdmin(sub);
+        if (vista === 'mis-cuentas' && sub && TABS_PERFIL_RUTA.indexOf(sub) !== -1) cambiarTabPerfil(sub);
+      } catch (e) { console.warn('Ruta:', e); }
+      finally { aplicandoRuta = false; }
+      return true;
+    }
+
+    // Botón "atrás" / "adelante" del navegador o enlace pegado con la página abierta
+    window.addEventListener('hashchange', function () {
+      try {
+        if (!currentUser) return;
+        const r = leerRuta();
+        if (!r || r === rutaActual) return;
+        aplicarRuta(r);
+      } catch (e) { console.warn(e); }
+    });
 
     // ==================== DASHBOARD DE VENTAS ====================
     let chartsDashboard = {};
@@ -6652,6 +6714,7 @@
       if (tab === 'tickets') { renderizarTickets(); limpiarFotosRespuestaVencidas(); }
       if (tab === 'promociones') { renderizarPromoProductos(); renderizarPromoActivas(); }
       if (tab === 'buscar') prepararBuscadorAdmin();
+      try { const vAdm = document.getElementById('vistaAdmin'); if (vAdm && !vAdm.classList.contains('hidden')) fijarRuta('admin/' + tab); } catch (e) { /* nada */ }
     }
 
     async function iniciarSincronizacionTotal() {
@@ -9214,7 +9277,8 @@
 
       if (rol === 'moderador') {
         if (btnAdmin) btnAdmin.classList.remove('hidden');
-        if (inicioEnPanelPendiente) { inicioEnPanelPendiente = false; try { cambiarVista('admin'); } catch (e) { console.warn(e); } }
+        if (rutaPendienteStaff) { const rp = rutaPendienteStaff; rutaPendienteStaff = ''; inicioEnPanelPendiente = false; try { aplicarRuta(rp); } catch (e) { console.warn(e); } }
+        else if (inicioEnPanelPendiente) { inicioEnPanelPendiente = false; try { cambiarVista('admin'); } catch (e) { console.warn(e); } }
         if (!escuchasModeradorActivas) {
           escuchasModeradorActivas = true;
           try { escucharUsuariosEnLinea(); escucharTotalRecaudadoHoyEnVivo(); iniciarInventarioPrivadoAdmin(); iniciarNetflixAdmin(); iniciarLotesProveedoresAdmin(); iniciarTicketsStaff(); } catch (e) { console.warn(e); }
@@ -9230,7 +9294,7 @@
         if (vAdm && !vAdm.classList.contains('hidden')) cambiarVista('tienda');
       }
 
-      if (rol !== 'moderador' && !desdeCache) inicioEnPanelPendiente = false;
+      if (rol !== 'moderador' && !desdeCache) { inicioEnPanelPendiente = false; rutaPendienteStaff = ''; }
       if (rol === 'proveedor') {
         if (btnAdmin) btnAdmin.classList.add('hidden');
         iniciarProveedor();
@@ -12474,6 +12538,7 @@
           }
         });
         if (tab === 'datos') rellenarFormularioPerfil();
+        try { const vMc = document.getElementById('vistaMisCuentas'); if (vMc && !vMc.classList.contains('hidden')) fijarRuta(tab === 'cuentas' ? 'mis-cuentas' : 'mis-cuentas/' + tab); } catch (e) { /* nada */ }
         if (tab === 'seguridad') {
           const err = document.getElementById('perfilPassError');
           if (err) err.classList.add('hidden');
@@ -13095,7 +13160,8 @@
         try {
           await auth.signInWithEmailAndPassword(email, password);
           cerrarModalAuth();
-          cambiarVista(esStaffSesion() ? 'admin' : 'tienda');
+          // Si la sesión ya eligió sección (o llegó con un enlace), no se cambia
+          if (!rutaValida(leerRuta())) cambiarVista(esStaffSesion() ? 'admin' : 'tienda');
         } catch (err) {
           const errBox = document.getElementById('authErrorBox');
           const errMsg = document.getElementById('authErrorMsg');
