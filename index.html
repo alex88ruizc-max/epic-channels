@@ -1916,6 +1916,15 @@
               <p id="editProdStockNota" class="text-[10px] text-sky-200 leading-snug"></p>
             </div>
           </div>
+          <div class="p-3 rounded-xl bg-amber-400/5 border border-amber-400/30 space-y-2">
+            <label for="editProdComboDe" class="block"><span class="block text-xs font-bold text-white"><i class="fa-solid fa-gift text-amber-300 mr-1"></i> Combo (adicional opcional)</span><span class="block text-[10px] text-gray-400">El cliente puede marcar "Agregar combo" en la tarjeta y se lleva también este producto.</span></label>
+            <select id="editProdComboDe" onchange="actualizarVistaCombo()" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"></select>
+            <div id="editProdComboCaja" class="hidden space-y-1">
+              <label class="block text-[11px] text-gray-400">Precio del adicional dentro del combo (por unidad)</label>
+              <input type="number" id="editProdComboPrecio" min="0" step="100" oninput="actualizarVistaCombo()" placeholder="Vacío = su precio normal" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none">
+              <p id="editProdComboNota" class="text-[10px] text-amber-200 leading-snug"></p>
+            </div>
+          </div>
         </div>
 
         <div class="flex gap-2 pt-2">
@@ -5502,10 +5511,16 @@
       if (sim) sim.innerText = `$${saldoSimulado.toLocaleString('es-CO')}`;
     }
 
+    // Mientras se simula, lo real (alquileres, reportes, pedido de recarga) se guarda aparte y vuelve al salir
+    let respaldoRealSim = null, timerRecargaSim = null;
+
     function activarModoPruebaCliente() {
       modoPruebaCliente = true;
       saldoSimulado = SALDO_SIMULADO_INICIAL; // cada activación arranca con $1.000.000
       comprasSimuladas = [];
+      respaldoRealSim = { alquileres: misAlquileres, reportes: misReportes, pedido: pedidoRecargaActivo };
+      misAlquileres = []; misReportes = []; pedidoRecargaActivo = null; netflixResultadosOtp = {};
+      try { actualizarBotonNetflixNav(); renderizarMisReportes(); renderizarRecargaAuto(); } catch (e) { /* nada */ }
       document.getElementById('btnAdminTab').classList.add('hidden');
       document.getElementById('btnFlotanteModoCliente').classList.remove('hidden');
       actualizarSaldoHeader();
@@ -5516,6 +5531,10 @@
     function salirModoPruebaCliente() {
       modoPruebaCliente = false;
       comprasSimuladas = [];
+      if (timerRecargaSim) { clearTimeout(timerRecargaSim); timerRecargaSim = null; }
+      if (respaldoRealSim) { misAlquileres = respaldoRealSim.alquileres || []; misReportes = respaldoRealSim.reportes || []; pedidoRecargaActivo = respaldoRealSim.pedido || null; respaldoRealSim = null; }
+      netflixResultadosOtp = {};
+      try { actualizarBotonNetflixNav(); renderizarMisReportes(); renderizarRecargaAuto(); renderizarNetflixModal(); } catch (e) { /* nada */ }
       saldoSimulado = SALDO_SIMULADO_INICIAL;
       document.getElementById('btnAdminTab').classList.remove('hidden');
       document.getElementById('btnFlotanteModoCliente').classList.add('hidden');
@@ -5531,58 +5550,89 @@
     }
 
     // Simula una compra completa sin escribir en Firestore ni enviar nada a Telegram
+    function cuentasDemoSim(prod, cantidad, desde) {
+      const nf = esProductoNetflix(prod);
+      const base = String(prod.nombre || 'cuenta').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '').slice(0, 10) || 'cuenta';
+      const reales = Array.isArray(prod.cuentas) ? prod.cuentas : [];
+      return Array.from({ length: cantidad }, (_, i) => {
+        const n = (desde || 0) + i + 1;
+        const demo = { email: `${base}.demo${n}@ejemplo.com`, pass: nf ? `Perfil: Perfil ${((n - 1) % 5) + 1} · PIN: ${String(1000 + Math.floor(Math.random() * 9000))}` : `Demo${1000 + n}` };
+        const r = parseCredencialObj(reales[i]);
+        if (r.claveAcceso) demo.claveAcceso = r.claveAcceso;
+        return demo;
+      });
+    }
+
+    function registrarCompraSim(prod, cuentas, cantidad, total, extra) {
+      const compra = Object.assign({
+        id: 'sim_' + Date.now() + '_' + Math.random().toString(16).slice(2, 6), simulada: true,
+        productoId: prod.docId, productoNombre: prod.nombre || prod.docId, categoria: prod.categoria || 'Streaming',
+        cantidad: cantidad, total: total, credenciales: cuentas.map(c => `${c.email}:${c.pass}`).join('\n'),
+        claveAcceso: resolverClaveAccesoCuentas(cuentas), tipoGarantia: prod.tipoGarantia || '', fecha: new Date().toISOString()
+      }, extra || {});
+      comprasSimuladas.unshift(compra);
+      // Netflix: también queda como cuenta en alquiler (tarjeta roja con "Pedir código" y renovación)
+      if (esProductoNetflix(prod)) {
+        const hoy = hoyNetflix();
+        cuentas.forEach((c, i) => {
+          const per = String(c.pass || '').match(/Perfil:\s*([^·]+?)\s*(?:·|$)/), pin = String(c.pass || '').match(/PIN:\s*(\d+)/);
+          misAlquileres.push({
+            id: 'sim_nf_' + Date.now() + '_' + i, simulado: true, correo: c.email, tipo: 'compartida', perfil: per ? per[1] : 'Perfil 1', pin: pin ? pin[1] : '',
+            plataforma: 'Netflix', estado: 'asignado', fechaInicio: hoy, proximoPago: sumarMesesNetflix(hoy, 1), plan: 1, precio: Number(prod.precio) || 0,
+            clienteUid: currentUser.uid, clienteEmail: currentUser.email
+          });
+        });
+        try { actualizarBotonNetflixNav(); renderizarNetflixModal(); } catch (e) { /* nada */ }
+      }
+      return compra;
+    }
+
+    // Simula una compra completa (con combo y stock compartido) sin escribir en Firestore ni avisar a Telegram
     function comprarProductoSimulado(docId) {
       try {
         const prodInfo = catalogoUnificado.find(p => p.docId === docId) || {};
         const minRequerido = prodInfo.minCompra || 5;
         const inputCant = document.getElementById('cant_' + docId);
         const cantidad = inputCant ? (parseInt(inputCant.value) || minRequerido) : minRequerido;
-        const cuentasReales = Array.isArray(prodInfo.cuentas) ? prodInfo.cuentas : [];
+        const disponibles = Math.max(0, parseInt(prodInfo.stock, 10) || 0);
 
-        if (cuentasReales.length < cantidad) { alert(`Stock insuficiente. Solo quedan ${cuentasReales.length} cuentas disponibles.`); return; }
-        if (cuentasReales.length >= minRequerido && cantidad < minRequerido) { alert(`La compra mínima es de ${minRequerido} cuentas.`); return; }
+        if (disponibles < cantidad) { alert(`Stock insuficiente. Solo quedan ${disponibles} cuentas disponibles.`); return; }
+        if (disponibles >= minRequerido && cantidad < minRequerido) { alert(`La compra mínima es de ${minRequerido} cuentas.`); return; }
 
-        const precioUnitario = prodInfo.precio || 0;
-        const totalPagar = precioUnitario * cantidad;
+        const conCombo = comboPedidoPara(docId, cantidad);
+        const totalPrincipal = (Number(prodInfo.precio) || 0) * cantidad;
+        const totalCombo = conCombo ? prodInfo.combo.precio * cantidad : 0;
+        const totalPagar = totalPrincipal + totalCombo;
         if (saldoSimulado < totalPagar) {
           abrirModalSaldoInsuficiente(`(Simulación) Saldo insuficiente. Tienes $${saldoSimulado.toLocaleString('es-CO')} y el total es $${totalPagar.toLocaleString('es-CO')}.`);
           return;
         }
-
         saldoSimulado -= totalPagar;
 
-        // Cuentas de ejemplo (respetan la contraseña de acceso real del lote para que el mensaje sea fiel)
-        const cuentasDemo = cuentasReales.slice(0, cantidad).map((raw, i) => {
-          const c = parseCredencialObj(raw);
-          const demo = { email: `cliente.demo${i + 1}@ejemplo.com`, pass: `Demo${1000 + i}` };
-          if (c.claveAcceso) demo.claveAcceso = c.claveAcceso;
-          return demo;
-        });
+        const yaComprados = comprasSimuladas.reduce((t, c) => t + (parseInt(c.cantidad) || 0), 0);
+        const cuentasDemo = cuentasDemoSim(prodInfo, cantidad, yaComprados);
+        const principal = registrarCompraSim(prodInfo, cuentasDemo, cantidad, totalPrincipal);
+        let combo = null;
+        if (conCombo) {
+          const add = Object.assign({}, catalogoUnificado.find(p => p.docId === prodInfo.combo.id) || {}, { docId: prodInfo.combo.id, nombre: prodInfo.combo.nombre, tipoGarantia: prodInfo.combo.tipoGarantia });
+          const cuentasCombo = cuentasDemoSim(add, cantidad, yaComprados + cantidad);
+          registrarCompraSim(add, cuentasCombo, cantidad, totalCombo, { esCombo: true, comboDeCompra: principal.id });
+          combo = { cuentas: cuentasCombo, info: add };
+          comboElegido[docId] = false;
+        }
 
-        const texto = construirFormatoEntrega(cuentasDemo, prodInfo, { total: totalPagar, saldo: saldoSimulado, cliente: currentUser.email });
-
-        comprasSimuladas.unshift({
-          id: 'sim_' + Date.now(),
-          simulada: true,
-          productoId: docId,
-          productoNombre: prodInfo.nombre || docId,
-          categoria: prodInfo.categoria || 'Streaming',
-          cantidad,
-          total: totalPagar,
-          credenciales: cuentasDemo.map(c => `${c.email}:${c.pass}`).join('\n'),
-          claveAcceso: resolverClaveAccesoCuentas(cuentasDemo),
-          tipoGarantia: prodInfo.tipoGarantia || '',
-          fecha: new Date().toISOString()
-        });
+        let texto = construirFormatoEntrega(cuentasDemo, prodInfo, { total: totalPagar, saldo: saldoSimulado, cliente: currentUser.email });
+        if (combo) texto = textoConCombo(texto, combo.cuentas, combo.info);
 
         actualizarSaldoHeader();
         // Subida de nivel simulada (solo visual)
-        const totalSim = comprasSimuladas.reduce((s, c) => s + (parseInt(c.cantidad) || 0), 0);
+        const totalSim = comprasSimuladas.reduce((t, c) => t + (parseInt(c.cantidad) || 0), 0);
         const nAntes = infoNivel(totalSim - cantidad), nDespues = infoNivel(totalSim);
         if (nDespues.idx > nAntes.idx) setTimeout(() => celebrarSubidaNivel(nDespues, true), 700);
-        mostrarEntregaCompleta(texto, cuentasDemo, prodInfo, { total: totalPagar, saldo: saldoSimulado });
+        mostrarEntregaCompleta(texto, cuentasDemo, prodInfo, { total: totalPagar, saldo: saldoSimulado, combo: combo });
         const aviso = document.getElementById('avisoEntregaSimulada');
         if (aviso) aviso.classList.remove('hidden');
+        try { renderizarCatalogo(); } catch (e) { /* nada */ }
       } catch (e) {
         alert('Error en la simulación: ' + e.message);
       }
@@ -6946,7 +6996,7 @@
           else { cantidadInicial = stockDisponible; limiteInferior = stockDisponible; }
         }
 
-        const totalInicial = cantidadInicial * (prod.precio || 0);
+        const totalInicial = cantidadInicial * precioUnitarioConCombo(prod);
 
         const estiloCat = obtenerEstiloCategoria(prod.categoria);
         const esHot = (prod.id === productoHotId || (prod.aliases && prod.aliases.includes(productoHotId)));
@@ -6999,6 +7049,7 @@
                 </span>
               </div>
             </div>
+            ${htmlComboTarjeta(prod, cantidadInicial, agotado)}
             <div class="pt-3 border-t border-gray-800 flex flex-col gap-2.5 mt-2">
               <div class="flex items-center justify-between">
                 <div>
@@ -7028,12 +7079,7 @@
       val = Math.max(minStock, Math.min(maxStock, val + delta));
       input.value = val;
 
-      const prod = catalogoUnificado.find(p => p.docId === docId);
-      if (prod) {
-        const total = val * (prod.precio || 0);
-        const txtTotal = document.getElementById('txtTotal_' + docId);
-        if (txtTotal) txtTotal.innerText = `$${total.toLocaleString('es-CO')}`;
-      }
+      actualizarTotalTarjeta(docId);
     }
 
     function filtrarCategoria(cat) {
@@ -7208,7 +7254,9 @@
       const htmlBtn = btnCompra ? btnCompra.innerHTML : '';
       if (btnCompra) { btnCompra.disabled = true; btnCompra.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Procesando...'; }
       try {
-        const r = await llamarBackend('comprar', { productoId: docId, cantidad: cantidad });
+        const conCombo = comboPedidoPara(docId, cantidad);
+        if (conCombo && (await servidorTiene('combos')) === false) throw new Error('El combo necesita que el servidor esté actualizado. Desmarca el combo o intenta más tarde.');
+        const r = await llamarBackend('comprar', Object.assign({ productoId: docId, cantidad: cantidad }, conCombo ? { combo: true } : {}));
         if (!r.ok) {
           if (r.codigo === 'SALDO_INSUFICIENTE') { abrirModalSaldoInsuficiente(r.error); return; }
           throw new Error(r.error || 'No se pudo completar la compra.');
@@ -7230,8 +7278,12 @@
         }).join('\n');
 
         if (r.claveMaster) claveMasterRuntime = String(r.claveMaster);
-        const textoEntregaFinal = construirFormatoEntrega(cuentasEntregadas, prodInfo, { total: totalPagar, saldo: nuevoSaldoUsuario, cliente: currentUser.email });
-        mostrarEntregaCompleta(textoEntregaFinal, cuentasEntregadas, prodInfo, { total: totalPagar, saldo: nuevoSaldoUsuario });
+        const comboR = (r.combo && Array.isArray(r.combo.cuentas) && r.combo.cuentas.length) ? r.combo : null;
+        const comboInfo = comboR ? Object.assign({}, catalogoUnificado.find(p => p.docId === comboR.productoId) || {}, { nombre: comboR.productoNombre, tipoGarantia: comboR.tipoGarantia }) : null;
+        let textoEntregaFinal = construirFormatoEntrega(cuentasEntregadas, prodInfo, { total: totalPagar, saldo: nuevoSaldoUsuario, cliente: currentUser.email });
+        if (comboR) textoEntregaFinal = textoConCombo(textoEntregaFinal, comboR.cuentas, comboInfo);
+        mostrarEntregaCompleta(textoEntregaFinal, cuentasEntregadas, prodInfo, { total: totalPagar, saldo: nuevoSaldoUsuario, combo: comboR ? { cuentas: comboR.cuentas, info: comboInfo } : null });
+        if (comboR) { comboElegido[docId] = false; }
 
         // El aviso de venta a Telegram lo envía el servidor seguro
         verificarSubidaNivel(cuentasEntregadas.length);
@@ -7299,6 +7351,7 @@
           </div>`;
         });
         if (esNf) html += htmlGuiaNetflix(true);
+        if (ex.combo && Array.isArray(ex.combo.cuentas) && ex.combo.cuentas.length) html += htmlEntregaCombo(ex.combo.cuentas, ex.combo.info || {}, fila);
         cont.innerHTML = html;
       } catch (e) {
         console.warn('No se pudo dibujar la entrega visual:', e);
@@ -7371,6 +7424,7 @@
                     ${stock > 0 ? `<button onclick="verDetalleCuentas('${p.docId}')" class="ml-2 text-[11px] bg-gray-800 hover:bg-gray-700 text-gray-300 px-2 py-0.5 rounded">Ver</button>` : ''}
                   </div>
                   ${p.stockDe ? `<span class="mt-1 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-sky-500/10 text-sky-300 border border-sky-500/30" title="${escaparHtml(MODOS_STOCK_COMPARTIDO[p.stockModo] || '')}"><i class="fa-solid fa-arrows-rotate"></i> ${p.stockModo === 'compartido' ? '' : (p.stockPropio || 0) + ' propias + '}${p.stockDeCantidad} de ${escaparHtml(p.stockDeNombre)}</span>` : ''}
+                  ${p.combo ? `<span class="mt-1 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-400/10 text-amber-300 border border-amber-400/30"><i class="fa-solid fa-gift"></i> Combo: + ${escaparHtml(p.combo.nombre)} (${formatoCOP(p.combo.precio)})</span>` : ''}
                   ${insigniaStockBajo}
                 </div>
               </td>
@@ -7459,6 +7513,11 @@
       if (selSD) { selSD.value = String(dInvSD.stockDe || ''); if (selSD.value !== String(dInvSD.stockDe || '')) selSD.value = ''; }
       document.querySelectorAll('input[name="editProdStockModo"]').forEach(r => { r.checked = r.value === (dInvSD.stockModo === 'compartido' ? 'compartido' : 'respaldo'); });
       actualizarVistaStockCompartido();
+      poblarOpcionesCombo(prod.docId);
+      const selCb = document.getElementById('editProdComboDe');
+      if (selCb) { selCb.value = String(dInvSD.comboDe || ''); if (selCb.value !== String(dInvSD.comboDe || '')) selCb.value = ''; }
+      const inpCb = document.getElementById('editProdComboPrecio'); if (inpCb) inpCb.value = Number(dInvSD.comboPrecio) > 0 ? Number(dInvSD.comboPrecio) : '';
+      actualizarVistaCombo();
       const notaBase = document.getElementById('editProdNotaBase'); if (notaBase) notaBase.classList.toggle('hidden', personalizado);
 
       const modal = document.getElementById('modalEditarProducto');
@@ -7536,6 +7595,24 @@
         } else if (antesSD) {
           updateData.stockDe = '';
           updateData.stockModo = '';
+        }
+
+        // Combo: también lo procesa el servidor
+        const selCb = document.getElementById('editProdComboDe');
+        const comboSel = selCb ? String(selCb.value || '') : '';
+        const antesCb = String((snapshotInventario[docId] || {}).comboDe || '');
+        if (comboSel) {
+          if (comboSel === docId) { alert('Un producto no puede ser combo de sí mismo.'); return; }
+          if (comboSel === fuenteSD) { alert('El combo no puede ser el mismo producto del que toma stock. Elige otro.'); return; }
+          if (comboSel !== antesCb) {
+            const tieneCb = await servidorTiene('combos');
+            if (tieneCb !== true) { alert(tieneCb === false ? 'Para usar combos necesitas actualizar el servidor (Apps Script) con el archivo nuevo. Mientras tanto no se guardó el combo.' : 'No pude comprobar el servidor ahora mismo. Intenta guardar de nuevo en un momento.'); return; }
+          }
+          updateData.comboDe = comboSel;
+          updateData.comboPrecio = Math.max(0, Math.round(Number(document.getElementById('editProdComboPrecio').value) || 0));
+        } else if (antesCb) {
+          updateData.comboDe = '';
+          updateData.comboPrecio = 0;
         }
 
         await db.collection('inventario').doc(docId).set(updateData, { merge: true });
@@ -8556,7 +8633,18 @@
     let pagoAsignandoTxn = '';
 
     function metodoRecargaAuto() { return metodosPagoList.find(m => m.auto === 'breb') || null; }
-    function recargaAutoDisponible() { return recargaAutoCfg.activa && !!metodoRecargaAuto() && !modoPruebaCliente; }
+    // En la simulación siempre se puede probar (con la llave real si existe, o una de ejemplo)
+    function recargaAutoDisponible() { return modoPruebaCliente ? true : (recargaAutoCfg.activa && !!metodoRecargaAuto()); }
+
+    function acreditarRecargaSimulada() {
+      if (timerRecargaSim) { clearTimeout(timerRecargaSim); timerRecargaSim = null; }
+      const p = pedidoRecargaActivo;
+      if (!modoPruebaCliente || !p || !p.simulado) return;
+      saldoSimulado += Number(p.monto) || 0;
+      actualizarSaldoHeader();
+      recargaAutoAcreditada(Object.assign({}, p));
+      try { renderizarCabeceraPerfil(); } catch (e) { /* nada */ }
+    }
 
     function iniciarRecargaAuto() {
       detenerRecargaAuto();
@@ -8575,9 +8663,10 @@
               const p = Object.assign({ id: doc.id }, doc.data());
               const antes = pedidosRecargaVistos[p.id];
               if (p.estado === 'pendiente' && (!activo || String(p.creadoEl) > String(activo.creadoEl))) activo = p;
-              if (antes === 'pendiente' && p.estado === 'acreditado') recargaAutoAcreditada(p);
+              if (antes === 'pendiente' && p.estado === 'acreditado' && !modoPruebaCliente) recargaAutoAcreditada(p);
               pedidosRecargaVistos[p.id] = p.estado;
             });
+            if (modoPruebaCliente && respaldoRealSim) { respaldoRealSim.pedido = activo; return; }
             pedidoRecargaActivo = activo;
             renderizarRecargaAuto();
           }, err => console.warn('Pedidos de recarga no disponibles:', err));
@@ -8664,6 +8753,16 @@
       const inp = document.getElementById('recargaAutoMonto');
       const monto = parseInt(inp && inp.value, 10);
       if (!(monto >= recargaAutoCfg.minimo)) { alert(`El monto mínimo es ${formatoCOP(recargaAutoCfg.minimo)} COP.`); return; }
+      if (modoPruebaCliente) {
+        // Simulación: monto único como el real; el pago se "detecta" solo en unos segundos
+        const unico = monto + 1 + Math.floor(Math.random() * 98);
+        pedidoRecargaActivo = { id: 'sim_r' + Date.now(), simulado: true, monto: unico, estado: 'pendiente', creadoEl: new Date().toISOString(), venceEl: new Date(Date.now() + (recargaAutoCfg.minutos || 30) * 60000).toISOString() };
+        renderizarRecargaAuto();
+        recargaAutoEstadoTxt('(Simulación) No pagues nada: en unos segundos el sistema "detecta" el pago y te suma el saldo de prueba. También puedes tocar "Ya pagué".');
+        if (timerRecargaSim) clearTimeout(timerRecargaSim);
+        timerRecargaSim = setTimeout(acreditarRecargaSimulada, 6000);
+        return;
+      }
       const btn = document.getElementById('btnRecargaAutoCrear');
       if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>'; }
       try {
@@ -8683,6 +8782,7 @@
 
     async function recargaAutoYaPague() {
       if (!pedidoRecargaActivo) return;
+      if (modoPruebaCliente && pedidoRecargaActivo.simulado) { recargaAutoEstadoTxt('(Simulación) Comprobando tu pago...'); setTimeout(acreditarRecargaSimulada, 900); return; }
       const btn = document.getElementById('btnRecargaAutoYaPague');
       if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Comprobando...'; }
       recargaAutoEstadoTxt('Comprobando tu pago...');
@@ -8702,6 +8802,10 @@
     async function recargaAutoCancelar() {
       if (!pedidoRecargaActivo) return;
       if (!await confirmarModal('¿Cancelar este pedido? Si ya pagaste, no lo canceles: espera a que se acredite.', { textoAceptar: 'Sí, cancelar' })) return;
+      if (modoPruebaCliente && pedidoRecargaActivo && pedidoRecargaActivo.simulado) {
+        if (timerRecargaSim) { clearTimeout(timerRecargaSim); timerRecargaSim = null; }
+        pedidoRecargaActivo = null; recargaAutoEstadoTxt(''); renderizarRecargaAuto(); return;
+      }
       try {
         const r = await llamarBackend('recarga_cancelar', { id: pedidoRecargaActivo.id });
         if (!r.ok) { alert(r.error || 'No se pudo cancelar.'); return; }
@@ -9800,9 +9904,11 @@
       if (unsubMisReportes || !currentUser) return;
       try {
         unsubMisReportes = db.collection('tickets_cuentas').where('clienteUid', '==', currentUser.uid).onSnapshot(snap => {
-          misReportes = [];
-          snap.forEach(d => misReportes.push(Object.assign({ id: d.id }, d.data())));
-          misReportes.sort((a, b) => String(b.creadoEl).localeCompare(String(a.creadoEl)));
+          const reales = [];
+          snap.forEach(d => reales.push(Object.assign({ id: d.id }, d.data())));
+          reales.sort((a, b) => String(b.creadoEl).localeCompare(String(a.creadoEl)));
+          if (modoPruebaCliente && respaldoRealSim) { respaldoRealSim.reportes = reales; return; }
+          misReportes = reales;
           renderizarMisReportes();
           pintarBotonesReporte();
         }, err => console.warn('Mis reportes no disponibles:', err));
@@ -9907,7 +10013,7 @@
 
     function abrirReporteCuenta(idxCompra, idxLinea) {
       const c = misComprasPerfilCache[idxCompra];
-      if (!c || c.simulada || modoPruebaCliente) return;
+      if (!c) return;
       const lineas = String(c.credenciales || '').split('\n').map(l => l.trim()).filter(Boolean);
       const cuenta = emailDeLineaCuenta(lineas[idxLinea]);
       if (!cuenta) return;
@@ -9947,6 +10053,15 @@
       const btn = document.getElementById('btnEnviarReporte');
       if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Enviando...'; }
       try {
+        if (modoPruebaCliente) {
+          // Simulación: el reporte queda en "Mis reportes" como en la vida real, pero no llega al panel ni a Telegram
+          await new Promise(res => setTimeout(res, 600));
+          misReportes.unshift({ id: 'sim_t' + Date.now(), simulado: true, cuenta: reporteActual.cuenta, productoNombre: reporteActual.producto, motivo: document.getElementById('rpMotivo').value, detalle: document.getElementById('rpDetalle').value.trim(), estado: 'abierto', creadoEl: new Date().toISOString() });
+          renderizarMisReportes(); pintarBotonesReporte();
+          cerrarReporteCuenta();
+          mostrarToast('(Simulación) Reporte creado. Así lo verá el cliente en "Mis reportes".');
+          return;
+        }
         const foto = await prepararFotoReporte(archivo);
         const r = await llamarBackend('ticket_crear', {
           compraId: reporteActual.compraId, cuenta: reporteActual.cuenta,
@@ -11347,6 +11462,7 @@
       unidadVarias: { def: 'cuentas', etq: 'Unidad (varias)', max: 16 },
       textoUltimas: { def: '¡Últimas {n} disponibles!', etq: 'Aviso de pocas unidades ({n} = cantidad)', max: 50 },
       chipNetflix: { def: 'Acceso por código · sin contraseña', etq: 'Etiqueta de Netflix (escribe - para ocultarla)', max: 50 },
+      textoCombo: { def: 'Agregar combo', etq: 'Opción de combo en la tarjeta', max: 30 },
       textoVacio: { def: 'No hay productos visibles en esta categoría.', etq: 'Categoría sin productos', max: 80 }
     };
 
@@ -11520,6 +11636,70 @@
           p.stock = (modo === 'compartido' ? 0 : (parseInt(p.stockPropio, 10) || 0)) + prestadas;
         });
       } catch (e) { console.warn('Stock compartido:', e); }
+      // Combo: adicional opcional (ej. Netflix + Prime Video)
+      try {
+        const porId2 = {};
+        catalogoUnificado.forEach(p => { porId2[p.docId] = p; });
+        catalogoUnificado.forEach(p => {
+          p.combo = null;
+          const d = snapshotInventario[p.docId] || {};
+          const cid = String(d.comboDe || '');
+          if (!cid || cid === p.docId || !porId2[cid]) return;
+          const a = porId2[cid];
+          const especial = Number(d.comboPrecio) || 0;
+          p.combo = { id: cid, nombre: a.nombre || cid, precio: especial > 0 ? especial : (Number(a.precio) || 0), precioNormal: Number(a.precio) || 0, stock: Math.max(0, parseInt(a.stock, 10) || 0), tipoGarantia: a.tipoGarantia || '', esNetflix: esProductoNetflix(a) };
+        });
+      } catch (e) { console.warn('Combos:', e); }
+    }
+
+    // ----- Combo en la tarjeta de la tienda -----
+    const comboElegido = {};
+
+    function precioUnitarioConCombo(prod) {
+      return (Number(prod.precio) || 0) + ((prod.combo && comboElegido[prod.docId]) ? prod.combo.precio : 0);
+    }
+
+    function htmlComboTarjeta(prod, cantidad, agotado) {
+      const c = prod.combo;
+      if (!c || agotado) return '';
+      const sinStock = c.stock < Math.max(1, cantidad);
+      if (sinStock) comboElegido[prod.docId] = false;
+      const marcado = !!comboElegido[prod.docId] && !sinStock;
+      return `<label id="comboCaja_${prod.docId}" class="mb-3 flex items-center gap-2.5 p-2.5 rounded-xl border cursor-pointer transition ${marcado ? 'border-amber-400/70 bg-amber-400/10' : 'border-dashed border-gray-600 bg-gray-800/40 hover:border-amber-400/50'} ${sinStock ? 'opacity-50 cursor-not-allowed' : ''}">
+        <input type="checkbox" id="combo_${prod.docId}" ${marcado ? 'checked' : ''} ${sinStock ? 'disabled' : ''} onchange="cambiarCombo('${prod.docId}')" class="w-4 h-4 accent-amber-400 shrink-0">
+        <span class="min-w-0 flex-grow"><span class="block text-[11px] font-black text-amber-300 uppercase tracking-wide"><i class="fa-solid fa-gift mr-1"></i>${ttH('textoCombo')}</span><span class="block text-xs text-white font-bold truncate">+ ${escaparHtml(c.nombre)}</span></span>
+        <span class="shrink-0 text-right"><span class="block text-xs font-black text-white">+${formatoCOP(c.precio)}</span>${c.precio < c.precioNormal ? `<span class="block text-[10px] text-gray-400 line-through">${formatoCOP(c.precioNormal)}</span>` : `<span class="block text-[10px] text-gray-400">${sinStock ? 'sin stock' : 'c/u'}</span>`}</span>
+      </label>`;
+    }
+
+    function cambiarCombo(docId) {
+      const chk = document.getElementById('combo_' + docId);
+      comboElegido[docId] = !!(chk && chk.checked);
+      const caja = document.getElementById('comboCaja_' + docId);
+      if (caja) {
+        caja.classList.toggle('border-amber-400/70', comboElegido[docId]); caja.classList.toggle('bg-amber-400/10', comboElegido[docId]);
+        caja.classList.toggle('border-dashed', !comboElegido[docId]); caja.classList.toggle('border-gray-600', !comboElegido[docId]); caja.classList.toggle('bg-gray-800/40', !comboElegido[docId]);
+      }
+      actualizarTotalTarjeta(docId);
+    }
+
+    function actualizarTotalTarjeta(docId) {
+      const prod = catalogoUnificado.find(p => p.docId === docId);
+      const input = document.getElementById('cant_' + docId);
+      if (!prod || !input) return;
+      const val = parseInt(input.value, 10) || 0;
+      if (prod.combo) {
+        const chk = document.getElementById('combo_' + docId);
+        const sinStock = prod.combo.stock < Math.max(1, val);
+        if (chk) { chk.disabled = sinStock; if (sinStock && chk.checked) { chk.checked = false; comboElegido[docId] = false; } }
+      }
+      const txt = document.getElementById('txtTotal_' + docId);
+      if (txt) txt.innerText = `$${(val * precioUnitarioConCombo(prod)).toLocaleString('es-CO')}`;
+    }
+
+    function comboPedidoPara(docId, cantidad) {
+      const prod = catalogoUnificado.find(p => p.docId === docId);
+      return !!(prod && prod.combo && comboElegido[docId] && prod.combo.stock >= cantidad);
     }
 
     function poblarOpcionesStockCompartido(docId) {
@@ -11541,6 +11721,54 @@
           ? `Se venderán solo cuentas de "${src.nombre}". Las cuentas propias de este producto se quedan guardadas.`
           : `Primero vende sus propias cuentas. Cuando se acaben, toma de "${src.nombre}".`) + ' Precio, garantía y nombre siguen siendo los de este producto. Los perfiles de Alquileres nunca se prestan.';
       }
+    }
+
+
+    // ----- Entrega del combo (cuentas del adicional) -----
+    function htmlEntregaCombo(cuentas, info, fila) {
+      const esNf = esProductoNetflix(info);
+      const tg = info.tipoGarantia;
+      const garantia = tg === '29d' ? '29 días' : (tg === '24h' ? '24 horas' : 'Sin garantía');
+      let html = `<div class="p-3 rounded-xl bg-gradient-to-br from-amber-400/15 to-gray-800/40 border border-amber-400/40">
+        <p class="text-[10px] font-bold text-amber-300 uppercase tracking-wider"><i class="fa-solid fa-gift mr-1"></i>Combo incluido</p>
+        <p class="text-sm font-black text-white leading-snug mt-0.5">${escaparHtml(info.nombre || 'Adicional')}</p>
+        <p class="text-[10px] text-gray-300 mt-1">Garantía: ${garantia} · también queda en tu perfil</p>
+      </div>`;
+      (cuentas || []).map(parseCredencialObj).forEach((c, i) => {
+        html += `<div class="p-3 rounded-xl bg-gray-800/70 border border-amber-400/30 space-y-1.5">
+          <p class="text-[10px] font-black text-amber-300 uppercase tracking-wider">Combo · cuenta ${i + 1}</p>
+          ${c.email ? fila('Correo', c.email) : ''}
+          ${esNf ? (/^(Perfil:|Cuenta completa)/i.test(String(c.pass || '')) ? fila('Perfil', c.pass) : '') : (c.pass ? fila(/^(Perfil:|Cuenta completa)/.test(c.pass) ? 'Perfil' : 'Clave', c.pass) : '')}
+        </div>`;
+      });
+      if (esNf) html += htmlGuiaNetflix(false);
+      return html;
+    }
+
+    function textoConCombo(texto, cuentas, info) {
+      try {
+        return texto + '\n\n━━━━━━━━━━━━\n🎁 COMBO: ' + (info.nombre || 'Adicional') + '\n\n' + construirFormatoEntrega(cuentas, info, {});
+      } catch (e) { return texto; }
+    }
+
+
+    function poblarOpcionesCombo(docId) {
+      const sel = document.getElementById('editProdComboDe');
+      if (!sel) return;
+      sel.innerHTML = '<option value="">Sin combo</option>' + catalogoUnificado.filter(p => p.docId !== docId).map(p => `<option value="${escaparHtml(p.docId)}">${escaparHtml(p.nombre || p.docId)} · ${formatoCOP(p.precio || 0)}${p.activo === false ? ' (oculto)' : ''} · ${parseInt(p.stock, 10) || 0} en stock</option>`).join('');
+    }
+
+    function actualizarVistaCombo() {
+      const sel = document.getElementById('editProdComboDe'), caja = document.getElementById('editProdComboCaja');
+      if (!sel || !caja) return;
+      caja.classList.toggle('hidden', !sel.value);
+      const nota = document.getElementById('editProdComboNota');
+      const add = catalogoUnificado.find(p => p.docId === sel.value);
+      if (!nota || !add) { if (nota) nota.textContent = ''; return; }
+      const especial = Number(document.getElementById('editProdComboPrecio').value) || 0;
+      const precioAdd = especial > 0 ? especial : (Number(add.precio) || 0);
+      const base = Number(document.getElementById('editProdPrecio').value) || 0;
+      nota.textContent = `Precio del combo por unidad: ${formatoCOP(base)} + ${formatoCOP(precioAdd)} = ${formatoCOP(base + precioAdd)}. Solo aparece si "${add.nombre}" tiene stock. Cada producto queda como una compra aparte, con su propia garantía.`;
     }
 
     // ==================== NETFLIX EN LA TIENDA: SIN CONTRASEÑA ====================
@@ -11566,7 +11794,7 @@
         'Abre Netflix (la app o netflix.com) y toca "Iniciar sesión".',
         'Escribe el correo de tu cuenta (cópialo desde aquí).',
         'Elige "Usar un código de inicio de sesión" en lugar de poner contraseña.',
-        'Pide el código: te llega al correo de la cuenta. Lo ves en la tarjeta roja "Netflix · Mis cuentas" de la tienda o nos lo pides por WhatsApp.',
+        'Pide el código en la tarjeta roja "Netflix · Mis cuentas" de la tienda. Si no te llega, crea un ticket con el botón "Reportar" en Mis Cuentas.',
         'Escribe el código y entra a tu perfil. No cambies el correo, la contraseña ni el PIN.'
       ];
     }
@@ -12113,7 +12341,7 @@
                 const notas = [];
                 if (reemp) notas.push(`<span class="text-sky-300"><i class="fa-solid fa-link mr-1"></i>Reemplazo de ${escaparHtml(reemp.anterior)}</span>`);
                 if (gl.reiniciada && gl.estado === 'vigente') notas.push(`<span class="text-emerald-300"><i class="fa-solid fa-shield-halved mr-1"></i>Garantía hasta ${formatearFechaHoraCorta(gl.vence)}</span>`);
-                return `<div class="py-1 border-b border-gray-700/40 last:border-0"><div class="flex items-center justify-between gap-2"><span class="break-all min-w-0">${escaparHtml(esNfC ? textoLineaNetflix(l) : l)}</span>${(c.simulada || modoPruebaCliente) ? '' : `<span data-reporte-slot data-cuenta="${escaparHtml(ident)}" data-idx="${idx}" data-j="${j}"></span>`}</div>${notas.length ? `<div class="text-[10px] mt-0.5 flex flex-wrap gap-x-3">${notas.join('')}</div>` : ''}</div>`;
+                return `<div class="py-1 border-b border-gray-700/40 last:border-0"><div class="flex items-center justify-between gap-2"><span class="break-all min-w-0">${escaparHtml(esNfC ? textoLineaNetflix(l) : l)}</span>${false ? '' : `<span data-reporte-slot data-cuenta="${escaparHtml(ident)}" data-idx="${idx}" data-j="${j}"></span>`}</div>${notas.length ? `<div class="text-[10px] mt-0.5 flex flex-wrap gap-x-3">${notas.join('')}</div>` : ''}</div>`;
               }).join('')
             : '<div class="text-gray-500">Sin credenciales registradas.</div>';
 
@@ -12734,8 +12962,10 @@
       if (unsubMisAlquileres || !currentUser) return;
       try {
         unsubMisAlquileres = db.collection('alquileres').where('clienteUid', '==', currentUser.uid).onSnapshot(snap => {
-          misAlquileres = [];
-          snap.forEach(d => misAlquileres.push(Object.assign({ id: d.id }, d.data())));
+          const reales = [];
+          snap.forEach(d => reales.push(Object.assign({ id: d.id }, d.data())));
+          if (modoPruebaCliente && respaldoRealSim) { respaldoRealSim.alquileres = reales; return; }
+          misAlquileres = reales;
           actualizarBotonNetflixNav();
           const v = document.getElementById('vistaNetflix');
           if (v && !v.classList.contains('hidden')) renderizarNetflixCliente();
@@ -13091,6 +13321,15 @@
       const original = btn ? btn.innerHTML : '';
       if (btn) { btn.disabled = true; btn.innerHTML = SPINNER_NF + ' Buscando...'; }
       try {
+        if (modoPruebaCliente && String(id).indexOf('sim_') === 0) {
+          // Simulación: el código "llega" en un par de segundos (no se consulta ningún correo)
+          await new Promise(res => setTimeout(res, 1400));
+          const ahora = Date.now();
+          netflixResultadosOtp[ambito + '_' + id] = { lista: [{ codigo: String(1000 + Math.floor(Math.random() * 9000)), fecha: new Date(ahora).toISOString(), venceEn: new Date(ahora + 15 * 60000).toISOString(), simulado: true }] };
+          pintarOtpNetflix(ambito, id);
+          mostrarToast('(Simulación) Código recibido.');
+          return;
+        }
         if (!obtenerBackendUrl()) throw new Error('El servicio de códigos no está disponible por ahora. Contacta a soporte.');
         const r = await llamarBackend('otp', { id: id });
         if (!r.ok) {
@@ -13131,6 +13370,15 @@
       if (!a) return;
       const plan = parseInt(a.plan, 10) || 1;
       const precio = Number(a.precio) || 0;
+      if (modoPruebaCliente && a.simulado) {
+        if (!await confirmarModal(`(Simulación) ¿Renovar ${a.correo} por ${plan} ${plan === 1 ? 'mes' : 'meses'}?\n\nSe descontarán ${formatoCOP(precio)} COP de tu saldo de prueba.`, { tipo: 'pregunta', textoAceptar: 'Sí, renovar' })) return;
+        if (saldoSimulado < precio) { abrirModalSaldoInsuficiente(`(Simulación) Saldo insuficiente. Tienes ${formatoCOP(saldoSimulado)} y la renovación cuesta ${formatoCOP(precio)}.`); return; }
+        saldoSimulado -= precio;
+        a.proximoPago = sumarMesesNetflix(esFechaNetflix(a.proximoPago) ? a.proximoPago : hoyNetflix(), plan);
+        actualizarSaldoHeader(); renderizarNetflixModal(); try { renderizarCatalogo(); } catch (e) { /* nada */ }
+        mostrarToast('(Simulación) Renovada hasta ' + String(a.proximoPago).split('-').reverse().join('/'));
+        return;
+      }
       if (!obtenerBackendUrl()) { alert('La renovación en línea no está disponible por ahora. Contacta a soporte.'); return; }
 
       const ok = await confirmarModal(
