@@ -980,8 +980,12 @@
           <form onsubmit="cargarStockMasivo(event)" class="space-y-4">
             <div class="solo-admin">
               <label class="block text-xs text-gray-400 mb-1">¿Quién trajo estas cuentas?</label>
-              <select id="selectStockAporte" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none"><option value="">Yo (stock propio)</option></select>
-              <p class="text-[10px] text-gray-500 mt-1">Si eliges un proveedor, los tickets de estas cuentas se le asignan y cuentan en su informe.</p>
+              <div class="flex gap-2">
+                <select id="selectStockAporte" class="min-w-0 flex-grow bg-gray-800 border border-gray-700 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none"><option value="">Yo (stock propio)</option></select>
+                <button type="button" onclick="cargarAportantesStock(true)" title="Actualizar lista" class="shrink-0 px-3 rounded-xl bg-gray-800 hover:bg-gray-700 border border-gray-700 text-gray-200 text-xs font-bold"><i class="fa-solid fa-rotate"></i></button>
+              </div>
+              <p id="txtStockAporteInfo" class="text-[10px] text-gray-400 mt-1"></p>
+              <p class="text-[10px] text-gray-500 mt-0.5">Si eliges a alguien, los tickets de estas cuentas se le asignan y cuentan en su informe.</p>
             </div>
             <div>
               <label class="block text-xs text-gray-400 mb-1">Seleccionar Producto</label>
@@ -13929,7 +13933,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-05j';
+    const VERSION_PAGINA = '2026-10-05k';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261005_reportes', fecha: '2026-10-05', titulo: 'Tus reportes, más cómodos', mensaje: 'En **Mis Cuentas** ahora tienes un botón **Mis reportes** con un número rojo cuando te respondemos. Y si te cambiamos una cuenta, la verás destacada como **Usa esta cuenta**, con la anterior tachada.' },
       { id: 'act_20261005_tienda', fecha: '2026-10-05', titulo: '¡Tienda renovada!', mensaje: 'Ahora Netflix sale destacado en rojo, hay **combos** con varias cuentas en una (y te mostramos cuánto ahorras), **promociones** con precio rebajado y productos **VIP**. ¡Pásate por la tienda!' },
@@ -14071,20 +14075,38 @@
 
     // ==================== APORTES DE STOCK: QUIÉN TRAJO LAS CUENTAS ====================
     let aportantesCache = null;
-    async function cargarAportantesStock() {
+    let aportantesCacheEn = 0;
+    async function cargarAportantesStock(forzar) {
       const sel = document.getElementById('selectStockAporte');
+      const info = document.getElementById('txtStockAporteInfo');
       if (!sel || !esAdminSesionActual()) return;
       try {
-        if (!aportantesCache) {
-          const snap = await db.collection('usuarios').where('rol', '==', 'proveedor').get();
+        // Se vuelve a leer al entrar (máximo cada 2 minutos) para ver los proveedores nuevos
+        if (forzar || !aportantesCache || Date.now() - aportantesCacheEn > 120000) {
+          if (info) info.textContent = 'Cargando usuarios...';
+          const snap = await db.collection('usuarios').get();
           aportantesCache = [];
-          snap.forEach(d => { const u = d.data() || {}; aportantesCache.push({ uid: d.id, nombre: u.nombre || u.email || d.id, email: u.email || '', tipo: u.tipoCuenta || '' }); });
-          aportantesCache.sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'));
+          snap.forEach(d => {
+            const u = d.data() || {};
+            if (ADMIN_EMAILS.some(e => e.trim().toLowerCase() === String(u.email || '').trim().toLowerCase())) return;
+            const esProv = u.rol === 'proveedor' || u.tipoCuenta === 'externo' || u.tipoCuenta === 'reseller' || u.puede_subir_stock === true || (Array.isArray(u.permisos_subir_stock) && u.permisos_subir_stock.length > 0);
+            aportantesCache.push({ uid: d.id, nombre: u.nombre || u.email || d.id, email: u.email || '', tipo: u.tipoCuenta || '', proveedor: esProv });
+          });
+          aportantesCache.sort((x, y) => x.nombre.localeCompare(y.nombre, 'es'));
+          aportantesCacheEn = Date.now();
         }
         const prev = sel.value;
-        sel.innerHTML = '<option value="">Yo (stock propio)</option>' + aportantesCache.map(u => `<option value="${escaparHtml(u.uid)}">${escaparHtml(u.nombre)}${u.tipo === 'externo' ? ' · externo' : ''}</option>`).join('');
+        const provs = aportantesCache.filter(u => u.proveedor), otros = aportantesCache.filter(u => !u.proveedor);
+        const opt = u => `<option value="${escaparHtml(u.uid)}">${escaparHtml(u.nombre)}${u.email && u.email !== u.nombre ? ' (' + escaparHtml(u.email) + ')' : ''}${u.tipo === 'externo' ? ' · externo' : ''}</option>`;
+        sel.innerHTML = '<option value="">Yo (stock propio)</option>'
+          + (provs.length ? `<optgroup label="Proveedores">${provs.map(opt).join('')}</optgroup>` : '')
+          + (otros.length ? `<optgroup label="Otros usuarios">${otros.map(opt).join('')}</optgroup>` : '');
         if (prev && aportantesCache.some(u => u.uid === prev)) sel.value = prev;
-      } catch (e) { console.warn('Aportantes:', e); }
+        if (info) info.textContent = provs.length ? `${provs.length} ${provs.length === 1 ? 'proveedor' : 'proveedores'} · también puedes elegir cualquier otro usuario.` : 'No tienes usuarios marcados como proveedor (Usuarios → Editar → Rol). Igual puedes elegir cualquier usuario.';
+      } catch (e) {
+        console.warn('Aportantes:', e);
+        if (info) info.textContent = 'No se pudo cargar la lista de usuarios: ' + (e.message || e) + '. Toca "Actualizar".';
+      }
     }
     function aportanteElegido() {
       const sel = document.getElementById('selectStockAporte');
