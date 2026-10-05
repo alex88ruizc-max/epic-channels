@@ -181,6 +181,11 @@
     .nf-btn:hover { background: linear-gradient(180deg, #ff2a36, #d8101a); }
     @media (prefers-reduced-motion: no-preference) { .nf-glow { animation: nfGlow 3.4s ease-in-out infinite; } }
     @keyframes nfGlow { 0%, 100% { box-shadow: 0 16px 38px -20px rgba(229,9,20,.55); } 50% { box-shadow: 0 18px 46px -16px rgba(229,9,20,.9); } }
+  
+    /* ===== Combos armados en la tienda ===== */
+    .combo-card { position: relative; overflow: hidden; background: radial-gradient(120% 90% at 100% 0%, rgba(251,191,36,.16), transparent 55%), radial-gradient(100% 80% at 0% 100%, rgba(168,85,247,.14), transparent 60%), linear-gradient(165deg, #141024 0%, #0d0f17 80%); border: 1px solid rgba(251,191,36,.45); box-shadow: 0 16px 38px -22px rgba(251,191,36,.55); }
+    .combo-card::before { content: ''; position: absolute; left: 0; right: 0; top: 0; height: 3px; background: linear-gradient(90deg, #a855f7, #f59e0b, #fde68a, #f59e0b, #a855f7); }
+    .combo-chip { display: inline-flex; align-items: center; gap: .35rem; padding: .25rem .7rem; border-radius: 999px; font-size: 10px; font-weight: 900; letter-spacing: .06em; text-transform: uppercase; color: #1a1205; background: linear-gradient(90deg, #fde68a, #f59e0b); box-shadow: 0 6px 16px -8px rgba(245,158,11,.9); }
   </style>
 </head>
 <body class="min-h-screen flex flex-col justify-between">
@@ -746,9 +751,14 @@
             <h3 class="text-sm font-bold text-white">Gestión de Catálogo</h3>
             <p class="text-xs text-gray-400">Edita títulos, precios, compra mínima, fotos redondas o visibilidad.</p>
           </div>
-          <button onclick="abrirModalNuevoProducto()" class="px-4 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-black font-bold text-xs rounded-xl transition flex items-center gap-2 shadow-lg">
-            <i class="fa-solid fa-plus text-sm"></i> Registrar Nuevo Producto
-          </button>
+          <div class="flex flex-wrap gap-2 justify-end">
+            <button onclick="abrirModalCombo()" class="solo-admin px-4 py-2.5 bg-amber-400 hover:bg-amber-300 text-black font-bold text-xs rounded-xl transition flex items-center gap-2 shadow-lg">
+              <i class="fa-solid fa-gift text-sm"></i> Armar combo
+            </button>
+            <button onclick="abrirModalNuevoProducto()" class="px-4 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-black font-bold text-xs rounded-xl transition flex items-center gap-2 shadow-lg">
+              <i class="fa-solid fa-plus text-sm"></i> Registrar Nuevo Producto
+            </button>
+          </div>
         </div>
 
         <div class="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden">
@@ -1964,7 +1974,8 @@
             <span class="min-w-0"><span class="block text-xs font-bold text-white">Producto VIP</span><span class="block text-[10px] text-gray-400">Solo lo ven los clientes a los que se lo autorizas.</span></span>
             <input type="checkbox" id="editProdVip" class="accent-yellow-500 w-5 h-5 shrink-0">
           </label>
-          <div class="p-3 rounded-xl bg-sky-500/5 border border-sky-500/30 space-y-2">
+          <button type="button" id="editProdBtnCombo" onclick="const id=document.getElementById('editProdDocId').value;cerrarModalEditarProducto();abrirModalCombo(id)" class="hidden w-full py-2.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-black font-bold text-xs"><i class="fa-solid fa-gift mr-1"></i> Cambiar productos y precio del combo</button>
+          <div id="editProdStockCaja" class="p-3 rounded-xl bg-sky-500/5 border border-sky-500/30 space-y-2">
             <label for="editProdStockDe" class="block"><span class="block text-xs font-bold text-white"><i class="fa-solid fa-arrows-rotate text-sky-400 mr-1"></i> Tomar stock de otro producto</span><span class="block text-[10px] text-gray-400">Para vender las cuentas de otro producto con este nombre y precio.</span></label>
             <select id="editProdStockDe" onchange="actualizarVistaStockCompartido()" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"></select>
             <div id="editProdStockModoCaja" class="hidden space-y-1.5">
@@ -1973,7 +1984,7 @@
               <p id="editProdStockNota" class="text-[10px] text-sky-200 leading-snug"></p>
             </div>
           </div>
-          <div class="p-3 rounded-xl bg-amber-400/5 border border-amber-400/30 space-y-2">
+          <div id="editProdComboAddCaja" class="p-3 rounded-xl bg-amber-400/5 border border-amber-400/30 space-y-2">
             <label for="editProdComboDe" class="block"><span class="block text-xs font-bold text-white"><i class="fa-solid fa-gift text-amber-300 mr-1"></i> Combo (adicional opcional)</span><span class="block text-[10px] text-gray-400">El cliente puede marcar "Agregar combo" en la tarjeta y se lleva también este producto.</span></label>
             <select id="editProdComboDe" onchange="actualizarVistaCombo()" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"></select>
             <div id="editProdComboCaja" class="hidden space-y-1">
@@ -2724,6 +2735,37 @@
       <div class="shrink-0 grid grid-cols-2 gap-2 p-3 border-t border-gray-800">
         <button type="button" onclick="cerrarResolverTicket()" class="bg-gray-800 hover:bg-gray-700 text-gray-100 font-bold py-2.5 rounded-xl text-xs border border-gray-700">Cancelar</button>
         <button type="button" id="btnResolverTicket" onclick="confirmarResolverTicket()" class="bg-emerald-500 hover:bg-emerald-400 text-black font-bold py-2.5 rounded-xl text-xs">Resolver</button>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- MODAL: ARMAR / EDITAR COMBO -->
+  <div id="modalCombo" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden items-center justify-center p-3 sm:p-4">
+    <div class="bg-gray-900 border border-amber-400/40 rounded-2xl max-w-md w-full shadow-2xl max-h-[92vh] flex flex-col overflow-hidden">
+      <div class="shrink-0 flex items-center justify-between gap-3 px-4 py-3 border-b border-gray-800">
+        <h3 class="text-base font-black text-white flex items-center gap-2"><span class="combo-chip"><i class="fa-solid fa-gift"></i> Combo</span> <span id="comboTitulo">Armar combo</span></h3>
+        <button type="button" onclick="cerrarModalCombo()" aria-label="Cerrar" class="w-8 h-8 shrink-0 rounded-full bg-gray-800 hover:bg-gray-700 text-gray-300 flex items-center justify-center"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="overflow-y-auto px-4 py-3 space-y-3 flex-grow">
+        <div><label class="block text-xs text-gray-400 mb-1">Nombre</label><input type="text" id="comboNombre" maxlength="80" placeholder="Ej: Combo Netflix + Prime" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"></div>
+        <div><label class="block text-xs text-gray-400 mb-1">Descripción (opcional)</label><input type="text" id="comboDesc" maxlength="300" placeholder="Ej: Netflix con código + Prime Video 28 días" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"></div>
+        <div>
+          <p class="text-xs font-bold text-white mb-1.5">Productos que incluye</p>
+          <div id="comboFilas" class="space-y-2"></div>
+          <button type="button" id="btnComboAgregarFila" onclick="comboAgregarFila()" class="mt-2 px-3 py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 border border-gray-700 text-amber-300 font-bold text-[11px] disabled:opacity-40"><i class="fa-solid fa-plus mr-1"></i>Agregar producto</button>
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+          <div><label class="block text-xs text-gray-400 mb-1">Precio del combo</label><input type="number" id="comboPrecio" min="0" step="100" oninput="actualizarResumenCombo()" placeholder="Ej: 13000" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"></div>
+          <div><label class="block text-xs text-gray-400 mb-1">Categoría</label><select id="comboCategoria" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"></select></div>
+        </div>
+        <p id="comboResumen" class="text-[11px] text-gray-300 leading-relaxed p-2.5 rounded-xl bg-gray-800/60 border border-gray-700/60"></p>
+        <label class="flex items-center justify-between gap-3 p-2.5 rounded-xl bg-gray-800/60 border border-gray-700/60 cursor-pointer"><span class="text-xs font-bold text-white">Visible en la tienda</span><input type="checkbox" id="comboActivo" class="accent-emerald-500 w-5 h-5"></label>
+        <p class="text-[10px] text-gray-500 leading-relaxed">Al comprarlo, el cliente recibe las cuentas de cada producto y cada una queda en su perfil con su propia garantía. Las promociones y la foto del combo se manejan como en cualquier producto.</p>
+      </div>
+      <div class="shrink-0 grid grid-cols-2 gap-2 p-3 border-t border-gray-800">
+        <button type="button" onclick="cerrarModalCombo()" class="bg-gray-800 hover:bg-gray-700 text-gray-100 font-bold py-2.5 rounded-xl text-xs border border-gray-700">Cancelar</button>
+        <button type="button" id="btnGuardarCombo" onclick="guardarCombo()" class="bg-amber-400 hover:bg-amber-300 text-black font-bold py-2.5 rounded-xl text-xs">Guardar combo</button>
       </div>
     </div>
   </div>
@@ -5699,6 +5741,29 @@
         if (disponibles < cantidad) { alert(`Stock insuficiente. Solo quedan ${disponibles} cuentas disponibles.`); return; }
         if (disponibles >= minRequerido && cantidad < minRequerido) { alert(`La compra mínima es de ${minRequerido} cuentas.`); return; }
 
+        if (prodInfo.esCombo) {
+          // Combo armado simulado: cuentas de ejemplo de cada producto incluido
+          const totalC = (Number(prodInfo.precio) || 0) * cantidad;
+          if (saldoSimulado < totalC) { abrirModalSaldoInsuficiente(`(Simulación) Saldo insuficiente. Tienes $${saldoSimulado.toLocaleString('es-CO')} y el total es $${totalC.toLocaleString('es-CO')}.`); return; }
+          saldoSimulado -= totalC;
+          const comps = prodInfo.componentesInfo || [];
+          const sep = comps.reduce((t, c) => t + c.precio * c.cantidad, 0) || comps.length || 1;
+          let desde = comprasSimuladas.reduce((t, c) => t + (parseInt(c.cantidad) || 0), 0), repartido = 0;
+          const partes = comps.map((c, i) => {
+            const prodC = Object.assign({}, catalogoUnificado.find(p => p.docId === c.id) || {}, { docId: c.id, nombre: c.nombre });
+            const n = cantidad * c.cantidad;
+            const cuentasC = cuentasDemoSim(prodC, n, desde); desde += n;
+            const totalP = i === comps.length - 1 ? totalC - repartido : Math.round(totalC * ((c.precio * c.cantidad) || 1) / sep);
+            repartido += totalP;
+            registrarCompraSim(prodC, cuentasC, n, totalP, { esParteCombo: true, comboNombre: prodInfo.nombre });
+            return { cuentas: cuentasC, info: prodC };
+          });
+          actualizarSaldoHeader();
+          mostrarEntregaCompleta(textoComboArmado(prodInfo, partes, totalC), [], prodInfo, { total: totalC, saldo: saldoSimulado, partes: partes });
+          const avisoS = document.getElementById('avisoEntregaSimulada'); if (avisoS) avisoS.classList.remove('hidden');
+          try { renderizarCatalogo(); } catch (e) { /* nada */ }
+          return;
+        }
         const conCombo = comboPedidoPara(docId, cantidad);
         const totalPrincipal = (Number(prodInfo.precio) || 0) * cantidad;
         const totalCombo = conCombo ? prodInfo.combo.precio * cantidad : 0;
@@ -7183,7 +7248,7 @@
       }
 
       filtrados.forEach(prod => {
-        const esNf = esProductoNetflix(prod);
+        const esNf = esProductoNetflix(prod) && prod.esCombo !== true;
         const stockDisponible = prod.stock;
         const agotado = stockDisponible <= 0;
         const minRequerido = prod.minCompra || 5;
@@ -7208,15 +7273,16 @@
         const badgeText = prod.categoria;
 
         const esVipTienda = esProductoVip(prod);
+        const esComboT = prod.esCombo === true;
         const promoBadgeHtml = prod.promoPct ? `<div class="mb-3 mr-1.5 inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider text-white bg-gradient-to-r from-rose-500 to-pink-500 shadow-md shadow-rose-500/30"><i class="fa-solid fa-tags"></i> -${prod.promoPct}%${prod.promoHasta ? ' · ' + escaparHtml(textoTiempoRestante(prod.promoHasta)) : ''}</div>` : '';
-        const hotBadgeHtml = promoBadgeHtml + (esVipTienda ? `<div class="mb-3 mr-1.5 inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider text-black bg-gradient-to-r from-amber-300 via-yellow-400 to-amber-500 shadow-md shadow-amber-500/30"><i class="fa-solid fa-crown"></i> VIP</div>` : '') + (esHot ? `<div class="mb-3 inline-flex items-center gap-1.5 bg-red-500/10 text-red-400 border border-red-500/30 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider"><i class="fa-solid fa-fire animate-pulse text-red-500"></i> Producto Más Vendido / HOT</div>` : '');
+        const hotBadgeHtml = (esComboT ? '<div class="mb-3 mr-1.5 inline-flex"><span class="combo-chip"><i class="fa-solid fa-gift"></i> Combo</span></div>' : '') + promoBadgeHtml + (esVipTienda ? `<div class="mb-3 mr-1.5 inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider text-black bg-gradient-to-r from-amber-300 via-yellow-400 to-amber-500 shadow-md shadow-amber-500/30"><i class="fa-solid fa-crown"></i> VIP</div>` : '') + (esHot ? `<div class="mb-3 inline-flex items-center gap-1.5 bg-red-500/10 text-red-400 border border-red-500/30 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider"><i class="fa-solid fa-fire animate-pulse text-red-500"></i> Producto Más Vendido / HOT</div>` : '');
 
         const imagenProdHtml = prod.imagenUrl 
           ? `<img src="${prod.imagenUrl}" alt="${prod.nombre}" class="w-10 h-10 rounded-full object-cover border border-gray-700/80 shadow-md shrink-0">` 
           : '';
 
         grid.innerHTML += `
-          <div class="${esNf ? 'nf-card nf-glow' : 'bg-gray-900 border ' + cardBorder} rounded-2xl p-4 sm:p-5 flex flex-col justify-between transition relative">
+          <div class="${esNf ? 'nf-card nf-glow' : (esComboT ? 'combo-card' : 'bg-gray-900 border ' + cardBorder)} rounded-2xl p-4 sm:p-5 flex flex-col justify-between transition relative">
             <div>
               ${hotBadgeHtml}
               <div class="flex justify-between items-start mb-3">
@@ -7238,6 +7304,7 @@
               </div>
               ${esNf && tt('chipNetflix') !== '-' ? `<div class="mb-2"><span class="nf-chip"><i class="fa-solid fa-key"></i> ${ttH('chipNetflix')}</span></div>` : ''}
               <p class="text-xs text-gray-400 mb-2 leading-relaxed">${prod.descripcion}</p>
+              ${esComboT ? htmlIncluyeCombo(prod) : ''}
               
               <div class="mb-4">
                 <span class="inline-flex items-center gap-1.5 text-xs font-medium ${esNf ? 'text-red-200 bg-red-500/10 border border-red-500/30' : 'text-emerald-300 bg-emerald-500/10 border border-emerald-500/30'} px-3 py-1 rounded-xl shadow-sm">
@@ -7468,6 +7535,13 @@
           throw new Error(r.error || 'No se pudo completar la compra.');
         }
 
+        if (r.esComboArmado && Array.isArray(r.partes) && r.partes.length) {
+          if (r.claveMaster) claveMasterRuntime = String(r.claveMaster);
+          const partes = r.partes.map(pt => ({ cuentas: Array.isArray(pt.cuentas) ? pt.cuentas : [], info: Object.assign({}, catalogoUnificado.find(p => p.docId === pt.productoId) || {}, { nombre: pt.productoNombre, tipoGarantia: pt.tipoGarantia }) }));
+          mostrarEntregaCompleta(textoComboArmado(prodInfo, partes, Number(r.total) || 0), [], prodInfo, { total: Number(r.total) || 0, saldo: Number(r.saldo) || 0, partes: partes });
+          verificarSubidaNivel(partes.reduce((t, x) => t + x.cuentas.length, 0));
+          return;
+        }
         const cuentasEntregadas = Array.isArray(r.cuentas) ? r.cuentas : [];
         if (!cuentasEntregadas.length) {
           // La compra se procesó pero la respuesta llegó incompleta: se muestra desde el historial, nunca una entrega vacía
@@ -7539,13 +7613,13 @@
             <p class="text-[10px] font-bold text-emerald-300 uppercase tracking-wider">Tu compra</p>
             <p class="text-sm font-black text-white leading-snug mt-0.5">${escaparHtml(prodInfo.nombre || '')}</p>
             <div class="flex flex-wrap gap-1.5 mt-2">
-              ${chip('fa-box', lista.length + (lista.length === 1 ? ' cuenta' : ' cuentas'))}
-              ${chip('fa-shield-halved', 'Garantía: ' + garantia)}
+              ${Array.isArray(ex.partes) ? chip('fa-gift', 'Combo · ' + ex.partes.reduce((t, x) => t + x.cuentas.length, 0) + ' cuentas') : chip('fa-box', lista.length + (lista.length === 1 ? ' cuenta' : ' cuentas'))}
+              ${chip('fa-shield-halved', Array.isArray(ex.partes) ? 'Garantía de cada producto' : 'Garantía: ' + garantia)}
               ${(ex.total !== undefined && ex.total !== null) ? chip('fa-coins', formatoCOP(ex.total)) : ''}
             </div>
           </div>`;
-        const esNf = esProductoNetflix(prodInfo);
-        const acceso = esNf ? '' : (prodInfo.esAmazon ? obtenerClaveMaster() : resolverClaveAccesoCuentas(cuentas || []));
+        const esNf = esProductoNetflix(prodInfo) && !Array.isArray(ex.partes);
+        const acceso = Array.isArray(ex.partes) ? '' : esNf ? '' : (prodInfo.esAmazon ? obtenerClaveMaster() : resolverClaveAccesoCuentas(cuentas || []));
         if (acceso) {
           html += `<div class="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/30">${fila(prodInfo.esAmazon ? 'Acceso' : 'Clave', String(acceso))}<p class="text-[10px] text-amber-200 mt-1 ml-14">${prodInfo.esAmazon ? 'Clave de acceso de Amazon para todas tus cuentas' : 'Contraseña de tus cuentas'}</p></div>`;
         }
@@ -7558,6 +7632,7 @@
         });
         if (esNf) html += htmlGuiaNetflix(true);
         if (ex.combo && Array.isArray(ex.combo.cuentas) && ex.combo.cuentas.length) html += htmlEntregaCombo(ex.combo.cuentas, ex.combo.info || {}, fila);
+        if (Array.isArray(ex.partes)) ex.partes.forEach(pt => { html += htmlEntregaCombo(pt.cuentas, pt.info || {}, fila, 'Incluido en tu combo'); });
         cont.innerHTML = html;
       } catch (e) {
         console.warn('No se pudo dibujar la entrega visual:', e);
@@ -7630,6 +7705,7 @@
                     ${stock > 0 ? `<button onclick="verDetalleCuentas('${p.docId}')" class="ml-2 text-[11px] bg-gray-800 hover:bg-gray-700 text-gray-300 px-2 py-0.5 rounded">Ver</button>` : ''}
                   </div>
                   ${p.stockDe ? `<span class="mt-1 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-sky-500/10 text-sky-300 border border-sky-500/30" title="${escaparHtml(MODOS_STOCK_COMPARTIDO[p.stockModo] || '')}"><i class="fa-solid fa-arrows-rotate"></i> ${p.stockModo === 'compartido' ? '' : (p.stockPropio || 0) + ' propias + '}${p.stockDeCantidad} de ${escaparHtml(p.stockDeNombre)}</span>` : ''}
+                  ${p.esCombo ? `<span class="mt-1 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-400/10 text-amber-300 border border-amber-400/30"><i class="fa-solid fa-gift"></i> ${(p.componentesInfo || []).map(c => escaparHtml(c.nombre) + (c.cantidad > 1 ? ' ×' + c.cantidad : '')).join(' + ')}</span>` : ''}
                   ${p.combo ? `<span class="mt-1 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-400/10 text-amber-300 border border-amber-400/30"><i class="fa-solid fa-gift"></i> Combo: + ${escaparHtml(p.combo.nombre)} (${formatoCOP(p.combo.precio)})</span>` : ''}
                   ${insigniaStockBajo}
                 </div>
@@ -7713,6 +7789,9 @@
       const chkVip = document.getElementById('editProdVip'); if (chkVip) chkVip.checked = prod.esVip === true;
       const filaVip = document.getElementById('editProdFilaVip'); if (filaVip) filaVip.classList.toggle('hidden', !personalizado);
       const bElim = document.getElementById('btnEditProdEliminar'); if (bElim) bElim.classList.toggle('hidden', !personalizado);
+      const esComboE = prod.esCombo === true;
+      ['editProdStockCaja', 'editProdComboAddCaja'].forEach(i => { const e = document.getElementById(i); if (e) e.classList.toggle('hidden', esComboE); });
+      const bCb = document.getElementById('editProdBtnCombo'); if (bCb) bCb.classList.toggle('hidden', !esComboE);
       poblarOpcionesStockCompartido(prod.docId);
       const selSD = document.getElementById('editProdStockDe');
       const dInvSD = snapshotInventario[prod.docId] || {};
@@ -8483,6 +8562,7 @@
 
         let html = '';
         catalogoUnificado.forEach(p => {
+          if (p.esCombo) return; // un combo no tiene stock propio: usa el de sus productos
           if (esAdmin || userPermisosSubirStock.includes(p.id) || userPermisosSubirStock.includes(p.docId)) {
             html += `<option value="${p.docId}">${p.nombre} (Stock: ${p.stock})</option>`;
           }
@@ -11189,7 +11269,7 @@
         : `${lista.length} perfiles libres de ${lista[0].correo}`;
       const sel = document.getElementById('ptProducto');
       if (sel) {
-        const prods = catalogoUnificado.slice().sort((x, y) => String(x.nombre).localeCompare(String(y.nombre), 'es'));
+        const prods = catalogoUnificado.filter(p => !p.esCombo).sort((x, y) => String(x.nombre).localeCompare(String(y.nombre), 'es'));
         sel.innerHTML = '<option value="">Elige un producto...</option>' +
           prods.map(p => `<option value="${escaparHtml(p.docId)}">${escaparHtml(p.nombre)} · ${escaparHtml(formatoCOP(p.precio || 0))}</option>`).join('') +
           (esAdminSesionActual() ? '<option value="__nuevo__">➕ Crear un producto nuevo</option>' : '');
@@ -11902,6 +11982,27 @@
           p.combo = { id: cid, nombre: a.nombre || cid, precio: especial > 0 ? especial : (Number(a.precio) || 0), precioNormal: Number(a.precio) || 0, stock: Math.max(0, parseInt(a.stock, 10) || 0), tipoGarantia: a.tipoGarantia || '', esNetflix: esProductoNetflix(a) };
         });
       } catch (e) { console.warn('Combos:', e); }
+      // Combos armados: su stock depende de los productos que incluye
+      try {
+        const porId3 = {};
+        catalogoUnificado.forEach(p => { porId3[p.docId] = p; });
+        catalogoUnificado.forEach(p => {
+          const d = snapshotInventario[p.docId] || {};
+          p.esCombo = d.esCombo === true;
+          if (!p.esCombo) return;
+          p.combo = null; p.stockDe = '';
+          const comps = (Array.isArray(d.componentes) ? d.componentes : []).slice(0, 6)
+            .map(c => ({ id: String((c && c.id) || ''), cantidad: Math.max(1, Math.min(5, parseInt(c && c.cantidad, 10) || 1)) }))
+            .filter((c, i, a) => c.id && c.id !== p.docId && a.findIndex(x => x.id === c.id) === i);
+          p.componentesInfo = comps.map(c => {
+            const q = porId3[c.id];
+            return { id: c.id, cantidad: c.cantidad, nombre: q ? (q.nombre || c.id) : 'Producto eliminado', existe: !!q && !q.esCombo, stock: q ? (parseInt(q.stock, 10) || 0) : 0, precio: q ? (Number(q.precioLista !== undefined ? q.precioLista : q.precio) || 0) : 0 };
+          });
+          p.stock = p.componentesInfo.length && p.componentesInfo.every(c => c.existe) ? Math.min.apply(null, p.componentesInfo.map(c => Math.floor(c.stock / c.cantidad))) : 0;
+          p.precioSeparado = p.componentesInfo.reduce((t, c) => t + c.precio * c.cantidad, 0);
+          p.minCompra = 1;
+        });
+      } catch (e) { console.warn('Combos armados:', e); }
     }
 
     // ----- Combo en la tarjeta de la tienda -----
@@ -11957,7 +12058,7 @@
     function poblarOpcionesStockCompartido(docId) {
       const sel = document.getElementById('editProdStockDe');
       if (!sel) return;
-      const lista = catalogoUnificado.filter(p => p.docId !== docId && !String((snapshotInventario[p.docId] || {}).stockDe || ''));
+      const lista = catalogoUnificado.filter(p => p.docId !== docId && !p.esCombo && !String((snapshotInventario[p.docId] || {}).stockDe || ''));
       sel.innerHTML = '<option value="">No, solo su propio stock</option>' + lista.map(p => `<option value="${escaparHtml(p.docId)}">${escaparHtml(p.nombre || p.docId)}${p.activo === false ? ' (oculto)' : ''} · ${libresParaPrestar(p)} en stock</option>`).join('');
     }
 
@@ -11977,12 +12078,12 @@
 
 
     // ----- Entrega del combo (cuentas del adicional) -----
-    function htmlEntregaCombo(cuentas, info, fila) {
+    function htmlEntregaCombo(cuentas, info, fila, tituloCaja) {
       const esNf = esProductoNetflix(info);
       const tg = info.tipoGarantia;
       const garantia = tg === '29d' ? '29 días' : (tg === '24h' ? '24 horas' : 'Sin garantía');
       let html = `<div class="p-3 rounded-xl bg-gradient-to-br from-amber-400/15 to-gray-800/40 border border-amber-400/40">
-        <p class="text-[10px] font-bold text-amber-300 uppercase tracking-wider"><i class="fa-solid fa-gift mr-1"></i>Combo incluido</p>
+        <p class="text-[10px] font-bold text-amber-300 uppercase tracking-wider"><i class="fa-solid fa-gift mr-1"></i>${escaparHtml(tituloCaja || 'Combo incluido')}</p>
         <p class="text-sm font-black text-white leading-snug mt-0.5">${escaparHtml(info.nombre || 'Adicional')}</p>
         <p class="text-[10px] text-gray-300 mt-1">Garantía: ${garantia} · también queda en tu perfil</p>
       </div>`;
@@ -12007,7 +12108,7 @@
     function poblarOpcionesCombo(docId) {
       const sel = document.getElementById('editProdComboDe');
       if (!sel) return;
-      sel.innerHTML = '<option value="">Sin combo</option>' + catalogoUnificado.filter(p => p.docId !== docId).map(p => `<option value="${escaparHtml(p.docId)}">${escaparHtml(p.nombre || p.docId)} · ${formatoCOP(p.precio || 0)}${p.activo === false ? ' (oculto)' : ''} · ${parseInt(p.stock, 10) || 0} en stock</option>`).join('');
+      sel.innerHTML = '<option value="">Sin combo</option>' + catalogoUnificado.filter(p => p.docId !== docId && !p.esCombo).map(p => `<option value="${escaparHtml(p.docId)}">${escaparHtml(p.nombre || p.docId)} · ${formatoCOP(p.precio || 0)}${p.activo === false ? ' (oculto)' : ''} · ${parseInt(p.stock, 10) || 0} en stock</option>`).join('');
     }
 
     function actualizarVistaCombo() {
@@ -12437,7 +12538,7 @@
     function poblarStockResolver(productoTicket) {
       const sel = document.getElementById('rtStockProducto');
       if (!sel) return;
-      const lista = catalogoUnificado.map(p => ({ id: p.docId, nombre: p.nombre || p.docId, libres: stockLibreDeProducto(p.docId), oculto: p.activo === false }))
+      const lista = catalogoUnificado.filter(p => !p.esCombo).map(p => ({ id: p.docId, nombre: p.nombre || p.docId, libres: stockLibreDeProducto(p.docId), oculto: p.activo === false }))
         .filter(x => x.libres > 0 || x.id === productoTicket)
         .sort((a, b) => (a.id === productoTicket ? -1 : b.id === productoTicket ? 1 : 0) || a.nombre.localeCompare(b.nombre, 'es'));
       sel.innerHTML = lista.length ? lista.map(x => `<option value="${escaparHtml(x.id)}">${escaparHtml(x.nombre)}${x.id === productoTicket ? ' (el de la compra)' : ''}${x.oculto ? ' · oculto' : ''} · ${x.libres} ${x.libres === 1 ? 'libre' : 'libres'}</option>`).join('') : '<option value="">No hay cuentas libres en ningún stock</option>';
@@ -12456,6 +12557,137 @@
         info.textContent = chk.checked ? '' : (sel.options.length && sel.value ? `(elige el producto · ${sel.options.length} con cuentas)` : '(sin cuentas libres)');
         if (chk.checked && p) info.textContent = `(${n} ${n === 1 ? 'libre' : 'libres'} en ${p.nombre})`;
       }
+    }
+
+
+    // ==================== COMBOS ARMADOS ====================
+    // Producto propio hecho de otros productos: tiene su precio, sus promociones y entrega las cuentas de cada uno
+    function htmlIncluyeCombo(prod) {
+      const comps = prod.componentesInfo || [];
+      if (!comps.length) return '';
+      const ahorro = Math.max(0, (prod.precioSeparado || 0) - (Number(prod.precio) || 0));
+      return `<div class="mb-3 p-2.5 rounded-xl bg-black/25 border border-amber-400/25">
+        <p class="text-[10px] font-black text-amber-300 uppercase tracking-wider mb-1.5">Incluye</p>
+        <ul class="space-y-1">${comps.map(c => `<li class="flex items-center gap-2 text-xs text-white"><i class="fa-solid fa-circle-check text-amber-300 text-[11px]"></i><span class="min-w-0 truncate">${escaparHtml(c.nombre)}</span>${c.cantidad > 1 ? `<span class="shrink-0 text-[10px] font-bold text-gray-400">×${c.cantidad}</span>` : ''}</li>`).join('')}</ul>
+        ${ahorro > 0 ? `<p class="mt-2 text-[11px] text-emerald-300 font-bold"><i class="fa-solid fa-piggy-bank mr-1"></i>Ahorras ${formatoCOP(ahorro)} <span class="text-gray-500 font-normal">· por separado ${formatoCOP(prod.precioSeparado)}</span></p>` : ''}
+      </div>`;
+    }
+
+    function textoComboArmado(prodInfo, partes, total) {
+      let t = '🎁 ¡Tu combo está listo!\n📦 ' + (prodInfo.nombre || 'Combo') + (total ? '\n💰 Total: ' + formatoCOP(total) + ' COP' : '');
+      partes.forEach(pt => { t += '\n\n━━━━━━━━━━━━\n' + construirFormatoEntrega(pt.cuentas, pt.info, {}); });
+      return t;
+    }
+
+    // ----- Armar / editar un combo (administrador) -----
+    let comboEditandoId = '', comboFilas = [];
+
+    function productosParaCombo() {
+      return catalogoUnificado.filter(p => !p.esCombo && p.docId !== comboEditandoId).sort((a, b) => String(a.nombre).localeCompare(String(b.nombre), 'es'));
+    }
+
+    function abrirModalCombo(docId) {
+      if (!esAdminSesionActual()) return;
+      comboEditandoId = docId || '';
+      const p = docId ? catalogoUnificado.find(x => x.docId === docId) : null;
+      const d = docId ? (snapshotInventario[docId] || {}) : {};
+      document.getElementById('comboTitulo').textContent = p ? 'Editar combo' : 'Armar combo';
+      document.getElementById('comboNombre').value = p ? (p.nombre || '') : '';
+      document.getElementById('comboDesc').value = p ? (p.descripcion || '') : '';
+      document.getElementById('comboPrecio').value = p ? ((p.precioLista !== undefined ? p.precioLista : p.precio) || '') : '';
+      document.getElementById('comboActivo').checked = p ? p.activo !== false : true;
+      const cats = Array.from(new Set(catalogoUnificado.map(x => x.categoria).filter(Boolean).concat(['Combos'])));
+      const selC = document.getElementById('comboCategoria');
+      selC.innerHTML = cats.map(c => `<option value="${escaparHtml(c)}">${escaparHtml(c)}</option>`).join('');
+      selC.value = p ? (p.categoria || 'Combos') : 'Combos';
+      comboFilas = (Array.isArray(d.componentes) && d.componentes.length ? d.componentes : [{ id: '', cantidad: 1 }, { id: '', cantidad: 1 }])
+        .map(c => ({ id: String(c.id || ''), cantidad: Math.max(1, Math.min(5, parseInt(c.cantidad, 10) || 1)) }));
+      renderizarFilasCombo();
+      const m = document.getElementById('modalCombo');
+      m.classList.remove('hidden'); m.style.display = 'flex';
+    }
+
+    function cerrarModalCombo() {
+      const m = document.getElementById('modalCombo');
+      if (m) { m.classList.add('hidden'); m.style.display = 'none'; }
+    }
+
+    function renderizarFilasCombo() {
+      const cont = document.getElementById('comboFilas');
+      if (!cont) return;
+      const prods = productosParaCombo();
+      cont.innerHTML = comboFilas.map((f, i) => `<div class="flex items-center gap-2">
+        <select onchange="comboFilas[${i}].id=this.value;actualizarResumenCombo()" class="min-w-0 flex-grow bg-gray-800 border border-gray-700 rounded-xl px-2.5 py-2 text-xs text-white focus:outline-none">
+          <option value="">Elige un producto...</option>
+          ${prods.map(p => `<option value="${escaparHtml(p.docId)}" ${p.docId === f.id ? 'selected' : ''}>${escaparHtml(p.nombre || p.docId)} · ${formatoCOP(p.precioLista !== undefined ? p.precioLista : p.precio)} · ${parseInt(p.stock, 10) || 0} en stock${p.activo === false ? ' (oculto)' : ''}</option>`).join('')}
+        </select>
+        <select onchange="comboFilas[${i}].cantidad=parseInt(this.value,10)||1;actualizarResumenCombo()" aria-label="Cantidad" class="shrink-0 w-16 bg-gray-800 border border-gray-700 rounded-xl px-2 py-2 text-xs text-white focus:outline-none">${[1, 2, 3, 4, 5].map(n => `<option value="${n}" ${n === f.cantidad ? 'selected' : ''}>×${n}</option>`).join('')}</select>
+        <button type="button" onclick="comboFilas.splice(${i},1);renderizarFilasCombo()" aria-label="Quitar" class="shrink-0 w-8 h-8 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-300 border border-red-500/30 flex items-center justify-center"><i class="fa-solid fa-xmark text-xs"></i></button>
+      </div>`).join('');
+      const btn = document.getElementById('btnComboAgregarFila'); if (btn) btn.disabled = comboFilas.length >= 6;
+      actualizarResumenCombo();
+    }
+
+    function comboAgregarFila() { if (comboFilas.length < 6) { comboFilas.push({ id: '', cantidad: 1 }); renderizarFilasCombo(); } }
+
+    function componentesElegidosCombo() {
+      const vistos = {};
+      return comboFilas.filter(f => f.id && !vistos[f.id] && (vistos[f.id] = true));
+    }
+
+    function actualizarResumenCombo() {
+      const res = document.getElementById('comboResumen');
+      if (!res) return;
+      const comps = componentesElegidosCombo();
+      const porId = {}; catalogoUnificado.forEach(p => { porId[p.docId] = p; });
+      const separado = comps.reduce((t, c) => { const q = porId[c.id]; return t + (q ? (Number(q.precioLista !== undefined ? q.precioLista : q.precio) || 0) * c.cantidad : 0); }, 0);
+      const stock = comps.length ? Math.min.apply(null, comps.map(c => Math.floor(((porId[c.id] && parseInt(porId[c.id].stock, 10)) || 0) / c.cantidad))) : 0;
+      const precio = Number(document.getElementById('comboPrecio').value) || 0;
+      const repetidos = comboFilas.filter(f => f.id).length !== comps.length;
+      const fuentes = comps.map(c => String((snapshotInventario[c.id] || {}).stockDe || '')).filter(Boolean);
+      const choque = comps.some(c => fuentes.indexOf(c.id) !== -1) || fuentes.some((f, i) => fuentes.indexOf(f) !== i);
+      let txt = comps.length ? `Por separado: <b>${formatoCOP(separado)}</b>` : 'Elige al menos un producto.';
+      if (comps.length && precio > 0) txt += precio < separado ? ` · El cliente ahorra <b class="text-emerald-300">${formatoCOP(separado - precio)}</b> (${Math.round((separado - precio) / separado * 100)}%)` : ' · <span class="text-amber-300">El combo no sale más barato que por separado</span>';
+      if (comps.length) txt += `<br>Combos disponibles con el stock de hoy: <b>${stock}</b>`;
+      if (repetidos) txt += '<br><span class="text-amber-300">Hay un producto repetido: usa la cantidad (×2, ×3) en vez de repetirlo.</span>';
+      if (choque) txt += '<br><span class="text-red-300">Dos productos de este combo comparten el mismo stock. El servidor no lo permite: cambia alguno.</span>';
+      res.innerHTML = txt;
+    }
+
+    async function guardarCombo() {
+      if (!esAdminSesionActual()) return;
+      const nombre = document.getElementById('comboNombre').value.trim().slice(0, 80);
+      const desc = document.getElementById('comboDesc').value.trim().slice(0, 300);
+      const categoria = document.getElementById('comboCategoria').value || 'Combos';
+      const precio = Math.round(Number(document.getElementById('comboPrecio').value) || 0);
+      const activo = document.getElementById('comboActivo').checked;
+      const comps = componentesElegidosCombo().map(c => ({ id: c.id, cantidad: c.cantidad }));
+      if (!nombre) { alert('Ponle un nombre al combo.'); return; }
+      if (!comps.length) { alert('Elige al menos un producto para el combo.'); return; }
+      if (!(precio > 0)) { alert('Pon el precio del combo.'); return; }
+      const fuentes = comps.map(c => String((snapshotInventario[c.id] || {}).stockDe || '')).filter(Boolean);
+      if (comps.some(c => fuentes.indexOf(c.id) !== -1) || fuentes.some((f, i) => fuentes.indexOf(f) !== i)) { alert('Dos productos de este combo comparten el mismo stock. Cambia alguno.'); return; }
+      const tiene = await servidorTiene('combos_armados');
+      if (tiene !== true) { alert(tiene === false ? 'Para vender combos armados necesitas actualizar el servidor (Apps Script) con el archivo nuevo. No se guardó.' : 'No pude comprobar el servidor ahora mismo. Intenta de nuevo en un momento.'); return; }
+      if (!comboEditandoId && catalogoUnificado.some(p => nombreProductoNormalizado(p.nombre) === nombreProductoNormalizado(nombre)) && !await confirmarModal(`Ya existe un producto llamado "${nombre}". ¿Crear el combo igual?`, { textoAceptar: 'Sí, crear' })) return;
+      const btn = document.getElementById('btnGuardarCombo'); if (btn) btn.disabled = true;
+      try {
+        const id = comboEditandoId || ('combo_' + Date.now());
+        const datos = { nombre: nombre, descripcion: desc, categoria: categoria, precio: precio, minCompra: 1, activo: activo, esCombo: true, componentes: comps, stockDe: '', comboDe: '' };
+        if (!comboEditandoId) Object.assign(datos, { stock: 0, esVip: false, tipoGarantia: '', imagenUrl: '', fechaCreacion: new Date().toISOString() });
+        await db.collection('inventario').doc(id).set(datos, { merge: true });
+        try {
+          await db.collection('configuracion').doc('precios').set({ [id]: precio }, { merge: true });
+          await db.collection('configuracion').doc('minimos').set({ [id]: 1 }, { merge: true });
+        } catch (e) { console.warn('Precios del combo:', e); }
+        snapshotInventario[id] = Object.assign({}, snapshotInventario[id] || {}, datos);
+        cerrarModalCombo();
+        try { procesarYRenderizar(); } catch (e) { /* llega con la actualización en vivo */ }
+        mostrarToast(comboEditandoId ? 'Combo actualizado.' : `¡Combo "${nombre}" creado!`);
+        if (!comboEditandoId && activo) { try { publicarNovedadGlobal({ tipo: 'producto', productoId: id, titulo: `Nuevo combo: ${nombre}`, mensaje: `${desc ? desc + ' — ' : ''}${formatoCOP(precio)}.` }); } catch (e) { /* nada */ } }
+      } catch (err) {
+        alert('No se pudo guardar el combo: ' + err.message);
+      } finally { if (btn) btn.disabled = false; }
     }
 
     // ==================== NETFLIX EN LA TIENDA: SIN CONTRASEÑA ====================
@@ -13042,6 +13274,7 @@
                 <div class="min-w-0">
                   <span class="text-[10px] bg-gray-800 text-emerald-400 px-2 py-0.5 rounded font-semibold">${escaparHtml(c.categoria || 'Producto')}</span>
                   <h4 class="font-bold text-white text-sm mt-1.5 leading-snug">${escaparHtml(c.productoNombre || 'Producto')}${(parseInt(c.cantidad) || 0) > 1 ? ` <span class="text-gray-400 font-semibold">× ${c.cantidad}</span>` : ''}</h4>
+                  ${c.comboNombre ? `<span class="inline-flex items-center gap-1 mt-1 text-[10px] font-bold text-amber-300"><i class="fa-solid fa-gift"></i> Parte de ${escaparHtml(c.comboNombre)}</span>` : ''}
                 </div>
                 <div class="text-right shrink-0">
                   <p class="text-[11px] text-gray-400 font-mono">${fechaLegible}</p>
