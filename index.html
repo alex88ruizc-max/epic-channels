@@ -2702,7 +2702,10 @@
         </div>
         <div id="rtBloqueNueva" class="hidden space-y-2 p-3 rounded-xl bg-gray-800/50 border border-gray-700/60">
           <div><label class="block text-xs text-gray-400 mb-1">Cuenta nueva (correo:clave)</label><input type="text" id="rtCuentaNueva" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="nueva@gmail.com:clave" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white font-mono focus:outline-none"></div>
-          <label id="rtDesdeStockCaja" class="flex items-start gap-2 text-[11px] text-gray-200 cursor-pointer"><input type="checkbox" id="rtDesdeStock" class="accent-emerald-500 mt-0.5"><span>O tomar una del stock de este producto <span id="rtStockInfo" class="text-gray-400"></span></span></label>
+          <div id="rtDesdeStockCaja" class="space-y-1.5">
+            <label class="flex items-start gap-2 text-[11px] text-gray-200 cursor-pointer"><input type="checkbox" id="rtDesdeStock" onchange="rtCambioStock()" class="accent-emerald-500 mt-0.5"><span>O tomar una del stock <span id="rtStockInfo" class="text-gray-400"></span></span></label>
+            <select id="rtStockProducto" onchange="rtCambioStock()" class="hidden w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"></select>
+          </div>
         </div>
         <p id="rtAvisoServidor" class="hidden text-[11px] leading-snug p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-200"><i class="fa-solid fa-circle-info mr-1"></i>Como moderador, la respuesta le llega al cliente dentro de su ticket, pero la compra solo la modifica el administrador.</p>
         <p id="rtGarantia" class="text-[11px] leading-snug p-2.5 rounded-xl bg-sky-500/10 border border-sky-500/30 text-sky-200"></p>
@@ -5546,7 +5549,11 @@
           poblarSelectStock();
         });
 
-        cambiarVista('tienda');
+        // El administrador entra directo a su panel; el moderador también (cuando llega su rol)
+        inicioEnPanelPendiente = true;
+        if (esAdmin) { inicioEnPanelPendiente = false; cambiarVista('admin'); }
+        else if (rolActual === 'moderador') { inicioEnPanelPendiente = false; cambiarVista('admin'); }
+        else cambiarVista('tienda');
       } else {
         document.getElementById('navGuest').classList.remove('hidden');
         document.getElementById('navUser').classList.add('hidden');
@@ -5988,7 +5995,7 @@
         let html = '';
 
         const minAlerta = ajustesGeneralesConfig.minRecarga || 5000;
-        if (userSaldo < minAlerta) {
+        if (userSaldo < minAlerta && !esAdminSesionActual()) {
           html += `
             <div class="p-3 rounded-xl border bg-yellow-500/10 border-yellow-500/30 flex items-center gap-3">
               <i class="fa-solid fa-triangle-exclamation text-yellow-400 text-base shrink-0"></i>
@@ -9183,6 +9190,7 @@
 
     // ==================== ROLES: ADMINISTRADOR, MODERADOR Y PROVEEDOR ====================
     let rolActual = 'cliente';
+    let inicioEnPanelPendiente = false;
     let perfilNombreActual = '';
     let escuchasModeradorActivas = false;
     const RESTRINGIDAS_MODERADOR = ['categorias', 'apariencia', 'pagos', 'ajustes', 'proveedores', 'asistente', 'promociones'];
@@ -9206,6 +9214,7 @@
 
       if (rol === 'moderador') {
         if (btnAdmin) btnAdmin.classList.remove('hidden');
+        if (inicioEnPanelPendiente) { inicioEnPanelPendiente = false; try { cambiarVista('admin'); } catch (e) { console.warn(e); } }
         if (!escuchasModeradorActivas) {
           escuchasModeradorActivas = true;
           try { escucharUsuariosEnLinea(); escucharTotalRecaudadoHoyEnVivo(); iniciarInventarioPrivadoAdmin(); iniciarNetflixAdmin(); iniciarLotesProveedoresAdmin(); iniciarTicketsStaff(); } catch (e) { console.warn(e); }
@@ -9221,6 +9230,7 @@
         if (vAdm && !vAdm.classList.contains('hidden')) cambiarVista('tienda');
       }
 
+      if (rol !== 'moderador' && !desdeCache) inicioEnPanelPendiente = false;
       if (rol === 'proveedor') {
         if (btnAdmin) btnAdmin.classList.add('hidden');
         iniciarProveedor();
@@ -10477,8 +10487,7 @@
       document.getElementById('rtCuentaNueva').value = '';
       document.getElementById('rtDesdeStock').checked = false;
       rtLimpiarFoto();
-      const libres = stockLibreDeProducto(t.productoId);
-      document.getElementById('rtStockInfo').textContent = t.productoId ? `(${libres} ${libres === 1 ? 'disponible' : 'disponibles'})` : '';
+      poblarStockResolver(t.productoId);
       rtCambioResultado();
       const m = document.getElementById('modalResolverTicket');
       m.classList.remove('hidden'); m.style.display = 'flex';
@@ -10541,6 +10550,8 @@
       const claveNueva = String(document.getElementById('rtClaveNueva').value || '').trim().slice(0, 80);
       const nueva = String(document.getElementById('rtCuentaNueva').value || '').trim();
       const desdeStock = admin && !nueva && document.getElementById('rtDesdeStock').checked;
+      const stockElegido = desdeStock ? String((document.getElementById('rtStockProducto') || {}).value || '') : '';
+      if (desdeStock && !stockElegido) { alert('Elige de qué stock sale la cuenta nueva.'); return; }
       const archivo = (document.getElementById('rtFoto').files || [])[0];
       let lineaNueva = '';
       if (resultado === 'reemplazo') {
@@ -10581,7 +10592,7 @@
             const tipoG = resolverTipoGarantiaCompra(c).tipo;
             let lineaFinal = lineaNueva, infoSubida = '', stockInfo = null;
             if (resultado === 'reemplazo' && !lineaFinal) {
-              const prod = t.productoId || c.productoId;
+              const prod = stockElegido || t.productoId || c.productoId;
               if (!prod) throw new Error('No encontré el producto para sacar la cuenta del stock.');
               const invRef = db.collection('inventario').doc(prod), privRef = db.collection('inventario_privado').doc(prod);
               const invDoc = await tx.get(invRef), privDoc = await tx.get(privRef);
@@ -10591,7 +10602,7 @@
               const priv = (privDoc.exists && Array.isArray((privDoc.data() || {}).cuentas)) ? privDoc.data().cuentas : [];
               const todas = priv.concat(legado);
               const i = todas.findIndex(x => !(x && typeof x === 'object' && x.alquilerId));
-              if (i < 0) throw new Error('No hay cuentas libres en el stock de este producto para reemplazar.');
+              if (i < 0) throw new Error('No hay cuentas libres en el stock de "' + (inv.nombre || prod) + '" para reemplazar.');
               const elegida = todas.splice(i, 1)[0];
               const o = parseCredencialObj(elegida);
               lineaFinal = o.email + ':' + o.pass;
@@ -12357,6 +12368,32 @@
       } catch (e) { console.warn('Aviso al cliente:', e); }
     }
 
+
+    // Resolver ticket: lista de productos con cuentas libres para elegir de dónde sale la cuenta nueva
+    function poblarStockResolver(productoTicket) {
+      const sel = document.getElementById('rtStockProducto');
+      if (!sel) return;
+      const lista = catalogoUnificado.map(p => ({ id: p.docId, nombre: p.nombre || p.docId, libres: stockLibreDeProducto(p.docId), oculto: p.activo === false }))
+        .filter(x => x.libres > 0 || x.id === productoTicket)
+        .sort((a, b) => (a.id === productoTicket ? -1 : b.id === productoTicket ? 1 : 0) || a.nombre.localeCompare(b.nombre, 'es'));
+      sel.innerHTML = lista.length ? lista.map(x => `<option value="${escaparHtml(x.id)}">${escaparHtml(x.nombre)}${x.id === productoTicket ? ' (el de la compra)' : ''}${x.oculto ? ' · oculto' : ''} · ${x.libres} ${x.libres === 1 ? 'libre' : 'libres'}</option>`).join('') : '<option value="">No hay cuentas libres en ningún stock</option>';
+      const preferido = lista.find(x => x.id === productoTicket && x.libres > 0) || lista.find(x => x.libres > 0) || lista[0];
+      sel.value = preferido ? preferido.id : '';
+      rtCambioStock();
+    }
+
+    function rtCambioStock() {
+      const chk = document.getElementById('rtDesdeStock'), sel = document.getElementById('rtStockProducto'), info = document.getElementById('rtStockInfo');
+      if (!chk || !sel) return;
+      sel.classList.toggle('hidden', !chk.checked);
+      if (info) {
+        const p = catalogoUnificado.find(x => x.docId === sel.value);
+        const n = p ? stockLibreDeProducto(p.docId) : 0;
+        info.textContent = chk.checked ? '' : (sel.options.length && sel.value ? `(elige el producto · ${sel.options.length} con cuentas)` : '(sin cuentas libres)');
+        if (chk.checked && p) info.textContent = `(${n} ${n === 1 ? 'libre' : 'libres'} en ${p.nombre})`;
+      }
+    }
+
     // ==================== NETFLIX EN LA TIENDA: SIN CONTRASEÑA ====================
     function esNombreNetflix(t) { return /netflix/i.test(String(t || '')); }
     function esProductoNetflix(p) {
@@ -13058,7 +13095,7 @@
         try {
           await auth.signInWithEmailAndPassword(email, password);
           cerrarModalAuth();
-          cambiarVista('tienda');
+          cambiarVista(esStaffSesion() ? 'admin' : 'tienda');
         } catch (err) {
           const errBox = document.getElementById('authErrorBox');
           const errMsg = document.getElementById('authErrorMsg');
