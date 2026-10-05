@@ -906,6 +906,18 @@
 
       <!-- TAB 2: USUARIOS REGISTRADOS Y PERMISOS -->
       <div id="adminSecUsuarios" class="hidden space-y-6">
+        <div id="adminRegaloRevendedor" class="solo-admin bg-gray-900 border border-fuchsia-500/30 rounded-2xl p-4 space-y-2.5">
+          <h4 class="font-bold text-white text-sm flex items-center gap-2"><i class="fa-solid fa-medal text-fuchsia-300"></i> Regalo para revendedores</h4>
+          <p class="text-[11px] text-gray-400 leading-relaxed">Cuando un cliente con insignia <b class="text-fuchsia-200">Revendedor</b> compra más del límite de un mismo producto en el mismo día, recibe 1 cuenta de regalo (una vez por producto al día).</p>
+          <div class="grid grid-cols-3 gap-2">
+            <select id="revProductoBono" class="col-span-2 bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"></select>
+            <input type="number" id="revUmbral" min="1" max="500" placeholder="10" class="bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none" title="Más de cuántas cuentas">
+          </div>
+          <div class="flex items-center justify-between gap-2">
+            <label class="flex items-center gap-2 text-xs text-white"><input type="checkbox" id="revActivo" class="accent-fuchsia-500 w-4 h-4"> Regalo activo</label>
+            <button type="button" onclick="guardarRegaloRevendedor()" class="px-4 py-2 rounded-xl bg-fuchsia-500 hover:bg-fuchsia-400 text-white font-bold text-xs">Guardar</button>
+          </div>
+        </div>
         <div id="adminCreditosCaja" class="solo-admin hidden bg-gray-900 border border-violet-500/30 rounded-2xl overflow-hidden">
           <div class="p-4 flex items-center justify-between gap-3 border-b border-gray-800">
             <div class="min-w-0"><h4 class="font-bold text-white text-sm flex items-center gap-2"><i class="fa-solid fa-hand-holding-dollar text-violet-300"></i> Clientes con crédito pendiente</h4><p class="text-[11px] text-gray-400 mt-0.5">Cada recarga de estos clientes paga primero su deuda.</p></div>
@@ -966,6 +978,11 @@
           </h3>
           <p class="text-xs text-gray-400 mb-4">Pega una cuenta por cada renglón (correo:clave).</p>
           <form onsubmit="cargarStockMasivo(event)" class="space-y-4">
+            <div class="solo-admin">
+              <label class="block text-xs text-gray-400 mb-1">¿Quién trajo estas cuentas?</label>
+              <select id="selectStockAporte" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none"><option value="">Yo (stock propio)</option></select>
+              <p class="text-[10px] text-gray-500 mt-1">Si eliges un proveedor, los tickets de estas cuentas se le asignan y cuentan en su informe.</p>
+            </div>
             <div>
               <label class="block text-xs text-gray-400 mb-1">Seleccionar Producto</label>
               <select id="selectStockProducto" required onchange="actualizarResumenInversionStock()" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none"></select>
@@ -1432,6 +1449,14 @@
           <h3 class="text-base font-bold text-white mb-1 flex items-center gap-2"><i class="fa-solid fa-truck-ramp-box text-emerald-400"></i> Proveedores de stock</h3>
           <p class="text-xs text-gray-400">Aprueba lo que suben, ponles el costo por cuenta y márcalos como saldados cuando les pagues (el pago lo haces por aparte).</p>
           <p class="text-[11px] text-gray-500 mt-2">Para crear un proveedor: <b class="text-gray-300">Usuarios Registrados → Crear usuario</b> con el rol "Proveedor", y luego, con su botón <b class="text-gray-300">Editar</b>, marca qué productos puede subir.</p>
+        </div>
+        <div class="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden">
+          <div class="px-4 py-3 border-b border-gray-800">
+            <div class="flex items-center gap-2"><i class="fa-solid fa-ranking-star text-emerald-400"></i><h4 class="text-sm font-black text-white">Informe: quién sube más y con cuántos tickets</h4></div>
+            <p class="text-[11px] text-gray-400 mt-0.5">Suma los lotes aprobados y las cargas que hiciste a nombre de cada persona. El % es cuántas de sus cuentas terminaron en ticket.</p>
+            <div class="flex gap-1.5 mt-2"><button type="button" id="infAporte7" onclick="renderizarInformeAportes(7)" class="px-2.5 py-1 rounded-lg text-[11px] font-bold border">7 días</button><button type="button" id="infAporte30" onclick="renderizarInformeAportes(30)" class="px-2.5 py-1 rounded-lg text-[11px] font-bold border">30 días</button><button type="button" id="infAporte0" onclick="renderizarInformeAportes(0)" class="px-2.5 py-1 rounded-lg text-[11px] font-bold border">Todo</button></div>
+          </div>
+          <div id="informeAportes" class="px-4 divide-y divide-gray-800"></div>
         </div>
         <div id="adminMetodosPagoProv" class="bg-gray-900 border border-emerald-500/30 rounded-2xl overflow-hidden">
           <button type="button" onclick="alternarMetodosPagoProv()" class="w-full text-left p-4 flex items-center gap-3 hover:bg-gray-800/40 transition">
@@ -2329,10 +2354,18 @@
         <div class="solo-admin">
           <label class="block text-xs text-gray-400 mb-1">Rol</label>
           <select id="editClienteRol" onchange="editClienteCambioRol()" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none">
-            <option value="cliente">Cliente (normal)</option>
+            <option value="cliente">Cliente</option>
+            <option value="cliente_normal">Cliente normal (solo Netflix, VIP y lo que le habilites)</option>
+            <option value="revendedor">Revendedor (regalo de Prime por volumen)</option>
             <option value="proveedor">Proveedor de stock</option>
+            <option value="proveedor_externo">Proveedor externo (solo sube stock, no compra)</option>
             <option value="moderador">Moderador</option>
           </select>
+          <p id="editClienteRolInfo" class="hidden mt-1.5 text-[10px] text-gray-400 leading-snug"></p>
+        </div>
+        <div id="editClienteBloqueCategorias" class="solo-admin hidden">
+          <label class="block text-xs text-gray-400 mb-1">Categorías que puede ver (además de Netflix y VIP)</label>
+          <div id="editClienteListaCategorias" class="max-h-44 overflow-y-auto space-y-1.5 bg-gray-800/60 p-2.5 rounded-xl border border-gray-700/60"></div>
         </div>
         <div id="editClienteBloqueStock" class="solo-admin hidden">
           <label class="block text-xs text-gray-400 mb-1">Productos que puede subir</label>
@@ -5216,6 +5249,7 @@
     let userSaldo = 0;
     let userDeuda = 0, userCupo = 0;
     let userProductosPermitidos = [];
+    let userTipoCuenta = '', userCategoriasPermitidas = [];
     let userProductosBloqueados = [];
     let userPermisosSubirStock = [];
     let modoAuth = 'login';
@@ -5809,6 +5843,11 @@
             userCupo = Math.max(0, Number(dataU.cupoCredito) || 0);
             try { renderizarCreditoCliente(); } catch (e) { /* nada */ }
             userProductosPermitidos = dataU.productos_permitidos || [];
+            const tipoAntes = userTipoCuenta;
+            userTipoCuenta = String(dataU.tipoCuenta || '');
+            userCategoriasPermitidas = Array.isArray(dataU.categoriasPermitidas) ? dataU.categoriasPermitidas : [];
+            if (tipoAntes !== userTipoCuenta) { try { renderizarCatalogo(); renderizarFiltrosCategorias(); } catch (e) { /* nada */ } }
+            if (userTipoCuenta === 'externo' && dataU.rol === 'proveedor') { try { const vP = document.getElementById('vistaProveedor'); if (vP && vP.classList.contains('hidden')) cambiarVista('proveedor'); } catch (e) { /* nada */ } }
             userProductosBloqueados = dataU.productos_bloqueados || [];
             userPermisosSubirStock = dataU.permisos_subir_stock || [];
             perfilNombreActual = dataU.nombre || '';
@@ -5850,6 +5889,7 @@
           } else {
             userSaldo = 0;
             userProductosPermitidos = [];
+            userTipoCuenta = ''; userCategoriasPermitidas = [];
             userProductosBloqueados = [];
             userPermisosSubirStock = [];
             db.collection('usuarios').doc(user.uid).set({ email: user.email, saldo: 0, productos_permitidos: [], productos_bloqueados: [], permisos_subir_stock: [], notificacion_borrada: false, primer_ingreso: new Date().toISOString() }, { merge: true });
@@ -6121,7 +6161,7 @@
       try {
         const n = infoNivel(totalCuentas);
         const insignia = document.getElementById('perfilNivelInsignia');
-        if (insignia) insignia.innerHTML = htmlInsigniaNivel(totalCuentas, false);
+        if (insignia) insignia.innerHTML = htmlInsigniaNivel(totalCuentas, false) + (userTipoCuenta === 'revendedor' ? ' <span data-rev class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black border text-fuchsia-200 border-fuchsia-400/40 bg-fuchsia-500/15"><i class="fa-solid fa-medal"></i> Revendedor</span>' : '');
         const box = document.getElementById('perfilNivelBox');
         if (!box) return;
         const c = n.actual.color;
@@ -6571,6 +6611,8 @@
 
     function cambiarVista(vista) {
       if (!currentUser) { bloquearAccesoVisitante(); return; }
+      // El proveedor externo solo usa su panel de stock
+      if (rolActual === 'proveedor' && userTipoCuenta === 'externo' && !esAdminSesionActual() && ['tienda', 'mis-cuentas', 'netflix'].indexOf(vista) !== -1) vista = 'proveedor';
       
       if (modoPruebaCliente && vista === 'admin') {
         vista = 'tienda';
@@ -7037,8 +7079,8 @@
       if (tab === 'productos') renderizarAdminProductos();
       if (tab === 'reporte') cargarDashboardVentas(false);
       if (tab === 'categorias') renderizarAdminCategoriasColores();
-      if (tab === 'usuarios') cargarUsuariosAdmin();
-      if (tab === 'stock') poblarSelectStock();
+      if (tab === 'usuarios') { cargarUsuariosAdmin(); cargarRegaloRevendedor(); }
+      if (tab === 'stock') { poblarSelectStock(); cargarAportantesStock(); }
       if (tab === 'apariencia') cargarDatosAparienciaAdmin();
       if (tab === 'pagos') cargarMetodosPagoAdmin();
       if (tab === 'recargas') cargarRecargasAdmin();
@@ -7485,6 +7527,13 @@
       if (esAdmin && !modoPruebaCliente) return true;
 
       const esVip = prod.esVip === true || PRODUCTOS_VIP_EXCLUSIVOS.some(vipKey => vipKey === prod.id || vipKey === prod.docId || (prod.aliases && prod.aliases.includes(vipKey)));
+
+      // Cliente normal: Netflix, VIP y las categorías o productos que le habilite el administrador
+      if (userTipoCuenta === 'normal' && !modoPruebaCliente) {
+        const bloq = userProductosBloqueados.includes(prod.id) || userProductosBloqueados.includes(prod.docId);
+        const ok = esNombreNetflix(prod.nombre) || esVip || userCategoriasPermitidas.indexOf(prod.categoria) !== -1 || userProductosPermitidos.includes(prod.id) || userProductosPermitidos.includes(prod.docId);
+        return ok && !bloq;
+      }
       
       if (esVip) {
         return userProductosPermitidos.includes(prod.id) || userProductosPermitidos.includes(prod.docId);
@@ -7838,6 +7887,11 @@
         if (comboR) textoEntregaFinal = textoConCombo(textoEntregaFinal, comboR.cuentas, comboInfo);
         mostrarEntregaCompleta(textoEntregaFinal, cuentasEntregadas, prodInfo, { total: totalPagar, saldo: nuevoSaldoUsuario, combo: comboR ? { cuentas: comboR.cuentas, info: comboInfo } : null });
         if (comboR) { comboElegido[docId] = false; }
+        if (r.bono && Array.isArray(r.bono.cuentas) && r.bono.cuentas.length) {
+          const infoB = Object.assign({}, catalogoUnificado.find(p => p.docId === r.bono.productoId) || {}, { nombre: r.bono.productoNombre, tipoGarantia: r.bono.tipoGarantia });
+          mostrarEntregaCompleta(textoEntregaFinal + '\n\n━━━━━━━━━━━━\n🎁 REGALO DE REVENDEDOR\n\n' + construirFormatoEntrega(r.bono.cuentas, infoB, {}), cuentasEntregadas, prodInfo, { total: totalPagar, saldo: nuevoSaldoUsuario, combo: comboR ? { cuentas: comboR.cuentas, info: comboInfo } : null, bono: { cuentas: r.bono.cuentas, info: infoB } });
+          mostrarToast('🎁 ¡Ganaste ' + r.bono.productoNombre + ' de regalo por tu volumen de compra!');
+        }
 
         // El aviso de venta a Telegram lo envía el servidor seguro
         verificarSubidaNivel(cuentasEntregadas.length);
@@ -7907,6 +7961,7 @@
         if (esNf) html += htmlGuiaNetflix(true);
         if (ex.combo && Array.isArray(ex.combo.cuentas) && ex.combo.cuentas.length) html += htmlEntregaCombo(ex.combo.cuentas, ex.combo.info || {}, fila);
         if (Array.isArray(ex.partes)) ex.partes.forEach(pt => { html += htmlEntregaCombo(pt.cuentas, pt.info || {}, fila, 'Incluido en tu combo'); });
+        if (ex.bono && Array.isArray(ex.bono.cuentas) && ex.bono.cuentas.length) html += htmlEntregaCombo(ex.bono.cuentas, ex.bono.info || {}, fila, '🎁 Regalo de revendedor');
         cont.innerHTML = html;
       } catch (e) {
         console.warn('No se pudo dibujar la entrega visual:', e);
@@ -8327,7 +8382,7 @@
                       <div class="min-w-0 flex-grow">
                         <p class="text-sm font-black text-white truncate">${escaparHtml(u.nombre || u.email || 'Ficha incompleta')}</p>
                         <p class="text-[11px] text-gray-400 font-mono truncate">${escaparHtml(u.email || uid)}</p>
-                        <div class="flex flex-wrap items-center gap-1.5 mt-1">${u.rol === 'proveedor' ? '<span class="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 text-[9px] font-black">PROVEEDOR</span>' : (u.rol === 'moderador' ? '<span class="px-1.5 py-0.5 rounded bg-sky-500/20 text-sky-300 text-[9px] font-black">MODERADOR</span>' : '')}<span data-nivel-uid="${uid}"></span>${deudaU > 0 ? `<span class="px-1.5 py-0.5 rounded bg-violet-500/20 text-violet-200 text-[9px] font-black">DEBE ${formatoCOP(deudaU)}</span>` : ''}</div>
+                        <div class="flex flex-wrap items-center gap-1.5 mt-1">${(() => { const et = etiquetaTipoCuenta(u.rol, u.tipoCuenta); return et ? `<span class="px-1.5 py-0.5 rounded ${et[1]} text-[9px] font-black">${et[0]}</span>` : ''; })()}<span data-nivel-uid="${uid}"></span>${deudaU > 0 ? `<span class="px-1.5 py-0.5 rounded bg-violet-500/20 text-violet-200 text-[9px] font-black">DEBE ${formatoCOP(deudaU)}</span>` : ''}</div>
                       </div>
                       <div class="shrink-0 text-right"><p class="text-[10px] text-gray-500">Saldo</p><p class="text-base font-black text-emerald-400">${formatoCOP(u.saldo || 0)}</p></div>
                     </div>
@@ -8347,7 +8402,7 @@
                 </td>
                 <td class="hidden md:table-cell px-4 py-3">
                   ${nombreCliente}
-                  ${u.rol === 'proveedor' ? '<span class="inline-block mt-1 px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 text-[9px] font-black">PROVEEDOR</span>' : (u.rol === 'moderador' ? '<span class="inline-block mt-1 px-1.5 py-0.5 rounded bg-sky-500/20 text-sky-300 text-[9px] font-black">MODERADOR</span>' : '')}
+                  ${(() => { const et = etiquetaTipoCuenta(u.rol, u.tipoCuenta); return et ? `<span class="inline-block mt-1 px-1.5 py-0.5 rounded ${et[1]} text-[9px] font-black">${et[0]}</span>` : ''; })()}
                   <span data-nivel-uid="${uid}" class="block mt-1"></span>
                   <button onclick="abrirModalEditarCliente('${uid}', '${escaparJsAttr(u.email)}', '${escaparJsAttr(u.nombre)}')" class="mt-1 text-[10px] bg-gray-800 hover:bg-gray-700 text-emerald-400 px-2 py-0.5 rounded"><i class="fa-solid fa-pen mr-1"></i> Editar perfil</button>
                   <button onclick="verRecargasCliente('${uid}', '${escaparJsAttr(u.nombre || u.email || '')}')" class="mt-1 text-[10px] bg-gray-800 hover:bg-gray-700 text-sky-300 px-2 py-0.5 rounded"><i class="fa-solid fa-receipt mr-1"></i> Recargas</button>
@@ -8450,7 +8505,9 @@
           permisos: Array.isArray(d.permisos_subir_stock) ? d.permisos_subir_stock : []
         };
         const selRolEd = document.getElementById('editClienteRol');
-        if (selRolEd) selRolEd.value = editClienteOriginal.rol;
+        editClienteOriginal.tipoCuenta = String(d.tipoCuenta || '');
+        editClienteOriginal.categoriasPermitidas = Array.isArray(d.categoriasPermitidas) ? d.categoriasPermitidas : [];
+        if (selRolEd) selRolEd.value = valorSelectTipoCuenta(editClienteOriginal.rol, editClienteOriginal.tipoCuenta);
         if (esAdminSesionActual()) cargarCreditoEditar(uid, d);
         renderizarListaStockEditar(editClienteOriginal.permisos);
         editClienteCambioRol();
@@ -8549,9 +8606,15 @@
         if (esAdminSesionActual()) {
           const selRol = document.getElementById('editClienteRol');
           const rolAntes = orig.rol || 'cliente';
-          const rolNuevo = selRol ? selRol.value : rolAntes;
+          const par = TIPOS_CUENTA_SELECT[selRol ? selRol.value : ''] || [rolAntes, orig.tipoCuenta || ''];
+          const rolNuevo = par[0], tipoNuevo = par[1];
           const cambios = {};
           if (rolNuevo !== rolAntes) cambios.rol = rolNuevo;
+          if (tipoNuevo !== (orig.tipoCuenta || '')) cambios.tipoCuenta = tipoNuevo;
+          if (tipoNuevo === 'normal') {
+            const cats = Array.from(document.querySelectorAll('.chk-categoria-editar:checked')).map(c => c.value).sort();
+            if (JSON.stringify(cats) !== JSON.stringify((orig.categoriasPermitidas || []).slice().sort())) cambios.categoriasPermitidas = cats;
+          }
           if (rolNuevo === 'proveedor') {
             const marcados = Array.from(document.querySelectorAll('.chk-stock-editar:checked')).map(c => c.value).sort();
             const antes = (orig.permisos || []).slice().sort();
@@ -8660,10 +8723,41 @@
     }
 
     // La lista de productos solo aparece cuando el rol es "Proveedor"
+    // Tipo de cuenta = rol + tipo (así las reglas de seguridad de proveedores y clientes no cambian)
+    const TIPOS_CUENTA_SELECT = { cliente: ['cliente', ''], cliente_normal: ['cliente', 'normal'], revendedor: ['cliente', 'revendedor'], proveedor: ['proveedor', ''], proveedor_externo: ['proveedor', 'externo'], moderador: ['moderador', ''] };
+    function valorSelectTipoCuenta(rol, tipo) {
+      rol = rol || 'cliente'; tipo = tipo || '';
+      const k = Object.keys(TIPOS_CUENTA_SELECT).find(x => TIPOS_CUENTA_SELECT[x][0] === rol && TIPOS_CUENTA_SELECT[x][1] === tipo);
+      return k || rol;
+    }
+    function etiquetaTipoCuenta(rol, tipo) {
+      if (rol === 'proveedor') return tipo === 'externo' ? ['PROVEEDOR EXTERNO', 'bg-orange-500/20 text-orange-300'] : ['PROVEEDOR', 'bg-amber-500/20 text-amber-300'];
+      if (rol === 'moderador') return ['MODERADOR', 'bg-sky-500/20 text-sky-300'];
+      if (tipo === 'revendedor') return ['REVENDEDOR', 'bg-fuchsia-500/20 text-fuchsia-300'];
+      if (tipo === 'normal') return ['CLIENTE NORMAL', 'bg-gray-700 text-gray-200'];
+      return null;
+    }
     function editClienteCambioRol() {
       const sel = document.getElementById('editClienteRol');
+      const v = sel ? sel.value : 'cliente';
       const bloque = document.getElementById('editClienteBloqueStock');
-      if (bloque) bloque.classList.toggle('hidden', !(sel && sel.value === 'proveedor'));
+      if (bloque) bloque.classList.toggle('hidden', !(v === 'proveedor' || v === 'proveedor_externo'));
+      const bc = document.getElementById('editClienteBloqueCategorias');
+      if (bc) {
+        bc.classList.toggle('hidden', v !== 'cliente_normal');
+        if (v === 'cliente_normal') {
+          const marcadas = (editClienteOriginal && editClienteOriginal.categoriasPermitidas) || [];
+          const cats = Array.from(new Set(catalogoUnificado.map(p => p.categoria).filter(Boolean))).sort((a, b) => a.localeCompare(b, 'es'));
+          document.getElementById('editClienteListaCategorias').innerHTML = cats.map(c => `<label class="flex items-center gap-2 text-xs text-white cursor-pointer"><input type="checkbox" class="chk-categoria-editar accent-emerald-500" value="${escaparHtml(c)}" ${marcadas.indexOf(c) !== -1 ? 'checked' : ''}> ${escaparHtml(c)}</label>`).join('') || '<p class="text-[11px] text-gray-500">No hay categorías.</p>';
+        }
+      }
+      const info = document.getElementById('editClienteRolInfo');
+      const INFO = {
+        cliente_normal: 'Solo ve y compra Netflix y los productos VIP. Márcale abajo las categorías extra que quieras que vea.',
+        revendedor: 'Recibe 1 cuenta de regalo cuando compra más del límite del mismo producto en un día (lo configuras en Usuarios → Regalo para revendedores).',
+        proveedor_externo: 'Entra directo a su panel para subir stock. No ve la tienda ni puede comprar.'
+      };
+      if (info) { info.textContent = INFO[v] || ''; info.classList.toggle('hidden', !INFO[v]); }
     }
 
     // ==================== CREAR CLIENTE DESDE EL PANEL (CON RECUPERACIÓN) ====================
@@ -8897,11 +8991,13 @@
       const costoUnitario = leerCostoUnitarioStock();
       const claveAccesoLote = ((document.getElementById('txtStockClaveAcceso') || {}).value || '').trim();
       const ahoraSubida = new Date().toISOString();
+      const aporteCarga = esAdminSesionActual() ? aportanteElegido() : null;
       const nuevas = lineas.map(l => {
         let email = l, pass = '';
         if (l.includes(':')) { const p = l.split(':'); email = p[0].trim(); pass = p.slice(1).join(':').trim(); }
         else if (/\s/.test(l)) { const p = l.split(/\s+/); email = p[0].trim(); pass = p.slice(1).join(' ').trim(); }
         const cuenta = { email, pass, costo: costoUnitario, subidoEl: ahoraSubida };
+        if (aporteCarga) { cuenta.aportadoPor = aporteCarga.uid; cuenta.aportadoNombre = aporteCarga.nombre; }
         if (claveAccesoLote) cuenta.claveAcceso = claveAccesoLote;
         return cuenta;
       }).filter((c, i, arr) => arr.findIndex(o => JSON.stringify(o) === JSON.stringify(c)) === i);
@@ -8937,6 +9033,7 @@
           ? `¡Agregadas ${nuevas.length} cuentas! Inversión: ${formatoCOP(inversion)} COP`
           : `¡Agregadas ${nuevas.length} cuentas al inventario!`);
 
+        registrarCargaStock(docId, prod ? prod.nombre : docId, nuevas, costoUnitario, aporteCarga);
         // Novedad para clientes (no se publica para productos VIP ni ocultos)
         if (prod && prod.activo !== false && !esProductoVip(prod)) {
           publicarNovedadGlobal({ tipo: 'stock', productoId: docId, cantidad: nuevas.length, titulo: `Nuevo stock: ${prod.nombre}` });
@@ -10892,6 +10989,9 @@
         prov = { uid: elegido, nombre: l ? (l.proveedorNombre || l.proveedorEmail || '') : '', email: l ? (l.proveedorEmail || '') : '' };
       } else if (lote) {
         prov = { uid: lote.proveedorUid || '', nombre: lote.proveedorNombre || lote.proveedorEmail || '', email: lote.proveedorEmail || '' };
+      } else {
+        const carga = await buscarCargaDeCuenta(cuenta);
+        if (carga) prov = { uid: carga.porUid, nombre: carga.porNombre || '', email: '' };
       }
       if (ticketsCuentas.some(t => t.cuenta === cuenta && t.estado !== 'resuelto')) {
         if (!await confirmarModal('Esta cuenta ya tiene un ticket abierto. ¿Crear otro de todas formas?', { textoAceptar: 'Sí, crear' })) return;
@@ -13829,7 +13929,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-05i';
+    const VERSION_PAGINA = '2026-10-05j';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261005_reportes', fecha: '2026-10-05', titulo: 'Tus reportes, más cómodos', mensaje: 'En **Mis Cuentas** ahora tienes un botón **Mis reportes** con un número rojo cuando te respondemos. Y si te cambiamos una cuenta, la verás destacada como **Usa esta cuenta**, con la anterior tachada.' },
       { id: 'act_20261005_tienda', fecha: '2026-10-05', titulo: '¡Tienda renovada!', mensaje: 'Ahora Netflix sale destacado en rojo, hay **combos** con varias cuentas en una (y te mostramos cuánto ahorras), **promociones** con precio rebajado y productos **VIP**. ¡Pásate por la tienda!' },
@@ -13943,6 +14043,119 @@
     // Revisión automática: al abrir y cada 30 minutos (todos los usuarios)
     setTimeout(() => { comprobarActualizacionPagina(false); }, 15000);
     setInterval(() => { comprobarActualizacionPagina(false); }, 30 * 60000);
+
+
+    // ==================== REGALO PARA REVENDEDORES (configuración) ====================
+    async function cargarRegaloRevendedor() {
+      const sel = document.getElementById('revProductoBono');
+      if (!sel) return;
+      let cfg = {};
+      try { const d = await db.collection('configuracion').doc('revendedores').get(); cfg = d.exists ? (d.data() || {}) : {}; } catch (e) { /* nada */ }
+      sel.innerHTML = '<option value="">Elige el producto de regalo</option>' + catalogoUnificado.filter(p => !p.esCombo).map(p => `<option value="${escaparHtml(p.docId)}">${escaparHtml(p.nombre || p.docId)} · ${parseInt(p.stock, 10) || 0} en stock</option>`).join('');
+      sel.value = cfg.productoBono || '';
+      document.getElementById('revUmbral').value = cfg.umbral || 10;
+      document.getElementById('revActivo').checked = cfg.activo !== false && !!cfg.productoBono;
+    }
+    async function guardarRegaloRevendedor() {
+      if (!esAdminSesionActual()) return;
+      const productoBono = document.getElementById('revProductoBono').value;
+      const umbral = Math.max(1, Math.min(500, parseInt(document.getElementById('revUmbral').value, 10) || 10));
+      const activo = document.getElementById('revActivo').checked;
+      if (activo && !productoBono) { alert('Elige el producto que se regala.'); return; }
+      if (activo && (await servidorTiene('tipos_cuenta')) === false) { alert('Para que el regalo funcione necesitas actualizar el servidor (Apps Script) con el archivo nuevo.'); return; }
+      try {
+        await db.collection('configuracion').doc('revendedores').set({ productoBono: productoBono, umbral: umbral, activo: activo }, { merge: true });
+        mostrarToast(activo ? `Listo: más de ${umbral} cuentas del mismo producto en el día = 1 de regalo.` : 'Regalo desactivado.');
+      } catch (err) { alert('No se pudo guardar: ' + err.message); }
+    }
+
+    // ==================== APORTES DE STOCK: QUIÉN TRAJO LAS CUENTAS ====================
+    let aportantesCache = null;
+    async function cargarAportantesStock() {
+      const sel = document.getElementById('selectStockAporte');
+      if (!sel || !esAdminSesionActual()) return;
+      try {
+        if (!aportantesCache) {
+          const snap = await db.collection('usuarios').where('rol', '==', 'proveedor').get();
+          aportantesCache = [];
+          snap.forEach(d => { const u = d.data() || {}; aportantesCache.push({ uid: d.id, nombre: u.nombre || u.email || d.id, email: u.email || '', tipo: u.tipoCuenta || '' }); });
+          aportantesCache.sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'));
+        }
+        const prev = sel.value;
+        sel.innerHTML = '<option value="">Yo (stock propio)</option>' + aportantesCache.map(u => `<option value="${escaparHtml(u.uid)}">${escaparHtml(u.nombre)}${u.tipo === 'externo' ? ' · externo' : ''}</option>`).join('');
+        if (prev && aportantesCache.some(u => u.uid === prev)) sel.value = prev;
+      } catch (e) { console.warn('Aportantes:', e); }
+    }
+    function aportanteElegido() {
+      const sel = document.getElementById('selectStockAporte');
+      const uid = sel ? sel.value : '';
+      if (!uid) return null;
+      const u = (aportantesCache || []).find(x => x.uid === uid);
+      return u ? { uid: u.uid, nombre: u.nombre } : null;
+    }
+    async function registrarCargaStock(docId, prodNombre, cuentas, costoUnitario, aporte) {
+      try {
+        await db.collection('cargas_stock').add({
+          productoId: docId, productoNombre: prodNombre || docId, cantidad: cuentas.length, costoUnitario: costoUnitario || 0,
+          porUid: aporte ? aporte.uid : '', porNombre: aporte ? aporte.nombre : 'Stock propio',
+          correos: cuentas.map(c => String(c.email || '').trim().toLowerCase()).filter(Boolean).slice(0, 1500),
+          fecha: new Date().toISOString(), subidoPor: (currentUser && currentUser.email) || ''
+        });
+      } catch (e) { console.warn('No se pudo registrar la carga:', e); }
+    }
+    // Para asignar tickets: si la cuenta vino de una carga de otra persona
+    async function buscarCargaDeCuenta(email) {
+      const e = String(email || '').trim().toLowerCase();
+      if (!e) return null;
+      try {
+        const snap = await db.collection('cargas_stock').where('correos', 'array-contains', e).get();
+        let mejor = null;
+        snap.forEach(d => { const c = d.data() || {}; if (c.porUid && (!mejor || String(c.fecha) > String(mejor.fecha))) mejor = c; });
+        return mejor;
+      } catch (err) { return null; }
+    }
+
+    // ==================== INFORME: QUIÉN SUBE MÁS Y CUÁNTOS TICKETS TIENE ====================
+    let informeAportesPeriodo = 30;
+    async function renderizarInformeAportes(periodo) {
+      if (periodo !== undefined) informeAportesPeriodo = periodo;
+      const cont = document.getElementById('informeAportes');
+      if (!cont) return;
+      cont.innerHTML = '<p class="text-center text-gray-500 text-xs py-4"><i class="fa-solid fa-spinner fa-spin mr-1"></i>Calculando...</p>';
+      const desde = informeAportesPeriodo ? new Date(Date.now() - informeAportesPeriodo * 86400000).toISOString() : '';
+      const filas = {};
+      const fila = (uid, nombre) => (filas[uid] = filas[uid] || { uid: uid, nombre: nombre || 'Sin nombre', cuentas: 0, cargas: 0, tickets: 0, abiertos: 0 });
+      // Lotes aprobados del panel de proveedores
+      (lotesProveedores || []).forEach(l => {
+        if (l.estado !== 'aprobado' || !l.proveedorUid) return;
+        if (desde && String(l.aprobadoEl || l.creadoEl) < desde) return;
+        const f = fila(l.proveedorUid, l.proveedorNombre || l.proveedorEmail); f.cuentas += parseInt(l.cantidad, 10) || (l.cuentas || []).length; f.cargas++;
+      });
+      // Cargas hechas por ti a nombre de alguien
+      try {
+        const snap = desde ? await db.collection('cargas_stock').where('fecha', '>=', desde).get() : await db.collection('cargas_stock').get();
+        snap.forEach(d => { const c = d.data() || {}; if (!c.porUid) return; const f = fila(c.porUid, c.porNombre); f.cuentas += parseInt(c.cantidad, 10) || 0; f.cargas++; });
+      } catch (e) { console.warn(e); }
+      // Tickets asignados a cada persona
+      (ticketsCuentas || []).forEach(t => {
+        if (!t.proveedorUid) return;
+        if (desde && String(t.creadoEl) < desde) return;
+        const f = fila(t.proveedorUid, t.proveedorNombre); f.tickets++; if (t.estado !== 'resuelto') f.abiertos++;
+      });
+      const lista = Object.keys(filas).map(k => filas[k]).sort((a, b) => b.cuentas - a.cuentas);
+      if (!lista.length) { cont.innerHTML = '<p class="text-center text-gray-500 text-xs py-4">Todavía no hay aportes de proveedores en este periodo.</p>'; return; }
+      const maxC = Math.max.apply(null, lista.map(x => x.cuentas)) || 1;
+      cont.innerHTML = lista.map((x, i) => {
+        const pct = x.cuentas ? Math.round(x.tickets / x.cuentas * 100) : (x.tickets ? 100 : 0);
+        const color = pct >= 10 ? 'text-red-300' : (pct >= 4 ? 'text-amber-300' : 'text-emerald-300');
+        return `<div class="py-2.5">
+          <div class="flex items-center justify-between gap-2"><p class="min-w-0 text-xs font-black text-white truncate"><span class="text-gray-500 mr-1">${i + 1}.</span>${escaparHtml(x.nombre)}</p><span class="shrink-0 text-[11px] font-black ${x.cuentas ? color : 'text-gray-400'}">${x.cuentas ? pct + '% con ticket' : 'sin cargas registradas'}</span></div>
+          <div class="h-1.5 rounded-full bg-gray-800 mt-1.5 overflow-hidden"><div class="h-full bg-emerald-400" style="width:${Math.max(3, Math.round(x.cuentas / maxC * 100))}%"></div></div>
+          <p class="text-[10px] text-gray-400 mt-1">${x.cuentas} cuentas en ${x.cargas} ${x.cargas === 1 ? 'carga' : 'cargas'} · ${x.tickets} ${x.tickets === 1 ? 'ticket' : 'tickets'}${x.abiertos ? ' (' + x.abiertos + ' abiertos)' : ''}</p>
+        </div>`;
+      }).join('');
+      [7, 30, 0].forEach(n => { const b = document.getElementById('infAporte' + n); if (b) b.className = 'px-2.5 py-1 rounded-lg text-[11px] font-bold border ' + (informeAportesPeriodo === n ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40' : 'bg-gray-800 text-gray-400 border-gray-700'); });
+    }
 
     // ==================== NETFLIX EN LA TIENDA: SIN CONTRASEÑA ====================
     function esNombreNetflix(t) { return /netflix/i.test(String(t || '')); }
@@ -14065,6 +14278,10 @@
       if (aviso) aviso.classList.toggle('hidden', !!nombre && !whatsappEsVacio(d.whatsapp));
       try { renderizarPerfilAdmin(); } catch (e) { console.warn(e); }
       try { renderizarCreditoCliente(); } catch (e) { /* nada */ }
+      try {
+        const ins = document.getElementById('perfilNivelInsignia');
+        if (ins && userTipoCuenta === 'revendedor' && !esStaffSesion() && !ins.querySelector('[data-rev]')) ins.insertAdjacentHTML('beforeend', ' <span data-rev class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black border text-fuchsia-200 border-fuchsia-400/40 bg-fuchsia-500/15"><i class="fa-solid fa-medal"></i> Revendedor</span>');
+      } catch (e) { /* nada */ }
     }
 
     function rellenarFormularioPerfil() {
@@ -14748,8 +14965,15 @@
         throw er;
       }
       if (!resp.ok) {
-        const er = new Error('El servidor no respondió (' + resp.status + '). Intenta de nuevo.');
-        er.codigoRed = true;
+        // 404 = la dirección del servidor guardada en Ajustes ya no existe (implementación nueva o archivada)
+        const staff = (function () { try { return esStaffSesion(); } catch (e) { return false; } })();
+        const msg = resp.status === 404
+          ? (staff
+            ? 'No encuentro el servidor (404): la dirección guardada en Ajustes → URL del servidor ya no existe. Pasa cuando en Apps Script se crea una "Nueva implementación" o se archiva la anterior. Copia la URL actual (Implementar → Administrar implementaciones, termina en /exec), pégala en Ajustes y toca "Probar servidor".'
+            : 'El servicio no está disponible en este momento. Intenta más tarde o escríbenos por soporte.')
+          : 'El servidor no respondió (' + resp.status + '). Intenta de nuevo.';
+        const er = new Error(msg);
+        er.codigoRed = true; er.status = resp.status;
         throw er;
       }
       try {
