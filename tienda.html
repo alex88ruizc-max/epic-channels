@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Tienda</title>
+<link rel="preconnect" href="https://www.gstatic.com" crossorigin>
+<link rel="preconnect" href="https://firestore.googleapis.com" crossorigin>
+<style>
+  :root { --c: #10b981; --c2: #06b6d4; --bg: #0b0f17; --card: #111827; --line: #1f2937; --txt: #e5e7eb; --sub: #9ca3af; }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; background: var(--bg); color: var(--txt); font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  body { padding-bottom: env(safe-area-inset-bottom, 0px); }
+  button, input, select, textarea { font: inherit; color: inherit; }
+  button { cursor: pointer; }
+  .oculto { display: none !important; }
+  .wrap { max-width: 980px; margin: 0 auto; padding: 0 14px; }
+  header { position: sticky; top: 0; z-index: 20; background: rgba(11,15,23,.92); backdrop-filter: blur(10px); border-bottom: 1px solid var(--line); padding-top: env(safe-area-inset-top, 0px); }
+  .top { display: flex; align-items: center; gap: 10px; height: 62px; }
+  .logo { width: 40px; height: 40px; border-radius: 12px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-weight: 900; color: #0b0f17; background: linear-gradient(135deg, var(--c), var(--c2)); overflow: hidden; }
+  .logo img { width: 100%; height: 100%; object-fit: cover; }
+  .nombre { font-weight: 900; font-size: 17px; line-height: 1.1; }
+  .sub { color: var(--sub); font-size: 12px; }
+  .btn { border: 0; border-radius: 12px; padding: 10px 14px; font-weight: 800; font-size: 13px; }
+  .btn-p { background: linear-gradient(135deg, var(--c), var(--c2)); color: #04120c; }
+  .btn-g { background: #1f2937; color: var(--txt); border: 1px solid #374151; }
+  .btn-r { background: rgba(239,68,68,.12); color: #fca5a5; border: 1px solid rgba(239,68,68,.35); }
+  .chip { display: inline-flex; align-items: center; gap: 6px; padding: 7px 12px; border-radius: 999px; font-size: 12px; font-weight: 700; background: #111827; border: 1px solid #374151; color: var(--sub); white-space: nowrap; }
+  .chip.on { background: var(--c); color: #04120c; border-color: transparent; }
+  .chips { display: flex; gap: 8px; overflow-x: auto; padding: 12px 0 4px; scrollbar-width: none; }
+  .buscar { width: 100%; margin-top: 14px; background: #111827; border: 1px solid #374151; border-radius: 999px; padding: 11px 16px; font-size: 14px; outline: none; }
+  .buscar:focus, .inp:focus { border-color: var(--c); }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 14px; padding: 16px 0 40px; }
+  .card { position: relative; overflow: hidden; border-radius: 18px; padding: 16px; background: radial-gradient(110% 80% at 0% 0%, color-mix(in srgb, var(--pc) 18%, transparent), transparent 60%), #0f1320; border: 1px solid color-mix(in srgb, var(--pc) 45%, #1f2937); display: flex; flex-direction: column; gap: 8px; }
+  .card::before { content: ''; position: absolute; inset: 0 0 auto 0; height: 3px; background: var(--pc); }
+  .marca { font-weight: 900; letter-spacing: .28em; font-size: 12px; color: var(--pc); text-transform: uppercase; }
+  .pnombre { font-size: 16px; font-weight: 800; }
+  .precio { font-size: 22px; font-weight: 900; }
+  .desc { color: var(--sub); font-size: 12.5px; line-height: 1.4; }
+  .tag { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; padding: 4px 9px; border-radius: 8px; background: rgba(0,0,0,.25); border: 1px solid rgba(255,255,255,.12); width: fit-content; }
+  .agotado { color: #fca5a5; }
+  .wa { margin-top: auto; display: flex; align-items: center; justify-content: center; gap: 8px; border-radius: 12px; padding: 11px; font-weight: 800; font-size: 13px; background: var(--pc); color: #06140f; border: 0; }
+  .wa[disabled] { background: #1f2937; color: #6b7280; }
+  .vacio { text-align: center; color: var(--sub); padding: 50px 10px; }
+  .aviso { margin: 30px auto; max-width: 440px; text-align: center; padding: 26px 18px; border-radius: 20px; background: #111827; border: 1px solid #374151; }
+  .modal { position: fixed; inset: 0; z-index: 50; background: rgba(0,0,0,.78); display: flex; align-items: flex-end; justify-content: center; }
+  @media (min-width: 640px) { .modal { align-items: center; padding: 16px; } }
+  .hoja { width: 100%; max-width: 520px; max-height: 92vh; overflow-y: auto; background: #0f1320; border: 1px solid #374151; border-radius: 22px 22px 0 0; padding: 18px; }
+  @media (min-width: 640px) { .hoja { border-radius: 22px; } }
+  .inp { width: 100%; background: #1f2937; border: 1px solid #374151; border-radius: 12px; padding: 11px 12px; font-size: 14px; outline: none; }
+  label.l { display: block; font-size: 12px; color: var(--sub); margin: 10px 0 5px; }
+  .tabs { display: flex; gap: 6px; overflow-x: auto; padding: 12px 0; }
+  .tab { padding: 9px 14px; border-radius: 12px; background: #111827; border: 1px solid #374151; color: var(--sub); font-weight: 800; font-size: 13px; white-space: nowrap; }
+  .tab.on { background: var(--c); color: #04120c; border-color: transparent; }
+  .fila { display: flex; align-items: center; gap: 12px; padding: 12px; border-radius: 14px; background: #111827; border: 1px solid #1f2937; margin-bottom: 8px; }
+  .fila .t { flex: 1; min-width: 0; }
+  .fila .t b { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .pill { font-size: 10px; font-weight: 900; padding: 3px 8px; border-radius: 999px; }
+  .ok { background: rgba(16,185,129,.15); color: #6ee7b7; }
+  .off { background: rgba(107,114,128,.2); color: #9ca3af; }
+  .colores { display: flex; gap: 8px; flex-wrap: wrap; }
+  .col { width: 34px; height: 34px; border-radius: 10px; border: 2px solid transparent; }
+  .col.on { border-color: #fff; }
+  .toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); z-index: 80; background: #111827; border: 1px solid var(--c); color: #fff; padding: 11px 16px; border-radius: 14px; font-size: 13px; font-weight: 700; box-shadow: 0 10px 30px rgba(0,0,0,.5); }
+  .cargando { display: flex; align-items: center; justify-content: center; min-height: 60vh; color: var(--sub); }
+  .plan { padding: 14px; border-radius: 16px; background: linear-gradient(135deg, color-mix(in srgb, var(--c) 18%, transparent), transparent); border: 1px solid color-mix(in srgb, var(--c) 40%, #374151); }
+</style>
+</head>
+<body>
+<header><div class="wrap top">
+  <div class="logo" id="tLogo">T</div>
+  <div style="flex:1;min-width:0"><div class="nombre" id="tNombre">Cargando…</div><div class="sub" id="tSub"></div></div>
+  <button class="btn btn-g" id="btnPanel" onclick="abrirPanel()">Mi panel</button>
+</div></header>
+
+<main class="wrap">
+  <div id="vCargando" class="cargando">Cargando la tienda…</div>
+  <div id="vAviso" class="aviso oculto"></div>
+
+  <section id="vTienda" class="oculto">
+    <input class="buscar" id="qBuscar" placeholder="Buscar producto…" oninput="pintarCatalogo()">
+    <div class="chips" id="tChips"></div>
+    <div class="grid" id="tGrid"></div>
+  </section>
+
+  <section id="vPanel" class="oculto">
+    <div class="tabs">
+      <button class="tab on" data-t="productos" onclick="tabPanel('productos')">Productos</button>
+      <button class="tab" data-t="tienda" onclick="tabPanel('tienda')">Mi tienda</button>
+      <button class="tab" data-t="compartir" onclick="tabPanel('compartir')">Compartir</button>
+      <button class="tab" onclick="verTienda()">Ver tienda ›</button>
+    </div>
+    <div id="pProductos">
+      <button class="btn btn-p" style="width:100%" onclick="editarProducto('')">+ Agregar producto</button>
+      <div id="pLista" style="margin-top:12px"></div>
+    </div>
+    <div id="pTienda" class="oculto">
+      <div class="plan" id="pPlan"></div>
+      <label class="l">Nombre de la tienda</label><input class="inp" id="cfNombre" maxlength="40">
+      <label class="l">Frase corta (aparece arriba)</label><input class="inp" id="cfFrase" maxlength="60" placeholder="Ej: Streaming 24/7 al mejor precio">
+      <label class="l">WhatsApp donde te llegan los pedidos</label><input class="inp" id="cfWa" type="tel" maxlength="15" placeholder="3001234567">
+      <label class="l">Logo (enlace de una imagen, opcional)</label><input class="inp" id="cfLogo" placeholder="https://…">
+      <label class="l">Color de tu tienda</label><div class="colores" id="cfColores"></div>
+      <button class="btn btn-p" style="width:100%;margin-top:16px" onclick="guardarTienda()">Guardar</button>
+    </div>
+    <div id="pCompartir" class="oculto">
+      <div class="aviso" style="margin:10px 0">
+        <div style="font-size:34px">🔗</div>
+        <p style="font-weight:900;margin:6px 0">Tu tienda está en:</p>
+        <p id="pEnlace" style="word-break:break-all;color:var(--c);font-weight:800"></p>
+        <button class="btn btn-p" style="width:100%;margin-top:10px" onclick="copiarEnlace()">Copiar enlace</button>
+        <button class="btn btn-g" style="width:100%;margin-top:8px" onclick="compartirWa()">Compartir por WhatsApp</button>
+      </div>
+    </div>
+  </section>
+</main>
+
+<div id="mLogin" class="modal oculto" onclick="if(event.target===this)cerrar('mLogin')"><div class="hoja">
+  <h3 style="margin:0 0 4px">Entrar a mi panel</h3>
+  <p class="sub" style="margin:0 0 6px">Usa la misma cuenta de Epic Channels.</p>
+  <label class="l">Correo</label><input class="inp" id="lgEmail" type="email" autocomplete="email">
+  <label class="l">Contraseña</label><input class="inp" id="lgPass" type="password" autocomplete="current-password">
+  <p id="lgError" class="agotado" style="font-size:12px;min-height:16px"></p>
+  <button class="btn btn-p" style="width:100%" onclick="entrar()">Entrar</button>
+</div></div>
+
+<div id="mProducto" class="modal oculto" onclick="if(event.target===this)cerrar('mProducto')"><div class="hoja">
+  <h3 style="margin:0" id="mpTitulo">Producto</h3>
+  <label class="l">Nombre</label><input class="inp" id="mpNombre" maxlength="60" placeholder="Ej: Netflix 1 pantalla">
+  <label class="l">Precio (COP)</label><input class="inp" id="mpPrecio" type="number" min="0" step="100">
+  <label class="l">Categoría</label><input class="inp" id="mpCategoria" maxlength="30" placeholder="Ej: Streaming">
+  <label class="l">Descripción (opcional)</label><textarea class="inp" id="mpDesc" rows="2" maxlength="200"></textarea>
+  <label class="l">Garantía (opcional)</label><input class="inp" id="mpGarantia" maxlength="30" placeholder="Ej: 30 días">
+  <label class="l" style="display:flex;align-items:center;justify-content:space-between">Disponible para pedir <input type="checkbox" id="mpDisponible" style="width:20px;height:20px"></label>
+  <label class="l" style="display:flex;align-items:center;justify-content:space-between">Mostrar en la tienda <input type="checkbox" id="mpActivo" style="width:20px;height:20px"></label>
+  <div style="display:flex;gap:8px;margin-top:16px"><button class="btn btn-r" id="mpBorrar" onclick="borrarProducto()">Borrar</button><button class="btn btn-p" style="flex:1" onclick="guardarProducto()">Guardar</button></div>
+</div></div>
+
+<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
+<script>
+  const firebaseConfig = {
+    apiKey: "AIza" + "SyDlRYxGu56PeBiGjuh9kk0jxoElZ_PwtsE",
+    authDomain: "epic-channels.firebaseapp.com",
+    projectId: "epic-channels",
+    storageBucket: "epic-channels.firebasestorage.app",
+    messagingSenderId: "860169917338",
+    appId: "1:860169917338:web:6f25e107009568d2d2a023"
+  };
+  firebase.initializeApp(firebaseConfig);
+  const auth = firebase.auth(), db = firebase.firestore();
+  const ADMIN = ['alex88ruizc@gmail.com'];
+  const COLORES = ['#10b981', '#06b6d4', '#3b82f6', '#8b5cf6', '#ec4899', '#ef4444', '#f59e0b', '#eab308', '#14b8a6', '#f97316'];
+  const MARCAS = [[/netflix/i, 'Netflix', '#e50914'], [/prime|amazon/i, 'Prime Video', '#1ea7e1'], [/disney/i, 'Disney+', '#2f6bff'], [/\bmax\b|hbo/i, 'Max', '#6d3ff0'], [/youtube/i, 'YouTube', '#ff1f3d'], [/spotify/i, 'Spotify', '#1db954'], [/crunchyroll/i, 'Crunchyroll', '#f47521'], [/paramount/i, 'Paramount+', '#1f6dff'], [/canva/i, 'Canva', '#00c4cc'], [/chat\s*gpt/i, 'ChatGPT', '#10a37f'], [/vix/i, 'ViX', '#ff6a13'], [/apple/i, 'Apple TV+', '#b7bcc6'], [/iptv/i, 'IPTV', '#f59e0b']];
+  let tienda = null, tiendaId = '', productos = [], catActiva = 'Todas', usuario = null, editando = '', colorElegido = '';
+
+  const $ = id => document.getElementById(id);
+  const esc = t => String(t == null ? '' : t).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const cop = n => '$' + Math.round(Number(n) || 0).toLocaleString('es-CO');
+  const cerrar = id => $(id).classList.add('oculto');
+  function toast(t) { const d = document.createElement('div'); d.className = 'toast'; d.textContent = t; document.body.appendChild(d); setTimeout(() => d.remove(), 2600); }
+  function slugActual() { const h = decodeURIComponent((location.hash || '').replace(/^#\/?/, '')).split(/[/?]/)[0]; const q = new URLSearchParams(location.search).get('t') || ''; return String(h || q).toLowerCase().replace(/[^a-z0-9]/g, ''); }
+  function esDueno() { return !!(usuario && tienda && (usuario.uid === tienda.ownerUid || ADMIN.indexOf(String(usuario.email || '').toLowerCase()) !== -1)); }
+  function marcaDe(nombre) { const m = MARCAS.find(x => x[0].test(nombre || '')); return m ? { t: m[1], c: m[2] } : null; }
+
+  async function cargar() {
+    const slug = slugActual();
+    if (!slug) return mostrarAviso('🏪', 'Tienda no encontrada', 'Revisa el enlace que te compartieron.');
+    try {
+      const s = await db.collection('slugs').doc(slug).get();
+      if (!s.exists) return mostrarAviso('🔎', 'Tienda no encontrada', 'Esa tienda no existe o cambió de nombre.');
+      tiendaId = s.data().tiendaId;
+      db.collection('tiendas').doc(tiendaId).onSnapshot(d => { tienda = d.exists ? d.data() : null; pintarCabecera(); decidirVista(); });
+      db.collection('tiendas_productos').where('tiendaId', '==', tiendaId).onSnapshot(sn => { productos = []; sn.forEach(x => productos.push(Object.assign({ id: x.id }, x.data()))); productos.sort((a, b) => String(a.nombre).localeCompare(String(b.nombre), 'es')); pintarCatalogo(); pintarListaPanel(); });
+    } catch (e) { mostrarAviso('⚠️', 'No se pudo cargar', 'Revisa tu conexión e intenta de nuevo.'); }
+  }
+  function mostrarAviso(ic, t, s) { $('vCargando').classList.add('oculto'); $('vTienda').classList.add('oculto'); $('vPanel').classList.add('oculto'); const a = $('vAviso'); a.classList.remove('oculto'); a.innerHTML = `<div style="font-size:40px">${ic}</div><h2 style="margin:8px 0 4px">${esc(t)}</h2><p class="sub">${esc(s)}</p>`; }
+  function tiendaVencida() { return tienda && tienda.venceEl && Date.parse(tienda.venceEl) < Date.now(); }
+  function decidirVista() {
+    if (!tienda) return mostrarAviso('🔎', 'Tienda no encontrada', '');
+    $('vCargando').classList.add('oculto');
+    const cerrada = tienda.estado === 'suspendida' || tiendaVencida();
+    if (cerrada && !esDueno()) return mostrarAviso('🛠️', 'Tienda en mantenimiento', 'Vuelve pronto. Estamos mejorando para ti.');
+    $('vAviso').classList.add('oculto');
+    if (!$('vPanel').classList.contains('oculto') && esDueno()) return;
+    $('vTienda').classList.remove('oculto');
+  }
+  function pintarCabecera() {
+    if (!tienda) return;
+    document.documentElement.style.setProperty('--c', tienda.color || '#10b981');
+    document.title = tienda.nombre || 'Tienda';
+    $('tNombre').textContent = tienda.nombre || 'Tienda';
+    $('tSub').textContent = tienda.frase || 'Pide por WhatsApp · entrega rápida';
+    const l = $('tLogo');
+    if (/^https:\/\//.test(tienda.logo || '')) l.innerHTML = `<img src="${esc(tienda.logo)}" alt="">`; else l.textContent = String(tienda.nombre || 'T').charAt(0).toUpperCase();
+  }
+  function pintarCatalogo() {
+    const act = productos.filter(p => p.activo !== false);
+    const cats = ['Todas'].concat(Array.from(new Set(act.map(p => p.categoria || 'Otros'))));
+    if (cats.indexOf(catActiva) === -1) catActiva = 'Todas';
+    $('tChips').innerHTML = cats.length > 2 ? cats.map(c => `<button class="chip ${c === catActiva ? 'on' : ''}" onclick="catActiva='${esc(c).replace(/'/g, '')}';pintarCatalogo()">${esc(c)}</button>`).join('') : '';
+    const q = ($('qBuscar').value || '').toLowerCase().trim();
+    const lista = act.filter(p => (catActiva === 'Todas' || (p.categoria || 'Otros') === catActiva) && (!q || String(p.nombre + ' ' + (p.categoria || '')).toLowerCase().indexOf(q) !== -1)).sort((x, y) => (y.disponible !== false) - (x.disponible !== false));
+    $('tGrid').innerHTML = lista.length ? lista.map(p => {
+      const m = marcaDe(p.nombre), col = m ? m.c : (tienda && tienda.color) || '#10b981', disp = p.disponible !== false;
+      return `<div class="card" style="--pc:${col}"><div class="marca">${esc(m ? m.t : (p.categoria || 'Producto'))}</div><div class="pnombre">${esc(p.nombre)}</div><div class="precio">${cop(p.precio)}</div>${p.descripcion ? `<div class="desc">${esc(p.descripcion)}</div>` : ''}${p.garantia ? `<span class="tag">🛡 Garantía ${esc(p.garantia)}</span>` : ''}<span class="tag ${disp ? '' : 'agotado'}">${disp ? '✅ Disponible' : '⏳ Agotado por ahora'}</span><button class="wa" ${disp && tienda && tienda.whatsapp ? '' : 'disabled'} onclick="pedir('${p.id}')">${disp ? '💬 Pedir por WhatsApp' : 'Agotado'}</button></div>`;
+    }).join('') : `<div class="vacio" style="grid-column:1/-1">${act.length ? 'No encontré productos con esa búsqueda.' : 'Esta tienda todavía no tiene productos.'}</div>`;
+  }
+  function pedir(id) {
+    const p = productos.find(x => x.id === id); if (!p || !tienda || !tienda.whatsapp) return;
+    const wa = String(tienda.whatsapp).replace(/\D/g, ''), num = wa.length === 10 ? '57' + wa : wa;
+    const txt = `Hola 👋, quiero pedir en *${tienda.nombre}*:\n\n• ${p.nombre} — ${cop(p.precio)}\n\n¿Cómo pago?`;
+    window.open('https://wa.me/' + num + '?text=' + encodeURIComponent(txt), '_blank', 'noopener');
+  }
+
+  // ---------- Panel del dueño ----------
+  function abrirPanel() { if (esDueno()) return mostrarPanel(); if (usuario) { toast('Esta cuenta no es la dueña de la tienda.'); } $('mLogin').classList.remove('oculto'); }
+  async function entrar() {
+    $('lgError').textContent = '';
+    try { await auth.signInWithEmailAndPassword($('lgEmail').value.trim(), $('lgPass').value); cerrar('mLogin'); setTimeout(() => { if (esDueno()) mostrarPanel(); else toast('Esta cuenta no es la dueña de esta tienda.'); }, 400); }
+    catch (e) { $('lgError').textContent = 'Correo o contraseña incorrectos.'; }
+  }
+  function mostrarPanel() { $('vTienda').classList.add('oculto'); $('vAviso').classList.add('oculto'); $('vPanel').classList.remove('oculto'); $('btnPanel').textContent = 'Salir'; $('btnPanel').onclick = salirPanel; tabPanel('productos'); pintarConfig(); }
+  function salirPanel() { auth.signOut(); verTienda(); $('btnPanel').textContent = 'Mi panel'; $('btnPanel').onclick = abrirPanel; }
+  function verTienda() { $('vPanel').classList.add('oculto'); decidirVista(); }
+  function tabPanel(t) { document.querySelectorAll('.tab[data-t]').forEach(b => b.classList.toggle('on', b.dataset.t === t)); ['productos', 'tienda', 'compartir'].forEach(x => $('p' + x.charAt(0).toUpperCase() + x.slice(1)).classList.toggle('oculto', x !== t)); }
+  function pintarListaPanel() {
+    if (!$('pLista')) return;
+    $('pLista').innerHTML = productos.length ? productos.map(p => `<div class="fila"><div class="t"><b>${esc(p.nombre)}</b><span class="sub">${cop(p.precio)} · ${esc(p.categoria || 'Sin categoría')}</span></div><span class="pill ${p.activo !== false ? 'ok' : 'off'}">${p.activo !== false ? (p.disponible !== false ? 'VISIBLE' : 'AGOTADO') : 'OCULTO'}</span><button class="btn btn-g" onclick="editarProducto('${p.id}')">Editar</button></div>`).join('') : '<p class="vacio">Agrega tu primer producto.</p>';
+  }
+  function editarProducto(id) {
+    editando = id; const p = productos.find(x => x.id === id) || {};
+    $('mpTitulo').textContent = id ? 'Editar producto' : 'Nuevo producto';
+    $('mpNombre').value = p.nombre || ''; $('mpPrecio').value = p.precio || ''; $('mpCategoria').value = p.categoria || 'Streaming'; $('mpDesc').value = p.descripcion || ''; $('mpGarantia').value = p.garantia || '';
+    $('mpDisponible').checked = p.disponible !== false; $('mpActivo').checked = p.activo !== false; $('mpBorrar').classList.toggle('oculto', !id);
+    $('mProducto').classList.remove('oculto');
+  }
+  async function guardarProducto() {
+    const d = { nombre: $('mpNombre').value.trim().slice(0, 60), precio: Math.max(0, Math.round(Number($('mpPrecio').value) || 0)), categoria: $('mpCategoria').value.trim().slice(0, 30) || 'Otros', descripcion: $('mpDesc').value.trim().slice(0, 200), garantia: $('mpGarantia').value.trim().slice(0, 30), disponible: $('mpDisponible').checked, activo: $('mpActivo').checked, actualizadoEl: new Date().toISOString() };
+    if (d.nombre.length < 2) return toast('Escribe el nombre del producto.');
+    if (!(d.precio > 0)) return toast('Escribe el precio.');
+    const col = db.collection('tiendas_productos');
+    try { if (editando) await col.doc(editando).set(d, { merge: true }); else await col.add(Object.assign({ tiendaId: tiendaId, creadoEl: new Date().toISOString() }, d)); cerrar('mProducto'); toast('✓ Guardado'); }
+    catch (e) { toast('No se pudo guardar: ' + e.message); }
+  }
+  async function borrarProducto() { if (!editando || !confirm('¿Borrar este producto?')) return; try { await db.collection('tiendas_productos').doc(editando).delete(); cerrar('mProducto'); toast('Borrado'); } catch (e) { toast(e.message); } }
+  function pintarConfig() {
+    if (!tienda) return;
+    $('cfNombre').value = tienda.nombre || ''; $('cfFrase').value = tienda.frase || ''; $('cfWa').value = tienda.whatsapp || ''; $('cfLogo').value = tienda.logo || '';
+    colorElegido = tienda.color || COLORES[0];
+    $('cfColores').innerHTML = COLORES.map(c => `<button class="col ${c === colorElegido ? 'on' : ''}" style="background:${c}" onclick="colorElegido='${c}';pintarColores()"></button>`).join('');
+    const dias = tienda.venceEl ? Math.ceil((Date.parse(tienda.venceEl) - Date.now()) / 86400000) : null;
+    $('pPlan').innerHTML = `<b>${tienda.plan === 'gratis' ? 'Plan gratis' : (tienda.plan === 'demo' ? 'Demo gratis' : 'Suscripción')}</b><div class="sub" style="margin-top:3px">${dias === null ? 'Sin fecha de vencimiento.' : (dias > 0 ? `Te quedan <b style="color:#fff">${dias} ${dias === 1 ? 'día' : 'días'}</b>.` : '<b class="agotado">Tu plan venció: tus clientes ven la tienda en mantenimiento.</b>')} Para renovar escríbele a Epic Channels.</div>`;
+    $('pEnlace').textContent = enlaceTienda();
+  }
+  function pintarColores() { document.querySelectorAll('#cfColores .col').forEach(b => b.classList.toggle('on', b.style.background && b.getAttribute('onclick').indexOf(colorElegido) !== -1)); }
+  async function guardarTienda() {
+    const d = { nombre: $('cfNombre').value.trim().slice(0, 40) || tienda.nombre, frase: $('cfFrase').value.trim().slice(0, 60), whatsapp: $('cfWa').value.replace(/\D/g, '').slice(0, 15), logo: /^https:\/\//.test($('cfLogo').value.trim()) ? $('cfLogo').value.trim().slice(0, 400) : '', color: colorElegido };
+    try { await db.collection('tiendas').doc(tiendaId).update(d); toast('✓ Tu tienda quedó guardada'); } catch (e) { toast('No se pudo guardar: ' + e.message); }
+  }
+  function enlaceTienda() { return location.origin + location.pathname.replace(/index\.html$/, '') + '#' + slugActual(); }
+  function copiarEnlace() { (navigator.clipboard ? navigator.clipboard.writeText(enlaceTienda()) : Promise.reject()).then(() => toast('Enlace copiado')).catch(() => prompt('Copia tu enlace:', enlaceTienda())); }
+  function compartirWa() { window.open('https://wa.me/?text=' + encodeURIComponent(`🛒 Mira mi tienda *${tienda.nombre}*: ${enlaceTienda()}`), '_blank', 'noopener'); }
+
+  auth.onAuthStateChanged(u => { usuario = u; if (u && esDueno()) { $('btnPanel').textContent = 'Mi panel'; } decidirVista(); });
+  window.addEventListener('hashchange', () => location.reload());
+  cargar();
+</script>
+</body>
+</html>

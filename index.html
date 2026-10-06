@@ -1808,6 +1808,7 @@
           <p id="ctVistaPrevia" class="text-[11px] text-cyan-200 p-2.5 rounded-xl bg-cyan-500/10 border border-cyan-500/30"></p>
           <button type="button" id="btnGuardarCfgTiendas" onclick="guardarCfgTiendas()" class="w-full py-2.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-black font-black text-xs">Guardar</button>
           <div class="pt-2 border-t border-gray-800"><p class="text-xs font-black text-white mb-2">Solicitudes</p><div id="ctSolicitudes" class="space-y-2"></div></div>
+          <div class="pt-2 border-t border-gray-800"><p class="text-xs font-black text-white mb-2">Tiendas creadas</p><div id="ctTiendas" class="space-y-2"></div></div>
         </div>
         <div class="p-5 bg-gray-900 border border-emerald-500/30 rounded-2xl shadow-xl max-w-3xl">
           <h3 class="text-base font-black text-white mb-1 flex items-center gap-2">
@@ -6185,6 +6186,7 @@
       const btnSoporte = document.getElementById('btnFlotanteSoporte');
       const btnTelegramBot = document.getElementById('btnFlotanteTelegramBot');
       setTimeout(actualizarVisibilidadAsistente, 0);
+      setTimeout(() => { try { if (user) despertarServidor(); } catch (e) { /* nada */ } }, 1200);
       const navSaldo = document.getElementById('navSaldoDirecto');
       const navLogo = document.getElementById('navLogoContainer');
       const vistaBloqueadaEl = document.getElementById('vistaBloqueada');
@@ -6196,7 +6198,8 @@
         try { asistenteProgramarSaludo(); } catch (e) { console.warn(e); }
         try { iniciarNovedadesClientes(); } catch (e) { console.warn(e); }
         try { cargarCfgDealer().then(cargarProgresoDealer); } catch (e) { /* nada */ }
-        try { setTimeout(actualizarBotonesTienda, 1200); } catch (e) { /* nada */ }
+        try { setTimeout(despertarServidor, 800); } catch (e) { /* nada */ }
+        try { setTimeout(() => { actualizarBotonesTienda().then(cargarMiTiendaCliente); }, 1200); } catch (e) { /* nada */ }
         try { if (esStaffSesion()) iniciarPreordenesAdmin(); else iniciarMisPreordenes(); } catch (e) { /* nada */ }
         try { cargarCategoriasNormales().then(() => { if (userTipoCuenta === 'normal') renderizarCatalogo(); }); } catch (e) { /* nada */ }
         try { leerCfgReferidos().then(() => { iniciarMisComisiones(); renderizarMisReferidos(); }); } catch (e) { console.warn(e); }
@@ -8136,6 +8139,15 @@
       if (compraEnCurso) return;
 
       if (obtenerBackendUrl()) {
+        // Si ya se sabe que no alcanza (saldo + crédito disponible), se avisa al instante sin esperar al servidor
+        try {
+          const totalEsperado = (Number(prodInfo.precio) || 0) * cantidad;
+          const disponible = (Number(userSaldo) || 0) + Math.max(0, (Number(userCupo) || 0) - (Number(userDeuda) || 0));
+          if (totalEsperado > 0 && disponible < totalEsperado && !modoPruebaCliente) {
+            abrirModalSaldoInsuficiente(`Saldo insuficiente. Tienes ${formatoCOP(userSaldo || 0)} y el total es ${formatoCOP(totalEsperado)}.`);
+            return;
+          }
+        } catch (e) { /* si algo falla, decide el servidor */ }
         await comprarProductoServidor(docId, prodInfo, cantidad);
         return;
       }
@@ -14445,7 +14457,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-06l';
+    const VERSION_PAGINA = '2026-10-06o';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261006_credito', fecha: '2026-10-06', titulo: 'Tu crédito, más fácil', mensaje: 'Si tienes **crédito pre-aprobado** te avisamos en la tienda. En tu perfil hay una pestaña **Crédito** donde lo aceptas y ves cuánto debes y tu historial.' },
       { id: 'act_20261006_negocio', fecha: '2026-10-06', titulo: 'Dealers: Mi negocio 👑', mensaje: 'Los Dealers ahora pueden **asignar cada cuenta a su cliente**, entregarla por WhatsApp con un toque y ver **su ganancia del mes** y qué cuentas están por vencer.' },
@@ -16580,7 +16592,7 @@
           ${s0 ? `<div class="rounded-2xl p-3 text-center border ${s0.estado === 'aprobada' ? 'bg-emerald-500/10 border-emerald-400/40' : (s0.estado === 'rechazada' ? 'bg-red-500/10 border-red-400/40' : 'bg-amber-500/10 border-amber-400/40')}"><p class="text-sm font-black text-white">${{ pendiente: '⏳ Tu solicitud está en revisión', aprobada: '🎉 ¡Tu tienda fue aprobada!', rechazada: 'Tu solicitud no fue aprobada' }[s0.estado] || 'Solicitud enviada'}</p><p class="text-[11px] text-gray-300 mt-1">Tienda: <b>${escaparHtml(s0.nombreTienda || '')}</b>${s0.estado === 'aprobada' ? ' · te escribiremos para activarla.' : ''}</p></div>`
           : `<div class="space-y-2"><p class="text-xs font-black text-white">¿Te interesa? Déjanos tus datos:</p>
             <input id="ctNombre" maxlength="40" oninput="ctSugerirEnlace()" placeholder="Nombre de tu tienda" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none">
-            <div class="flex items-center gap-1 bg-gray-800 border border-gray-700 rounded-xl px-3 py-2.5"><span class="text-[11px] text-gray-400 shrink-0">epicchannels.quest/t/</span><input id="ctEnlace" maxlength="30" placeholder="mitienda" class="min-w-0 flex-grow bg-transparent text-sm text-white focus:outline-none"></div>
+            <div class="flex items-center gap-1 bg-gray-800 border border-gray-700 rounded-xl px-3 py-2.5"><span class="text-[11px] text-gray-400 shrink-0">…/tienda.html#</span><input id="ctEnlace" maxlength="30" placeholder="mitienda" class="min-w-0 flex-grow bg-transparent text-sm text-white focus:outline-none"></div>
             <input id="ctWhatsapp" type="tel" maxlength="15" placeholder="Tu WhatsApp" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none">
             <button type="button" id="btnCtEnviar" onclick="enviarSolicitudTienda()" class="w-full py-3 rounded-xl text-black font-black text-sm" style="background:linear-gradient(120deg,#10b981,#06b6d4)">Quiero mi tienda</button></div>`}
         </div></div>`;
@@ -16613,6 +16625,7 @@
       document.getElementById('ctDias').value = c.diasDemo || 15;
       document.getElementById('ctPrecio').value = c.precioMensual || 30000;
       pintarCfgTiendasUI();
+      try { iniciarTiendasAdmin(); } catch (e) { /* nada */ }
       if (!unsubSolTiendas) { try { unsubSolTiendas = db.collection('tiendas_solicitudes').onSnapshot(snap => { solicitudesTiendas = []; snap.forEach(d => solicitudesTiendas.push(Object.assign({ id: d.id }, d.data() || {}))); solicitudesTiendas.sort((a, b) => String(b.creadoEl).localeCompare(String(a.creadoEl))); pintarSolicitudesTiendas(); }, e => console.warn(e)); } catch (e) { /* nada */ } }
     }
     function leerCfgTiendasUI() {
@@ -16636,7 +16649,7 @@
       const pend = solicitudesTiendas.filter(x => x.estado === 'pendiente').length;
       const b = document.getElementById('ctSolBadge'); if (b) { b.textContent = pend + ' nuevas'; b.classList.toggle('hidden', !pend); }
       c.innerHTML = solicitudesTiendas.length ? solicitudesTiendas.slice(0, 30).map(x => `<div class="p-2.5 rounded-xl bg-gray-800/50 border border-gray-700/60"><div class="flex items-start justify-between gap-2"><div class="min-w-0"><p class="text-xs font-black text-white truncate">${escaparHtml(x.nombreTienda || '')} <span class="text-gray-500 font-normal">/t/${escaparHtml(x.enlace || '')}</span></p><p class="text-[10px] text-gray-400 truncate">${escaparHtml(x.email || '')} · ${escaparHtml(bcFecha(x.creadoEl))}</p></div><span class="shrink-0 px-1.5 py-0.5 rounded-full text-[9px] font-black ${x.estado === 'aprobada' ? 'bg-emerald-500/15 text-emerald-300' : (x.estado === 'rechazada' ? 'bg-red-500/15 text-red-300' : 'bg-amber-500/15 text-amber-300')}">${escaparHtml(x.estado || '')}</span></div>
-        <div class="flex gap-1.5 mt-2">${x.whatsapp ? `<a href="https://wa.me/${escaparHtml(x.whatsapp.length === 10 ? '57' + x.whatsapp : x.whatsapp)}" target="_blank" rel="noopener noreferrer" class="px-2 py-1 rounded-lg bg-emerald-500/15 text-emerald-300 text-[10px] font-bold"><i class="fa-brands fa-whatsapp"></i> WhatsApp</a>` : ''}${x.estado === 'pendiente' ? `<button type="button" onclick="resolverSolicitudTienda('${escaparJsAttr(x.id)}','aprobada')" class="px-2 py-1 rounded-lg bg-cyan-500 text-black text-[10px] font-black">Aprobar</button><button type="button" onclick="resolverSolicitudTienda('${escaparJsAttr(x.id)}','rechazada')" class="px-2 py-1 rounded-lg bg-gray-800 border border-gray-700 text-gray-300 text-[10px]">Rechazar</button>` : ''}</div></div>`).join('') : '<p class="text-[11px] text-gray-500">Todavía no hay solicitudes.</p>';
+        <div class="flex gap-1.5 mt-2">${x.whatsapp ? `<a href="https://wa.me/${escaparHtml(x.whatsapp.length === 10 ? '57' + x.whatsapp : x.whatsapp)}" target="_blank" rel="noopener noreferrer" class="px-2 py-1 rounded-lg bg-emerald-500/15 text-emerald-300 text-[10px] font-bold"><i class="fa-brands fa-whatsapp"></i> WhatsApp</a>` : ''}${x.estado === 'aprobada' && !x.tiendaId ? `<button type="button" onclick="crearTiendaCliente('${escaparJsAttr(x.id)}')" class="px-2 py-1 rounded-lg bg-emerald-500 text-black text-[10px] font-black">🏪 Crear tienda</button>` : ''}${x.tiendaId ? `<span class="px-2 py-1 rounded-lg bg-emerald-500/10 text-emerald-300 text-[10px] font-bold">✓ Tienda creada</span>` : ''}${x.estado === 'pendiente' ? `<button type="button" onclick="resolverSolicitudTienda('${escaparJsAttr(x.id)}','aprobada')" class="px-2 py-1 rounded-lg bg-cyan-500 text-black text-[10px] font-black">Aprobar</button><button type="button" onclick="resolverSolicitudTienda('${escaparJsAttr(x.id)}','rechazada')" class="px-2 py-1 rounded-lg bg-gray-800 border border-gray-700 text-gray-300 text-[10px]">Rechazar</button>` : ''}</div></div>`).join('') : '<p class="text-[11px] text-gray-500">Todavía no hay solicitudes.</p>';
     }
     async function resolverSolicitudTienda(id, estado) {
       if (!esAdminSesionActual()) return;
@@ -16722,6 +16735,69 @@
       irATabAdmin(tab);
       if (el) setTimeout(() => { const e = document.getElementById(el); if (e) { e.scrollIntoView({ behavior: 'smooth', block: 'start' }); e.classList.add('ring-2', 'ring-emerald-400'); setTimeout(() => e.classList.remove('ring-2', 'ring-emerald-400'), 1800); } }, 450);
     }
+
+
+    // ==================== TIENDAS DE CLIENTES (streaming): CREAR Y ADMINISTRAR ====================
+    var tiendasCreadas = [], unsubTiendasAdm = null, miTiendaCliente = null;
+    function urlTiendaCliente(slug) { return location.origin + '/tienda.html#' + slug; }
+    async function crearTiendaCliente(solId) {
+      if (!esAdminSesionActual()) return;
+      const sol = solicitudesTiendas.find(x => x.id === solId); if (!sol) return;
+      const slug = slugTienda(sol.enlace || sol.nombreTienda);
+      if (slug.length < 3) { alert('El enlace de la tienda no es válido.'); return; }
+      const c = cfgTiendas || await cargarCfgTiendas();
+      const dias = c.modo === 'gratis' ? 0 : (c.modo === 'demo' ? (c.diasDemo || 15) : 30);
+      if (!await confirmarModal(`¿Crear la tienda "${sol.nombreTienda}"?\n\nEnlace: ${urlTiendaCliente(slug)}\nDueño: ${sol.email}\nPlan: ${textoModeloTienda(c)}`, { textoAceptar: 'Sí, crear' })) return;
+      try {
+        const ref = db.collection('tiendas').doc(), ahora = new Date().toISOString();
+        await db.runTransaction(async (t) => {
+          const sRef = db.collection('slugs').doc(slug), ya = await t.get(sRef);
+          if (ya.exists) throw new Error('Ya existe una tienda con el enlace "' + slug + '". Cambia el enlace en la solicitud.');
+          t.set(ref, { slug: slug, nombre: sol.nombreTienda, ownerUid: sol.uid, ownerEmail: sol.email, whatsapp: sol.whatsapp || '', color: '#10b981', frase: '', logo: '', tipo: 'streaming', plan: c.modo, estado: 'activa', venceEl: dias ? new Date(Date.now() + dias * 86400000).toISOString() : '', creadoEl: ahora, creadoPor: currentUser.email });
+          t.set(sRef, { tiendaId: ref.id, creadoEl: ahora });
+          t.update(db.collection('tiendas_solicitudes').doc(solId), { tiendaId: ref.id, slug: slug });
+        });
+        avisarClienteTicket(sol.uid, '🏪 ¡Tu tienda está lista!', 'Entra a ' + urlTiendaCliente(slug) + ' y toca "Mi panel" para agregar tus productos.');
+        mostrarToast('✓ Tienda creada: ' + urlTiendaCliente(slug));
+      } catch (e) { alert(e.message || 'No se pudo crear la tienda.'); }
+    }
+    function iniciarTiendasAdmin() {
+      if (unsubTiendasAdm || !esAdminSesionActual()) return;
+      try { unsubTiendasAdm = db.collection('tiendas').onSnapshot(sn => { tiendasCreadas = []; sn.forEach(d => tiendasCreadas.push(Object.assign({ id: d.id }, d.data() || {}))); tiendasCreadas.sort((a, b) => String(b.creadoEl).localeCompare(String(a.creadoEl))); pintarTiendasAdmin(); }, e => console.warn(e)); } catch (e) { /* nada */ }
+    }
+    function pintarTiendasAdmin() {
+      const c = document.getElementById('ctTiendas'); if (!c) return;
+      c.innerHTML = tiendasCreadas.length ? tiendasCreadas.map(t => { const dias = t.venceEl ? Math.ceil((Date.parse(t.venceEl) - Date.now()) / 86400000) : null; const cerrada = t.estado === 'suspendida' || (dias !== null && dias <= 0); return `<div class="p-2.5 rounded-xl bg-gray-800/50 border ${cerrada ? 'border-red-500/40' : 'border-gray-700/60'}">
+        <div class="flex items-start justify-between gap-2"><div class="min-w-0"><p class="text-xs font-black text-white truncate">${escaparHtml(t.nombre)} <span class="text-gray-500 font-normal">tienda.html#${escaparHtml(t.slug)}</span></p><p class="text-[10px] text-gray-400 truncate">${escaparHtml(t.ownerEmail || '')} · ${escaparHtml(t.plan || '')}${dias === null ? ' · sin vencimiento' : (dias > 0 ? ' · ' + dias + ' días' : ' · VENCIDA')}</p></div><span class="shrink-0 px-1.5 py-0.5 rounded-full text-[9px] font-black ${cerrada ? 'bg-red-500/15 text-red-300' : 'bg-emerald-500/15 text-emerald-300'}">${cerrada ? 'CERRADA' : 'ACTIVA'}</span></div>
+        <div class="flex flex-wrap gap-1.5 mt-2"><a href="${escaparHtml(urlTiendaCliente(t.slug))}" target="_blank" rel="noopener" class="px-2 py-1 rounded-lg bg-gray-800 border border-gray-700 text-gray-200 text-[10px] font-bold">Abrir</a><button type="button" onclick="extenderTienda('${escaparJsAttr(t.id)}',30)" class="px-2 py-1 rounded-lg bg-cyan-500 text-black text-[10px] font-black">+30 días</button><button type="button" onclick="estadoTienda('${escaparJsAttr(t.id)}','${t.estado === 'suspendida' ? 'activa' : 'suspendida'}')" class="px-2 py-1 rounded-lg ${t.estado === 'suspendida' ? 'bg-emerald-500/15 text-emerald-300' : 'bg-red-500/10 text-red-300 border border-red-500/30'} text-[10px] font-bold">${t.estado === 'suspendida' ? 'Reactivar' : 'Suspender'}</button></div></div>`; }).join('') : '<p class="text-[11px] text-gray-500">Todavía no hay tiendas. Aprueba una solicitud y toca "Crear tienda".</p>';
+    }
+    async function extenderTienda(id, dias) {
+      const t = tiendasCreadas.find(x => x.id === id); if (!t) return;
+      const base = Math.max(Date.now(), Date.parse(t.venceEl) || 0);
+      try { await db.collection('tiendas').doc(id).update({ venceEl: new Date(base + dias * 86400000).toISOString(), estado: 'activa' }); mostrarToast('✓ ' + t.nombre + ': +' + dias + ' días'); } catch (e) { alert(e.message); }
+    }
+    async function estadoTienda(id, estado) { try { await db.collection('tiendas').doc(id).update({ estado: estado }); mostrarToast(estado === 'suspendida' ? 'Tienda suspendida: sus clientes ven "mantenimiento".' : 'Tienda reactivada.'); } catch (e) { alert(e.message); } }
+    // Para el cliente dueño: acceso a su tienda
+    async function cargarMiTiendaCliente() {
+      if (!currentUser || esStaffSesion()) return;
+      try { const q = await db.collection('tiendas').where('ownerUid', '==', currentUser.uid).limit(1).get(); miTiendaCliente = q.empty ? null : Object.assign({ id: q.docs[0].id }, q.docs[0].data()); } catch (e) { miTiendaCliente = null; }
+      if (!miTiendaCliente) return;
+      ['btnCreaTiendaTienda', 'btnCreaTiendaPerfil'].forEach(id => { const b = document.getElementById(id); if (!b) return; b.classList.remove('hidden'); b.onclick = () => { window.location.href = urlTiendaCliente(miTiendaCliente.slug); }; const t = b.querySelector('.text-sm'); if (t) t.textContent = 'Ir a mi tienda'; const subs = b.querySelectorAll('span.block'); if (subs[1]) subs[1].textContent = urlTiendaCliente(miTiendaCliente.slug).split('//')[1]; });
+      const st = document.getElementById('btnCreaTiendaEstado'); if (st) st.textContent = urlTiendaCliente(miTiendaCliente.slug).replace(/^https?:\/\//, '');
+    }
+
+
+    // ==================== DESPERTAR EL SERVIDOR ====================
+    // Apps Script tarda en "despertar" la primera vez; un saludo liviano al entrar deja la compra lista y rápida.
+    var ultimoDespertar = 0;
+    function despertarServidor(intento) {
+      const url = obtenerBackendUrl();
+      if (!url) { if ((intento || 0) < 6) setTimeout(() => despertarServidor((intento || 0) + 1), 2000); return; }
+      if (Date.now() - ultimoDespertar < 8 * 60000) return;
+      ultimoDespertar = Date.now();
+      try { fetch(url, { method: 'GET', cache: 'no-store' }).catch(() => {}); } catch (e) { /* nada */ }
+    }
+    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && currentUser) despertarServidor(); });
 
     // ==================== NETFLIX EN LA TIENDA: SIN CONTRASEÑA ====================
     function esNombreNetflix(t) { return /netflix/i.test(String(t || '')); }
@@ -17543,17 +17619,23 @@
         throw er;
       }
       let resp;
+      const ctrl = (typeof AbortController !== 'undefined') ? new AbortController() : null;
+      const limite = setTimeout(() => { try { ctrl && ctrl.abort(); } catch (e) { /* nada */ } }, 35000);
       try {
         resp = await fetch(url, {
           method: 'POST',
           headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-          body: JSON.stringify(Object.assign({ accion: accion, idToken: idToken }, datos || {}))
+          body: JSON.stringify(Object.assign({ accion: accion, idToken: idToken }, datos || {})),
+          signal: ctrl ? ctrl.signal : undefined
         });
       } catch (e) {
-        const er = new Error('No hay conexión con el servidor. Revisa tu internet e intenta de nuevo.');
+        const tarde = e && e.name === 'AbortError';
+        const er = new Error(tarde
+          ? (accion === 'comprar' || accion === 'preorden_crear' ? 'El servidor tardó demasiado en responder. Antes de intentar de nuevo, revisa "Mis Cuentas": tu compra pudo haberse hecho.' : 'El servidor tardó demasiado en responder. Intenta de nuevo en un momento.')
+          : 'No hay conexión con el servidor. Revisa tu internet e intenta de nuevo.');
         er.codigoRed = true;
         throw er;
-      }
+      } finally { clearTimeout(limite); }
       if (!resp.ok) {
         // 404 = la dirección del servidor guardada en Ajustes ya no existe (implementación nueva o archivada)
         const staff = (function () { try { return esStaffSesion(); } catch (e) { return false; } })();
