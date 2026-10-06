@@ -381,6 +381,14 @@
     <!-- VISTA: MI PERFIL (antes "Mis Cuentas"; se conserva el id vistaMisCuentas) -->
     <section id="vistaProveedor" class="hidden pb-24 sm:pb-6 max-w-2xl mx-auto space-y-4">
       <div id="provReferidosCaja" class="hidden"></div>
+      <div id="provCorreosCaja" class="bg-gray-900 border border-violet-500/40 rounded-2xl overflow-hidden">
+        <div class="p-4 flex items-center gap-3">
+          <span class="relative w-10 h-10 shrink-0 rounded-xl bg-violet-500/15 text-violet-300 flex items-center justify-center"><i class="fa-solid fa-envelope"></i><span id="provCorreosNuevos" class="hidden absolute -top-1.5 -right-1.5 min-w-[20px] h-5 px-1 rounded-full bg-red-500 text-white text-[11px] font-black flex items-center justify-center border-2 border-gray-950"></span></span>
+          <div class="min-w-0 flex-grow"><p class="text-sm font-black text-white">Correos para trabajar</p><p id="provCorreosResumen" class="text-[11px] text-gray-400">Aquí te llegan los correos que te asignan.</p></div>
+          <button type="button" id="btnSolicitarCorreos" onclick="solicitarCorreos()" class="shrink-0 px-3 py-2 rounded-xl bg-violet-500 hover:bg-violet-400 text-white font-bold text-[11px]"><i class="fa-solid fa-hand mr-1"></i>Pedir correos</button>
+        </div>
+        <div id="provCorreosLista" class="hidden border-t border-gray-800 p-3 space-y-3"></div>
+      </div>
       <div class="p-5 bg-gradient-to-br from-emerald-900/40 to-gray-900 border border-emerald-500/40 rounded-2xl shadow-xl">
         <p class="text-[11px] font-bold text-emerald-300 uppercase tracking-wider">Se te debe</p>
         <p id="provDebe" class="text-4xl font-black text-white mt-1">$0</p>
@@ -403,6 +411,11 @@
           <div>
             <label class="block text-xs text-gray-400 mb-1">Cuentas (una por línea: correo:clave)</label>
             <textarea id="provCuentas" rows="6" oninput="actualizarContadorProveedor()" placeholder="correo1@gmail.com:clave1&#10;correo2@gmail.com:clave2" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white font-mono focus:outline-none"></textarea>
+            <div class="mt-3">
+              <label class="block text-xs text-gray-400 mb-1">Contraseña de la plataforma (opcional)</label>
+              <input type="text" id="provClaveAcceso" autocomplete="off" placeholder="Si estas cuentas entran con una contraseña distinta a la del correo" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-sm text-white font-mono focus:outline-none">
+              <p class="text-[10px] text-gray-500 mt-1">Es la contraseña con la que el cliente entra a la plataforma (Prime Video, Disney+, etc.). Si la dejas vacía, se usa la que pusiste en cada línea.</p>
+            </div>
             <p id="provContador" class="text-[10px] text-gray-500 mt-1">0 cuentas</p>
           </div>
           <button type="submit" id="btnEnviarLote" class="w-full bg-emerald-500 hover:bg-emerald-400 text-black font-bold py-2.5 rounded-xl text-xs transition">Enviar para aprobación</button>
@@ -1016,6 +1029,23 @@
 
       <!-- TAB 3: CARGA DE STOCK -->
       <div id="adminSecStock" class="hidden">
+        <div id="ventaManualCaja" class="solo-admin mb-4 bg-gray-900 border border-emerald-500/30 rounded-2xl overflow-hidden">
+          <button type="button" onclick="document.getElementById('vmCuerpo').classList.toggle('hidden')" class="w-full text-left p-4 flex items-center gap-3">
+            <span class="w-9 h-9 shrink-0 rounded-xl bg-emerald-500/15 text-emerald-300 flex items-center justify-center"><i class="fa-brands fa-whatsapp"></i></span>
+            <span class="min-w-0 flex-grow"><span class="block font-bold text-white text-sm">Venta manual (WhatsApp)</span><span class="block text-[11px] text-gray-400">Saca cuentas del inventario y copia el mensaje listo para el cliente</span></span>
+            <i class="fa-solid fa-chevron-down text-gray-400"></i>
+          </button>
+          <div id="vmCuerpo" class="hidden border-t border-gray-800 p-4 space-y-2.5">
+            <select id="vmProducto" onchange="vmCambioProducto()" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none"></select>
+            <div class="grid grid-cols-3 gap-2">
+              <label class="text-[10px] text-gray-400">Cantidad<input type="number" id="vmCantidad" min="1" value="1" class="mt-1 w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"></label>
+              <label class="text-[10px] text-gray-400">Precio c/u ($)<input type="number" id="vmPrecio" min="0" step="100" class="mt-1 w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"></label>
+              <label class="text-[10px] text-gray-400">Cliente (nota)<input type="text" id="vmCliente" maxlength="80" placeholder="Opcional" class="mt-1 w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"></label>
+            </div>
+            <p id="vmInfo" class="text-[11px] text-gray-400"></p>
+            <button type="button" id="btnVentaManual" onclick="hacerVentaManual()" class="w-full py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-black text-xs"><i class="fa-solid fa-box-open mr-1"></i>Sacar del inventario y armar mensaje</button>
+          </div>
+        </div>
         <div class="p-5 bg-gray-900 border border-gray-800 rounded-2xl max-w-2xl mb-24 sm:mb-0">
           <h3 class="text-base font-bold text-white mb-2 flex items-center gap-2">
             <i class="fa-solid fa-key text-emerald-400"></i> Cargar Cuentas al Inventario
@@ -1364,6 +1394,7 @@
         </div>
       </div>
 
+      <!-- (las secciones de venta manual y asignación de correos viven en Cargar Cuentas y Proveedores) -->
       <!-- ==================== ADMIN: NOVEDADES PARA CLIENTES ==================== -->
       <div id="adminSecNovedades" class="hidden space-y-4 pb-28 sm:pb-0">
         <div class="p-4 rounded-2xl border border-sky-500/30 bg-gradient-to-br from-sky-500/10 via-gray-900 to-gray-900">
@@ -1506,6 +1537,24 @@
           <h3 class="text-base font-bold text-white mb-1 flex items-center gap-2"><i class="fa-solid fa-truck-ramp-box text-emerald-400"></i> Proveedores de stock</h3>
           <p class="text-xs text-gray-400">Aprueba lo que suben, ponles el costo por cuenta y márcalos como saldados cuando les pagues (el pago lo haces por aparte).</p>
           <p class="text-[11px] text-gray-500 mt-2">Para crear un proveedor: <b class="text-gray-300">Usuarios Registrados → Crear usuario</b> con el rol "Proveedor", y luego, con su botón <b class="text-gray-300">Editar</b>, marca qué productos puede subir.</p>
+        </div>
+        <div class="solo-admin bg-gray-900 border border-violet-500/30 rounded-2xl overflow-hidden">
+          <button type="button" onclick="document.getElementById('acCuerpo').classList.toggle('hidden')" class="w-full text-left p-4 flex items-center gap-3">
+            <span class="w-9 h-9 shrink-0 rounded-xl bg-violet-500/15 text-violet-300 flex items-center justify-center"><i class="fa-solid fa-envelope-open-text"></i></span>
+            <span class="min-w-0 flex-grow"><span class="block font-bold text-white text-sm">Asignar correos a proveedores</span><span id="acResumen" class="block text-[11px] text-gray-400 truncate">Entrega correos del inventario para que trabajen</span></span>
+            <span id="acBadgeSol" class="hidden px-2 py-0.5 rounded-full bg-violet-500 text-white text-[10px] font-black"></span>
+          </button>
+          <div id="acCuerpo" class="hidden border-t border-gray-800 p-4 space-y-2.5">
+            <div id="acSolicitudes" class="space-y-1.5"></div>
+            <select id="acProveedor" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none"></select>
+            <div class="grid grid-cols-3 gap-2">
+              <select id="acProducto" onchange="acCambioProducto()" class="col-span-2 bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"></select>
+              <input type="number" id="acCantidad" min="1" placeholder="Cantidad" class="bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none">
+            </div>
+            <p id="acInfo" class="text-[11px] text-gray-400">Salen del inventario y su costo queda como "asignado a proveedores". No cambia lo que le debes al proveedor.</p>
+            <button type="button" id="btnAsignarCorreos" onclick="asignarCorreosProveedor()" class="w-full py-2.5 rounded-xl bg-violet-500 hover:bg-violet-400 text-white font-black text-xs">Asignar correos</button>
+            <div id="acHistorial" class="space-y-1.5 pt-2 border-t border-gray-800"></div>
+          </div>
         </div>
         <div class="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden">
           <div class="px-4 py-3 border-b border-gray-800">
@@ -5383,8 +5432,13 @@
     let claveMasterRuntime = '';
     function obtenerClaveMaster() { return claveMasterRuntime || ajustesGeneralesConfig.claveAmazon || ''; }
 
-    function resolverClaveAccesoCuentas(cuentas) {
-      const master = obtenerClaveMaster();
+    // La contraseña máster solo aplica a Prime Video / Amazon; los demás productos usan la contraseña de cada cuenta
+    function esProductoPrime(prod) {
+      if (!prod) return false;
+      return prod.esAmazon === true || /prime\s*video|amazon/i.test(String(prod.nombre || prod.productoNombre || ''));
+    }
+    function resolverClaveAccesoCuentas(cuentas, prodInfo) {
+      const master = (prodInfo && !esProductoPrime(prodInfo)) ? '' : obtenerClaveMaster();
       const claves = (cuentas || []).map(raw => parseCredencialObj(raw).claveAcceso || master);
       const unicas = Array.from(new Set(claves.filter(Boolean)));
       return unicas.length ? unicas.join(' / ') : master;
@@ -6402,6 +6456,10 @@
         if (!(f >= limite)) return;
         out.push({ id: 'tk_' + t.id, tipo: 'ticket', origen: 'global', fecha: t.creadoEl, titulo: 'Reporte de cuenta: ' + (t.cuenta || ''), mensaje: (t.clienteEmail || 'Cliente') + ' · ' + (t.motivo || '') + (t.productoNombre ? ' · ' + t.productoNombre : '') });
       });
+      (solicitudesCorreos || []).forEach(x => {
+        if (x.estado !== 'pendiente' || !(Date.parse(x.fecha) >= limite)) return;
+        out.push({ id: 'sol_' + x.id, tipo: 'ticket', origen: 'global', fecha: x.fecha, titulo: (x.proveedorNombre || 'Un proveedor') + ' pide correos', mensaje: (x.cantidad ? x.cantidad + ' correos · ' : '') + 'Atiéndelo en Proveedores → Asignar correos' });
+      });
       registrosRecientes.forEach(u => {
         const f = Date.parse(u.fechaRegistro);
         if (!(f >= limite)) return;
@@ -7157,14 +7215,14 @@
       if (tab === 'reporte') cargarDashboardVentas(false);
       if (tab === 'categorias') renderizarAdminCategoriasColores();
       if (tab === 'usuarios') { cargarUsuariosAdmin(); cargarRegaloRevendedor(); cargarPanelReferidos(); }
-      if (tab === 'stock') { poblarSelectStock(); cargarAportantesStock(); }
+      if (tab === 'stock') { poblarSelectStock(); cargarAportantesStock(); prepararVentaManual(); }
       if (tab === 'apariencia') cargarDatosAparienciaAdmin();
       if (tab === 'pagos') cargarMetodosPagoAdmin();
       if (tab === 'recargas') cargarRecargasAdmin();
       if (tab === 'historial') cargarHistorialVentasAdmin();
       if (tab === 'netflix') renderizarNetflixAdmin();
       if (tab === 'ajustes') cargarDatosAjustesEnForm();
-      if (tab === 'proveedores') renderizarAdminProveedores();
+      if (tab === 'proveedores') { renderizarAdminProveedores(); prepararAsignarCorreos(); }
       if (tab === 'asistente') cargarEditorAsistente();
       if (tab === 'tickets') { renderizarTickets(); limpiarFotosRespuestaVencidas(); }
       if (tab === 'promociones') { renderizarPromoProductos(); renderizarPromoActivas(); }
@@ -8026,7 +8084,7 @@
             </div>
           </div>`;
         const esNf = esProductoNetflix(prodInfo) && !Array.isArray(ex.partes);
-        const acceso = Array.isArray(ex.partes) ? '' : esNf ? '' : (prodInfo.esAmazon ? obtenerClaveMaster() : resolverClaveAccesoCuentas(cuentas || []));
+        const acceso = Array.isArray(ex.partes) ? '' : esNf ? '' : resolverClaveAccesoCuentas(cuentas || [], prodInfo);
         if (acceso) {
           html += `<div class="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/30">${fila(prodInfo.esAmazon ? 'Acceso' : 'Clave', String(acceso))}<p class="text-[10px] text-amber-200 mt-1 ml-14">${prodInfo.esAmazon ? 'Clave de acceso de Amazon para todas tus cuentas' : 'Contraseña de tus cuentas'}</p></div>`;
         }
@@ -8697,8 +8755,8 @@
             if (!refNuevo) { cambios.referidoPorEmail = ''; cambios.referidoPorUid = ''; }
             else {
               if (refNuevo === String(orig.email || '').toLowerCase()) { alert('Un cliente no puede ser su propio referido.'); return; }
-              const qRef = await db.collection('usuarios').where('email', '==', refNuevo).limit(1).get();
-              let refUid = ''; qRef.forEach(x => { refUid = x.id; });
+              const encontrado = await buscarUidPorCorreo(refNuevo);
+              const refUid = encontrado ? encontrado.uid : '';
               if (!refUid) { alert('No encontré ningún usuario con el correo ' + refNuevo + '.'); return; }
               if (esCorreoAdmin(refNuevo)) { alert('Tu cuenta de administrador no participa en referidos.'); return; }
               cambios.referidoPorEmail = refNuevo; cambios.referidoPorUid = refUid; cambios.referidoProcesado = true;
@@ -8865,7 +8923,8 @@
     }
 
     async function buscarPerfilPorEmail(email) {
-      const variantes = Array.from(new Set([email, email.toLowerCase()]));
+      const cap = email.charAt(0).toUpperCase() + email.slice(1).toLowerCase();
+      const variantes = Array.from(new Set([email, email.toLowerCase(), cap]));
       for (const em of variantes) {
         const snap = await conTiempo(db.collection('usuarios').where('email', '==', em).limit(1).get(), TIEMPO_ESPERA_USUARIO_MS, 'La conexión está lenta.');
         if (!snap.empty) return Object.assign({ uid: snap.docs[0].id }, snap.docs[0].data());
@@ -9899,6 +9958,7 @@
           snap.forEach(d => proveedorLotes.push(Object.assign({ id: d.id }, d.data())));
           proveedorLotes.sort((a, b) => String(b.creadoEl).localeCompare(String(a.creadoEl)));
           renderizarProveedor();
+          try { iniciarMisCorreosProveedor(); } catch (e) { /* nada */ }
           try { renderizarMisReferidos(); } catch (e) { /* nada */ }
         }, err => console.warn('Mis envíos no disponibles:', err));
       } catch (e) { console.warn(e); }
@@ -10002,9 +10062,11 @@
         await db.collection('stock_pendiente').add({
           proveedorUid: currentUser.uid, proveedorNombre: String(perfilNombreActual || currentUser.email).slice(0, 80), proveedorEmail: currentUser.email,
           productoId: prodId, productoNombre: String(nombreProd).slice(0, 120), cuentas: cuentas, cantidad: cuentas.length,
-          estado: 'pendiente', creadoEl: new Date().toISOString()
+          estado: 'pendiente', creadoEl: new Date().toISOString(),
+          claveAcceso: String((document.getElementById('provClaveAcceso') || {}).value || '').trim().slice(0, 80)
         });
         document.getElementById('provCuentas').value = '';
+        const cpa = document.getElementById('provClaveAcceso'); if (cpa) cpa.value = '';
         actualizarContadorProveedor();
         mostrarToast('Enviado: tus cuentas quedaron en revisión.');
         if (obtenerBackendUrl()) llamarBackend('notificar', { tipo: 'stock_proveedor', productoNombre: nombreProd, cantidad: cuentas.length }).catch(() => {});
@@ -10159,7 +10221,7 @@
           const legado = Array.isArray(inv.cuentas) ? inv.cuentas : [];
           const priv = (privDoc.exists && Array.isArray(privDoc.data().cuentas)) ? privDoc.data().cuentas : [];
           const ahoraSubida = new Date().toISOString();
-          const nuevas = (datos.cuentas || []).map(x => credencialDesdeLinea(String(x), costo, ahoraSubida));
+          const nuevas = (datos.cuentas || []).map(x => { const o = credencialDesdeLinea(String(x), costo, ahoraSubida); if (datos.claveAcceso) o.claveAcceso = String(datos.claveAcceso); if (datos.proveedorUid) { o.aportadoPor = datos.proveedorUid; o.aportadoNombre = datos.proveedorNombre || ''; } return o; });
           const todas = priv.concat(legado).concat(nuevas);
           if (privDoc.exists || inventarioSeguroActivo()) {
             t.set(privRef, { cuentas: todas }, { merge: true });
@@ -11102,7 +11164,7 @@
       if (correoCliente) {
         if (tkCompraDetectada && tkCompraDetectada.email === correoCliente && tkCompraDetectada.uid) { cli.uid = tkCompraDetectada.uid; compraT = tkCompraDetectada; }
         else {
-          try { const q = await db.collection('usuarios').where('email', '==', correoCliente).limit(1).get(); q.forEach(d => { cli.uid = d.id; }); } catch (e) { console.warn(e); }
+          try { const enc = await buscarUidPorCorreo(correoCliente); if (enc) cli.uid = enc.uid; } catch (e) { console.warn(e); }
           if (!cli.uid && !await confirmarModal(`No encontré un cliente con el correo ${correoCliente}. ¿Crear el ticket sin asignarlo a nadie?`, { textoAceptar: 'Sí, crear' })) return;
         }
       }
@@ -14029,7 +14091,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-05o';
+    const VERSION_PAGINA = '2026-10-05q';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261005_tarjetas', fecha: '2026-10-05', titulo: 'Tienda con más estilo', mensaje: 'Cada producto ahora tiene su **tarjeta con el color de su marca**: Prime Video, Disney+, YouTube, Spotify y más. ¡Míralas en la tienda!' },
       { id: 'act_20261005_reportes', fecha: '2026-10-05', titulo: 'Tus reportes, más cómodos', mensaje: 'En **Mis Cuentas** ahora tienes un botón **Mis reportes** con un número rojo cuando te respondemos. Y si te cambiamos una cuenta, la verás destacada como **Usa esta cuenta**, con la anterior tachada.' },
@@ -14379,8 +14441,8 @@
       for (const u of lista) {
         if (!u.referidoPorEmail || u.referidoProcesado) continue;
         try {
-          const q = await db.collection('usuarios').where('email', '==', u.referidoPorEmail).limit(1).get();
-          let refUid = '', refEmail = ''; q.forEach(x => { refUid = x.id; refEmail = (x.data() || {}).email || ''; });
+          const enc = await buscarUidPorCorreo(u.referidoPorEmail);
+          const refUid = enc ? enc.uid : '', refEmail = enc ? enc.email : '';
           const cambios = { referidoProcesado: true };
           if (refUid && refUid !== u.uid && !esCorreoAdmin(refEmail)) {
             cambios.referidoPorUid = refUid;
@@ -14602,6 +14664,220 @@
       const propias = (proveedorLotes || []).filter(l => l.estado === 'aprobado' && String(l.aprobadoEl || l.creadoEl) >= desde).reduce((t, l) => t + (parseInt(l.cantidad, 10) || 0), 0);
       const pct = Math.min(100, Math.round(propias / R.meta * 100));
       return `<div class="mt-2 p-2 rounded-xl bg-gray-900/70"><div class="flex justify-between text-[10px] text-gray-300"><span>Tu meta de ${cfg.periodo === 'semana' ? 'esta semana' : 'este mes'} para cobrar comisiones</span><b class="${propias >= R.meta ? 'text-emerald-300' : 'text-white'}">${propias}/${R.meta}</b></div><div class="mt-1 h-1.5 rounded-full bg-gray-800 overflow-hidden"><div class="h-full ${propias >= R.meta ? 'bg-emerald-400' : 'bg-sky-400'}" style="width:${pct}%"></div></div><p class="text-[10px] text-gray-500 mt-1">Cobras hasta ${R.tope} ${R.tope === 1 ? 'pago' : 'pagos'} de ${formatoCOP(R.monto)} por periodo: uno por cada ${R.meta} cuentas tuyas y cada ${R.N} de tus referidos.</p></div>`;
+    }
+
+
+    // ==================== SACAR CUENTAS DEL INVENTARIO (transacción) ====================
+    // Toma N cuentas libres (sin perfiles de Alquileres) de un producto, en inventario normal o protegido
+    async function sacarCuentasInventario(tx, productoId, cantidad) {
+      const invRef = db.collection('inventario').doc(productoId), privRef = db.collection('inventario_privado').doc(productoId);
+      const invDoc = await tx.get(invRef), privDoc = await tx.get(privRef);
+      if (!invDoc.exists) throw new Error('No encontré ese producto.');
+      const inv = invDoc.data() || {};
+      const legado = Array.isArray(inv.cuentas) ? inv.cuentas : [];
+      const priv = (privDoc.exists && Array.isArray((privDoc.data() || {}).cuentas)) ? privDoc.data().cuentas : [];
+      const todas = priv.concat(legado), sacadas = [], quedan = [];
+      todas.forEach(x => { if (sacadas.length < cantidad && !(x && typeof x === 'object' && x.alquilerId)) sacadas.push(x); else quedan.push(x); });
+      if (sacadas.length < cantidad) throw new Error(`Solo hay ${sacadas.length} cuentas libres de "${inv.nombre || productoId}".`);
+      if (privDoc.exists || inventarioSeguroActivo()) {
+        tx.set(privRef, { cuentas: quedan }, { merge: true });
+        tx.set(invRef, { stock: quedan.length, cuentas: firebase.firestore.FieldValue.delete() }, { merge: true });
+      } else tx.set(invRef, { cuentas: quedan, stock: quedan.length }, { merge: true });
+      return { sacadas: sacadas, inv: inv };
+    }
+    function opcionesProductosStock(sel, conLibres) {
+      if (!sel) return;
+      const prev = sel.value;
+      sel.innerHTML = catalogoUnificado.filter(p => !p.esCombo).sort((a, b) => String(a.nombre).localeCompare(String(b.nombre), 'es'))
+        .map(p => `<option value="${escaparHtml(p.docId)}">${escaparHtml(p.nombre || p.docId)} · ${stockLibreDeProducto(p.docId)} libres</option>`).join('');
+      if (prev) sel.value = prev;
+    }
+
+    // ==================== VENTA MANUAL POR WHATSAPP ====================
+    function prepararVentaManual() { opcionesProductosStock(document.getElementById('vmProducto')); vmCambioProducto(); }
+    function vmCambioProducto() {
+      const id = (document.getElementById('vmProducto') || {}).value;
+      const p = catalogoUnificado.find(x => x.docId === id);
+      const pr = document.getElementById('vmPrecio'); if (pr && p) pr.value = (p.precioLista !== undefined ? p.precioLista : p.precio) || '';
+      const inf = document.getElementById('vmInfo'); if (inf && p) inf.textContent = `${stockLibreDeProducto(id)} cuentas libres${esProductoPrime(p) ? ' · se incluye la contraseña de Prime Video' : ''}.`;
+    }
+    function textoVentaManual(prod, cuentas) {
+      const prime = esProductoPrime(prod);
+      let t = `✨ *${prod.nombre || 'Tu compra'}*\n`;
+      cuentas.forEach((raw, i) => {
+        const c = parseCredencialObj(raw);
+        const clavePlat = c.claveAcceso || (prime ? obtenerClaveMaster() : '');
+        t += `\n${cuentas.length > 1 ? `*Cuenta ${i + 1}*\n` : ''}📧 Correo: ${c.email}\n🔑 Contraseña: ${clavePlat && prime ? clavePlat : c.pass}\n`;
+        if (prime && c.pass) t += `✉️ Clave del correo (códigos): ${c.pass}\n`;
+        else if (clavePlat && !prime) t += `🔐 Contraseña de la plataforma: ${clavePlat}\n`;
+      });
+      t += `\n🌐 ${location.origin && /^https?:/.test(location.origin) ? location.host : 'epicchannels.quest'}`;
+      return t;
+    }
+    async function hacerVentaManual() {
+      if (!esAdminSesionActual()) return;
+      const id = document.getElementById('vmProducto').value;
+      const prod = catalogoUnificado.find(x => x.docId === id);
+      const n = Math.max(1, parseInt(document.getElementById('vmCantidad').value, 10) || 1);
+      const precio = Math.max(0, Math.round(Number(document.getElementById('vmPrecio').value) || 0));
+      const cliente = String(document.getElementById('vmCliente').value || '').trim().slice(0, 80);
+      if (!prod) { alert('Elige el producto.'); return; }
+      if (!await confirmarModal(`¿Sacar ${n} ${n === 1 ? 'cuenta' : 'cuentas'} de ${prod.nombre} por ${formatoCOP(precio * n)}?`, { textoAceptar: 'Sí, sacar' })) return;
+      const btn = document.getElementById('btnVentaManual'); if (btn) btn.disabled = true;
+      try {
+        let res = null;
+        const ref = db.collection('compras').doc();
+        await db.runTransaction(async (tx) => {
+          res = await sacarCuentasInventario(tx, id, n);
+          const costo = res.sacadas.reduce((t, x) => t + (parseCredencialObj(x).costo || 0), 0);
+          tx.set(ref, {
+            usuarioId: '', usuarioEmail: cliente ? 'WhatsApp · ' + cliente : 'Venta por WhatsApp', productoId: id, productoNombre: prod.nombre || id, categoria: prod.categoria || '',
+            cantidad: n, precioUnitario: precio, total: precio * n, costoTotal: costo, gananciaNeta: precio * n - costo, tipoGarantia: prod.tipoGarantia || '',
+            credenciales: res.sacadas.map(x => { const c = parseCredencialObj(x); return c.email + ':' + c.pass; }).join('\n'),
+            correos: res.sacadas.map(x => String(parseCredencialObj(x).email || '').toLowerCase()), fecha: new Date().toISOString(), procesadoPor: 'manual', ventaManual: true, vendidoPor: currentUser.email
+          });
+        });
+        const texto = textoVentaManual(prod, res.sacadas);
+        document.getElementById('vmCantidad').value = 1; document.getElementById('vmCliente').value = '';
+        abrirDialogoTextoCopiable('Venta lista para WhatsApp', texto);
+      } catch (err) { alert('No se pudo: ' + err.message); }
+      finally { if (btn) btn.disabled = false; }
+    }
+    // Ventana con texto y botón de copiar
+    function abrirDialogoTextoCopiable(titulo, texto) {
+      let m = document.getElementById('modalTextoCopiable');
+      if (!m) {
+        m = document.createElement('div'); m.id = 'modalTextoCopiable';
+        m.className = 'fixed inset-0 bg-black/80 backdrop-blur-sm z-[60] hidden items-center justify-center p-3';
+        m.innerHTML = `<div class="bg-gray-900 border border-emerald-500/40 rounded-2xl max-w-md w-full shadow-2xl max-h-[90vh] flex flex-col overflow-hidden"><div class="flex items-center justify-between gap-3 px-4 py-3 border-b border-gray-800"><h3 id="tcTitulo" class="text-base font-black text-white"></h3><button type="button" onclick="document.getElementById('modalTextoCopiable').classList.add('hidden');document.getElementById('modalTextoCopiable').style.display='none'" class="w-8 h-8 rounded-full bg-gray-800 text-gray-300"><i class="fa-solid fa-xmark"></i></button></div><textarea id="tcTexto" readonly rows="12" class="m-4 bg-gray-800 border border-gray-700 rounded-xl p-3 text-xs text-white font-mono resize-none"></textarea><div class="px-4 pb-4"><button type="button" onclick="copiarTexto(document.getElementById('tcTexto').value,'Copiado: pégalo en WhatsApp')" class="w-full py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-black text-xs"><i class="fa-solid fa-copy mr-1"></i>Copiar todo</button></div></div>`;
+        document.body.appendChild(m);
+      }
+      document.getElementById('tcTitulo').textContent = titulo; document.getElementById('tcTexto').value = texto;
+      m.classList.remove('hidden'); m.style.display = 'flex';
+    }
+
+    // ==================== ASIGNAR CORREOS A PROVEEDORES ====================
+    var asignaciones = [], unsubAsign = null, solicitudesCorreos = [], unsubSolic = null;
+    async function prepararAsignarCorreos() {
+      opcionesProductosStock(document.getElementById('acProducto'));
+      try { await cargarAportantesStock(); } catch (e) { /* nada */ }
+      const sel = document.getElementById('acProveedor');
+      if (sel) { const prev = sel.value; sel.innerHTML = '<option value="">Elige el proveedor</option>' + (aportantesCache || []).filter(u => u.proveedor).map(u => `<option value="${escaparHtml(u.uid)}">${escaparHtml(u.nombre)}${u.email ? ' (' + escaparHtml(u.email) + ')' : ''}</option>`).join(''); if (prev) sel.value = prev; }
+      acCambioProducto();
+      if (!unsubAsign) unsubAsign = db.collection('asignaciones_proveedor').onSnapshot(snap => { asignaciones = []; snap.forEach(d => asignaciones.push(Object.assign({ id: d.id }, d.data() || {}))); asignaciones.sort((a, b) => String(b.fecha).localeCompare(String(a.fecha))); renderizarAsignacionesAdmin(); }, e => console.warn(e));
+      if (!unsubSolic) unsubSolic = db.collection('solicitudes_correos').onSnapshot(snap => { solicitudesCorreos = []; snap.forEach(d => solicitudesCorreos.push(Object.assign({ id: d.id }, d.data() || {}))); solicitudesCorreos.sort((a, b) => String(b.fecha).localeCompare(String(a.fecha))); renderizarAsignacionesAdmin(); try { renderizarNotificaciones(); } catch (e) { /* nada */ } }, e => console.warn(e));
+    }
+    function acCambioProducto() {
+      const id = (document.getElementById('acProducto') || {}).value;
+      const inf = document.getElementById('acInfo');
+      if (inf && id) inf.textContent = `${stockLibreDeProducto(id)} libres. Salen del inventario y su costo queda como "asignado a proveedores". No cambia lo que le debes al proveedor.`;
+    }
+    async function asignarCorreosProveedor(solicitudId) {
+      if (!esAdminSesionActual()) return;
+      const uid = document.getElementById('acProveedor').value, id = document.getElementById('acProducto').value;
+      const n = Math.max(1, parseInt(document.getElementById('acCantidad').value, 10) || 0);
+      const prov = (aportantesCache || []).find(u => u.uid === uid), prod = catalogoUnificado.find(x => x.docId === id);
+      if (!prov) { alert('Elige el proveedor.'); return; }
+      if (!prod || !(parseInt(document.getElementById('acCantidad').value, 10) > 0)) { alert('Elige el producto y la cantidad.'); return; }
+      if (!await confirmarModal(`¿Asignar ${n} de ${prod.nombre} a ${prov.nombre}?`, { textoAceptar: 'Sí, asignar' })) return;
+      const btn = document.getElementById('btnAsignarCorreos'); if (btn) btn.disabled = true;
+      try {
+        const ref = db.collection('asignaciones_proveedor').doc();
+        await db.runTransaction(async (tx) => {
+          const res = await sacarCuentasInventario(tx, id, n);
+          const lineas = res.sacadas.map(x => { const c = parseCredencialObj(x); return c.email + ':' + c.pass; });
+          tx.set(ref, { proveedorUid: uid, proveedorNombre: prov.nombre, productoId: id, productoNombre: prod.nombre || id, cantidad: n, cuentas: lineas, costoTotal: res.sacadas.reduce((t, x) => t + (parseCredencialObj(x).costo || 0), 0), fecha: new Date().toISOString(), visto: false, asignadoPor: currentUser.email });
+          const sol = solicitudId ? solicitudId : (solicitudesCorreos.find(x => x.proveedorUid === uid && x.estado === 'pendiente') || {}).id;
+          if (sol) tx.update(db.collection('solicitudes_correos').doc(sol), { estado: 'atendida', atendidaEl: new Date().toISOString() });
+        });
+        document.getElementById('acCantidad').value = '';
+        mostrarToast(`Listo: ${n} asignados a ${prov.nombre}. Le aparecerán en su panel.`);
+      } catch (err) { alert('No se pudo asignar: ' + err.message); }
+      finally { if (btn) btn.disabled = false; }
+    }
+    function atenderSolicitud(id) {
+      const s0 = solicitudesCorreos.find(x => x.id === id); if (!s0) return;
+      const sel = document.getElementById('acProveedor'); if (sel) sel.value = s0.proveedorUid;
+      if (s0.cantidad) document.getElementById('acCantidad').value = s0.cantidad;
+      document.getElementById('acCantidad').focus();
+    }
+    async function descartarSolicitud(id) { try { await db.collection('solicitudes_correos').doc(id).update({ estado: 'descartada' }); } catch (e) { alert(e.message); } }
+    function renderizarAsignacionesAdmin() {
+      const pend = solicitudesCorreos.filter(x => x.estado === 'pendiente');
+      const b = document.getElementById('acBadgeSol'); if (b) { b.textContent = pend.length + (pend.length === 1 ? ' solicitud' : ' solicitudes'); b.classList.toggle('hidden', !pend.length); }
+      const costo = asignaciones.reduce((t, a) => t + (Number(a.costoTotal) || 0), 0);
+      const r = document.getElementById('acResumen'); if (r) r.textContent = `${asignaciones.reduce((t, a) => t + (a.cantidad || 0), 0)} asignados · ${formatoCOP(costo)} en costo asignado a proveedores`;
+      const sc = document.getElementById('acSolicitudes');
+      if (sc) sc.innerHTML = pend.map(x => `<div class="p-2.5 rounded-xl bg-violet-500/10 border border-violet-500/40 flex items-center gap-2"><i class="fa-solid fa-hand text-violet-300"></i><p class="min-w-0 flex-grow text-[11px] text-white"><b>${escaparHtml(x.proveedorNombre || x.proveedorEmail || '')}</b> pide correos${x.cantidad ? ' (' + x.cantidad + ')' : ''} · ${escaparHtml(bcFecha(x.fecha))}</p><button type="button" onclick="atenderSolicitud('${escaparJsAttr(x.id)}')" class="px-2 py-1 rounded-lg bg-violet-500 text-white text-[10px] font-bold">Atender</button><button type="button" onclick="descartarSolicitud('${escaparJsAttr(x.id)}')" class="px-2 py-1 rounded-lg bg-gray-800 text-gray-300 text-[10px]">✕</button></div>`).join('');
+      const h = document.getElementById('acHistorial');
+      if (h) h.innerHTML = asignaciones.slice(0, 15).map(a => `<p class="text-[11px] text-gray-400"><b class="text-gray-200">${escaparHtml(a.proveedorNombre)}</b> · ${a.cantidad} de ${escaparHtml(a.productoNombre)} · ${formatoCOP(a.costoTotal || 0)} · ${escaparHtml(bcFecha(a.fecha))}${a.visto ? ' · <span class="text-emerald-300">visto</span>' : ''}</p>`).join('') || '<p class="text-[11px] text-gray-500">Todavía no has asignado correos.</p>';
+    }
+
+    // ----- Panel del proveedor -----
+    let misAsignaciones = [], unsubMisAsign = null, provCorreosAbierto = false;
+    function iniciarMisCorreosProveedor() {
+      if (unsubMisAsign || !currentUser || !esProveedorSesion()) return;
+      try {
+        unsubMisAsign = db.collection('asignaciones_proveedor').where('proveedorUid', '==', currentUser.uid).onSnapshot(snap => {
+          const antes = misAsignaciones.filter(a => !a.visto).length;
+          misAsignaciones = []; snap.forEach(d => misAsignaciones.push(Object.assign({ id: d.id }, d.data() || {})));
+          misAsignaciones.sort((a, b) => String(b.fecha).localeCompare(String(a.fecha)));
+          const nuevos = misAsignaciones.filter(a => !a.visto).length;
+          if (nuevos > antes && antes >= 0 && misAsignaciones.length) mostrarToast('📬 Tienes correos nuevos para trabajar.');
+          renderizarMisCorreosProveedor();
+        }, e => console.warn('Mis correos:', e));
+      } catch (e) { console.warn(e); }
+    }
+    function renderizarMisCorreosProveedor() {
+      const nuevos = misAsignaciones.filter(a => !a.visto);
+      const b = document.getElementById('provCorreosNuevos'); if (b) { b.textContent = nuevos.length; b.classList.toggle('hidden', !nuevos.length); }
+      const r = document.getElementById('provCorreosResumen');
+      if (r) r.innerHTML = misAsignaciones.length ? `${nuevos.length ? '<b class="text-red-300">¡Tienes correos nuevos!</b> · ' : ''}${misAsignaciones.reduce((t, a) => t + (a.cantidad || 0), 0)} correos asignados · <button type="button" onclick="alternarMisCorreos()" class="underline text-violet-300">${provCorreosAbierto ? 'ocultar' : 'ver'}</button>` : 'Aquí te llegan los correos que te asignan. Si no tienes, pídelos.';
+      const l = document.getElementById('provCorreosLista');
+      if (!l) return;
+      l.classList.toggle('hidden', !provCorreosAbierto || !misAsignaciones.length);
+      l.innerHTML = misAsignaciones.slice(0, 20).map(a => `<div class="space-y-1.5"><div class="flex items-center justify-between gap-2"><p class="text-[11px] text-white"><b>${a.cantidad}</b> de ${escaparHtml(a.productoNombre)} · ${escaparHtml(bcFecha(a.fecha))}${!a.visto ? ' <span class="px-1.5 py-0.5 rounded bg-red-500 text-white text-[9px] font-black">NUEVO</span>' : ''}</p><button type="button" onclick="copiarCorreosAsignados('${escaparJsAttr(a.id)}')" class="px-2.5 py-1 rounded-lg bg-violet-500 hover:bg-violet-400 text-white text-[10px] font-bold"><i class="fa-solid fa-copy mr-1"></i>Copiar todo</button></div><textarea readonly rows="${Math.min(8, Math.max(3, (a.cuentas || []).length))}" class="w-full bg-gray-800 border border-gray-700 rounded-xl p-2.5 text-[11px] text-white font-mono resize-y">${escaparHtml((a.cuentas || []).join('\n'))}</textarea></div>`).join('');
+    }
+    async function alternarMisCorreos() {
+      provCorreosAbierto = !provCorreosAbierto; renderizarMisCorreosProveedor();
+      if (provCorreosAbierto) { for (const a of misAsignaciones.filter(x => !x.visto)) { try { await db.collection('asignaciones_proveedor').doc(a.id).update({ visto: true }); } catch (e) { /* nada */ } } }
+    }
+    function copiarCorreosAsignados(id) { const a = misAsignaciones.find(x => x.id === id); if (a) copiarTexto((a.cuentas || []).join('\n'), 'Correos copiados'); }
+    async function solicitarCorreos() {
+      if (!currentUser || !esProveedorSesion()) return;
+      if (solicitudesPropiasPendiente) { alert('Ya tienes una solicitud pendiente. Te avisaremos cuando te asignen correos.'); return; }
+      const cant = prompt('¿Cuántos correos necesitas? (opcional)', '');
+      if (cant === null) return;
+      try {
+        await db.collection('solicitudes_correos').add({ proveedorUid: currentUser.uid, proveedorNombre: String(perfilNombreActual || currentUser.email).slice(0, 80), proveedorEmail: currentUser.email, cantidad: Math.max(0, Math.min(1000, parseInt(cant, 10) || 0)), estado: 'pendiente', fecha: new Date().toISOString() });
+        solicitudesPropiasPendiente = true;
+        mostrarToast('Solicitud enviada. Te avisaremos cuando te asignen correos.');
+        if (obtenerBackendUrl()) llamarBackend('notificar', { tipo: 'stock_proveedor', productoNombre: 'SOLICITUD DE CORREOS', cantidad: parseInt(cant, 10) || 0 }).catch(() => {});
+      } catch (err) { alert('No se pudo enviar: ' + err.message); }
+    }
+    var solicitudesPropiasPendiente = false;
+
+
+    // Busca un usuario por correo sin importar mayúsculas: "Karen@..." y "karen@..." son el mismo
+    async function buscarUidPorCorreo(correo) {
+      const c = String(correo || '').trim();
+      if (!c) return null;
+      const cap = c.charAt(0).toUpperCase() + c.slice(1).toLowerCase();
+      const variantes = Array.from(new Set([c, c.toLowerCase(), cap, c.toUpperCase()]));
+      for (const v of variantes) {
+        try {
+          const q = await db.collection('usuarios').where('email', '==', v).limit(1).get();
+          if (!q.empty) return { uid: q.docs[0].id, email: (q.docs[0].data() || {}).email || v, datos: q.docs[0].data() || {} };
+        } catch (e) { /* sigue con la siguiente */ }
+      }
+      // Último recurso (solo el equipo puede leer todos): comparar todos en minúscula
+      try {
+        if (!esStaffSesion()) return null;
+        const todos = await db.collection('usuarios').get();
+        let r = null;
+        todos.forEach(d => { const u = d.data() || {}; if (!r && String(u.email || '').trim().toLowerCase() === c.toLowerCase()) r = { uid: d.id, email: u.email || c, datos: u }; });
+        return r;
+      } catch (e) { return null; }
     }
 
     // ==================== NETFLIX EN LA TIENDA: SIN CONTRASEÑA ====================
@@ -14848,7 +15124,7 @@
     function copiarCompraPerfil(indice) {
       const compra = misComprasPerfilCache[indice];
       if (!compra) return;
-      let texto = (compra.credenciales || '') + (compra.claveAcceso ? `\nContraseña: ${compra.claveAcceso}` : '');
+      let texto = (compra.credenciales || '') + ((compra.claveAcceso && (esProductoPrime(compra) || String(compra.claveAcceso) !== obtenerClaveMaster())) ? `\nContraseña: ${compra.claveAcceso}` : '');
       // Netflix se entrega sin contraseña: se copia el correo (y el perfil) con el paso a paso
       if (esProductoNetflix({ nombre: compra.productoNombre, id: compra.productoId })) {
         try {
@@ -15215,7 +15491,7 @@
               <div class="bg-gray-800/90 border border-gray-700 rounded-xl p-3 font-mono text-xs text-gray-200 select-all leading-relaxed">${lineasHtml}</div>
               ${esNfC ? htmlGuiaNetflix(false) : ''}
               ${esNfC ? `<button type="button" onclick="pedirCodigoCompraNetflix(${idx})" class="w-full py-2.5 rounded-xl nf-btn text-xs font-bold flex items-center justify-center gap-1.5"><i class="fa-solid fa-key"></i> Pedir código</button>` : ''}
-              ${(c.claveAcceso && !esNfC) ? `<div class="text-xs text-gray-300 flex items-center gap-1.5"><i class="fa-solid fa-key text-emerald-400"></i> Contraseña: <span class="font-mono font-bold text-white select-all">${escaparHtml(c.claveAcceso)}</span></div>` : ''}
+              ${(c.claveAcceso && !esNfC && (esProductoPrime(c) || String(c.claveAcceso) !== obtenerClaveMaster())) ? `<div class="text-xs text-gray-300 flex items-center gap-1.5"><i class="fa-solid fa-key text-emerald-400"></i> Contraseña: <span class="font-mono font-bold text-white select-all">${escaparHtml(c.claveAcceso)}</span></div>` : ''}
               <button onclick="copiarCompraPerfil(${idx})" class="w-full py-2 bg-gray-800 hover:bg-gray-700 border border-gray-700 text-emerald-400 font-bold text-xs rounded-xl flex items-center justify-center gap-2">
                 <i class="fa-solid fa-copy"></i> Copiar ${lineas.length > 1 ? `las ${lineas.length} cuentas` : 'cuenta'}
               </button>
