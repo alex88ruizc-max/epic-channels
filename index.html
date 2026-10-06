@@ -467,6 +467,11 @@
         <div id="provLotes" class="space-y-2"><p class="text-center text-gray-500 text-xs py-4">Aún no has enviado cuentas.</p></div>
       </div>
 
+      <div id="provTicketsCaja" class="hidden p-4 bg-gray-900 border border-amber-500/30 rounded-2xl">
+        <h3 class="text-sm font-black text-white mb-3 flex items-center gap-2"><i class="fa-solid fa-ticket text-amber-400"></i> Cuentas reportadas <span id="provTicketsAbiertos" class="hidden px-2 py-0.5 rounded-full bg-amber-500 text-black text-[10px] font-black"></span></h3>
+        <div id="provTickets" class="space-y-2"></div>
+      </div>
+
       <div id="provMetodosCaja" class="p-4 bg-gray-900 border border-gray-800 rounded-2xl">
         <h3 class="text-sm font-black text-white mb-1 flex items-center gap-2"><i class="fa-solid fa-wallet text-emerald-400"></i> Cómo quieres que te paguemos</h3>
         <p id="provMetodosAyuda" class="text-[11px] text-gray-400 mb-3">Pon tu Nequi o tu DaviPlata. Con esos datos te hacemos el pago.</p>
@@ -491,10 +496,7 @@
         <div id="provPagos" class="space-y-2"></div>
       </div>
 
-      <div id="provTicketsCaja" class="hidden p-4 bg-gray-900 border border-amber-500/30 rounded-2xl">
-        <h3 class="text-sm font-black text-white mb-3 flex items-center gap-2"><i class="fa-solid fa-ticket text-amber-400"></i> Cuentas reportadas <span id="provTicketsAbiertos" class="hidden px-2 py-0.5 rounded-full bg-amber-500 text-black text-[10px] font-black"></span></h3>
-        <div id="provTickets" class="space-y-2"></div>
-      </div>
+      
 
       <div class="p-4 bg-gray-900 border border-gray-800 rounded-2xl flex items-center justify-between gap-3">
         <div class="min-w-0">
@@ -2706,12 +2708,13 @@
         </div>
         <div class="grid grid-cols-2 gap-2">
           <div>
-            <label class="block text-xs text-gray-400 mb-1">Plan</label>
-            <select id="nfPlan" onchange="nfAutoCalcularVence('plan')" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none">
-              <option value="1">1 mes</option>
-              <option value="2">2 meses</option>
-              <option value="3">3 meses</option>
-            </select>
+            <label class="block text-xs text-gray-400 mb-1">Duración</label>
+            <input type="hidden" id="nfPlan" value="1">
+            <div class="flex gap-1.5">
+              <input type="number" id="nfDurN" min="1" max="999" oninput="nfDuracionCambio()" class="w-14 bg-gray-800 border border-gray-700 rounded-xl px-2 py-1.5 text-xs text-white focus:outline-none">
+              <select id="nfDurU" onchange="nfDuracionCambio()" class="min-w-0 flex-grow bg-gray-800 border border-gray-700 rounded-xl px-2 py-1.5 text-xs text-white focus:outline-none"><option value="h">Horas</option><option value="d">Días</option><option value="m">Meses</option><option value="y">Años</option></select>
+            </div>
+            <button type="button" onclick="nfUsarDuracionProducto()" id="nfDurProd" class="mt-1 text-[10px] text-sky-300 underline"></button>
           </div>
           <div>
             <label class="block text-xs text-gray-400 mb-1">Precio de renovación (COP)</label>
@@ -2772,7 +2775,8 @@
         </div>
         <div>
           <label class="block text-xs text-gray-400 mb-1">Duración que recibe quien lo compre</label>
-          <select id="ptPlan" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"><option value="1">1 mes</option><option value="2">2 meses</option><option value="3">3 meses</option></select>
+          <input type="hidden" id="ptPlan" value="1">
+          <p class="text-[11px] text-sky-200 p-2.5 rounded-xl bg-sky-500/10 border border-sky-500/30 leading-snug"><i class="fa-solid fa-link mr-1"></i>Recibe el <b>tiempo de garantía del producto</b> de la tienda (por ejemplo 29 días). Se cambia en <b>Editar producto → Garantía</b>, y así todo queda igual.</p>
         </div>
       </div>
       <div class="shrink-0 grid grid-cols-2 gap-2 p-3 border-t border-gray-800">
@@ -14219,7 +14223,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-05z';
+    const VERSION_PAGINA = '2026-10-06a';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261006_garantia', fecha: '2026-10-06', titulo: 'Garantías más claras', mensaje: 'Cada producto muestra ahora su **tiempo de garantía exacto** (horas, días, meses o años) y en **Mis Cuentas** ves cuánto te queda en cada cuenta.' },
       { id: 'act_20261006_dealer', fecha: '2026-10-06', titulo: '¡Llegan los Dealers! 👑', mensaje: 'Nuestros mejores compradores ahora son **Dealers**: insignia dorada en su cuenta y **cuentas de regalo** por comprar por volumen. ¿Quieres ser Dealer? Escríbenos.' },
@@ -15538,6 +15542,41 @@
       finally { if (btn) { btn.disabled = false; btn.textContent = 'Guardar permisos'; } }
     }
 
+
+    // ==================== ALQUILERES: DURACIÓN SINCRONIZADA CON EL PRODUCTO ====================
+    // Se guarda como la garantía ('29d', '1m', '1y', '24h'). Por defecto, la del producto Netflix de la tienda.
+    function duracionProductoNetflix() {
+      const p = catalogoUnificado.find(x => esProductoNetflix(x) && parseGarantia(x.tipoGarantia));
+      return p ? p.tipoGarantia : '1m';
+    }
+    function nfDuracionActual() { const n = parseInt(nfValor('nfDurN'), 10); const u = nfValor('nfDurU') || 'd'; return n > 0 ? n + u : ''; }
+    function mesesEquivalentes(dur) { const g = parseGarantia(dur); if (!g) return 1; return g.u === 'y' ? g.n * 12 : (g.u === 'm' ? g.n : Math.max(1, Math.round((g.u === 'd' ? g.n : g.n / 24) / 30))); }
+    function nfPonerDuracion(dur) {
+      const g = parseGarantia(dur) || parseGarantia('1m');
+      const n = document.getElementById('nfDurN'), u = document.getElementById('nfDurU');
+      if (n) n.value = g.n; if (u) u.value = g.u;
+      const pl = document.getElementById('nfPlan'); if (pl) pl.value = String(mesesEquivalentes(g.n + g.u));
+      const bp = document.getElementById('nfDurProd'); if (bp) { const dp = duracionProductoNetflix(); bp.textContent = (g.n + g.u) === dp ? '✓ Igual a la garantía del producto (' + textoGarantia(dp) + ')' : 'Usar la garantía del producto (' + textoGarantia(dp) + ')'; }
+    }
+    function nfDuracionCambio() { nfPonerDuracion(nfDuracionActual()); nfProximoManual = false; nfAutoCalcularVence('plan'); }
+    function nfUsarDuracionProducto() { nfPonerDuracion(duracionProductoNetflix()); nfProximoManual = false; nfAutoCalcularVence('plan'); }
+    function fechaMasDuracionNetflix(inicio, dur) {
+      const g = parseGarantia(dur);
+      if (!g) return sumarMesesNetflix(inicio, 1);
+      if (g.u === 'm') return sumarMesesNetflix(inicio, g.n);
+      if (g.u === 'y') return sumarMesesNetflix(inicio, g.n * 12);
+      const dias = g.u === 'd' ? g.n : Math.max(1, Math.ceil(g.n / 24));
+      const d = new Date(inicio + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() + dias);
+      return d.toISOString().slice(0, 10);
+    }
+    // Compra de Netflix enlazada a una cuenta de Alquileres: su tiempo es el de la cuenta (una sola fecha)
+    function alquilerDeCompra(c) {
+      if (!c || !Array.isArray(misAlquileres) || !misAlquileres.length) return null;
+      const correos = String(c.credenciales || '').split('\n').map(l => emailDeLineaCuenta(l)).filter(Boolean);
+      return misAlquileres.find(a => a.estado === 'asignado' && esFechaNetflix(a.proximoPago) && (a.compraId === c.id || correos.indexOf(String(a.correo || '').toLowerCase()) !== -1)) || null;
+    }
+    function venceAlquilerMs(a) { return new Date(a.proximoPago + 'T23:59:59').getTime(); }
+
     // ==================== NETFLIX EN LA TIENDA: SIN CONTRASEÑA ====================
     function esNombreNetflix(t) { return /netflix/i.test(String(t || '')); }
     function esProductoNetflix(p) {
@@ -15822,6 +15861,11 @@
     // Garantía de UNA cuenta de la compra. En garantías de 24 h, un ticket resuelto la reinicia; en las de 29 días sigue el mismo tiempo.
     function estadoGarantiaCuenta(c, cuenta) {
       const { tipo, inferida } = resolverTipoGarantiaCompra(c);
+      const alqC = alquilerDeCompra(c);
+      if (alqC) {
+        const desdeA = new Date(c.fecha).getTime(), venceA = venceAlquilerMs(alqC), restA = venceA - Date.now();
+        return { estado: restA > 0 ? 'vigente' : 'vencida', tipo, inferida, desde: new Date(desdeA), vence: new Date(venceA), restanteMs: restA, totalMs: Math.max(1, venceA - desdeA), reiniciada: false, puedeReportar: restA + MARGEN_REPORTE_HORAS * 3600000 > 0, enMargen: restA <= 0 && restA + MARGEN_REPORTE_HORAS * 3600000 > 0, alquiler: true };
+      }
       const fecha = c.fecha ? new Date(c.fecha) : null;
       const gar = parseGarantia(tipo);
       if (!gar || !fecha || isNaN(fecha.getTime())) {
@@ -15848,6 +15892,11 @@
     // Garantía de la compra completa (la tarjeta del perfil). Cuenta como vigente mientras alguna cuenta lo esté.
     function estadoGarantiaCompra(c) {
       const { tipo, inferida } = resolverTipoGarantiaCompra(c);
+      const alqC = alquilerDeCompra(c);
+      if (alqC) {
+        const desdeA = new Date(c.fecha).getTime(), venceA = venceAlquilerMs(alqC), restA = venceA - Date.now(), totA = Math.max(1, venceA - desdeA);
+        return { estado: restA > 0 ? 'vigente' : 'vencida', tipo, inferida, vence: new Date(venceA), restanteMs: restA, totalMs: totA, pct: Math.max(0, Math.min(100, restA / totA * 100)), alquiler: true };
+      }
       const fecha = c.fecha ? new Date(c.fecha) : null;
       const gar = parseGarantia(tipo);
       if (!gar || !fecha || isNaN(fecha.getTime())) {
@@ -17628,6 +17677,7 @@
       set('nfCliente', a ? (a.clienteNombre || '') : '');
       set('nfWhatsapp', a ? (a.clienteWhatsapp || '') : '');
       set('nfPlan', a ? String(parseInt(a.plan, 10) || 1) : '1');
+      nfPonerDuracion(a ? (a.duracion || (parseInt(a.plan, 10) || 1) + 'm') : duracionProductoNetflix());
       set('nfPrecio', a && Number(a.precio) > 0 ? String(a.precio) : '');
       set('nfInicio', a && esFechaNetflix(a.fechaInicio) ? a.fechaInicio : (modoAsignar ? hoyNetflix() : ''));
       set('nfProximo', a && esFechaNetflix(a.proximoPago) ? a.proximoPago : '');
@@ -17728,7 +17778,7 @@
       set('nfCorreo', nfNormalizarCorreo(partes[0]));
       if (partes[1]) set('nfCliente', partes[1]);
       const plan = parseInt(String(partes[2] || '').replace(/\D/g, ''), 10);
-      if ([1, 2, 3].includes(plan)) set('nfPlan', String(plan));
+      if (plan > 0 && plan <= 36) { set('nfPlan', String(plan)); nfPonerDuracion(plan + 'm'); }
       const precio = parseInt(String(partes[3] || '').replace(/\D/g, ''), 10);
       if (precio > 0) set('nfPrecio', String(precio));
       const inicio = parsearFechaNetflix(partes[4]);
@@ -17776,8 +17826,8 @@
       }
       if (!nfProximoManual) {
         const inicio = nfValor('nfInicio');
-        const plan = [1, 2, 3].includes(parseInt(nfValor('nfPlan'), 10)) ? parseInt(nfValor('nfPlan'), 10) : 1;
-        inpP.value = esFechaNetflix(inicio) ? sumarMesesNetflix(inicio, plan) : '';
+        const dur = nfDuracionActual() || ((parseInt(nfValor('nfPlan'), 10) || 1) + 'm');
+        inpP.value = esFechaNetflix(inicio) ? fechaMasDuracionNetflix(inicio, dur) : '';
       }
       actualizarVistaVenceNetflix();
     }
@@ -17840,7 +17890,8 @@
         if (mismoPerfil) { alert('Ya hay un perfil con el nombre "' + perfil + '" en esta cuenta.'); return; }
       }
       const cliente = val('nfCliente');
-      const plan = [1, 2, 3].includes(parseInt(val('nfPlan'), 10)) ? parseInt(val('nfPlan'), 10) : 1;
+      const duracionNf = nfDuracionActual() || duracionProductoNetflix();
+      const plan = mesesEquivalentes(duracionNf);
       const precio = Math.max(0, Math.round(Number(val('nfPrecio')) || 0));
       const wa = val('nfWhatsapp').replace(/\D/g, '');
       let inicio = val('nfInicio'), proximo = val('nfProximo');
@@ -17854,7 +17905,7 @@
       }
 
       const datos = {
-        correo: correo, plan: plan, precio: precio, notas: val('nfNotas'), tipo: tipoFinal, plataforma: plataformaSel,
+        correo: correo, plan: plan, duracion: duracionNf, precio: precio, notas: val('nfNotas'), tipo: tipoFinal, plataforma: plataformaSel,
         actualizadoEl: new Date().toISOString()
       };
       if (tipoFinal === 'compartida') { datos.perfil = perfil; datos.pin = pin; }
