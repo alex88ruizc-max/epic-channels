@@ -285,12 +285,6 @@
     .menu-busqueda input { width: 100%; background: rgba(17,24,39,.9); border: 1px solid rgba(55,65,81,.7); border-radius: 999px; padding: .7rem 2.5rem .7rem 2.4rem; font-size: 14px; color: #fff; outline: none; }
     .menu-busqueda input:focus { border-color: rgba(16,185,129,.6); box-shadow: 0 0 0 3px rgba(16,185,129,.15); }
   
-    /* ===== Menú del panel con su propio desplazamiento: SOLO en computador ===== */
-    @media (min-width: 1024px) {
-      #navPanelAdmin { max-height: calc(100vh - 7.5rem); overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: #374151 transparent; }
-      #navPanelAdmin .menu-busqueda { position: sticky; top: -0.5rem; z-index: 6; margin: -0.5rem -0.5rem .75rem; padding: .5rem .5rem .6rem; background: linear-gradient(#0d1220 85%, rgba(13,18,32,0)); border-radius: 1rem 1rem 0 0; }
-      #navPanelAdmin::-webkit-scrollbar { width: 5px; } #navPanelAdmin::-webkit-scrollbar-thumb { background: #374151; border-radius: 9px; }
-    }
   
     /* ===== Menú del panel ajustable con el mouse (computador) ===== */
     @media (min-width: 1024px) {
@@ -14518,7 +14512,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-06u';
+    const VERSION_PAGINA = '2026-10-06w';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261006_credito', fecha: '2026-10-06', titulo: 'Tu crédito, más fácil', mensaje: 'Si tienes **crédito pre-aprobado** te avisamos en la tienda. En tu perfil hay una pestaña **Crédito** donde lo aceptas y ves cuánto debes y tu historial.' },
       { id: 'act_20261006_negocio', fecha: '2026-10-06', titulo: 'Dealers: Mi negocio 👑', mensaje: 'Los Dealers ahora pueden **asignar cada cuenta a su cliente**, entregarla por WhatsApp con un toque y ver **su ganancia del mes** y qué cuentas están por vencer.' },
@@ -16943,7 +16937,7 @@
         const cb = catalogoUnificado.filter(p => p.esCombo && p.activo !== false);
         return cb.length ? `🎁 *COMBOS ${tienda.toUpperCase()}*\n\nMás cuentas, mejor precio:\n` + cb.map(p => `▫️ *${p.nombre}* — ${formatoCOP(p.precio)}`).join('\n') + `\n\n👉 ${enl}` : 'No tienes combos activos. Arma uno en Productos → Armar combo.';
       }
-      if (tipo === 'recarga') return `💳 *¿CÓMO COMPRAR EN ${tienda.toUpperCase()}?*\n\n1️⃣ Entra a ${enl} y crea tu cuenta\n2️⃣ Recarga tu saldo (se acredita solo en 1 o 2 minutos)\n3️⃣ Elige tu producto y toca *Comprar*\n4️⃣ Recibe tus cuentas al instante en *Mis Cuentas* ✅\n\n🛡 Todas con garantía · Soporte por WhatsApp\n👉 ${enl}`;
+      if (tipo === 'recarga') return `💳 *¿CÓMO COMPRAR EN ${tienda.toUpperCase()}?*\n\n1️⃣ Entra a ${enl} y crea tu cuenta\n2️⃣ Recarga tu saldo (se acredita solo en 1 o 2 minutos)\n3️⃣ Elige tu producto y toca *Comprar*\n4️⃣ Recibe tus cuentas al instante en *Mis Cuentas* ✅\n\n🛡 Todas con garantía: si una cuenta falla, la reportas desde *Mis Cuentas* y te respondemos ahí mismo\n👉 ${enl}`;
       return '';
     }
     function pintarTiposImagen() {
@@ -17021,6 +17015,11 @@
         guardarAjusteMenu('menuPanelAncho', parseInt(getComputedStyle(lay).getPropertyValue('--ancho-menu'), 10) || ANCHO_MENU_NORMAL);
         window.removeEventListener('pointermove', mover); window.removeEventListener('pointerup', soltar);
       };
+      // Solo se queda pegado arriba si cabe completo en la pantalla; si no, baja con la página (nunca se corta)
+      const ajustarPegado = () => { if (window.innerWidth < 1024) { nav.style.position = ''; return; } nav.style.position = nav.scrollHeight > window.innerHeight - 110 ? 'relative' : ''; };
+      window.addEventListener('resize', ajustarPegado);
+      setInterval(ajustarPegado, 1500);
+      setTimeout(ajustarPegado, 300);
       asa.addEventListener('pointerdown', ev => { ev.preventDefault(); activo = true; asa.classList.add('arrastrando'); document.body.classList.add('arrastrando-menu'); window.addEventListener('pointermove', mover); window.addEventListener('pointerup', soltar); });
     })();
 
