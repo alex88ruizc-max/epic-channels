@@ -617,6 +617,7 @@
           <h4 class="text-xs font-black text-white mb-2.5 flex items-center gap-2"><span class="nf-wordmark text-[12px]">NETFLIX</span> Mis cuentas asignadas</h4>
           <div id="perfilNetflixLista" class="space-y-3"></div>
         </div>
+        <div id="misPreordenesCaja" class="hidden mb-3"></div>
         <div id="dealerNegocioCaja" class="hidden mb-3 dealer-banner p-3.5"></div>
         <h4 class="text-xs font-black text-white mb-2 mt-1 flex items-center gap-2"><i class="fa-solid fa-bag-shopping text-emerald-400"></i> Mis compras</h4>
         <div class="relative mb-3">
@@ -1140,6 +1141,11 @@
 
       <!-- TAB 3: CARGA DE STOCK -->
       <div id="adminSecStock" class="hidden">
+        <div id="preordenesAdminCaja" class="hidden mb-4 bg-gray-900 border border-sky-500/40 rounded-2xl overflow-hidden">
+          <div class="px-4 py-3 border-b border-gray-800 flex items-center gap-2"><i class="fa-solid fa-hourglass-half text-sky-300"></i><p class="text-sm font-bold text-white">Pedidos en espera</p><span id="preordenesAdminBadge" class="ml-auto px-2 py-0.5 rounded-full bg-sky-500 text-black text-[10px] font-black"></span></div>
+          <p class="px-4 pt-2 text-[11px] text-gray-400">Clientes que pagaron sin stock. Al subir o aprobar stock de ese producto se entregan solos, en orden de llegada.</p>
+          <div id="preordenesAdminLista" class="p-3 space-y-2"></div>
+        </div>
         <div id="ventaManualCaja" class="solo-admin mb-4 bg-gray-900 border border-emerald-500/30 rounded-2xl overflow-hidden">
           <button type="button" onclick="document.getElementById('vmCuerpo').classList.toggle('hidden')" class="w-full text-left p-4 flex items-center gap-3">
             <span class="w-9 h-9 shrink-0 rounded-xl bg-emerald-500/15 text-emerald-300 flex items-center justify-center"><i class="fa-brands fa-whatsapp"></i></span>
@@ -2283,6 +2289,14 @@
           </select>
           <p id="nuevoProdGarTxt" class="text-[10px] text-emerald-300 mt-1"></p>
         </div>
+        <div class="p-3 rounded-xl bg-sky-500/5 border border-sky-500/30">
+          <label class="flex items-center justify-between gap-3 cursor-pointer"><span class="text-[11px] font-bold text-white"><i class="fa-solid fa-hourglass-half text-sky-300 mr-1"></i>Permitir pedido por encargo cuando esté agotado</span><input type="checkbox" id="nuevoProdEncActivo" onchange="encargoUI('nuevoProd')" class="accent-sky-500 w-5 h-5"></label>
+          <div id="nuevoProdEncCampos" class="hidden grid grid-cols-2 gap-2 mt-2">
+            <label class="text-[10px] text-gray-400">Máximo por pedido<input type="number" id="nuevoProdEncMax" min="1" max="1000" placeholder="10" class="mt-1 w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"></label>
+            <label class="text-[10px] text-gray-400">Cupo total en espera<input type="number" id="nuevoProdEncCupo" min="1" max="5000" placeholder="50" class="mt-1 w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"></label>
+            <p class="col-span-2 text-[10px] text-gray-500">El cupo es cuántas cuentas pueden quedar esperando entre todos los clientes. Al llenarse, el botón se oculta hasta que entregues.</p>
+          </div>
+        </div>
 
         <div>
           <label class="block text-[11px] text-gray-400 mb-1">Descripción del Producto</label>
@@ -2370,6 +2384,14 @@
             <option value="subida">Cuenta desde que se subió al stock (producto abierto)</option>
           </select>
           <p id="editProdGarTxt" class="text-[10px] text-emerald-300 mt-1"></p>
+        </div>
+        <div class="p-3 rounded-xl bg-sky-500/5 border border-sky-500/30">
+          <label class="flex items-center justify-between gap-3 cursor-pointer"><span class="text-[11px] font-bold text-white"><i class="fa-solid fa-hourglass-half text-sky-300 mr-1"></i>Permitir pedido por encargo cuando esté agotado</span><input type="checkbox" id="editProdEncActivo" onchange="encargoUI('editProd')" class="accent-sky-500 w-5 h-5"></label>
+          <div id="editProdEncCampos" class="hidden grid grid-cols-2 gap-2 mt-2">
+            <label class="text-[10px] text-gray-400">Máximo por pedido<input type="number" id="editProdEncMax" min="1" max="1000" placeholder="10" class="mt-1 w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"></label>
+            <label class="text-[10px] text-gray-400">Cupo total en espera<input type="number" id="editProdEncCupo" min="1" max="5000" placeholder="50" class="mt-1 w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"></label>
+            <p class="col-span-2 text-[10px] text-gray-500">El cupo es cuántas cuentas pueden quedar esperando entre todos los clientes. Al llenarse, el botón se oculta hasta que entregues.</p>
+          </div>
         </div>
 
         <div>
@@ -6103,6 +6125,7 @@
         try { asistenteProgramarSaludo(); } catch (e) { console.warn(e); }
         try { iniciarNovedadesClientes(); } catch (e) { console.warn(e); }
         try { cargarCfgDealer().then(cargarProgresoDealer); } catch (e) { /* nada */ }
+        try { if (esStaffSesion()) iniciarPreordenesAdmin(); else iniciarMisPreordenes(); } catch (e) { /* nada */ }
         try { cargarCategoriasNormales().then(() => { if (userTipoCuenta === 'normal') renderizarCatalogo(); }); } catch (e) { /* nada */ }
         try { leerCfgReferidos().then(() => { iniciarMisComisiones(); renderizarMisReferidos(); }); } catch (e) { console.warn(e); }
         if (btnTelegramBot) btnTelegramBot.classList.remove('hidden');
@@ -6919,7 +6942,7 @@
       m.style.display = 'none';
       quitarImagenNuevoProducto();
       document.getElementById('nuevoProdEsVip').checked = false;
-      document.getElementById('nuevoProdTipoGarantia').value = ''; garantiaHaciaUI('nuevoProd', '', 'compra');
+      document.getElementById('nuevoProdTipoGarantia').value = ''; garantiaHaciaUI('nuevoProd', '', 'compra'); encargoHaciaUI('nuevoProd', null);
     }
 
     function abrirModalNuevoCliente() {
@@ -7418,7 +7441,7 @@
       if (tab === 'reporte') cargarDashboardVentas(false);
       if (tab === 'categorias') renderizarAdminCategoriasColores();
       if (tab === 'usuarios') { cargarUsuariosAdmin(); cargarRegaloRevendedor(); cargarPanelReferidos(); }
-      if (tab === 'stock') { poblarSelectStock(); cargarAportantesStock(); prepararVentaManual(); }
+      if (tab === 'stock') { poblarSelectStock(); cargarAportantesStock(); prepararVentaManual(); iniciarPreordenesAdmin(); renderizarPreordenesAdmin(); }
       if (tab === 'apariencia') cargarDatosAparienciaAdmin();
       if (tab === 'pagos') cargarMetodosPagoAdmin();
       if (tab === 'recargas') cargarRecargasAdmin();
@@ -7676,6 +7699,7 @@
           activo: true,
           esVip: esVip,
           tipoGarantia: tipoGarantia, garantiaInicio: (document.getElementById('nuevoProdGarInicio') || {}).value === 'subida' ? 'subida' : 'compra',
+          ...encargoDesdeUI('nuevoProd'),
           imagenUrl: imagenNuevoProductoBase64Temporal || '',
           fechaCreacion: new Date().toISOString()
         });
@@ -7693,7 +7717,7 @@
         document.getElementById('nuevoProdMinimo').value = '5';
         document.getElementById('inputNuevaCatTexto').value = '';
         document.getElementById('nuevoProdEsVip').checked = false;
-        document.getElementById('nuevoProdTipoGarantia').value = ''; garantiaHaciaUI('nuevoProd', '', 'compra');
+        document.getElementById('nuevoProdTipoGarantia').value = ''; garantiaHaciaUI('nuevoProd', '', 'compra'); encargoHaciaUI('nuevoProd', null);
         selectCat.value = 'Streaming';
         alternarCampoNuevaCat();
         quitarImagenNuevoProducto();
@@ -8001,6 +8025,7 @@
               <button onclick="comprarProducto('${prod.docId}')" ${agotado ? 'disabled' : ''} class="w-full py-2.5 rounded-xl text-xs font-bold ${agotado ? 'bg-gray-800 text-gray-500 cursor-not-allowed' : (esNf ? 'nf-btn' : (marcaT ? 'brand-btn' : estiloCat.btn))} transition flex items-center justify-center gap-1.5">
                 <i class="fa-solid fa-cart-shopping"></i> ${agotado ? ttH('botonAgotado') : ttH('botonComprar')}
               </button>
+              ${agotado && puedePedirEncargo(prod) ? `<button type="button" onclick="pedirSobrePedido('${prod.docId}')" class="mt-2 w-full py-2 rounded-xl text-[11px] font-bold border border-sky-400/40 bg-sky-500/10 hover:bg-sky-500/20 text-sky-200 flex items-center justify-center gap-1.5"><i class="fa-solid fa-hourglass-half"></i> Pedir sobre pedido · te lo entregamos al llegar</button>` : ''}
             </div>
           </div>
         `;
@@ -8438,7 +8463,7 @@
       document.getElementById('editProdDesc').value = prod.descripcion || '';
       document.getElementById('editProdPrecio').value = (prod.precioLista !== undefined ? prod.precioLista : prod.precio) || 0;
       document.getElementById('editProdMinimo').value = prod.minCompra || 1;
-      document.getElementById('editProdTipoGarantia').value = prod.tipoGarantia || ''; garantiaHaciaUI('editProd', prod.tipoGarantia || '', prod.garantiaInicio || ((snapshotInventario[prod.docId] || {}).garantiaInicio) || 'compra');
+      document.getElementById('editProdTipoGarantia').value = prod.tipoGarantia || ''; garantiaHaciaUI('editProd', prod.tipoGarantia || '', prod.garantiaInicio || ((snapshotInventario[prod.docId] || {}).garantiaInicio) || 'compra'); encargoHaciaUI('editProd', Object.assign({}, snapshotInventario[prod.docId] || {}, prod));
 
       actualizarSelectCategoriasAdmin();
       const selectCat = document.getElementById('selectEditProdCat');
@@ -8533,7 +8558,8 @@
           descripcion: desc,
           precio: precio,
           minCompra: minCompra,
-          tipoGarantia: tipoGarantia, garantiaInicio: (document.getElementById('editProdGarInicio') || {}).value === 'subida' ? 'subida' : 'compra'
+          tipoGarantia: tipoGarantia, garantiaInicio: (document.getElementById('editProdGarInicio') || {}).value === 'subida' ? 'subida' : 'compra',
+          ...encargoDesdeUI('editProd')
         };
 
         if (imagenProductoBase64Temporal !== null) {
@@ -9408,6 +9434,7 @@
 
         registrarCargaStock(docId, prod ? prod.nombre : docId, nuevas, costoUnitario, aporteCarga);
         if (aporteCarga) { setTimeout(() => { try { actualizarComisionesPorStock(aporteCarga.uid); } catch (e) { console.warn(e); } }, 1500); }
+        setTimeout(() => { try { despacharPreordenesProducto(docId); } catch (e) { console.warn(e); } }, 1200);
         // Novedad para clientes (no se publica para productos VIP ni ocultos)
         if (prod && prod.activo !== false && !esProductoVip(prod)) {
           publicarNovedadGlobal({ tipo: 'stock', productoId: docId, cantidad: nuevas.length, titulo: `Nuevo stock: ${prod.nombre}` });
@@ -10473,6 +10500,7 @@
         cerrarAprobarLote();
         try { actualizarComisionesPorStock(l.proveedorUid); } catch (e) { console.warn(e); }
         if (l.pedidoId) { try { await avanzarPedidoReseller(l.pedidoId, parseInt(l.cantidad, 10) || 0); } catch (e) { console.warn(e); } }
+        setTimeout(() => { try { despacharPreordenesProducto(l.productoId); } catch (e) { console.warn(e); } }, 1200);
         mostrarToast(`Lote aprobado: ${l.cantidad} cuentas cargadas. Se le deben ${formatoCOP(monto)} a ${l.proveedorNombre || 'el proveedor'}.`);
       } catch (err) {
         alert('No se pudo aprobar: ' + err.message);
@@ -14338,7 +14366,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-06h';
+    const VERSION_PAGINA = '2026-10-06j';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261006_credito', fecha: '2026-10-06', titulo: 'Tu crédito, más fácil', mensaje: 'Si tienes **crédito pre-aprobado** te avisamos en la tienda. En tu perfil hay una pestaña **Crédito** donde lo aceptas y ves cuánto debes y tu historial.' },
       { id: 'act_20261006_negocio', fecha: '2026-10-06', titulo: 'Dealers: Mi negocio 👑', mensaje: 'Los Dealers ahora pueden **asignar cada cuenta a su cliente**, entregarla por WhatsApp con un toque y ver **su ganancia del mes** y qué cuentas están por vencer.' },
@@ -16157,6 +16185,127 @@
       clearTimeout(window.__tkMiniTimer); window.__tkMiniTimer = setTimeout(cerrarTicketMini, 12000);
     }
     function cerrarTicketMini() { const t = document.getElementById('ticketResueltoMini'); if (t) t.classList.add('hidden'); }
+
+
+    // ==================== COMPRA SOBRE PEDIDO ====================
+    var misPreordenes = [], unsubMisPre = null, preordenesTodas = [], unsubPreAdm = null;
+    function puedePedirEncargo(prod) {
+      if (!currentUser || esStaffSesion() || modoPruebaCliente || prod.esCombo) return false;
+      if (esProveedorSesion() && (userTipoCuenta === 'externo' || userTipoCuenta === 'reseller')) return false;
+      return !esProductoNetflix(prod) && datosEncargo(prod).activo;
+    }
+    function pedirSobrePedido(docId) {
+      const prod = catalogoUnificado.find(p => p.docId === docId); if (!prod) return;
+      let m = document.getElementById('modalPreorden');
+      if (!m) {
+        m = document.createElement('div'); m.id = 'modalPreorden';
+        m.className = 'fixed inset-0 bg-black/80 backdrop-blur-sm z-[60] hidden items-end sm:items-center justify-center p-0 sm:p-4';
+        m.innerHTML = `<div class="bg-gray-900 border border-sky-400/50 rounded-t-3xl sm:rounded-2xl max-w-sm w-full shadow-2xl overflow-hidden"><div class="p-5"><div class="flex items-center gap-3"><span class="w-11 h-11 rounded-2xl bg-sky-500/15 border border-sky-400/40 text-sky-300 flex items-center justify-center"><i class="fa-solid fa-hourglass-half"></i></span><div><p class="text-base font-black text-white">Pedir sobre pedido</p><p id="poNombre" class="text-[11px] text-gray-400"></p></div></div>
+          <p class="mt-3 text-[11px] text-gray-300 leading-relaxed">Pagas ahora con tu saldo y quedas en la <b class="text-white">lista de espera</b>. Apenas llegue stock te entregamos tus cuentas (si llega una parte, te entregamos esa parte). Puedes cancelar lo pendiente cuando quieras y te devolvemos ese saldo.</p>
+          <label class="block mt-3 text-[11px] text-gray-400">¿Cuántas necesitas?<input type="number" id="poCantidad" min="1" max="500" oninput="poTotal()" class="mt-1 w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none"></label>
+          <p id="poTotalTxt" class="mt-2 text-sm font-black text-sky-200"></p></div>
+          <div class="grid grid-cols-2 gap-2 p-4 border-t border-gray-800"><button type="button" onclick="cerrarPreorden()" class="py-2.5 rounded-xl bg-gray-800 border border-gray-700 text-gray-200 font-bold text-xs">Cancelar</button><button type="button" id="btnPoConfirmar" onclick="confirmarPreorden()" class="py-2.5 rounded-xl bg-sky-500 hover:bg-sky-400 text-black font-black text-xs">Pagar y pedir</button></div></div>`;
+        document.body.appendChild(m);
+      }
+      m.dataset.id = docId;
+      document.getElementById('poNombre').textContent = prod.nombre;
+      document.getElementById('poCantidad').value = String(prod.minCompra || 1);
+      poTotal();
+      try { const mxP = datosEncargo(prod).max; const ic = document.getElementById('poCantidad'); if (ic) { ic.max = String(mxP); ic.placeholder = 'Máximo ' + mxP; } const lbl = ic && ic.parentElement; if (lbl && lbl.firstChild && lbl.firstChild.nodeType === 3) lbl.firstChild.textContent = '¿Cuántas necesitas? (máximo ' + mxP + ')'; } catch (e) { /* nada */ }
+      m.classList.remove('hidden'); m.style.display = 'flex';
+    }
+    function cerrarPreorden() { const m = document.getElementById('modalPreorden'); if (m) { m.classList.add('hidden'); m.style.display = 'none'; } }
+    function poTotal() {
+      const m = document.getElementById('modalPreorden'), prod = catalogoUnificado.find(p => p.docId === (m && m.dataset.id)); if (!prod) return;
+      const n = Math.max(0, parseInt(document.getElementById('poCantidad').value, 10) || 0);
+      document.getElementById('poTotalTxt').textContent = n ? `Total: ${formatoCOP((Number(prod.precio) || 0) * n)} · ${n} × ${formatoCOP(prod.precio || 0)}` : '';
+    }
+    async function confirmarPreorden() {
+      const m = document.getElementById('modalPreorden'), id = m && m.dataset.id;
+      const n = parseInt(document.getElementById('poCantidad').value, 10) || 0;
+      const prodPo = catalogoUnificado.find(p => p.docId === id) || { docId: id };
+      const maxPo = datosEncargo(prodPo).max;
+      if (!(n >= 1 && n <= maxPo)) { alert('Puedes pedir de 1 a ' + maxPo + ' cuentas por encargo.'); return; }
+      const btn = document.getElementById('btnPoConfirmar'); if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>'; }
+      try {
+        const r = await llamarBackend('preorden_crear', { productoId: id, cantidad: n });
+        if (!r || !r.ok) {
+          if (r && r.codigo === 'SALDO_INSUFICIENTE') { cerrarPreorden(); abrirModalSaldoInsuficiente(r.error); return; }
+          alert((r && r.error) || 'No se pudo crear el pedido.'); return;
+        }
+        cerrarPreorden(); lanzarConfeti(['⏳', '✨']);
+        mostrarToast(`✓ Pedido en espera: ${n} cuentas. Te avisamos al entregarlas.`);
+      } catch (e) { alert(/desconocid|Unknown|no reconoc/i.test(e.message || '') ? 'Esta opción aún no está activa. Avísale a soporte.' : (e.message || 'No se pudo crear el pedido.')); }
+      finally { if (btn) { btn.disabled = false; btn.textContent = 'Pagar y pedir'; } }
+    }
+    function iniciarMisPreordenes() {
+      if (unsubMisPre || !currentUser || esStaffSesion()) return;
+      try { unsubMisPre = db.collection('preordenes').where('usuarioId', '==', currentUser.uid).onSnapshot(snap => { misPreordenes = []; snap.forEach(d => misPreordenes.push(Object.assign({ id: d.id }, d.data() || {}))); misPreordenes.sort((a, b) => String(b.creadoEl).localeCompare(String(a.creadoEl))); renderizarMisPreordenes(); }, e => console.warn('Mis pedidos:', e)); } catch (e) { console.warn(e); }
+    }
+    function renderizarMisPreordenes() {
+      const caja = document.getElementById('misPreordenesCaja'); if (!caja) return;
+      const act = misPreordenes.filter(p => p.estado === 'pendiente' || p.estado === 'parcial');
+      caja.classList.toggle('hidden', !act.length);
+      caja.innerHTML = act.length ? `<div class="bg-gray-900 border border-sky-500/40 rounded-2xl p-3"><p class="text-[11px] font-black text-sky-200 uppercase tracking-wider mb-2"><i class="fa-solid fa-hourglass-half mr-1"></i>Pedidos en espera</p><div class="space-y-2">${act.map(p => { const pct = Math.round((p.entregadas || 0) / Math.max(1, p.cantidad) * 100); return `<div class="p-2.5 rounded-xl bg-gray-800/50 border border-gray-700/60"><div class="flex items-center justify-between gap-2"><p class="text-xs font-black text-white truncate">${escaparHtml(p.productoNombre)}</p><span class="text-[11px] font-black text-sky-200 shrink-0">${p.entregadas || 0}/${p.cantidad}</span></div><div class="mt-1.5 h-1.5 rounded-full bg-gray-900 overflow-hidden"><div class="h-full bg-sky-400" style="width:${pct}%"></div></div><div class="flex items-center justify-between gap-2 mt-1.5"><p class="text-[10px] text-gray-400">Pagaste ${formatoCOP(p.total || 0)} · ${escaparHtml(bcFecha(p.creadoEl))}</p><button type="button" onclick="cancelarPreorden('${escaparJsAttr(p.id)}')" class="text-[10px] text-red-300/80 underline shrink-0">Cancelar lo pendiente</button></div></div>`; }).join('')}</div><p class="text-[10px] text-gray-500 mt-2">Las cuentas que te entreguemos aparecen abajo en Mis compras.</p></div>` : '';
+    }
+    async function cancelarPreorden(id) {
+      const p = misPreordenes.concat(preordenesTodas).find(x => x.id === id); if (!p) return;
+      const falta = Math.max(0, p.cantidad - (p.entregadas || 0));
+      if (!await confirmarModal(`¿Cancelar las ${falta} cuentas pendientes? Se devuelven ${formatoCOP(falta * (p.precioUnitario || 0))} al saldo.`, { textoAceptar: 'Sí, cancelar' })) return;
+      try { const r = await llamarBackend('preorden_cancelar', { id: id }); if (!r || !r.ok) { alert((r && r.error) || 'No se pudo cancelar.'); return; } mostrarToast(`Cancelado: se devolvieron ${formatoCOP(r.devuelto || 0)} al saldo.`); if (esStaffSesion() && p.usuarioId) avisarClienteTicket(p.usuarioId, 'Pedido en espera cancelado', `Se cancelaron las cuentas pendientes de ${p.productoNombre} y se devolvieron ${formatoCOP(r.devuelto || 0)} a tu saldo.`); }
+      catch (e) { alert(e.message); }
+    }
+    // ----- Equipo -----
+    function iniciarPreordenesAdmin() {
+      if (unsubPreAdm || !esStaffSesion()) return;
+      try { unsubPreAdm = db.collection('preordenes').onSnapshot(snap => { preordenesTodas = []; snap.forEach(d => preordenesTodas.push(Object.assign({ id: d.id }, d.data() || {}))); preordenesTodas.sort((a, b) => String(a.creadoEl).localeCompare(String(b.creadoEl))); renderizarPreordenesAdmin(); }, e => console.warn('Pedidos en espera:', e)); } catch (e) { console.warn(e); }
+    }
+    function renderizarPreordenesAdmin() {
+      const caja = document.getElementById('preordenesAdminCaja'); if (!caja) return;
+      const act = preordenesTodas.filter(p => p.estado === 'pendiente' || p.estado === 'parcial');
+      caja.classList.toggle('hidden', !act.length);
+      const b = document.getElementById('preordenesAdminBadge'); if (b) b.textContent = act.reduce((t, p) => t + (p.cantidad - (p.entregadas || 0)), 0) + ' cuentas';
+      const l = document.getElementById('preordenesAdminLista'); if (!l) return;
+      l.innerHTML = act.map((p, i) => `<div class="p-2.5 rounded-xl bg-gray-800/50 border border-gray-700/60"><div class="flex items-center justify-between gap-2"><p class="text-xs font-black text-white truncate"><span class="text-gray-500 mr-1">${i + 1}.</span>${escaparHtml(p.productoNombre)}</p><span class="text-[11px] font-black text-sky-200 shrink-0">faltan ${p.cantidad - (p.entregadas || 0)} de ${p.cantidad}</span></div><p class="text-[10px] text-gray-400 mt-0.5">${escaparHtml(p.usuarioEmail || '')} · pagó ${formatoCOP(p.total || 0)} · ${escaparHtml(bcFecha(p.creadoEl))} · hay ${stockLibreDeProducto(p.productoId)} en stock</p><div class="flex gap-1.5 mt-2"><button type="button" onclick="despacharPreorden('${escaparJsAttr(p.id)}')" class="flex-1 py-1.5 rounded-lg bg-sky-500 hover:bg-sky-400 text-black text-[10px] font-black">Entregar lo que haya</button><button type="button" onclick="cancelarPreorden('${escaparJsAttr(p.id)}')" class="px-2.5 py-1.5 rounded-lg bg-red-500/10 border border-red-500/30 text-red-300 text-[10px] font-bold">Cancelar y devolver</button></div></div>`).join('');
+    }
+    async function despacharPreorden(id, silencioso) {
+      const p = preordenesTodas.find(x => x.id === id);
+      try {
+        const r = await llamarBackend('preorden_despachar', { id: id });
+        if (!r || !r.ok) { if (!silencioso) alert((r && r.error) || 'No se pudo entregar.'); return r; }
+        if (r.entregadas > 0) {
+          avisarClienteTicket(r.usuarioId || (p && p.usuarioId), r.estado === 'completo' ? '¡Tu pedido en espera está completo!' : 'Tu pedido en espera avanzó', `Te entregamos ${r.entregadas} ${r.entregadas === 1 ? 'cuenta' : 'cuentas'} de ${r.productoNombre || (p && p.productoNombre) || ''}.${r.falta ? ' Faltan ' + r.falta + '.' : ''} Míralas en Mis Cuentas.`);
+          if (!silencioso) mostrarToast(`Entregadas ${r.entregadas}${r.falta ? ' · faltan ' + r.falta : ' · pedido completo'}.`);
+        } else if (!silencioso) mostrarToast('No hay stock de ese producto para entregar.');
+        return r;
+      } catch (e) { if (!silencioso) alert(e.message); return null; }
+    }
+    // Al subir o aprobar stock: se entregan solos los pedidos en espera de ese producto (en orden)
+    async function despacharPreordenesProducto(productoId) {
+      if (!esStaffSesion()) return;
+      const pend = preordenesTodas.filter(p => p.productoId === productoId && (p.estado === 'pendiente' || p.estado === 'parcial'));
+      let total = 0;
+      for (const p of pend) { const r = await despacharPreorden(p.id, true); if (!r || !r.ok || r.sinStock || !r.entregadas) break; total += r.entregadas; if (r.falta) break; }
+      if (total) mostrarToast(`⏳ Se entregaron ${total} cuentas a pedidos en espera.`);
+    }
+
+
+    // ==================== PEDIDO POR ENCARGO: CONFIGURACIÓN POR PRODUCTO ====================
+    function encargoUI(pref) { const on = (document.getElementById(pref + 'EncActivo') || {}).checked; const c = document.getElementById(pref + 'EncCampos'); if (c) c.classList.toggle('hidden', !on); }
+    function encargoHaciaUI(pref, p) {
+      const a = document.getElementById(pref + 'EncActivo'); if (!a) return;
+      a.checked = !!(p && p.encargoActivo === true);
+      document.getElementById(pref + 'EncMax').value = p && p.encargoMax ? p.encargoMax : '';
+      document.getElementById(pref + 'EncCupo').value = p && p.encargoCupo ? p.encargoCupo : '';
+      encargoUI(pref);
+    }
+    function encargoDesdeUI(pref) {
+      const on = !!(document.getElementById(pref + 'EncActivo') || {}).checked;
+      const mx = Math.max(1, Math.min(1000, parseInt((document.getElementById(pref + 'EncMax') || {}).value, 10) || 10));
+      const cu = Math.max(mx, Math.min(5000, parseInt((document.getElementById(pref + 'EncCupo') || {}).value, 10) || Math.max(mx, 50)));
+      return { encargoActivo: on, encargoMax: mx, encargoCupo: cu };
+    }
+    function datosEncargo(prod) { const sn = (snapshotInventario && snapshotInventario[prod.docId]) || {}; return { activo: (prod.encargoActivo !== undefined ? prod.encargoActivo : sn.encargoActivo) === true, max: parseInt(prod.encargoMax || sn.encargoMax, 10) || 10 }; }
 
     // ==================== NETFLIX EN LA TIENDA: SIN CONTRASEÑA ====================
     function esNombreNetflix(t) { return /netflix/i.test(String(t || '')); }
