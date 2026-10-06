@@ -342,7 +342,8 @@
         </button>
 
         <!-- Mi Perfil (cuentas compradas, datos y contraseña) -->
-        <button onclick="abrirPerfilEn('cuentas')" title="Mi Perfil" class="p-2 sm:px-3 sm:py-1.5 rounded-xl sm:rounded-lg text-xs bg-gray-800 hover:bg-gray-700 text-gray-300 font-medium flex items-center gap-1.5 shrink-0 transition">
+        <button type="button" id="navCreditoBtn" onclick="irACreditoDesdeFlotante()" title="Tienes crédito pre-aprobado" class="hidden relative p-2 sm:px-3 sm:py-1.5 rounded-xl sm:rounded-lg text-xs font-black text-white shrink-0 items-center gap-1.5" style="background:linear-gradient(135deg,#7c3aed,#db2777);box-shadow:0 6px 16px -8px rgba(139,92,246,.9)"><i class="fa-solid fa-hand-holding-dollar"></i><span class="hidden sm:inline">Crédito</span><span class="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-pink-300 animate-ping"></span></button>
+          <button onclick="abrirPerfilEn('cuentas')" title="Mi Perfil" class="p-2 sm:px-3 sm:py-1.5 rounded-xl sm:rounded-lg text-xs bg-gray-800 hover:bg-gray-700 text-gray-300 font-medium flex items-center gap-1.5 shrink-0 transition">
           <i class="fa-solid fa-user text-emerald-400 text-xs sm:text-sm"></i> 
           <span class="hidden sm:inline">Perfil</span>
         </button>
@@ -7956,6 +7957,7 @@
               ${esNf && tt('chipNetflix') !== '-' ? `<div class="mb-2"><span class="nf-chip"><i class="fa-solid fa-key"></i> ${ttH('chipNetflix')}</span></div>` : ''}
               <p class="text-xs text-gray-400 mb-2 leading-relaxed">${prod.descripcion}</p>
               ${esComboT ? '' : htmlGarantiaTarjeta(prod)}
+              ${promoD ? `<div class="mb-2.5 px-3 py-2 rounded-xl border border-yellow-400/40" style="background:linear-gradient(135deg,rgba(247,215,116,.12),rgba(184,134,11,.06))"><p class="text-[11px] font-black dealer-texto">🎁 Promo de hoy: compra ${promoD.compra || 10}, lleva ${(promoD.regalo || 1) * ((multiplicadoresDealer()[nivelDealerDe(progresoDealer.mes || 0).id]) || 1)}</p><p class="text-[10px] text-amber-100/70 mt-0.5 leading-snug">Válido mientras veas este mensaje · ¡aprovecha, pocas unidades! <span class="text-amber-200/90">Solo tú lo ves porque eres un partner especial 👑</span></p></div>` : ''}
               ${esComboT ? htmlIncluyeCombo(prod) : ''}
               
               <div class="mb-4">
@@ -8290,6 +8292,7 @@
           </div>`;
         });
         if (esNf) html += htmlGuiaNetflix(true);
+        if (esNf) html += htmlAvisoNetflixDispositivo();
         if (ex.combo && Array.isArray(ex.combo.cuentas) && ex.combo.cuentas.length) html += htmlEntregaCombo(ex.combo.cuentas, ex.combo.info || {}, fila);
         if (Array.isArray(ex.partes)) ex.partes.forEach(pt => { html += htmlEntregaCombo(pt.cuentas, pt.info || {}, fila, 'Incluido en tu combo'); });
         if (ex.bono && Array.isArray(ex.bono.cuentas) && ex.bono.cuentas.length) html += htmlEntregaCombo(ex.bono.cuentas, ex.bono.info || {}, fila, '👑 Regalo Dealer');
@@ -12971,7 +12974,7 @@
             <p class="text-[11px] text-violet-100/80 mt-1 leading-snug">Acéptalo y se suma ya a tu saldo. Tu próxima recarga lo paga automáticamente.</p>
             <button type="button" onclick="aceptarCreditoPreaprobado()" class="mt-2.5 w-full py-2.5 rounded-xl bg-violet-500 hover:bg-violet-400 text-white font-black text-xs shadow-lg shadow-violet-500/30"><i class="fa-solid fa-hand-holding-dollar mr-1"></i>Aceptar crédito</button>
           </div>` : '') + `<div class="flex items-center justify-between gap-2"><p class="text-[11px] font-black text-violet-200 uppercase tracking-wider"><i class="fa-solid fa-hand-holding-dollar mr-1"></i>Mi crédito</p>${userDeuda > 0 ? `<span class="text-[11px] font-black px-2 py-0.5 rounded-full bg-violet-500/20 text-violet-100 border border-violet-400/40">Debes ${formatoCOP(userDeuda)}</span>` : '<span class="text-[11px] font-bold text-emerald-300">Al día</span>'}</div>
-          ${userCupo > 0 ? `<div class="mt-2"><div class="flex justify-between text-[10px] text-gray-300"><span>Cupo disponible</span><span class="font-bold text-white">${formatoCOP(libre)} de ${formatoCOP(userCupo)}</span></div><div class="mt-1 h-1.5 rounded-full bg-gray-800 overflow-hidden"><div class="h-full bg-violet-400" style="width:${Math.min(100, Math.round(libre / userCupo * 100))}%"></div></div></div>` : ''}
+          ${userCupo > 0 ? `<div class="mt-2"><div class="flex justify-between text-[10px] text-gray-300"><span>Crédito usado</span><span class="font-bold text-white">${formatoCOP(userDeuda)} de ${formatoCOP(userCupo)}</span></div><div class="mt-1 h-2 rounded-full bg-gray-800 overflow-hidden"><div class="h-full rounded-full" style="width:${Math.min(100, Math.round(userDeuda / userCupo * 100))}%;background:linear-gradient(90deg,#8b5cf6,#ec4899)"></div></div><p class="text-[10px] text-gray-400 mt-1">Disponible para usar: <b class="text-emerald-300">${formatoCOP(libre)}</b></p></div>` : ''}
           ${userDeuda > 0 ? '<p class="text-[10px] text-gray-400 mt-2">Tu próxima recarga paga primero esta deuda; lo que sobre va a tu saldo.</p>' : ''}`;
       }
       if (aviso) {
@@ -14313,7 +14316,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-06e';
+    const VERSION_PAGINA = '2026-10-06f';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261006_credito', fecha: '2026-10-06', titulo: 'Tu crédito, más fácil', mensaje: 'Si tienes **crédito pre-aprobado** te avisamos en la tienda. En tu perfil hay una pestaña **Crédito** donde lo aceptas y ves cuánto debes y tu historial.' },
       { id: 'act_20261006_negocio', fecha: '2026-10-06', titulo: 'Dealers: Mi negocio 👑', mensaje: 'Los Dealers ahora pueden **asignar cada cuenta a su cliente**, entregarla por WhatsApp con un toque y ver **su ganancia del mes** y qué cuentas están por vencer.' },
@@ -15365,7 +15368,7 @@
         </div>
         ${(() => { const h = new Date(); const fin = new Date(h.getFullYear(), h.getMonth() + 1, 1); const dias = Math.ceil((fin - h) / 86400000); return `<p class="mt-2 text-[10px] text-amber-100/60"><i class="fa-solid fa-rotate mr-1"></i>El nivel se reinicia el 1 de ${fin.toLocaleDateString('es-CO', { month: 'long' })} · faltan ${dias} ${dias === 1 ? 'día' : 'días'}</p>`; })()}
         <div class="mt-2"><div class="flex justify-between text-[10px] text-amber-100/80"><span>${niv.sig ? `Te faltan <b class="text-white">${falta}</b> para <b class="dealer-texto">Dealer ${niv.sig}</b>${multSig > multAct ? ` · <b class="text-white">regalos ×${multSig}</b>` : ''}` : `¡Nivel más alto! 👑 Tus regalos valen <b class="text-white">×${multAct}</b>`}</span><span>${pct}%</span></div><div class="mt-1 h-2 rounded-full bg-black/40 overflow-hidden"><div class="h-full rounded-full nivel-${niv.sig ? (niv.sig === 'Oro' ? 'oro' : 'plata') : 'oro'}" style="width:${pct}%"></div></div></div>
-        ${lista.length ? `<p class="mt-3 text-[11px] font-black text-white">🎁 Tus promos de hoy</p><div class="mt-1.5 grid gap-1.5">${lista.slice(0, 6).map(x => { const N = x.compra || 10, lleva = (progresoDealer.hoy || {})[x.id] || 0, enCiclo = lleva % N, faltaP = N - enCiclo, ganados = Math.floor(lleva / N) * (x.regalo || 1) * multAct, tope = (x.maxDia || 1) * (x.regalo || 1) * multAct; const completo = ganados >= tope; return `<div class="px-3 py-2 rounded-xl bg-black/30 border ${completo ? 'border-emerald-400/50' : 'border-yellow-400/25'}"><div class="flex items-center justify-between gap-2"><span class="min-w-0 truncate text-xs font-bold text-white">${escaparHtml(nombreProd(x.id))}</span><span class="shrink-0 text-[11px] font-black dealer-texto">Compra ${N} → llévate ${(x.regalo || 1) * multAct}${x.regaloProductoId ? ' ' + escaparHtml(nombreProd(x.regaloProductoId)) : ''}${multAct > 1 ? ` <span class="nivel-chip nivel-${niv.id} !text-[9px] !py-0">×${multAct}</span>` : ''}</span></div><div class="mt-1.5 h-1.5 rounded-full bg-black/40 overflow-hidden"><div class="h-full ${completo ? 'bg-emerald-400' : 'nivel-oro'}" style="width:${completo ? 100 : Math.round(enCiclo / N * 100)}%"></div></div><p class="text-[10px] mt-1 ${completo ? 'text-emerald-300' : 'text-amber-100/80'}">${completo ? `✅ Ya ganaste ${ganados} hoy` : `Llevas ${enCiclo} de ${N} · <b class="text-white">¡te faltan ${faltaP} para tu regalo!</b>${ganados ? ` · ganados hoy: ${ganados}` : ''}`}</p></div>`; }).join('')}</div><p class="text-[10px] text-amber-100/60 mt-2">Las compras del mismo día se suman · el regalo llega solo en tu compra</p>` : ''}
+        ${lista.length ? `<p class="mt-3 text-[11px] font-black text-white">🎁 Tus promos de hoy</p><div class="mt-1.5 grid gap-1.5">${lista.slice(0, 6).map(x => { const N = x.compra || 10, lleva = (progresoDealer.hoy || {})[x.id] || 0, enCiclo = lleva % N, faltaP = N - enCiclo, ganados = Math.floor(lleva / N) * (x.regalo || 1) * multAct, tope = (x.maxDia || 1) * (x.regalo || 1) * multAct; const completo = ganados >= tope; return `<div class="px-3 py-2 rounded-xl bg-black/30 border ${completo ? 'border-emerald-400/50' : 'border-yellow-400/25'}"><div class="flex items-center justify-between gap-2"><span class="min-w-0 truncate text-xs font-bold text-white">${escaparHtml(nombreProd(x.id))}</span><span class="shrink-0 text-[11px] font-black dealer-texto">Compra ${N} → llévate ${(x.regalo || 1) * multAct}${x.regaloProductoId ? ' ' + escaparHtml(nombreProd(x.regaloProductoId)) : ''}${multAct > 1 ? ` <span class="nivel-chip nivel-${niv.id} !text-[9px] !py-0">×${multAct}</span>` : ''}</span></div><div class="mt-1.5 h-1.5 rounded-full bg-black/40 overflow-hidden"><div class="h-full ${completo ? 'bg-emerald-400' : 'nivel-oro'}" style="width:${completo ? 100 : Math.round(enCiclo / N * 100)}%"></div></div><div class="flex items-center justify-between gap-2 mt-1"><p class="text-[10px] ${completo ? 'text-emerald-300' : 'text-amber-100/80'}">${completo ? `✅ Ya ganaste ${ganados} hoy` : `Llevas ${enCiclo} de ${N} · <b class="text-white">¡te faltan ${faltaP}!</b>${ganados ? ` · ganados: ${ganados}` : ''}`}</p>${completo ? '' : `<button type="button" onclick="comprarPromoDealer('${escaparJsAttr(x.id)}', ${faltaP})" class="shrink-0 dealer-badge !tracking-normal !normal-case !text-[10px] !py-1"><i class="fa-solid fa-bolt"></i> Comprar ${faltaP}</button>`}</div></div>`; }).join('')}</div><p class="text-[10px] text-amber-100/60 mt-2">Las compras del mismo día se suman · el regalo llega solo en tu compra</p>` : ''}
       </div>`;
     }
 
@@ -15404,14 +15407,13 @@
       const libre = Math.max(0, userCupo - userDeuda);
       if (!(libre > 0)) return;
       if (!await confirmarModal(`¿Aceptar ${formatoCOP(libre)} de crédito?\n\nSe suma ya a tu saldo para que compres. Tu próxima recarga lo paga automáticamente: primero se descuenta la deuda y lo que sobre queda en tu saldo.`, { tipo: 'pregunta', textoAceptar: 'Sí, aceptar crédito' })) return;
-      const tiene = await servidorTiene('credito_aceptar');
-      if (tiene === false) { alert('Esta opción aún no está activa. Pide a soporte que actualice el sistema.'); return; }
+      mostrarAvisoCredito('cargando');
       try {
         const r = await llamarBackend('credito_aceptar', {});
-        if (!r || !r.ok) { alert((r && r.error) || 'No se pudo aceptar el crédito.'); return; }
+        if (!r || !r.ok) { mostrarAvisoCredito('error', (r && r.error) || 'No se pudo aceptar el crédito.'); return; }
         lanzarConfeti(['💜', '💰', '✨']);
-        alert(`🎉 ¡Crédito aprobado! Se sumaron ${formatoCOP(r.monto)} a tu saldo.\n\nCuando hagas tu próxima recarga, primero se descuenta tu deuda de ${formatoCOP(r.deuda)} y lo demás queda en tu saldo.`);
-      } catch (e) { alert(e.message || 'No se pudo aceptar el crédito.'); }
+        mostrarAvisoCredito('ok', r);
+      } catch (e) { mostrarAvisoCredito('error', /Unknown|desconocida|no reconoc/i.test(e.message || '') ? 'Esta opción aún no está activa. Pide a soporte que actualice el sistema.' : (e.message || 'No se pudo aceptar el crédito.')); }
     }
 
     // ==================== AVATARES ====================
@@ -15787,6 +15789,7 @@
       const hay = !modoPruebaCliente && !esStaffSesion() && !esProveedorSesion() && (userDeuda > 0 || userCupo > 0);
       const tb = document.getElementById('perfilTabBtnCredito'); if (tb) { tb.classList.toggle('hidden', !hay); tb.style.display = hay ? 'flex' : 'none'; }
       const libre = Math.max(0, userCupo - userDeuda);
+      const nb = document.getElementById('navCreditoBtn'); if (nb) { const v = hay && libre > 0; nb.classList.toggle('hidden', !v); nb.style.display = v ? 'flex' : 'none'; }
       const f = document.getElementById('flotanteCredito'); if (!f) return;
       let cerrada = ''; try { cerrada = localStorage.getItem(claveFlotanteCredito()) || ''; } catch (e) { cerrada = window.__credFlotMem || ''; }
       const enTienda = (() => { const t = document.getElementById('vistaTienda'); return !!t && !t.classList.contains('hidden'); })();
@@ -15944,6 +15947,42 @@
         <div class="grid grid-cols-2 sm:grid-cols-4 gap-1.5 mt-2">${k('Disponibles', disponibles, 'text-white')}${k('Entregadas este mes', entregadasMes.length, 'text-emerald-300')}${k('Por vencer (3 días)', porVencer.length, porVencer.length ? 'text-amber-300' : 'text-white')}${k('Ganancia del mes', formatoCOP(ganancia), ganancia >= 0 ? 'dealer-texto' : 'text-red-300')}</div>
         ${porVencer.length ? `<p class="text-[10px] text-amber-200 mt-2"><i class="fa-solid fa-bell mr-1"></i>Avísales para renovar: ${porVencer.slice(0, 4).map(e => escaparHtml(e.clienteNombre)).join(', ')}${porVencer.length > 4 ? '…' : ''}</p>` : ''}
         <p class="text-[10px] text-amber-100/60 mt-1.5">Toca "Asignar a un cliente" en cualquier cuenta para anotarla y entregarla por WhatsApp. Busca por el nombre de tu cliente arriba.</p>`;
+    }
+
+
+    // Ventana morada del crédito: cargando / aprobado / error
+    function mostrarAvisoCredito(estado, r) {
+      let m = document.getElementById('modalAvisoCredito');
+      if (!m) {
+        m = document.createElement('div'); m.id = 'modalAvisoCredito';
+        m.className = 'fixed inset-0 bg-black/80 backdrop-blur-sm z-[75] hidden items-center justify-center p-4';
+        m.innerHTML = `<div class="max-w-sm w-full rounded-3xl p-[1px]" style="background:linear-gradient(135deg,#a855f7,#ec4899,#8b5cf6)"><div class="rounded-3xl bg-[#120f1d] p-6 text-center" id="acCuerpoCredito"></div></div>`;
+        document.body.appendChild(m);
+      }
+      const c = document.getElementById('acCuerpoCredito');
+      if (estado === 'cargando') c.innerHTML = `<div class="mx-auto w-14 h-14 rounded-2xl flex items-center justify-center text-white text-xl" style="background:radial-gradient(circle at 30% 25%,#c4b5fd,#8b5cf6 55%,#6d28d9)"><i class="fa-solid fa-spinner fa-spin"></i></div><p class="mt-3 text-sm font-black text-white">Aprobando tu crédito…</p><p class="text-[11px] text-violet-200/70 mt-1">Un momento, por favor.</p>`;
+      else if (estado === 'ok') c.innerHTML = `<div class="mx-auto w-16 h-16 rounded-2xl flex items-center justify-center text-white text-2xl" style="background:radial-gradient(circle at 30% 25%,#c4b5fd,#8b5cf6 55%,#6d28d9);box-shadow:0 10px 26px -8px rgba(139,92,246,.9)"><i class="fa-solid fa-hand-holding-dollar"></i></div>
+          <p class="mt-4 text-[10px] font-black uppercase tracking-[0.2em] text-violet-300">Crédito aprobado</p><p class="text-3xl font-black text-white mt-1">${formatoCOP(r.monto)}</p><p class="text-xs text-violet-100/80 mt-1">ya están en tu saldo</p>
+          <div class="mt-4 p-3 rounded-2xl bg-violet-500/10 border border-violet-400/30 text-left text-[11px] text-violet-100 leading-relaxed"><i class="fa-solid fa-circle-info mr-1 text-violet-300"></i>Tu próxima recarga paga primero tu deuda de <b class="text-white">${formatoCOP(r.deuda)}</b>; lo que sobre queda en tu saldo.</div>
+          <button type="button" onclick="cerrarAvisoCredito(true)" class="mt-4 w-full py-3 rounded-xl text-white font-black text-sm" style="background:linear-gradient(135deg,#7c3aed,#db2777)">¡A comprar!</button>`;
+      else c.innerHTML = `<div class="mx-auto w-14 h-14 rounded-2xl bg-red-500/15 border border-red-400/40 flex items-center justify-center text-red-300 text-xl"><i class="fa-solid fa-triangle-exclamation"></i></div><p class="mt-3 text-sm font-black text-white">No se pudo aprobar</p><p class="text-xs text-gray-300 mt-1">${escaparHtml(r || '')}</p><button type="button" onclick="cerrarAvisoCredito(false)" class="mt-4 w-full py-2.5 rounded-xl bg-gray-800 border border-gray-700 text-gray-100 font-bold text-xs">Entendido</button>`;
+      m.classList.remove('hidden'); m.style.display = 'flex';
+    }
+    function cerrarAvisoCredito(irTienda) { const m = document.getElementById('modalAvisoCredito'); if (m) { m.classList.add('hidden'); m.style.display = 'none'; } if (irTienda) cambiarVista('tienda'); }
+
+    // Advertencia de Netflix: una pantalla es para un solo dispositivo
+    function htmlAvisoNetflixDispositivo() {
+      return `<div class="mt-2 flex items-start gap-2 px-2.5 py-2 rounded-xl bg-amber-500/10 border border-amber-400/30"><i class="fa-solid fa-mobile-screen-button text-amber-300 text-[12px] mt-0.5"></i><p class="text-[10.5px] leading-snug text-amber-100/90"><b class="text-amber-200">Uso exclusivo en 1 dispositivo.</b> Si el perfil se usa en más de un dispositivo a la vez, se puede perder el acceso.</p></div>`;
+    }
+
+    // Comprar una promo Dealer de una vez (completa lo que le falta para el regalo)
+    function comprarPromoDealer(id, cantidad) {
+      if (!document.getElementById('cant_' + id)) { try { categoriaActiva = 'Todas'; renderizarCatalogo(); } catch (e) { /* nada */ } }
+      const inp = document.getElementById('cant_' + id);
+      if (!inp) { alert('Este producto no está disponible ahora.'); return; }
+      inp.value = String(cantidad);
+      try { inp.dispatchEvent(new Event('input')); } catch (e) { /* nada */ }
+      comprarProducto(id);
     }
 
     // ==================== NETFLIX EN LA TIENDA: SIN CONTRASEÑA ====================
@@ -16574,6 +16613,7 @@
               <div data-garantia-idx="${idx}">${renderTarjetaGarantia(idx)}</div>
               <div class="bg-gray-800/90 border border-gray-700 rounded-xl p-3 font-mono text-xs text-gray-200 select-all leading-relaxed">${lineasHtml}</div>
               ${esNfC ? htmlGuiaNetflix(false) : ''}
+              ${esNfC ? htmlAvisoNetflixDispositivo() : ''}
               ${esNfC ? `<button type="button" onclick="pedirCodigoCompraNetflix(${idx})" class="w-full py-2.5 rounded-xl nf-btn text-xs font-bold flex items-center justify-center gap-1.5"><i class="fa-solid fa-key"></i> Pedir código</button>` : ''}
               ${(c.claveAcceso && !esNfC && (esProductoPrime(c) || String(c.claveAcceso) !== obtenerClaveMaster())) ? `<div class="text-xs text-gray-300 flex items-center gap-1.5"><i class="fa-solid fa-key text-emerald-400"></i> Contraseña: <span class="font-mono font-bold text-white select-all">${escaparHtml(c.claveAcceso)}</span></div>` : ''}
               <button onclick="copiarCompraPerfil(${idx})" class="w-full py-2 bg-gray-800 hover:bg-gray-700 border border-gray-700 text-emerald-400 font-bold text-xs rounded-xl flex items-center justify-center gap-2">
@@ -17277,7 +17317,7 @@
             ? `<div class="grid grid-cols-2 gap-2 mt-3">${botonOtp}${botonRenovar}</div>${vencida ? '' : `<button type="button" onclick="abrirEnlaceCodigo('${id}')" class="mt-2 w-full py-2 rounded-xl bg-gray-800 hover:bg-gray-700 border border-gray-700 text-gray-200 font-bold text-[11px] flex items-center justify-center gap-1.5"><i class="fa-solid fa-link text-red-400"></i> Enlace para ver el código (compártelo con quien ve)</button>`}`
             : `<div class="mt-3">${botonRenovar}</div>`}
           <div id="resNf_${ambito}_${id}" class="mt-3"></div>
-        </div>`;
+        ${esNetflixNf(a) ? htmlAvisoNetflixDispositivo() : ''}</div>`;
     }
 
     // ==================== CUENTAS COMPARTIDAS, "NO RENOVÓ" Y NETFLIX EN LA TIENDA ====================
