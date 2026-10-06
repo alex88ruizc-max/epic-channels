@@ -239,6 +239,17 @@
     .dealer-banner { position: relative; overflow: hidden; border-radius: 1.25rem; border: 1px solid rgba(247,215,116,.55); background: radial-gradient(120% 120% at 100% 0%, rgba(247,215,116,.22), transparent 55%), linear-gradient(135deg, #1c1404 0%, #0d0f17 70%); box-shadow: 0 16px 40px -22px rgba(247,215,116,.7); }
     .dealer-banner::before { content: ''; position: absolute; inset: 0 0 auto 0; height: 3px; background: linear-gradient(90deg, #b8860b, #fff1b8, #f7d774, #b8860b); }
     .dealer-texto { background: linear-gradient(90deg, #f7d774, #fff1b8, #f7d774); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  
+    /* ===== Niveles Dealer, avatares y celebración ===== */
+    .nivel-bronce { background: linear-gradient(110deg,#7c4a1e,#d08b4f 45%,#f2c39a 55%,#7c4a1e); color:#1a0d02; }
+    .nivel-plata { background: linear-gradient(110deg,#6b7280,#e5e7eb 45%,#ffffff 55%,#6b7280); color:#111827; }
+    .nivel-oro { background: linear-gradient(110deg,#b8860b,#f7d774 45%,#fff1b8 55%,#b8860b); color:#2a1a00; }
+    .nivel-chip { display:inline-flex; align-items:center; gap:.3rem; padding:.2rem .65rem; border-radius:999px; font-size:10px; font-weight:900; letter-spacing:.08em; text-transform:uppercase; background-size:220% 100%; }
+    @media (prefers-reduced-motion: no-preference) { .nivel-chip { animation: dealerBrillo 3.4s linear infinite; } }
+    .confeti { position: fixed; top: -24px; z-index: 400; font-size: 22px; pointer-events: none; animation: caerConfeti linear forwards; }
+    @keyframes caerConfeti { to { transform: translateY(110vh) rotate(540deg); opacity: .9; } }
+    .avatar-op { border-radius: 9999px; border: 2px solid transparent; transition: transform .12s, border-color .12s; background:#0b0f19; }
+    .avatar-op:hover { transform: scale(1.06); border-color: #34d399; }
   </style>
 </head>
 <body class="min-h-screen flex flex-col justify-between">
@@ -506,7 +517,10 @@
           </div>
           <div class="flex items-center gap-3.5 mt-2">
             <div class="shrink-0 p-[2px] rounded-full bg-gradient-to-br from-emerald-300 via-emerald-500 to-sky-500">
-              <div id="perfilAvatar" class="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-gray-900 text-emerald-300 flex items-center justify-center text-xl sm:text-2xl font-black">?</div>
+              <button type="button" onclick="abrirSelectorAvatar()" title="Cambiar avatar" class="relative block">
+                <div id="perfilAvatar" class="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-gray-900 text-emerald-300 flex items-center justify-center text-xl sm:text-2xl font-black">?</div>
+                <span class="absolute -bottom-0.5 -right-0.5 w-6 h-6 rounded-full bg-emerald-500 text-black flex items-center justify-center border-2 border-gray-900 text-[10px]"><i class="fa-solid fa-pen"></i></span>
+              </button>
             </div>
             <div class="min-w-0">
               <h3 id="perfilNombreTitulo" class="font-black text-white text-lg sm:text-xl leading-tight truncate">Cliente</h3>
@@ -991,15 +1005,31 @@
             </div>
           </div>
         </div>
-        <div id="adminRegaloRevendedor" class="solo-admin dealer-banner p-4 space-y-3">
-          <h4 class="font-bold text-white text-sm flex items-center gap-2"><i class="fa-solid fa-crown" style="color:#f7d774"></i> <span class="dealer-texto">Promos para dealers</span></h4>
-          <p class="text-[11px] text-amber-100/70 leading-relaxed">Activa una promo en el producto que quieras: <b class="text-white">compra 10, llévate 1</b>. Las compras del mismo día se suman. Solo aplica a clientes con insignia <b class="dealer-texto">Dealer</b>.</p>
-          <div id="promosDealerLista" class="space-y-2"></div>
-          <div class="flex gap-2">
-            <select id="promoDealerNuevo" class="min-w-0 flex-grow bg-gray-900 border border-yellow-400/30 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"></select>
-            <button type="button" onclick="agregarPromoDealer()" class="shrink-0 px-3 py-2 rounded-xl bg-gray-900 border border-yellow-400/40 text-yellow-200 font-bold text-[11px]"><i class="fa-solid fa-plus mr-1"></i>Agregar</button>
+        <div id="adminRegaloRevendedor" class="solo-admin dealer-banner overflow-hidden">
+          <button type="button" onclick="alternarPromosDealer()" class="w-full text-left p-4 flex items-center gap-3">
+            <span class="w-9 h-9 shrink-0 rounded-xl bg-black/30 border border-yellow-400/40 flex items-center justify-center"><i class="fa-solid fa-crown" style="color:#f7d774"></i></span>
+            <span class="min-w-0 flex-grow"><span class="block font-bold text-sm dealer-texto">Promos para dealers</span><span id="promosDealerResumen" class="block text-[11px] text-amber-100/70 truncate">Toca para configurar</span></span>
+            <span id="promosDealerSinGuardar" class="hidden shrink-0 px-2 py-0.5 rounded-full bg-amber-500 text-black text-[9px] font-black">SIN GUARDAR</span>
+            <i id="promosDealerFlecha" class="fa-solid fa-chevron-down text-amber-200/70 transition-transform"></i>
+          </button>
+          <div id="promosDealerCuerpo" class="hidden px-4 pb-4 space-y-3">
+            <p class="text-[11px] text-amber-100/70 leading-relaxed">Activa una promo en el producto que quieras: <b class="text-white">compra 10, llévate 1</b>. Las compras del mismo día se suman. Solo aplica a clientes con insignia <b class="dealer-texto">Dealer</b>.</p>
+            <div id="promosDealerLista" class="space-y-2"></div>
+            <div class="flex gap-2">
+              <select id="promoDealerNuevo" class="min-w-0 flex-grow bg-gray-900 border border-yellow-400/30 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"></select>
+              <button type="button" onclick="agregarPromoDealer()" class="shrink-0 px-3 py-2 rounded-xl bg-gray-900 border border-yellow-400/40 text-yellow-200 font-bold text-[11px]"><i class="fa-solid fa-plus mr-1"></i>Agregar</button>
+            </div>
+            <div class="p-2.5 rounded-xl bg-black/30 border border-yellow-400/30">
+              <p class="text-[11px] font-black text-white mb-1.5">Niveles Dealer (cuentas compradas en el mes)</p>
+              <div class="grid grid-cols-3 gap-1.5 text-center">
+                <div class="rounded-lg p-1.5 nivel-bronce text-[10px] font-black">🥉 Bronce<br><span class="font-bold">desde 0</span></div>
+                <label class="rounded-lg p-1.5 nivel-plata text-[10px] font-black">🥈 Plata<input type="number" id="nivPlata" min="1" oninput="marcarPromosSucio()" class="mt-0.5 w-full rounded bg-white/70 text-black text-center text-xs font-black"></label>
+                <label class="rounded-lg p-1.5 nivel-oro text-[10px] font-black">👑 Oro<input type="number" id="nivOro" min="2" oninput="marcarPromosSucio()" class="mt-0.5 w-full rounded bg-white/70 text-black text-center text-xs font-black"></label>
+              </div>
+            </div>
+            <button type="button" id="btnGuardarPromosDealer" onclick="guardarRegaloRevendedor()" class="w-full dealer-badge !justify-center !text-xs !py-2.5 !tracking-normal !normal-case">Guardar promos</button>
+            <p id="promosDealerEstado" class="hidden text-[11px] font-bold text-center"></p>
           </div>
-          <button type="button" onclick="guardarRegaloRevendedor()" class="w-full dealer-badge !justify-center !text-xs !py-2.5 !tracking-normal !normal-case">Guardar promos</button>
         </div>
         <div id="adminCreditosCaja" class="solo-admin hidden bg-gray-900 border border-violet-500/30 rounded-2xl overflow-hidden">
           <div class="p-4 flex items-center justify-between gap-3 border-b border-gray-800">
@@ -5955,6 +5985,7 @@
       if (splash) splash.remove();
       const btnSoporte = document.getElementById('btnFlotanteSoporte');
       const btnTelegramBot = document.getElementById('btnFlotanteTelegramBot');
+      setTimeout(actualizarVisibilidadAsistente, 0);
       const navSaldo = document.getElementById('navSaldoDirecto');
       const navLogo = document.getElementById('navLogoContainer');
       const vistaBloqueadaEl = document.getElementById('vistaBloqueada');
@@ -5965,7 +5996,7 @@
         if (btnSoporte) btnSoporte.classList.remove('hidden');
         try { asistenteProgramarSaludo(); } catch (e) { console.warn(e); }
         try { iniciarNovedadesClientes(); } catch (e) { console.warn(e); }
-        try { cargarCfgDealer(); } catch (e) { /* nada */ }
+        try { cargarCfgDealer().then(cargarProgresoDealer); } catch (e) { /* nada */ }
         try { leerCfgReferidos().then(() => { iniciarMisComisiones(); renderizarMisReferidos(); }); } catch (e) { console.warn(e); }
         if (btnTelegramBot) btnTelegramBot.classList.remove('hidden');
         
@@ -6024,12 +6055,13 @@
             try { if (dataU.vistaPanel) recibirVistaPanelDeCuenta(dataU.vistaPanel); } catch (e) { /* nada */ }
             userDeuda = Math.max(0, Number(dataU.deuda) || 0);
             userCupo = Math.max(0, Number(dataU.cupoCredito) || 0);
+            if (String(dataU.avatarUrl || '') !== miAvatarUrl) { miAvatarUrl = String(dataU.avatarUrl || ''); try { pintarMiAvatar(); } catch (e) { /* nada */ } }
             try { renderizarCreditoCliente(); } catch (e) { /* nada */ }
             userProductosPermitidos = dataU.productos_permitidos || [];
             const tipoAntes = userTipoCuenta;
             userTipoCuenta = String(dataU.tipoCuenta || '');
             userCategoriasPermitidas = Array.isArray(dataU.categoriasPermitidas) ? dataU.categoriasPermitidas : [];
-            if (tipoAntes !== userTipoCuenta) { try { renderizarCatalogo(); renderizarFiltrosCategorias(); pintarBannerDealer(); } catch (e) { /* nada */ } }
+            if (tipoAntes !== userTipoCuenta) { try { renderizarCatalogo(); renderizarFiltrosCategorias(); pintarBannerDealer(); if (userTipoCuenta === 'revendedor') { (cfgDealer ? Promise.resolve() : cargarCfgDealer()).then(cargarProgresoDealer); } } catch (e) { /* nada */ } }
             if ((userTipoCuenta === 'externo' || userTipoCuenta === 'reseller') && dataU.rol === 'proveedor') { try { const vP = document.getElementById('vistaProveedor'); if (vP && vP.classList.contains('hidden')) cambiarVista('proveedor'); } catch (e) { /* nada */ } }
             userProductosBloqueados = dataU.productos_bloqueados || [];
             userPermisosSubirStock = dataU.permisos_subir_stock || [];
@@ -7792,7 +7824,8 @@
         const marcaT = (!esNf && !esComboT && tarjetasDeMarcaActivas()) ? marcaDeProducto(prod) : null;
         const promoBadgeHtml = prod.promoPct ? `<div class="mb-3 mr-1.5 inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider text-white bg-gradient-to-r from-rose-500 to-pink-500 shadow-md shadow-rose-500/30"><i class="fa-solid fa-tags"></i> -${prod.promoPct}%${prod.promoHasta ? ' · ' + escaparHtml(textoTiempoRestante(prod.promoHasta)) : ''}</div>` : '';
         const promoD = promoDealerDe(prod.docId);
-        const hotBadgeHtml = (promoD ? `<div class="mb-3 mr-1.5 inline-flex"><span class="dealer-badge !tracking-normal !normal-case !text-[10px]"><i class="fa-solid fa-gift"></i> ${promoD.compra || 10}+${promoD.regalo || 1} Dealer</span></div>` : '') + (esComboT ? '<div class="mb-3 mr-1.5 inline-flex"><span class="combo-chip"><i class="fa-solid fa-gift"></i> Combo</span></div>' : '') + promoBadgeHtml + (esVipTienda ? `<div class="mb-3 mr-1.5 inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider text-black bg-gradient-to-r from-amber-300 via-yellow-400 to-amber-500 shadow-md shadow-amber-500/30"><i class="fa-solid fa-crown"></i> VIP</div>` : '') + (esHot ? `<div class="mb-3 inline-flex items-center gap-1.5 bg-red-500/10 text-red-400 border border-red-500/30 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider"><i class="fa-solid fa-fire animate-pulse text-red-500"></i> Producto Más Vendido / HOT</div>` : '');
+        const llevaD = promoD ? ((progresoDealer.hoy || {})[prod.docId] || 0) % (promoD.compra || 10) : 0;
+        const hotBadgeHtml = (promoD ? `<div class="mb-3 mr-1.5 inline-flex"><span class="dealer-badge !tracking-normal !normal-case !text-[10px]"><i class="fa-solid fa-gift"></i> ${promoD.compra || 10}+${promoD.regalo || 1} Dealer${llevaD ? ' · llevas ' + llevaD : ''}</span></div>` : '') + (esComboT ? '<div class="mb-3 mr-1.5 inline-flex"><span class="combo-chip"><i class="fa-solid fa-gift"></i> Combo</span></div>' : '') + promoBadgeHtml + (esVipTienda ? `<div class="mb-3 mr-1.5 inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider text-black bg-gradient-to-r from-amber-300 via-yellow-400 to-amber-500 shadow-md shadow-amber-500/30"><i class="fa-solid fa-crown"></i> VIP</div>` : '') + (esHot ? `<div class="mb-3 inline-flex items-center gap-1.5 bg-red-500/10 text-red-400 border border-red-500/30 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider"><i class="fa-solid fa-fire animate-pulse text-red-500"></i> Producto Más Vendido / HOT</div>` : '');
 
         const imagenProdHtml = prod.imagenUrl 
           ? `<img loading="lazy" decoding="async" src="${prod.imagenUrl}" alt="${prod.nombre}" data-ampliar="${escaparHtml(prod.nombre || 'Producto')}" class="w-10 h-10 rounded-full object-cover border border-gray-700/80 shadow-md shrink-0 cursor-zoom-in">` 
@@ -8081,10 +8114,12 @@
         if (comboR) textoEntregaFinal = textoConCombo(textoEntregaFinal, comboR.cuentas, comboInfo);
         mostrarEntregaCompleta(textoEntregaFinal, cuentasEntregadas, prodInfo, { total: totalPagar, saldo: nuevoSaldoUsuario, combo: comboR ? { cuentas: comboR.cuentas, info: comboInfo } : null });
         if (comboR) { comboElegido[docId] = false; }
+        if (userTipoCuenta === 'revendedor') setTimeout(cargarProgresoDealer, 800);
         if (r.bono && Array.isArray(r.bono.cuentas) && r.bono.cuentas.length) {
           const infoB = Object.assign({}, catalogoUnificado.find(p => p.docId === r.bono.productoId) || {}, { nombre: r.bono.productoNombre, tipoGarantia: r.bono.tipoGarantia });
           mostrarEntregaCompleta(textoEntregaFinal + '\n\n━━━━━━━━━━━━\n👑 REGALO DEALER\n\n' + construirFormatoEntrega(r.bono.cuentas, infoB, {}), cuentasEntregadas, prodInfo, { total: totalPagar, saldo: nuevoSaldoUsuario, combo: comboR ? { cuentas: comboR.cuentas, info: comboInfo } : null, bono: { cuentas: r.bono.cuentas, info: infoB } });
           mostrarToast('👑 ¡Beneficio Dealer! Ganaste ' + r.bono.productoNombre + ' de regalo.');
+          lanzarConfeti();
         }
 
         // El aviso de venta a Telegram lo envía el servidor seguro
@@ -8572,7 +8607,7 @@
                 <td colspan="7" class="md:hidden p-0">
                   <div class="p-3.5">
                     <div class="flex items-start gap-3">
-                      <div class="relative shrink-0 w-11 h-11 rounded-full bg-gradient-to-br from-emerald-500/30 to-sky-500/20 border border-emerald-500/40 text-emerald-200 flex items-center justify-center text-sm font-black">${escaparHtml(iniciales)}${enLinea ? '<span class="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-emerald-400 border-2 border-gray-900"></span>' : ''}</div>
+                      <div class="relative shrink-0 w-11 h-11 rounded-full bg-gradient-to-br from-emerald-500/30 to-sky-500/20 border ${u.tipoCuenta === 'revendedor' ? 'border-yellow-300 dealer-anillo' : 'border-emerald-500/40'} text-emerald-200 flex items-center justify-center text-sm font-black overflow-hidden">${htmlAvatarMini(u.avatarUrl, iniciales, 'w-full h-full rounded-full')}${enLinea ? '<span class="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-emerald-400 border-2 border-gray-900"></span>' : ''}</div>
                       <div class="min-w-0 flex-grow">
                         <p class="text-sm font-black text-white truncate">${escaparHtml(u.nombre || u.email || 'Ficha incompleta')}</p>
                         <p class="text-[11px] text-gray-400 font-mono truncate">${escaparHtml(u.email || uid)}</p>
@@ -9992,6 +10027,7 @@
       }
 
       if (rol !== 'moderador' && !desdeCache) { inicioEnPanelPendiente = false; rutaPendienteStaff = ''; }
+      setTimeout(actualizarVisibilidadAsistente, 0);
       if (rol === 'proveedor') {
         if (btnAdmin) btnAdmin.classList.add('hidden');
         iniciarProveedor();
@@ -12815,7 +12851,12 @@
       const libre = Math.max(0, userCupo - userDeuda);
       if (caja) {
         caja.classList.toggle('hidden', !hay);
-        if (hay) caja.innerHTML = `<div class="flex items-center justify-between gap-2"><p class="text-[11px] font-black text-violet-200 uppercase tracking-wider"><i class="fa-solid fa-hand-holding-dollar mr-1"></i>Mi crédito</p>${userDeuda > 0 ? `<span class="text-[11px] font-black px-2 py-0.5 rounded-full bg-violet-500/20 text-violet-100 border border-violet-400/40">Debes ${formatoCOP(userDeuda)}</span>` : '<span class="text-[11px] font-bold text-emerald-300">Al día</span>'}</div>
+        if (hay) caja.innerHTML = (libre > 0 ? `<div class="mb-3 p-3 rounded-xl bg-gradient-to-br from-violet-500/25 to-fuchsia-500/10 border border-violet-300/50 text-center">
+            <p class="text-[10px] font-black text-violet-200 uppercase tracking-[0.2em]">Crédito pre-aprobado</p>
+            <p class="text-2xl font-black text-white mt-1">${formatoCOP(libre)}</p>
+            <p class="text-[11px] text-violet-100/80 mt-1 leading-snug">Acéptalo y se suma ya a tu saldo. Tu próxima recarga lo paga automáticamente.</p>
+            <button type="button" onclick="aceptarCreditoPreaprobado()" class="mt-2.5 w-full py-2.5 rounded-xl bg-violet-500 hover:bg-violet-400 text-white font-black text-xs shadow-lg shadow-violet-500/30"><i class="fa-solid fa-hand-holding-dollar mr-1"></i>Aceptar crédito</button>
+          </div>` : '') + `<div class="flex items-center justify-between gap-2"><p class="text-[11px] font-black text-violet-200 uppercase tracking-wider"><i class="fa-solid fa-hand-holding-dollar mr-1"></i>Mi crédito</p>${userDeuda > 0 ? `<span class="text-[11px] font-black px-2 py-0.5 rounded-full bg-violet-500/20 text-violet-100 border border-violet-400/40">Debes ${formatoCOP(userDeuda)}</span>` : '<span class="text-[11px] font-bold text-emerald-300">Al día</span>'}</div>
           ${userCupo > 0 ? `<div class="mt-2"><div class="flex justify-between text-[10px] text-gray-300"><span>Cupo disponible</span><span class="font-bold text-white">${formatoCOP(libre)} de ${formatoCOP(userCupo)}</span></div><div class="mt-1 h-1.5 rounded-full bg-gray-800 overflow-hidden"><div class="h-full bg-violet-400" style="width:${Math.min(100, Math.round(libre / userCupo * 100))}%"></div></div></div>` : ''}
           ${userDeuda > 0 ? '<p class="text-[10px] text-gray-400 mt-2">Tu próxima recarga paga primero esta deuda; lo que sobre va a tu saldo.</p>' : ''}`;
       }
@@ -14158,7 +14199,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-05u';
+    const VERSION_PAGINA = '2026-10-05w';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261006_dealer', fecha: '2026-10-06', titulo: '¡Llegan los Dealers! 👑', mensaje: 'Nuestros mejores compradores ahora son **Dealers**: insignia dorada en su cuenta y **cuentas de regalo** por comprar por volumen. ¿Quieres ser Dealer? Escríbenos.' },
       { id: 'act_20261005_tarjetas', fecha: '2026-10-05', titulo: 'Tienda con más estilo', mensaje: 'Cada producto ahora tiene su **tarjeta con el color de su marca**: Prime Video, Disney+, YouTube, Spotify y más. ¡Míralas en la tienda!' },
@@ -14282,22 +14323,25 @@
     async function cargarRegaloRevendedor() {
       try { const d = await db.collection('configuracion').doc('revendedores').get(); const c = d.exists ? (d.data() || {}) : {}; promosDealerEdit = JSON.parse(JSON.stringify(c.promos || {})); cfgDealer = c; }
       catch (e) { promosDealerEdit = {}; }
+      promosDealerSucio = false;
+      const nv = nivelesDealer(); const ip = document.getElementById('nivPlata'), io = document.getElementById('nivOro'); if (ip) ip.value = nv.plata; if (io) io.value = nv.oro;
       renderizarPromosDealerAdmin();
     }
     function nombreProd(id) { const p = catalogoUnificado.find(x => x.docId === id); return p ? (p.nombre || id) : id; }
     function renderizarPromosDealerAdmin() {
+      try { resumirPromosDealer(); } catch (e) { /* nada */ }
       const cont = document.getElementById('promosDealerLista'); if (!cont) return;
       const ids = Object.keys(promosDealerEdit);
       const prods = catalogoUnificado.filter(p => !p.esCombo).sort((a, b) => String(a.nombre).localeCompare(String(b.nombre), 'es'));
       const sel = document.getElementById('promoDealerNuevo');
       if (sel) sel.innerHTML = '<option value="">Elige un producto para darle promo</option>' + prods.filter(p => !promosDealerEdit[p.docId]).map(p => `<option value="${escaparHtml(p.docId)}">${escaparHtml(p.nombre || p.docId)}</option>`).join('');
-      const inp = (id, campo, v, min, w) => `<label class="text-[9px] text-amber-100/60 uppercase tracking-wider">${campo === 'compra' ? 'Compra' : campo === 'regalo' ? 'Regalo' : 'Máx/día'}<input type="number" min="${min}" value="${v}" oninput="promosDealerEdit['${escaparJsAttr(id)}'].${campo}=parseInt(this.value,10)||${min}" class="mt-0.5 w-full ${w} bg-gray-900 border border-yellow-400/30 rounded-lg px-2 py-1.5 text-xs text-white focus:outline-none"></label>`;
+      const inp = (id, campo, v, min, w) => `<label class="text-[9px] text-amber-100/60 uppercase tracking-wider">${campo === 'compra' ? 'Compra' : campo === 'regalo' ? 'Regalo' : 'Máx/día'}<input type="number" min="${min}" value="${v}" oninput="promosDealerEdit['${escaparJsAttr(id)}'].${campo}=parseInt(this.value,10)||${min};marcarPromosSucio()" class="mt-0.5 w-full ${w} bg-gray-900 border border-yellow-400/30 rounded-lg px-2 py-1.5 text-xs text-white focus:outline-none"></label>`;
       cont.innerHTML = ids.length ? ids.map(id => { const pr = promosDealerEdit[id]; const on = pr.activo !== false; return `<div class="p-2.5 rounded-xl bg-black/30 border ${on ? 'border-yellow-400/50' : 'border-gray-700 opacity-60'}">
         <div class="flex items-center gap-2"><p class="min-w-0 flex-grow text-xs font-black text-white truncate">${escaparHtml(nombreProd(id))}</p>
-          <label class="flex items-center gap-1 text-[10px] text-amber-100"><input type="checkbox" ${on ? 'checked' : ''} onchange="promosDealerEdit['${escaparJsAttr(id)}'].activo=this.checked;renderizarPromosDealerAdmin()" class="accent-yellow-400 w-4 h-4">Activa</label>
-          <button type="button" onclick="delete promosDealerEdit['${escaparJsAttr(id)}'];renderizarPromosDealerAdmin()" aria-label="Quitar" class="w-7 h-7 rounded-lg bg-red-500/10 border border-red-500/30 text-red-300 text-[10px]"><i class="fa-solid fa-trash"></i></button></div>
+          <label class="flex items-center gap-1 text-[10px] text-amber-100"><input type="checkbox" ${on ? 'checked' : ''} onchange="promosDealerEdit['${escaparJsAttr(id)}'].activo=this.checked;marcarPromosSucio();renderizarPromosDealerAdmin()" class="accent-yellow-400 w-4 h-4">Activa</label>
+          <button type="button" onclick="delete promosDealerEdit['${escaparJsAttr(id)}'];marcarPromosSucio();renderizarPromosDealerAdmin()" aria-label="Quitar" class="w-7 h-7 rounded-lg bg-red-500/10 border border-red-500/30 text-red-300 text-[10px]"><i class="fa-solid fa-trash"></i></button></div>
         <div class="grid grid-cols-3 gap-1.5 mt-2">${inp(id, 'compra', pr.compra || 10, 1, '')}${inp(id, 'regalo', pr.regalo || 1, 1, '')}${inp(id, 'maxDia', pr.maxDia || 1, 1, '')}</div>
-        <label class="block mt-1.5 text-[9px] text-amber-100/60 uppercase tracking-wider">Producto de regalo<select onchange="promosDealerEdit['${escaparJsAttr(id)}'].regaloProductoId=this.value" class="mt-0.5 w-full bg-gray-900 border border-yellow-400/30 rounded-lg px-2 py-1.5 text-xs text-white focus:outline-none"><option value="">El mismo (${escaparHtml(nombreProd(id))})</option>${prods.filter(p => p.docId !== id).map(p => `<option value="${escaparHtml(p.docId)}" ${pr.regaloProductoId === p.docId ? 'selected' : ''}>${escaparHtml(p.nombre || p.docId)}</option>`).join('')}</select></label>
+        <label class="block mt-1.5 text-[9px] text-amber-100/60 uppercase tracking-wider">Producto de regalo<select onchange="promosDealerEdit['${escaparJsAttr(id)}'].regaloProductoId=this.value;marcarPromosSucio()" class="mt-0.5 w-full bg-gray-900 border border-yellow-400/30 rounded-lg px-2 py-1.5 text-xs text-white focus:outline-none"><option value="">El mismo (${escaparHtml(nombreProd(id))})</option>${prods.filter(p => p.docId !== id).map(p => `<option value="${escaparHtml(p.docId)}" ${pr.regaloProductoId === p.docId ? 'selected' : ''}>${escaparHtml(p.nombre || p.docId)}</option>`).join('')}</select></label>
         <p class="text-[10px] text-yellow-200 mt-1.5 font-bold">🎁 Compra ${pr.compra || 10}, llévate ${pr.regalo || 1}${pr.regaloProductoId ? ' de ' + escaparHtml(nombreProd(pr.regaloProductoId)) : ''} · hasta ${(pr.maxDia || 1) * (pr.regalo || 1)} de regalo al día</p>
       </div>`; }).join('') : '<p class="text-[11px] text-amber-100/60">Todavía no hay promos. Elige un producto abajo y toca Agregar.</p>';
     }
@@ -14305,19 +14349,34 @@
       const id = (document.getElementById('promoDealerNuevo') || {}).value;
       if (!id) { alert('Elige el producto.'); return; }
       promosDealerEdit[id] = { activo: true, compra: 10, regalo: 1, maxDia: 1, regaloProductoId: '' };
+      marcarPromosSucio();
       renderizarPromosDealerAdmin();
     }
     async function guardarRegaloRevendedor() {
       if (!esAdminSesionActual()) return;
-      if (Object.keys(promosDealerEdit).length && (await servidorTiene('tipos_cuenta')) === false) { alert('Para que las promos funcionen necesitas actualizar el servidor (Apps Script) con el archivo nuevo.'); return; }
+      const btn = document.getElementById('btnGuardarPromosDealer'), est = document.getElementById('promosDealerEstado');
+      if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i> Guardando...'; }
       const limpio = {};
       Object.keys(promosDealerEdit).forEach(id => { const pr = promosDealerEdit[id]; limpio[id] = { activo: pr.activo !== false, compra: Math.max(1, parseInt(pr.compra, 10) || 10), regalo: Math.max(1, parseInt(pr.regalo, 10) || 1), maxDia: Math.max(1, parseInt(pr.maxDia, 10) || 1), regaloProductoId: String(pr.regaloProductoId || '') }; });
+      const nAct = Object.values(limpio).filter(x => x.activo).length;
       try {
-        await db.collection('configuracion').doc('revendedores').set({ promos: limpio, actualizadoEl: new Date().toISOString() }, { mergeFields: ['promos', 'actualizadoEl'] });
-        cfgDealer = Object.assign({}, cfgDealer || {}, { promos: limpio });
-        mostrarToast(`Listo: ${Object.values(limpio).filter(x => x.activo).length} promos activas para dealers.`);
+        const niveles = { plata: Math.max(1, parseInt((document.getElementById('nivPlata') || {}).value, 10) || 50), oro: Math.max(2, parseInt((document.getElementById('nivOro') || {}).value, 10) || 150) };
+        if (niveles.oro <= niveles.plata) niveles.oro = niveles.plata + 1;
+        await db.collection('configuracion').doc('revendedores').set({ promos: limpio, niveles: niveles, actualizadoEl: new Date().toISOString() }, { mergeFields: ['promos', 'niveles', 'actualizadoEl'] });
+        cfgDealer = Object.assign({}, cfgDealer || {}, { promos: limpio, niveles: niveles });
+        promosDealerSucio = false; resumirPromosDealer();
+        if (est) { est.className = 'text-[11px] font-bold text-center text-emerald-300'; est.innerHTML = `<i class="fa-solid fa-circle-check mr-1"></i>Guardado · ${nAct} ${nAct === 1 ? 'promo activa' : 'promos activas'}`; }
+        mostrarToast(`✓ Promos guardadas: ${nAct} ${nAct === 1 ? 'activa' : 'activas'}.`);
         try { renderizarCatalogo(); } catch (e) { /* nada */ }
-      } catch (err) { alert('No se pudo guardar: ' + err.message); }
+        // Revisión del servidor después, sin hacer esperar
+        if (nAct) servidorTiene('tipos_cuenta').then(t => { if (t === false && est) { est.className = 'text-[11px] font-bold text-center text-amber-300'; est.textContent = 'Guardado, pero tu servidor es antiguo: actualízalo para que los regalos se entreguen.'; } }).catch(() => {});
+      } catch (err) {
+        if (est) { est.className = 'text-[11px] font-bold text-center text-red-300'; est.textContent = 'No se pudo guardar: ' + err.message; }
+        alert('No se pudo guardar: ' + err.message);
+      } finally {
+        if (est) est.classList.remove('hidden');
+        if (btn) { btn.disabled = false; btn.innerHTML = 'Guardar promos'; }
+      }
     }
 
     // ==================== APORTES DE STOCK: QUIÉN TRAJO LAS CUENTAS ====================
@@ -15166,13 +15225,137 @@
       b.classList.toggle('hidden', !es);
       if (!es) return;
       const lista = promosDealerActivas().filter(x => catalogoUnificado.some(p => p.docId === x.id && p.activo !== false));
+      const niv = nivelDealerDe(progresoDealer.mes || 0);
+      const pct = niv.sig ? Math.min(100, Math.round(((progresoDealer.mes || 0) - niv.desde) / Math.max(1, niv.meta - niv.desde) * 100)) : 100;
+      const falta = niv.sig ? Math.max(0, niv.meta - (progresoDealer.mes || 0)) : 0;
       b.innerHTML = `<div class="p-4">
         <div class="flex items-center gap-3.5">
-          <span class="shrink-0 w-12 h-12 rounded-2xl dealer-anillo p-[2px]"><span class="w-full h-full rounded-2xl bg-gray-950 flex items-center justify-center"><i class="fa-solid fa-crown text-xl" style="color:#f7d774"></i></span></span>
-          <div class="min-w-0 flex-grow"><p class="text-[10px] font-black tracking-[0.25em] dealer-texto">CUENTA DEALER</p><p class="text-sm font-black text-white leading-snug mt-0.5">${lista.length ? 'Tus promos exclusivas de hoy' : 'Gracias por ser parte de nuestro equipo de dealers.'}</p></div>
+          <span class="shrink-0 w-12 h-12 rounded-2xl dealer-anillo p-[2px]"><span class="w-full h-full rounded-2xl bg-gray-950 flex items-center justify-center text-2xl">${niv.icono}</span></span>
+          <div class="min-w-0 flex-grow"><p class="text-[10px] font-black tracking-[0.25em] dealer-texto">CUENTA DEALER</p><div class="flex items-center gap-2 mt-0.5"><span class="nivel-chip nivel-${niv.id}">${niv.icono} Dealer ${niv.nombre}</span><span class="text-[10px] text-amber-100/70">${progresoDealer.mes || 0} cuentas este mes</span></div></div>
         </div>
-        ${lista.length ? `<div class="mt-3 grid gap-1.5">${lista.slice(0, 6).map(x => `<div class="flex items-center justify-between gap-2 px-3 py-2 rounded-xl bg-black/30 border border-yellow-400/25"><span class="min-w-0 truncate text-xs font-bold text-white">${escaparHtml(nombreProd(x.id))}</span><span class="shrink-0 text-[11px] font-black dealer-texto">Compra ${x.compra || 10} → llévate ${x.regalo || 1}${x.regaloProductoId ? ' ' + escaparHtml(nombreProd(x.regaloProductoId)) : ''} 🎁</span></div>`).join('')}</div><p class="text-[10px] text-amber-100/60 mt-2">Las compras del mismo día se suman · el regalo llega solo en tu compra</p>` : ''}
+        <div class="mt-3"><div class="flex justify-between text-[10px] text-amber-100/80"><span>${niv.sig ? `Te faltan <b class="text-white">${falta}</b> para <b class="dealer-texto">Dealer ${niv.sig}</b>` : '¡Estás en el nivel más alto! 👑'}</span><span>${pct}%</span></div><div class="mt-1 h-2 rounded-full bg-black/40 overflow-hidden"><div class="h-full rounded-full nivel-${niv.sig ? (niv.sig === 'Oro' ? 'oro' : 'plata') : 'oro'}" style="width:${pct}%"></div></div></div>
+        ${lista.length ? `<p class="mt-3 text-[11px] font-black text-white">🎁 Tus promos de hoy</p><div class="mt-1.5 grid gap-1.5">${lista.slice(0, 6).map(x => { const N = x.compra || 10, lleva = (progresoDealer.hoy || {})[x.id] || 0, enCiclo = lleva % N, faltaP = N - enCiclo, ganados = Math.floor(lleva / N) * (x.regalo || 1), tope = (x.maxDia || 1) * (x.regalo || 1); const completo = ganados >= tope; return `<div class="px-3 py-2 rounded-xl bg-black/30 border ${completo ? 'border-emerald-400/50' : 'border-yellow-400/25'}"><div class="flex items-center justify-between gap-2"><span class="min-w-0 truncate text-xs font-bold text-white">${escaparHtml(nombreProd(x.id))}</span><span class="shrink-0 text-[11px] font-black dealer-texto">Compra ${N} → llévate ${x.regalo || 1}${x.regaloProductoId ? ' ' + escaparHtml(nombreProd(x.regaloProductoId)) : ''}</span></div><div class="mt-1.5 h-1.5 rounded-full bg-black/40 overflow-hidden"><div class="h-full ${completo ? 'bg-emerald-400' : 'nivel-oro'}" style="width:${completo ? 100 : Math.round(enCiclo / N * 100)}%"></div></div><p class="text-[10px] mt-1 ${completo ? 'text-emerald-300' : 'text-amber-100/80'}">${completo ? `✅ Ya ganaste ${ganados} hoy` : `Llevas ${enCiclo} de ${N} · <b class="text-white">¡te faltan ${faltaP} para tu regalo!</b>${ganados ? ` · ganados hoy: ${ganados}` : ''}`}</p></div>`; }).join('')}</div><p class="text-[10px] text-amber-100/60 mt-2">Las compras del mismo día se suman · el regalo llega solo en tu compra</p>` : ''}
       </div>`;
+    }
+
+
+    // Plegar / desplegar el recuadro de promos y mostrar el resumen de las activas
+    var promosDealerSucio = false;
+    function alternarPromosDealer(forzar) {
+      const c = document.getElementById('promosDealerCuerpo'), f = document.getElementById('promosDealerFlecha');
+      if (!c) return;
+      const abrir = forzar === undefined ? c.classList.contains('hidden') : !!forzar;
+      c.classList.toggle('hidden', !abrir);
+      if (f) f.style.transform = abrir ? 'rotate(180deg)' : '';
+    }
+    function resumirPromosDealer() {
+      const r = document.getElementById('promosDealerResumen');
+      const guardadas = (cfgDealer && cfgDealer.promos) || {};
+      const activas = Object.keys(guardadas).filter(id => guardadas[id] && guardadas[id].activo !== false);
+      if (r) r.textContent = activas.length ? 'Activas: ' + activas.map(id => `${nombreProd(id)} (${guardadas[id].compra || 10}+${guardadas[id].regalo || 1})`).join(' · ') : 'Ninguna promo activa · toca para configurar';
+      const sg = document.getElementById('promosDealerSinGuardar'); if (sg) sg.classList.toggle('hidden', !promosDealerSucio);
+    }
+    function marcarPromosSucio() { promosDealerSucio = true; resumirPromosDealer(); const e = document.getElementById('promosDealerEstado'); if (e) e.classList.add('hidden'); }
+
+
+    // ==================== ASISTENTE: NO SE MUESTRA A PROVEEDORES ====================
+    function actualizarVisibilidadAsistente() {
+      try {
+        const fab = document.getElementById('btnFlotanteSoporte');
+        if (!fab) return;
+        if (currentUser && esProveedorSesion() && !esAdminSesionActual()) { fab.classList.add('hidden'); fab.dataset.bloqueadoProveedor = '1'; try { cerrarAsistente(); } catch (e) { /* nada */ } }
+        else if (fab.dataset.bloqueadoProveedor === '1') { delete fab.dataset.bloqueadoProveedor; if (currentUser) fab.classList.remove('hidden'); }
+      } catch (e) { /* nada */ }
+    }
+
+    // ==================== CRÉDITO PRE-APROBADO ====================
+    async function aceptarCreditoPreaprobado() {
+      const libre = Math.max(0, userCupo - userDeuda);
+      if (!(libre > 0)) return;
+      if (!await confirmarModal(`¿Aceptar ${formatoCOP(libre)} de crédito?\n\nSe suma ya a tu saldo para que compres. Tu próxima recarga lo paga automáticamente: primero se descuenta la deuda y lo que sobre queda en tu saldo.`, { tipo: 'pregunta', textoAceptar: 'Sí, aceptar crédito' })) return;
+      const tiene = await servidorTiene('credito_aceptar');
+      if (tiene === false) { alert('Esta opción aún no está activa. Pide a soporte que actualice el sistema.'); return; }
+      try {
+        const r = await llamarBackend('credito_aceptar', {});
+        if (!r || !r.ok) { alert((r && r.error) || 'No se pudo aceptar el crédito.'); return; }
+        lanzarConfeti(['💜', '💰', '✨']);
+        alert(`🎉 ¡Crédito aprobado! Se sumaron ${formatoCOP(r.monto)} a tu saldo.\n\nCuando hagas tu próxima recarga, primero se descuenta tu deuda de ${formatoCOP(r.deuda)} y lo demás queda en tu saldo.`);
+      } catch (e) { alert(e.message || 'No se pudo aceptar el crédito.'); }
+    }
+
+    // ==================== AVATARES ====================
+    const ESTILOS_AVATAR = [['adventurer', 'Aventura'], ['avataaars', 'Clásico'], ['lorelei', 'Elegante'], ['notionists', 'Dibujo'], ['micah', 'Artístico'], ['bottts-neutral', 'Robots'], ['fun-emoji', 'Emoji']];
+    var avatarEstilo = 'adventurer', avatarSemillas = [];
+    function urlAvatar(estilo, semilla) { return `https://api.dicebear.com/9.x/${estilo}/svg?seed=${encodeURIComponent(semilla)}&backgroundType=gradientLinear&backgroundColor=b6e3f4,c0aede,d1d4f9,ffd5dc,ffdfbf`; }
+    function avatarValido(u) { return /^https:\/\/api\.dicebear\.com\/9\.x\/[a-z-]+\/svg\?seed=/.test(String(u || '')); }
+    function htmlAvatarMini(u, iniciales, clases) { return avatarValido(u) ? `<img src="${escaparHtml(u)}" alt="" loading="lazy" class="${clases} object-cover">` : escaparHtml(iniciales); }
+    function abrirSelectorAvatar() {
+      let m = document.getElementById('modalAvatar');
+      if (!m) {
+        m = document.createElement('div'); m.id = 'modalAvatar';
+        m.className = 'fixed inset-0 bg-black/80 backdrop-blur-sm z-[60] hidden items-end sm:items-center justify-center p-0 sm:p-4';
+        m.innerHTML = `<div class="bg-gray-900 border border-emerald-500/40 rounded-t-3xl sm:rounded-2xl max-w-md w-full shadow-2xl max-h-[88vh] flex flex-col overflow-hidden"><div class="flex items-center justify-between gap-3 px-4 py-3 border-b border-gray-800"><h3 class="text-base font-black text-white">Elige tu avatar</h3><button type="button" onclick="cerrarSelectorAvatar()" class="w-8 h-8 rounded-full bg-gray-800 text-gray-300"><i class="fa-solid fa-xmark"></i></button></div><div id="avEstilos" class="flex gap-1.5 overflow-x-auto px-4 pt-3 pb-1"></div><div id="avGrid" class="grid grid-cols-4 gap-2.5 p-4 overflow-y-auto"></div><div class="px-4 pb-4 grid grid-cols-2 gap-2"><button type="button" onclick="nuevasSemillasAvatar()" class="py-2.5 rounded-xl bg-gray-800 border border-gray-700 text-gray-200 font-bold text-xs"><i class="fa-solid fa-shuffle mr-1"></i>Ver otros</button><button type="button" onclick="guardarAvatar('')" class="py-2.5 rounded-xl bg-gray-800 border border-gray-700 text-gray-400 font-bold text-xs">Usar mi inicial</button></div></div>`;
+        document.body.appendChild(m);
+      }
+      nuevasSemillasAvatar();
+      m.classList.remove('hidden'); m.style.display = 'flex';
+    }
+    function cerrarSelectorAvatar() { const m = document.getElementById('modalAvatar'); if (m) { m.classList.add('hidden'); m.style.display = 'none'; } }
+    function nuevasSemillasAvatar() {
+      avatarSemillas = Array.from({ length: 12 }, () => Math.random().toString(36).slice(2, 9));
+      pintarSelectorAvatar();
+    }
+    function cambiarEstiloAvatar(e) { avatarEstilo = e; pintarSelectorAvatar(); }
+    function pintarSelectorAvatar() {
+      const es = document.getElementById('avEstilos'), g = document.getElementById('avGrid');
+      if (es) es.innerHTML = ESTILOS_AVATAR.map(([k, t]) => `<button type="button" onclick="cambiarEstiloAvatar('${k}')" class="shrink-0 px-3 py-1.5 rounded-full text-[11px] font-bold border ${avatarEstilo === k ? 'bg-emerald-500 text-black border-emerald-400' : 'bg-gray-800 text-gray-300 border-gray-700'}">${t}</button>`).join('');
+      if (g) g.innerHTML = avatarSemillas.map(sd => { const u = urlAvatar(avatarEstilo, sd); return `<button type="button" onclick="guardarAvatar('${escaparJsAttr(u)}')" class="avatar-op aspect-square overflow-hidden"><img src="${escaparHtml(u)}" alt="" loading="lazy" class="w-full h-full"></button>`; }).join('');
+    }
+    async function guardarAvatar(url) {
+      if (!currentUser) return;
+      if (url && !avatarValido(url)) return;
+      try {
+        await db.collection('usuarios').doc(currentUser.uid).set({ avatarUrl: url || '' }, { merge: true });
+        miAvatarUrl = url || ''; pintarMiAvatar();
+        cerrarSelectorAvatar(); mostrarToast(url ? '¡Avatar actualizado!' : 'Listo: se muestra tu inicial.');
+      } catch (e) { alert('No se pudo guardar: ' + e.message); }
+    }
+    var miAvatarUrl = '';
+    function pintarMiAvatar() {
+      const av = document.getElementById('perfilAvatar'); if (!av) return;
+      if (avatarValido(miAvatarUrl)) { av.innerHTML = `<img src="${escaparHtml(miAvatarUrl)}" alt="" class="w-full h-full rounded-full object-cover">`; av.classList.add('overflow-hidden', 'p-0'); }
+      else if (av.querySelector('img')) { av.innerHTML = ''; av.textContent = (document.getElementById('perfilNombreTitulo') || {}).textContent ? (document.getElementById('perfilNombreTitulo').textContent.trim().charAt(0).toUpperCase() || '?') : '?'; }
+    }
+
+    // ==================== DEALERS: NIVELES, PROGRESO Y CELEBRACIÓN ====================
+    const NIVELES_DEALER_BASE = { plata: 50, oro: 150 };
+    var progresoDealer = { mes: 0, hoy: {} };
+    function nivelesDealer() { const n = (cfgDealer && cfgDealer.niveles) || {}; return { plata: Math.max(1, parseInt(n.plata, 10) || NIVELES_DEALER_BASE.plata), oro: Math.max(2, parseInt(n.oro, 10) || NIVELES_DEALER_BASE.oro) }; }
+    function nivelDealerDe(cuentasMes) {
+      const n = nivelesDealer();
+      if (cuentasMes >= n.oro) return { id: 'oro', nombre: 'Oro', icono: '👑', sig: null, meta: n.oro, desde: n.oro };
+      if (cuentasMes >= n.plata) return { id: 'plata', nombre: 'Plata', icono: '🥈', sig: 'Oro', meta: n.oro, desde: n.plata };
+      return { id: 'bronce', nombre: 'Bronce', icono: '🥉', sig: 'Plata', meta: n.plata, desde: 0 };
+    }
+    async function cargarProgresoDealer() {
+      if (userTipoCuenta !== 'revendedor' || !currentUser || esStaffSesion()) return;
+      try {
+        const d = new Date(); const inicioMes = new Date(d.getFullYear(), d.getMonth(), 1).toISOString();
+        const inicioHoy = new Date(d.getFullYear(), d.getMonth(), d.getDate()).toISOString();
+        const snap = await db.collection('compras').where('usuarioId', '==', currentUser.uid).get();
+        let mes = 0; const hoy = {};
+        snap.forEach(x => { const c = x.data() || {}; if (c.esBonificacion) return; const f = String(c.fecha || ''); const n = parseInt(c.cantidad, 10) || 0; if (f >= inicioMes) mes += n; if (f >= inicioHoy) hoy[c.productoId] = (hoy[c.productoId] || 0) + n; });
+        progresoDealer = { mes: mes, hoy: hoy };
+        pintarBannerDealer(); renderizarCatalogo();
+      } catch (e) { console.warn('Progreso dealer:', e); }
+    }
+    function lanzarConfeti(emojis) {
+      const lista = emojis || ['🎉', '👑', '✨', '🎁', '💛'];
+      for (let i = 0; i < 36; i++) {
+        const e = document.createElement('span'); e.className = 'confeti'; e.textContent = lista[i % lista.length];
+        e.style.left = Math.random() * 100 + 'vw'; e.style.animationDuration = (1.8 + Math.random() * 1.6) + 's'; e.style.animationDelay = (Math.random() * .5) + 's';
+        document.body.appendChild(e); setTimeout(() => e.remove(), 4200);
+      }
     }
 
     // ==================== NETFLIX EN LA TIENDA: SIN CONTRASEÑA ====================
@@ -15279,7 +15462,7 @@
       const inicial = (nombre || email || '?').trim().charAt(0).toUpperCase();
 
       const setTxt = (id, txt) => { const el = document.getElementById(id); if (el) el.innerText = txt; };
-      setTxt('perfilAvatar', inicial);
+      if (avatarValido(miAvatarUrl)) pintarMiAvatar(); else setTxt('perfilAvatar', inicial);
       setTxt('perfilNombreTitulo', nombre || 'Sin nombre');
       setTxt('perfilEmailTitulo', email);
       setTxt('perfilStatSaldo', formatoCOP(modoPruebaCliente ? saldoSimulado : userSaldo));
