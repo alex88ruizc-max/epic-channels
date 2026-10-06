@@ -2200,13 +2200,18 @@
 
         <!-- SELECTOR DE GARANTÍA AÑADIDO -->
         <div>
-          <label class="block text-[11px] text-gray-400 mb-1">Tipo de Garantía / Duración</label>
-          <select id="nuevoProdTipoGarantia" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none">
-            <option value="">-- Seleccionar garantía (Opcional) --</option>
-            <option value="24h">24 horas</option>
-            <option value="29d">29 días</option>
-            <option value="ninguna">Sin garantía directa</option>
+          <label class="block text-[11px] text-gray-400 mb-1">Garantía</label>
+          <input type="hidden" id="nuevoProdTipoGarantia" value="">
+          <div class="grid grid-cols-3 gap-2">
+            <select id="nuevoProdGarModo" onchange="garantiaDesdeUI('nuevoProd')" class="bg-gray-800 border border-gray-700 rounded-xl px-2 py-2 text-xs text-white focus:outline-none"><option value="">Sin definir</option><option value="dur">Con garantía</option><option value="ninguna">Sin garantía</option></select>
+            <input type="number" id="nuevoProdGarN" min="1" max="999" oninput="garantiaDesdeUI('nuevoProd')" placeholder="29" class="bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none">
+            <select id="nuevoProdGarU" onchange="garantiaDesdeUI('nuevoProd')" class="bg-gray-800 border border-gray-700 rounded-xl px-2 py-2 text-xs text-white focus:outline-none"><option value="h">Horas</option><option value="d" selected>Días</option><option value="m">Meses</option><option value="y">Años</option></select>
+          </div>
+          <select id="nuevoProdGarInicio" class="mt-2 w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none">
+            <option value="compra">Cuenta desde la compra (producto cerrado: links, correos, alquiladas)</option>
+            <option value="subida">Cuenta desde que se subió al stock (producto abierto)</option>
           </select>
+          <p id="nuevoProdGarTxt" class="text-[10px] text-emerald-300 mt-1"></p>
         </div>
 
         <div>
@@ -2283,13 +2288,18 @@
 
         <!-- SELECTOR DE GARANTÍA EN EDICIÓN AÑADIDO -->
         <div>
-          <label class="block text-[11px] text-gray-400 mb-1">Tipo de Garantía / Duración</label>
-          <select id="editProdTipoGarantia" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none">
-            <option value="">-- Seleccionar garantía (Opcional) --</option>
-            <option value="24h">24 horas</option>
-            <option value="29d">29 días</option>
-            <option value="ninguna">Sin garantía directa</option>
+          <label class="block text-[11px] text-gray-400 mb-1">Garantía</label>
+          <input type="hidden" id="editProdTipoGarantia" value="">
+          <div class="grid grid-cols-3 gap-2">
+            <select id="editProdGarModo" onchange="garantiaDesdeUI('editProd')" class="bg-gray-800 border border-gray-700 rounded-xl px-2 py-2 text-xs text-white focus:outline-none"><option value="">Sin definir</option><option value="dur">Con garantía</option><option value="ninguna">Sin garantía</option></select>
+            <input type="number" id="editProdGarN" min="1" max="999" oninput="garantiaDesdeUI('editProd')" placeholder="29" class="bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none">
+            <select id="editProdGarU" onchange="garantiaDesdeUI('editProd')" class="bg-gray-800 border border-gray-700 rounded-xl px-2 py-2 text-xs text-white focus:outline-none"><option value="h">Horas</option><option value="d" selected>Días</option><option value="m">Meses</option><option value="y">Años</option></select>
+          </div>
+          <select id="editProdGarInicio" class="mt-2 w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none">
+            <option value="compra">Cuenta desde la compra (producto cerrado: links, correos, alquiladas)</option>
+            <option value="subida">Cuenta desde que se subió al stock (producto abierto)</option>
           </select>
+          <p id="editProdGarTxt" class="text-[10px] text-emerald-300 mt-1"></p>
         </div>
 
         <div>
@@ -4583,7 +4593,7 @@
       const lineas = lista.map(p => {
         const stock = p.stock || 0;
         const minimo = parseInt(p.minCompra) || 1;
-        const garantia = p.tipoGarantia === '29d' ? 'Garantía 29 Días' : (p.tipoGarantia === 'ninguna' ? 'Sin Garantía' : 'Garantía 24 Horas');
+        const garantia = parseGarantia(p.tipoGarantia) ? 'Garantía ' + textoGarantia(p.tipoGarantia, true) : (p.tipoGarantia === 'ninguna' ? 'Sin Garantía' : 'Garantía 24 Horas');
         const estado = stock <= 0 ? '❌' : (stock < Math.max(3, minimo) ? '⚠️' : '✅');
         return reemplazarVariablesPlantilla(tplLinea, {
           nombre: p.nombre || '', stock, estado, garantia,
@@ -5734,10 +5744,8 @@
       }).join(tplCuenta.includes('\n') ? '\n\n' : '\n');
 
       const tg = prodInfo.tipoGarantia;
-      const garantiaCorta = tg === '29d' ? '29 Días' : (tg === '24h' ? '24 Horas' : 'Sin garantía');
-      const textoGarantia = tg === '29d'
-        ? 'Este producto cuenta con soporte y garantía de 29 días.'
-        : (tg === '24h' ? 'Este producto cuenta con soporte y garantía de 24 horas.' : 'Este producto se entrega sin garantía directa de reemplazo.');
+      const garantiaCorta = textoGarantia(tg, true);
+      const textoGarantiaEntrega = parseGarantia(tg) ? 'Este producto cuenta con soporte y garantía de ' + textoGarantia(tg) + '.' : 'Este producto se entrega sin garantía directa de reemplazo.';
       const claveAmz = obtenerClaveMaster();
 
       const vars = {
@@ -5745,7 +5753,7 @@
         cantidad: cuentas.length,
         cuentas: bloqueCuentas,
         garantia: garantiaCorta,
-        texto_garantia: textoGarantia,
+        texto_garantia: textoGarantiaEntrega,
         clave_amazon: prodInfo.esAmazon ? claveAmz : '',
         bloque_amazon: prodInfo.esAmazon ? `🔑 Clave de acceso Amazon: ${claveAmz}\n\n` : '',
         total: (ex.total !== undefined && ex.total !== null) ? `${formatoCOP(ex.total)} COP` : '',
@@ -5810,10 +5818,8 @@
       }
 
       // GARANTÍA DINÁMICA SEGÚN CONFIGURACIÓN DEL PRODUCTO
-      if (prodInfo.tipoGarantia === '29d') {
-        texto += `\n📌 Garantía: Este producto cuenta con soporte y garantía de 29 días.`;
-      } else if (prodInfo.tipoGarantia === '24h') {
-        texto += `\n📌 Garantía: Este producto cuenta con soporte y garantía de 24 horas.`;
+      if (parseGarantia(prodInfo.tipoGarantia)) {
+        texto += `\n📌 Garantía: Este producto cuenta con soporte y garantía de ${textoGarantia(prodInfo.tipoGarantia)}.`;
       } else if (prodInfo.tipoGarantia === 'ninguna') {
         texto += `\n📌 Nota: Este producto se entrega sin garantía directa de reemplazo.`;
       }
@@ -5834,11 +5840,9 @@
       const fechaCompra = new Date(fechaCompraIso).getTime();
       const ahora = new Date().getTime();
       
-      const duracionMs = tipoGarantia === '29d' 
-        ? (29 * 24 * 60 * 60 * 1000) 
-        : (24 * 60 * 60 * 1000);
-
-      const tiempoRestante = (fechaCompra + duracionMs) - ahora;
+      const garC = parseGarantia(tipoGarantia);
+      if (!garC) return `<span class="px-2 py-0.5 rounded-lg text-[10px] bg-gray-800 text-gray-400 border border-gray-700">Sin garantía directa</span>`;
+      const tiempoRestante = venceGarantia(fechaCompra, garC) - ahora;
 
       if (tiempoRestante <= 0) {
         return `<span class="px-2 py-0.5 rounded-lg text-[10px] bg-red-500/10 text-red-400 border border-red-500/30 font-bold">
@@ -5846,7 +5850,7 @@
         </span>`;
       }
 
-      if (tipoGarantia === '29d') {
+      if (tiempoRestante >= 86400000) {
         const dias = Math.floor(tiempoRestante / (1000 * 60 * 60 * 24));
         const horas = Math.floor((tiempoRestante % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
         return `<span class="px-2.5 py-1 rounded-xl text-[11px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 font-bold flex items-center gap-1.5 shadow-sm">
@@ -6804,7 +6808,7 @@
       m.style.display = 'none';
       quitarImagenNuevoProducto();
       document.getElementById('nuevoProdEsVip').checked = false;
-      document.getElementById('nuevoProdTipoGarantia').value = '';
+      document.getElementById('nuevoProdTipoGarantia').value = ''; garantiaHaciaUI('nuevoProd', '', 'compra');
     }
 
     function abrirModalNuevoCliente() {
@@ -7558,7 +7562,7 @@
           stock: 0,
           activo: true,
           esVip: esVip,
-          tipoGarantia: tipoGarantia,
+          tipoGarantia: tipoGarantia, garantiaInicio: (document.getElementById('nuevoProdGarInicio') || {}).value === 'subida' ? 'subida' : 'compra',
           imagenUrl: imagenNuevoProductoBase64Temporal || '',
           fechaCreacion: new Date().toISOString()
         });
@@ -7576,7 +7580,7 @@
         document.getElementById('nuevoProdMinimo').value = '5';
         document.getElementById('inputNuevaCatTexto').value = '';
         document.getElementById('nuevoProdEsVip').checked = false;
-        document.getElementById('nuevoProdTipoGarantia').value = '';
+        document.getElementById('nuevoProdTipoGarantia').value = ''; garantiaHaciaUI('nuevoProd', '', 'compra');
         selectCat.value = 'Streaming';
         alternarCampoNuevaCat();
         quitarImagenNuevoProducto();
@@ -7997,7 +8001,7 @@
           });
 
           // TEXTO DE GARANTÍA DINÁMICO PARA TELEGRAM
-          let textoGarantiaTelegram = prodInfo.tipoGarantia === '29d' ? '29 Días' : (prodInfo.tipoGarantia === '24h' ? '24 Horas' : 'Sin garantía');
+          let textoGarantiaTelegram = textoGarantia(prodInfo.tipoGarantia, true);
 
           datosNotificacion = {
             producto: prodInfo.nombre || docId,
@@ -8157,7 +8161,7 @@
         const ex = extras || {};
         const lista = (cuentas || []).map(parseCredencialObj);
         const tg = prodInfo.tipoGarantia;
-        const garantia = tg === '29d' ? '29 días' : (tg === '24h' ? '24 horas' : 'Sin garantía');
+        const garantia = textoGarantia(tg);
         const chip = (icono, txt) => `<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-gray-900/70 border border-gray-700 text-gray-200"><i class="fa-solid ${icono} mr-1 text-emerald-400"></i>${txt}</span>`;
         const fila = (etiqueta, valor) => `
           <div class="flex items-center gap-2">
@@ -8227,9 +8231,8 @@
           if (stockBajo) conteoBajo++;
           const repetido = conteoNombres[nombreProductoNormalizado(p.nombre)] > 1;
 
-          let txtG = '24 Horas';
-          if (p.tipoGarantia === '29d') txtG = '29 Días';
-          else if (p.tipoGarantia === 'ninguna') txtG = 'Sin garantía';
+          let txtG = parseGarantia(p.tipoGarantia) ? textoGarantia(p.tipoGarantia, true) + (p.garantiaInicio === 'subida' ? ' (desde subida)' : '') : '24 Horas';
+          if (p.tipoGarantia === 'ninguna') txtG = 'Sin garantía';
           else if (p.tipoGarantia === '') txtG = 'Sin definir';
 
           const textoBusqueda = construirAtributoBusqueda(p.nombre, p.categoria, txtG, p.docId, esVip ? 'vip' : '', esActivo ? 'activo' : 'oculto', stockBajo ? 'stock bajo' : '', repetido ? 'repetido' : '');
@@ -8317,7 +8320,7 @@
       document.getElementById('editProdDesc').value = prod.descripcion || '';
       document.getElementById('editProdPrecio').value = (prod.precioLista !== undefined ? prod.precioLista : prod.precio) || 0;
       document.getElementById('editProdMinimo').value = prod.minCompra || 1;
-      document.getElementById('editProdTipoGarantia').value = prod.tipoGarantia || '';
+      document.getElementById('editProdTipoGarantia').value = prod.tipoGarantia || ''; garantiaHaciaUI('editProd', prod.tipoGarantia || '', prod.garantiaInicio || ((snapshotInventario[prod.docId] || {}).garantiaInicio) || 'compra');
 
       actualizarSelectCategoriasAdmin();
       const selectCat = document.getElementById('selectEditProdCat');
@@ -8412,7 +8415,7 @@
           descripcion: desc,
           precio: precio,
           minCompra: minCompra,
-          tipoGarantia: tipoGarantia
+          tipoGarantia: tipoGarantia, garantiaInicio: (document.getElementById('editProdGarInicio') || {}).value === 'subida' ? 'subida' : 'compra'
         };
 
         if (imagenProductoBase64Temporal !== null) {
@@ -11177,16 +11180,16 @@
     // ¿La compra todavía tenía garantía cuando el cliente reportó la cuenta? (solo lo ve el personal)
     function textoGarantiaTicket(t) {
       try {
-        if (t.garantia !== '24h' && t.garantia !== '29d') return '';
+        if (!parseGarantia(t.garantia)) return '';
         if (!t.fechaCompra) return '';
         const compra = new Date(t.fechaCompra).toLocaleDateString('es-CO', { day: '2-digit', month: '2-digit' });
         const reporte = new Date(t.creadoEl).getTime();
-        const vence = t.garantiaVence ? new Date(t.garantiaVence).getTime() : new Date(t.fechaCompra).getTime() + (t.garantia === '29d' ? 29 : 1) * 24 * 3600000;
+        const vence = t.garantiaVence ? new Date(t.garantiaVence).getTime() : venceGarantia(new Date(t.fechaCompra).getTime(), parseGarantia(t.garantia));
         const dentro = reporte <= vence;
         const enMargen = !dentro && reporte <= vence + MARGEN_REPORTE_HORAS * 3600000;
         const color = dentro ? 'text-emerald-300' : (enMargen ? 'text-amber-300' : 'text-red-300');
         const veredicto = dentro ? 'reportada DENTRO del plazo' : (enMargen ? `reportada ${MARGEN_REPORTE_HORAS} h después de vencer (margen interno)` : 'reportada FUERA del plazo');
-        return `<p class="text-[10px] mt-0.5 ${color}"><i class="fa-solid fa-shield-halved mr-1"></i>Compra del ${compra} · garantía ${t.garantia === '29d' ? '29 días' : '24 horas'}: ${veredicto}</p>`;
+        return `<p class="text-[10px] mt-0.5 ${color}"><i class="fa-solid fa-shield-halved mr-1"></i>Compra del ${compra} · garantía ${textoGarantia(t.garantia)}: ${veredicto}</p>`;
       } catch (e) { return ''; }
     }
 
@@ -11383,7 +11386,7 @@
       else {
         const union = r === 'reemplazo' ? ' La cuenta nueva queda enlazada a la anterior.' : '';
         if (t.garantia === '24h') txt = 'Garantía de 24 horas: vuelve a empezar desde ahora para esa cuenta (el cliente tendrá otras 24 horas).' + union;
-        else if (t.garantia === '29d') txt = 'Garantía de 29 días: sigue el mismo tiempo de la compra, no se reinicia.' + union;
+        else if (parseGarantia(t.garantia) && !garantiaReinicia(t.garantia)) txt = 'Garantía de ' + textoGarantia(t.garantia) + ': sigue el mismo tiempo de la compra, no se reinicia.' + union;
         else txt = 'Este producto no tiene garantía, así que no se reinicia nada.' + union;
       }
       document.getElementById('rtGarantia').textContent = txt;
@@ -12787,7 +12790,7 @@
     function htmlEntregaCombo(cuentas, info, fila, tituloCaja) {
       const esNf = esProductoNetflix(info);
       const tg = info.tipoGarantia;
-      const garantia = tg === '29d' ? '29 días' : (tg === '24h' ? '24 horas' : 'Sin garantía');
+      const garantia = textoGarantia(tg);
       let html = `<div class="p-3 rounded-xl bg-gradient-to-br from-amber-400/15 to-gray-800/40 border border-amber-400/40">
         <p class="text-[10px] font-bold text-amber-300 uppercase tracking-wider"><i class="fa-solid fa-gift mr-1"></i>${escaparHtml(tituloCaja || 'Combo incluido')}</p>
         <p class="text-sm font-black text-white leading-snug mt-0.5">${escaparHtml(info.nombre || 'Adicional')}</p>
@@ -14199,8 +14202,9 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-05w';
+    const VERSION_PAGINA = '2026-10-05x';
     const ACTUALIZACIONES_PAGINA = [
+      { id: 'act_20261006_garantia', fecha: '2026-10-06', titulo: 'Garantías más claras', mensaje: 'Cada producto muestra ahora su **tiempo de garantía exacto** (horas, días, meses o años) y en **Mis Cuentas** ves cuánto te queda en cada cuenta.' },
       { id: 'act_20261006_dealer', fecha: '2026-10-06', titulo: '¡Llegan los Dealers! 👑', mensaje: 'Nuestros mejores compradores ahora son **Dealers**: insignia dorada en su cuenta y **cuentas de regalo** por comprar por volumen. ¿Quieres ser Dealer? Escríbenos.' },
       { id: 'act_20261005_tarjetas', fecha: '2026-10-05', titulo: 'Tienda con más estilo', mensaje: 'Cada producto ahora tiene su **tarjeta con el color de su marca**: Prime Video, Disney+, YouTube, Spotify y más. ¡Míralas en la tienda!' },
       { id: 'act_20261005_reportes', fecha: '2026-10-05', titulo: 'Tus reportes, más cómodos', mensaje: 'En **Mis Cuentas** ahora tienes un botón **Mis reportes** con un número rojo cuando te respondemos. Y si te cambiamos una cuenta, la verás destacada como **Usa esta cuenta**, con la anterior tachada.' },
@@ -15358,6 +15362,58 @@
       }
     }
 
+
+    // ==================== GARANTÍA CONFIGURABLE (cualquier duración) ====================
+    // Formato: número + unidad → '24h' (horas), '29d' (días), '1m' (meses), '1y' (años). '' o 'ninguna' = sin garantía.
+    function parseGarantia(tipo) { const m = String(tipo || '').match(/^(\d{1,4})([hdmy])$/); if (!m) return null; const n = parseInt(m[1], 10); return n > 0 ? { n: n, u: m[2] } : null; }
+    function venceGarantia(desdeMs, g) {
+      if (g.u === 'h') return desdeMs + g.n * 3600000;
+      if (g.u === 'd') return desdeMs + g.n * 86400000;
+      const d = new Date(desdeMs);
+      if (g.u === 'm') d.setMonth(d.getMonth() + g.n); else d.setFullYear(d.getFullYear() + g.n);
+      return d.getTime();
+    }
+    function textoGarantia(tipo, mayus) {
+      const g = parseGarantia(tipo);
+      if (!g) return mayus ? 'Sin garantía' : 'sin garantía';
+      const U = { h: ['hora', 'horas', 'Hora', 'Horas'], d: ['día', 'días', 'Día', 'Días'], m: ['mes', 'meses', 'Mes', 'Meses'], y: ['año', 'años', 'Año', 'Años'] }[g.u];
+      return g.n + ' ' + (mayus ? (g.n === 1 ? U[2] : U[3]) : (g.n === 1 ? U[0] : U[1]));
+    }
+    // En garantías por horas, un ticket resuelto reinicia el tiempo; en las demás sigue el mismo tiempo
+    function garantiaReinicia(tipo) { const g = parseGarantia(tipo); return !!g && g.u === 'h'; }
+    function inicioGarantiaCompra(c) {
+      if (c && c.garantiaInicio) return c.garantiaInicio;
+      try { const prod = catalogoUnificado.find(p => p.docId === c.productoId || p.id === c.productoId); const gi = prod ? (prod.garantiaInicio || (snapshotInventario[prod.docId] || {}).garantiaInicio) : ''; if (gi) return gi; } catch (e) { /* nada */ }
+      return 'compra';
+    }
+    // Desde cuándo corre la garantía de una cuenta: la compra, o la subida al stock si el producto es "abierto"
+    function desdeGarantiaCuenta(c, cuenta) {
+      let desde = new Date(c.fecha).getTime();
+      if (inicioGarantiaCompra(c) === 'subida') {
+        const e = String(cuenta || '').toLowerCase();
+        const info = (Array.isArray(c.cuentasInfo) ? c.cuentasInfo : []).find(x => x && String(x.e || '').toLowerCase() === e);
+        const sub = info ? Date.parse(info.s) : NaN;
+        if (sub && sub < desde) desde = sub;
+      }
+      return desde;
+    }
+    // Editor: la interfaz arma el valor del campo oculto (y al revés)
+    function garantiaDesdeUI(pref) {
+      const modo = document.getElementById(pref + 'GarModo').value, n = parseInt(document.getElementById(pref + 'GarN').value, 10), u = document.getElementById(pref + 'GarU').value;
+      const v = modo === 'ninguna' ? 'ninguna' : (modo === 'dur' && n > 0 ? n + u : '');
+      document.getElementById(pref + 'TipoGarantia').value = v;
+      ['GarN', 'GarU', 'GarInicio'].forEach(k => { const e = document.getElementById(pref + k); if (e) e.disabled = modo !== 'dur'; });
+      const t = document.getElementById(pref + 'GarTxt'); if (t) t.textContent = parseGarantia(v) ? 'El cliente verá: garantía de ' + textoGarantia(v) : (v === 'ninguna' ? 'Se entrega sin garantía de reemplazo.' : '');
+    }
+    function garantiaHaciaUI(pref, tipo, inicio) {
+      const g = parseGarantia(tipo);
+      document.getElementById(pref + 'GarModo').value = g ? 'dur' : (tipo === 'ninguna' ? 'ninguna' : '');
+      document.getElementById(pref + 'GarN').value = g ? g.n : '';
+      document.getElementById(pref + 'GarU').value = g ? g.u : 'd';
+      document.getElementById(pref + 'GarInicio').value = inicio === 'subida' ? 'subida' : 'compra';
+      garantiaDesdeUI(pref);
+    }
+
     // ==================== NETFLIX EN LA TIENDA: SIN CONTRASEÑA ====================
     function esNombreNetflix(t) { return /netflix/i.test(String(t || '')); }
     function esProductoNetflix(p) {
@@ -15397,7 +15453,7 @@
     function construirEntregaNetflix(cuentas, prodInfo, extras) {
       const ex = extras || {};
       const tg = prodInfo.tipoGarantia;
-      const garantia = tg === '29d' ? 'garantía de 29 días' : (tg === '24h' ? 'garantía de 24 horas' : '');
+      const garantia = parseGarantia(tg) ? 'garantía de ' + textoGarantia(tg) : '';
       let t = '🎬 ¡Tu Netflix está listo!\n\n';
       t += '📦 ' + (prodInfo.nombre || 'Netflix') + '\n';
       (cuentas || []).forEach((raw, i) => {
@@ -15643,19 +15699,20 @@
     function estadoGarantiaCuenta(c, cuenta) {
       const { tipo, inferida } = resolverTipoGarantiaCompra(c);
       const fecha = c.fecha ? new Date(c.fecha) : null;
-      if ((tipo !== '24h' && tipo !== '29d') || !fecha || isNaN(fecha.getTime())) {
+      const gar = parseGarantia(tipo);
+      if (!gar || !fecha || isNaN(fecha.getTime())) {
         return { estado: 'sin', tipo, inferida, puedeReportar: false, enMargen: false, reiniciada: false };
       }
-      let desde = fecha.getTime(), reiniciada = false;
-      if (tipo === '24h') {
+      let desde = desdeGarantiaCuenta(c, cuenta), reiniciada = false;
+      if (garantiaReinicia(tipo)) {
         const id = String(cuenta || '').toLowerCase();
         reiniciosDeCompra(c).forEach(r => {
           const d = new Date(r && r.desde).getTime();
           if (r && String(r.cuenta || '').toLowerCase() === id && d && d > desde) { desde = d; reiniciada = true; }
         });
       }
-      const totalMs = tipo === '29d' ? 29 * 24 * 3600000 : 24 * 3600000;
-      const vence = new Date(desde + totalMs);
+      const vence = new Date(venceGarantia(desde, gar));
+      const totalMs = vence.getTime() - desde;
       const restanteMs = vence.getTime() - Date.now();
       const margenMs = MARGEN_REPORTE_HORAS * 3600000;
       return {
@@ -15668,13 +15725,19 @@
     function estadoGarantiaCompra(c) {
       const { tipo, inferida } = resolverTipoGarantiaCompra(c);
       const fecha = c.fecha ? new Date(c.fecha) : null;
-      if (tipo === 'ninguna' || (tipo !== '24h' && tipo !== '29d') || !fecha || isNaN(fecha.getTime())) {
+      const gar = parseGarantia(tipo);
+      if (!gar || !fecha || isNaN(fecha.getTime())) {
         return { estado: 'sin', tipo, inferida };
       }
+      // Producto abierto: la compra vence cuando vence la cuenta que más tiempo tenga
       let desde = fecha.getTime();
-      if (tipo === '24h') reiniciosDeCompra(c).forEach(r => { const d = new Date(r && r.desde).getTime(); if (d && d > desde) desde = d; });
-      const totalMs = tipo === '29d' ? 29 * 24 * 3600000 : 24 * 3600000;
-      const vence = new Date(desde + totalMs);
+      if (inicioGarantiaCompra(c) === 'subida') {
+        const lineas = String(c.credenciales || '').split('\n').map(l => emailDeLineaCuenta(l)).filter(Boolean);
+        if (lineas.length) desde = Math.max.apply(null, lineas.map(e => desdeGarantiaCuenta(c, e)));
+      }
+      if (garantiaReinicia(tipo)) reiniciosDeCompra(c).forEach(r => { const d = new Date(r && r.desde).getTime(); if (d && d > desde) desde = d; });
+      const vence = new Date(venceGarantia(desde, gar));
+      const totalMs = vence.getTime() - desde;
       const restanteMs = vence.getTime() - Date.now();
       // Durante el margen interno se sigue mostrando como vigente (con "menos de 1 hora"), para que el cliente no lo note
       if (restanteMs <= 0 && restanteMs + MARGEN_REPORTE_HORAS * 3600000 > 0) {
@@ -15707,7 +15770,7 @@
       const c = misComprasPerfilCache[idx];
       if (!c) return '';
       const g = estadoGarantiaCompra(c);
-      const etiquetaTipo = g.tipo === '29d' ? '29 días' : '24 horas';
+      const etiquetaTipo = textoGarantia(g.tipo);
 
       if (g.estado === 'vigente') {
         const urgente = g.restanteMs < 3 * 3600000; // menos de 3 horas
