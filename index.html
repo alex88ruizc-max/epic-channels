@@ -1056,7 +1056,7 @@
         <div id="adminRegaloRevendedor" class="solo-admin dealer-banner overflow-hidden">
           <button type="button" onclick="alternarPromosDealer()" class="w-full text-left p-4 flex items-center gap-3">
             <span class="w-9 h-9 shrink-0 rounded-xl bg-black/30 border border-yellow-400/40 flex items-center justify-center"><i class="fa-solid fa-crown" style="color:#f7d774"></i></span>
-            <span class="min-w-0 flex-grow"><span class="block font-bold text-sm dealer-texto">Promos para dealers</span><span id="promosDealerResumen" class="block text-[11px] text-amber-100/70 truncate">Toca para configurar</span></span>
+            <span class="min-w-0 flex-grow"><span class="block font-bold text-sm dealer-texto">Promociones por perfil</span><span id="promosDealerResumen" class="block text-[11px] text-amber-100/70 truncate">Toca para configurar</span></span>
             <span id="promosDealerSinGuardar" class="hidden shrink-0 px-2 py-0.5 rounded-full bg-amber-500 text-black text-[9px] font-black">SIN GUARDAR</span>
             <i id="promosDealerFlecha" class="fa-solid fa-chevron-down text-amber-200/70 transition-transform"></i>
           </button>
@@ -2466,7 +2466,7 @@
         </div>
         <div class="solo-admin">
           <label class="block text-xs text-gray-400 mb-1">Rol</label>
-          <select id="expRol" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none">
+          <select id="expRol" onchange="expCambioRol()" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none">
             <option value="cliente">Cliente</option>
             <option value="cliente_normal">Cliente normal (solo Netflix, VIP y lo que le habilites)</option>
             <option value="revendedor">Dealer (insignia dorada + regalo por volumen)</option>
@@ -2475,7 +2475,17 @@
             <option value="reseller">Super reseller (pedidos pagados por adelantado, no compra)</option>
             <option value="moderador">Moderador (casi todo, sin configuración)</option>
           </select>
-          <p class="text-[10px] text-gray-500 mt-1">Los productos del proveedor y las categorías del cliente normal se eligen después, en Editar.</p>
+          <p class="text-[10px] text-gray-500 mt-1">Los productos del proveedor se eligen después, en Editar.</p>
+          <div id="expReferidoCaja" class="hidden mt-2">
+            <label class="block text-[11px] text-gray-400 mb-1">¿Quién lo refirió? (correo, opcional)</label>
+            <input type="email" id="expReferidoPor" autocomplete="off" placeholder="Correo de quien lo trajo" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none">
+            <p class="text-[10px] text-gray-500 mt-1">Así esa persona gana su comisión por el stock que suba este proveedor.</p>
+          </div>
+          <div id="expCategoriasCaja" class="hidden mt-2 p-2.5 rounded-xl bg-gray-800/60 border border-gray-700/60 space-y-1.5">
+            <p class="text-[11px] font-bold text-white">Categorías que puede ver (además de Netflix y VIP)</p>
+            <div id="expCategoriasLista" class="space-y-1.5 max-h-40 overflow-y-auto"></div>
+            <label class="flex items-start gap-2 pt-1.5 border-t border-gray-700 text-[11px] text-emerald-200 cursor-pointer"><input type="checkbox" id="expCatPredet" class="accent-emerald-500 mt-0.5"> Guardar como predeterminadas para <b>todos</b> los clientes normales (actuales y nuevos)</label>
+          </div>
         </div>
         <div>
           <label class="block text-xs text-gray-400 mb-1">Contraseña Temporal</label>
@@ -2894,7 +2904,7 @@
         <div class="p-3.5 rounded-2xl border border-emerald-500/40 bg-emerald-500/5">
           <p class="text-[11px] font-bold text-emerald-300 uppercase tracking-wider mb-2"><i class="fa-solid fa-bolt mr-1"></i> Recarga automática con Bre-B</p>
 
-          <div id="recargaAutoForm">
+          <p id="avisoCompraTrasRecarga" class="hidden mb-2 px-3 py-2 rounded-xl bg-emerald-500/10 border border-emerald-400/40 text-[11px] text-emerald-100"></p><div id="recargaAutoForm">
             <p class="text-xs text-gray-300 mb-2">Elige cuánto quieres recargar. Te daremos un monto exacto para pagar y tu saldo se acredita solo en 1 o 2 minutos.</p>
             <div class="grid grid-cols-4 gap-1.5 mb-2">
               <button type="button" onclick="recargaAutoElegir(10000)" class="py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 border border-gray-700 text-[11px] font-bold text-white">$10.000</button>
@@ -2912,6 +2922,7 @@
           <div id="recargaAutoPedido" class="hidden">
             <p class="text-xs text-gray-400 text-center">Envía exactamente</p>
             <div class="text-center my-1"><span id="recAutoMonto" class="text-3xl font-black text-white">$0</span></div>
+            <p id="recAutoExtra" class="text-center text-[11px] text-emerald-200/90 -mt-0.5 mb-1"></p>
             <button type="button" onclick="recargaAutoCopiarMonto()" class="mx-auto block px-3 py-1 rounded-lg bg-gray-800 hover:bg-gray-700 border border-gray-700 text-[11px] font-bold text-gray-200"><i class="fa-solid fa-copy mr-1"></i> Copiar monto</button>
             <div class="mt-3 p-3 bg-gray-800/70 rounded-xl flex items-center justify-between gap-2">
               <div class="min-w-0">
@@ -4990,6 +5001,7 @@
     function irARecargarDesdeModal() {
       cerrarModalSaldoInsuficiente();
       abrirModalRecarga();
+      try { prepararCompraTrasRecarga(); } catch (e) { /* nada */ }
     }
 
     async function cambiarContraseñaUsuario(e) {
@@ -6091,6 +6103,7 @@
         try { asistenteProgramarSaludo(); } catch (e) { console.warn(e); }
         try { iniciarNovedadesClientes(); } catch (e) { console.warn(e); }
         try { cargarCfgDealer().then(cargarProgresoDealer); } catch (e) { /* nada */ }
+        try { cargarCategoriasNormales().then(() => { if (userTipoCuenta === 'normal') renderizarCatalogo(); }); } catch (e) { /* nada */ }
         try { leerCfgReferidos().then(() => { iniciarMisComisiones(); renderizarMisReferidos(); }); } catch (e) { console.warn(e); }
         if (btnTelegramBot) btnTelegramBot.classList.remove('hidden');
         
@@ -6146,6 +6159,8 @@
           if (doc.exists) {
             const dataU = doc.data();
             userSaldo = dataU.saldo || 0;
+            setTimeout(() => { try { revisarCompraTrasRecarga(); } catch (e) { /* nada */ } }, 0);
+            if (ticketsAvisadosCuenta === null) { ticketsAvisadosCuenta = Array.isArray(dataU.ticketsAvisados) ? dataU.ticketsAvisados : []; setTimeout(() => { try { revisarTicketsClienteUI(); } catch (e) { /* nada */ } }, 0); }
             try { if (dataU.vistaPanel) recibirVistaPanelDeCuenta(dataU.vistaPanel); } catch (e) { /* nada */ }
             userDeuda = Math.max(0, Number(dataU.deuda) || 0);
             userCupo = Math.max(0, Number(dataU.cupoCredito) || 0);
@@ -7856,7 +7871,7 @@
       // Cliente normal: Netflix, VIP y las categorías o productos que le habilite el administrador
       if (userTipoCuenta === 'normal' && !modoPruebaCliente) {
         const bloq = userProductosBloqueados.includes(prod.id) || userProductosBloqueados.includes(prod.docId);
-        const ok = esNombreNetflix(prod.nombre) || esVip || userCategoriasPermitidas.indexOf(prod.categoria) !== -1 || userProductosPermitidos.includes(prod.id) || userProductosPermitidos.includes(prod.docId);
+        const ok = esNombreNetflix(prod.nombre) || esVip || userCategoriasPermitidas.indexOf(prod.categoria) !== -1 || categoriasNormalesDef.indexOf(prod.categoria) !== -1 || userProductosPermitidos.includes(prod.id) || userProductosPermitidos.includes(prod.docId);
         return ok && !bloq;
       }
       
@@ -7957,6 +7972,7 @@
               ${esNf && tt('chipNetflix') !== '-' ? `<div class="mb-2"><span class="nf-chip"><i class="fa-solid fa-key"></i> ${ttH('chipNetflix')}</span></div>` : ''}
               <p class="text-xs text-gray-400 mb-2 leading-relaxed">${prod.descripcion}</p>
               ${esComboT ? '' : htmlGarantiaTarjeta(prod)}
+              ${(!promoD && promoParaMi(prod.docId)) ? (() => { const pc = promoParaMi(prod.docId); return `<div class="mb-2.5 px-3 py-2 rounded-xl border border-pink-400/40 bg-gradient-to-r from-pink-500/15 to-violet-500/10"><p class="text-[11px] font-black text-pink-200">🎁 Promo: compra ${pc.compra || 10}, lleva ${pc.regalo || 1} gratis</p><p class="text-[10px] text-pink-100/70 mt-0.5">Por tiempo limitado · las compras del mismo día se suman.</p></div>`; })() : ''}
               ${promoD ? `<div class="mb-2.5 px-3 py-2 rounded-xl border border-yellow-400/40" style="background:linear-gradient(135deg,rgba(247,215,116,.12),rgba(184,134,11,.06))"><p class="text-[11px] font-black dealer-texto">🎁 Promo de hoy: compra ${promoD.compra || 10}, lleva ${(promoD.regalo || 1) * ((multiplicadoresDealer()[nivelDealerDe(progresoDealer.mes || 0).id]) || 1)}</p><p class="text-[10px] text-amber-100/70 mt-0.5 leading-snug">Válido mientras veas este mensaje · ¡aprovecha, pocas unidades! <span class="text-amber-200/90">Solo tú lo ves porque eres un partner especial 👑</span></p></div>` : ''}
               ${esComboT ? htmlIncluyeCombo(prod) : ''}
               
@@ -8016,6 +8032,7 @@
       const minRequerido = prodInfo.minCompra || 5;
       const inputCant = document.getElementById('cant_' + docId);
       let cantidad = inputCant ? (parseInt(inputCant.value) || minRequerido) : minRequerido;
+      ultimaCompraIntento = { docId: docId, cantidad: cantidad };
 
       if (compraEnCurso) return;
 
@@ -9224,7 +9241,10 @@
           if (parElegido[1]) datosRol.tipoCuenta = parElegido[1];
           await db.collection('usuarios').doc(uid).set(datosRol, { merge: true });
         }
+        try { await guardarCategoriasCreacion(uid); } catch (e) { /* nada */ }
+        try { await guardarReferidoCreacion(uid, email); } catch (e) { /* nada */ }
         const selExp = document.getElementById('expRol'); if (selExp) selExp.value = 'cliente';
+        try { expCambioRol(); } catch (e) { /* nada */ }
 
         credencialesNuevoUsuarioTemp = `• Correo: ${email}\n• Contraseña: ${password}`;
         document.getElementById('txtCredencialesNuevoUsuario').innerText = credencialesNuevoUsuarioTemp;
@@ -9766,6 +9786,8 @@
         if (ped) ped.classList.remove('hidden');
         const set = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v; };
         set('recAutoMonto', formatoCOP(pedidoRecargaActivo.monto));
+        const extra = pedidoRecargaActivo.base ? (pedidoRecargaActivo.monto - pedidoRecargaActivo.base) : 0;
+        set('recAutoExtra', extra > 0 ? `Incluye ${formatoCOP(extra)} para identificar tu pago. No es comisión: todo se suma a tu saldo.` : 'Los pesos extra sirven para identificar tu pago. No es comisión: todo se suma a tu saldo.');
         set('recAutoNombre', metodo ? metodo.nombre : 'Llave Bre-B');
         set('recAutoLlave', metodo ? metodo.llave : '—');
         set('recAutoTitular', metodo && metodo.titular ? 'Titular: ' + metodo.titular : '');
@@ -14316,7 +14338,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-06f';
+    const VERSION_PAGINA = '2026-10-06h';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261006_credito', fecha: '2026-10-06', titulo: 'Tu crédito, más fácil', mensaje: 'Si tienes **crédito pre-aprobado** te avisamos en la tienda. En tu perfil hay una pestaña **Crédito** donde lo aceptas y ves cuánto debes y tu historial.' },
       { id: 'act_20261006_negocio', fecha: '2026-10-06', titulo: 'Dealers: Mi negocio 👑', mensaje: 'Los Dealers ahora pueden **asignar cada cuenta a su cliente**, entregarla por WhatsApp con un toque y ver **su ganancia del mes** y qué cuentas están por vencer.' },
@@ -14462,6 +14484,7 @@
           <label class="flex items-center gap-1 text-[10px] text-amber-100"><input type="checkbox" ${on ? 'checked' : ''} onchange="promosDealerEdit['${escaparJsAttr(id)}'].activo=this.checked;marcarPromosSucio();renderizarPromosDealerAdmin()" class="accent-yellow-400 w-4 h-4">Activa</label>
           <button type="button" onclick="delete promosDealerEdit['${escaparJsAttr(id)}'];marcarPromosSucio();renderizarPromosDealerAdmin()" aria-label="Quitar" class="w-7 h-7 rounded-lg bg-red-500/10 border border-red-500/30 text-red-300 text-[10px]"><i class="fa-solid fa-trash"></i></button></div>
         <div class="grid grid-cols-3 gap-1.5 mt-2">${inp(id, 'compra', pr.compra || 10, 1, '')}${inp(id, 'regalo', pr.regalo || 1, 1, '')}${inp(id, 'maxDia', pr.maxDia || 1, 1, '')}</div>
+        <div class="mt-1.5 flex flex-wrap items-center gap-2"><span class="text-[9px] text-amber-100/60 uppercase tracking-wider">Aplica a:</span>${[['dealer', '👑 Dealers'], ['cliente', 'Clientes'], ['normal', 'Clientes normales']].map(([k, t]) => `<label class="flex items-center gap-1 text-[11px] text-white"><input type="checkbox" ${(Array.isArray(pr.aplicaA) && pr.aplicaA.length ? pr.aplicaA : ['dealer']).indexOf(k) !== -1 ? 'checked' : ''} onchange="cambiarAplicaPromo('${escaparJsAttr(id)}','${k}',this.checked)" class="accent-yellow-400 w-3.5 h-3.5">${t}</label>`).join('')}</div>
         <label class="block mt-1.5 text-[9px] text-amber-100/60 uppercase tracking-wider">Producto de regalo<select onchange="promosDealerEdit['${escaparJsAttr(id)}'].regaloProductoId=this.value;marcarPromosSucio()" class="mt-0.5 w-full bg-gray-900 border border-yellow-400/30 rounded-lg px-2 py-1.5 text-xs text-white focus:outline-none"><option value="">El mismo (${escaparHtml(nombreProd(id))})</option>${prods.filter(p => p.docId !== id).map(p => `<option value="${escaparHtml(p.docId)}" ${pr.regaloProductoId === p.docId ? 'selected' : ''}>${escaparHtml(p.nombre || p.docId)}</option>`).join('')}</select></label>
         <p class="text-[10px] text-yellow-200 mt-1.5 font-bold">🎁 Compra ${pr.compra || 10}, llévate ${pr.regalo || 1}${pr.regaloProductoId ? ' de ' + escaparHtml(nombreProd(pr.regaloProductoId)) : ''} · hasta ${(pr.maxDia || 1) * (pr.regalo || 1)} de regalo al día</p>
       </div>`; }).join('') : '<p class="text-[11px] text-amber-100/60">Todavía no hay promos. Elige un producto abajo y toca Agregar.</p>';
@@ -14478,7 +14501,7 @@
       const btn = document.getElementById('btnGuardarPromosDealer'), est = document.getElementById('promosDealerEstado');
       if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i> Guardando...'; }
       const limpio = {};
-      Object.keys(promosDealerEdit).forEach(id => { const pr = promosDealerEdit[id]; limpio[id] = { activo: pr.activo !== false, compra: Math.max(1, parseInt(pr.compra, 10) || 10), regalo: Math.max(1, parseInt(pr.regalo, 10) || 1), maxDia: Math.max(1, parseInt(pr.maxDia, 10) || 1), regaloProductoId: String(pr.regaloProductoId || '') }; });
+      Object.keys(promosDealerEdit).forEach(id => { const pr = promosDealerEdit[id]; limpio[id] = { activo: pr.activo !== false, compra: Math.max(1, parseInt(pr.compra, 10) || 10), regalo: Math.max(1, parseInt(pr.regalo, 10) || 1), maxDia: Math.max(1, parseInt(pr.maxDia, 10) || 1), regaloProductoId: String(pr.regaloProductoId || ''), aplicaA: Array.isArray(pr.aplicaA) && pr.aplicaA.length ? pr.aplicaA : ['dealer'] }; });
       const nAct = Object.values(limpio).filter(x => x.activo).length;
       try {
         const niveles = { plata: Math.max(1, parseInt((document.getElementById('nivPlata') || {}).value, 10) || 50), oro: Math.max(2, parseInt((document.getElementById('nivOro') || {}).value, 10) || 150) };
@@ -14917,7 +14940,7 @@
         <div class="flex items-center justify-between gap-2"><p class="text-[11px] font-black text-sky-200 uppercase tracking-wider"><i class="fa-solid fa-user-group mr-1"></i>Mis referidos</p>${personas ? `<span class="text-[11px] text-gray-300">${personas} con comisiones</span>` : ''}</div>
         <div class="grid grid-cols-2 gap-2 mt-2"><div class="rounded-xl bg-gray-900/70 p-2"><p class="text-[10px] text-gray-400">Ganado</p><p class="text-sm font-black text-emerald-300">${formatoCOP(acred)}</p></div><div class="rounded-xl bg-gray-900/70 p-2"><p class="text-[10px] text-gray-400">Pendiente</p><p class="text-sm font-black text-amber-300">${formatoCOP(pend)}</p></div></div>
         ${metaRefHtml()}
-        <p class="text-[10px] text-gray-400 mt-2">Para recomendar, pide que al registrarse escriban tu correo: <b class="text-white">${escaparHtml(correo)}</b> <button type="button" onclick="copiarTexto('${escaparJsAttr(correo)}','Correo copiado')" class="ml-1 text-sky-300 underline">copiar</button></p>
+        
       </div>`;
       const mostrar = !!cfgReferidos && cfgReferidos.activo || misComisiones.length > 0;
       ['perfilReferidosCaja', 'provReferidosCaja'].forEach(id => { const e = document.getElementById(id); if (!e) return; e.classList.toggle('hidden', !mostrar || esStaffSesion()); e.innerHTML = mostrar ? html : ''; });
@@ -15347,8 +15370,8 @@
       try { const d = await db.collection('configuracion').doc('revendedores').get(); cfgDealer = d.exists ? (d.data() || {}) : {}; } catch (e) { cfgDealer = {}; }
       pintarBannerDealer();
     }
-    function promosDealerActivas() { const p = (cfgDealer && cfgDealer.promos) || {}; return Object.keys(p).filter(id => p[id] && p[id].activo !== false).map(id => Object.assign({ id: id }, p[id])); }
-    function promoDealerDe(id) { if (userTipoCuenta !== 'revendedor' || esStaffSesion()) return null; const p = (cfgDealer && cfgDealer.promos) || {}; const prod = catalogoUnificado.find(x => x.docId === id); if (prod && !usuarioTienePermisoProducto(prod)) return null; return p[id] && p[id].activo !== false ? p[id] : null; }
+    function promosDealerActivas() { const p = (cfgDealer && cfgDealer.promos) || {}; return Object.keys(p).filter(id => p[id] && p[id].activo !== false && aplicaPromo(p[id], 'dealer')).map(id => Object.assign({ id: id }, p[id])); }
+    function promoDealerDe(id) { if (userTipoCuenta !== 'revendedor' || esStaffSesion()) return null; const p = (cfgDealer && cfgDealer.promos) || {}; const prod = catalogoUnificado.find(x => x.docId === id); if (prod && !usuarioTienePermisoProducto(prod)) return null; return p[id] && p[id].activo !== false && aplicaPromo(p[id], 'dealer') ? p[id] : null; }
     function pintarBannerDealer() {
       const b = document.getElementById('bannerDealer');
       if (!b) return;
@@ -15764,16 +15787,16 @@
       const abiertos = (misReportes || []).filter(t => t.estado !== 'resuelto');
       const pl = document.getElementById('pildoraTicketAbierto');
       if (pl) { pl.classList.toggle('hidden', !abiertos.length); pl.classList.toggle('flex', !!abiertos.length); const tx = document.getElementById('pildoraTicketTxt'); if (tx) tx.textContent = abiertos.length === 1 ? 'Tu reporte está en revisión · Ver' : `${abiertos.length} reportes en revisión · Ver`; }
-      // Ventana en el centro, una sola vez por ticket resuelto (últimos 7 días)
-      const vistos = tkPopupVistos(), hace7 = new Date(Date.now() - 7 * 86400000).toISOString();
+      // Aviso pequeño (ticket amarillo), una sola vez por ticket resuelto: se guarda en la cuenta, no en el navegador
+      if (ticketsAvisadosCuenta === null) return;
+      const vistos = ticketsAvisadosCuenta.concat(tkPopupVistos()), hace7 = new Date(Date.now() - 7 * 86400000).toISOString();
       const nuevos = (misReportes || []).filter(t => t.estado === 'resuelto' && String(t.resueltoEl || '') >= hace7 && vistos.indexOf(t.id) === -1);
-      const m = document.getElementById('modalTicketResuelto');
-      if (!nuevos.length || !m || !m.classList.contains('hidden')) return;
-      tkPopupMostrando = nuevos.map(t => t.id);
-      document.getElementById('trSub').textContent = nuevos.length === 1 ? 'Cuenta ' + (nuevos[0].cuenta || '') : nuevos.length + ' reportes con respuesta';
-      document.getElementById('trCuerpo').innerHTML = nuevos.map(t => `<div class="p-3 rounded-2xl bg-gray-800/50 border border-gray-700/60"><p class="text-[11px] font-bold text-white break-all">${escaparHtml(t.cuenta || '')}</p><p class="text-[10px] text-gray-400">${escaparHtml(t.motivo || '')}${t.productoNombre ? ' · ' + escaparHtml(t.productoNombre) : ''}</p>${htmlRespuestaTicket(t)}</div>`).join('');
-      m.classList.remove('hidden'); m.style.display = 'flex';
-      try { lanzarConfeti(['✅', '✨']); } catch (e) { /* nada */ }
+      if (!nuevos.length) return;
+      const ids = nuevos.map(t => t.id);
+      ticketsAvisadosCuenta = ticketsAvisadosCuenta.concat(ids).slice(-100);
+      guardarTkPopupVistos(tkPopupVistos().concat(ids));
+      db.collection('usuarios').doc(currentUser.uid).set({ ticketsAvisados: ticketsAvisadosCuenta }, { merge: true }).catch(() => {});
+      avisoTicketResueltoPequeno(nuevos);
     }
     function cerrarTicketResuelto() {
       const m = document.getElementById('modalTicketResuelto'); if (m) { m.classList.add('hidden'); m.style.display = 'none'; }
@@ -15984,6 +16007,156 @@
       try { inp.dispatchEvent(new Event('input')); } catch (e) { /* nada */ }
       comprarProducto(id);
     }
+
+
+    // ==================== PROMOS POR PERFIL ====================
+    function perfilPromoMio() { if (esStaffSesion() || esProveedorSesion()) return ''; return userTipoCuenta === 'revendedor' ? 'dealer' : (userTipoCuenta === 'normal' ? 'normal' : 'cliente'); }
+    function aplicaPromo(pr, perfil) { const a = Array.isArray(pr.aplicaA) && pr.aplicaA.length ? pr.aplicaA : ['dealer']; return a.indexOf(perfil) !== -1; }
+    // Promo que aplica a este cliente en este producto (cualquier perfil)
+    function promoParaMi(id) {
+      const perfil = perfilPromoMio(); if (!perfil || modoPruebaCliente) return null;
+      const p = (cfgDealer && cfgDealer.promos) || {}, pr = p[id];
+      if (!pr || pr.activo === false || !aplicaPromo(pr, perfil)) return null;
+      const prod = catalogoUnificado.find(x => x.docId === id); if (prod && !usuarioTienePermisoProducto(prod)) return null;
+      return pr;
+    }
+
+    // ==================== CLIENTE NORMAL: CATEGORÍAS PREDETERMINADAS ====================
+    var categoriasNormalesDef = [];
+    async function cargarCategoriasNormales() {
+      try { const d = await db.collection('configuracion').doc('clientes_normales').get(); categoriasNormalesDef = d.exists && Array.isArray((d.data() || {}).categorias) ? d.data().categorias : []; }
+      catch (e) { categoriasNormalesDef = []; }
+    }
+    function htmlChecksCategorias(clase, marcadas) {
+      const cats = Array.from(new Set(catalogoUnificado.map(p => p.categoria).filter(Boolean))).sort((a, b) => a.localeCompare(b, 'es'));
+      return cats.map(c => `<label class="flex items-center gap-2 text-xs text-white cursor-pointer"><input type="checkbox" class="${clase} accent-emerald-500" value="${escaparHtml(c)}" ${marcadas.indexOf(c) !== -1 ? 'checked' : ''}> ${escaparHtml(c)}${categoriasNormalesDef.indexOf(c) !== -1 ? ' <span class="text-[9px] text-emerald-300">(predeterminada)</span>' : ''}</label>`).join('') || '<p class="text-[11px] text-gray-500">No hay categorías.</p>';
+    }
+    async function expCambioRol() {
+      const v = (document.getElementById('expRol') || {}).value, caja = document.getElementById('expCategoriasCaja');
+      if (!caja) return;
+      caja.classList.toggle('hidden', v !== 'cliente_normal');
+      const rc = document.getElementById('expReferidoCaja'); if (rc) rc.classList.toggle('hidden', ['proveedor', 'proveedor_externo', 'reseller'].indexOf(v) === -1);
+      if (v === 'cliente_normal') { await cargarCategoriasNormales(); document.getElementById('expCategoriasLista').innerHTML = htmlChecksCategorias('chk-exp-cat', categoriasNormalesDef); }
+    }
+    async function guardarCategoriasCreacion(uid) {
+      const v = (document.getElementById('expRol') || {}).value; if (v !== 'cliente_normal') return;
+      const cats = Array.from(document.querySelectorAll('.chk-exp-cat:checked')).map(c => c.value);
+      try {
+        await db.collection('usuarios').doc(uid).set({ categoriasPermitidas: cats }, { merge: true });
+        if ((document.getElementById('expCatPredet') || {}).checked) { await db.collection('configuracion').doc('clientes_normales').set({ categorias: cats, actualizadoEl: new Date().toISOString() }); categoriasNormalesDef = cats; mostrarToast('✓ Categorías guardadas como predeterminadas para todos los clientes normales.'); }
+      } catch (e) { console.warn('Categorías:', e); }
+    }
+
+    // ==================== COMPRAS GRANDES: LISTA PLANA ====================
+    function htmlLoteGrande(c, idx, lineas) {
+      const vistas = new Set(), unicas = lineas.filter(l => { const k = l.toLowerCase(); if (vistas.has(k)) return false; vistas.add(k); return true; });
+      const prime = esProductoPrime(c);
+      const clavePlat = c.claveAcceso && (prime || String(c.claveAcceso) !== obtenerClaveMaster()) ? c.claveAcceso : '';
+      return `<div class="rounded-xl bg-gray-950/70 border border-gray-700/60 overflow-hidden">
+        <div class="flex items-center justify-between gap-2 px-3 py-2 border-b border-gray-800"><p class="text-[11px] font-black text-white">${unicas.length} cuentas <span class="text-gray-500 font-normal">· correo:contraseña del correo</span></p>${clavePlat ? `<span class="text-[10px] text-sky-200">Contraseña plataforma: <b class="font-mono text-white">${escaparHtml(clavePlat)}</b></span>` : ''}</div>
+        <pre class="px-3 py-2 max-h-56 overflow-auto text-[11px] leading-relaxed text-gray-200 font-mono whitespace-pre select-all">${escaparHtml(unicas.join('\n'))}</pre>
+        <div class="grid grid-cols-2 gap-2 p-2 border-t border-gray-800">
+          <button type="button" onclick="copiarLoteGrande(${idx})" class="py-2 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-black font-black text-[11px]"><i class="fa-solid fa-copy mr-1"></i>Copiar todas</button>
+          <button type="button" onclick="reportarPegando(${idx})" class="py-2 rounded-lg bg-yellow-400/15 hover:bg-yellow-400/25 border border-yellow-400/40 text-yellow-200 font-bold text-[11px]"><i class="fa-solid fa-flag mr-1"></i>Reportar una cuenta</button>
+        </div>
+      </div>`;
+    }
+    function copiarLoteGrande(idx) {
+      const c = misComprasPerfilCache[idx]; if (!c) return;
+      const lineas = Array.from(new Set(String(c.credenciales || '').split('\n').map(l => l.trim()).filter(Boolean)));
+      const prime = esProductoPrime(c), clavePlat = c.claveAcceso && (prime || String(c.claveAcceso) !== obtenerClaveMaster()) ? c.claveAcceso : '';
+      copiarTexto(lineas.join('\n') + (clavePlat ? '\n\nContraseña de la plataforma: ' + clavePlat : ''), `${lineas.length} cuentas copiadas`);
+    }
+    async function reportarPegando(idx) {
+      const c = misComprasPerfilCache[idx]; if (!c) return;
+      const txt = prompt('Pega el correo de la cuenta que quieres reportar (o la línea correo:clave):', '');
+      if (!txt) return;
+      const correo = emailDeLineaCuenta(String(txt).trim()) || String(txt).trim().toLowerCase();
+      const lineas = String(c.credenciales || '').split('\n').map(l => l.trim()).filter(Boolean);
+      const j = lineas.findIndex(l => emailDeLineaCuenta(l) === correo);
+      if (j < 0) { alert('Esa cuenta no está en esta compra. Revisa el correo.'); return; }
+      abrirReporteCuenta(idx, j);
+    }
+
+
+    function cambiarAplicaPromo(id, perfil, on) {
+      const pr = promosDealerEdit[id]; if (!pr) return;
+      let a = Array.isArray(pr.aplicaA) && pr.aplicaA.length ? pr.aplicaA.slice() : ['dealer'];
+      a = on ? Array.from(new Set(a.concat([perfil]))) : a.filter(x => x !== perfil);
+      if (!a.length) { alert('La promo debe aplicar al menos a un perfil.'); renderizarPromosDealerAdmin(); return; }
+      pr.aplicaA = a; marcarPromosSucio();
+    }
+
+
+    // ==================== PROVEEDOR CREADO POR EL EQUIPO: QUIÉN LO REFIRIÓ ====================
+    async function guardarReferidoCreacion(uid, emailNuevo) {
+      const v = (document.getElementById('expRol') || {}).value;
+      if (['proveedor', 'proveedor_externo', 'reseller'].indexOf(v) === -1) return;
+      const ref = String((document.getElementById('expReferidoPor') || {}).value || '').trim().toLowerCase();
+      const inp = document.getElementById('expReferidoPor'); if (inp) inp.value = '';
+      if (!ref || ref === String(emailNuevo || '').toLowerCase() || esCorreoAdmin(ref)) return;
+      const enc = await buscarUidPorCorreo(ref);
+      if (!enc) { alert('La cuenta se creó, pero no encontré a nadie con el correo ' + ref + ' para marcarlo como quien lo refirió. Puedes ponerlo después en Editar.'); return; }
+      const datos = { referidoPorEmail: String(enc.email || ref).toLowerCase(), referidoProcesado: true };
+      if (esAdminSesionActual()) datos.referidoPorUid = enc.uid;
+      await db.collection('usuarios').doc(uid).set(datos, { merge: true });
+    }
+
+    // ==================== SIN SALDO: RECARGAR Y COMPRAR SIN SALIR ====================
+    var ultimaCompraIntento = null, compraTrasRecarga = null;
+    function prepararCompraTrasRecarga() {
+      const it = ultimaCompraIntento; if (!it) return;
+      const prod = catalogoUnificado.find(p => p.docId === it.docId); if (!prod) return;
+      const total = (Number(prod.precio) || 0) * it.cantidad;
+      compraTrasRecarga = { docId: it.docId, cantidad: it.cantidad, total: total, nombre: prod.nombre, expira: Date.now() + 40 * 60000 };
+      const falta = Math.max(0, total - (Number(userSaldo) || 0));
+      setTimeout(() => {
+        const inp = document.getElementById('recargaAutoMonto');
+        if (inp && falta > 0) { const minimo = (recargaAutoCfg && recargaAutoCfg.minimo) || 0; inp.value = String(Math.max(minimo, Math.ceil(falta / 1000) * 1000)); }
+        const aviso = document.getElementById('avisoCompraTrasRecarga');
+        if (aviso) { aviso.classList.remove('hidden'); aviso.innerHTML = `<i class="fa-solid fa-cart-shopping mr-1"></i>Al recargar se completa sola tu compra: <b>${it.cantidad} × ${escaparHtml(prod.nombre)}</b> (${formatoCOP(total)}).`; }
+      }, 50);
+    }
+    // Cuando el saldo alcanza, se hace la compra pendiente (una sola vez)
+    function revisarCompraTrasRecarga() {
+      const c = compraTrasRecarga; if (!c) return;
+      if (Date.now() > c.expira) { compraTrasRecarga = null; return; }
+      if ((Number(userSaldo) || 0) < c.total) return;
+      compraTrasRecarga = null;
+      const av = document.getElementById('avisoCompraTrasRecarga'); if (av) av.classList.add('hidden');
+      try { cerrarModalRecarga(); } catch (e) { /* nada */ }
+      mostrarToast('💚 ¡Recarga lista! Completando tu compra de ' + c.nombre + '…');
+      setTimeout(() => {
+        if (!document.getElementById('cant_' + c.docId)) { try { categoriaActiva = 'Todas'; renderizarCatalogo(); } catch (e) { /* nada */ } }
+        const inp = document.getElementById('cant_' + c.docId); if (inp) inp.value = String(c.cantidad);
+        comprarProducto(c.docId);
+      }, 900);
+    }
+
+    // ==================== CORREOS DESECHABLES: NO SE PUEDEN REGISTRAR ====================
+    const DOMINIOS_DESECHABLES = ['yopmail.com', 'yopmail.fr', 'mailinator.com', 'guerrillamail.com', 'guerrillamail.net', 'sharklasers.com', 'grr.la', '10minutemail.com', '10minutemail.net', 'temp-mail.org', 'tempmail.com', 'tempmail.net', 'tempmailo.com', 'tmpmail.org', 'trashmail.com', 'dispostable.com', 'getnada.com', 'nada.email', 'maildrop.cc', 'mohmal.com', 'throwawaymail.com', 'fakeinbox.com', 'emailondeck.com', 'mintemail.com', 'mailnesia.com', 'mailcatch.com', 'spamgourmet.com', 'moakt.com', 'tempail.com', 'burnermail.io', 'mail.tm', 'linshiyouxiang.net', 'cock.li', 'mytemp.email', 'tempr.email', 'discard.email', 'emailfake.com', 'inboxkitten.com', 'mailpoof.com', 'mvrht.com', 'byom.de', 'trbvm.com', 'yomail.info', 'jetable.org'];
+    function esCorreoDesechable(email) { const d = String(email || '').toLowerCase().split('@')[1] || ''; return DOMINIOS_DESECHABLES.some(x => d === x || d.endsWith('.' + x)); }
+
+    // ==================== TICKET RESUELTO: AVISO PEQUEÑO, UNA SOLA VEZ (guardado en la cuenta) ====================
+    var ticketsAvisadosCuenta = null;
+    function avisoTicketResueltoPequeno(nuevos) {
+      let t = document.getElementById('ticketResueltoMini');
+      if (!t) {
+        t = document.createElement('div'); t.id = 'ticketResueltoMini';
+        t.className = 'fixed left-1/2 -translate-x-1/2 z-[65] w-[calc(100%-1.5rem)] max-w-sm';
+        t.style.top = 'calc(84px + env(safe-area-inset-top, 0px))';
+        document.body.appendChild(t);
+      }
+      const n = nuevos.length, uno = nuevos[0];
+      t.innerHTML = `<div class="relative flex items-center gap-2.5 pl-3 pr-9 py-2.5 rounded-2xl bg-amber-300 text-black shadow-2xl shadow-amber-900/40 border-2 border-dashed border-amber-600/50" style="animation:credEntrar .4s ease-out">
+        <span class="w-8 h-8 shrink-0 rounded-xl bg-black/10 flex items-center justify-center"><i class="fa-solid fa-ticket"></i></span>
+        <button type="button" onclick="irAMisReportes();cerrarTicketMini()" class="min-w-0 flex-grow text-left"><span class="block text-[12px] font-black leading-tight">${n === 1 ? 'Tu reporte fue resuelto' : n + ' reportes resueltos'}</span><span class="block text-[10.5px] text-black/70 truncate">${n === 1 ? escaparHtml(uno.cuenta || '') + ' · toca para ver la respuesta' : 'Toca para ver las respuestas'}</span></button>
+        <button type="button" onclick="cerrarTicketMini()" aria-label="Cerrar" class="absolute top-1/2 -translate-y-1/2 right-2.5 w-6 h-6 rounded-full bg-black/10 text-black/70 text-[11px]"><i class="fa-solid fa-xmark"></i></button>
+      </div>`;
+      t.classList.remove('hidden');
+      clearTimeout(window.__tkMiniTimer); window.__tkMiniTimer = setTimeout(cerrarTicketMini, 12000);
+    }
+    function cerrarTicketMini() { const t = document.getElementById('ticketResueltoMini'); if (t) t.classList.add('hidden'); }
 
     // ==================== NETFLIX EN LA TIENDA: SIN CONTRASEÑA ====================
     function esNombreNetflix(t) { return /netflix/i.test(String(t || '')); }
@@ -16594,6 +16767,8 @@
               }).join('')
             : '<div class="text-gray-500">Sin credenciales registradas.</div>';
 
+          const lineasVista = lineas.length >= 6 ? htmlLoteGrande(c, idx, lineas) + `<details class="mt-2"><summary class="cursor-pointer text-[11px] text-gray-400 select-none">Ver una por una (para reportar o entregar)</summary><div class="mt-2">${lineasHtml}</div></details>` : lineasHtml;
+
           const estadoGar = estadoGarantiaCompra(c).estado;
 
           html += `
@@ -16611,7 +16786,7 @@
                 </div>
               </div>
               <div data-garantia-idx="${idx}">${renderTarjetaGarantia(idx)}</div>
-              <div class="bg-gray-800/90 border border-gray-700 rounded-xl p-3 font-mono text-xs text-gray-200 select-all leading-relaxed">${lineasHtml}</div>
+              <div class="bg-gray-800/90 border border-gray-700 rounded-xl p-3 font-mono text-xs text-gray-200 select-all leading-relaxed">${lineasVista}</div>
               ${esNfC ? htmlGuiaNetflix(false) : ''}
               ${esNfC ? htmlAvisoNetflixDispositivo() : ''}
               ${esNfC ? `<button type="button" onclick="pedirCodigoCompraNetflix(${idx})" class="w-full py-2.5 rounded-xl nf-btn text-xs font-bold flex items-center justify-center gap-1.5"><i class="fa-solid fa-key"></i> Pedir código</button>` : ''}
@@ -16696,6 +16871,7 @@
     async function procesarAuth(e) {
       e.preventDefault();
       const email = document.getElementById('authEmail').value.trim();
+      if (modoAuth === 'register' && esCorreoDesechable(email)) { alert('Ese correo es temporal o desechable. Regístrate con un correo real (Gmail, Hotmail, Outlook, etc.).'); return; }
       const password = document.getElementById('authPassword').value;
 
       if (modoAuth === 'register') {
@@ -16716,6 +16892,7 @@
             notificacion_borrada: false,
             primer_ingreso: new Date().toISOString(),
             fechaRegistro: new Date().toISOString(),
+            correoVerificacionEnviado: (function () { try { const u = auth.currentUser; if (u && !u.emailVerified && u.sendEmailVerification) { u.sendEmailVerification().catch(() => {}); return true; } } catch (e) { /* nada */ } return false; })(),
             referidoPorEmail: (function () { const r = String((document.getElementById('authReferido') || {}).value || '').trim().toLowerCase(); return /^\S+@\S+\.\S+$/.test(r) && r !== email.trim().toLowerCase() ? r.slice(0, 120) : ''; })()
           });
           cerrarModalAuth();
