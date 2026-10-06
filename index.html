@@ -518,8 +518,8 @@
           </div>
           <div class="flex items-center gap-3.5 mt-2">
             <div class="shrink-0 p-[2px] rounded-full bg-gradient-to-br from-emerald-300 via-emerald-500 to-sky-500">
-              <button type="button" onclick="abrirSelectorAvatar()" title="Cambiar avatar" class="relative block">
-                <div id="perfilAvatar" class="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-gray-900 text-emerald-300 flex items-center justify-center text-xl sm:text-2xl font-black">?</div>
+              <button type="button" onclick="abrirSelectorAvatar()" title="Cambiar avatar" class="relative block rounded-full">
+                <div id="perfilAvatar" class="w-14 h-14 sm:w-16 sm:h-16 rounded-full overflow-hidden bg-gray-900 text-emerald-300 flex items-center justify-center text-xl sm:text-2xl font-black">?</div>
                 <span class="absolute -bottom-0.5 -right-0.5 w-6 h-6 rounded-full bg-emerald-500 text-black flex items-center justify-center border-2 border-gray-900 text-[10px]"><i class="fa-solid fa-pen"></i></span>
               </button>
             </div>
@@ -1444,6 +1444,12 @@
         <div class="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden">
           <div class="px-4 py-3 border-b border-gray-800"><h4 class="text-sm font-black text-white">Orden y cuadros visibles</h4><p class="text-[11px] text-gray-400 mt-0.5">Mueve con las flechas. El ojo oculta un cuadro del menú (la sección sigue existiendo). "Ajustes Generales" queda siempre de último y en grande.</p></div>
           <div id="vpOrden" class="p-3 space-y-1.5 max-h-[60vh] overflow-y-auto"></div>
+        </div>
+        <div class="solo-admin bg-gray-900 border border-sky-500/30 rounded-2xl p-4 space-y-2">
+          <h4 class="text-sm font-black text-white flex items-center gap-2"><i class="fa-solid fa-user-shield text-sky-300"></i> Permisos del moderador</h4>
+          <p class="text-[11px] text-gray-400">Marca las secciones que el moderador puede ver y usar. <b class="text-gray-200">Ajustes Generales</b> siempre queda solo para ti (ahí está el servidor y Telegram).</p>
+          <div id="permisosModLista" class="space-y-1.5"></div>
+          <button type="button" id="btnGuardarPermisosMod" onclick="guardarPermisosModerador()" class="w-full py-2.5 rounded-xl bg-sky-500 hover:bg-sky-400 text-black font-black text-xs">Guardar permisos</button>
         </div>
         <div class="grid grid-cols-2 gap-2">
           <button type="button" onclick="restaurarVistaPanel()" class="py-3 rounded-xl bg-gray-800 hover:bg-gray-700 border border-gray-700 text-gray-200 font-bold text-xs">Volver a la vista original</button>
@@ -6383,7 +6389,7 @@
         const n = infoNivel(totalCuentas);
         const insignia = document.getElementById('perfilNivelInsignia');
         if (insignia) insignia.innerHTML = htmlInsigniaNivel(totalCuentas, false) + (userTipoCuenta === 'revendedor' ? ' ' + htmlInsigniaDealer() : '');
-        try { const av = document.getElementById('perfilAvatar'); if (av && av.parentElement) av.parentElement.classList.toggle('dealer-anillo', userTipoCuenta === 'revendedor'); } catch (e) { /* nada */ }
+        try { const av = document.getElementById('perfilAvatar'); const aro = av ? av.closest('.rounded-full.shrink-0') || (av.parentElement && av.parentElement.parentElement) : null; if (aro) aro.classList.toggle('dealer-anillo', userTipoCuenta === 'revendedor'); } catch (e) { /* nada */ }
         const box = document.getElementById('perfilNivelBox');
         if (!box) return;
         const c = n.actual.color;
@@ -7318,7 +7324,7 @@
       if (tab === 'asistente') cargarEditorAsistente();
       if (tab === 'tickets') { renderizarTickets(); limpiarFotosRespuestaVencidas(); }
       if (tab === 'promociones') { renderizarPromoProductos(); renderizarPromoActivas(); }
-      if (tab === 'vista') renderizarEditorVistaPanel();
+      if (tab === 'vista') { renderizarEditorVistaPanel(); cargarPermisosModerador(); }
       if (tab === 'novedades') { iniciarNovedadesClientes(); renderizarNovedadesAdmin(); renderizarActualizacionesPagina(); }
       if (tab === 'cortes') { try { iniciarNetflixAdmin(); } catch (e) { /* nada */ } renderizarCortes(); }
       if (tab === 'buscar') prepararBuscadorAdmin();
@@ -9859,7 +9865,7 @@
     }
 
     async function guardarRecargaAutoAdmin() {
-      if (!esAdminSesionActual()) return;
+      if (!puedeSeccion('pagos')) return;
       const activa = !!document.getElementById('chkRecargaAuto').checked;
       const minutos = Math.max(5, Math.min(120, parseInt(document.getElementById('recargaAutoMinutos').value, 10) || 30));
       const minimo = Math.max(1000, parseInt(document.getElementById('recargaAutoMinimo').value, 10) || 5000);
@@ -9992,7 +9998,7 @@
     let inicioEnPanelPendiente = false;
     let perfilNombreActual = '';
     let escuchasModeradorActivas = false;
-    const RESTRINGIDAS_MODERADOR = ['categorias', 'apariencia', 'pagos', 'ajustes', 'proveedores', 'asistente', 'promociones', 'novedades'];
+    var RESTRINGIDAS_MODERADOR = ['categorias', 'apariencia', 'pagos', 'ajustes', 'proveedores', 'asistente', 'promociones', 'novedades'];
 
     function esModeradorSesion() { return rolActual === 'moderador' && !esAdminSesionActual(); }
     function esProveedorSesion() { return rolActual === 'proveedor' && !esAdminSesionActual(); }
@@ -10031,6 +10037,7 @@
       }
 
       if (rol !== 'moderador' && !desdeCache) { inicioEnPanelPendiente = false; rutaPendienteStaff = ''; }
+      if (rol === 'moderador') setTimeout(cargarPermisosModerador, 0);
       setTimeout(actualizarVisibilidadAsistente, 0);
       if (rol === 'proveedor') {
         if (btnAdmin) btnAdmin.classList.add('hidden');
@@ -10299,7 +10306,7 @@
     }
 
     async function aprobarLoteProveedor() {
-      if (!esAdminSesionActual()) return;
+      if (!puedeSeccion('proveedores')) return;
       const l = lotesProveedores.find(x => x.id === loteAprobandoId);
       if (!l || l.estado !== 'pendiente') { alert('Este lote ya no está pendiente.'); return; }
       const costoTxt = (document.getElementById('aprobarLoteCosto') || {}).value;
@@ -10359,7 +10366,7 @@
     }
 
     async function rechazarLoteProveedor() {
-      if (!esAdminSesionActual()) return;
+      if (!puedeSeccion('proveedores')) return;
       const l = lotesProveedores.find(x => x.id === loteAprobandoId);
       if (!l || l.estado !== 'pendiente') { alert('Este lote ya no está pendiente.'); return; }
       const motivo = window.prompt('Motivo del rechazo (el proveedor lo verá). Puedes dejarlo vacío:', '');
@@ -10588,7 +10595,7 @@
     }
 
     async function medGuardar() {
-      if (!esAdminSesionActual()) return;
+      if (!puedeSeccion('proveedores')) return;
       const sinNombre = metodosEditor.some(m => !String(m.nombre || '').trim());
       if (sinNombre) { alert('Todos los medios de pago necesitan un nombre.'); return; }
       const lista = sanearMetodosPagoProv(metodosEditor.map(m => Object.assign({}, m)));
@@ -10694,7 +10701,7 @@
     }
 
     async function abrirPagarProveedor(uid) {
-      if (!esAdminSesionActual()) return;
+      if (!puedeSeccion('proveedores')) return;
       const lotes = lotesProveedores.filter(l => l.proveedorUid === uid && l.estado === 'aprobado' && !l.pagado);
       if (!lotes.length) { alert('Este proveedor no tiene nada pendiente de pago.'); return; }
       const descPend = descuentosPendientesDe(uid);
@@ -11629,7 +11636,7 @@
     }
 
     function cargarEditorAsistente() {
-      if (!esAdminSesionActual()) return;
+      if (!puedeSeccion('asistente')) return;
       asistenteIniciarConfig();
       if (!asistenteSucio || !asistenteBorrador) {
         asistenteBorrador = asistenteCopia(asistenteConfigActual());
@@ -12538,7 +12545,7 @@
     }
 
     async function guardarTextosTienda() {
-      if (!esAdminSesionActual()) return;
+      if (!puedeSeccion('apariencia')) return;
       const textos = {};
       document.querySelectorAll('[data-texto-tienda]').forEach(inp => {
         const k = inp.getAttribute('data-texto-tienda');
@@ -12631,7 +12638,7 @@
     function ordenAlInicio(i) { moverOrden(i, 0); }
 
     async function guardarOrdenTienda() {
-      if (!esAdminSesionActual()) return;
+      if (!puedeSeccion('apariencia')) return;
       const btn = document.getElementById('btnGuardarOrdenTienda');
       if (btn) btn.disabled = true;
       try {
@@ -13075,7 +13082,7 @@
     }
 
     async function aplicarPromocion() {
-      if (!esAdminSesionActual()) return;
+      if (!puedeSeccion('promociones')) return;
       const ids = Object.keys(promoSeleccion).filter(k => promoSeleccion[k] && catalogoUnificado.some(p => p.docId === k));
       const pct = Math.round(Number(document.getElementById('promoPct').value) || 0);
       const vDesde = document.getElementById('promoDesde').value, vHasta = document.getElementById('promoHasta').value;
@@ -13103,7 +13110,7 @@
     }
 
     async function quitarPromocion(docId) {
-      if (!esAdminSesionActual()) return;
+      if (!puedeSeccion('promociones')) return;
       const p = catalogoUnificado.find(x => x.docId === docId) || {};
       if (!await confirmarModal(`¿Quitar la promoción de ${p.nombre || docId}? Vuelve a su precio normal.`, { textoAceptar: 'Sí, quitar' })) return;
       try {
@@ -13176,7 +13183,7 @@
       renderizarEditorColorReportar();
     }
     async function guardarColorReportar() {
-      if (!esAdminSesionActual()) return;
+      if (!puedeSeccion('apariencia')) return;
       const c = colorReportarElegido || colorReportar();
       try {
         await db.collection('configuracion').doc('apariencia').set({ colorReportar: c }, { merge: true });
@@ -13311,7 +13318,7 @@
     }
 
     function abrirModalCombo(docId) {
-      if (!esAdminSesionActual()) return;
+      if (!puedeSeccion('combos')) return;
       comboEditandoId = docId || '';
       const p = docId ? catalogoUnificado.find(x => x.docId === docId) : null;
       const d = docId ? (snapshotInventario[docId] || {}) : {};
@@ -13379,7 +13386,7 @@
     }
 
     async function guardarCombo() {
-      if (!esAdminSesionActual()) return;
+      if (!puedeSeccion('combos')) return;
       const nombre = document.getElementById('comboNombre').value.trim().slice(0, 80);
       const desc = document.getElementById('comboDesc').value.trim().slice(0, 300);
       const categoria = document.getElementById('comboCategoria').value || 'Combos';
@@ -13903,7 +13910,7 @@
     }
 
     async function guardarNovedadCliente(difundir) {
-      if (!esAdminSesionActual()) return;
+      if (!puedeSeccion('novedades')) return;
       const b = leerBorradorNovedad();
       if (!b.mensaje) { alert('Escribe el mensaje de la novedad.'); return; }
       if (difundir && !await confirmarModal('¿Difundir esta novedad? Les llega a todos tus clientes como notificación y aparece de primero en el asistente.', { tipo: 'pregunta', textoAceptar: 'Sí, difundir' })) return;
@@ -13943,7 +13950,7 @@
     }
 
     async function difundirNovedadCliente(id) {
-      if (!esAdminSesionActual()) return;
+      if (!puedeSeccion('novedades')) return;
       const n = novedadesClientes.find(x => x.id === id);
       if (!n) return;
       if (!await confirmarModal(n.difundida ? '¿Difundirla otra vez? Vuelve a aparecer como nueva para todos.' : '¿Difundir esta novedad? Les llega a todos tus clientes como notificación y aparece de primero en el asistente.', { tipo: 'pregunta', textoAceptar: 'Sí, difundir' })) return;
@@ -13955,7 +13962,7 @@
     }
 
     async function retirarNovedadCliente(id) {
-      if (!esAdminSesionActual()) return;
+      if (!puedeSeccion('novedades')) return;
       if (!await confirmarModal('¿Retirarla del asistente? Deja de aparecer como novedad (la notificación que ya llegó se queda).', { textoAceptar: 'Sí, retirar' })) return;
       try { await modificarNovedadCliente(id, { difundida: false }); mostrarToast('Retirada del asistente.'); } catch (err) { alert('No se pudo: ' + err.message); }
     }
@@ -13969,7 +13976,7 @@
     }
 
     async function eliminarNovedadCliente(id) {
-      if (!esAdminSesionActual()) return;
+      if (!puedeSeccion('novedades')) return;
       if (!await confirmarModal('¿Eliminar esta novedad?', { textoAceptar: 'Sí, eliminar' })) return;
       try { await modificarNovedadCliente(id, null); mostrarToast('Novedad eliminada.'); } catch (err) { alert('No se pudo eliminar: ' + err.message); }
     }
@@ -14212,7 +14219,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-05y';
+    const VERSION_PAGINA = '2026-10-05z';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261006_garantia', fecha: '2026-10-06', titulo: 'Garantías más claras', mensaje: 'Cada producto muestra ahora su **tiempo de garantía exacto** (horas, días, meses o años) y en **Mis Cuentas** ves cuánto te queda en cada cuenta.' },
       { id: 'act_20261006_dealer', fecha: '2026-10-06', titulo: '¡Llegan los Dealers! 👑', mensaje: 'Nuestros mejores compradores ahora son **Dealers**: insignia dorada en su cuenta y **cuentas de regalo** por comprar por volumen. ¿Quieres ser Dealer? Escríbenos.' },
@@ -14273,14 +14280,14 @@
     }
 
     async function difundirActualizacion(id) {
-      if (!esAdminSesionActual()) return;
+      if (!puedeSeccion('novedades')) return;
       const a = ACTUALIZACIONES_PAGINA.find(x => x.id === id);
       if (!a) return;
       if (!await confirmarModal(`¿Difundir "${a.titulo}"? Les llega a todos tus clientes como notificación y en el asistente.`, { tipo: 'pregunta', textoAceptar: 'Sí, difundir' })) return;
       try { await guardarNovedadDePlantilla(a); mostrarToast('¡Difundida!'); } catch (err) { alert('No se pudo difundir: ' + err.message); }
     }
     async function difundirActualizacionesPendientes() {
-      if (!esAdminSesionActual()) return;
+      if (!puedeSeccion('novedades')) return;
       const pend = ACTUALIZACIONES_PAGINA.filter(a => !actualizacionDifundida(a));
       if (!pend.length) return;
       if (!await confirmarModal(`¿Difundir las ${pend.length} actualizaciones nuevas? Les llegan a todos tus clientes.`, { tipo: 'pregunta', textoAceptar: 'Sí, difundir' })) return;
@@ -14367,7 +14374,7 @@
       renderizarPromosDealerAdmin();
     }
     async function guardarRegaloRevendedor() {
-      if (!esAdminSesionActual()) return;
+      if (!puedeSeccion('dealers')) return;
       const btn = document.getElementById('btnGuardarPromosDealer'), est = document.getElementById('promosDealerEstado');
       if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i> Guardando...'; }
       const limpio = {};
@@ -14545,7 +14552,7 @@
       [['btnEstiloMarca', marca], ['btnEstiloClasico', !marca]].forEach(([id, on]) => { const b = document.getElementById(id); if (b) b.className = 'p-3 rounded-xl border text-left transition ' + (on ? 'border-emerald-400 bg-emerald-500/10' : 'border-gray-700 bg-gray-800/60 hover:border-gray-500'); });
     }
     async function guardarEstiloTarjetas(estilo) {
-      if (!esAdminSesionActual()) return;
+      if (!puedeSeccion('apariencia')) return;
       try {
         await db.collection('configuracion').doc('apariencia').set({ estiloTarjetas: estilo }, { merge: true });
         aparienciaConfig = Object.assign({}, aparienciaConfig, { estiloTarjetas: estilo });
@@ -14727,7 +14734,7 @@
         ` Nunca más de ${tope} por periodo, y lo que no cobra no pasa al siguiente.`;
     }
     async function guardarConfigReferidos() {
-      if (!esAdminSesionActual()) return;
+      if (!puedeSeccion('referidos')) return;
       const v = id => document.getElementById(id);
       const cfg = {
         activo: v('refActivo').checked, bonoRegistro: Math.max(0, Math.round(Number(v('refBonoRegistro').value) || 0)), modoProv: v('refModoProv').value,
@@ -14756,7 +14763,7 @@
       </div>`).join('') : `<p class="text-[11px] text-gray-500 text-center py-3">${filtroRef === 'pendiente' ? 'No hay comisiones pendientes.' : 'Todavía no hay comisiones.'}</p>`;
     }
     async function resolverComision(id, estado) {
-      if (!esAdminSesionActual()) return;
+      if (!puedeSeccion('referidos')) return;
       const c = comisionesRef.find(x => x.id === id); if (!c || c.estado !== 'pendiente') return;
       const preg = { acreditada: `¿Sumar ${formatoCOP(c.monto)} al saldo de ${c.beneficiarioEmail}?`, pagada: `¿Marcar como pagada por fuera (${formatoCOP(c.monto)})? No cambia su saldo.`, anulada: '¿Anular esta comisión?' };
       if (!await confirmarModal(preg[estado], { textoAceptar: 'Sí' })) return;
@@ -14876,7 +14883,7 @@
       return t;
     }
     async function hacerVentaManual() {
-      if (!esAdminSesionActual()) return;
+      if (!puedeSeccion('venta_manual')) return;
       const id = document.getElementById('vmProducto').value;
       const prod = catalogoUnificado.find(x => x.docId === id);
       const n = Math.max(1, parseInt(document.getElementById('vmCantidad').value, 10) || 1);
@@ -14934,7 +14941,7 @@
       if (inf && id) inf.textContent = `${stockLibreDeProducto(id)} libres. Salen del inventario y su costo queda como "asignado a proveedores". No cambia lo que le debes al proveedor.`;
     }
     async function asignarCorreosProveedor(solicitudId) {
-      if (!esAdminSesionActual()) return;
+      if (!puedeSeccion('proveedores')) return;
       const uid = document.getElementById('acProveedor').value, id = document.getElementById('acProducto').value;
       const n = Math.max(1, parseInt(document.getElementById('acCantidad').value, 10) || 0);
       const prov = (aportantesCache || []).find(u => u.uid === uid), prod = catalogoUnificado.find(x => x.docId === id);
@@ -15076,7 +15083,7 @@
       const t = document.getElementById('prTotalTxt'); if (t) t.textContent = n && pr ? `Total pagado: ${formatoCOP(n * pr)} por ${n} cuentas` : '';
     }
     async function crearPedidoReseller() {
-      if (!esAdminSesionActual()) return;
+      if (!puedeSeccion('proveedores')) return;
       const uid = document.getElementById('prReseller').value, id = document.getElementById('prProducto').value;
       const n = parseInt(document.getElementById('prCantidad').value, 10) || 0, pr = Math.max(0, Math.round(Number(document.getElementById('prPrecio').value) || 0));
       const rs = (window.__resellers || []).find(u => u.uid === uid), prod = catalogoUnificado.find(x => x.docId === id);
@@ -15239,14 +15246,14 @@
       pintarBannerDealer();
     }
     function promosDealerActivas() { const p = (cfgDealer && cfgDealer.promos) || {}; return Object.keys(p).filter(id => p[id] && p[id].activo !== false).map(id => Object.assign({ id: id }, p[id])); }
-    function promoDealerDe(id) { if (userTipoCuenta !== 'revendedor' || esStaffSesion()) return null; const p = (cfgDealer && cfgDealer.promos) || {}; return p[id] && p[id].activo !== false ? p[id] : null; }
+    function promoDealerDe(id) { if (userTipoCuenta !== 'revendedor' || esStaffSesion()) return null; const p = (cfgDealer && cfgDealer.promos) || {}; const prod = catalogoUnificado.find(x => x.docId === id); if (prod && !usuarioTienePermisoProducto(prod)) return null; return p[id] && p[id].activo !== false ? p[id] : null; }
     function pintarBannerDealer() {
       const b = document.getElementById('bannerDealer');
       if (!b) return;
       const es = userTipoCuenta === 'revendedor' && !esStaffSesion() && !modoPruebaCliente;
       b.classList.toggle('hidden', !es);
       if (!es) return;
-      const lista = promosDealerActivas().filter(x => catalogoUnificado.some(p => p.docId === x.id && p.activo !== false));
+      const lista = promosDealerActivas().filter(x => catalogoUnificado.some(p => p.docId === x.id && p.activo !== false && usuarioTienePermisoProducto(p)));
       const niv = nivelDealerDe(progresoDealer.mes || 0);
       const pct = niv.sig ? Math.min(100, Math.round(((progresoDealer.mes || 0) - niv.desde) / Math.max(1, niv.meta - niv.desde) * 100)) : 100;
       const falta = niv.sig ? Math.max(0, niv.meta - (progresoDealer.mes || 0)) : 0;
@@ -15255,7 +15262,8 @@
           <span class="shrink-0 w-12 h-12 rounded-2xl dealer-anillo p-[2px]"><span class="w-full h-full rounded-2xl bg-gray-950 flex items-center justify-center text-2xl">${niv.icono}</span></span>
           <div class="min-w-0 flex-grow"><p class="text-[10px] font-black tracking-[0.25em] dealer-texto">CUENTA DEALER</p><div class="flex items-center gap-2 mt-0.5"><span class="nivel-chip nivel-${niv.id}">${niv.icono} Dealer ${niv.nombre}</span><span class="text-[10px] text-amber-100/70">${progresoDealer.mes || 0} cuentas este mes</span></div></div>
         </div>
-        <div class="mt-3"><div class="flex justify-between text-[10px] text-amber-100/80"><span>${niv.sig ? `Te faltan <b class="text-white">${falta}</b> para <b class="dealer-texto">Dealer ${niv.sig}</b>` : '¡Estás en el nivel más alto! 👑'}</span><span>${pct}%</span></div><div class="mt-1 h-2 rounded-full bg-black/40 overflow-hidden"><div class="h-full rounded-full nivel-${niv.sig ? (niv.sig === 'Oro' ? 'oro' : 'plata') : 'oro'}" style="width:${pct}%"></div></div></div>
+        ${(() => { const h = new Date(); const fin = new Date(h.getFullYear(), h.getMonth() + 1, 1); const dias = Math.ceil((fin - h) / 86400000); return `<p class="mt-2 text-[10px] text-amber-100/60"><i class="fa-solid fa-rotate mr-1"></i>El nivel se reinicia el 1 de ${fin.toLocaleDateString('es-CO', { month: 'long' })} · faltan ${dias} ${dias === 1 ? 'día' : 'días'}</p>`; })()}
+        <div class="mt-2"><div class="flex justify-between text-[10px] text-amber-100/80"><span>${niv.sig ? `Te faltan <b class="text-white">${falta}</b> para <b class="dealer-texto">Dealer ${niv.sig}</b>` : '¡Estás en el nivel más alto! 👑'}</span><span>${pct}%</span></div><div class="mt-1 h-2 rounded-full bg-black/40 overflow-hidden"><div class="h-full rounded-full nivel-${niv.sig ? (niv.sig === 'Oro' ? 'oro' : 'plata') : 'oro'}" style="width:${pct}%"></div></div></div>
         ${lista.length ? `<p class="mt-3 text-[11px] font-black text-white">🎁 Tus promos de hoy</p><div class="mt-1.5 grid gap-1.5">${lista.slice(0, 6).map(x => { const N = x.compra || 10, lleva = (progresoDealer.hoy || {})[x.id] || 0, enCiclo = lleva % N, faltaP = N - enCiclo, ganados = Math.floor(lleva / N) * (x.regalo || 1), tope = (x.maxDia || 1) * (x.regalo || 1); const completo = ganados >= tope; return `<div class="px-3 py-2 rounded-xl bg-black/30 border ${completo ? 'border-emerald-400/50' : 'border-yellow-400/25'}"><div class="flex items-center justify-between gap-2"><span class="min-w-0 truncate text-xs font-bold text-white">${escaparHtml(nombreProd(x.id))}</span><span class="shrink-0 text-[11px] font-black dealer-texto">Compra ${N} → llévate ${x.regalo || 1}${x.regaloProductoId ? ' ' + escaparHtml(nombreProd(x.regaloProductoId)) : ''}</span></div><div class="mt-1.5 h-1.5 rounded-full bg-black/40 overflow-hidden"><div class="h-full ${completo ? 'bg-emerald-400' : 'nivel-oro'}" style="width:${completo ? 100 : Math.round(enCiclo / N * 100)}%"></div></div><p class="text-[10px] mt-1 ${completo ? 'text-emerald-300' : 'text-amber-100/80'}">${completo ? `✅ Ya ganaste ${ganados} hoy` : `Llevas ${enCiclo} de ${N} · <b class="text-white">¡te faltan ${faltaP} para tu regalo!</b>${ganados ? ` · ganados hoy: ${ganados}` : ''}`}</p></div>`; }).join('')}</div><p class="text-[10px] text-amber-100/60 mt-2">Las compras del mismo día se suman · el regalo llega solo en tu compra</p>` : ''}
       </div>`;
     }
@@ -15466,6 +15474,68 @@
     }
     function avanceTotalAsignaciones(lista, lotes) {
       return lista.reduce((t, a) => { const v = avanceAsignacion(a, lotes); t.total += v.total; t.subidos += v.subidos; t.faltan += v.faltan; return t; }, { total: 0, subidos: 0, faltan: 0 });
+    }
+
+
+    // ==================== PERMISOS DEL MODERADOR ====================
+    // El administrador elige qué secciones ocultas puede ver y usar el moderador. Ajustes Generales siempre es solo del administrador.
+    const SECCIONES_MODERADOR = [
+      { id: 'promociones', t: 'Promociones', tab: 'promociones', docs: [] },
+      { id: 'novedades', t: 'Novedades para clientes', tab: 'novedades', docs: ['novedades_clientes'] },
+      { id: 'combos', t: 'Armar combos', docs: [], sel: ['[onclick="abrirModalCombo()"]'] },
+      { id: 'categorias', t: 'Categorías & Colores', tab: 'categorias', docs: ['colores_categorias'] },
+      { id: 'apariencia', t: 'Apariencia y Logo', tab: 'apariencia', docs: ['apariencia'] },
+      { id: 'asistente', t: 'Asistente', tab: 'asistente', docs: ['asistente'] },
+      { id: 'pagos', t: 'Métodos de Pago & QR', tab: 'pagos', docs: ['recarga_auto'] },
+      { id: 'proveedores', t: 'Proveedores (lotes, pagos, correos, pedidos)', tab: 'proveedores', docs: ['metodos_pago_proveedor'] },
+      { id: 'dealers', t: 'Promos para dealers', docs: ['revendedores'], sel: ['#adminRegaloRevendedor'] },
+      { id: 'referidos', t: 'Referidos y comisiones', docs: ['referidos'], sel: ['#adminReferidosCaja'] },
+      { id: 'venta_manual', t: 'Venta manual (WhatsApp)', docs: [], sel: ['#ventaManualCaja'] }
+    ];
+    const RESTRINGIDAS_BASE = ['categorias', 'apariencia', 'pagos', 'ajustes', 'proveedores', 'asistente', 'promociones', 'novedades'];
+    var permisosModerador = [];
+    function puedeSeccion(sec) { return esAdminSesionActual() || (esModeradorSesion() && permisosModerador.indexOf(sec) !== -1); }
+    function elementosSeccionMod(sm) {
+      const els = [];
+      if (sm.tab) {
+        const cap = sm.tab.charAt(0).toUpperCase() + sm.tab.slice(1);
+        const b = document.getElementById('tabBtn' + cap); if (b) els.push(b);
+        const sec = document.getElementById('adminSec' + cap); if (sec) sec.querySelectorAll('.solo-admin, [data-mod-permitido]').forEach(e => els.push(e));
+      }
+      (sm.sel || []).forEach(q => document.querySelectorAll(q).forEach(e => els.push(e)));
+      return els;
+    }
+    function aplicarPermisosModerador() {
+      RESTRINGIDAS_MODERADOR = RESTRINGIDAS_BASE.filter(t => !(esModeradorSesion() && permisosModerador.some(id => (SECCIONES_MODERADOR.find(x => x.id === id) || {}).tab === t)));
+      SECCIONES_MODERADOR.forEach(sm => {
+        const ok = esModeradorSesion() && permisosModerador.indexOf(sm.id) !== -1;
+        elementosSeccionMod(sm).forEach(e => {
+          if (ok) { if (e.classList.contains('solo-admin')) { e.classList.remove('solo-admin'); e.dataset.modPermitido = '1'; } }
+          else if (e.dataset.modPermitido) { e.classList.add('solo-admin'); delete e.dataset.modPermitido; }
+        });
+      });
+      try { aplicarVistaPanel(); } catch (e) { /* nada */ }
+    }
+    async function cargarPermisosModerador() {
+      try { const d = await db.collection('configuracion').doc('moderador').get(); permisosModerador = d.exists && Array.isArray((d.data() || {}).secciones) ? d.data().secciones : []; }
+      catch (e) { permisosModerador = []; }
+      aplicarPermisosModerador(); pintarEditorPermisosMod();
+    }
+    function pintarEditorPermisosMod() {
+      const c = document.getElementById('permisosModLista'); if (!c) return;
+      c.innerHTML = SECCIONES_MODERADOR.map(sm => `<label class="flex items-center justify-between gap-3 p-2.5 rounded-xl bg-gray-800/60 border border-gray-700/60 cursor-pointer"><span class="text-xs text-white">${sm.t}</span><input type="checkbox" class="chk-perm-mod accent-sky-500 w-5 h-5" value="${sm.id}" ${permisosModerador.indexOf(sm.id) !== -1 ? 'checked' : ''}></label>`).join('');
+    }
+    async function guardarPermisosModerador() {
+      if (!esAdminSesionActual()) return;
+      const sec = Array.from(document.querySelectorAll('.chk-perm-mod:checked')).map(c => c.value);
+      const docs = []; sec.forEach(id => ((SECCIONES_MODERADOR.find(x => x.id === id) || {}).docs || []).forEach(d => { if (docs.indexOf(d) === -1) docs.push(d); }));
+      const btn = document.getElementById('btnGuardarPermisosMod'); if (btn) { btn.disabled = true; btn.textContent = 'Guardando...'; }
+      try {
+        await db.collection('configuracion').doc('moderador').set({ secciones: sec, docs: docs, actualizadoEl: new Date().toISOString() });
+        permisosModerador = sec;
+        mostrarToast(sec.length ? `✓ El moderador ahora puede usar ${sec.length} ${sec.length === 1 ? 'sección extra' : 'secciones extra'}.` : '✓ El moderador solo ve lo básico.');
+      } catch (e) { alert('No se pudo guardar: ' + e.message); }
+      finally { if (btn) { btn.disabled = false; btn.textContent = 'Guardar permisos'; } }
     }
 
     // ==================== NETFLIX EN LA TIENDA: SIN CONTRASEÑA ====================
