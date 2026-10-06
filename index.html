@@ -290,6 +290,18 @@
     @media (min-width: 1024px) { #navPanelAdmin { max-height: calc(100vh - 7.5rem); } }
     #navPanelAdmin .menu-busqueda { position: sticky; top: -0.5rem; z-index: 6; margin: -0.5rem -0.5rem .75rem; padding: .5rem .5rem .6rem; background: linear-gradient(#0d1220 85%, rgba(13,18,32,0)); border-radius: 1rem 1rem 0 0; }
     #navPanelAdmin::-webkit-scrollbar { width: 5px; } #navPanelAdmin::-webkit-scrollbar-thumb { background: #374151; border-radius: 9px; }
+  
+    /* ===== Menú del panel ajustable con el mouse (computador) ===== */
+    @media (min-width: 1024px) {
+      #panelLayout { grid-template-columns: var(--ancho-menu, 260px) minmax(0, 1fr) !important; }
+      #panelLayout.menu-derecha { grid-template-columns: minmax(0, 1fr) var(--ancho-menu, 260px) !important; }
+      #panelLayout.menu-derecha > #navPanelAdmin { order: 2; }
+      #menuAsa { position: absolute; top: 14px; bottom: 14px; right: 0; width: 12px; cursor: col-resize; z-index: 8; border-radius: 6px; }
+      #menuAsa::after { content: ''; position: absolute; left: 5px; top: 50%; transform: translateY(-50%); width: 4px; height: 46px; border-radius: 4px; background: #374151; transition: background .15s, height .15s; }
+      #menuAsa:hover::after, #menuAsa.arrastrando::after { background: #34d399; height: 80px; }
+      #panelLayout.menu-derecha #menuAsa { right: auto; left: 0; }
+      body.arrastrando-menu { cursor: col-resize; user-select: none; }
+    }
   </style>
 </head>
 <body class="min-h-screen flex flex-col justify-between">
@@ -814,18 +826,19 @@
       </div>
 
       <!-- Navegación del panel: cuadrícula en móvil, barra lateral en PC -->
-      <div class="lg:grid lg:grid-cols-[230px_minmax(0,1fr)] lg:gap-6 lg:items-start">
+      <div id="panelLayout" class="lg:grid lg:grid-cols-[230px_minmax(0,1fr)] lg:gap-6 lg:items-start">
         <nav id="navPanelAdmin" class="mb-6 lg:mb-0 lg:sticky lg:top-24 p-2 bg-gray-900/40 border border-gray-800 rounded-2xl">
+          <div id="menuAsa" class="hidden lg:block" title="Arrastra para cambiar el ancho · doble clic para volver al normal" ondblclick="anchoMenuNormal()"></div>
           <div class="menu-busqueda">
             <i class="fa-solid fa-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 text-sm"></i>
             <input type="search" id="buscadorPanel" oninput="buscarEnPanel(this.value)" autocomplete="off" placeholder="Buscar función: pagos, tickets, dealers...">
             <button type="button" id="buscadorPanelX" onclick="buscarEnPanel('');document.getElementById('buscadorPanel').value=''" class="hidden absolute right-3 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-gray-700 text-gray-300 text-[10px]"><i class="fa-solid fa-xmark"></i></button>
           </div>
           <div id="resultadosPanel" class="hidden mb-2 menu-grupo-caja"></div>
-          <span class="hidden lg:block text-[10px] font-bold text-gray-500 uppercase tracking-wider px-2 pt-1 pb-2">Secciones</span>
+          <div class="hidden lg:flex items-center justify-between px-2 pt-1 pb-2"><span class="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Secciones</span><button type="button" onclick="cambiarLadoMenu()" title="Pasar el menú al otro lado" class="w-7 h-7 rounded-lg bg-gray-800 hover:bg-gray-700 border border-gray-700 text-gray-300 text-[11px]"><i class="fa-solid fa-right-left"></i></button></div>
           <div id="adminMenuGrid" class="grid grid-cols-3 lg:grid-cols-1 gap-1.5">
           <button onclick="irATabAdmin('productos')" id="tabBtnProductos" class="admin-tab bg-gray-900 border-gray-800 text-gray-400">
-            <i class="fa-solid fa-boxes-stacked"></i><span>Gestión y Visibilidad</span><span id="badgeTabStockBajo" class="hidden absolute top-1.5 right-1.5 lg:static lg:ml-auto min-w-[18px] h-[18px] px-1 rounded-full bg-amber-500 text-black text-[10px] font-black flex items-center justify-center"></span>
+            <i class="fa-solid fa-boxes-stacked"></i><span>Productos</span><span id="badgeTabStockBajo" class="hidden absolute top-1.5 right-1.5 lg:static lg:ml-auto min-w-[18px] h-[18px] px-1 rounded-full bg-amber-500 text-black text-[10px] font-black flex items-center justify-center"></span>
           </button>
           <button onclick="irATabAdmin('reporte')" id="tabBtnReporte" class="admin-tab bg-gray-900 border-gray-800 text-gray-400">
             <i class="fa-solid fa-chart-line"></i><span>Reporte de Ventas</span>
@@ -937,7 +950,7 @@
       <div id="adminSecProductos" class="space-y-6">
         <div class="flex justify-between items-center bg-gray-900 border border-emerald-500/30 p-4 rounded-2xl">
           <div>
-            <h3 class="text-sm font-bold text-white">Gestión de Catálogo</h3>
+            <h3 class="text-sm font-bold text-white">Productos</h3>
             <p class="text-xs text-gray-400">Edita títulos, precios, compra mínima, fotos redondas o visibilidad.</p>
           </div>
           <div class="flex flex-wrap gap-2 justify-end">
@@ -954,7 +967,7 @@
           <div class="p-4 border-b border-gray-800">
             <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div class="flex items-center gap-2 flex-wrap">
-                <h4 class="font-bold text-white text-sm">Inventario en Tiempo Real</h4>
+                <h4 class="font-bold text-white text-sm">Inventario</h4>
                 <span id="txtConteoStockBajo" class="hidden text-[10px] font-black px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-400 border border-amber-500/40"></span>
               </div>
               <div class="relative w-full sm:w-72">
@@ -963,7 +976,15 @@
               </div>
             </div>
           </div>
-          <div class="overflow-x-auto">
+          <div class="px-4 pt-3 pb-1 space-y-3 border-b border-gray-800">
+            <div id="prodResumen" class="grid grid-cols-4 gap-2"></div>
+            <div class="flex flex-wrap items-center gap-2">
+              <div class="flex gap-1 p-1 rounded-xl bg-gray-800/70 border border-gray-700/60" id="prodVistas"></div>
+              <div class="flex gap-1.5 overflow-x-auto" id="prodFiltros"></div>
+            </div>
+          </div>
+          <div id="prodVistaAlt" class="p-3"></div>
+          <div id="prodVistaTabla" class="overflow-x-auto">
             <table class="w-full text-left text-sm text-gray-300">
               <thead class="bg-gray-800/60 text-xs uppercase text-gray-400">
                 <tr>
@@ -1557,11 +1578,13 @@
       <!-- ==================== ADMIN: NOVEDADES PARA CLIENTES ==================== -->
       <div id="adminSecMarketing" class="hidden space-y-4 pb-28 sm:pb-0">
         <div class="p-4 rounded-2xl border border-fuchsia-500/30 bg-gradient-to-br from-fuchsia-500/10 to-gray-900">
+          <label class="float-right text-[10px] text-gray-400 text-right">Enlace de tu tienda<input id="mkEnlace" onchange="guardarEnlaceMk()" maxlength="60" class="mt-1 block w-44 bg-gray-800 border border-gray-700 rounded-lg px-2 py-1.5 text-[11px] text-fuchsia-200 focus:outline-none"></label>
           <h3 class="text-base font-black text-white flex items-center gap-2"><i class="fa-solid fa-wand-magic-sparkles text-fuchsia-300"></i> Tu marketing</h3>
           <p class="text-xs text-gray-300 mt-1">Convierte tus productos en imágenes para los estados de WhatsApp, Instagram o Facebook, y copia mensajes listos con tus precios y promociones.</p>
         </div>
         <div class="bg-gray-900 border border-gray-800 rounded-2xl p-4 space-y-3">
-          <p class="text-sm font-black text-white"><i class="fa-solid fa-image text-fuchsia-300 mr-1"></i> Imagen de un producto</p>
+          <p class="text-sm font-black text-white"><i class="fa-solid fa-image text-fuchsia-300 mr-1"></i> Imágenes para estados y publicaciones</p>
+          <div class="flex flex-wrap gap-1.5" id="mkTiposImagen"></div>
           <select id="mkProducto" onchange="dibujarMarketing()" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none"></select>
           <div class="grid grid-cols-2 gap-2">
             <select id="mkFormato" onchange="dibujarMarketing()" class="bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"><option value="estado">Estado / Historia (9:16)</option><option value="post">Publicación (cuadrada)</option></select>
@@ -1578,8 +1601,15 @@
         <div class="bg-gray-900 border border-gray-800 rounded-2xl p-4 space-y-3">
           <p class="text-sm font-black text-white"><i class="fa-brands fa-whatsapp text-emerald-300 mr-1"></i> Mensajes listos para copiar</p>
           <div class="flex flex-wrap gap-1.5" id="mkTiposTexto"></div>
-          <textarea id="mkTexto" rows="12" readonly class="w-full bg-gray-800 border border-gray-700 rounded-xl p-3 text-xs text-white font-mono resize-y"></textarea>
-          <button type="button" onclick="copiarTexto(document.getElementById('mkTexto').value,'Mensaje copiado')" class="w-full py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-black text-xs"><i class="fa-solid fa-copy mr-1"></i>Copiar mensaje</button>
+          <p class="text-[10px] text-gray-500"><i class="fa-solid fa-pen mr-1"></i>Puedes escribir encima. El enlace de tu tienda siempre va incluido.</p>
+          <textarea id="mkTexto" rows="12" class="w-full bg-gray-800 border border-gray-700 rounded-xl p-3 text-xs text-white font-mono resize-y focus:outline-none focus:border-fuchsia-500/60"></textarea>
+          <div class="grid grid-cols-2 gap-2">
+            <button type="button" onclick="copiarMensajeMk()" class="py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-black text-xs"><i class="fa-solid fa-copy mr-1"></i>Copiar</button>
+            <button type="button" onclick="whatsappMensajeMk()" class="py-2.5 rounded-xl bg-gray-800 hover:bg-gray-700 border border-emerald-500/40 text-emerald-200 font-bold text-xs"><i class="fa-brands fa-whatsapp mr-1"></i>Abrir en WhatsApp</button>
+            <button type="button" onclick="guardarPlantillaMk()" class="py-2 rounded-xl bg-gray-800 hover:bg-gray-700 border border-gray-700 text-gray-200 font-bold text-[11px]"><i class="fa-solid fa-bookmark mr-1"></i>Guardar como plantilla</button>
+            <button type="button" onclick="generarTextoMarketing()" class="py-2 rounded-xl bg-gray-800 hover:bg-gray-700 border border-gray-700 text-gray-400 font-bold text-[11px]"><i class="fa-solid fa-rotate mr-1"></i>Volver al automático</button>
+          </div>
+          <div id="mkPlantillas" class="space-y-1.5"></div>
         </div>
       </div>
 
@@ -5819,6 +5849,8 @@
 
     function filtrarTablaProductosAdmin() {
       filtrarTablaPorTexto('tablaAdminProductos', 'txtBuscarProductosAdmin', 8);
+      document.querySelectorAll('#tablaAdminProductos tr[data-filtro-oculto="1"]').forEach(tr => { tr.style.display = 'none'; });
+      if (typeof vistaProductos !== 'undefined' && vistaProductos !== 'tabla' && !window.__redibujandoProd) { window.__redibujandoProd = true; try { renderizarVistaProductosAlt(); } finally { window.__redibujandoProd = false; } }
     }
 
     function filtrarTablaUsuariosAdmin() {
@@ -8562,6 +8594,7 @@
         }
 
         filtrarTablaProductosAdmin();
+        try { renderizarVistaProductosAlt(); } catch (e2) { console.warn(e2); }
       } catch (e) {
         console.error('Error al renderizar inventario admin:', e);
       }
@@ -14289,7 +14322,7 @@
 
     // ==================== VISTA DEL PANEL (menú configurable) ====================
     const TABS_MENU_INFO = {
-      netflix: ['Alquileres', '#f87171'], productos: ['Gestión y Visibilidad', '#34d399'], reporte: ['Reporte de Ventas', '#60a5fa'], usuarios: ['Usuarios Registrados', '#a78bfa'],
+      netflix: ['Alquileres', '#f87171'], productos: ['Productos', '#34d399'], reporte: ['Reporte de Ventas', '#60a5fa'], usuarios: ['Usuarios Registrados', '#a78bfa'],
       tickets: ['Tickets', '#fbbf24'], recargas: ['Solicitudes de Saldo', '#34d399'], stock: ['Cargar Cuentas (Stock)', '#facc15'], historial: ['Historial de Ventas', '#94a3b8'],
       cortes: ['Cortes', '#f87171'], buscar: ['Buscar cuenta', '#38bdf8'], proveedores: ['Proveedores', '#fb923c'], promociones: ['Promociones', '#f472b6'],
       novedades: ['Novedades', '#38bdf8'], marketing: ['Marketing', '#e879f9'], categorias: ['Categorías & Colores', '#c084fc'], apariencia: ['Apariencia y Logo', '#f472b6'], pagos: ['Métodos de Pago & QR', '#2dd4bf'],
@@ -14484,7 +14517,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-06q';
+    const VERSION_PAGINA = '2026-10-06t';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261006_credito', fecha: '2026-10-06', titulo: 'Tu crédito, más fácil', mensaje: 'Si tienes **crédito pre-aprobado** te avisamos en la tienda. En tu perfil hay una pestaña **Crédito** donde lo aceptas y ves cuánto debes y tu historial.' },
       { id: 'act_20261006_negocio', fecha: '2026-10-06', titulo: 'Dealers: Mi negocio 👑', mensaje: 'Los Dealers ahora pueden **asignar cada cuenta a su cliente**, entregarla por WhatsApp con un toque y ver **su ganancia del mes** y qué cuentas están por vencer.' },
@@ -16435,7 +16468,7 @@
     // ==================== MARKETING: IMÁGENES Y MENSAJES ====================
     var mkTipoTexto = 'promos', mkLogoImg = null, mkLogoListo = false;
     function productosMarketing() { return catalogoUnificado.filter(p => p.activo !== false && !p.esCombo && Number(p.precio) > 0).sort((a, b) => String(a.nombre).localeCompare(String(b.nombre), 'es')); }
-    function dominioTienda() { return (location.host && !/localhost|127\.0|\.local$/.test(location.host)) ? location.host : 'epicchannels.quest'; }
+    function dominioTienda() { if (typeof mkEnlaceCfg !== 'undefined' && mkEnlaceCfg) return mkEnlaceCfg; return (location.host && !/localhost|127\.0|\.local$/.test(location.host)) ? location.host : 'epicchannels.quest'; }
     function nombreTienda() { const t = aparienciaConfig && aparienciaConfig.titulo; return t && !/^cat[aá]logo oficial$/i.test(t) ? t : 'EPIC CHANNELS'; }
     function promoPerfilCliente(id) { const pr = ((cfgDealer && cfgDealer.promos) || {})[id]; return pr && pr.activo !== false && aplicaPromo(pr, 'cliente') ? pr : null; }
     function prepararMarketing() {
@@ -16448,7 +16481,8 @@
         mkLogoImg.onload = () => { mkLogoListo = true; dibujarMarketing(); }; mkLogoImg.onerror = () => { mkLogoImg = null; };
         mkLogoImg.src = aparienciaConfig.logoUrl;
       }
-      dibujarMarketing(); pintarTiposTexto(); generarTextoMarketing();
+      pintarTiposImagen(); dibujarMarketing(); pintarTiposTexto(); generarTextoMarketing();
+      cargarCfgMarketing().then(() => { dibujarMarketing(); generarTextoMarketing(); });
     }
     function textoRedondeado(ctx, x, y, w, h, r) { ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath(); }
     function ajustarTexto(ctx, txt, maxW, tamano, peso, familia) { let t = tamano; do { ctx.font = `${peso} ${t}px ${familia}`; t -= 2; } while (ctx.measureText(txt).width > maxW && t > 18); return t + 2; }
@@ -16511,13 +16545,13 @@
     function opcionesMk() { return { id: (document.getElementById('mkProducto') || {}).value, fmt: (document.getElementById('mkFormato') || {}).value || 'estado', est: (document.getElementById('mkEstilo') || {}).value || 'marca', frase: String((document.getElementById('mkFrase') || {}).value || '').trim() }; }
     function dibujarMarketing() {
       const o = opcionesMk(), prod = catalogoUnificado.find(p => p.docId === o.id); const img = document.getElementById('mkVista');
-      if (!prod || !img) return;
-      img.src = lienzoSeguro(prod, o.fmt, o.est, o.frase).toDataURL('image/png');
+      if (!img || (!prod && mkTipoImagen === 'producto')) return;
+      img.src = (mkTipoImagen === 'producto' ? lienzoSeguro(prod, o.fmt, o.est, o.frase) : lienzoLista(mkTipoImagen, o.fmt, o.est, o.frase)).toDataURL('image/png');
     }
     function nombreArchivoMk(prod) { return String(prod.nombre || 'producto').toLowerCase().replace(/[^a-z0-9]+/g, '-').slice(0, 40) + '.png'; }
     function descargarMarketing() {
-      const o = opcionesMk(), prod = catalogoUnificado.find(p => p.docId === o.id); if (!prod) return;
-      const a = document.createElement('a'); a.href = lienzoSeguro(prod, o.fmt, o.est, o.frase).toDataURL('image/png'); a.download = nombreArchivoMk(prod); document.body.appendChild(a); a.click(); a.remove();
+      const o = opcionesMk(), prod = catalogoUnificado.find(p => p.docId === o.id); if (!prod && mkTipoImagen === 'producto') return;
+      const a = document.createElement('a'); a.href = (mkTipoImagen === 'producto' ? lienzoSeguro(prod, o.fmt, o.est, o.frase) : lienzoLista(mkTipoImagen, o.fmt, o.est, o.frase)).toDataURL('image/png'); a.download = nombreArchivoMk(prod); document.body.appendChild(a); a.click(); a.remove();
     }
     async function compartirMarketing() {
       const o = opcionesMk(), prod = catalogoUnificado.find(p => p.docId === o.id); if (!prod) return;
@@ -16543,7 +16577,7 @@
     }
     function pintarTiposTexto() {
       const c = document.getElementById('mkTiposTexto'); if (!c) return;
-      c.innerHTML = [['promos', '🔥 Promociones'], ['catalogo', '📋 Catálogo completo'], ['producto', '✨ Producto elegido'], ['dealers', '👑 Para Dealers']].map(([k, t]) => `<button type="button" onclick="mkTipoTexto='${k}';pintarTiposTexto();generarTextoMarketing()" class="px-3 py-1.5 rounded-full text-[11px] font-bold border ${mkTipoTexto === k ? 'bg-fuchsia-500 text-white border-fuchsia-400' : 'bg-gray-800 text-gray-300 border-gray-700'}">${t}</button>`).join('');
+      c.innerHTML = [['promos', '🔥 Promociones'], ['catalogo', '📋 Catálogo completo'], ['producto', '✨ Producto elegido'], ['nuevo', '🚨 ¡Llegó stock!'], ['urgencia', '⏰ Últimas unidades'], ['combos', '🎁 Combos'], ['recarga', '💳 Cómo comprar'], ['dealers', '👑 Para Dealers']].map(([k, t]) => `<button type="button" onclick="mkTipoTexto='${k}';pintarTiposTexto();generarTextoMarketing()" class="px-3 py-1.5 rounded-full text-[11px] font-bold border ${mkTipoTexto === k ? 'bg-fuchsia-500 text-white border-fuchsia-400' : 'bg-gray-800 text-gray-300 border-gray-700'}">${t}</button>`).join('');
     }
     function generarTextoMarketing() {
       const t = document.getElementById('mkTexto'); if (!t) return;
@@ -16557,6 +16591,8 @@
         out = `📋 *CATÁLOGO ${tienda.toUpperCase()}*\n` + Object.keys(cats).sort().map(c => `\n*${c}*\n` + cats[c].map(p => `▫️ ${p.nombre}: *${formatoCOP(p.precio)}*${p.promoPct ? ' 🏷 -' + p.promoPct + '%' : ''}`).join('\n')).join('\n') + `\n\n⚡ Recarga tu saldo y recibe tus cuentas al instante\n👉 ${dom}`;
       } else if (mkTipoTexto === 'producto') {
         const p = catalogoUnificado.find(x => x.docId === opcionesMk().id); out = p ? textoProductoMk(p) : '';
+      } else if (['nuevo', 'urgencia', 'combos', 'recarga'].indexOf(mkTipoTexto) !== -1) {
+        out = textoExtraMk(mkTipoTexto);
       } else {
         const pd = Object.keys((cfgDealer && cfgDealer.promos) || {}).map(id => Object.assign({ id: id }, cfgDealer.promos[id])).filter(x => x.activo !== false && aplicaPromo(x, 'dealer'));
         out = pd.length ? `👑 *PROMOS EXCLUSIVAS PARA DEALERS*\n\n` + pd.map(x => { const p = catalogoUnificado.find(q => q.docId === x.id); return p ? `▫️ *${p.nombre}*: compra ${x.compra || 10}, llévate ${x.regalo || 1}${x.regaloProductoId ? ' ' + nombreProd(x.regaloProductoId) : ''} 🎁` : ''; }).filter(Boolean).join('\n') + `\n\n🥇 En nivel Oro tus regalos se multiplican\n⏳ Las compras del mismo día se suman\n👉 ${dom}` : 'No hay promos activas para Dealers.';
@@ -16742,7 +16778,7 @@
       ['Recarga automática (Bre-B)', 'pagos', 'recarga automatica breb nequi llave qr', ''],
       ['Imágenes para estados', 'marketing', 'imagen estado historia instagram whatsapp publicidad texto', ''],
       ['Garantía de productos', 'productos', 'garantia dias meses horas producto editar precio', ''],
-      ['Combos', 'productos', 'combo armar paquete', ''],
+      ['Combos', 'productos', 'combo armar paquete gestion visibilidad', ''],
       ['Cuentas de Netflix', 'netflix', 'netflix alquiler perfil pin renovar codigo', ''],
       ['Colores de la tienda', 'apariencia', 'color tarjeta logo estilo tema reportar', ''],
       ['Novedades y anuncios', 'novedades', 'novedad anuncio difundir actualizacion', '']
@@ -16852,6 +16888,194 @@
     function tarjetaDesdeUI(pref) {
       const modo = document.getElementById(pref + 'TjModo').value;
       return { colorTarjeta: modo === 'propio' && /^#[0-9a-f]{6}$/i.test(colorTarjetaElegido[pref] || '') ? colorTarjetaElegido[pref] : '', etiquetaTarjeta: String(document.getElementById(pref + 'TjEtiqueta').value || '').trim().slice(0, 18), iconoTarjeta: document.getElementById(pref + 'TjIcono').value || '' };
+    }
+
+
+    // ==================== MARKETING: MÁS TIPOS, MENSAJES EDITABLES, ENLACE Y PLANTILLAS ====================
+    var mkTipoImagen = 'producto', mkEnlaceCfg = '', mkPlantillas = [];
+    function enlaceMk() { return (mkEnlaceCfg || '').trim() || dominioTienda(); }
+    async function cargarCfgMarketing() {
+      try { const d = await db.collection('configuracion').doc('marketing').get(); const c = d.exists ? (d.data() || {}) : {}; mkEnlaceCfg = c.enlace || ''; mkPlantillas = Array.isArray(c.plantillas) ? c.plantillas : []; } catch (e) { /* nada */ }
+      const i = document.getElementById('mkEnlace'); if (i) i.value = enlaceMk();
+      pintarPlantillasMk();
+    }
+    async function guardarEnlaceMk() {
+      const v = String((document.getElementById('mkEnlace') || {}).value || '').trim().replace(/^https?:\/\//, '').replace(/\/$/, '').slice(0, 60);
+      mkEnlaceCfg = v;
+      try { await db.collection('configuracion').doc('marketing').set({ enlace: v }, { merge: true }); } catch (e) { /* nada */ }
+      dibujarMarketing(); generarTextoMarketing(); mostrarToast('Enlace guardado: ' + enlaceMk());
+    }
+    // El enlace de la tienda siempre va en el mensaje
+    function mensajeConEnlace() {
+      let t = String((document.getElementById('mkTexto') || {}).value || '').trim();
+      const enl = enlaceMk();
+      if (t && t.toLowerCase().indexOf(enl.toLowerCase()) === -1) t += '\n\n👉 ' + enl;
+      return t;
+    }
+    function copiarMensajeMk() { const t = mensajeConEnlace(); if (!t) return; document.getElementById('mkTexto').value = t; copiarTexto(t, 'Mensaje copiado'); }
+    function whatsappMensajeMk() { const t = mensajeConEnlace(); if (!t) return; window.open('https://wa.me/?text=' + encodeURIComponent(t), '_blank', 'noopener'); }
+    async function guardarPlantillaMk() {
+      const t = mensajeConEnlace(); if (!t) return;
+      const nombre = prompt('Nombre de la plantilla:', (t.split('\n')[0] || 'Mi mensaje').replace(/[*_~]/g, '').slice(0, 40)); if (!nombre) return;
+      mkPlantillas = [{ id: 'p' + Date.now(), nombre: nombre.slice(0, 40), texto: t.slice(0, 3000) }].concat(mkPlantillas).slice(0, 20);
+      try { await db.collection('configuracion').doc('marketing').set({ plantillas: mkPlantillas }, { merge: true }); mostrarToast('Plantilla guardada'); } catch (e) { alert('No se pudo guardar: ' + e.message); }
+      pintarPlantillasMk();
+    }
+    function usarPlantillaMk(id) { const p = mkPlantillas.find(x => x.id === id); if (p) { document.getElementById('mkTexto').value = p.texto; mostrarToast('Plantilla cargada: puedes editarla'); } }
+    async function borrarPlantillaMk(id) { mkPlantillas = mkPlantillas.filter(x => x.id !== id); try { await db.collection('configuracion').doc('marketing').set({ plantillas: mkPlantillas }, { merge: true }); } catch (e) { /* nada */ } pintarPlantillasMk(); }
+    function pintarPlantillasMk() {
+      const c = document.getElementById('mkPlantillas'); if (!c) return;
+      c.innerHTML = mkPlantillas.length ? '<p class="text-[11px] font-black text-white pt-1">Mis plantillas</p>' + mkPlantillas.map(p => `<div class="flex items-center gap-2 p-2 rounded-xl bg-gray-800/60 border border-gray-700/60"><span class="min-w-0 flex-grow truncate text-xs text-gray-200"><i class="fa-solid fa-bookmark text-fuchsia-300 mr-1"></i>${escaparHtml(p.nombre)}</span><button type="button" onclick="usarPlantillaMk('${escaparJsAttr(p.id)}')" class="px-2 py-1 rounded-lg bg-fuchsia-500 text-white text-[10px] font-bold">Usar</button><button type="button" onclick="borrarPlantillaMk('${escaparJsAttr(p.id)}')" class="px-2 py-1 rounded-lg bg-gray-900 text-gray-400 text-[10px]">✕</button></div>`).join('') : '';
+    }
+    // Mensajes nuevos
+    function textoExtraMk(tipo) {
+      const L = productosMarketing(), enl = enlaceMk(), tienda = nombreTienda();
+      if (tipo === 'nuevo') {
+        const con = L.filter(p => (Number(p.stock) || 0) > 0);
+        return con.length ? `🚨 *¡LLEGÓ STOCK!* 🚨\n\nYa tenemos disponible:\n` + con.slice(0, 15).map(p => `✅ *${p.nombre}* — ${formatoCOP(p.precio)}`).join('\n') + `\n\n⚡ Compra ya y recíbelo al instante\n👉 ${enl}` : 'No hay productos con stock en este momento.';
+      }
+      if (tipo === 'urgencia') {
+        const poc = L.filter(p => { const n = Number(p.stock) || 0; return n > 0 && n <= 5; });
+        return poc.length ? `⏰ *¡ÚLTIMAS UNIDADES!*\n\n` + poc.map(p => `🔥 *${p.nombre}*: quedan solo ${p.stock} · ${formatoCOP(p.precio)}`).join('\n') + `\n\nCuando se acaben, se acaban 👀\n👉 ${enl}` : 'Ningún producto tiene pocas unidades ahora mismo.';
+      }
+      if (tipo === 'combos') {
+        const cb = catalogoUnificado.filter(p => p.esCombo && p.activo !== false);
+        return cb.length ? `🎁 *COMBOS ${tienda.toUpperCase()}*\n\nMás cuentas, mejor precio:\n` + cb.map(p => `▫️ *${p.nombre}* — ${formatoCOP(p.precio)}`).join('\n') + `\n\n👉 ${enl}` : 'No tienes combos activos. Arma uno en Productos → Armar combo.';
+      }
+      if (tipo === 'recarga') return `💳 *¿CÓMO COMPRAR EN ${tienda.toUpperCase()}?*\n\n1️⃣ Entra a ${enl} y crea tu cuenta\n2️⃣ Recarga tu saldo (se acredita solo en 1 o 2 minutos)\n3️⃣ Elige tu producto y toca *Comprar*\n4️⃣ Recibe tus cuentas al instante en *Mis Cuentas* ✅\n\n🛡 Todas con garantía · Soporte por WhatsApp\n👉 ${enl}`;
+      return '';
+    }
+    function pintarTiposImagen() {
+      const c = document.getElementById('mkTiposImagen'); if (!c) return;
+      c.innerHTML = [['producto', '🖼 Un producto'], ['lista', '📋 Lista de precios'], ['promos', '🔥 Promos de hoy']].map(([k, t]) => `<button type="button" onclick="mkTipoImagen='${k}';pintarTiposImagen();dibujarMarketing()" class="px-3 py-1.5 rounded-full text-[11px] font-bold border ${mkTipoImagen === k ? 'bg-fuchsia-500 text-white border-fuchsia-400' : 'bg-gray-800 text-gray-300 border-gray-700'}">${t}</button>`).join('');
+      const sel = document.getElementById('mkProducto'); if (sel) sel.classList.toggle('hidden', mkTipoImagen !== 'producto');
+    }
+    // Imagen con varios productos (lista de precios o promos del día)
+    function lienzoLista(tipo, formato, estilo, frase) {
+      const W = 1080, H = formato === 'post' ? 1080 : 1920;
+      const c = document.createElement('canvas'); c.width = W; c.height = H; const x = c.getContext('2d');
+      const acento = estilo === 'dorado' ? '#f7d774' : (estilo === 'oscuro' ? '#34d399' : '#e879f9');
+      const g = x.createLinearGradient(0, 0, W, H); g.addColorStop(0, '#0b1020'); g.addColorStop(1, estilo === 'dorado' ? '#1c1404' : '#160a22'); x.fillStyle = g; x.fillRect(0, 0, W, H);
+      const rg = x.createRadialGradient(W * 0.85, 140, 20, W * 0.85, 140, 520); rg.addColorStop(0, hexARgba(acento, 0.28)); rg.addColorStop(1, 'rgba(0,0,0,0)'); x.fillStyle = rg; x.fillRect(0, 0, W, H);
+      x.fillStyle = acento; x.fillRect(0, 0, W, 10);
+      let L = productosMarketing();
+      if (tipo === 'promos') L = L.filter(p => p.promoPct || promoPerfilCliente(p.docId));
+      const max = formato === 'post' ? 6 : 9; L = L.slice(0, max);
+      const top = formato === 'post' ? 70 : 150;
+      x.textAlign = 'center'; x.fillStyle = 'rgba(255,255,255,.7)'; x.font = '700 34px system-ui, sans-serif'; x.fillText(nombreTienda().toUpperCase(), W / 2, top);
+      x.fillStyle = acento; ajustarTexto(x, tipo === 'promos' ? 'PROMOS DE HOY' : 'LISTA DE PRECIOS', W - 120, 92, 900, 'system-ui, sans-serif'); x.fillText(tipo === 'promos' ? 'PROMOS DE HOY' : 'LISTA DE PRECIOS', W / 2, top + 100);
+      if (frase) { x.fillStyle = '#fff'; x.font = '700 38px system-ui, sans-serif'; x.fillText(frase.slice(0, 40), W / 2, top + 160); }
+      const yIni = top + (frase ? 210 : 170), yFin = H - (formato === 'post' ? 170 : 290), gap = 16, n = Math.max(1, L.length);
+      // Pocas filas: más grandes y centradas; muchas: compactas
+      const filaH = Math.max(formato === 'post' ? 100 : 118, Math.min(formato === 'post' ? 170 : 240, Math.floor((yFin - yIni - (n - 1) * gap) / n)));
+      const y0 = yIni + Math.max(0, Math.floor(((yFin - yIni) - (n * filaH + (n - 1) * gap)) / 2));
+      const esc = filaH / 132;
+      if (!L.length) { x.fillStyle = '#9ca3af'; x.font = '600 40px system-ui, sans-serif'; x.fillText('Sin productos para mostrar', W / 2, H / 2); }
+      L.forEach((p, i) => {
+        const y = y0 + i * (filaH + gap), m = marcaDeProducto(p);
+        textoRedondeado(x, 60, y, W - 120, filaH, 28); x.fillStyle = 'rgba(17,24,39,.85)'; x.fill(); x.strokeStyle = hexARgba(m.color, 0.55); x.lineWidth = 3; x.stroke();
+        x.fillStyle = m.color; x.fillRect(60, y + 22, 8, filaH - 44);
+        x.textAlign = 'left'; x.fillStyle = '#fff'; const tn = ajustarTexto(x, p.nombre, W - 520, Math.round(44 * Math.min(esc, 1.35)), 800, 'system-ui, sans-serif'); x.fillText(p.nombre, 100, y + filaH / 2 + (p.promoPct || promoPerfilCliente(p.docId) ? -6 : tn / 3));
+        const pc = promoPerfilCliente(p.docId);
+        if (p.promoPct || pc) { x.fillStyle = hexARgba(acento, 1); x.font = '700 28px system-ui, sans-serif'; x.fillText((p.promoPct ? '-' + p.promoPct + '% ' : '') + (pc ? '🎁 ' + (pc.compra || 10) + '+' + (pc.regalo || 1) : ''), 100, y + filaH / 2 + 34); }
+        x.textAlign = 'right'; x.fillStyle = '#fff'; x.font = `900 ${Math.round(52 * Math.min(esc, 1.35))}px system-ui, sans-serif`; x.fillText(formatoCOP(p.precio), W - 96, y + filaH / 2 + 18 * Math.min(esc, 1.35));
+        if (p.promoPct && p.precioLista) { x.fillStyle = 'rgba(255,255,255,.45)'; x.font = '600 26px system-ui, sans-serif'; x.fillText(formatoCOP(p.precioLista), W - 96, y + 34); }
+      });
+      const by = H - (formato === 'post' ? 130 : 230);
+      textoRedondeado(x, 90, by, W - 180, 110, 55); const gb = x.createLinearGradient(90, 0, W - 90, 0); gb.addColorStop(0, acento); gb.addColorStop(1, '#ffffff'); x.fillStyle = gb; x.fill();
+      x.textAlign = 'center'; x.fillStyle = '#0b0f17'; ajustarTexto(x, 'Pide ya 👉 ' + enlaceMk(), W - 260, 50, 900, 'system-ui, sans-serif'); x.fillText('Pide ya 👉 ' + enlaceMk(), W / 2, by + 72);
+      return c;
+    }
+
+
+    // ==================== MENÚ DEL PANEL: ANCHO Y LADO AJUSTABLES (computador) ====================
+    const ANCHO_MENU_NORMAL = 260, ANCHO_MENU_MIN = 200, ANCHO_MENU_MAX = 520;
+    function aplicarAjustesMenu() {
+      const lay = document.getElementById('panelLayout'); if (!lay) return;
+      let ancho = ANCHO_MENU_NORMAL, lado = 'izquierda';
+      try { ancho = parseInt(localStorage.getItem('menuPanelAncho'), 10) || ANCHO_MENU_NORMAL; lado = localStorage.getItem('menuPanelLado') || 'izquierda'; } catch (e) { /* nada */ }
+      lay.style.setProperty('--ancho-menu', Math.max(ANCHO_MENU_MIN, Math.min(ANCHO_MENU_MAX, ancho)) + 'px');
+      lay.classList.toggle('menu-derecha', lado === 'derecha');
+    }
+    function guardarAjusteMenu(k, v) { try { localStorage.setItem(k, String(v)); } catch (e) { /* nada */ } }
+    function cambiarLadoMenu() {
+      const lay = document.getElementById('panelLayout'); if (!lay) return;
+      const der = !lay.classList.contains('menu-derecha'); lay.classList.toggle('menu-derecha', der);
+      guardarAjusteMenu('menuPanelLado', der ? 'derecha' : 'izquierda');
+    }
+    function anchoMenuNormal() { const lay = document.getElementById('panelLayout'); if (lay) lay.style.setProperty('--ancho-menu', ANCHO_MENU_NORMAL + 'px'); guardarAjusteMenu('menuPanelAncho', ANCHO_MENU_NORMAL); }
+    (function iniciarAsaMenu() {
+      const asa = document.getElementById('menuAsa'), nav = document.getElementById('navPanelAdmin'), lay = document.getElementById('panelLayout');
+      if (!asa || !nav || !lay) return;
+      aplicarAjustesMenu();
+      let activo = false;
+      const mover = ev => {
+        if (!activo) return;
+        const r = nav.getBoundingClientRect(), der = lay.classList.contains('menu-derecha');
+        const ancho = Math.round(der ? (r.right - ev.clientX) : (ev.clientX - r.left));
+        lay.style.setProperty('--ancho-menu', Math.max(ANCHO_MENU_MIN, Math.min(ANCHO_MENU_MAX, ancho)) + 'px');
+      };
+      const soltar = () => {
+        if (!activo) return; activo = false; asa.classList.remove('arrastrando'); document.body.classList.remove('arrastrando-menu');
+        guardarAjusteMenu('menuPanelAncho', parseInt(getComputedStyle(lay).getPropertyValue('--ancho-menu'), 10) || ANCHO_MENU_NORMAL);
+        window.removeEventListener('pointermove', mover); window.removeEventListener('pointerup', soltar);
+      };
+      asa.addEventListener('pointerdown', ev => { ev.preventDefault(); activo = true; asa.classList.add('arrastrando'); document.body.classList.add('arrastrando-menu'); window.addEventListener('pointermove', mover); window.addEventListener('pointerup', soltar); });
+    })();
+
+
+    // ==================== PRODUCTOS: VISTAS (Tarjetas / Lista / Tabla), FILTROS Y RESUMEN ====================
+    var vistaProductos = 'tarjetas', filtroProductos = 'todos';
+    try { vistaProductos = localStorage.getItem('vistaProductosAdmin') || 'tarjetas'; } catch (e) { /* nada */ }
+    function infoProductoAdmin(p) {
+      const stock = Number(p.stock) || 0, activo = p.activo !== false, minimo = parseInt(p.minCompra) || 1;
+      const bajo = activo && (stock < minimo || stock < 3);
+      const promo = !!(p.promoPct || (typeof promoPerfilCliente === 'function' && promoPerfilCliente(p.docId)));
+      let txtG = parseGarantia(p.tipoGarantia) ? textoGarantia(p.tipoGarantia, true) : (p.tipoGarantia === 'ninguna' ? 'Sin garantía' : 'Sin definir');
+      return { stock, activo, minimo, bajo, promo, txtG, marca: marcaDeProducto(p) };
+    }
+    function pasaFiltroProducto(i) { return filtroProductos === 'todos' || (filtroProductos === 'activos' && i.activo) || (filtroProductos === 'ocultos' && !i.activo) || (filtroProductos === 'bajo' && i.bajo) || (filtroProductos === 'promo' && i.promo); }
+    function cambiarVistaProductos(v) { vistaProductos = v; try { localStorage.setItem('vistaProductosAdmin', v); } catch (e) { /* nada */ } renderizarVistaProductosAlt(); }
+    function cambiarFiltroProductos(f) { filtroProductos = f; renderizarVistaProductosAlt(); }
+    function renderizarVistaProductosAlt() {
+      const alt = document.getElementById('prodVistaAlt'), tab = document.getElementById('prodVistaTabla'); if (!alt || !tab) return;
+      const L = catalogoUnificado.map(p => ({ p: p, i: infoProductoAdmin(p) }));
+      const k = (t, v, c) => `<div class="rounded-xl p-2.5 bg-gray-800/50 border border-gray-700/50"><p class="text-[10px] text-gray-400">${t}</p><p class="text-base font-black ${c}">${v}</p></div>`;
+      document.getElementById('prodResumen').innerHTML = k('Productos', L.length, 'text-white') + k('Activos', L.filter(x => x.i.activo).length, 'text-emerald-300') + k('Agotados', L.filter(x => x.i.activo && x.i.stock === 0).length, 'text-red-300') + k('En stock', L.reduce((t, x) => t + x.i.stock, 0), 'text-sky-300');
+      document.getElementById('prodVistas').innerHTML = [['tarjetas', 'fa-grip', 'Tarjetas'], ['lista', 'fa-list', 'Lista'], ['tabla', 'fa-table', 'Tabla']].map(([v, ic, t]) => `<button type="button" onclick="cambiarVistaProductos('${v}')" class="px-3 py-1.5 rounded-lg text-[11px] font-bold ${vistaProductos === v ? 'bg-emerald-500 text-black' : 'text-gray-300 hover:bg-gray-700'}"><i class="fa-solid ${ic} mr-1"></i>${t}</button>`).join('');
+      const cnt = f => L.filter(x => { const g = filtroProductos; filtroProductos = f; const r = pasaFiltroProducto(x.i); filtroProductos = g; return r; }).length;
+      document.getElementById('prodFiltros').innerHTML = [['todos', 'Todos'], ['activos', 'Activos'], ['ocultos', 'Ocultos'], ['bajo', '⚠ Stock bajo'], ['promo', '🏷 En promo']].map(([f, t]) => `<button type="button" onclick="cambiarFiltroProductos('${f}')" class="shrink-0 px-3 py-1.5 rounded-full text-[11px] font-bold border ${filtroProductos === f ? 'bg-white text-black border-white' : 'bg-gray-900 text-gray-300 border-gray-700'}">${t} <span class="opacity-60">${cnt(f)}</span></button>`).join('');
+      tab.classList.toggle('hidden', vistaProductos !== 'tabla');
+      alt.classList.toggle('hidden', vistaProductos === 'tabla');
+      // la tabla también respeta el filtro rápido
+      document.querySelectorAll('#tablaAdminProductos tr[data-buscar]').forEach((tr, n) => { const x = L[n]; if (x) tr.dataset.filtroOculto = pasaFiltroProducto(x.i) ? '' : '1'; });
+      if (vistaProductos === 'tabla') { filtrarTablaProductosAdmin(); return; }
+      const q = normalizarBusqueda((document.getElementById('txtBuscarProductosAdmin') || {}).value || '');
+      const lista = L.filter(x => pasaFiltroProducto(x.i) && (!q || normalizarBusqueda([x.p.nombre, x.p.categoria, x.i.txtG, x.p.docId].join(' ')).indexOf(q) !== -1));
+      const precioHtml = p => p.promoPct ? `<span class="text-[11px] text-gray-500 line-through mr-1">${formatoCOP(p.precioLista || 0)}</span><span class="text-rose-300">${formatoCOP(p.precio)}</span>` : formatoCOP(p.precio);
+      const sw = (p, i) => `<button type="button" onclick="alternarVisibilidadProducto('${p.docId}', ${i.activo})" title="${i.activo ? 'Visible en la tienda' : 'Oculto'}" class="relative w-11 h-6 rounded-full transition ${i.activo ? 'bg-emerald-500' : 'bg-gray-700'}"><span class="absolute top-0.5 ${i.activo ? 'right-0.5' : 'left-0.5'} w-5 h-5 rounded-full bg-white shadow"></span></button>`;
+      if (!lista.length) { alt.innerHTML = '<p class="text-center text-sm text-gray-500 py-10">No hay productos con ese filtro.</p>'; return; }
+      if (vistaProductos === 'lista') {
+        alt.innerHTML = '<div class="rounded-2xl border border-gray-800 overflow-hidden divide-y divide-gray-800">' + lista.map(({ p, i }) => `<div class="flex items-center gap-3 px-3 py-2.5 ${i.activo ? '' : 'opacity-60'} hover:bg-gray-800/40">
+          <span class="w-9 h-9 shrink-0 rounded-xl flex items-center justify-center text-[11px] font-black" style="background:${hexARgba(i.marca.color, 0.18)};color:${i.marca.color}">${p.imagenUrl ? `<img loading="lazy" src="${p.imagenUrl}" class="w-9 h-9 rounded-xl object-cover">` : escaparHtml(String(p.nombre || '?').charAt(0).toUpperCase())}</span>
+          <div class="min-w-0 flex-grow"><p class="text-sm font-bold text-white truncate">${escaparHtml(p.nombre)}${p.esCombo ? ' <span class="text-amber-300 text-[10px]">COMBO</span>' : ''}</p><p class="text-[10px] text-gray-400 truncate">${escaparHtml(p.categoria || '')} · ${escaparHtml(i.txtG)}${i.bajo ? ' · <span class="text-amber-300 font-bold">stock bajo</span>' : ''}</p></div>
+          <div class="shrink-0 text-right"><p class="text-sm font-black text-white">${precioHtml(p)}</p><p class="text-[10px] ${i.stock > 0 ? 'text-emerald-300' : 'text-red-300'}">${i.stock} disp.</p></div>
+          ${sw(p, i)}<button type="button" onclick="abrirModalEditarProducto('${p.docId}')" class="shrink-0 w-8 h-8 rounded-lg bg-gray-800 hover:bg-gray-700 text-sky-300" title="Editar"><i class="fa-solid fa-pen"></i></button>
+        </div>`).join('') + '</div>';
+        return;
+      }
+      alt.innerHTML = '<div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">' + lista.map(({ p, i }) => `<div class="relative rounded-2xl overflow-hidden border ${i.activo ? '' : 'opacity-70'}" style="border-color:${hexARgba(i.marca.color, 0.4)};background:radial-gradient(120% 80% at 0% 0%, ${hexARgba(i.marca.color, 0.14)}, transparent 60%), #0f1320">
+        <div class="h-1" style="background:${i.marca.color}"></div>
+        <div class="p-3.5">
+          <div class="flex items-start justify-between gap-2"><div class="min-w-0"><p class="text-[10px] font-black tracking-[0.2em] uppercase truncate" style="color:${i.marca.color}">${escaparHtml(i.marca.etiqueta)}</p><p class="text-sm font-black text-white leading-snug mt-0.5">${escaparHtml(p.nombre)}</p></div>${sw(p, i)}</div>
+          <div class="flex flex-wrap gap-1 mt-2">${p.esVip ? '<span class="px-1.5 py-0.5 rounded bg-yellow-500/15 text-yellow-300 text-[9px] font-black">VIP</span>' : ''}${p.esCombo ? '<span class="px-1.5 py-0.5 rounded bg-amber-400/15 text-amber-300 text-[9px] font-black">COMBO</span>' : ''}${i.promo ? `<span class="px-1.5 py-0.5 rounded bg-rose-500/20 text-rose-300 text-[9px] font-black">${p.promoPct ? '-' + p.promoPct + '%' : 'PROMO'}</span>` : ''}${i.bajo ? '<span class="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 text-[9px] font-black animate-pulse">STOCK BAJO</span>' : ''}<span class="px-1.5 py-0.5 rounded bg-gray-800 text-gray-300 text-[9px]">${escaparHtml(p.categoria || '')}</span><span class="px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-300 text-[9px]">🛡 ${escaparHtml(i.txtG)}</span></div>
+          <div class="flex items-end justify-between gap-2 mt-3"><div><p class="text-xl font-black text-white">${precioHtml(p)}</p><p class="text-[10px] text-gray-500">mín. ${i.minimo} ${i.minimo === 1 ? 'cuenta' : 'cuentas'}</p></div><div class="text-right"><p class="text-lg font-black ${i.stock > 0 ? 'text-emerald-300' : 'text-red-300'}">${i.stock}</p><p class="text-[10px] text-gray-500">disponibles</p></div></div>
+          <div class="grid ${i.stock > 0 ? 'grid-cols-3' : 'grid-cols-2'} gap-1.5 mt-3">
+            ${i.stock > 0 ? `<button type="button" onclick="verDetalleCuentas('${p.docId}')" class="py-2 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-200 text-[11px] font-bold"><i class="fa-solid fa-eye mr-1"></i>Cuentas</button>` : ''}
+            <button type="button" onclick="abrirModalEditarProducto('${p.docId}')" class="py-2 rounded-lg bg-sky-500/15 hover:bg-sky-500/25 border border-sky-500/30 text-sky-300 text-[11px] font-bold"><i class="fa-solid fa-pen mr-1"></i>Editar</button>
+            <button type="button" onclick="eliminarProducto('${p.docId}')" class="solo-admin py-2 rounded-lg bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 text-red-300 text-[11px] font-bold"><i class="fa-solid fa-trash-can mr-1"></i>Eliminar</button>
+          </div>
+        </div></div>`).join('') + '</div>';
     }
 
     // ==================== NETFLIX EN LA TIENDA: SIN CONTRASEÑA ====================
