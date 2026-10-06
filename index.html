@@ -5,11 +5,22 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, interactive-widget=resizes-content">
   <title>Epic Channels | Portal Privado</title>
   
+  <!-- Conexiones anticipadas: el navegador abre los canales mientras lee la página -->
+  <link rel="preconnect" href="https://cdn.tailwindcss.com">
+  <link rel="preconnect" href="https://www.gstatic.com" crossorigin>
+  <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
+  <link rel="preconnect" href="https://firestore.googleapis.com" crossorigin>
+  <link rel="preconnect" href="https://identitytoolkit.googleapis.com" crossorigin>
+  <link rel="preconnect" href="https://securetoken.googleapis.com" crossorigin>
+  <link rel="dns-prefetch" href="https://script.google.com">
+  <link rel="dns-prefetch" href="https://script.googleusercontent.com">
+
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
   
-  <!-- Font Awesome Icons -->
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- Font Awesome Icons (no frena el primer dibujo de la página) -->
+  <link rel="preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" onload="this.onload=null;this.rel='stylesheet'">
+  <noscript><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"></noscript>
 
   <!-- Firebase SDKs (Compat v9) -->
   <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
@@ -219,6 +230,15 @@
     .brand-btn:hover { filter: brightness(1.1); }
     @media (prefers-reduced-motion: no-preference) { .brand-glow { animation: brandGlow 3.4s ease-in-out infinite; } }
     @keyframes brandGlow { 0%, 100% { box-shadow: 0 16px 38px -20px var(--b-sombra); } 50% { box-shadow: 0 18px 46px -16px var(--b-sombra-fuerte); } }
+  
+    /* ===== Dealer: dorado premium ===== */
+    .dealer-badge { position: relative; overflow: hidden; display: inline-flex; align-items: center; gap: .35rem; padding: .22rem .75rem; border-radius: 999px; font-size: 10px; font-weight: 900; letter-spacing: .14em; text-transform: uppercase; color: #2a1a00; background: linear-gradient(110deg, #b8860b 0%, #f7d774 30%, #fff1b8 50%, #f7d774 70%, #b8860b 100%); background-size: 220% 100%; border: 1px solid #ffe08a; box-shadow: 0 0 0 1px rgba(184,134,11,.4), 0 6px 18px -6px rgba(247,215,116,.85); }
+    @media (prefers-reduced-motion: no-preference) { .dealer-badge { animation: dealerBrillo 3.2s linear infinite; } }
+    @keyframes dealerBrillo { 0% { background-position: 120% 0; } 100% { background-position: -120% 0; } }
+    .dealer-anillo { background: conic-gradient(from 0deg, #b8860b, #fff1b8, #f7d774, #b8860b, #f7d774, #fff1b8, #b8860b) !important; box-shadow: 0 0 22px -4px rgba(247,215,116,.8); }
+    .dealer-banner { position: relative; overflow: hidden; border-radius: 1.25rem; border: 1px solid rgba(247,215,116,.55); background: radial-gradient(120% 120% at 100% 0%, rgba(247,215,116,.22), transparent 55%), linear-gradient(135deg, #1c1404 0%, #0d0f17 70%); box-shadow: 0 16px 40px -22px rgba(247,215,116,.7); }
+    .dealer-banner::before { content: ''; position: absolute; inset: 0 0 auto 0; height: 3px; background: linear-gradient(90deg, #b8860b, #fff1b8, #f7d774, #b8860b); }
+    .dealer-texto { background: linear-gradient(90deg, #f7d774, #fff1b8, #f7d774); -webkit-background-clip: text; background-clip: text; color: transparent; }
   </style>
 </head>
 <body class="min-h-screen flex flex-col justify-between">
@@ -370,6 +390,7 @@
       </div>
 
       <!-- Grilla de Productos -->
+      <div id="bannerDealer" class="hidden dealer-banner mb-5"></div>
       <div id="gridProductos" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 gap-5">
         <div class="col-span-full py-12 text-center text-gray-500">
           <i class="fa-solid fa-spinner fa-spin text-2xl mb-2 text-emerald-400"></i>
@@ -380,6 +401,13 @@
 
     <!-- VISTA: MI PERFIL (antes "Mis Cuentas"; se conserva el id vistaMisCuentas) -->
     <section id="vistaProveedor" class="hidden pb-24 sm:pb-6 max-w-2xl mx-auto space-y-4">
+      <div id="provPedidosCaja" class="hidden bg-gray-900 border border-yellow-400/50 rounded-2xl overflow-hidden">
+        <div class="p-4 flex items-center gap-3">
+          <span class="relative w-10 h-10 shrink-0 rounded-xl bg-yellow-400/15 text-yellow-300 flex items-center justify-center"><i class="fa-solid fa-crown"></i><span id="provPedidosNuevos" class="hidden absolute -top-1.5 -right-1.5 min-w-[20px] h-5 px-1 rounded-full bg-red-500 text-white text-[11px] font-black flex items-center justify-center border-2 border-gray-950"></span></span>
+          <div class="min-w-0 flex-grow"><p class="text-sm font-black text-white">Pedidos pagados</p><p id="provPedidosResumen" class="text-[11px] text-gray-400"></p></div>
+        </div>
+        <div id="provPedidosLista" class="border-t border-gray-800 p-3 space-y-3"></div>
+      </div>
       <div id="provReferidosCaja" class="hidden"></div>
       <div id="provCorreosCaja" class="bg-gray-900 border border-violet-500/40 rounded-2xl overflow-hidden">
         <div class="p-4 flex items-center gap-3">
@@ -963,17 +991,15 @@
             </div>
           </div>
         </div>
-        <div id="adminRegaloRevendedor" class="solo-admin bg-gray-900 border border-fuchsia-500/30 rounded-2xl p-4 space-y-2.5">
-          <h4 class="font-bold text-white text-sm flex items-center gap-2"><i class="fa-solid fa-medal text-fuchsia-300"></i> Regalo para revendedores</h4>
-          <p class="text-[11px] text-gray-400 leading-relaxed">Cuando un cliente con insignia <b class="text-fuchsia-200">Revendedor</b> compra más del límite de un mismo producto en el mismo día, recibe 1 cuenta de regalo (una vez por producto al día).</p>
-          <div class="grid grid-cols-3 gap-2">
-            <select id="revProductoBono" class="col-span-2 bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"></select>
-            <input type="number" id="revUmbral" min="1" max="500" placeholder="10" class="bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none" title="Más de cuántas cuentas">
+        <div id="adminRegaloRevendedor" class="solo-admin dealer-banner p-4 space-y-3">
+          <h4 class="font-bold text-white text-sm flex items-center gap-2"><i class="fa-solid fa-crown" style="color:#f7d774"></i> <span class="dealer-texto">Promos para dealers</span></h4>
+          <p class="text-[11px] text-amber-100/70 leading-relaxed">Activa una promo en el producto que quieras: <b class="text-white">compra 10, llévate 1</b>. Las compras del mismo día se suman. Solo aplica a clientes con insignia <b class="dealer-texto">Dealer</b>.</p>
+          <div id="promosDealerLista" class="space-y-2"></div>
+          <div class="flex gap-2">
+            <select id="promoDealerNuevo" class="min-w-0 flex-grow bg-gray-900 border border-yellow-400/30 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"></select>
+            <button type="button" onclick="agregarPromoDealer()" class="shrink-0 px-3 py-2 rounded-xl bg-gray-900 border border-yellow-400/40 text-yellow-200 font-bold text-[11px]"><i class="fa-solid fa-plus mr-1"></i>Agregar</button>
           </div>
-          <div class="flex items-center justify-between gap-2">
-            <label class="flex items-center gap-2 text-xs text-white"><input type="checkbox" id="revActivo" class="accent-fuchsia-500 w-4 h-4"> Regalo activo</label>
-            <button type="button" onclick="guardarRegaloRevendedor()" class="px-4 py-2 rounded-xl bg-fuchsia-500 hover:bg-fuchsia-400 text-white font-bold text-xs">Guardar</button>
-          </div>
+          <button type="button" onclick="guardarRegaloRevendedor()" class="w-full dealer-badge !justify-center !text-xs !py-2.5 !tracking-normal !normal-case">Guardar promos</button>
         </div>
         <div id="adminCreditosCaja" class="solo-admin hidden bg-gray-900 border border-violet-500/30 rounded-2xl overflow-hidden">
           <div class="p-4 flex items-center justify-between gap-3 border-b border-gray-800">
@@ -1537,6 +1563,26 @@
           <h3 class="text-base font-bold text-white mb-1 flex items-center gap-2"><i class="fa-solid fa-truck-ramp-box text-emerald-400"></i> Proveedores de stock</h3>
           <p class="text-xs text-gray-400">Aprueba lo que suben, ponles el costo por cuenta y márcalos como saldados cuando les pagues (el pago lo haces por aparte).</p>
           <p class="text-[11px] text-gray-500 mt-2">Para crear un proveedor: <b class="text-gray-300">Usuarios Registrados → Crear usuario</b> con el rol "Proveedor", y luego, con su botón <b class="text-gray-300">Editar</b>, marca qué productos puede subir.</p>
+        </div>
+        <div class="solo-admin bg-gray-900 border border-yellow-400/40 rounded-2xl overflow-hidden">
+          <button type="button" onclick="document.getElementById('prCuerpo').classList.toggle('hidden')" class="w-full text-left p-4 flex items-center gap-3">
+            <span class="w-9 h-9 shrink-0 rounded-xl bg-yellow-400/15 text-yellow-300 flex items-center justify-center"><i class="fa-solid fa-crown"></i></span>
+            <span class="min-w-0 flex-grow"><span class="block font-bold text-white text-sm">Pedidos a super resellers</span><span id="prResumen" class="block text-[11px] text-gray-400 truncate">Pagas primero, ellos suben el pedido</span></span>
+            <i class="fa-solid fa-chevron-down text-gray-400"></i>
+          </button>
+          <div id="prCuerpo" class="hidden border-t border-gray-800 p-4 space-y-2.5">
+            <select id="prReseller" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none"></select>
+            <select id="prProducto" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none"></select>
+            <div class="grid grid-cols-2 gap-2">
+              <label class="text-[10px] text-gray-400">Cantidad<input type="number" id="prCantidad" min="1" oninput="prTotal()" class="mt-1 w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"></label>
+              <label class="text-[10px] text-gray-400">Precio por cuenta ($)<input type="number" id="prPrecio" min="0" step="50" oninput="prTotal()" class="mt-1 w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"></label>
+            </div>
+            <input type="text" id="prNota" maxlength="200" placeholder="Nota para el reseller (opcional)" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none">
+            <label class="block text-[10px] text-gray-400">Comprobante del pago (foto)<input type="file" id="prFoto" accept="image/*" class="mt-1 w-full text-xs text-gray-300 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:bg-gray-700 file:text-white"></label>
+            <p id="prTotalTxt" class="text-xs text-yellow-200 font-bold"></p>
+            <button type="button" id="btnCrearPedido" onclick="crearPedidoReseller()" class="w-full py-2.5 rounded-xl bg-yellow-400 hover:bg-yellow-300 text-black font-black text-xs">Crear pedido pagado</button>
+            <div id="prLista" class="space-y-2 pt-2 border-t border-gray-800"></div>
+          </div>
         </div>
         <div class="solo-admin bg-gray-900 border border-violet-500/30 rounded-2xl overflow-hidden">
           <button type="button" onclick="document.getElementById('acCuerpo').classList.toggle('hidden')" class="w-full text-left p-4 flex items-center gap-3">
@@ -2313,9 +2359,10 @@
           <select id="expRol" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none">
             <option value="cliente">Cliente</option>
             <option value="cliente_normal">Cliente normal (solo Netflix, VIP y lo que le habilites)</option>
-            <option value="revendedor">Revendedor (regalo de Prime por volumen)</option>
+            <option value="revendedor">Dealer (insignia dorada + regalo por volumen)</option>
             <option value="proveedor">Proveedor de stock</option>
             <option value="proveedor_externo">Proveedor externo (solo sube stock, no compra)</option>
+            <option value="reseller">Super reseller (pedidos pagados por adelantado, no compra)</option>
             <option value="moderador">Moderador (casi todo, sin configuración)</option>
           </select>
           <p class="text-[10px] text-gray-500 mt-1">Los productos del proveedor y las categorías del cliente normal se eligen después, en Editar.</p>
@@ -2465,9 +2512,10 @@
           <select id="editClienteRol" onchange="editClienteCambioRol()" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none">
             <option value="cliente">Cliente</option>
             <option value="cliente_normal">Cliente normal (solo Netflix, VIP y lo que le habilites)</option>
-            <option value="revendedor">Revendedor (regalo de Prime por volumen)</option>
+            <option value="revendedor">Dealer (insignia dorada + regalo por volumen)</option>
             <option value="proveedor">Proveedor de stock</option>
             <option value="proveedor_externo">Proveedor externo (solo sube stock, no compra)</option>
+            <option value="reseller">Super reseller (pedidos pagados por adelantado, no compra)</option>
             <option value="moderador">Moderador (casi todo, sin configuración)</option>
           </select>
           <p id="editClienteRolInfo" class="hidden mt-1.5 text-[10px] text-gray-400 leading-snug"></p>
@@ -4278,6 +4326,7 @@
 
     function asistenteResponderTema(id) {
       if (id === 'menu') { asistenteAgregarBot('¿En qué más te puedo ayudar?', asistenteMenu()); return; }
+      if (id === 'persona' && !asistenteTriagePersona) { asistenteTriage(); return; }
       const t = asistenteTemaPorId(id);
       if (!t) return;
       let chips = asistenteChipsDe(t);
@@ -4292,7 +4341,11 @@
         case 'recarga': cerrarAsistente(); abrirModalRecarga(); break;
         case 'cuentas': cerrarAsistente(); cambiarVista('mis-cuentas'); break;
         case 'catalogo': cerrarAsistente(); cambiarVista('tienda'); break;
-        case 'whatsapp': cerrarAsistente(); abrirSoporteWhatsapp(); break;
+        case 'whatsapp': if (!asistenteTriagePersona) { asistenteTriage(); break; } cerrarAsistente(); abrirSoporteWhatsapp(); break;
+        case 'persona_directo': asistenteTriagePersona = true; asistenteResponderTema('persona'); break;
+        case 'ayuda_recarga': asistenteAyudaRecarga(); break;
+        case 'mis_recargas': cerrarAsistente(); cambiarVista('mis-cuentas'); try { cambiarTabPerfil('recargas'); } catch (e) { /* nada */ } break;
+        case 'mi_netflix': cerrarAsistente(); cambiarVista('mis-cuentas'); setTimeout(() => { const c = document.getElementById('perfilNetflixCaja'); if (c && !c.classList.contains('hidden')) c.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 300); break;
         case 'listar_reportes': asistenteListarReportes(); break;
         case 'novedades': asistenteListarNovedades(); break;
         default: break;
@@ -4319,7 +4372,7 @@
       }
       const libres = items.filter(x => !x.abierto && x.puede);
       if (!libres.length && items.some(x => !x.abierto && !x.puede)) {
-        asistenteAgregarBot('Ahora mismo ninguna de tus cuentas está en garantía, así que no se pueden reportar desde aquí. Si necesitas ayuda, habla con una persona.', [{ t: 'Hablar con una persona', i: 'fa-headset', tema: 'persona' }, { t: 'Otra pregunta', i: 'fa-list', tema: 'menu' }]);
+        asistenteAgregarBot('Tus cuentas ya pasaron su tiempo de **garantía**, por eso no aparecen para reportar. La garantía cubre la cuenta durante los días que dice tu compra.\n\nEsto es lo que puedes hacer:', [{ t: 'Ver mis cuentas y sus fechas', i: 'fa-box-archive', fn: 'cuentas' }, { t: 'Comprar una nueva', i: 'fa-store', fn: 'catalogo' }, { t: 'Mi cuenta de Netflix', i: 'fa-film', fn: 'mi_netflix' }, { t: 'Es otra cosa', i: 'fa-circle-question', fn: 'persona_directo' }]);
         return;
       }
       if (!libres.length) {
@@ -5912,6 +5965,7 @@
         if (btnSoporte) btnSoporte.classList.remove('hidden');
         try { asistenteProgramarSaludo(); } catch (e) { console.warn(e); }
         try { iniciarNovedadesClientes(); } catch (e) { console.warn(e); }
+        try { cargarCfgDealer(); } catch (e) { /* nada */ }
         try { leerCfgReferidos().then(() => { iniciarMisComisiones(); renderizarMisReferidos(); }); } catch (e) { console.warn(e); }
         if (btnTelegramBot) btnTelegramBot.classList.remove('hidden');
         
@@ -5975,8 +6029,8 @@
             const tipoAntes = userTipoCuenta;
             userTipoCuenta = String(dataU.tipoCuenta || '');
             userCategoriasPermitidas = Array.isArray(dataU.categoriasPermitidas) ? dataU.categoriasPermitidas : [];
-            if (tipoAntes !== userTipoCuenta) { try { renderizarCatalogo(); renderizarFiltrosCategorias(); } catch (e) { /* nada */ } }
-            if (userTipoCuenta === 'externo' && dataU.rol === 'proveedor') { try { const vP = document.getElementById('vistaProveedor'); if (vP && vP.classList.contains('hidden')) cambiarVista('proveedor'); } catch (e) { /* nada */ } }
+            if (tipoAntes !== userTipoCuenta) { try { renderizarCatalogo(); renderizarFiltrosCategorias(); pintarBannerDealer(); } catch (e) { /* nada */ } }
+            if ((userTipoCuenta === 'externo' || userTipoCuenta === 'reseller') && dataU.rol === 'proveedor') { try { const vP = document.getElementById('vistaProveedor'); if (vP && vP.classList.contains('hidden')) cambiarVista('proveedor'); } catch (e) { /* nada */ } }
             userProductosBloqueados = dataU.productos_bloqueados || [];
             userPermisosSubirStock = dataU.permisos_subir_stock || [];
             perfilNombreActual = dataU.nombre || '';
@@ -6291,7 +6345,8 @@
       try {
         const n = infoNivel(totalCuentas);
         const insignia = document.getElementById('perfilNivelInsignia');
-        if (insignia) insignia.innerHTML = htmlInsigniaNivel(totalCuentas, false) + (userTipoCuenta === 'revendedor' ? ' <span data-rev class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black border text-fuchsia-200 border-fuchsia-400/40 bg-fuchsia-500/15"><i class="fa-solid fa-medal"></i> Revendedor</span>' : '');
+        if (insignia) insignia.innerHTML = htmlInsigniaNivel(totalCuentas, false) + (userTipoCuenta === 'revendedor' ? ' ' + htmlInsigniaDealer() : '');
+        try { const av = document.getElementById('perfilAvatar'); if (av && av.parentElement) av.parentElement.classList.toggle('dealer-anillo', userTipoCuenta === 'revendedor'); } catch (e) { /* nada */ }
         const box = document.getElementById('perfilNivelBox');
         if (!box) return;
         const c = n.actual.color;
@@ -6747,7 +6802,7 @@
     function cambiarVista(vista) {
       if (!currentUser) { bloquearAccesoVisitante(); return; }
       // El proveedor externo solo usa su panel de stock
-      if (rolActual === 'proveedor' && userTipoCuenta === 'externo' && !esAdminSesionActual() && ['tienda', 'mis-cuentas', 'netflix'].indexOf(vista) !== -1) vista = 'proveedor';
+      if (rolActual === 'proveedor' && (userTipoCuenta === 'externo' || userTipoCuenta === 'reseller') && !esAdminSesionActual() && ['tienda', 'mis-cuentas', 'netflix'].indexOf(vista) !== -1) vista = 'proveedor';
       
       if (modoPruebaCliente && vista === 'admin') {
         vista = 'tienda';
@@ -7222,7 +7277,7 @@
       if (tab === 'historial') cargarHistorialVentasAdmin();
       if (tab === 'netflix') renderizarNetflixAdmin();
       if (tab === 'ajustes') cargarDatosAjustesEnForm();
-      if (tab === 'proveedores') { renderizarAdminProveedores(); prepararAsignarCorreos(); }
+      if (tab === 'proveedores') { renderizarAdminProveedores(); prepararAsignarCorreos(); prepararPedidosReseller(); }
       if (tab === 'asistente') cargarEditorAsistente();
       if (tab === 'tickets') { renderizarTickets(); limpiarFotosRespuestaVencidas(); }
       if (tab === 'promociones') { renderizarPromoProductos(); renderizarPromoActivas(); }
@@ -7680,6 +7735,7 @@
     }
 
     function renderizarCatalogo() {
+      try { pintarBannerDealer(); } catch (e) { /* nada */ }
       const grid = document.getElementById('gridProductos');
       if (!grid) return;
       // Mientras no llegue el inventario real no se muestran productos "agotados" por error
@@ -7735,10 +7791,11 @@
         const esComboT = prod.esCombo === true;
         const marcaT = (!esNf && !esComboT && tarjetasDeMarcaActivas()) ? marcaDeProducto(prod) : null;
         const promoBadgeHtml = prod.promoPct ? `<div class="mb-3 mr-1.5 inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider text-white bg-gradient-to-r from-rose-500 to-pink-500 shadow-md shadow-rose-500/30"><i class="fa-solid fa-tags"></i> -${prod.promoPct}%${prod.promoHasta ? ' · ' + escaparHtml(textoTiempoRestante(prod.promoHasta)) : ''}</div>` : '';
-        const hotBadgeHtml = (esComboT ? '<div class="mb-3 mr-1.5 inline-flex"><span class="combo-chip"><i class="fa-solid fa-gift"></i> Combo</span></div>' : '') + promoBadgeHtml + (esVipTienda ? `<div class="mb-3 mr-1.5 inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider text-black bg-gradient-to-r from-amber-300 via-yellow-400 to-amber-500 shadow-md shadow-amber-500/30"><i class="fa-solid fa-crown"></i> VIP</div>` : '') + (esHot ? `<div class="mb-3 inline-flex items-center gap-1.5 bg-red-500/10 text-red-400 border border-red-500/30 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider"><i class="fa-solid fa-fire animate-pulse text-red-500"></i> Producto Más Vendido / HOT</div>` : '');
+        const promoD = promoDealerDe(prod.docId);
+        const hotBadgeHtml = (promoD ? `<div class="mb-3 mr-1.5 inline-flex"><span class="dealer-badge !tracking-normal !normal-case !text-[10px]"><i class="fa-solid fa-gift"></i> ${promoD.compra || 10}+${promoD.regalo || 1} Dealer</span></div>` : '') + (esComboT ? '<div class="mb-3 mr-1.5 inline-flex"><span class="combo-chip"><i class="fa-solid fa-gift"></i> Combo</span></div>' : '') + promoBadgeHtml + (esVipTienda ? `<div class="mb-3 mr-1.5 inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider text-black bg-gradient-to-r from-amber-300 via-yellow-400 to-amber-500 shadow-md shadow-amber-500/30"><i class="fa-solid fa-crown"></i> VIP</div>` : '') + (esHot ? `<div class="mb-3 inline-flex items-center gap-1.5 bg-red-500/10 text-red-400 border border-red-500/30 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider"><i class="fa-solid fa-fire animate-pulse text-red-500"></i> Producto Más Vendido / HOT</div>` : '');
 
         const imagenProdHtml = prod.imagenUrl 
-          ? `<img src="${prod.imagenUrl}" alt="${prod.nombre}" data-ampliar="${escaparHtml(prod.nombre || 'Producto')}" class="w-10 h-10 rounded-full object-cover border border-gray-700/80 shadow-md shrink-0 cursor-zoom-in">` 
+          ? `<img loading="lazy" decoding="async" src="${prod.imagenUrl}" alt="${prod.nombre}" data-ampliar="${escaparHtml(prod.nombre || 'Producto')}" class="w-10 h-10 rounded-full object-cover border border-gray-700/80 shadow-md shrink-0 cursor-zoom-in">` 
           : '';
 
         grid.innerHTML += `
@@ -8026,8 +8083,8 @@
         if (comboR) { comboElegido[docId] = false; }
         if (r.bono && Array.isArray(r.bono.cuentas) && r.bono.cuentas.length) {
           const infoB = Object.assign({}, catalogoUnificado.find(p => p.docId === r.bono.productoId) || {}, { nombre: r.bono.productoNombre, tipoGarantia: r.bono.tipoGarantia });
-          mostrarEntregaCompleta(textoEntregaFinal + '\n\n━━━━━━━━━━━━\n🎁 REGALO DE REVENDEDOR\n\n' + construirFormatoEntrega(r.bono.cuentas, infoB, {}), cuentasEntregadas, prodInfo, { total: totalPagar, saldo: nuevoSaldoUsuario, combo: comboR ? { cuentas: comboR.cuentas, info: comboInfo } : null, bono: { cuentas: r.bono.cuentas, info: infoB } });
-          mostrarToast('🎁 ¡Ganaste ' + r.bono.productoNombre + ' de regalo por tu volumen de compra!');
+          mostrarEntregaCompleta(textoEntregaFinal + '\n\n━━━━━━━━━━━━\n👑 REGALO DEALER\n\n' + construirFormatoEntrega(r.bono.cuentas, infoB, {}), cuentasEntregadas, prodInfo, { total: totalPagar, saldo: nuevoSaldoUsuario, combo: comboR ? { cuentas: comboR.cuentas, info: comboInfo } : null, bono: { cuentas: r.bono.cuentas, info: infoB } });
+          mostrarToast('👑 ¡Beneficio Dealer! Ganaste ' + r.bono.productoNombre + ' de regalo.');
         }
 
         // El aviso de venta a Telegram lo envía el servidor seguro
@@ -8098,7 +8155,7 @@
         if (esNf) html += htmlGuiaNetflix(true);
         if (ex.combo && Array.isArray(ex.combo.cuentas) && ex.combo.cuentas.length) html += htmlEntregaCombo(ex.combo.cuentas, ex.combo.info || {}, fila);
         if (Array.isArray(ex.partes)) ex.partes.forEach(pt => { html += htmlEntregaCombo(pt.cuentas, pt.info || {}, fila, 'Incluido en tu combo'); });
-        if (ex.bono && Array.isArray(ex.bono.cuentas) && ex.bono.cuentas.length) html += htmlEntregaCombo(ex.bono.cuentas, ex.bono.info || {}, fila, '🎁 Regalo de revendedor');
+        if (ex.bono && Array.isArray(ex.bono.cuentas) && ex.bono.cuentas.length) html += htmlEntregaCombo(ex.bono.cuentas, ex.bono.info || {}, fila, '👑 Regalo Dealer');
         cont.innerHTML = html;
       } catch (e) {
         console.warn('No se pudo dibujar la entrega visual:', e);
@@ -8150,7 +8207,7 @@
             <tr data-buscar="${textoBusqueda}" class="hover:bg-gray-800/40 ${stockBajo ? 'bg-amber-500/5' : ''}">
               <td class="px-4 py-3 min-w-[180px] whitespace-normal">
                 <div class="flex items-center gap-2.5">
-                  ${p.imagenUrl ? `<img src="${p.imagenUrl}" alt="" data-ampliar="${escaparHtml(p.nombre || 'Producto')}" class="w-8 h-8 rounded-full object-cover border border-gray-700 shadow shrink-0 cursor-zoom-in">` : ''}
+                  ${p.imagenUrl ? `<img loading="lazy" decoding="async" src="${p.imagenUrl}" alt="" data-ampliar="${escaparHtml(p.nombre || 'Producto')}" class="w-8 h-8 rounded-full object-cover border border-gray-700 shadow shrink-0 cursor-zoom-in">` : ''}
                   <div>
                     <div class="flex items-center gap-1.5 flex-wrap">
                       <span class="font-bold text-white text-sm leading-snug">${p.nombre}</span>
@@ -8875,16 +8932,16 @@
 
     // La lista de productos solo aparece cuando el rol es "Proveedor"
     // Tipo de cuenta = rol + tipo (así las reglas de seguridad de proveedores y clientes no cambian)
-    const TIPOS_CUENTA_SELECT = { cliente: ['cliente', ''], cliente_normal: ['cliente', 'normal'], revendedor: ['cliente', 'revendedor'], proveedor: ['proveedor', ''], proveedor_externo: ['proveedor', 'externo'], moderador: ['moderador', ''] };
+    const TIPOS_CUENTA_SELECT = { cliente: ['cliente', ''], cliente_normal: ['cliente', 'normal'], revendedor: ['cliente', 'revendedor'], proveedor: ['proveedor', ''], proveedor_externo: ['proveedor', 'externo'], reseller: ['proveedor', 'reseller'], moderador: ['moderador', ''] };
     function valorSelectTipoCuenta(rol, tipo) {
       rol = rol || 'cliente'; tipo = tipo || '';
       const k = Object.keys(TIPOS_CUENTA_SELECT).find(x => TIPOS_CUENTA_SELECT[x][0] === rol && TIPOS_CUENTA_SELECT[x][1] === tipo);
       return k || rol;
     }
     function etiquetaTipoCuenta(rol, tipo) {
-      if (rol === 'proveedor') return tipo === 'externo' ? ['PROVEEDOR EXTERNO', 'bg-orange-500/20 text-orange-300'] : ['PROVEEDOR', 'bg-amber-500/20 text-amber-300'];
+      if (rol === 'proveedor') return tipo === 'externo' ? ['PROVEEDOR EXTERNO', 'bg-orange-500/20 text-orange-300'] : (tipo === 'reseller' ? ['SUPER RESELLER', 'bg-yellow-400/20 text-yellow-200'] : ['PROVEEDOR', 'bg-amber-500/20 text-amber-300']);
       if (rol === 'moderador') return ['MODERADOR', 'bg-sky-500/20 text-sky-300'];
-      if (tipo === 'revendedor') return ['REVENDEDOR', 'bg-fuchsia-500/20 text-fuchsia-300'];
+      if (tipo === 'revendedor') return ['👑 DEALER', 'dealer-badge !px-1.5 !py-0.5 !text-[9px] !tracking-wider'];
       if (tipo === 'normal') return ['CLIENTE NORMAL', 'bg-gray-700 text-gray-200'];
       return null;
     }
@@ -8892,7 +8949,7 @@
       const sel = document.getElementById('editClienteRol');
       const v = sel ? sel.value : 'cliente';
       const bloque = document.getElementById('editClienteBloqueStock');
-      if (bloque) bloque.classList.toggle('hidden', !(v === 'proveedor' || v === 'proveedor_externo'));
+      if (bloque) bloque.classList.toggle('hidden', !(v === 'proveedor' || v === 'proveedor_externo' || v === 'reseller'));
       const bc = document.getElementById('editClienteBloqueCategorias');
       if (bc) {
         bc.classList.toggle('hidden', v !== 'cliente_normal');
@@ -8905,8 +8962,9 @@
       const info = document.getElementById('editClienteRolInfo');
       const INFO = {
         cliente_normal: 'Solo ve y compra Netflix y los productos VIP. Márcale abajo las categorías extra que quieras que vea.',
-        revendedor: 'Recibe 1 cuenta de regalo cuando compra más del límite del mismo producto en un día (lo configuras en Usuarios → Regalo para revendedores).',
-        proveedor_externo: 'Entra directo a su panel para subir stock. No ve la tienda ni puede comprar.'
+        revendedor: 'Lleva la insignia dorada de Dealer y recibe 1 cuenta de regalo cuando compra más del límite del mismo producto en un día (lo configuras en Usuarios → Regalo para dealers).',
+        proveedor_externo: 'Entra directo a su panel para subir stock. No ve la tienda ni puede comprar.',
+        reseller: 'Le pagas por adelantado con un pedido (Proveedores → Pedidos a super resellers), él sube las cuentas y tú las apruebas. Solo ve su panel: no ve la tienda ni compra.'
       };
       if (info) { info.textContent = INFO[v] || ''; info.classList.toggle('hidden', !INFO[v]); }
     }
@@ -9678,6 +9736,7 @@
     }
 
     function recargaAutoAcreditada(p) {
+      try { if (p && p.id) { if (recargasYaAcreditadas['_ui_' + p.id]) return; recargasYaAcreditadas['_ui_' + p.id] = true; } } catch (e) { /* nada */ }
       if (!p || recargasAvisadas[p.id]) return;
       recargasAvisadas[p.id] = true;
       pedidosRecargaVistos[p.id] = 'acreditado';
@@ -9959,6 +10018,7 @@
           proveedorLotes.sort((a, b) => String(b.creadoEl).localeCompare(String(a.creadoEl)));
           renderizarProveedor();
           try { iniciarMisCorreosProveedor(); } catch (e) { /* nada */ }
+          try { iniciarMisPedidos(); renderizarMisPedidos(); } catch (e) { /* nada */ }
           try { renderizarMisReferidos(); } catch (e) { /* nada */ }
         }, err => console.warn('Mis envíos no disponibles:', err));
       } catch (e) { console.warn(e); }
@@ -10161,6 +10221,12 @@
       document.getElementById('aprobarLoteCosto').value = ultimo !== null ? String(ultimo) : '';
       document.getElementById('aprobarLoteSugerido').textContent = (ultimo !== null ? `Último costo que le aprobaste: ${formatoCOP(ultimo)}. ` : '') + (preciosConfig && preciosConfig[l.productoId] ? `Precio de venta actual: ${formatoCOP(preciosConfig[l.productoId])}.` : '');
       document.getElementById('aprobarLotePrecio').value = '';
+      // Lote de un pedido pagado por adelantado: el costo es el precio del pedido y no queda como deuda
+      if (l.pedidoId) {
+        const pd = (pedidosReseller || []).find(x => x.id === l.pedidoId);
+        if (pd) document.getElementById('aprobarLoteCosto').value = String(pd.precioUnitario || 0);
+        document.getElementById('aprobarLoteSugerido').innerHTML = '<b class="text-yellow-300"><i class="fa-solid fa-crown mr-1"></i>Lote de un pedido ya pagado</b>: al aprobarlo no se suma a lo que le debes.' + (pd ? ` Pedido: ${pd.entregadas || 0}/${pd.cantidad} entregadas.` : '');
+      }
       actualizarTotalLote();
       const m = document.getElementById('modalAprobarLote');
       m.classList.remove('hidden'); m.style.display = 'flex';
@@ -10229,7 +10295,7 @@
           } else {
             t.set(invRef, { cuentas: todas, stock: todas.length }, { merge: true });
           }
-          t.update(loteRef, { estado: 'aprobado', costoUnitario: costo, monto: monto, aprobadoPor: currentUser.email, aprobadoEl: new Date().toISOString(), pagado: false });
+          t.update(loteRef, Object.assign({ estado: 'aprobado', costoUnitario: costo, monto: monto, aprobadoPor: currentUser.email, aprobadoEl: new Date().toISOString(), pagado: !!datos.pedidoId }, datos.pedidoId ? { pagadoEl: new Date().toISOString(), pagadoPor: 'pedido pagado por adelantado' } : {}));
         });
         if (precio !== null) {
           try { await db.collection('configuracion').doc('precios').set({ [l.productoId]: precio }, { merge: true }); } catch (ep) { console.warn('No se pudo actualizar el precio:', ep); }
@@ -10240,6 +10306,7 @@
         }
         cerrarAprobarLote();
         try { actualizarComisionesPorStock(l.proveedorUid); } catch (e) { console.warn(e); }
+        if (l.pedidoId) { try { await avanzarPedidoReseller(l.pedidoId, parseInt(l.cantidad, 10) || 0); } catch (e) { console.warn(e); } }
         mostrarToast(`Lote aprobado: ${l.cantidad} cuentas cargadas. Se le deben ${formatoCOP(monto)} a ${l.proveedorNombre || 'el proveedor'}.`);
       } catch (err) {
         alert('No se pudo aprobar: ' + err.message);
@@ -14091,8 +14158,9 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-05q';
+    const VERSION_PAGINA = '2026-10-05u';
     const ACTUALIZACIONES_PAGINA = [
+      { id: 'act_20261006_dealer', fecha: '2026-10-06', titulo: '¡Llegan los Dealers! 👑', mensaje: 'Nuestros mejores compradores ahora son **Dealers**: insignia dorada en su cuenta y **cuentas de regalo** por comprar por volumen. ¿Quieres ser Dealer? Escríbenos.' },
       { id: 'act_20261005_tarjetas', fecha: '2026-10-05', titulo: 'Tienda con más estilo', mensaje: 'Cada producto ahora tiene su **tarjeta con el color de su marca**: Prime Video, Disney+, YouTube, Spotify y más. ¡Míralas en la tienda!' },
       { id: 'act_20261005_reportes', fecha: '2026-10-05', titulo: 'Tus reportes, más cómodos', mensaje: 'En **Mis Cuentas** ahora tienes un botón **Mis reportes** con un número rojo cuando te respondemos. Y si te cambiamos una cuenta, la verás destacada como **Usa esta cuenta**, con la anterior tachada.' },
       { id: 'act_20261005_tienda', fecha: '2026-10-05', titulo: '¡Tienda renovada!', mensaje: 'Ahora Netflix sale destacado en rojo, hay **combos** con varias cuentas en una (y te mostramos cuánto ahorras), **promociones** con precio rebajado y productos **VIP**. ¡Pásate por la tienda!' },
@@ -14209,26 +14277,46 @@
 
 
     // ==================== REGALO PARA REVENDEDORES (configuración) ====================
+    // Promos para dealers: una por producto (compra X, llévate N; regalo del mismo u otro producto; máximo por día)
+    var promosDealerEdit = {};
     async function cargarRegaloRevendedor() {
-      const sel = document.getElementById('revProductoBono');
-      if (!sel) return;
-      let cfg = {};
-      try { const d = await db.collection('configuracion').doc('revendedores').get(); cfg = d.exists ? (d.data() || {}) : {}; } catch (e) { /* nada */ }
-      sel.innerHTML = '<option value="">Elige el producto de regalo</option>' + catalogoUnificado.filter(p => !p.esCombo).map(p => `<option value="${escaparHtml(p.docId)}">${escaparHtml(p.nombre || p.docId)} · ${parseInt(p.stock, 10) || 0} en stock</option>`).join('');
-      sel.value = cfg.productoBono || '';
-      document.getElementById('revUmbral').value = cfg.umbral || 10;
-      document.getElementById('revActivo').checked = cfg.activo !== false && !!cfg.productoBono;
+      try { const d = await db.collection('configuracion').doc('revendedores').get(); const c = d.exists ? (d.data() || {}) : {}; promosDealerEdit = JSON.parse(JSON.stringify(c.promos || {})); cfgDealer = c; }
+      catch (e) { promosDealerEdit = {}; }
+      renderizarPromosDealerAdmin();
+    }
+    function nombreProd(id) { const p = catalogoUnificado.find(x => x.docId === id); return p ? (p.nombre || id) : id; }
+    function renderizarPromosDealerAdmin() {
+      const cont = document.getElementById('promosDealerLista'); if (!cont) return;
+      const ids = Object.keys(promosDealerEdit);
+      const prods = catalogoUnificado.filter(p => !p.esCombo).sort((a, b) => String(a.nombre).localeCompare(String(b.nombre), 'es'));
+      const sel = document.getElementById('promoDealerNuevo');
+      if (sel) sel.innerHTML = '<option value="">Elige un producto para darle promo</option>' + prods.filter(p => !promosDealerEdit[p.docId]).map(p => `<option value="${escaparHtml(p.docId)}">${escaparHtml(p.nombre || p.docId)}</option>`).join('');
+      const inp = (id, campo, v, min, w) => `<label class="text-[9px] text-amber-100/60 uppercase tracking-wider">${campo === 'compra' ? 'Compra' : campo === 'regalo' ? 'Regalo' : 'Máx/día'}<input type="number" min="${min}" value="${v}" oninput="promosDealerEdit['${escaparJsAttr(id)}'].${campo}=parseInt(this.value,10)||${min}" class="mt-0.5 w-full ${w} bg-gray-900 border border-yellow-400/30 rounded-lg px-2 py-1.5 text-xs text-white focus:outline-none"></label>`;
+      cont.innerHTML = ids.length ? ids.map(id => { const pr = promosDealerEdit[id]; const on = pr.activo !== false; return `<div class="p-2.5 rounded-xl bg-black/30 border ${on ? 'border-yellow-400/50' : 'border-gray-700 opacity-60'}">
+        <div class="flex items-center gap-2"><p class="min-w-0 flex-grow text-xs font-black text-white truncate">${escaparHtml(nombreProd(id))}</p>
+          <label class="flex items-center gap-1 text-[10px] text-amber-100"><input type="checkbox" ${on ? 'checked' : ''} onchange="promosDealerEdit['${escaparJsAttr(id)}'].activo=this.checked;renderizarPromosDealerAdmin()" class="accent-yellow-400 w-4 h-4">Activa</label>
+          <button type="button" onclick="delete promosDealerEdit['${escaparJsAttr(id)}'];renderizarPromosDealerAdmin()" aria-label="Quitar" class="w-7 h-7 rounded-lg bg-red-500/10 border border-red-500/30 text-red-300 text-[10px]"><i class="fa-solid fa-trash"></i></button></div>
+        <div class="grid grid-cols-3 gap-1.5 mt-2">${inp(id, 'compra', pr.compra || 10, 1, '')}${inp(id, 'regalo', pr.regalo || 1, 1, '')}${inp(id, 'maxDia', pr.maxDia || 1, 1, '')}</div>
+        <label class="block mt-1.5 text-[9px] text-amber-100/60 uppercase tracking-wider">Producto de regalo<select onchange="promosDealerEdit['${escaparJsAttr(id)}'].regaloProductoId=this.value" class="mt-0.5 w-full bg-gray-900 border border-yellow-400/30 rounded-lg px-2 py-1.5 text-xs text-white focus:outline-none"><option value="">El mismo (${escaparHtml(nombreProd(id))})</option>${prods.filter(p => p.docId !== id).map(p => `<option value="${escaparHtml(p.docId)}" ${pr.regaloProductoId === p.docId ? 'selected' : ''}>${escaparHtml(p.nombre || p.docId)}</option>`).join('')}</select></label>
+        <p class="text-[10px] text-yellow-200 mt-1.5 font-bold">🎁 Compra ${pr.compra || 10}, llévate ${pr.regalo || 1}${pr.regaloProductoId ? ' de ' + escaparHtml(nombreProd(pr.regaloProductoId)) : ''} · hasta ${(pr.maxDia || 1) * (pr.regalo || 1)} de regalo al día</p>
+      </div>`; }).join('') : '<p class="text-[11px] text-amber-100/60">Todavía no hay promos. Elige un producto abajo y toca Agregar.</p>';
+    }
+    function agregarPromoDealer() {
+      const id = (document.getElementById('promoDealerNuevo') || {}).value;
+      if (!id) { alert('Elige el producto.'); return; }
+      promosDealerEdit[id] = { activo: true, compra: 10, regalo: 1, maxDia: 1, regaloProductoId: '' };
+      renderizarPromosDealerAdmin();
     }
     async function guardarRegaloRevendedor() {
       if (!esAdminSesionActual()) return;
-      const productoBono = document.getElementById('revProductoBono').value;
-      const umbral = Math.max(1, Math.min(500, parseInt(document.getElementById('revUmbral').value, 10) || 10));
-      const activo = document.getElementById('revActivo').checked;
-      if (activo && !productoBono) { alert('Elige el producto que se regala.'); return; }
-      if (activo && (await servidorTiene('tipos_cuenta')) === false) { alert('Para que el regalo funcione necesitas actualizar el servidor (Apps Script) con el archivo nuevo.'); return; }
+      if (Object.keys(promosDealerEdit).length && (await servidorTiene('tipos_cuenta')) === false) { alert('Para que las promos funcionen necesitas actualizar el servidor (Apps Script) con el archivo nuevo.'); return; }
+      const limpio = {};
+      Object.keys(promosDealerEdit).forEach(id => { const pr = promosDealerEdit[id]; limpio[id] = { activo: pr.activo !== false, compra: Math.max(1, parseInt(pr.compra, 10) || 10), regalo: Math.max(1, parseInt(pr.regalo, 10) || 1), maxDia: Math.max(1, parseInt(pr.maxDia, 10) || 1), regaloProductoId: String(pr.regaloProductoId || '') }; });
       try {
-        await db.collection('configuracion').doc('revendedores').set({ productoBono: productoBono, umbral: umbral, activo: activo }, { merge: true });
-        mostrarToast(activo ? `Listo: más de ${umbral} cuentas del mismo producto en el día = 1 de regalo.` : 'Regalo desactivado.');
+        await db.collection('configuracion').doc('revendedores').set({ promos: limpio, actualizadoEl: new Date().toISOString() }, { mergeFields: ['promos', 'actualizadoEl'] });
+        cfgDealer = Object.assign({}, cfgDealer || {}, { promos: limpio });
+        mostrarToast(`Listo: ${Object.values(limpio).filter(x => x.activo).length} promos activas para dealers.`);
+        try { renderizarCatalogo(); } catch (e) { /* nada */ }
       } catch (err) { alert('No se pudo guardar: ' + err.message); }
     }
 
@@ -14880,6 +14968,213 @@
       } catch (e) { return null; }
     }
 
+
+    // ==================== SUPER RESELLER: PEDIDOS PAGADOS POR ADELANTADO ====================
+    // El administrador paga primero (con comprobante), el reseller sube las cuentas del pedido y el administrador aprueba.
+    // Los lotes de un pedido entran como ya pagados: no se suman a lo que se le debe.
+    var pedidosReseller = [], unsubPedidosAdm = null, misPedidos = [], unsubMisPedidos = null;
+    const ESTADO_PEDIDO = { pagado: ['Pagado · por entregar', 'bg-yellow-400/15 text-yellow-200 border-yellow-400/40'], parcial: ['Entrega parcial', 'bg-sky-500/15 text-sky-300 border-sky-500/30'], entregado: ['Entregado', 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30'], cancelado: ['Cancelado', 'bg-gray-800 text-gray-500 border-gray-700'] };
+
+    async function prepararPedidosReseller() {
+      opcionesProductosStock(document.getElementById('prProducto'));
+      try {
+        const snap = await db.collection('usuarios').where('tipoCuenta', '==', 'reseller').get();
+        const sel = document.getElementById('prReseller'); const prev = sel.value;
+        const l = []; snap.forEach(d => { const u = d.data() || {}; l.push({ uid: d.id, nombre: u.nombre || u.email || d.id, email: u.email || '' }); });
+        sel.innerHTML = l.length ? '<option value="">Elige el super reseller</option>' + l.map(u => `<option value="${escaparHtml(u.uid)}">${escaparHtml(u.nombre)}${u.email ? ' (' + escaparHtml(u.email) + ')' : ''}</option>`).join('') : '<option value="">No tienes super resellers (Usuarios → Editar → Rol)</option>';
+        if (prev) sel.value = prev;
+        window.__resellers = l;
+      } catch (e) { console.warn(e); }
+      if (!unsubPedidosAdm) {
+        try { unsubPedidosAdm = db.collection('pedidos_reseller').onSnapshot(snap => { pedidosReseller = []; snap.forEach(d => pedidosReseller.push(Object.assign({ id: d.id }, d.data() || {}))); pedidosReseller.sort((a, b) => String(b.creadoEl).localeCompare(String(a.creadoEl))); renderizarPedidosAdmin(); }, e => console.warn(e)); } catch (e) { console.warn(e); }
+      }
+      prTotal();
+    }
+    function prTotal() {
+      const n = parseInt((document.getElementById('prCantidad') || {}).value, 10) || 0, pr = Number((document.getElementById('prPrecio') || {}).value) || 0;
+      const t = document.getElementById('prTotalTxt'); if (t) t.textContent = n && pr ? `Total pagado: ${formatoCOP(n * pr)} por ${n} cuentas` : '';
+    }
+    async function crearPedidoReseller() {
+      if (!esAdminSesionActual()) return;
+      const uid = document.getElementById('prReseller').value, id = document.getElementById('prProducto').value;
+      const n = parseInt(document.getElementById('prCantidad').value, 10) || 0, pr = Math.max(0, Math.round(Number(document.getElementById('prPrecio').value) || 0));
+      const rs = (window.__resellers || []).find(u => u.uid === uid), prod = catalogoUnificado.find(x => x.docId === id);
+      if (!rs) { alert('Elige el super reseller.'); return; }
+      if (!prod || !(n > 0)) { alert('Elige el producto y la cantidad.'); return; }
+      const archivo = (document.getElementById('prFoto').files || [])[0];
+      if (!archivo && !await confirmarModal('No adjuntaste el comprobante. ¿Crear el pedido sin comprobante?', { textoAceptar: 'Sí, sin comprobante' })) return;
+      if (!await confirmarModal(`¿Crear pedido de ${n} ${prod.nombre} a ${rs.nombre} por ${formatoCOP(n * pr)}?`, { textoAceptar: 'Sí, crear' })) return;
+      const btn = document.getElementById('btnCrearPedido'); if (btn) btn.disabled = true;
+      try {
+        const foto = archivo ? await prepararFotoReporte(archivo) : '';
+        const ahora = new Date().toISOString(), expira = Date.now() + 7 * 24 * 3600000;
+        const ref = db.collection('pedidos_reseller').doc();
+        const lote = db.batch();
+        lote.set(ref, { resellerUid: uid, resellerNombre: rs.nombre, productoId: id, productoNombre: prod.nombre || id, cantidad: n, precioUnitario: pr, total: n * pr, entregadas: 0, estado: 'pagado', nota: String(document.getElementById('prNota').value || '').trim().slice(0, 200), comprobante: !!foto, creadoEl: ahora, creadoPor: currentUser.email, visto: false });
+        if (foto) lote.set(db.collection('comprobantes_pago').doc(ref.id), { proveedorUid: uid, pedidoId: ref.id, foto: foto, creadoEl: ahora, expiraMs: expira });
+        // Que pueda subir ese producto
+        lote.set(db.collection('usuarios').doc(uid), { permisos_subir_stock: firebase.firestore.FieldValue.arrayUnion(id) }, { merge: true });
+        await lote.commit();
+        avisarClienteTicket(uid, 'Nuevo pedido pagado', `Te pagaron ${n} ${prod.nombre} (${formatoCOP(n * pr)}). Súbelos desde tu panel.`);
+        ['prCantidad', 'prPrecio', 'prNota', 'prFoto'].forEach(i => { const e = document.getElementById(i); if (e) e.value = ''; }); prTotal();
+        mostrarToast('Pedido creado: ya le aparece al super reseller.');
+      } catch (err) { alert('No se pudo crear el pedido: ' + err.message); }
+      finally { if (btn) btn.disabled = false; }
+    }
+    async function cancelarPedidoReseller(id) {
+      if (!await confirmarModal('¿Cancelar este pedido? Ya no podrá subir cuentas para él.', { textoAceptar: 'Sí, cancelar' })) return;
+      try { await db.collection('pedidos_reseller').doc(id).update({ estado: 'cancelado', canceladoEl: new Date().toISOString() }); } catch (e) { alert(e.message); }
+    }
+    function barraPedido(p) {
+      const pct = Math.min(100, Math.round((p.entregadas || 0) / (p.cantidad || 1) * 100));
+      return `<div class="h-1.5 rounded-full bg-gray-800 mt-1.5 overflow-hidden"><div class="h-full ${pct >= 100 ? 'bg-emerald-400' : 'bg-yellow-400'}" style="width:${pct}%"></div></div>`;
+    }
+    function renderizarPedidosAdmin() {
+      const activos = pedidosReseller.filter(p => p.estado === 'pagado' || p.estado === 'parcial');
+      const r = document.getElementById('prResumen'); if (r) r.textContent = activos.length ? `${activos.length} activos · faltan ${activos.reduce((t, p) => t + Math.max(0, p.cantidad - (p.entregadas || 0)), 0)} cuentas por entregar` : 'Pagas primero, ellos suben el pedido';
+      const l = document.getElementById('prLista'); if (!l) return;
+      l.innerHTML = pedidosReseller.slice(0, 20).map(p => { const e = ESTADO_PEDIDO[p.estado] || ESTADO_PEDIDO.pagado; return `<div class="p-2.5 rounded-xl bg-gray-800/50 border border-gray-700/60">
+        <div class="flex items-start justify-between gap-2"><div class="min-w-0"><p class="text-xs font-black text-white truncate">${escaparHtml(p.resellerNombre)} · ${escaparHtml(p.productoNombre)}</p><p class="text-[10px] text-gray-400">${p.entregadas || 0}/${p.cantidad} entregadas · ${formatoCOP(p.total || 0)} · ${escaparHtml(bcFecha(p.creadoEl))}</p></div><span class="shrink-0 px-1.5 py-0.5 rounded-full text-[9px] font-bold border ${e[1]}">${e[0]}</span></div>
+        ${barraPedido(p)}
+        <div class="flex gap-1.5 mt-2">${p.comprobante ? `<button type="button" onclick="verComprobantePago('${escaparJsAttr(p.id)}')" class="px-2 py-1 rounded-lg bg-gray-800 border border-gray-700 text-gray-200 text-[10px] font-bold"><i class="fa-solid fa-receipt mr-1"></i>Comprobante</button>` : ''}${(p.estado === 'pagado' || p.estado === 'parcial') ? `<button type="button" onclick="cancelarPedidoReseller('${escaparJsAttr(p.id)}')" class="px-2 py-1 rounded-lg bg-red-500/10 border border-red-500/30 text-red-300 text-[10px] font-bold">Cancelar</button>` : ''}</div>
+      </div>`; }).join('') || '<p class="text-[11px] text-gray-500">Todavía no hay pedidos.</p>';
+    }
+    // Al aprobar un lote de un pedido: avanza el pedido
+    async function avanzarPedidoReseller(pedidoId, cantidad) {
+      if (!pedidoId) return;
+      try {
+        const ref = db.collection('pedidos_reseller').doc(pedidoId);
+        await db.runTransaction(async (t) => {
+          const d = await t.get(ref); if (!d.exists) return;
+          const p = d.data() || {};
+          const ent = (parseInt(p.entregadas, 10) || 0) + (parseInt(cantidad, 10) || 0);
+          t.update(ref, { entregadas: ent, estado: ent >= (p.cantidad || 0) ? 'entregado' : 'parcial', actualizadoEl: new Date().toISOString() });
+        });
+      } catch (e) { console.warn('Pedido:', e); }
+    }
+
+    // ----- Panel del super reseller -----
+    function iniciarMisPedidos() {
+      if (unsubMisPedidos || !currentUser || userTipoCuenta !== 'reseller') return;
+      try {
+        unsubMisPedidos = db.collection('pedidos_reseller').where('resellerUid', '==', currentUser.uid).onSnapshot(snap => {
+          misPedidos = []; snap.forEach(d => misPedidos.push(Object.assign({ id: d.id }, d.data() || {})));
+          misPedidos.sort((a, b) => String(b.creadoEl).localeCompare(String(a.creadoEl)));
+          renderizarMisPedidos();
+        }, e => console.warn('Mis pedidos:', e));
+      } catch (e) { console.warn(e); }
+    }
+    function renderizarMisPedidos() {
+      const caja = document.getElementById('provPedidosCaja'); if (!caja) return;
+      caja.classList.toggle('hidden', userTipoCuenta !== 'reseller');
+      const activos = misPedidos.filter(p => p.estado === 'pagado' || p.estado === 'parcial');
+      const nuevos = misPedidos.filter(p => !p.visto && p.estado === 'pagado');
+      const b = document.getElementById('provPedidosNuevos'); if (b) { b.textContent = nuevos.length; b.classList.toggle('hidden', !nuevos.length); }
+      const r = document.getElementById('provPedidosResumen'); if (r) r.innerHTML = activos.length ? `${nuevos.length ? '<b class="text-red-300">¡Pedido nuevo!</b> · ' : ''}${activos.length} por entregar` : 'Cuando te paguen un pedido, aparece aquí.';
+      const enRev = id => (proveedorLotes || []).filter(l => l.pedidoId === id && l.estado === 'pendiente').reduce((t, l) => t + (l.cantidad || 0), 0);
+      const l = document.getElementById('provPedidosLista'); if (!l) return;
+      l.innerHTML = misPedidos.slice(0, 15).map(p => {
+        const e = ESTADO_PEDIDO[p.estado] || ESTADO_PEDIDO.pagado, falta = Math.max(0, (p.cantidad || 0) - (p.entregadas || 0) - enRev(p.id));
+        const activo = p.estado === 'pagado' || p.estado === 'parcial';
+        return `<div class="p-3 rounded-xl ${activo ? 'bg-yellow-400/5 border border-yellow-400/40' : 'bg-gray-800/40 border border-gray-700/60'}">
+          <div class="flex items-start justify-between gap-2"><div class="min-w-0"><p class="text-sm font-black text-white">${p.cantidad} · ${escaparHtml(p.productoNombre)}</p><p class="text-[11px] text-gray-400">Te pagaron ${formatoCOP(p.total || 0)} · ${escaparHtml(bcFecha(p.creadoEl))}</p>${p.nota ? `<p class="text-[11px] text-yellow-100 mt-0.5">"${escaparHtml(p.nota)}"</p>` : ''}</div><span class="shrink-0 px-1.5 py-0.5 rounded-full text-[9px] font-bold border ${e[1]}">${e[0]}</span></div>
+          ${barraPedido(p)}<p class="text-[10px] text-gray-400 mt-1">${p.entregadas || 0} aprobadas${enRev(p.id) ? ' · ' + enRev(p.id) + ' en revisión' : ''}${activo ? ' · faltan ' + falta : ''}</p>
+          ${p.comprobante ? `<button type="button" onclick="verComprobantePago('${escaparJsAttr(p.id)}')" class="mt-2 px-2.5 py-1 rounded-lg bg-gray-800 border border-gray-700 text-gray-200 text-[10px] font-bold"><i class="fa-solid fa-receipt mr-1"></i>Ver comprobante</button>` : ''}
+          ${activo && falta > 0 ? `<div class="mt-2 space-y-1.5"><textarea id="pedCuentas_${escaparHtml(p.id)}" rows="4" placeholder="correo:clave (una por línea, máximo ${falta})" class="w-full bg-gray-800 border border-gray-700 rounded-xl p-2.5 text-[11px] text-white font-mono focus:outline-none"></textarea><input type="text" id="pedClave_${escaparHtml(p.id)}" placeholder="Contraseña de la plataforma (opcional)" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-[11px] text-white font-mono focus:outline-none"><button type="button" onclick="subirCuentasPedido('${escaparJsAttr(p.id)}')" class="w-full py-2 rounded-xl bg-yellow-400 hover:bg-yellow-300 text-black font-black text-[11px]">Enviar cuentas del pedido</button></div>` : ''}
+        </div>`;
+      }).join('') || '';
+      // Al verlos, quedan como vistos
+      nuevos.forEach(p => { db.collection('pedidos_reseller').doc(p.id).update({ visto: true }).catch(() => {}); });
+    }
+    async function subirCuentasPedido(id) {
+      const p = misPedidos.find(x => x.id === id); if (!p) return;
+      const cuentas = parsearCuentasProveedor((document.getElementById('pedCuentas_' + id) || {}).value);
+      const enRev = (proveedorLotes || []).filter(l => l.pedidoId === id && l.estado === 'pendiente').reduce((t, l) => t + (l.cantidad || 0), 0);
+      const falta = Math.max(0, (p.cantidad || 0) - (p.entregadas || 0) - enRev);
+      if (!cuentas.length) { alert('Escribe al menos una cuenta.'); return; }
+      if (cuentas.length > falta) { alert(`Este pedido solo necesita ${falta} cuentas más. Quita ${cuentas.length - falta}.`); return; }
+      if (!await confirmarModal(`¿Enviar ${cuentas.length} cuentas de ${p.productoNombre} para este pedido?`, { textoAceptar: 'Sí, enviar' })) return;
+      try {
+        await db.collection('stock_pendiente').add({
+          proveedorUid: currentUser.uid, proveedorNombre: String(perfilNombreActual || currentUser.email).slice(0, 80), proveedorEmail: currentUser.email,
+          productoId: p.productoId, productoNombre: String(p.productoNombre).slice(0, 120), cuentas: cuentas, cantidad: cuentas.length, estado: 'pendiente', creadoEl: new Date().toISOString(),
+          claveAcceso: String((document.getElementById('pedClave_' + id) || {}).value || '').trim().slice(0, 80), pedidoId: id
+        });
+        mostrarToast('Enviado: tus cuentas del pedido quedaron en revisión.');
+        if (obtenerBackendUrl()) llamarBackend('notificar', { tipo: 'stock_proveedor', productoNombre: 'PEDIDO ' + p.productoNombre, cantidad: cuentas.length }).catch(() => {});
+      } catch (err) { alert('No se pudo enviar: ' + err.message); }
+    }
+
+
+    // ==================== ASISTENTE: AYUDAR ANTES DE PASAR A WHATSAPP ====================
+    var asistenteTriagePersona = false;
+    function asistenteTriage() {
+      asistenteAgregarBot('Te ayudo a resolverlo más rápido. ¿Qué está pasando?', [
+        { t: 'Una cuenta no funciona', i: 'fa-triangle-exclamation', fn: 'listar_reportes' },
+        { t: 'Mi recarga no aparece', i: 'fa-wallet', fn: 'ayuda_recarga' },
+        { t: 'Necesito un código de Netflix', i: 'fa-key', fn: 'mi_netflix' },
+        { t: 'Quiero comprar o renovar', i: 'fa-store', fn: 'catalogo' },
+        { t: 'Es otra cosa', i: 'fa-headset', fn: 'persona_directo' }
+      ]);
+    }
+    function asistenteAyudaRecarga() {
+      asistenteAgregarBot('Revisemos tu recarga:\n**1)** Si usaste el **pago automático**, el saldo llega solo en 1 o 2 minutos si pagaste el valor **exacto**. Deja la ventana de recarga abierta.\n**2)** Si enviaste **comprobante**, queda en revisión y te avisamos en la campana.\n**3)** En **Mis recargas** ves el estado de cada una.', [
+        { t: 'Ver mis recargas', i: 'fa-receipt', fn: 'mis_recargas' },
+        { t: 'Abrir recarga', i: 'fa-plus', fn: 'recarga' },
+        { t: 'Sigue sin aparecer', i: 'fa-headset', fn: 'persona_directo' }
+      ]);
+    }
+
+    // ==================== RECARGA AUTOMÁTICA: REVISIÓN MÁS RÁPIDA ====================
+    // Mientras haya un pedido abierto, se revisa solo cada 20 s y al volver de la app del banco.
+    var recargaVerifEnCurso = false, recargaVerifUltima = 0, recargasYaAcreditadas = {};
+    async function verificarRecargaSilenciosa(motivo) {
+      const p = pedidoRecargaActivo;
+      if (!p || !p.id || p.simulado || modoPruebaCliente || recargaVerifEnCurso || !currentUser) return;
+      const creado = Date.parse(p.creadoEl || p.fecha || '') || 0;
+      if (creado && Date.now() - creado < 20000) return; // nadie paga en menos de 20 s
+      if (Date.now() - recargaVerifUltima < (motivo === 'volvio' ? 5000 : 18000)) return;
+      if (!obtenerBackendUrl()) return;
+      recargaVerifEnCurso = true; recargaVerifUltima = Date.now();
+      try {
+        const r = await llamarBackend('recarga_verificar', { id: p.id });
+        if (r && r.ok && r.estado === 'acreditado' && !recargasYaAcreditadas[p.id] && pedidoRecargaActivo && pedidoRecargaActivo.id === p.id) {
+          recargasYaAcreditadas[p.id] = true;
+          recargaAutoAcreditada(Object.assign({}, p, { monto: r.acreditado || p.monto }));
+        }
+      } catch (e) { /* se reintenta en la siguiente vuelta */ }
+      finally { recargaVerifEnCurso = false; }
+    }
+    setInterval(() => { if (document.visibilityState === 'visible') verificarRecargaSilenciosa('tiempo'); }, 20000);
+    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') verificarRecargaSilenciosa('volvio'); });
+    window.addEventListener('focus', () => verificarRecargaSilenciosa('volvio'));
+
+
+    // ==================== DEALER (antes "Revendedor") ====================
+    function htmlInsigniaDealer() { return '<span data-rev class="dealer-badge"><i class="fa-solid fa-crown"></i> Dealer</span>'; }
+    var cfgDealer = null;
+    async function cargarCfgDealer() {
+      try { const d = await db.collection('configuracion').doc('revendedores').get(); cfgDealer = d.exists ? (d.data() || {}) : {}; } catch (e) { cfgDealer = {}; }
+      pintarBannerDealer();
+    }
+    function promosDealerActivas() { const p = (cfgDealer && cfgDealer.promos) || {}; return Object.keys(p).filter(id => p[id] && p[id].activo !== false).map(id => Object.assign({ id: id }, p[id])); }
+    function promoDealerDe(id) { if (userTipoCuenta !== 'revendedor' || esStaffSesion()) return null; const p = (cfgDealer && cfgDealer.promos) || {}; return p[id] && p[id].activo !== false ? p[id] : null; }
+    function pintarBannerDealer() {
+      const b = document.getElementById('bannerDealer');
+      if (!b) return;
+      const es = userTipoCuenta === 'revendedor' && !esStaffSesion() && !modoPruebaCliente;
+      b.classList.toggle('hidden', !es);
+      if (!es) return;
+      const lista = promosDealerActivas().filter(x => catalogoUnificado.some(p => p.docId === x.id && p.activo !== false));
+      b.innerHTML = `<div class="p-4">
+        <div class="flex items-center gap-3.5">
+          <span class="shrink-0 w-12 h-12 rounded-2xl dealer-anillo p-[2px]"><span class="w-full h-full rounded-2xl bg-gray-950 flex items-center justify-center"><i class="fa-solid fa-crown text-xl" style="color:#f7d774"></i></span></span>
+          <div class="min-w-0 flex-grow"><p class="text-[10px] font-black tracking-[0.25em] dealer-texto">CUENTA DEALER</p><p class="text-sm font-black text-white leading-snug mt-0.5">${lista.length ? 'Tus promos exclusivas de hoy' : 'Gracias por ser parte de nuestro equipo de dealers.'}</p></div>
+        </div>
+        ${lista.length ? `<div class="mt-3 grid gap-1.5">${lista.slice(0, 6).map(x => `<div class="flex items-center justify-between gap-2 px-3 py-2 rounded-xl bg-black/30 border border-yellow-400/25"><span class="min-w-0 truncate text-xs font-bold text-white">${escaparHtml(nombreProd(x.id))}</span><span class="shrink-0 text-[11px] font-black dealer-texto">Compra ${x.compra || 10} → llévate ${x.regalo || 1}${x.regaloProductoId ? ' ' + escaparHtml(nombreProd(x.regaloProductoId)) : ''} 🎁</span></div>`).join('')}</div><p class="text-[10px] text-amber-100/60 mt-2">Las compras del mismo día se suman · el regalo llega solo en tu compra</p>` : ''}
+      </div>`;
+    }
+
     // ==================== NETFLIX EN LA TIENDA: SIN CONTRASEÑA ====================
     function esNombreNetflix(t) { return /netflix/i.test(String(t || '')); }
     function esProductoNetflix(p) {
@@ -15003,7 +15298,7 @@
       try { renderizarCreditoCliente(); } catch (e) { /* nada */ }
       try {
         const ins = document.getElementById('perfilNivelInsignia');
-        if (ins && userTipoCuenta === 'revendedor' && !esStaffSesion() && !ins.querySelector('[data-rev]')) ins.insertAdjacentHTML('beforeend', ' <span data-rev class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black border text-fuchsia-200 border-fuchsia-400/40 bg-fuchsia-500/15"><i class="fa-solid fa-medal"></i> Revendedor</span>');
+        if (ins && userTipoCuenta === 'revendedor' && !esStaffSesion() && !ins.querySelector('[data-rev]')) ins.insertAdjacentHTML('beforeend', ' ' + htmlInsigniaDealer());
       } catch (e) { /* nada */ }
     }
 
