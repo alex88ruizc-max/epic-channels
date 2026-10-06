@@ -423,9 +423,10 @@
       <div id="provCorreosCaja" class="bg-gray-900 border border-violet-500/40 rounded-2xl overflow-hidden">
         <div class="p-4 flex items-center gap-3">
           <span class="relative w-10 h-10 shrink-0 rounded-xl bg-violet-500/15 text-violet-300 flex items-center justify-center"><i class="fa-solid fa-envelope"></i><span id="provCorreosNuevos" class="hidden absolute -top-1.5 -right-1.5 min-w-[20px] h-5 px-1 rounded-full bg-red-500 text-white text-[11px] font-black flex items-center justify-center border-2 border-gray-950"></span></span>
-          <div class="min-w-0 flex-grow"><p class="text-sm font-black text-white">Correos para trabajar</p><p id="provCorreosResumen" class="text-[11px] text-gray-400">Aquí te llegan los correos que te asignan.</p></div>
+          <div class="min-w-0 flex-grow"><p class="text-sm font-black text-white">Correos para trabajar</p><p class="text-[10px] text-gray-500">Crea las cuentas con estos correos y súbelas abajo</p></div>
           <button type="button" id="btnSolicitarCorreos" onclick="solicitarCorreos()" class="shrink-0 px-3 py-2 rounded-xl bg-violet-500 hover:bg-violet-400 text-white font-bold text-[11px]"><i class="fa-solid fa-hand mr-1"></i>Pedir correos</button>
         </div>
+        <div id="provCorreosResumen" class="px-4 pb-4 -mt-1 text-[12px] text-gray-300">Aquí te llegan los correos que te asignan.</div>
         <div id="provCorreosLista" class="hidden border-t border-gray-800 p-3 space-y-3"></div>
       </div>
       <div class="p-5 bg-gradient-to-br from-emerald-900/40 to-gray-900 border border-emerald-500/40 rounded-2xl shadow-xl">
@@ -7313,7 +7314,7 @@
       if (tab === 'historial') cargarHistorialVentasAdmin();
       if (tab === 'netflix') renderizarNetflixAdmin();
       if (tab === 'ajustes') cargarDatosAjustesEnForm();
-      if (tab === 'proveedores') { renderizarAdminProveedores(); prepararAsignarCorreos(); prepararPedidosReseller(); }
+      if (tab === 'proveedores') { iniciarDescuentosAdmin(); renderizarAdminProveedores(); prepararAsignarCorreos(); prepararPedidosReseller(); }
       if (tab === 'asistente') cargarEditorAsistente();
       if (tab === 'tickets') { renderizarTickets(); limpiarFotosRespuestaVencidas(); }
       if (tab === 'promociones') { renderizarPromoProductos(); renderizarPromoActivas(); }
@@ -10058,6 +10059,7 @@
           renderizarProveedor();
           try { iniciarMisCorreosProveedor(); } catch (e) { /* nada */ }
           try { iniciarMisPedidos(); renderizarMisPedidos(); } catch (e) { /* nada */ }
+          try { iniciarMisDescuentos(); renderizarMisCorreosProveedor(); } catch (e) { /* nada */ }
           try { renderizarMisReferidos(); } catch (e) { /* nada */ }
         }, err => console.warn('Mis envíos no disponibles:', err));
       } catch (e) { console.warn(e); }
@@ -10100,7 +10102,8 @@
       const lotes = proveedorLotes;
       const aprobados = lotes.filter(l => l.estado === 'aprobado');
       const suma = (arr, f) => arr.reduce((t, x) => t + (Number(f(x)) || 0), 0);
-      const debe = suma(aprobados.filter(l => !l.pagado), l => l.monto);
+      const descMios = descuentosPendientesDe(currentUser ? currentUser.uid : '', misDescuentos);
+      const debe = suma(aprobados.filter(l => !l.pagado), l => l.monto) - suma(descMios, d => d.monto);
       const pagado = suma(aprobados.filter(l => l.pagado), l => l.monto);
       const set = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v; };
       set('provDebe', formatoCOP(debe));
@@ -10220,7 +10223,8 @@
       let totalDeuda = 0;
       const arr = Object.values(grupos).map(g => {
         const ap = g.lotes.filter(l => l.estado === 'aprobado');
-        g.debe = ap.filter(l => !l.pagado).reduce((t, l) => t + (Number(l.monto) || 0), 0);
+        g.descuentos = descuentosPendientesDe(g.uid).reduce((t, d) => t + (Number(d.monto) || 0), 0);
+        g.debe = ap.filter(l => !l.pagado).reduce((t, l) => t + (Number(l.monto) || 0), 0) - g.descuentos;
         g.pagado = ap.filter(l => l.pagado).reduce((t, l) => t + (Number(l.monto) || 0), 0);
         g.enRevision = g.lotes.filter(l => l.estado === 'pendiente').reduce((t, l) => t + (Number(l.cantidad) || 0), 0);
         g.reportes = ticketsCuentas.filter(t => t.proveedorUid === g.uid && t.estado !== 'resuelto').length;
@@ -10693,10 +10697,12 @@
       if (!esAdminSesionActual()) return;
       const lotes = lotesProveedores.filter(l => l.proveedorUid === uid && l.estado === 'aprobado' && !l.pagado);
       if (!lotes.length) { alert('Este proveedor no tiene nada pendiente de pago.'); return; }
-      const total = lotes.reduce((t, l) => t + (Number(l.monto) || 0), 0);
+      const descPend = descuentosPendientesDe(uid);
+      const total = lotes.reduce((t, l) => t + (Number(l.monto) || 0), 0) - descPend.reduce((t, d) => t + (Number(d.monto) || 0), 0);
       const cuentas = lotes.reduce((t, l) => t + (Number(l.cantidad) || 0), 0);
       const nombre = lotes[0].proveedorNombre || lotes[0].proveedorEmail || 'el proveedor';
-      pagoEnCurso = { uid: uid, nombre: nombre, total: total, ids: lotes.map(l => l.id) };
+      pagoEnCurso = { uid: uid, nombre: nombre, total: total, ids: lotes.map(l => l.id), descIds: descPend.map(d => d.id) };
+      setTimeout(() => { try { const m = document.getElementById('pagarMonto'); if (m && descPend.length) m.insertAdjacentHTML('afterend', `<p class="text-[11px] text-red-300 mt-1">Incluye −${formatoCOP(descPend.reduce((t, d) => t + (Number(d.monto) || 0), 0))} por ${descPend.length} ${descPend.length === 1 ? 'cuenta reemplazada' : 'cuentas reemplazadas'} (tickets).</p>`); } catch (e) { /* nada */ } }, 0);
       iniciarMetodosPagoProv();
       document.getElementById('pagarNombre').textContent = nombre;
       document.getElementById('pagarMonto').textContent = formatoCOP(total);
@@ -10761,6 +10767,7 @@
         const pagoRef = db.collection('pagos_proveedores').doc();
         const lote = db.batch();
         lotes.forEach(l => lote.update(db.collection('stock_pendiente').doc(l.id), { pagado: true, pagadoEl: ahora, pagadoPor: currentUser.email }));
+        (pc.descIds || []).forEach(id => lote.update(db.collection('descuentos_proveedor').doc(id), { aplicado: true, aplicadoEl: ahora, pagoId: pagoRef.id }));
         lote.set(pagoRef, {
           proveedorUid: pc.uid, proveedorNombre: pc.nombre, monto: pc.total, lotes: pc.ids, cantidadLotes: pc.ids.length,
           fecha: ahora, por: currentUser.email, medio: document.getElementById('pagarMedio').value || 'otro',
@@ -11511,6 +11518,7 @@
         else if (resumen.garantiaReiniciada) msg = 'Ticket resuelto. La garantía de esa cuenta se reinició.';
         if (!admin && (resultado === 'arreglada' || resultado === 'reemplazo')) msg += ' El cliente la ve en su ticket; la compra la actualiza el administrador.';
         mostrarToast(msg);
+        if (resultado === 'reemplazo' && t.proveedorUid) registrarDescuentoReemplazo(t);
         if (t.clienteUid) avisarClienteTicket(t.clienteUid, 'Tu ticket fue resuelto', `Revisa la respuesta sobre ${t.cuenta} en "Mis reportes", dentro de Mis Cuentas.`);
         delete fotosTicketsCache[id]; delete fotosTicketsCache[id + '_resp'];
         cerrarResolverTicket();
@@ -11564,8 +11572,9 @@
       const caja = document.getElementById('provTicketsCaja');
       const cont = document.getElementById('provTickets');
       if (!caja || !cont) return;
-      caja.classList.toggle('hidden', !proveedorTickets.length);
+      caja.classList.remove('hidden');
       const abiertos = proveedorTickets.filter(t => t.estado !== 'resuelto').length;
+      if (!proveedorTickets.length) { cont.innerHTML = '<p class="text-xs text-gray-400 text-center py-3">Ninguna de tus cuentas tiene reportes. ¡Sigue así! 💪</p>'; const b0 = document.getElementById('provTicketsAbiertos'); if (b0) b0.classList.add('hidden'); return; }
       const b = document.getElementById('provTicketsAbiertos');
       if (b) { b.textContent = abiertos; b.classList.toggle('hidden', !abiertos); }
       cont.innerHTML = proveedorTickets.map(t => {
@@ -11576,6 +11585,7 @@
           <p class="text-[11px] text-gray-300 mt-0.5">${escaparHtml(t.motivo || '')}${t.detalle ? ' · ' + escaparHtml(t.detalle) : ''}</p>
           <p class="text-[10px] text-gray-500">${escaparHtml(t.productoNombre || '')} · ${fecha}</p>
           ${resuelto && t.resolucion ? `<p class="text-[10px] text-emerald-300 mt-0.5">${escaparHtml(t.resolucion)}</p>` : ''}
+          ${(() => { const d = (misDescuentos || []).find(x => x.ticketId === t.id); return d ? `<p class="text-[11px] font-bold mt-1 ${d.aplicado ? 'text-gray-400' : 'text-red-300'}"><i class="fa-solid fa-arrow-down mr-1"></i>Cuenta reemplazada al cliente: −${formatoCOP(d.monto || 0)}${d.aplicado ? ' (ya descontado en un pago)' : ' de lo que se te debe'}</p>` : ''; })()}
           ${resuelto && t.fotoEliminada ? `<p class="text-[10px] text-gray-500 mt-0.5"><i class="fa-solid fa-image mr-1"></i>La foto se eliminó al resolver.</p>` : ''}
           ${t.tieneFoto ? `<button onclick="verFotoTicket('${escaparJsAttr(t.id)}')" class="mt-1.5 px-2.5 py-1 rounded-lg text-[10px] font-bold bg-sky-500/15 hover:bg-sky-500/25 text-sky-300 border border-sky-500/30"><i class="fa-solid fa-image mr-1"></i>Ver foto del error</button>` : ''}
         </div>`;
@@ -14202,7 +14212,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-05x';
+    const VERSION_PAGINA = '2026-10-05y';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261006_garantia', fecha: '2026-10-06', titulo: 'Garantías más claras', mensaje: 'Cada producto muestra ahora su **tiempo de garantía exacto** (horas, días, meses o años) y en **Mis Cuentas** ves cuánto te queda en cada cuenta.' },
       { id: 'act_20261006_dealer', fecha: '2026-10-06', titulo: '¡Llegan los Dealers! 👑', mensaje: 'Nuestros mejores compradores ahora son **Dealers**: insignia dorada en su cuenta y **cuentas de regalo** por comprar por volumen. ¿Quieres ser Dealer? Escríbenos.' },
@@ -14961,7 +14971,12 @@
       const sc = document.getElementById('acSolicitudes');
       if (sc) sc.innerHTML = pend.map(x => `<div class="p-2.5 rounded-xl bg-violet-500/10 border border-violet-500/40 flex items-center gap-2"><i class="fa-solid fa-hand text-violet-300"></i><p class="min-w-0 flex-grow text-[11px] text-white"><b>${escaparHtml(x.proveedorNombre || x.proveedorEmail || '')}</b> pide correos${x.cantidad ? ' (' + x.cantidad + ')' : ''} · ${escaparHtml(bcFecha(x.fecha))}</p><button type="button" onclick="atenderSolicitud('${escaparJsAttr(x.id)}')" class="px-2 py-1 rounded-lg bg-violet-500 text-white text-[10px] font-bold">Atender</button><button type="button" onclick="descartarSolicitud('${escaparJsAttr(x.id)}')" class="px-2 py-1 rounded-lg bg-gray-800 text-gray-300 text-[10px]">✕</button></div>`).join('');
       const h = document.getElementById('acHistorial');
-      if (h) h.innerHTML = asignaciones.slice(0, 15).map(a => `<p class="text-[11px] text-gray-400"><b class="text-gray-200">${escaparHtml(a.proveedorNombre)}</b> · ${a.cantidad} de ${escaparHtml(a.productoNombre)} · ${formatoCOP(a.costoTotal || 0)} · ${escaparHtml(bcFecha(a.fecha))}${a.visto ? ' · <span class="text-emerald-300">visto</span>' : ''}</p>`).join('') || '<p class="text-[11px] text-gray-500">Todavía no has asignado correos.</p>';
+      if (h) {
+        const porProv = {};
+        asignaciones.forEach(a => { (porProv[a.proveedorUid] = porProv[a.proveedorUid] || { nombre: a.proveedorNombre, lista: [] }).lista.push(a); });
+        const resumen = Object.keys(porProv).map(uid => { const v = avanceTotalAsignaciones(porProv[uid].lista, lotesProveedores); return `<div class="p-2.5 rounded-xl bg-gray-800/50 border border-gray-700/60"><div class="flex items-center justify-between gap-2"><p class="text-xs font-black text-white truncate">${escaparHtml(porProv[uid].nombre)}</p><span class="text-[10px] font-bold ${v.faltan ? 'text-amber-300' : 'text-emerald-300'}">${v.faltan ? 'faltan ' + v.faltan : '✓ completo'}</span></div><p class="text-[10px] text-gray-400 mt-0.5">${v.total} asignados · ${v.subidos} subidos</p><div class="mt-1 h-1.5 rounded-full bg-gray-900 overflow-hidden"><div class="h-full bg-violet-400" style="width:${v.total ? Math.round(v.subidos / v.total * 100) : 0}%"></div></div></div>`; }).join('');
+        h.innerHTML = (resumen ? `<p class="text-[11px] font-black text-white">Avance por proveedor</p>${resumen}<p class="text-[11px] font-black text-white pt-1">Últimas asignaciones</p>` : '') + (asignaciones.slice(0, 15).map(a => `<p class="text-[11px] text-gray-400"><b class="text-gray-200">${escaparHtml(a.proveedorNombre)}</b> · ${a.cantidad} de ${escaparHtml(a.productoNombre)} · ${formatoCOP(a.costoTotal || 0)} · ${escaparHtml(bcFecha(a.fecha))}${a.visto ? ' · <span class="text-emerald-300">visto</span>' : ''}</p>`).join('') || '<p class="text-[11px] text-gray-500">Todavía no has asignado correos.</p>');
+      }
     }
 
     // ----- Panel del proveedor -----
@@ -14983,11 +14998,14 @@
       const nuevos = misAsignaciones.filter(a => !a.visto);
       const b = document.getElementById('provCorreosNuevos'); if (b) { b.textContent = nuevos.length; b.classList.toggle('hidden', !nuevos.length); }
       const r = document.getElementById('provCorreosResumen');
-      if (r) r.innerHTML = misAsignaciones.length ? `${nuevos.length ? '<b class="text-red-300">¡Tienes correos nuevos!</b> · ' : ''}${misAsignaciones.reduce((t, a) => t + (a.cantidad || 0), 0)} correos asignados · <button type="button" onclick="alternarMisCorreos()" class="underline text-violet-300">${provCorreosAbierto ? 'ocultar' : 'ver'}</button>` : 'Aquí te llegan los correos que te asignan. Si no tienes, pídelos.';
+      const av = avanceTotalAsignaciones(misAsignaciones, proveedorLotes);
+      if (r) r.innerHTML = misAsignaciones.length ? `${nuevos.length ? '<b class="text-red-300">¡Tienes correos nuevos!</b>' : `${av.total} asignados · <b class="text-emerald-300">${av.subidos} subidos</b> · <b class="${av.faltan ? 'text-amber-300' : 'text-emerald-300'}">faltan ${av.faltan}</b>`}
+        <div class="mt-2 h-1.5 rounded-full bg-gray-800 overflow-hidden"><div class="h-full bg-violet-400" style="width:${av.total ? Math.round(av.subidos / av.total * 100) : 0}%"></div></div>
+        <button type="button" onclick="alternarMisCorreos()" class="mt-2.5 w-full py-2.5 rounded-xl ${nuevos.length ? 'bg-violet-500 hover:bg-violet-400 text-white animate-pulse' : 'bg-gray-800 hover:bg-gray-700 border border-violet-500/40 text-violet-200'} font-black text-sm flex items-center justify-center gap-2"><i class="fa-solid ${provCorreosAbierto ? 'fa-eye-slash' : 'fa-envelope-open-text'}"></i>${provCorreosAbierto ? 'Ocultar mis correos' : `Ver mis ${av.total} correos`}</button>` : 'Aquí te llegan los correos que te asignan. Si no tienes, pídelos.';
       const l = document.getElementById('provCorreosLista');
       if (!l) return;
       l.classList.toggle('hidden', !provCorreosAbierto || !misAsignaciones.length);
-      l.innerHTML = misAsignaciones.slice(0, 20).map(a => `<div class="space-y-1.5"><div class="flex items-center justify-between gap-2"><p class="text-[11px] text-white"><b>${a.cantidad}</b> de ${escaparHtml(a.productoNombre)} · ${escaparHtml(bcFecha(a.fecha))}${!a.visto ? ' <span class="px-1.5 py-0.5 rounded bg-red-500 text-white text-[9px] font-black">NUEVO</span>' : ''}</p><button type="button" onclick="copiarCorreosAsignados('${escaparJsAttr(a.id)}')" class="px-2.5 py-1 rounded-lg bg-violet-500 hover:bg-violet-400 text-white text-[10px] font-bold"><i class="fa-solid fa-copy mr-1"></i>Copiar todo</button></div><textarea readonly rows="${Math.min(8, Math.max(3, (a.cuentas || []).length))}" class="w-full bg-gray-800 border border-gray-700 rounded-xl p-2.5 text-[11px] text-white font-mono resize-y">${escaparHtml((a.cuentas || []).join('\n'))}</textarea></div>`).join('');
+      l.innerHTML = misAsignaciones.slice(0, 20).map(a => `<div class="space-y-1.5"><div class="flex items-center justify-between gap-2"><p class="text-[11px] text-white"><b>${a.cantidad}</b> de ${escaparHtml(a.productoNombre)} · ${escaparHtml(bcFecha(a.fecha))} · <span class="${avanceAsignacion(a, proveedorLotes).faltan ? 'text-amber-300' : 'text-emerald-300'}">${avanceAsignacion(a, proveedorLotes).subidos} subidos, faltan ${avanceAsignacion(a, proveedorLotes).faltan}</span>${!a.visto ? ' <span class="px-1.5 py-0.5 rounded bg-red-500 text-white text-[9px] font-black">NUEVO</span>' : ''}</p><button type="button" onclick="copiarCorreosAsignados('${escaparJsAttr(a.id)}')" class="px-2.5 py-1 rounded-lg bg-violet-500 hover:bg-violet-400 text-white text-[10px] font-bold"><i class="fa-solid fa-copy mr-1"></i>Copiar todo</button></div><textarea readonly rows="${Math.min(8, Math.max(3, (a.cuentas || []).length))}" class="w-full bg-gray-800 border border-gray-700 rounded-xl p-2.5 text-[11px] text-white font-mono resize-y">${escaparHtml((a.cuentas || []).join('\n'))}</textarea></div>`).join('');
     }
     async function alternarMisCorreos() {
       provCorreosAbierto = !provCorreosAbierto; renderizarMisCorreosProveedor();
@@ -15412,6 +15430,42 @@
       document.getElementById(pref + 'GarU').value = g ? g.u : 'd';
       document.getElementById(pref + 'GarInicio').value = inicio === 'subida' ? 'subida' : 'compra';
       garantiaDesdeUI(pref);
+    }
+
+
+    // ==================== DESCUENTOS AL PROVEEDOR POR CUENTAS REEMPLAZADAS ====================
+    // Si un ticket se resuelve entregando una cuenta nueva, al proveedor de la cuenta mala se le descuenta su costo.
+    var descuentosProv = [], unsubDescAdm = null, misDescuentos = [], unsubMisDesc = null;
+    function iniciarDescuentosAdmin() {
+      if (unsubDescAdm) return;
+      try { unsubDescAdm = db.collection('descuentos_proveedor').onSnapshot(snap => { descuentosProv = []; snap.forEach(d => descuentosProv.push(Object.assign({ id: d.id }, d.data() || {}))); try { renderizarAdminProveedores(); } catch (e) { /* nada */ } }, e => console.warn(e)); } catch (e) { console.warn(e); }
+    }
+    function descuentosPendientesDe(uid, lista) { return (lista || descuentosProv).filter(d => d.proveedorUid === uid && !d.aplicado && !d.anulado); }
+    async function registrarDescuentoReemplazo(t) {
+      if (!esAdminSesionActual() || !t || !t.proveedorUid) return;
+      try {
+        let costo = Number(t.costo) || 0;
+        if (!costo && t.loteId) { const l = (lotesProveedores || []).find(x => x.id === t.loteId); if (l) costo = Number(l.costoUnitario) || 0; }
+        await db.collection('descuentos_proveedor').doc('tk_' + t.id).set({ proveedorUid: t.proveedorUid, proveedorNombre: t.proveedorNombre || '', ticketId: t.id, cuenta: t.cuenta || '', productoNombre: t.productoNombre || '', monto: costo, fecha: new Date().toISOString(), aplicado: false, pagoId: '', por: currentUser.email }, { merge: true });
+      } catch (e) { console.warn('Descuento al proveedor:', e); }
+    }
+    function iniciarMisDescuentos() {
+      if (unsubMisDesc || !currentUser || !esProveedorSesion()) return;
+      try { unsubMisDesc = db.collection('descuentos_proveedor').where('proveedorUid', '==', currentUser.uid).onSnapshot(snap => { misDescuentos = []; snap.forEach(d => misDescuentos.push(Object.assign({ id: d.id }, d.data() || {}))); try { renderizarProveedor(); renderizarTicketsProveedor(); } catch (e) { /* nada */ } }, e => console.warn(e)); } catch (e) { console.warn(e); }
+    }
+
+    // ==================== CORREOS ASIGNADOS VS SUBIDOS ====================
+    function correosDeLineas(lineas) { const set = new Set(); (lineas || []).forEach(l => { const e = emailDeLineaCuenta(typeof l === 'string' ? l : ((l && l.email) || '')); if (e) set.add(e); }); return set; }
+    // Cuántos de los correos asignados ya aparecen en los lotes que subió (en revisión o aprobados)
+    function avanceAsignacion(a, lotes) {
+      const asign = correosDeLineas(a.cuentas);
+      const subidos = new Set();
+      (lotes || []).filter(l => l.proveedorUid === a.proveedorUid && l.estado !== 'rechazado').forEach(l => correosDeLineas(l.cuentas).forEach(e => { if (asign.has(e)) subidos.add(e); }));
+      const total = asign.size || (parseInt(a.cantidad, 10) || 0);
+      return { total: total, subidos: subidos.size, faltan: Math.max(0, total - subidos.size) };
+    }
+    function avanceTotalAsignaciones(lista, lotes) {
+      return lista.reduce((t, a) => { const v = avanceAsignacion(a, lotes); t.total += v.total; t.subidos += v.subidos; t.faltan += v.faltan; return t; }, { total: 0, subidos: 0, faltan: 0 });
     }
 
     // ==================== NETFLIX EN LA TIENDA: SIN CONTRASEÑA ====================
