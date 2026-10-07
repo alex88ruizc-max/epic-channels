@@ -2780,7 +2780,7 @@
       <div class="w-12 h-12 bg-emerald-500/10 text-emerald-400 rounded-2xl flex items-center justify-center mb-3 text-xl">
         <i class="fa-solid fa-user-pen"></i>
       </div>
-      <h3 class="text-base font-black text-white mb-1">Editar cliente</h3>
+      <div class="flex items-center gap-2 mb-1"><h3 class="text-base font-black text-white">Editar cliente</h3><button type="button" id="btnRegaloCliente" onclick="abrirRegaloCliente()" title="Darle una cuenta de regalo" class="px-2 py-1 rounded-lg bg-pink-500/15 hover:bg-pink-500/25 border border-pink-400/40 text-pink-200 text-[11px] font-black"><i class="fa-solid fa-gift"></i> Regalo</button></div>
       <p id="txtEditarClienteEmail" class="text-xs text-emerald-400 font-mono mb-4 break-all">cliente@ejemplo.com</p>
 
       <form onsubmit="guardarEdicionCliente(event)" class="space-y-3" novalidate autocomplete="off">
@@ -14694,7 +14694,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-07o';
+    const VERSION_PAGINA = '2026-10-07p';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261006b_recarga', fecha: '2026-10-06', titulo: 'Recargas más simples 💳', mensaje: 'Ahora pagas **el valor exacto** que eliges recargar. Tu saldo se acredita solo en 1 o 2 minutos, y si la transacción se demora, igual te llega apenas se confirme.' },
       { id: 'act_20261006b_sinsaldo', fecha: '2026-10-06', titulo: 'Recarga y compra en un solo paso', mensaje: 'Si tocas **Comprar** y te falta saldo, toca **Recargar** ahí mismo. Cuando tu recarga entre, **tu compra se completa sola** y no tienes que volver a buscar el producto.' },
@@ -17788,6 +17788,58 @@
       } catch (e) { console.warn('Avisos de stock:', e); }
     }
 
+
+    // ==================== REGALO: DARLE UNA CUENTA A UN CLIENTE ====================
+    function abrirRegaloCliente() {
+      if (!(esAdminSesionActual() || puedeSeccion('venta_manual'))) { alert('Solo el administrador puede dar regalos.'); return; }
+      const uid = clienteEditarUidActual; if (!uid) return;
+      const nombre = (document.getElementById('editClienteNombre') || {}).value || (document.getElementById('txtEditarClienteEmail') || {}).textContent || 'este cliente';
+      const prods = catalogoUnificado.filter(p => !p.esCombo && stockLibreDeProducto(p.docId) > 0).sort((a, b) => String(a.nombre).localeCompare(String(b.nombre), 'es'));
+      let m = document.getElementById('modalRegalo');
+      if (!m) { m = document.createElement('div'); m.id = 'modalRegalo'; m.className = 'fixed inset-0 bg-black/80 backdrop-blur-sm z-[70] hidden items-center justify-center p-4'; document.body.appendChild(m); }
+      m.innerHTML = `<div class="max-w-sm w-full rounded-3xl p-[1px]" style="background:linear-gradient(135deg,#ec4899,#a855f7)"><div class="rounded-3xl bg-gray-900 p-5 space-y-3">
+        <div class="flex items-center justify-between"><p class="text-base font-black text-white">🎁 Regalo para ${escaparHtml(nombre)}</p><button type="button" onclick="cerrarRegaloCliente()" class="w-8 h-8 rounded-full bg-gray-800 text-gray-300"><i class="fa-solid fa-xmark"></i></button></div>
+        ${prods.length ? `<label class="block text-[11px] text-gray-400">Cuenta a regalar<select id="rgProducto" onchange="rgInfo()" class="mt-1 w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none">${prods.map(p => `<option value="${escaparHtml(p.docId)}">${escaparHtml(p.nombre)} · ${stockLibreDeProducto(p.docId)} libres</option>`).join('')}</select></label>
+        <div class="grid grid-cols-3 gap-2"><label class="text-[11px] text-gray-400">Cantidad<input type="number" id="rgCantidad" min="1" value="1" oninput="rgInfo()" class="mt-1 w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none"></label><label class="col-span-2 text-[11px] text-gray-400">Mensaje (opcional)<input id="rgMensaje" maxlength="80" placeholder="¡Gracias por tu compra!" class="mt-1 w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none"></label></div>
+        <p id="rgInfoTxt" class="text-[11px] text-pink-100/80"></p>
+        <button type="button" id="btnRgGuardar" onclick="guardarRegaloCliente()" class="w-full py-3 rounded-xl text-white font-black text-sm" style="background:linear-gradient(135deg,#ec4899,#a855f7)"><i class="fa-solid fa-gift mr-1"></i>Regalar</button>` : '<p class="text-sm text-gray-400">No hay productos con stock libre para regalar.</p>'}
+      </div></div>`;
+      m.classList.remove('hidden'); m.style.display = 'flex'; rgInfo();
+    }
+    function cerrarRegaloCliente() { const m = document.getElementById('modalRegalo'); if (m) { m.classList.add('hidden'); m.style.display = 'none'; } }
+    function rgInfo() {
+      const e = document.getElementById('rgInfoTxt'); if (!e) return;
+      const p = catalogoUnificado.find(x => x.docId === (document.getElementById('rgProducto') || {}).value); if (!p) return;
+      e.innerHTML = `Le llega a <b>Mis Cuentas</b> como <b>🎁 Obsequio</b>, con su garantía normal: <b>${escaparHtml(textoGarantia(p.tipoGarantia))}</b>. También le llega un aviso a su campana.`;
+    }
+    async function guardarRegaloCliente() {
+      const uid = clienteEditarUidActual, id = (document.getElementById('rgProducto') || {}).value, prod = catalogoUnificado.find(x => x.docId === id);
+      const n = Math.max(1, parseInt((document.getElementById('rgCantidad') || {}).value, 10) || 1), msg = String((document.getElementById('rgMensaje') || {}).value || '').trim().slice(0, 80);
+      if (!uid || !prod) return;
+      if (n > stockLibreDeProducto(id)) { alert('No hay suficientes cuentas libres de ese producto.'); return; }
+      const btn = document.getElementById('btnRgGuardar'); if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>'; }
+      try {
+        const u = await db.collection('usuarios').doc(uid).get(), ud = u.data() || {};
+        const ref = db.collection('compras').doc();
+        await db.runTransaction(async (tx) => {
+          const res = await sacarCuentasInventario(tx, id, n);
+          const costo = res.sacadas.reduce((t, x) => t + (parseCredencialObj(x).costo || 0), 0);
+          tx.set(ref, {
+            usuarioId: uid, usuarioEmail: ud.email || '', productoId: id, productoNombre: prod.nombre || id, categoria: prod.categoria || '',
+            cantidad: n, precioUnitario: 0, total: 0, costoTotal: costo, gananciaNeta: -costo, tipoGarantia: prod.tipoGarantia || '', garantiaInicio: prod.garantiaInicio === 'subida' ? 'subida' : 'compra',
+            credenciales: res.sacadas.map(x => { const c = parseCredencialObj(x); return c.email + ':' + c.pass; }).join('\n'),
+            correos: res.sacadas.map(x => String(parseCredencialObj(x).email || '').toLowerCase()),
+            cuentasInfo: res.sacadas.map(x => { const c = parseCredencialObj(x); return { e: String(c.email || '').toLowerCase(), s: (x && x.subidoEl) || '' }; }),
+            fecha: new Date().toISOString(), procesadoPor: 'regalo', regalo: true, regaladoPor: currentUser.email, mensajeRegalo: msg
+          });
+        });
+        await avisarClienteTicket(uid, '🎁 ¡Tienes un regalo!', `Te regalamos ${n} ${n === 1 ? 'cuenta' : 'cuentas'} de ${prod.nombre}. ${msg ? msg + ' ' : ''}Ya está en Mis Cuentas, con garantía de ${textoGarantia(prod.tipoGarantia)}.`);
+        cerrarRegaloCliente(); lanzarConfeti(['🎁', '💖', '✨']);
+        mostrarToast(`🎁 Regalo enviado: ${n} × ${prod.nombre}`);
+      } catch (e) { alert('No se pudo regalar: ' + e.message); }
+      finally { if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-gift mr-1"></i>Regalar'; } }
+    }
+
     // ==================== NETFLIX EN LA TIENDA: SIN CONTRASEÑA ====================
     function esNombreNetflix(t) { return /netflix/i.test(String(t || '')); }
     function esProductoNetflix(p) {
@@ -18405,7 +18457,7 @@
             <div data-buscar="${construirAtributoBusqueda(c.productoNombre, c.categoria, c.credenciales)}" data-estado="${estadoGar}" class="p-4 bg-gray-900 border border-gray-800 rounded-2xl flex flex-col gap-3">
               <div class="flex items-start justify-between gap-3">
                 <div class="min-w-0 flex items-start gap-2.5">${iconoCompraPerfil(c)}<div class="min-w-0">
-                  <span class="text-[10px] bg-gray-800 text-emerald-400 px-2 py-0.5 rounded font-semibold">${escaparHtml(c.categoria || 'Producto')}</span>
+                  <span class="text-[10px] bg-gray-800 text-emerald-400 px-2 py-0.5 rounded font-semibold">${escaparHtml(c.categoria || 'Producto')}</span>${c.regalo ? '<span class="ml-1 text-[10px] font-black px-2 py-0.5 rounded bg-gradient-to-r from-pink-500 to-fuchsia-500 text-white">🎁 Obsequio</span>' : ''}
                   <h4 class="font-bold text-white text-sm mt-1.5 leading-snug">${escaparHtml(c.productoNombre || 'Producto')}${(parseInt(c.cantidad) || 0) > 1 ? ` <span class="text-gray-400 font-semibold">× ${c.cantidad}</span>` : ''}</h4>
                   ${c.comboNombre ? `<span class="inline-flex items-center gap-1 mt-1 text-[10px] font-bold text-amber-300"><i class="fa-solid fa-gift"></i> Parte de ${escaparHtml(c.comboNombre)}</span>` : ''}
                 </div>
