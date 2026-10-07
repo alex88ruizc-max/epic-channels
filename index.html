@@ -8276,12 +8276,13 @@
                   <span id="txtTotal_${prod.docId}" class="text-base font-black text-white">$${totalInicial.toLocaleString('es-CO')}</span>
                 </div>
                 <div class="flex items-center bg-gray-800 border border-gray-700 rounded-xl p-0.5">
-                  <button type="button" onclick="cambiarCantidad('${prod.docId}', -1, ${stockDisponible}, ${limiteInferior})" ${agotado ? 'disabled' : ''} class="w-7 h-7 flex items-center justify-center rounded-lg bg-gray-700/60 hover:bg-gray-700 text-gray-200 font-black text-sm disabled:opacity-40">-</button>
-                  <input id="cant_${prod.docId}" type="number" value="${cantidadInicial}" min="${limiteInferior}" max="${stockDisponible}" readonly class="w-9 text-center bg-transparent text-white font-bold text-xs focus:outline-none select-none">
-                  <button type="button" onclick="cambiarCantidad('${prod.docId}', 1, ${stockDisponible}, ${limiteInferior})" ${agotado ? 'disabled' : ''} class="w-7 h-7 flex items-center justify-center rounded-lg bg-gray-700/60 hover:bg-gray-700 text-gray-200 font-black text-sm disabled:opacity-40">+</button>
+                  <button type="button" onclick="cambiarCantidad('${prod.docId}', -1, ${maxTarjeta(prod, stockDisponible)}, ${limiteInferior})" ${agotado ? 'disabled' : ''} class="w-7 h-7 flex items-center justify-center rounded-lg bg-gray-700/60 hover:bg-gray-700 text-gray-200 font-black text-sm disabled:opacity-40">-</button>
+                  <input id="cant_${prod.docId}" type="number" value="${cantidadInicial}" min="${limiteInferior}" max="${maxTarjeta(prod, stockDisponible)}" readonly class="w-9 text-center bg-transparent text-white font-bold text-xs focus:outline-none select-none">
+                  <button type="button" onclick="cambiarCantidad('${prod.docId}', 1, ${maxTarjeta(prod, stockDisponible)}, ${limiteInferior})" ${agotado ? 'disabled' : ''} class="w-7 h-7 flex items-center justify-center rounded-lg bg-gray-700/60 hover:bg-gray-700 text-gray-200 font-black text-sm disabled:opacity-40">+</button>
                 </div>
               </div>
-              <button onclick="comprarProducto('${prod.docId}')" ${agotado ? 'disabled' : ''} class="w-full py-2.5 rounded-xl text-xs font-bold ${agotado ? 'bg-gray-800 text-gray-500 cursor-not-allowed' : (esNf ? 'nf-btn' : (marcaT ? 'brand-btn' : estiloCat.btn))} transition flex items-center justify-center gap-1.5">
+              <p id="mixto_${prod.docId}" class="hidden mb-2 px-2.5 py-1.5 rounded-lg bg-sky-500/10 border border-sky-400/30 text-[11px] text-sky-100 leading-snug"></p>
+              <button id="btnComprar_${prod.docId}" onclick="comprarProducto('${prod.docId}')" ${agotado ? 'disabled' : ''} class="w-full py-2.5 rounded-xl text-xs font-bold ${agotado ? 'bg-gray-800 text-gray-500 cursor-not-allowed' : (esNf ? 'nf-btn' : (marcaT ? 'brand-btn' : estiloCat.btn))} transition flex items-center justify-center gap-1.5">
                 <i class="fa-solid fa-cart-shopping"></i> ${agotado ? ttH('botonAgotado') : ttH('botonComprar')}
               </button>
               ${agotado && puedePedirEncargo(prod) ? `<button type="button" onclick="pedirSobrePedido('${prod.docId}')" class="mt-2 w-full py-2 rounded-xl text-[11px] font-bold border border-sky-400/40 bg-sky-500/10 hover:bg-sky-500/20 text-sky-200 flex items-center justify-center gap-1.5"><i class="fa-solid fa-hourglass-half"></i> Pedir sobre pedido · te lo entregamos al llegar</button>` : ''}
@@ -8308,7 +8309,7 @@
       renderizarCatalogo();
     }
 
-    async function comprarProducto(docId) {
+    async function comprarProducto(docId, desdeMixto) {
       if (!currentUser) { abrirModalAuth('login'); return; }
       if (modoPruebaCliente) { comprarProductoSimulado(docId); return; }
 
@@ -8316,6 +8317,8 @@
       const minRequerido = prodInfo.minCompra || 5;
       const inputCant = document.getElementById('cant_' + docId);
       let cantidad = inputCant ? (parseInt(inputCant.value) || minRequerido) : minRequerido;
+      if (!desdeMixto && cantidad > (Number(prodInfo.stock) || 0) && (Number(prodInfo.stock) || 0) > 0 && encargoMixtoActivo(prodInfo)) { await comprarMixto(docId, cantidad); return; }
+      if (!desdeMixto) encargoTrasCompra = null;
       ultimaCompraIntento = { docId: docId, cantidad: cantidad };
 
       if (compraEnCurso) return;
@@ -8487,7 +8490,18 @@
         const conCombo = comboPedidoPara(docId, cantidad);
         if (conCombo && (await servidorTiene('combos')) === false) throw new Error('El combo necesita que el servidor esté actualizado. Desmarca el combo o intenta más tarde.');
         const pedidoCompra = Object.assign({ productoId: docId, cantidad: cantidad }, conCombo ? { combo: true } : {});
-        let r = await llamarBackend('comprar', pedidoCompra);
+        // Si ya se sabe que el saldo no alcanza pero el crédito sí, se pregunta antes: así hay un solo viaje al servidor
+        let usarCreditoYa = false;
+        try {
+          const totalEsp = (Number(prodInfo.precio) || 0) * cantidad, falta = totalEsp - (Number(userSaldo) || 0), libreCred = Math.max(0, (Number(userCupo) || 0) - (Number(userDeuda) || 0));
+          if (!conCombo && totalEsp > 0 && falta > 0 && libreCred >= falta) {
+            if (btnCompra) btnCompra.innerHTML = htmlBtn;
+            if (!await confirmarModal(`Te faltan ${formatoCOP(falta)} COP para esta compra.\n\n¿Completarla con tu crédito? Tienes ${formatoCOP(libreCred)} disponibles. Quedarás debiendo ${formatoCOP(userDeuda + falta)} COP y tu próxima recarga paga primero esa deuda.`, { tipo: 'pregunta', textoAceptar: 'Sí, usar mi crédito' })) return;
+            usarCreditoYa = true;
+            if (btnCompra) btnCompra.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Procesando...';
+          }
+        } catch (e) { /* si algo falla, decide el servidor */ }
+        let r = await llamarBackend('comprar', usarCreditoYa ? Object.assign({}, pedidoCompra, { usarCredito: true }) : pedidoCompra);
         if (r && !r.ok && r.codigo === 'USAR_CREDITO') {
           const faltante = Number(r.faltante) || 0;
           const okCredito = await confirmarModal(`Te faltan ${formatoCOP(faltante)} COP para esta compra.\n\n¿Completarla con tu crédito? Tienes ${formatoCOP(Number(r.cupoDisponible) || 0)} disponibles. Quedarás debiendo ${formatoCOP(userDeuda + faltante)} COP y tu próxima recarga paga primero esa deuda.`, { tipo: 'pregunta', textoAceptar: 'Sí, usar mi crédito' });
@@ -8538,6 +8552,7 @@
 
         // El aviso de venta a Telegram lo envía el servidor seguro
         verificarSubidaNivel(cuentasEntregadas.length);
+        if (encargoTrasCompra) { try { await completarEncargoTrasCompra(docId); } catch (e) { console.warn(e); } }
       } catch (err) {
         // Si la conexión falló DESPUÉS de enviar el pedido, la compra pudo haberse hecho: se revisa antes de avisar un error
         if (err && err.codigoRed) {
@@ -13244,6 +13259,7 @@
       }
       const txt = document.getElementById('txtTotal_' + docId);
       if (txt) txt.innerText = `$${(val * precioUnitarioConCombo(prod)).toLocaleString('es-CO')}`;
+      try { pintarMixto(docId); } catch (e) { /* nada */ }
     }
 
     function comboPedidoPara(docId, cantidad) {
@@ -14694,7 +14710,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-07p';
+    const VERSION_PAGINA = '2026-10-07s';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261006b_recarga', fecha: '2026-10-06', titulo: 'Recargas más simples 💳', mensaje: 'Ahora pagas **el valor exacto** que eliges recargar. Tu saldo se acredita solo en 1 o 2 minutos, y si la transacción se demora, igual te llega apenas se confirme.' },
       { id: 'act_20261006b_sinsaldo', fecha: '2026-10-06', titulo: 'Recarga y compra en un solo paso', mensaje: 'Si tocas **Comprar** y te falta saldo, toca **Recargar** ahí mismo. Cuando tu recarga entre, **tu compra se completa sola** y no tienes que volver a buscar el producto.' },
@@ -15797,7 +15813,7 @@
         </div>
         ${(() => { const h = new Date(); const fin = new Date(h.getFullYear(), h.getMonth() + 1, 1); const dias = Math.ceil((fin - h) / 86400000); return `<p class="mt-2 text-[10px] text-amber-100/60"><i class="fa-solid fa-rotate mr-1"></i>El nivel se reinicia el 1 de ${fin.toLocaleDateString('es-CO', { month: 'long' })} · faltan ${dias} ${dias === 1 ? 'día' : 'días'}</p>`; })()}
         <div class="mt-2"><div class="flex justify-between text-[10px] text-amber-100/80"><span>${niv.sig ? `Te faltan <b class="text-white">${falta}</b> para <b class="dealer-texto">Dealer ${niv.sig}</b>${multSig > multAct ? ` · <b class="text-white">regalos ×${multSig}</b>` : ''}` : `¡Nivel más alto! 👑 Tus regalos valen <b class="text-white">×${multAct}</b>`}</span><span>${pct}%</span></div><div class="mt-1 h-2 rounded-full bg-black/40 overflow-hidden"><div class="h-full rounded-full nivel-${niv.sig ? (niv.sig === 'Oro' ? 'oro' : 'plata') : 'oro'}" style="width:${pct}%"></div></div></div>
-        ${lista.length ? `<p class="mt-3 text-[11px] font-black text-white">🎁 Tus promos de hoy</p><div class="mt-1.5 grid gap-1.5">${lista.slice(0, 6).map(x => { const N = x.compra || 10, lleva = (progresoDealer.hoy || {})[x.id] || 0, enCiclo = lleva % N, faltaP = N - enCiclo, ganados = Math.floor(lleva / N) * (x.regalo || 1) * multAct, tope = (x.maxDia || 1) * (x.regalo || 1) * multAct; const completo = ganados >= tope; return `<div class="px-3 py-2 rounded-xl bg-black/30 border ${completo ? 'border-emerald-400/50' : 'border-yellow-400/25'}"><div class="flex items-center justify-between gap-2"><span class="min-w-0 truncate text-xs font-bold text-white">${escaparHtml(nombreProd(x.id))}</span><span class="shrink-0 text-[11px] font-black dealer-texto">Compra ${N} → llévate ${(x.regalo || 1) * multAct}${x.regaloProductoId ? ' ' + escaparHtml(nombreProd(x.regaloProductoId)) : ''}${multAct > 1 ? ` <span class="nivel-chip nivel-${niv.id} !text-[9px] !py-0">×${multAct}</span>` : ''}</span></div><div class="mt-1.5 h-1.5 rounded-full bg-black/40 overflow-hidden"><div class="h-full ${completo ? 'bg-emerald-400' : 'nivel-oro'}" style="width:${completo ? 100 : Math.round(enCiclo / N * 100)}%"></div></div><div class="flex items-center justify-between gap-2 mt-1"><p class="text-[10px] ${completo ? 'text-emerald-300' : 'text-amber-100/80'}">${completo ? `✅ Ya ganaste ${ganados} hoy` : `Llevas ${enCiclo} de ${N} · <b class="text-white">¡te faltan ${faltaP}!</b>${ganados ? ` · ganados: ${ganados}` : ''}`}</p>${completo ? '' : `<button type="button" onclick="comprarPromoDealer('${escaparJsAttr(x.id)}', ${faltaP})" class="shrink-0 dealer-badge !tracking-normal !normal-case !text-[10px] !py-1"><i class="fa-solid fa-bolt"></i> Comprar ${faltaP}</button>`}</div></div>`; }).join('')}</div><p class="text-[10px] text-amber-100/60 mt-2">Las compras del mismo día se suman · el regalo llega solo en tu compra</p>` : ''}
+        ${lista.length ? `<p class="mt-3 text-[11px] font-black text-white">🎁 Tus promos de hoy</p><div class="mt-1.5 grid gap-1.5">${lista.slice(0, 6).map(x => { const N = x.compra || 10, lleva = (progresoDealer.hoy || {})[x.id] || 0, enCiclo = lleva % N, faltaP = N - enCiclo, ganados = Math.floor(lleva / N) * (x.regalo || 1) * multAct, tope = (x.maxDia || 1) * (x.regalo || 1) * multAct; const completo = ganados >= tope; return `<div class="px-3 py-2 rounded-xl bg-black/30 border ${completo ? 'border-emerald-400/50' : 'border-yellow-400/25'}"><div class="flex items-center justify-between gap-2"><span class="min-w-0 truncate text-xs font-bold text-white">${escaparHtml(nombreProd(x.id))}</span><span class="shrink-0 text-[11px] font-black dealer-texto">Compra ${N} → llévate ${(x.regalo || 1) * multAct}${x.regaloProductoId ? ' ' + escaparHtml(nombreProd(x.regaloProductoId)) : ''}${multAct > 1 ? ` <span class="nivel-chip nivel-${niv.id} !text-[9px] !py-0">×${multAct}</span>` : ''}</span></div><div class="mt-1.5 h-1.5 rounded-full bg-black/40 overflow-hidden"><div class="h-full ${completo ? 'bg-emerald-400' : 'nivel-oro'}" style="width:${completo ? 100 : Math.round(enCiclo / N * 100)}%"></div></div><div class="flex items-center justify-between gap-2 mt-1"><p class="text-[10px] ${completo ? 'text-emerald-300' : 'text-amber-100/80'}">${completo ? `✅ Ya ganaste ${ganados} hoy` : `Llevas ${enCiclo} de ${N} · <b class="text-white">¡te faltan ${faltaP}!</b>${ganados ? ` · ganados: ${ganados}` : ''}`}</p>${completo ? '' : `<button type="button" onclick="comprarPromoDealer('${escaparJsAttr(x.id)}', ${faltaP}, this)" class="shrink-0 inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-[12px] font-black text-black shadow-lg shadow-amber-500/30 active:scale-95 transition disabled:opacity-70" style="background:linear-gradient(135deg,#fde68a,#f59e0b)"><i class="fa-solid fa-bolt"></i> Comprar ${faltaP}</button>`}</div></div>`; }).join('')}</div><p class="text-[10px] text-amber-100/60 mt-2">Las compras del mismo día se suman · el regalo llega solo en tu compra</p>` : ''}
       </div>`;
     }
 
@@ -16413,14 +16429,20 @@
     }
 
     // Comprar una promo Dealer de una vez (completa lo que le falta para el regalo)
-    function comprarPromoDealer(id, cantidad) {
-      if (!document.getElementById('cant_' + id)) { try { categoriaActiva = 'Todas'; renderizarCatalogo(); } catch (e) { /* nada */ } }
-      const inp = document.getElementById('cant_' + id);
-      if (!inp) { alert('Este producto no está disponible ahora.'); return; }
-      inp.value = String(cantidad);
-      try { inp.dispatchEvent(new Event('input')); } catch (e) { /* nada */ }
-      comprarProducto(id);
+    async function comprarPromoDealer(id, cantidad, boton) {
+      if (compraEnCurso) return;
+      const html = boton ? boton.innerHTML : '';
+      if (boton) { boton.disabled = true; boton.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Comprando…'; }
+      try {
+        if (!document.getElementById('cant_' + id)) { try { categoriaActiva = 'Todas'; renderizarCatalogo(); } catch (e) { /* nada */ } }
+        const inp = document.getElementById('cant_' + id);
+        if (!inp) { alert('Este producto no está disponible ahora.'); return; }
+        inp.value = String(cantidad);
+        try { actualizarTotalTarjeta(id); } catch (e) { /* nada */ }
+        await comprarProducto(id);
+      } finally { if (boton && document.body.contains(boton)) { boton.disabled = false; boton.innerHTML = html; } }
     }
+
 
 
     // ==================== PROMOS POR PERFIL ====================
@@ -17729,9 +17751,12 @@
     }
     function pintarCintaStock() {
       const c = document.getElementById('cintaStock'), mov = document.getElementById('cintaStockMov'); if (!c || !mov) return;
-      const enTienda = !document.getElementById('vistaTienda') || !document.getElementById('vistaTienda').classList.contains('hidden');
-      const L = productosVisiblesStock();
-      const mostrar = cfgVistaTienda.cintaStock !== false && enTienda && L.length > 0 && !esStaffSesion() && !(esProveedorSesion() && (userTipoCuenta === 'externo' || userTipoCuenta === 'reseller'));
+      const visible = id => { const e = document.getElementById(id); return !!e && !e.classList.contains('hidden'); };
+      const staff = esStaffSesion();
+      // Clientes y Dealers: en la tienda. Tú y tu equipo: en la tienda y en el panel. Proveedores: nunca.
+      const enLugar = visible('vistaTienda') || visible('vistaMisCuentas') || (staff && visible('vistaAdmin'));
+      const L = staff ? catalogoUnificado.filter(p => p.activo !== false && !p.esCombo).sort((a, b) => String(a.nombre).localeCompare(String(b.nombre), 'es')) : productosVisiblesStock();
+      const mostrar = cfgVistaTienda.cintaStock !== false && enLugar && L.length > 0 && !(esProveedorSesion() && !staff);
       c.classList.toggle('hidden', !mostrar);
       if (!mostrar) return;
       const item = p => { const n = Number(p.stock) || 0, d = cambioReciente(p.docId); return `<a href="#" onclick="irAProductoTienda('${escaparJsAttr(p.docId)}');return false" class="hover:text-white">${escaparHtml(p.nombre)} <b class="${n ? (n <= 5 ? 'text-amber-300' : 'text-gray-200') : 'text-red-400'}">${n ? n : 'agotado'}</b>${d === 'sube' ? ' <span class="text-emerald-300">↑</span>' : (d === 'baja' ? ' <span class="text-red-300">↓</span>' : '')}</a>`; };
@@ -17838,6 +17863,41 @@
         mostrarToast(`🎁 Regalo enviado: ${n} × ${prod.nombre}`);
       } catch (e) { alert('No se pudo regalar: ' + e.message); }
       finally { if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-gift mr-1"></i>Regalar'; } }
+    }
+
+
+    // ==================== COMPRA MIXTA: LO QUE HAY SE ENTREGA YA, EL RESTO POR ENCARGO ====================
+    var encargoTrasCompra = null;
+    function encargoMixtoActivo(prod) { try { return !!prod && puedePedirEncargo(prod) && datosEncargo(prod).activo; } catch (e) { return false; } }
+    function maxTarjeta(prod, stock) { return (stock > 0 && encargoMixtoActivo(prod)) ? stock + datosEncargo(prod).max : stock; }
+    function pintarMixto(docId) {
+      const prod = catalogoUnificado.find(p => p.docId === docId), inp = document.getElementById('cant_' + docId), el = document.getElementById('mixto_' + docId), btn = document.getElementById('btnComprar_' + docId);
+      if (!prod || !inp || !el) return;
+      const val = parseInt(inp.value, 10) || 0, st = Number(prod.stock) || 0, resto = val - st;
+      const mixto = st > 0 && resto > 0 && encargoMixtoActivo(prod);
+      el.classList.toggle('hidden', !mixto);
+      if (mixto) el.innerHTML = `⚡ <b>${st}</b> se entregan ya · ⏳ <b>${resto}</b> quedan por encargo y te llegan solas cuando entre stock.`;
+      if (btn && !btn.disabled && !btn.dataset.ocupado) { if (!btn.dataset.html) btn.dataset.html = btn.innerHTML; btn.innerHTML = mixto ? `<i class="fa-solid fa-cart-shopping"></i> Comprar ${st} + encargar ${resto}` : btn.dataset.html; }
+    }
+    async function comprarMixto(docId, cantidad) {
+      const prod = catalogoUnificado.find(p => p.docId === docId) || {}, st = Number(prod.stock) || 0, resto = cantidad - st;
+      const total = (Number(prod.precio) || 0) * cantidad;
+      const disponible = (Number(userSaldo) || 0) + Math.max(0, (Number(userCupo) || 0) - (Number(userDeuda) || 0));
+      if (disponible < total) { abrirModalSaldoInsuficiente(`Saldo insuficiente. Tienes ${formatoCOP(userSaldo || 0)} y el total (${st} ahora + ${resto} por encargo) es ${formatoCOP(total)}.`); return; }
+      if (!await confirmarModal(`Pediste ${cantidad} y hay ${st} disponibles.\n\n⚡ ${st} se compran y se entregan ahora.\n⏳ ${resto} quedan por encargo: se pagan ahora y te llegan solas apenas entre stock (en orden de llegada). Lo pendiente lo puedes cancelar y se te devuelve.\n\nTotal: ${formatoCOP(total)}`, { tipo: 'pregunta', textoAceptar: 'Sí, comprar y encargar' })) return;
+      encargoTrasCompra = { docId: docId, cantidad: resto, t: Date.now() };
+      const inp = document.getElementById('cant_' + docId); if (inp) inp.value = String(st);
+      await comprarProducto(docId, true);
+    }
+    // Después de una compra exitosa, se crea el encargo del resto
+    async function completarEncargoTrasCompra(docId) {
+      const e = encargoTrasCompra; encargoTrasCompra = null;
+      if (!e || e.docId !== docId || Date.now() - e.t > 120000) return;
+      try {
+        const r = await llamarBackend('preorden_crear', { productoId: docId, cantidad: e.cantidad });
+        if (r && r.ok) { mostrarToast(`⏳ Listo: ${e.cantidad} quedaron por encargo. Te llegan solas cuando entre stock.`); try { renderizarMisPreordenes(); } catch (x) { /* nada */ } }
+        else alert(`Tus cuentas disponibles ya se entregaron, pero el encargo de ${e.cantidad} no se pudo crear: ${(r && r.error) || 'intenta de nuevo'}.`);
+      } catch (x) { alert(`Tus cuentas disponibles ya se entregaron, pero el encargo de ${e.cantidad} no se pudo crear: ${x.message}`); }
     }
 
     // ==================== NETFLIX EN LA TIENDA: SIN CONTRASEÑA ====================
