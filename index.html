@@ -352,6 +352,18 @@
       .fixed.inset-0 > .rounded-t-3xl, .fixed.inset-0 > .rounded-t-2xl { border-radius: 1.5rem !important; }
       .fixed.inset-0.items-center > div:first-child { max-height: calc(100dvh - 2rem); }
     }
+  
+    /* ===== Selector propio para TODAS las listas (reemplaza la lista grande del celular) ===== */
+    #selPropio { position: fixed; inset: 0; z-index: 120; display: none; align-items: center; justify-content: center; padding: 1rem; background: rgba(0,0,0,.7); backdrop-filter: blur(4px); }
+    #selPropio.abierto { display: flex; }
+    #selPropio .panel { width: 100%; max-width: 24rem; max-height: min(80vh, 560px); display: flex; flex-direction: column; background: #111827; border: 1px solid #374151; border-radius: 1.5rem; box-shadow: 0 25px 60px rgba(0,0,0,.55); overflow: hidden; animation: selEntra .18s ease-out; }
+    @keyframes selEntra { from { transform: scale(.96); opacity: 0; } to { transform: none; opacity: 1; } }
+    #selPropio .lista { overflow-y: auto; padding: .35rem; }
+    #selPropio .op { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: .75rem; text-align: left; padding: .8rem .9rem; border-radius: .9rem; color: #e5e7eb; font-size: .9rem; }
+    #selPropio .op:hover { background: rgba(255,255,255,.06); }
+    #selPropio .op.on { background: rgba(16,185,129,.15); color: #fff; font-weight: 800; }
+    #selPropio .op[disabled] { opacity: .4; }
+    #selPropio .grupo { padding: .6rem .9rem .25rem; font-size: .65rem; font-weight: 900; letter-spacing: .12em; text-transform: uppercase; color: #6b7280; }
   </style>
 </head>
 <body class="min-h-screen flex flex-col justify-between">
@@ -14859,7 +14871,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-08p';
+    const VERSION_PAGINA = '2026-10-08q';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261006b_recarga', fecha: '2026-10-06', titulo: 'Recargas más simples 💳', mensaje: 'Ahora pagas **el valor exacto** que eliges recargar. Tu saldo se acredita solo en 1 o 2 minutos, y si la transacción se demora, igual te llega apenas se confirme.' },
       { id: 'act_20261006b_sinsaldo', fecha: '2026-10-06', titulo: 'Recarga y compra en un solo paso', mensaje: 'Si tocas **Comprar** y te falta saldo, toca **Recargar** ahí mismo. Cuando tu recarga entre, **tu compra se completa sola** y no tienes que volver a buscar el producto.' },
@@ -18673,6 +18685,55 @@
     }
     function editarDesdeTienda(id) { if (!puedeEditarDesdeTienda()) return; try { abrirModalEditarProducto(id); } catch (e) { alert('No se pudo abrir el editor: ' + e.message); } }
     function irAConfigurarProductos() { if (!puedeEditarDesdeTienda()) return; cambiarVista('admin'); setTimeout(() => { try { irATabAdmin('productos'); } catch (e) { cambiarTabAdmin('productos'); } }, 50); }
+
+
+    // ==================== SELECTOR PROPIO PARA TODAS LAS LISTAS ====================
+    // Cualquier <select> de la página (de hoy o futuro) abre esta ventana centrada en lugar de la lista del celular.
+    // Se usa en pantallas táctiles o angostas; en computador con mouse queda la lista normal, que ahí es pequeña.
+    var selPropioActual = null;
+    function usarSelectorPropio() { try { return (window.matchMedia && matchMedia('(pointer: coarse)').matches) || window.innerWidth < 768; } catch (e) { return window.innerWidth < 768; } }
+    function etiquetaDeSelect(sel) {
+      if (sel.getAttribute('aria-label')) return sel.getAttribute('aria-label');
+      const lab = sel.closest('label'); if (lab) { const t = Array.from(lab.childNodes).filter(n => n.nodeType === 3).map(n => n.textContent.trim()).join(' ').trim(); if (t) return t; }
+      if (sel.id) { const l = document.querySelector(`label[for="${sel.id}"]`); if (l) return l.textContent.trim(); }
+      const prev = sel.previousElementSibling; if (prev && /^(LABEL|SPAN|P)$/.test(prev.tagName) && prev.textContent.trim().length < 60) return prev.textContent.trim();
+      return 'Elige una opción';
+    }
+    function abrirSelectorPropio(sel) {
+      selPropioActual = sel;
+      let m = document.getElementById('selPropio');
+      if (!m) { m = document.createElement('div'); m.id = 'selPropio'; m.onclick = ev => { if (ev.target === m) cerrarSelectorPropio(); }; document.body.appendChild(m); }
+      const items = []; let n = 0;
+      Array.from(sel.children).forEach(ch => {
+        if (ch.tagName === 'OPTGROUP') { items.push(`<p class="grupo">${escaparHtml(ch.label)}</p>`); Array.from(ch.children).forEach(o => { items.push(opcionSelectorHtml(sel, o)); n++; }); }
+        else if (ch.tagName === 'OPTION') { items.push(opcionSelectorHtml(sel, ch)); n++; }
+      });
+      m.innerHTML = `<div class="panel" role="dialog" aria-modal="true"><div class="flex items-center justify-between gap-2 px-4 pt-4 pb-2"><p class="text-sm font-black text-white truncate">${escaparHtml(etiquetaDeSelect(sel))}</p><button type="button" onclick="cerrarSelectorPropio()" aria-label="Cerrar" class="w-8 h-8 shrink-0 rounded-full bg-gray-800 text-gray-300"><i class="fa-solid fa-xmark"></i></button></div>${n > 8 ? '<div class="px-3 pb-2"><input id="selPropioBuscar" oninput="filtrarSelectorPropio(this.value)" placeholder="Buscar…" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none"></div>' : ''}<div class="lista" id="selPropioLista">${items.join('')}</div></div>`;
+      m.classList.add('abierto');
+      const on = m.querySelector('.op.on'); if (on) setTimeout(() => on.scrollIntoView({ block: 'center' }), 0);
+    }
+    function opcionSelectorHtml(sel, o) {
+      const on = o.selected || o.value === sel.value && sel.selectedIndex === o.index;
+      return `<button type="button" class="op${on ? ' on' : ''}" data-i="${o.index}" ${o.disabled ? 'disabled' : ''} onclick="elegirSelectorPropio(${o.index})"><span class="min-w-0 break-words">${escaparHtml(o.textContent.trim() || '—')}</span>${on ? '<i class="fa-solid fa-check text-emerald-400 shrink-0"></i>' : ''}</button>`;
+    }
+    function filtrarSelectorPropio(q) { q = String(q || '').toLowerCase().trim(); document.querySelectorAll('#selPropioLista .op').forEach(b => { b.style.display = !q || b.textContent.toLowerCase().includes(q) ? '' : 'none'; }); }
+    function elegirSelectorPropio(i) {
+      const sel = selPropioActual; cerrarSelectorPropio(); if (!sel) return;
+      if (sel.selectedIndex !== i) { sel.selectedIndex = i; sel.dispatchEvent(new Event('input', { bubbles: true })); sel.dispatchEvent(new Event('change', { bubbles: true })); }
+    }
+    function cerrarSelectorPropio() { const m = document.getElementById('selPropio'); if (m) { m.classList.remove('abierto'); m.innerHTML = ''; } selPropioActual = null; }
+    (function () {
+      const interceptar = ev => {
+        const sel = ev.target && ev.target.closest ? ev.target.closest('select') : null;
+        if (!sel || sel.multiple || sel.disabled || sel.dataset.nativo !== undefined || !usarSelectorPropio()) return;
+        ev.preventDefault(); ev.stopPropagation(); try { sel.blur(); } catch (e) { /* nada */ }
+        if (ev.type === 'mousedown' || ev.type === 'touchend' || ev.type === 'click' || ev.type === 'keydown') { if (!document.getElementById('selPropio') || !document.getElementById('selPropio').classList.contains('abierto')) abrirSelectorPropio(sel); }
+      };
+      document.addEventListener('mousedown', interceptar, true);
+      document.addEventListener('touchend', interceptar, { capture: true, passive: false });
+      document.addEventListener('click', ev => { const sel = ev.target && ev.target.closest ? ev.target.closest('select') : null; if (sel && usarSelectorPropio() && !sel.multiple && sel.dataset.nativo === undefined) { ev.preventDefault(); } }, true);
+      document.addEventListener('keydown', ev => { if (ev.key === 'Escape') cerrarSelectorPropio(); const sel = ev.target && ev.target.tagName === 'SELECT' ? ev.target : null; if (sel && (ev.key === 'Enter' || ev.key === ' ') && usarSelectorPropio()) interceptar(ev); }, true);
+    })();
 
     // ==================== NETFLIX EN LA TIENDA: SIN CONTRASEÑA ====================
     function esNombreNetflix(t) { return /netflix/i.test(String(t || '')); }
