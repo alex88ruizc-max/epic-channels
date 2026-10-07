@@ -3655,11 +3655,12 @@
     <div class="bg-gray-900 border border-emerald-500/40 rounded-2xl max-w-md w-full shadow-2xl max-h-[92vh] flex flex-col overflow-hidden">
       <div class="shrink-0 flex items-center justify-between gap-3 px-4 py-3 border-b border-gray-800">
         <h3 class="text-base font-black text-white flex items-center gap-2"><i class="fa-solid fa-circle-check text-emerald-400"></i> Resolver ticket</h3>
-        <p id="resolverAvisoDescuento" class="hidden mt-1 text-[11px] text-amber-200 bg-amber-500/10 border border-amber-500/30 rounded-lg px-2.5 py-1.5"></p>
         <button type="button" onclick="cerrarResolverTicket()" aria-label="Cerrar" class="w-8 h-8 shrink-0 rounded-full bg-gray-800 hover:bg-gray-700 text-gray-300 flex items-center justify-center"><i class="fa-solid fa-xmark"></i></button>
       </div>
       <div class="overflow-y-auto px-4 py-3 space-y-3 flex-grow">
         <p id="rtResumen" class="text-xs text-gray-200 break-all"></p>
+<label id="rtEnNombreCaja" class="hidden flex items-start gap-2 p-2.5 rounded-lg bg-sky-500/10 border border-sky-500/30 cursor-pointer"><input type="checkbox" id="rtEnNombreProv" onchange="pintarAvisoDescuentoTicket()" class="mt-0.5 accent-sky-500 w-4 h-4 shrink-0"><span class="text-[11px] text-sky-100"><b id="rtEnNombreTxt">Resolver en nombre del proveedor (sin descuento)</b><span class="block text-sky-200/70">Úsalo si el proveedor tuvo un imprevisto. No se le descuenta nada.</span></span></label>
+        <p id="resolverAvisoDescuento" class="hidden text-[11px] text-amber-200 bg-amber-500/10 border border-amber-500/30 rounded-lg px-2.5 py-1.5"></p>
         <p id="rtMotivoCliente" class="hidden text-[11px] text-amber-200 bg-amber-500/10 border border-amber-500/30 rounded-xl px-2.5 py-1.5 leading-snug"></p>
         <p class="text-[11px] font-bold text-gray-400 uppercase tracking-wider">¿Qué le respondes al cliente?</p>
         <div class="space-y-1.5">
@@ -12104,8 +12105,9 @@
       if (!esStaffSesion()) return;
       const t = ticketsCuentas.find(x => x.id === id);
       if (!t) return;
-      try { const av = document.getElementById('resolverAvisoDescuento'); const costo = Number(t.costo) || Number(t.costoUnitario) || 0; const mostrar = esAdminSesionActual() && !!t.proveedorUid;
-        if (av) { av.classList.toggle('hidden', !mostrar); if (mostrar) av.textContent = `Este ticket es de ${t.proveedorNombre || 'un proveedor'}. Si lo resuelves tú (cuenta arreglada o reemplazo), se le descuenta ${costo ? formatoCOP(costo) : 'el costo de la cuenta'}. Si solo lo cierras sin cambios, no se descuenta.`; } } catch (e) { /* nada */ }
+      try { const caja = document.getElementById('rtEnNombreCaja'), chk = document.getElementById('rtEnNombreProv'), tx = document.getElementById('rtEnNombreTxt');
+        if (chk) chk.checked = false; if (caja) caja.classList.toggle('hidden', !t.proveedorUid); if (tx) tx.textContent = `Resolver en nombre de ${t.proveedorNombre || 'el proveedor'} (sin descuento)`;
+        pintarAvisoDescuentoTicket(t); } catch (e) { /* nada */ }
       resolviendoTicketId = id;
       const enlazado = !!t.compraId;
       const admin = esAdminSesionActual();
@@ -12207,7 +12209,9 @@
         const foto = archivo ? await prepararFotoReporte(archivo) : '';
         const ahora = new Date().toISOString(), quien = currentUser.email;
         const tRef = db.collection('tickets_cuentas').doc(id);
+        const enNombre = !!t.proveedorUid && !!(document.getElementById('rtEnNombreProv') || {}).checked;
         const cambios = {
+          ...(enNombre ? { enNombreProveedor: true, resueltoEnNombreDe: t.proveedorNombre || '', revisado: 'aprobado', revisadoPor: quien, revisadoEl: ahora } : { enNombreProveedor: false }),
           estado: 'resuelto', resolucion: nota, resueltoPor: quien, resueltoEl: ahora, resultado: resultado, respuestaTipo: resultado,
           respuestaCuenta: lineaNueva, respuestaClave: (resultado === 'arreglada' ? claveNueva : ''), respuestaFoto: !!foto, respuestaFotoEl: foto ? ahora : '', respuestaFotoVencida: false,
           garantiaReiniciada: false, cuentaNueva: lineaNueva ? emailDeLineaCuenta(lineaNueva) : '', tieneFoto: false, fotoEliminada: t.tieneFoto === true || t.fotoEliminada === true
@@ -12299,7 +12303,7 @@
         if (!admin && (resultado === 'arreglada' || resultado === 'reemplazo')) msg += ' El cliente la ve en su ticket; la compra la actualiza el administrador.';
         // Regla: si el proveedor no lo arregló ni lo reemplazó y lo resuelves TÚ (arreglada o reemplazo), se le descuenta.
         // Si lo resuelve el propio proveedor (o un moderador), no se descuenta: tú lo apruebas o lo rechazas.
-        if (admin && t.proveedorUid && (resultado === 'arreglada' || resultado === 'reemplazo')) { registrarDescuentoReemplazo(t); msg += ' Se le descontó al proveedor el costo de la cuenta.'; }
+        if (admin && t.proveedorUid && !enNombre && (resultado === 'arreglada' || resultado === 'reemplazo')) { registrarDescuentoReemplazo(t); msg += ' Se le descontó al proveedor el costo de la cuenta.'; }
         mostrarToast(msg);
         if (t.clienteUid) avisarClienteTicket(t.clienteUid, 'Tu ticket fue resuelto', `Revisa la respuesta sobre ${t.cuenta} en "Mis reportes", dentro de Mis Cuentas.`);
         delete fotosTicketsCache[id]; delete fotosTicketsCache[id + '_resp'];
@@ -12371,6 +12375,7 @@
           ${resuelto && t.resolucion ? `<p class="text-[10px] text-emerald-300 mt-0.5">${escaparHtml(t.resolucion)}</p>` : ''}
           ${(() => { const d = (misDescuentos || []).find(x => x.ticketId === t.id); return d ? `<p class="text-[11px] font-bold mt-1 ${d.aplicado ? 'text-gray-400' : 'text-red-300'}"><i class="fa-solid fa-arrow-down mr-1"></i>Cuenta reemplazada al cliente: −${formatoCOP(d.monto || 0)}${d.aplicado ? ' (ya descontado en un pago)' : ' de lo que se te debe'}</p>` : ''; })()}
           ${resuelto && t.fotoEliminada ? `<p class="text-[10px] text-gray-500 mt-0.5"><i class="fa-solid fa-image mr-1"></i>La foto se eliminó al resolver.</p>` : ''}
+          ${resuelto && t.enNombreProveedor ? '<p class="text-[10px] text-sky-300 mt-0.5">✓ Resuelto por el equipo en tu nombre (sin descuento)</p>' : ''}
           ${resuelto && t.resueltoPorProveedor ? `<p class="text-[10px] mt-0.5 ${t.revisado === 'aprobado' ? 'text-emerald-300' : 'text-amber-200'}">${t.revisado === 'aprobado' ? '✓ El administrador aprobó tu resolución' : '⏳ Tu resolución está en revisión'}</p>` : ''}
           ${!resuelto && t.revisado === 'rechazado' && t.motivoRechazo ? `<p class="text-[10px] text-red-300 mt-0.5">✗ Rechazada: ${escaparHtml(t.motivoRechazo)}</p>` : ''}
           ${!resuelto ? `<button type="button" onclick="abrirResolverProveedor('${escaparJsAttr(t.id)}')" class="mt-1.5 mr-1 px-2.5 py-1 rounded-lg text-[10px] font-black bg-emerald-500 hover:bg-emerald-400 text-black"><i class="fa-solid fa-circle-check mr-1"></i>Resolver</button>` : ''}
@@ -15015,7 +15020,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-09s';
+    const VERSION_PAGINA = '2026-10-09t';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261009_serdealer', fecha: '2026-10-09', titulo: 'Ahora puedes pedir ser Dealer 👑', mensaje: 'En tu perfil ves cuánto te falta para **pedir ser Dealer**. Cuando cumples, toca **Pedir ser Dealer** y te avisamos en la campana. Los Dealers tienen **promos y regalos por volumen**.' },
       { id: 'act_20261009_registro', fecha: '2026-10-09', titulo: 'Registro más rápido ⚡', mensaje: 'Crear tu cuenta ahora es más rápido: solo correo, contraseña y WhatsApp, **sin códigos**.' },
@@ -19333,6 +19338,7 @@
 
     // ==================== NOVEDADES INTERNAS DEL PANEL (solo el equipo) ====================
     const ACTUALIZACIONES_INTERNAS = [
+      { fecha: '2026-10-09', titulo: '🤝 Resolver en nombre del proveedor', mensaje: 'Si un proveedor tiene un imprevisto, tú o tus supervisores resuelven su ticket marcando **Resolver en nombre de…**: el cliente recibe su solución y al proveedor **no se le descuenta nada**. Queda marcado y aprobado, y el proveedor lo ve en su lista.', ir: 'tickets' },
       { fecha: '2026-10-09', titulo: '🖼 Emojis y banderas en las imágenes', mensaje: 'Las imágenes de Marketing ya no rompen los emojis ni las banderas de la etiqueta del producto (antes salían como rombos con "?"). Y los accesos de las notificaciones se eligen por el título, así un anuncio no muestra un botón equivocado.', ir: 'marketing' },
       { fecha: '2026-10-09', titulo: '🔔 Accesos directos del equipo', mensaje: 'Las solicitudes de correos ahora dicen **Pide correos** y su enlace **Asignar correos** abre Proveedores con ese proveedor elegido. Los avisos de **cliente nuevo** y **crédito aceptado** tienen **Ver cliente**, que abre Usuarios con ese cliente buscado.', ir: '' },
       { fecha: '2026-10-09', titulo: '📨 Solicitudes de correos en la campana', mensaje: 'Cuando un proveedor pide correos, la campana lo muestra como **Pide correos** y su acceso **Asignar correos** te lleva directo a Proveedores → Asignar correos, con ese proveedor ya elegido.', ir: 'proveedores' },
@@ -20070,6 +20076,7 @@
     function resueltoPorOtro(t) { const quien = String(t.resueltoPor || '').trim().toLowerCase(); return t.estado === 'resuelto' && quien && !ADMIN_EMAILS.some(e => e.trim().toLowerCase() === quien); }
     function htmlRevisionTicket(t) {
       if (!esAdminSesionActual()) return '';
+      if (t.enNombreProveedor) return `<span class="px-2 py-1 rounded-lg text-[10px] font-bold bg-sky-500/15 text-sky-300 border border-sky-500/30 text-center leading-tight">En nombre de<br>${escaparHtml(t.resueltoEnNombreDe || 'proveedor')}</span>`;
       if (t.revisado === 'aprobado') return `<span class="px-2 py-1 rounded-lg text-[10px] font-bold bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 text-center">✓ Aprobado por ti</span>`;
       if (t.revisado === 'rechazado' && t.estado !== 'resuelto') return `<span class="px-2 py-1 rounded-lg text-[10px] font-bold bg-red-500/15 text-red-300 border border-red-500/30 text-center">✗ Rechazado · descontado</span>`;
       if (!resueltoPorOtro(t)) return '';
@@ -20161,6 +20168,18 @@
       t = String(t || '');
       try { if (window.Intl && Intl.Segmenter) return Array.from(new Intl.Segmenter('es', { granularity: 'grapheme' }).segment(t), g => g.segment).join(' '); } catch (e) { /* sigue */ }
       const out = []; const re = /(\p{Regional_Indicator}{2}|\p{Extended_Pictographic}(\uFE0F|\u200D\p{Extended_Pictographic})*|[\s\S])/gu; let m; while ((m = re.exec(t))) out.push(m[0]); return out.join(' ');
+    }
+
+
+    // Aviso de la ventana "Resolver ticket": qué pasa con el proveedor según la casilla
+    function pintarAvisoDescuentoTicket(t) {
+      t = t || ticketsCuentas.find(x => x.id === resolviendoTicketId); const av = document.getElementById('resolverAvisoDescuento'); if (!av || !t) return;
+      const enNombre = !!(document.getElementById('rtEnNombreProv') || {}).checked, costo = Number(t.costo) || Number(t.costoUnitario) || 0, nom = t.proveedorNombre || 'un proveedor';
+      if (!t.proveedorUid) { av.classList.add('hidden'); return; }
+      av.classList.remove('hidden');
+      if (enNombre) { av.className = 'text-[11px] text-emerald-200 bg-emerald-500/10 border border-emerald-500/30 rounded-lg px-2.5 py-1.5'; av.textContent = `Lo resuelves en nombre de ${nom}: no se le descuenta nada y queda aprobado.`; return; }
+      av.className = 'text-[11px] text-amber-200 bg-amber-500/10 border border-amber-500/30 rounded-lg px-2.5 py-1.5';
+      av.textContent = esAdminSesionActual() ? `Este ticket es de ${nom}. Si lo resuelves tú (cuenta arreglada o reemplazo), se le descuenta ${costo ? formatoCOP(costo) : 'el costo de la cuenta'}. Si solo lo cierras sin cambios, no se descuenta.` : `Este ticket es de ${nom}. El administrador revisará tu resolución.`;
     }
 
     // ==================== NETFLIX EN LA TIENDA: SIN CONTRASEÑA ====================
