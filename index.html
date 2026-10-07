@@ -297,6 +297,18 @@
       #panelLayout.menu-derecha #menuAsa { right: auto; left: 0; }
       body.arrastrando-menu { cursor: col-resize; user-select: none; }
     }
+  
+    /* ===== Stock en vivo: cinta, batería y contador ===== */
+    #cintaStock .cinta-mov { display: inline-block; white-space: nowrap; animation: cintaMov var(--cinta-dur, 30s) linear infinite; }
+    #cintaStock:hover .cinta-mov { animation-play-state: paused; }
+    @keyframes cintaMov { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+    .punto-vivo { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: #34d399; box-shadow: 0 0 0 0 rgba(52,211,153,.6); animation: puntoVivo 1.6s ease-out infinite; }
+    @keyframes puntoVivo { 0% { box-shadow: 0 0 0 0 rgba(52,211,153,.6); } 100% { box-shadow: 0 0 0 7px rgba(52,211,153,0); } }
+    .bateria { display: inline-flex; align-items: center; gap: 2px; }
+    .bateria i { display: inline-block; width: 4px; height: 10px; border-radius: 1px; background: rgba(148,163,184,.25); font-style: normal; }
+    .num-cambio { display: inline-block; animation: numGira .6s ease-out; }
+    @keyframes numGira { 0% { transform: rotateX(90deg); opacity: 0; } 100% { transform: rotateX(0); opacity: 1; } }
+    @media (prefers-reduced-motion: reduce) { #cintaStock .cinta-mov, .punto-vivo, .num-cambio { animation: none; } }
   </style>
 </head>
 <body class="min-h-screen flex flex-col justify-between">
@@ -391,6 +403,12 @@
         </button>
       </div>
 
+    </div>
+      <div id="cintaStock" class="hidden border-t border-gray-800/80 bg-gray-950/40">
+      <div class="max-w-6xl mx-auto px-3 h-[22px] flex items-center gap-2 text-[11px] text-gray-400 overflow-hidden">
+        <span class="shrink-0 flex items-center gap-1.5 font-bold text-emerald-300"><span class="punto-vivo"></span>En vivo</span>
+        <div class="overflow-hidden flex-1 min-w-0"><span id="cintaStockMov" class="cinta-mov"></span></div>
+      </div>
     </div>
   </header>
 
@@ -637,6 +655,10 @@
 
       <!-- TAB: MIS CUENTAS -->
       <div id="perfilSecCuentas">
+        <details id="radarStock" class="hidden mb-3 rounded-2xl bg-gray-900 border border-gray-800 overflow-hidden">
+          <summary class="list-none cursor-pointer flex items-center gap-2 px-3 py-2.5 text-sm select-none"><i class="fa-solid fa-satellite-dish text-sky-300"></i><span class="flex-1 font-bold text-white">Radar de stock</span><span class="flex items-center gap-1 text-[11px] text-gray-400"><span class="punto-vivo"></span><span id="radarStockResumen"></span></span><i class="fa-solid fa-chevron-down text-gray-500 text-xs"></i></summary>
+          <div id="radarStockLista"></div>
+        </details>
         <button type="button" id="btnCreaTiendaPerfil" onclick="abrirCreaTienda()" class="hidden w-full mb-3 rounded-2xl p-[1px] text-left" style="background:linear-gradient(120deg,#10b981,#06b6d4,#8b5cf6)"><span class="flex items-center gap-3 rounded-2xl bg-gray-950 px-4 py-3"><span class="w-10 h-10 shrink-0 rounded-xl flex items-center justify-center text-lg" style="background:linear-gradient(135deg,#10b981,#06b6d4)">🏪</span><span class="min-w-0 flex-grow"><span class="block text-sm font-black text-white">Crea tu tienda</span><span id="btnCreaTiendaEstado" class="block text-[11px] text-gray-400">Tu propia tienda con tu marca</span></span><i class="fa-solid fa-chevron-right text-gray-400"></i></span></button>
         <div id="misReportesCaja" class="hidden mb-3">
           <button type="button" onclick="abrirMisReportes()" class="relative w-full flex items-center gap-3 p-3 rounded-2xl bg-amber-400/10 hover:bg-amber-400/15 border border-amber-400/40 text-left transition">
@@ -1264,6 +1286,7 @@
 
       <!-- TAB 4: APARIENCIA Y LOGO DEL CATÁLOGO -->
       <div id="adminSecApariencia" class="hidden space-y-6">
+        <label class="flex items-center justify-between gap-3 p-3 rounded-2xl bg-gray-900 border border-gray-800 cursor-pointer max-w-3xl"><span class="text-xs text-white"><b><span class="punto-vivo mr-1.5"></span>Cinta de stock en vivo</b><span class="block text-[10px] text-gray-400 mt-0.5">Una línea delgada bajo el encabezado de la tienda con el stock de cada producto en tiempo real.</span></span><input type="checkbox" id="chkCintaStock" checked onchange="guardarCintaStock(this.checked)" class="accent-emerald-500 w-5 h-5 shrink-0"></label>
         <div class="p-5 bg-gray-900 border border-emerald-500/30 rounded-2xl shadow-xl max-w-xl">
           <h3 class="text-sm font-bold text-white mb-2 flex items-center gap-2">
             <i class="fa-solid fa-paintbrush text-emerald-400"></i> Personalizar Cabecera del Catálogo
@@ -6320,6 +6343,7 @@
       setTimeout(actualizarVisibilidadAsistente, 0);
       setTimeout(() => { try { if (user) despertarServidor(); } catch (e) { /* nada */ } }, 1200);
       setTimeout(() => { try { registrarVisita(user); } catch (e) { /* nada */ } }, 2500);
+      if (!window.__cfgVistaTiendaIniciada) { window.__cfgVistaTiendaIniciada = true; try { cargarCfgVistaTienda(); } catch (e) { /* nada */ } }
       const navSaldo = document.getElementById('navSaldoDirecto');
       const navLogo = document.getElementById('navLogoContainer');
       const vistaBloqueadaEl = document.getElementById('vistaBloqueada');
@@ -6331,6 +6355,7 @@
         try { asistenteProgramarSaludo(); } catch (e) { console.warn(e); }
         try { iniciarNovedadesClientes(); } catch (e) { console.warn(e); }
         try { cargarCfgDealer().then(cargarProgresoDealer); } catch (e) { /* nada */ }
+        try { cargarMisAvisosStock(); } catch (e) { /* nada */ }
         try { setTimeout(despertarServidor, 800); } catch (e) { /* nada */ }
         try { setTimeout(() => { actualizarBotonesTienda().then(cargarMiTiendaCliente); }, 1200); } catch (e) { /* nada */ }
         try { if (esStaffSesion()) iniciarPreordenesAdmin(); else iniciarMisPreordenes(); } catch (e) { /* nada */ }
@@ -8139,6 +8164,7 @@
     }
 
     function renderizarCatalogo() {
+      try { registrarCambiosStock(); setTimeout(() => { pintarCintaStock(); pintarRadarStock(); }, 0); } catch (e) { /* nada */ }
       try { pintarBannerDealer(); } catch (e) { /* nada */ }
       const grid = document.getElementById('gridProductos');
       if (!grid) return;
@@ -8215,9 +8241,7 @@
                 ${esNf ? `<span class="nf-wordmark text-[13px]">NETFLIX</span>` : marcaT ? `<span class="brand-wordmark text-[13px] truncate max-w-[70%]">${escaparHtml(marcaT.etiqueta)}</span>` : `<span class="text-[11px] font-bold ${badgeStyle} px-3 py-1 rounded-full flex items-center gap-1">
                   <i class="fa-solid ${badgeIcon}"></i> ${badgeText}
                 </span>`}
-                <span class="text-xs ${agotado ? 'text-red-400' : 'text-emerald-400'} font-medium">
-                  <i class="fa-solid fa-boxes-stacked mr-1"></i> ${ttH('textoStock')} ${stockDisponible}
-                </span>
+                ${htmlBateriaStock(prod.docId, stockDisponible, agotado)}
               </div>
 
               <div class="flex items-start justify-between gap-3 mb-1">
@@ -9688,6 +9712,7 @@
 
         registrarCargaStock(docId, prod ? prod.nombre : docId, nuevas, costoUnitario, aporteCarga);
         if (aporteCarga) { setTimeout(() => { try { actualizarComisionesPorStock(aporteCarga.uid); } catch (e) { console.warn(e); } }, 1500); }
+        setTimeout(() => { try { avisarEsperandoStock(docId); } catch (e) { console.warn(e); } }, 2500);
         setTimeout(() => { try { despacharPreordenesProducto(docId); } catch (e) { console.warn(e); } }, 1200);
         // Novedad para clientes (no se publica para productos VIP ni ocultos)
         if (prod && prod.activo !== false && !esProductoVip(prod)) {
@@ -10797,6 +10822,7 @@
         try { actualizarComisionesPorStock(l.proveedorUid); } catch (e) { console.warn(e); }
         if (l.pedidoId) { try { await avanzarPedidoReseller(l.pedidoId, aprobadasFinal); } catch (e) { console.warn(e); } }
         setTimeout(() => { try { despacharPreordenesProducto(l.productoId); } catch (e) { console.warn(e); } }, 1200);
+        setTimeout(() => { try { avisarEsperandoStock(l.productoId); } catch (e) { console.warn(e); } }, 2500);
         cacheVendidas.t = 0;
         mostrarToast(`Lote aprobado: ${aprobadasFinal} cuentas cargadas${enviadas > aprobadasFinal ? ` (${enviadas - aprobadasFinal} repetidas no entraron)` : ''}. Se le deben ${formatoCOP(costo * aprobadasFinal)} a ${l.proveedorNombre || 'el proveedor'}.`);
       } catch (err) {
@@ -14668,7 +14694,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-07n';
+    const VERSION_PAGINA = '2026-10-07o';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261006b_recarga', fecha: '2026-10-06', titulo: 'Recargas más simples 💳', mensaje: 'Ahora pagas **el valor exacto** que eliges recargar. Tu saldo se acredita solo en 1 o 2 minutos, y si la transacción se demora, igual te llega apenas se confirme.' },
       { id: 'act_20261006b_sinsaldo', fecha: '2026-10-06', titulo: 'Recarga y compra en un solo paso', mensaje: 'Si tocas **Comprar** y te falta saldo, toca **Recargar** ahí mismo. Cuando tu recarga entre, **tu compra se completa sola** y no tienes que volver a buscar el producto.' },
@@ -17678,6 +17704,88 @@
           <div class="p-4 rounded-2xl bg-gray-900 border border-gray-800 space-y-2"><p class="text-sm font-black text-white">Quiénes entran</p>${lista(cuenta('tipo'), V.length, 'bg-amber-400', { anonimo: '👀 Sin iniciar sesión', cliente: '🙋 Clientes', dealer: '👑 Dealers', normal: 'Clientes normales', proveedor: '🚚 Proveedores' })}</div>
         </div>
         <div class="p-4 rounded-2xl bg-gray-900 border border-gray-800"><p class="text-sm font-black text-white mb-2">Clientes que más entran</p>${top.length ? top.map(([u, n], i) => `<div class="flex items-center justify-between gap-2 py-1.5 ${i ? 'border-t border-gray-800' : ''}"><span class="text-xs text-gray-200 truncate"><b class="text-gray-500 mr-1">${i + 1}.</b>${escaparHtml(nombres[u] || u)}${compradores.has(u) ? ' <span class="text-[9px] px-1.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 font-bold">compró</span>' : ''}</span><span class="text-[11px] text-cyan-300 font-bold shrink-0">${n} ${n === 1 ? 'visita' : 'visitas'}</span></div>`).join('') : '<p class="text-xs text-gray-500">Aún no hay clientes con sesión en este periodo.</p>'}</div>`;
+    }
+
+
+    // ==================== STOCK EN VIVO ====================
+    var stockAnterior = {}, stockCambioEl = {}, cfgVistaTienda = { cintaStock: true };
+    function productosVisiblesStock() {
+      return catalogoUnificado.filter(p => p.activo !== false && Number(p.precio) > 0 && !p.esCombo && usuarioTienePermisoProducto(p)).sort((a, b) => String(a.nombre).localeCompare(String(b.nombre), 'es'));
+    }
+    // Recuerda cuándo cambió el stock de cada producto (para la flecha ↑ ↓ y el contador que gira)
+    function registrarCambiosStock() {
+      catalogoUnificado.forEach(p => {
+        const n = Number(p.stock) || 0, a = stockAnterior[p.docId];
+        if (a !== undefined && a !== n) stockCambioEl[p.docId] = { dir: n > a ? 'sube' : 'baja', t: Date.now() };
+        stockAnterior[p.docId] = n;
+      });
+    }
+    function cambioReciente(id) { const c = stockCambioEl[id]; return c && Date.now() - c.t < 90000 ? c.dir : ''; }
+    function htmlBateriaStock(id, n, agotado) {
+      if (agotado || !(n > 0)) return `<span class="text-[11px] font-bold text-red-400">Agotado</span>`;
+      const niveles = n >= 20 ? 4 : (n >= 10 ? 3 : (n >= 5 ? 2 : 1)), col = niveles >= 3 ? '#34d399' : (niveles === 2 ? '#a3e635' : '#fbbf24');
+      const gira = cambioReciente(id) ? ' num-cambio' : '';
+      return `<span class="bateria" title="${n} disponibles">${[1, 2, 3, 4].map(k => `<i style="${k <= niveles ? 'background:' + col : ''}"></i>`).join('')}${n <= 5 ? `<span class="ml-1 text-[11px] font-bold text-amber-300${gira}">quedan ${n}</span>` : `<span class="ml-1 text-[11px] text-gray-400${gira}">${n}</span>`}</span>`;
+    }
+    function pintarCintaStock() {
+      const c = document.getElementById('cintaStock'), mov = document.getElementById('cintaStockMov'); if (!c || !mov) return;
+      const enTienda = !document.getElementById('vistaTienda') || !document.getElementById('vistaTienda').classList.contains('hidden');
+      const L = productosVisiblesStock();
+      const mostrar = cfgVistaTienda.cintaStock !== false && enTienda && L.length > 0 && !esStaffSesion() && !(esProveedorSesion() && (userTipoCuenta === 'externo' || userTipoCuenta === 'reseller'));
+      c.classList.toggle('hidden', !mostrar);
+      if (!mostrar) return;
+      const item = p => { const n = Number(p.stock) || 0, d = cambioReciente(p.docId); return `<a href="#" onclick="irAProductoTienda('${escaparJsAttr(p.docId)}');return false" class="hover:text-white">${escaparHtml(p.nombre)} <b class="${n ? (n <= 5 ? 'text-amber-300' : 'text-gray-200') : 'text-red-400'}">${n ? n : 'agotado'}</b>${d === 'sube' ? ' <span class="text-emerald-300">↑</span>' : (d === 'baja' ? ' <span class="text-red-300">↓</span>' : '')}</a>`; };
+      const una = L.map(item).join('<span class="mx-2 text-gray-600">·</span>') + '<span class="mx-4"></span>';
+      const html = una + una;   // repetida para que el movimiento sea continuo
+      if (mov.dataset.html !== html) { mov.innerHTML = html; mov.dataset.html = html; mov.style.setProperty('--cinta-dur', Math.max(18, L.length * 5) + 's'); }
+    }
+    function irAProductoTienda(id) {
+      let el = document.getElementById('cant_' + id);
+      if (!el) { try { categoriaActiva = 'Todas'; renderizarCatalogo(); } catch (e) { /* nada */ } el = document.getElementById('cant_' + id); }
+      const card = el ? (el.closest('.rounded-2xl') || el) : null; if (!card) return;
+      card.scrollIntoView({ behavior: 'smooth', block: 'center' }); card.classList.add('ring-2', 'ring-emerald-400'); setTimeout(() => card.classList.remove('ring-2', 'ring-emerald-400'), 1600);
+    }
+    setInterval(() => { try { pintarCintaStock(); } catch (e) { /* nada */ } }, 1500);   // se oculta al salir de la tienda
+    function cargarCfgVistaTienda() {
+      try { db.collection('configuracion').doc('vista_tienda').onSnapshot(d => { cfgVistaTienda = Object.assign({ cintaStock: true }, d.exists ? d.data() : {}); const chk = document.getElementById('chkCintaStock'); if (chk) chk.checked = cfgVistaTienda.cintaStock !== false; pintarCintaStock(); }, () => {}); } catch (e) { /* nada */ }
+    }
+    async function guardarCintaStock(on) { try { await db.collection('configuracion').doc('vista_tienda').set({ cintaStock: !!on }, { merge: true }); mostrarToast(on ? 'Cinta de stock activada' : 'Cinta de stock apagada'); } catch (e) { alert(e.message); } }
+
+    // ==================== RADAR DE STOCK EN EL PERFIL + "AVÍSAME" ====================
+    var misAvisosStock = new Set();
+    function cargarMisAvisosStock() {
+      if (!currentUser || esStaffSesion()) return;
+      try { db.collection('avisos_stock').where('uid', '==', currentUser.uid).onSnapshot(sn => { misAvisosStock = new Set(); sn.forEach(d => { const x = d.data() || {}; if (x.estado === 'esperando') misAvisosStock.add(x.productoId); }); pintarRadarStock(); }, () => {}); } catch (e) { /* nada */ }
+    }
+    function pintarRadarStock() {
+      const caja = document.getElementById('radarStock'); if (!caja) return;
+      if (!currentUser || esStaffSesion() || (esProveedorSesion() && (userTipoCuenta === 'externo' || userTipoCuenta === 'reseller'))) { caja.classList.add('hidden'); return; }
+      const L = productosVisiblesStock(); caja.classList.toggle('hidden', !L.length); if (!L.length) return;
+      const ago = L.filter(p => !(Number(p.stock) > 0)).length;
+      document.getElementById('radarStockResumen').textContent = `${L.length} ${L.length === 1 ? 'producto' : 'productos'}${ago ? ' · ' + ago + (ago === 1 ? ' agotado' : ' agotados') : ''}`;
+      document.getElementById('radarStockLista').innerHTML = L.map(p => { const n = Number(p.stock) || 0, col = n ? (n <= 5 ? 'text-amber-300' : 'text-emerald-400') : 'text-red-400', esp = misAvisosStock.has(p.docId);
+        return `<div class="flex items-center justify-between gap-2 px-3 py-2 border-t border-gray-800 text-xs"><span class="min-w-0 truncate text-gray-200"><span class="${col}">●</span> ${escaparHtml(p.nombre)}</span>${n ? `<b class="text-white shrink-0">${n}</b>` : `<button type="button" onclick="alternarAvisoStock('${escaparJsAttr(p.docId)}')" class="shrink-0 px-2 py-1 rounded-lg text-[10px] font-bold border ${esp ? 'bg-sky-500/15 border-sky-400/50 text-sky-200' : 'border-sky-500/40 text-sky-300'}"><i class="fa-solid fa-bell mr-1"></i>${esp ? 'Te avisaremos' : 'Avísame'}</button>`}</div>`; }).join('');
+    }
+    async function alternarAvisoStock(id) {
+      if (!currentUser) return;
+      const p = catalogoUnificado.find(x => x.docId === id) || {}, ref = db.collection('avisos_stock').doc(id + '_' + currentUser.uid);
+      try {
+        if (misAvisosStock.has(id)) { await ref.delete(); misAvisosStock.delete(id); mostrarToast('Ya no te avisaremos de ' + (p.nombre || 'este producto')); }
+        else { await ref.set({ uid: currentUser.uid, email: currentUser.email || '', productoId: id, productoNombre: p.nombre || id, estado: 'esperando', creadoEl: new Date().toISOString() }); misAvisosStock.add(id); mostrarToast('🔔 Te avisaremos apenas llegue ' + (p.nombre || 'stock')); }
+        pintarRadarStock();
+      } catch (e) { alert('No se pudo: ' + e.message); }
+    }
+    // Cuando llega stock de un producto, avisa a quienes lo estaban esperando (lo hace quien carga o aprueba)
+    async function avisarEsperandoStock(productoId) {
+      try {
+        const sn = await db.collection('avisos_stock').where('productoId', '==', productoId).get();
+        const pend = []; sn.forEach(d => { const x = d.data() || {}; if (x.estado === 'esperando') pend.push(Object.assign({ id: d.id }, x)); });
+        for (const a of pend) {
+          await avisarClienteTicket(a.uid, '🔔 ¡Ya llegó ' + (a.productoNombre || 'tu producto') + '!', 'Lo estabas esperando: ya hay stock disponible en la tienda. ¡Corre que vuela!');
+          await db.collection('avisos_stock').doc(a.id).update({ estado: 'avisado', avisadoEl: new Date().toISOString() });
+        }
+        if (pend.length) mostrarToast(`🔔 Se avisó a ${pend.length} ${pend.length === 1 ? 'cliente que esperaba' : 'clientes que esperaban'} este producto`);
+      } catch (e) { console.warn('Avisos de stock:', e); }
     }
 
     // ==================== NETFLIX EN LA TIENDA: SIN CONTRASEÑA ====================
