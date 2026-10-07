@@ -924,6 +924,9 @@
           <button onclick="irATabAdmin('campanas')" id="tabBtnCampanas" class="solo-admin admin-tab bg-gray-900 border-gray-800 text-gray-400">
             <i class="fa-solid fa-rocket"></i><span>Campañas</span>
           </button>
+          <button onclick="irATabAdmin('dealers')" id="tabBtnDealers" class="solo-admin admin-tab bg-gray-900 border-gray-800 text-gray-400">
+            <i class="fa-solid fa-crown"></i><span>Dealers</span>
+          </button>
           <button onclick="irATabAdmin('categorias')" id="tabBtnCategorias" class="solo-admin admin-tab bg-gray-900 border-gray-800 text-gray-400">
             <i class="fa-solid fa-palette"></i><span>Categorías & Colores</span>
           </button>
@@ -1196,7 +1199,8 @@
             </div>
           </div>
         </div>
-        <div id="adminRegaloRevendedor" class="solo-admin dealer-banner overflow-hidden">
+        <button type="button" onclick="irATabAdmin('dealers');setTimeout(()=>{dlVista='promos';pintarTabsDealers();pintarVistaDealers();},250)" class="solo-admin w-full text-left p-3 rounded-2xl border border-yellow-400/40 bg-yellow-400/5 text-[12px] text-amber-100"><i class="fa-solid fa-crown mr-1" style="color:#f7d774"></i><b>Promociones por perfil</b> ahora están en la sección <b>👑 Dealers</b> ›</button>
+        <div id="adminRegaloRevendedor" class="solo-admin dealer-banner overflow-hidden hidden-en-usuarios">
           <button type="button" onclick="alternarPromosDealer()" class="w-full text-left p-4 flex items-center gap-3">
             <span class="w-9 h-9 shrink-0 rounded-xl bg-black/30 border border-yellow-400/40 flex items-center justify-center"><i class="fa-solid fa-crown" style="color:#f7d774"></i></span>
             <span class="min-w-0 flex-grow"><span class="block font-bold text-sm dealer-texto">Promociones por perfil</span><span id="promosDealerResumen" class="block text-[11px] text-amber-100/70 truncate">Toca para configurar</span></span>
@@ -2259,6 +2263,14 @@
       </div>
 
       <!-- TAB: REPORTE DE VENTAS (DASHBOARD + REPORTE DETALLADO) -->
+      <div id="adminSecDealers" class="hidden space-y-4 pb-28 sm:pb-0">
+        <div id="dlResumen" class="p-4 rounded-2xl border border-yellow-400/40" style="background:linear-gradient(135deg,rgba(247,215,116,.10),rgba(17,24,39,.85))"><p class="text-[12px] text-gray-400"><i class="fa-solid fa-spinner fa-spin"></i> Cargando tus Dealers…</p></div>
+        <div class="flex gap-1.5 flex-wrap" id="dlTabs"></div>
+        <div id="dlPanelLista" class="space-y-2"></div>
+        <div id="dlPanelPromos" class="hidden space-y-2"></div>
+        <div id="dlPanelMensajes" class="hidden space-y-3"></div>
+      </div>
+
       <div id="adminSecCampanas" class="hidden space-y-4 pb-28 sm:pb-0">
         <div class="p-4 rounded-2xl border border-rose-500/30 bg-gradient-to-br from-rose-500/10 via-gray-900 to-gray-900">
           <h3 class="text-base font-black text-white flex items-center gap-2"><i class="fa-solid fa-rocket text-rose-300"></i> Campañas para mover tu stock</h3>
@@ -6948,6 +6960,8 @@
         try { const av = document.getElementById('perfilAvatar'); const aro = av ? av.closest('.rounded-full.shrink-0') || (av.parentElement && av.parentElement.parentElement) : null; if (aro) aro.classList.toggle('dealer-anillo', userTipoCuenta === 'revendedor'); } catch (e) { /* nada */ }
         const box = document.getElementById('perfilNivelBox');
         if (!box) return;
+        window.__ultTotalCuentas = totalCuentas;
+        if (esDealerSesion()) { box.innerHTML = htmlNivelDealerPerfil(n); return; }   // el Dealer ve su nivel Dealer del mes
         const c = n.actual.color;
         const lista = NIVELES_CLIENTE.map((lv, i) => {
           const logrado = i <= n.idx;
@@ -7094,7 +7108,8 @@
         .filter(n => n && n.id).map(n => ({ ...n, origen: 'personal' }));
       const globales = (novedadesGlobales || [])
         .filter(n => n && n.id && !borradas.includes(n.id) && new Date(n.fecha).getTime() >= limite)
-        .filter(n => avisoVisibleParaUsuario(n))   // un cliente no ve avisos de productos que no puede comprar (por ejemplo VIP)
+        .filter(n => avisoVisibleParaUsuario(n))
+        .filter(n => !n.soloDealers || userTipoCuenta === 'revendedor' || esStaffSesion())   // un cliente no ve avisos de productos que no puede comprar (por ejemplo VIP)
         .map(n => ({ ...n, origen: 'global' }));
       return [...personales, ...globales, ...notificacionesEquipo(borradas, limite)].sort((a, b) => (new Date(b.fecha).getTime() || 0) - (new Date(a.fecha).getTime() || 0));
     }
@@ -7293,7 +7308,7 @@
       return [notif, ...(Array.isArray(listaActual) ? listaActual : [])].slice(0, 30);
     }
 
-    async function publicarNovedadGlobal({ tipo, titulo, mensaje, productoId, cantidad }) {
+    async function publicarNovedadGlobal({ tipo, titulo, mensaje, productoId, cantidad, soloDealers }) {
       try {
         const ref = db.collection('configuracion').doc('novedades');
         await db.runTransaction(async (t) => {
@@ -7315,7 +7330,7 @@
           items.unshift({
             id: idNotif(), tipo, titulo, mensaje: mensaje || '',
             productoId: productoId || null, cantidad: cant || null,
-            fecha: new Date().toISOString()
+            fecha: new Date().toISOString(), ...(soloDealers ? { soloDealers: true } : {})
           });
           t.set(ref, { items: items.slice(0, 25) }, { merge: true });
         });
@@ -7467,7 +7482,7 @@
     // epicchannels.quest/#tienda · #mis-cuentas · #mis-cuentas/datos · #netflix · #admin/tickets ...
     // Funcionan para guardar, compartir y con el botón "atrás". Si la sección no le corresponde a quien abre el enlace, va a la tienda.
     const RUTAS_VISTAS = ['tienda', 'mis-cuentas', 'netflix', 'proveedor', 'admin'];
-    const TABS_ADMIN_RUTA = ['productos', 'reporte', 'actividad', 'campanas', 'categorias', 'usuarios', 'tickets', 'stock', 'apariencia', 'pagos', 'recargas', 'historial', 'netflix', 'ajustes', 'proveedores', 'asistente', 'buscar', 'promociones', 'cortes', 'novedades', 'vista', 'marketing'];
+    const TABS_ADMIN_RUTA = ['productos', 'reporte', 'actividad', 'campanas', 'dealers', 'categorias', 'usuarios', 'tickets', 'stock', 'apariencia', 'pagos', 'recargas', 'historial', 'netflix', 'ajustes', 'proveedores', 'asistente', 'buscar', 'promociones', 'cortes', 'novedades', 'vista', 'marketing'];
     const TABS_PERFIL_RUTA = ['cuentas', 'recargas', 'credito', 'datos', 'seguridad'];
     let aplicandoRuta = false, rutaActual = '', rutaPendienteStaff = '';
 
@@ -7861,7 +7876,7 @@
     function cambiarTabAdmin(tab) {
       if (modoPruebaCliente) return;
       iniciarBadgesAdmin();
-      const tabs = ['productos', 'reporte', 'categorias', 'usuarios', 'tickets', 'stock', 'apariencia', 'pagos', 'recargas', 'historial', 'netflix', 'ajustes', 'proveedores', 'asistente', 'buscar', 'promociones', 'cortes', 'novedades', 'vista', 'marketing', 'actividad', 'campanas'];
+      const tabs = ['productos', 'reporte', 'categorias', 'usuarios', 'tickets', 'stock', 'apariencia', 'pagos', 'recargas', 'historial', 'netflix', 'ajustes', 'proveedores', 'asistente', 'buscar', 'promociones', 'cortes', 'novedades', 'vista', 'marketing', 'actividad', 'campanas', 'dealers'];
       // El moderador no entra a la configuración general ni a los pagos a proveedores
       if (esModeradorSesion() && RESTRINGIDAS_MODERADOR.includes(tab)) tab = 'productos';
       tabs.forEach(t => {
@@ -7898,6 +7913,7 @@
       if (tab === 'vista') { renderizarEditorVistaPanel(); cargarPermisosModerador(); }
       if (tab === 'actividad') { try { cargarActividad(); } catch (e) { console.warn(e); } }
       if (tab === 'campanas') { try { prepararCampanas(); } catch (e) { console.warn(e); } }
+      if (tab === 'dealers') { try { prepararDealers(); } catch (e) { console.warn(e); } }
       if (tab === 'usuarios' || tab === 'ajustes') { try { if (esAdminSesionActual()) prepararCfgTiendas(); } catch (e) { /* nada */ } }
       if (tab === 'marketing') { try { if (!cfgDealer) cargarCfgDealer().then(prepararMarketing); } catch (e) { /* nada */ } prepararMarketing(); }
       if (tab === 'novedades') { iniciarNovedadesClientes(); renderizarNovedadesAdmin(); renderizarActualizacionesPagina(); }
@@ -10701,7 +10717,7 @@
     let inicioEnPanelPendiente = false;
     let perfilNombreActual = '';
     let escuchasModeradorActivas = false;
-    var RESTRINGIDAS_MODERADOR = ['categorias', 'apariencia', 'pagos', 'ajustes', 'proveedores', 'asistente', 'promociones', 'novedades', 'marketing', 'actividad', 'campanas'];
+    var RESTRINGIDAS_MODERADOR = ['categorias', 'apariencia', 'pagos', 'ajustes', 'proveedores', 'asistente', 'promociones', 'novedades', 'marketing', 'actividad', 'campanas', 'dealers'];
 
     function esModeradorSesion() { return rolActual === 'moderador' && !esAdminSesionActual(); }
     function esProveedorSesion() { return rolActual === 'proveedor' && !esAdminSesionActual(); }
@@ -14764,13 +14780,13 @@
 
     // ==================== VISTA DEL PANEL (menú configurable) ====================
     const TABS_MENU_INFO = {
-      netflix: ['Alquileres', '#f87171'], productos: ['Productos', '#34d399'], reporte: ['Reporte de Ventas', '#60a5fa'], actividad: ['Actividad', '#22d3ee'], campanas: ['Campañas', '#fb7185'], usuarios: ['Usuarios Registrados', '#a78bfa'],
+      netflix: ['Alquileres', '#f87171'], productos: ['Productos', '#34d399'], reporte: ['Reporte de Ventas', '#60a5fa'], actividad: ['Actividad', '#22d3ee'], campanas: ['Campañas', '#fb7185'], dealers: ['Dealers', '#f7d774'], usuarios: ['Usuarios Registrados', '#a78bfa'],
       tickets: ['Tickets', '#fbbf24'], recargas: ['Solicitudes de Saldo', '#34d399'], stock: ['Cargar Cuentas (Stock)', '#facc15'], historial: ['Historial de Ventas', '#94a3b8'],
       cortes: ['Cortes', '#f87171'], buscar: ['Buscar cuenta', '#38bdf8'], proveedores: ['Proveedores', '#fb923c'], promociones: ['Promociones', '#f472b6'],
       novedades: ['Novedades', '#38bdf8'], marketing: ['Marketing', '#e879f9'], categorias: ['Categorías & Colores', '#c084fc'], apariencia: ['Apariencia y Logo', '#f472b6'], pagos: ['Métodos de Pago & QR', '#2dd4bf'],
       asistente: ['Asistente', '#34d399'], vista: ['Vista del panel', '#a3e635'], ajustes: ['Ajustes Generales', '#cbd5e1']
     };
-    const ORDEN_MENU_BASE = ['netflix', 'productos', 'reporte', 'actividad', 'campanas', 'usuarios', 'tickets', 'recargas', 'stock', 'historial', 'cortes', 'buscar', 'proveedores', 'promociones', 'novedades', 'marketing', 'categorias', 'apariencia', 'pagos', 'asistente', 'vista', 'ajustes'];
+    const ORDEN_MENU_BASE = ['netflix', 'productos', 'reporte', 'actividad', 'campanas', 'dealers', 'usuarios', 'tickets', 'recargas', 'stock', 'historial', 'cortes', 'buscar', 'proveedores', 'promociones', 'novedades', 'marketing', 'categorias', 'apariencia', 'pagos', 'asistente', 'vista', 'ajustes'];
     const VISTA_PANEL_BASE = { version: 2, estilo: 'grupos', columnas: 3, destacado: 'netflix', color: 'rojo', iconos: true, inicio: 'productos', orden: ORDEN_MENU_BASE.slice(), ocultos: [] };
     let vistaPanel = null, vistaPanelGuardada = null;
 
@@ -14959,8 +14975,10 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-09e';
+    const VERSION_PAGINA = '2026-10-09g';
     const ACTUALIZACIONES_PAGINA = [
+      { id: 'act_20261009_agrupadas', fecha: '2026-10-09', titulo: 'Tus compras, más ordenadas 🗂', mensaje: 'Si compras el mismo producto varias veces en el día, ahora lo ves **en una sola tarjeta**: tócala para ver cada compra, y **copia todas las cuentas** de una vez.' },
+      { id: 'act_20261009_niveldealer', fecha: '2026-10-09', titulo: 'Dealers: tu nivel a la vista 👑', mensaje: 'En tu perfil ves tu **nivel Dealer del mes** (Bronce, Plata u Oro), cuántas cuentas llevas y **cuántas te faltan** para subir y multiplicar tus regalos.' },
       { id: 'act_20261009_faq', fecha: '2026-10-09', titulo: 'Preguntas frecuentes 📖', mensaje: 'Resuelve tus dudas al instante: en **¿Necesitas ayuda?** y en tu perfil tienes las **preguntas frecuentes** de las secciones que usas, con buscador.' },
       { id: 'act_20261009_pago', fecha: '2026-10-09', titulo: '¿Pagaste y no ves tu saldo? 💸', mensaje: 'Ahora lo reportas en segundos desde **Mis recargas**, la ventana de recarga o **¿Necesitas ayuda?**: adjuntas tu comprobante y **primero buscamos tu pago solos**; si ya llegó, se acredita al instante. Si no, lo revisamos y te avisamos en la campana.' },
       { id: 'act_20261009_notif', fecha: '2026-10-09', titulo: 'Notificaciones con acceso directo 🔔', mensaje: 'Ahora tus notificaciones te llevan directo: toca un aviso de **nuevo stock** y se abre la compra de ese producto; toca una **renovación**, un **regalo** o una **respuesta** y llegas justo ahí. Menos pasos, compras más rápido.' },
@@ -16186,7 +16204,7 @@
         let mes = 0; const hoy = {};
         snap.forEach(x => { const c = x.data() || {}; if (c.esBonificacion) return; const f = String(c.fecha || ''); const n = parseInt(c.cantidad, 10) || 0; if (f >= inicioMes) mes += n; if (f >= inicioHoy) hoy[c.productoId] = (hoy[c.productoId] || 0) + n; });
         progresoDealer = { mes: mes, hoy: hoy };
-        pintarBannerDealer(); renderizarCatalogo();
+        pintarBannerDealer(); try { if (typeof window.__ultTotalCuentas === 'number') renderizarNivelPerfil(window.__ultTotalCuentas); } catch (x) { /* nada */ } renderizarCatalogo();
       } catch (e) { console.warn('Progreso dealer:', e); }
     }
     function lanzarConfeti(emojis) {
@@ -16305,7 +16323,7 @@
       { id: 'referidos', t: 'Referidos y comisiones', docs: ['referidos'], sel: ['#adminReferidosCaja'] },
       { id: 'venta_manual', t: 'Venta manual (WhatsApp)', docs: [], sel: ['#ventaManualCaja'] }
     ];
-    const RESTRINGIDAS_BASE = ['categorias', 'apariencia', 'pagos', 'ajustes', 'proveedores', 'asistente', 'promociones', 'novedades', 'marketing', 'actividad', 'campanas'];
+    const RESTRINGIDAS_BASE = ['categorias', 'apariencia', 'pagos', 'ajustes', 'proveedores', 'asistente', 'promociones', 'novedades', 'marketing', 'actividad', 'campanas', 'dealers'];
     var permisosModerador = [];
     function puedeSeccion(sec) { return esAdminSesionActual() || (esModeradorSesion() && permisosModerador.indexOf(sec) !== -1); }
     function elementosSeccionMod(sm) {
@@ -17285,7 +17303,7 @@
 
     // ==================== MENÚ DEL PANEL POR GRUPOS (estilo app) ====================
     const GRUPOS_MENU = [
-      ['Ventas', ['reporte', 'actividad', 'campanas', 'historial', 'recargas', 'promociones', 'marketing']],
+      ['Ventas', ['reporte', 'actividad', 'campanas', 'dealers', 'historial', 'recargas', 'promociones', 'marketing']],
       ['Clientes', ['usuarios', 'tickets', 'novedades', 'asistente']],
       ['Inventario', ['productos', 'stock', 'proveedores', 'buscar', 'cortes']],
       ['Configuración', ['categorias', 'apariencia', 'pagos', 'vista', 'ajustes']]
@@ -17319,6 +17337,7 @@
     // ==================== BUSCADOR DEL PANEL (como en los ajustes del celular) ====================
     // [texto, pestaña, palabras clave, elemento al que lleva]
     const BUSQUEDA_PANEL = [
+      ['Dealers', 'dealers', 'revendedor nivel bronce plata oro regalo mayorista dealer', ''],
       ['Venta relámpago', 'campanas', 'flash descuento oferta horas campana', ''],
       ['Precio por cantidad', 'campanas', 'escalonado volumen mayorista descuento cantidad', ''],
       ['Casi compraron', 'campanas', 'saldo insuficiente recordatorio abandonado carrito', ''],
@@ -19267,6 +19286,8 @@
 
     // ==================== NOVEDADES INTERNAS DEL PANEL (solo el equipo) ====================
     const ACTUALIZACIONES_INTERNAS = [
+      { fecha: '2026-10-09', titulo: '👑 Sección Dealers', mensaje: 'Todo sobre tus Dealers en un lugar: resumen del mes (cuánto te compran y qué parte de tus ventas son), lista con nivel y avance, filtros **⚡ Cerca de subir** y **😴 Sin comprar 7 días**, promos y niveles, y avisos solo para ellos. **Para vender:** a fin de mes, envía el aviso a los que están cerca de subir.', ir: 'dealers' },
+      { fecha: '2026-10-09', titulo: '👑 Nivel Dealer en el perfil', mensaje: 'Cada Dealer ve su nivel del mes con barra de avance y cuántas cuentas le faltan para el siguiente. **Para vender:** anuncia la novedad a tus Dealers a fin de mes; muchos compran para subir de nivel antes del reinicio.', ir: 'usuarios' },
       { fecha: '2026-10-09', titulo: '📖 Preguntas frecuentes', mensaje: 'En Asistente de ayuda revisas, editas y publicas las preguntas frecuentes; cada cliente ve solo las de su perfil (crédito, alquiler, Dealer). Difunde su novedad **después de publicarlas**. **Para vender:** menos dudas y tickets sencillos, más tiempo para vender.', ir: 'asistente' },
       { fecha: '2026-10-09', titulo: '🖼 Imágenes que siempre caben', mensaje: 'Todas las imágenes de estado ponen el contenido en la zona que WhatsApp no tapa, y la novedad ajusta su tarjeta al texto. **Para vender:** tu precio y tu enlace siempre se ven completos.', ir: 'marketing' },
       { fecha: '2026-10-09', titulo: '💳 Recordatorio diario del crédito', mensaje: 'Cada mañana, el cliente con crédito pre-aprobado disponible recibe un aviso en su campana: que lo use para comprar cuentas y que se paga con su próxima recarga. **Para vender:** el crédito sin usar es una venta esperando.', ir: 'usuarios' },
@@ -19536,6 +19557,181 @@
       catch (e) { alert('No se pudo publicar: ' + e.message); }
     }
     async function despublicarFaq() { if (!await confirmarModal('¿Ocultar las preguntas frecuentes a tus clientes?', { textoAceptar: 'Sí, ocultar' })) return; try { await db.collection('configuracion').doc('faq').set({ publicado: false, items: [] }); faqPublicada = []; pintarFaqAdmin(); mostrarToast('Preguntas frecuentes ocultas'); } catch (e) { alert(e.message); } }
+
+
+    // ==================== NIVEL DEALER EN EL PERFIL ====================
+    function htmlNivelDealerPerfil(nGeneral) {
+      const mes = Number((progresoDealer || {}).mes) || 0, nv = nivelDealerDe(mes), mu = multiplicadoresDealer() || {};
+      const sigId = nv.sig === 'Plata' ? 'plata' : (nv.sig === 'Oro' ? 'oro' : ''), falta = Math.max(0, nv.meta - mes);
+      const pct = nv.sig ? Math.min(100, Math.round(((mes - nv.desde) / Math.max(1, nv.meta - nv.desde)) * 100)) : 100;
+      const ahora = new Date(), nombreMes = ahora.toLocaleDateString('es-CO', { month: 'long' }), reinicio = new Date(ahora.getFullYear(), ahora.getMonth() + 1, 1).toLocaleDateString('es-CO', { day: 'numeric', month: 'long' });
+      const multSig = sigId ? (Number(mu[sigId]) || 1) : 0;
+      return `<div class="p-3 rounded-2xl border border-yellow-400/40" style="background:linear-gradient(135deg,rgba(247,215,116,.12),rgba(17,24,39,.6))">
+        <div class="flex items-center gap-3"><span class="w-11 h-11 rounded-full flex items-center justify-center text-xl shrink-0" style="background:rgba(247,215,116,.15)">${nv.icono}</span>
+          <div class="flex-1 min-w-0"><p class="text-[11px] text-amber-100/70">Tu nivel Dealer de ${nombreMes}</p><p class="text-lg font-black dealer-texto leading-tight">Dealer ${nv.nombre}</p></div>
+          <div class="text-right shrink-0"><p class="text-lg font-black text-white leading-tight">${mes}</p><p class="text-[10px] text-amber-100/70">cuentas este mes</p></div></div>
+        <div class="mt-3 h-2 rounded-full bg-black/40 overflow-hidden"><div class="h-full rounded-full" style="width:${pct}%;background:linear-gradient(90deg,#d4a017,#f7d774)"></div></div>
+        <p class="mt-2 text-[12px] text-gray-200">${nv.sig ? `Te faltan <b class="text-white">${falta} ${falta === 1 ? 'cuenta' : 'cuentas'}</b> para <b class="text-amber-200">${nv.sig === 'Oro' ? '👑' : '🥈'} Dealer ${nv.sig}</b>${multSig > 1 ? ` · con ${nv.sig} tus regalos se multiplican ×${multSig}` : ''}` : '<b class="text-amber-200">¡Estás en el nivel más alto!</b> Tus regalos tienen el máximo beneficio.'}</p>
+        <p class="mt-1.5 text-[10px] text-gray-400">${nGeneral && nGeneral.actual ? `${nGeneral.actual.icono} Nivel general: ${escaparHtml(nGeneral.actual.nombre)} · ` : ''}el nivel Dealer se reinicia el ${reinicio}</p>
+      </div>`;
+    }
+
+    // ==================== COMPRAS AGRUPADAS (mismo producto, mismo día) ====================
+    function agruparHtmlCompras(cortes, html) {
+      try {
+        const diaDe = c => { const d = new Date(c.fecha); return isNaN(d) ? '' : d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate(); };
+        const clave = c => (c.regalo || c.esCombo || c.esRenovacion || !c.productoId) ? '' : c.productoId + '|' + diaDe(c);
+        const grupos = {}; cortes.forEach(([idx]) => { const c = misComprasPerfilCache[idx], k = c && clave(c); if (k) (grupos[k] = grupos[k] || []).push(idx); });
+        const hecho = new Set(); let out = '';
+        cortes.forEach(([idx, a, b]) => {
+          if (hecho.has(idx)) return;
+          const c = misComprasPerfilCache[idx], k = c && clave(c), miembros = k ? grupos[k] : null;
+          if (!miembros || miembros.length < 2) { out += html.slice(a, b); hecho.add(idx); return; }
+          const cs = miembros.map(i => misComprasPerfilCache[i]);
+          const total = cs.reduce((t, x) => t + (Number(x.total) || 0), 0), cuentas = cs.reduce((t, x) => t + String(x.credenciales || '').split('\n').filter(l => l.trim()).length, 0);
+          const vig = cs.filter(x => { try { return estadoGarantiaCompra(x).estado === 'vigente'; } catch (e) { return false; } }).length;
+          const f = new Date(c.fecha), fecha = String(f.getDate()).padStart(2, '0') + '/' + String(f.getMonth() + 1).padStart(2, '0');
+          const pr = productoComprable(c.productoId);
+          out += `<details class="grupo-compras rounded-2xl bg-gray-900 border border-gray-800 overflow-hidden">
+            <summary class="list-none cursor-pointer p-3 flex items-center gap-3">
+              <span class="w-10 h-10 shrink-0 rounded-xl bg-gray-800 flex items-center justify-center text-[11px] font-black text-gray-300">×${miembros.length}</span>
+              <span class="flex-1 min-w-0"><span class="block text-sm font-black text-white truncate">${escaparHtml(c.productoNombre || '')}</span><span class="block text-[11px] text-gray-400">${fecha} · ${miembros.length} compras · ${cuentas} ${cuentas === 1 ? 'cuenta' : 'cuentas'}${vig ? ` · <span class="text-emerald-300">garantía vigente</span>` : ''}</span></span>
+              <span class="text-right shrink-0"><span class="block text-sm font-black text-white">${formatoCOP(total)}</span><i class="fa-solid fa-chevron-down text-[10px] text-gray-500"></i></span>
+            </summary>
+            <div class="px-2 pb-2 space-y-2">
+              <div class="grid ${pr ? 'grid-cols-2' : 'grid-cols-1'} gap-2 px-1"><button type="button" onclick="copiarGrupoCompras('${miembros.join(',')}')" class="py-2 rounded-xl bg-gray-800 border border-gray-700 text-emerald-400 font-bold text-xs"><i class="fa-solid fa-copy mr-1"></i>Copiar las ${cuentas}</button>${pr ? `<button type="button" onclick="volverAComprar(${miembros[0]})" class="py-2 rounded-xl bg-emerald-500/15 border border-emerald-500/40 text-emerald-300 font-bold text-xs"><i class="fa-solid fa-rotate-right mr-1"></i>Volver a comprar</button>` : ''}</div>
+              ${miembros.map(i => { const cc = cortes.find(x => x[0] === i); hecho.add(i); return cc ? html.slice(cc[1], cc[2]) : ''; }).join('')}
+            </div></details>`;
+        });
+        return out;
+      } catch (e) { console.warn('Agrupar compras:', e); return html; }
+    }
+    function copiarGrupoCompras(lista) {
+      const idxs = String(lista).split(',').map(Number), cs = idxs.map(i => misComprasPerfilCache[i]).filter(Boolean); if (!cs.length) return;
+      const lineas = []; cs.forEach(c => String(c.credenciales || '').split('\n').map(l => l.trim()).filter(Boolean).forEach(l => lineas.push(parseCredencialObj(l))));
+      try { copiarTexto(textoListaCuentasWa(cs[0].productoNombre || '', lineas, esProductoPrime(cs[0]), cs[0].tipoGarantia, Date.parse(cs[0].fecha) || Date.now()), `${lineas.length} cuentas copiadas`); }
+      catch (e) { copiarTexto(lineas.map(o => o.email + (o.pass ? ' : ' + o.pass : '')).join('\n'), 'Cuentas copiadas'); }
+    }
+
+
+    // ==================== SECCIÓN DEALERS (el motor del negocio) ====================
+    var dlDatos = null, dlVista = 'lista', dlFiltro = 'todos', dlAbierto = '';
+    async function prepararDealers() {
+      pintarTabsDealers();
+      try {
+        const d = new Date(), inicioMes = new Date(d.getFullYear(), d.getMonth(), 1).toISOString(), hace45 = new Date(Date.now() - 45 * 86400000).toISOString();
+        const [su, sc] = await Promise.all([db.collection('usuarios').where('tipoCuenta', '==', 'revendedor').get(), db.collection('compras').where('fecha', '>=', inicioMes < hace45 ? inicioMes : hace45).get()]);
+        const dealers = {}; su.forEach(x => { dealers[x.id] = Object.assign({ uid: x.id, mes: 0, totalMes: 0, ultima: '', compras: [] }, x.data() || {}); });
+        let ventasMes = 0;
+        sc.forEach(x => { const c = x.data() || {}; if (c.regalo || c.esBonificacion) return; const f = String(c.fecha || ''); if (f >= inicioMes) ventasMes += Number(c.total) || 0;
+          const dl = dealers[c.usuarioId]; if (!dl) return; if (f >= inicioMes) { dl.mes += parseInt(c.cantidad, 10) || 0; dl.totalMes += Number(c.total) || 0; } if (f > dl.ultima) dl.ultima = f; dl.compras.push(c); });
+        Object.values(dealers).forEach(x => x.compras.sort((a, b) => String(b.fecha).localeCompare(String(a.fecha))));
+        dlDatos = { lista: Object.values(dealers).sort((a, b) => b.totalMes - a.totalMes || b.mes - a.mes), ventasMes };
+      } catch (e) { const r = document.getElementById('dlResumen'); if (r) r.innerHTML = `<p class="text-[12px] text-red-300">No se pudieron cargar: ${escaparHtml(e.message)}</p>`; return; }
+      pintarResumenDealers(); pintarVistaDealers();
+    }
+    function infoDealer(x) { const nv = nivelDealerDe(x.mes), falta = nv.sig ? Math.max(0, nv.meta - x.mes) : 0; return { nv, falta, cerca: !!nv.sig && falta > 0 && falta <= 10, dormido: !x.ultima || Date.now() - Date.parse(x.ultima) > 7 * 86400000 }; }
+    function pintarResumenDealers() {
+      const r = document.getElementById('dlResumen'); if (!r || !dlDatos) return;
+      const L = dlDatos.lista, activos = L.filter(x => x.mes > 0), cuentas = L.reduce((t, x) => t + x.mes, 0), dinero = L.reduce((t, x) => t + x.totalMes, 0);
+      const pct = dlDatos.ventasMes > 0 ? Math.round(dinero / dlDatos.ventasMes * 100) : 0, cnt = { bronce: 0, plata: 0, oro: 0 }; let cerca = 0;
+      L.forEach(x => { const i = infoDealer(x); cnt[i.nv.id]++; if (i.cerca) cerca++; });
+      const mes = new Date().toLocaleDateString('es-CO', { month: 'long' });
+      const k = (t, v, c) => `<div class="rounded-xl p-2.5 bg-black/30 border border-yellow-400/20"><p class="text-[10px] text-amber-100/70">${t}</p><p class="text-base font-black ${c || 'text-white'}">${v}</p></div>`;
+      r.innerHTML = `<p class="text-base font-black dealer-texto">👑 Dealers <span class="text-[11px] font-bold text-amber-100/60">· ${mes}</span></p>
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-2">${k('Dealers que compraron', activos.length + ' de ' + L.length)}${k('Cuentas que compraron', cuentas)}${k('Lo que te compraron', formatoCOP(dinero))}${k('De tus ventas del mes', pct + ' %', 'text-emerald-300')}</div>
+        <p class="text-[11px] text-amber-100/80 mt-2">🥉 Bronce ${cnt.bronce} · 🥈 Plata ${cnt.plata} · 👑 Oro ${cnt.oro}${cerca ? ` · <b class="text-amber-200">⚡ ${cerca} a menos de 10 cuentas de subir</b>` : ''}</p>`;
+    }
+    function pintarTabsDealers() {
+      const t = document.getElementById('dlTabs'); if (!t) return;
+      t.innerHTML = [['lista', 'Mis Dealers'], ['promos', 'Promos y niveles'], ['mensajes', 'Mensajes']].map(([k, n]) => `<button type="button" onclick="dlVista='${k}';pintarTabsDealers();pintarVistaDealers()" class="px-3 py-1.5 rounded-full text-[12px] font-bold border ${dlVista === k ? 'bg-amber-400 text-black border-amber-300' : 'bg-gray-800 text-gray-300 border-gray-700'}">${n}</button>`).join('');
+    }
+    function pintarVistaDealers() {
+      ['lista', 'promos', 'mensajes'].forEach(v => { const e = document.getElementById('dlPanel' + v.charAt(0).toUpperCase() + v.slice(1)); if (e) e.classList.toggle('hidden', dlVista !== v); });
+      if (dlVista === 'lista') pintarListaDealers(); else if (dlVista === 'promos') pintarPromosDealersSeccion(); else pintarMensajesDealers();
+    }
+    function pintarListaDealers() {
+      const c = document.getElementById('dlPanelLista'); if (!c || !dlDatos) return;
+      let L = dlDatos.lista.slice();
+      if (dlFiltro === 'cerca') L = L.filter(x => infoDealer(x).cerca); else if (dlFiltro === 'dormidos') L = L.filter(x => infoDealer(x).dormido);
+      const f = (k, n) => `<button type="button" onclick="dlFiltro='${k}';pintarListaDealers()" class="px-2.5 py-1 rounded-full text-[11px] font-bold border ${dlFiltro === k ? 'bg-amber-400/20 text-amber-200 border-amber-400/50' : 'bg-gray-800 text-gray-300 border-gray-700'}">${n}</button>`;
+      const hace = iso => { if (!iso) return 'sin compras recientes'; const d = Math.floor((Date.now() - Date.parse(iso)) / 86400000); return d <= 0 ? 'última compra hoy' : (d === 1 ? 'última compra ayer' : `última compra hace ${d} días`); };
+      c.innerHTML = `<div class="flex items-center gap-1.5 flex-wrap"><span class="text-[11px] text-gray-400">Ver:</span>${f('todos', 'Todos')}${f('cerca', '⚡ Cerca de subir')}${f('dormidos', '😴 Sin comprar 7 días')}</div>` +
+        (L.length ? L.map((x, i) => { const inf = infoDealer(x), pct = inf.nv.sig ? Math.min(100, Math.round((x.mes - inf.nv.desde) / Math.max(1, inf.nv.meta - inf.nv.desde) * 100)) : 100, nom = x.nombre || String(x.email || '').split('@')[0];
+          return `<div class="p-3 rounded-2xl bg-gray-900 border ${inf.cerca ? 'border-amber-400/50' : 'border-gray-800'}">
+            <div class="flex items-start justify-between gap-2"><div class="min-w-0"><p class="text-sm font-black text-white truncate">${inf.nv.icono} ${escaparHtml(nom)} ${dlFiltro === 'todos' && i < 3 && x.totalMes > 0 ? `<span class="text-[10px] font-bold text-amber-300">#${i + 1} del mes</span>` : ''}${inf.cerca ? ' <span class="text-[10px] font-bold text-amber-300">⚡ cerca de subir</span>' : ''}</p><p class="text-[11px] text-gray-400 truncate">${escaparHtml(x.email || '')}</p></div><p class="text-sm font-black text-white shrink-0">${formatoCOP(x.totalMes)}</p></div>
+            <p class="text-[11px] text-gray-300 mt-1">${x.mes} cuentas · ${inf.nv.sig ? `le faltan ${inf.falta} para ${inf.nv.sig === 'Oro' ? '👑' : '🥈'} ${inf.nv.sig}` : 'nivel máximo'} · ${hace(x.ultima)}</p>
+            <div class="mt-1.5 h-1.5 rounded-full bg-black/40 overflow-hidden"><div class="h-full rounded-full" style="width:${pct}%;background:linear-gradient(90deg,#d4a017,#f7d774)"></div></div>
+            <div class="flex gap-1.5 flex-wrap mt-2">${x.whatsapp && !/sin/i.test(x.whatsapp) ? `<button type="button" onclick="whatsappDealer('${x.uid}')" class="px-2.5 py-1 rounded-lg bg-emerald-500/15 border border-emerald-500/40 text-emerald-300 text-[11px] font-bold"><i class="fa-brands fa-whatsapp mr-1"></i>WhatsApp</button>` : ''}<button type="button" onclick="abrirRegaloDirecto('${x.uid}','${escaparJsAttr(x.email || '')}','${escaparJsAttr(x.nombre || '')}')" class="px-2.5 py-1 rounded-lg bg-pink-500/15 border border-pink-400/40 text-pink-200 text-[11px] font-bold">🎁 Regalo</button><button type="button" onclick="abrirModalEditarCliente('${x.uid}','${escaparJsAttr(x.email || '')}','${escaparJsAttr(x.nombre || '')}')" class="px-2.5 py-1 rounded-lg bg-gray-800 border border-gray-700 text-gray-200 text-[11px] font-bold">Editar</button><button type="button" onclick="dlAbierto=dlAbierto==='${x.uid}'?'':'${x.uid}';pintarListaDealers()" class="px-2.5 py-1 rounded-lg bg-gray-800 border border-gray-700 text-gray-200 text-[11px] font-bold">🔍 Ver compras</button></div>
+            ${dlAbierto === x.uid ? `<div class="mt-2 space-y-1">${x.compras.slice(0, 10).map(c => `<div class="flex justify-between gap-2 text-[11px] border-t border-gray-800 pt-1"><span class="text-gray-300 truncate">${escaparHtml(c.productoNombre || '')} × ${c.cantidad || 1}</span><span class="text-gray-500 shrink-0">${new Date(c.fecha).toLocaleDateString('es-CO')} · ${formatoCOP(c.total || 0)}</span></div>`).join('') || '<p class="text-[11px] text-gray-500">Sin compras en los últimos 45 días.</p>'}</div>` : ''}
+          </div>`; }).join('') : `<p class="text-[12px] text-gray-500 text-center py-6">${dlFiltro === 'todos' ? 'Todavía no tienes Dealers.' : 'Ningún Dealer en este filtro.'}</p>`) +
+        `<div class="p-3 rounded-2xl border border-dashed border-gray-600"><p class="text-[11px] text-gray-300 font-bold mb-1.5">＋ Hacer Dealer a un cliente</p><input id="dlBuscarCliente" oninput="buscarClienteParaDealer(this.value)" placeholder="Nombre o correo del cliente" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"><div id="dlResultadosCliente" class="mt-1.5 space-y-1"></div></div>`;
+    }
+    function whatsappDealer(uid) {
+      const x = dlDatos.lista.find(d => d.uid === uid); if (!x) return; const inf = infoDealer(x), nom = String(x.nombre || '').split(' ')[0];
+      const t = `Hola${nom ? ' ' + nom : ''} 👑 vas en *Dealer ${inf.nv.nombre}* con ${x.mes} cuentas este mes.${inf.nv.sig ? ` Te faltan solo *${inf.falta}* para *${inf.nv.sig}* y multiplicar tus regalos 🎁` : ' ¡Estás en el nivel más alto!'}\n\n👉 ${enlaceMk()}`;
+      abrirWhatsappNumero(x.whatsapp, t, (cfgAvisosRen || {}).app !== 'normal');
+    }
+    var dlBusquedaTimer = null;
+    function buscarClienteParaDealer(q) {
+      clearTimeout(dlBusquedaTimer); const c = document.getElementById('dlResultadosCliente'); q = String(q || '').trim().toLowerCase();
+      if (!c) return; if (q.length < 3) { c.innerHTML = ''; return; }
+      dlBusquedaTimer = setTimeout(async () => {
+        try {
+          const L = (typeof usuariosCache !== 'undefined' && Array.isArray(usuariosCache) && usuariosCache.length) ? usuariosCache : await db.collection('usuarios').limit(800).get().then(sn => { const a = []; sn.forEach(d => a.push(Object.assign({ uid: d.id }, d.data()))); return a; });
+          const r = L.filter(u => (u.uid || u.id) && u.tipoCuenta !== 'revendedor' && !u.rol && (String(u.email || '').toLowerCase().includes(q) || String(u.nombre || '').toLowerCase().includes(q))).slice(0, 5);
+          c.innerHTML = r.length ? r.map(u => `<div class="flex items-center justify-between gap-2 p-2 rounded-xl bg-gray-800/70"><span class="text-[11px] text-gray-200 truncate">${escaparHtml(u.nombre || '')} <span class="text-gray-500">${escaparHtml(u.email || '')}</span></span><button type="button" onclick="hacerDealer('${u.uid || u.id}','${escaparJsAttr(u.email || '')}')" class="shrink-0 px-2.5 py-1 rounded-lg bg-amber-400 text-black text-[11px] font-black">Hacer Dealer</button></div>`).join('') : '<p class="text-[11px] text-gray-500">No encontré clientes con ese nombre o correo.</p>';
+        } catch (e) { c.innerHTML = `<p class="text-[11px] text-red-300">${escaparHtml(e.message)}</p>`; }
+      }, 300);
+    }
+    // Aviso a la campana de un usuario (como el resto de la página: máximo 30 avisos)
+    async function notificarUsuarioPanel(uid, tipo, titulo, mensaje) {
+      const ref = db.collection('usuarios').doc(uid);
+      await db.runTransaction(async (t) => { const d = await t.get(ref); if (!d.exists) return; t.update(ref, { notificaciones: agregarNotifALista((d.data() || {}).notificaciones, crearNotificacionPersonal(tipo, titulo, mensaje)) }); });
+    }
+    async function hacerDealer(uid, email) {
+      if (!await confirmarModal(`¿Convertir a ${email} en Dealer?\n\nVerá la tienda como Dealer, con sus promos, su nivel del mes y "Mi negocio".`, { textoAceptar: 'Sí, hacer Dealer' })) return;
+      try {
+        await db.collection('usuarios').doc(uid).update({ tipoCuenta: 'revendedor' });
+        await notificarUsuarioPanel(uid, 'anuncio', '👑 ¡Ahora eres Dealer!', 'Tienes promos exclusivas, regalos por volumen y tu nivel del mes. Míralo en tu perfil.');
+        mostrarToast('👑 ' + email + ' ahora es Dealer'); prepararDealers();
+      } catch (e) { alert('No se pudo: ' + e.message); }
+    }
+    // Promos y niveles: el mismo bloque de siempre, ahora aquí (se mueve, no se duplica)
+    setTimeout(() => { try { const c = document.getElementById('dlPanelPromos'), b = document.getElementById('adminRegaloRevendedor'); if (c && b && b.parentElement !== c) c.appendChild(b); } catch (e) { /* nada */ } }, 0);
+    function pintarPromosDealersSeccion() {
+      const c = document.getElementById('dlPanelPromos'), b = document.getElementById('adminRegaloRevendedor'); if (!c || !b) return;
+      if (b.parentElement !== c) { c.appendChild(b); }
+      try { const box = document.getElementById('promosDealerBox') || b.querySelector('[id^="promosDealer"]'); if (b.querySelector('details') && !b.querySelector('details').open) b.querySelector('details').open = true; } catch (e) { /* nada */ }
+    }
+    function pintarMensajesDealers() {
+      const c = document.getElementById('dlPanelMensajes'); if (!c) return;
+      const n = dlDatos ? dlDatos.lista.length : 0, cerca = dlDatos ? dlDatos.lista.filter(x => infoDealer(x).cerca).length : 0;
+      const inp = 'w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none';
+      c.innerHTML = `<div class="p-4 rounded-2xl bg-gray-900 border border-gray-800 space-y-2"><p class="text-sm font-black text-white">🔔 Aviso solo para tus Dealers</p><p class="text-[11px] text-gray-400 -mt-1">Les llega a la campana a los ${n} Dealers. Los demás clientes no lo ven.</p>
+          <input id="dlAvisoTitulo" maxlength="80" placeholder="Título (ej: Nueva promo Dealer en Prime)" class="${inp}"><textarea id="dlAvisoMsg" rows="3" maxlength="300" placeholder="Mensaje" class="${inp}"></textarea>
+          <button type="button" onclick="enviarAvisoDealers()" class="w-full py-2.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-black font-black text-xs">Enviar a los Dealers</button></div>
+        <div class="p-4 rounded-2xl bg-gray-900 border border-gray-800 space-y-2"><p class="text-sm font-black text-white">⚡ Empujar a los que están cerca de subir</p><p class="text-[11px] text-gray-400 -mt-1">${cerca ? `A cada uno de los ${cerca} le llega: "Te faltan X cuentas para Plata/Oro".` : 'Ahora mismo ningún Dealer está a menos de 10 cuentas de subir.'}</p>
+          <button type="button" ${cerca ? '' : 'disabled'} onclick="empujarDealersCerca()" class="w-full py-2.5 rounded-xl bg-gray-800 hover:bg-gray-700 border border-amber-400/40 text-amber-200 font-black text-xs disabled:opacity-40">Enviar aviso a los ${cerca}</button></div>
+        <div class="p-4 rounded-2xl bg-gray-900 border border-gray-800 space-y-2"><p class="text-sm font-black text-white">💬 Mensaje para tu grupo de Dealers</p><pre id="dlTextoGrupo" class="p-2.5 rounded-xl bg-gray-800 text-[11px] text-gray-200 whitespace-pre-wrap font-sans"></pre>
+          <div class="grid grid-cols-2 gap-2"><button type="button" onclick="copiarTexto(document.getElementById('dlTextoGrupo').innerText,'Mensaje copiado')" class="py-2 rounded-xl bg-gray-800 border border-gray-700 text-gray-100 font-bold text-xs">Copiar</button><button type="button" onclick="abrirWhatsappTextoLibre(document.getElementById('dlTextoGrupo').innerText)" class="py-2 rounded-xl bg-emerald-600 text-white font-bold text-xs"><i class="fa-brands fa-whatsapp mr-1"></i>WhatsApp</button></div></div>`;
+      try { const prev = mkTipoTexto; mkTipoTexto = 'dealers'; const t = document.createElement('textarea'); t.id = 'mkTexto'; const real = document.getElementById('mkTexto'); if (real) { const v = real.value; generarTextoMarketing(); document.getElementById('dlTextoGrupo').textContent = real.value; real.value = v; } else { document.body.appendChild(t); generarTextoMarketing(); document.getElementById('dlTextoGrupo').textContent = t.value; t.remove(); } mkTipoTexto = prev; } catch (e) { /* nada */ }
+    }
+    function abrirWhatsappTextoLibre(texto) { const enc = encodeURIComponent(texto); if (/Android/i.test(navigator.userAgent)) { location.href = 'intent://send?text=' + enc + '#Intent;scheme=whatsapp;package=' + ((cfgAvisosRen || {}).app === 'normal' ? 'com.whatsapp' : 'com.whatsapp.w4b') + ';end'; return; } window.open('https://wa.me/?text=' + enc, '_blank', 'noopener'); }
+    async function enviarAvisoDealers() {
+      const t = String((document.getElementById('dlAvisoTitulo') || {}).value || '').trim(), m = String((document.getElementById('dlAvisoMsg') || {}).value || '').trim();
+      if (!t) { alert('Escribe un título.'); return; }
+      if (!await confirmarModal(`¿Enviar "${t}" a tus Dealers?`, { textoAceptar: 'Sí, enviar' })) return;
+      try { await publicarNovedadGlobal({ tipo: 'anuncio', titulo: '👑 ' + t, mensaje: m, soloDealers: true }); mostrarToast('Aviso enviado a tus Dealers'); document.getElementById('dlAvisoTitulo').value = ''; document.getElementById('dlAvisoMsg').value = ''; }
+      catch (e) { alert(e.message); }
+    }
+    async function empujarDealersCerca() {
+      const L = (dlDatos ? dlDatos.lista : []).filter(x => infoDealer(x).cerca); if (!L.length) return;
+      if (!await confirmarModal(`¿Enviar el aviso "te faltan X cuentas" a ${L.length} Dealers?`, { textoAceptar: 'Sí, enviar' })) return;
+      let ok = 0;
+      for (const x of L) { const inf = infoDealer(x); try { await notificarUsuarioPanel(x.uid, 'anuncio', `⚡ Te faltan ${inf.falta} cuentas para Dealer ${inf.nv.sig}`, `Llevas ${x.mes} este mes. Al subir, tus regalos por compra se multiplican. ¡Aprovecha antes de que termine el mes!`); ok++; } catch (e) { console.warn(e); } }
+      mostrarToast(`⚡ Aviso enviado a ${ok} Dealers`);
+    }
 
     // ==================== NETFLIX EN LA TIENDA: SIN CONTRASEÑA ====================
     function esNombreNetflix(t) { return /netflix/i.test(String(t || '')); }
@@ -20054,6 +20250,7 @@
           card.style.display = ok ? '' : 'none';
           if (ok) visibles++;
         });
+        contenedor.querySelectorAll('.grupo-compras').forEach(g => { const vis = Array.from(g.querySelectorAll('[data-buscar]')).some(x => x.style.display !== 'none'); g.style.display = vis ? '' : 'none'; if (terminos.length || filtroGarantiaPerfil !== 'todas') g.open = vis; });
         if (total && !visibles) {
           const motivo = terminos.length
             ? `Ninguna compra coincide con "${escaparHtml(input.value)}".`
@@ -20109,7 +20306,9 @@
         }
 
         let html = '';
+        const cortesCompras = [];
         misComprasPerfilCache.forEach((c, idx) => {
+          const __ini = html.length;
           let fechaLegible = 'N/A';
           if (c.fecha) {
             const dObj = new Date(c.fecha);
@@ -20179,9 +20378,10 @@
               ${!esAlquilerCompra(c) && productoComprable(c.productoId) ? `<button type="button" onclick="volverAComprar(${idx})" class="w-full py-2 bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/40 text-emerald-300 font-bold text-xs rounded-xl flex items-center justify-center gap-2"><i class="fa-solid fa-rotate-right"></i> Volver a comprar</button>` : ''}
               </div>
             </div>`;
+          cortesCompras.push([idx, __ini, html.length]);
         });
 
-        contenedor.innerHTML = html;
+        contenedor.innerHTML = agruparHtmlCompras(cortesCompras, html);
         pintarBotonesReporte();
         renderFiltrosGarantiaPerfil();
         try { pintarPerfilVentas(); } catch (e) { console.warn(e); }
