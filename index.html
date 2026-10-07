@@ -3655,6 +3655,7 @@
     <div class="bg-gray-900 border border-emerald-500/40 rounded-2xl max-w-md w-full shadow-2xl max-h-[92vh] flex flex-col overflow-hidden">
       <div class="shrink-0 flex items-center justify-between gap-3 px-4 py-3 border-b border-gray-800">
         <h3 class="text-base font-black text-white flex items-center gap-2"><i class="fa-solid fa-circle-check text-emerald-400"></i> Resolver ticket</h3>
+        <p id="resolverAvisoDescuento" class="hidden mt-1 text-[11px] text-amber-200 bg-amber-500/10 border border-amber-500/30 rounded-lg px-2.5 py-1.5"></p>
         <button type="button" onclick="cerrarResolverTicket()" aria-label="Cerrar" class="w-8 h-8 shrink-0 rounded-full bg-gray-800 hover:bg-gray-700 text-gray-300 flex items-center justify-center"><i class="fa-solid fa-xmark"></i></button>
       </div>
       <div class="overflow-y-auto px-4 py-3 space-y-3 flex-grow">
@@ -11953,6 +11954,7 @@
             <div class="shrink-0 flex flex-col gap-1.5">
               ${t.tieneFoto ? `<button onclick="verFotoTicket('${escaparJsAttr(t.id)}')" class="px-2.5 py-1.5 rounded-lg text-[11px] font-bold bg-sky-500/15 hover:bg-sky-500/25 text-sky-300 border border-sky-500/30"><i class="fa-solid fa-image mr-1"></i>Ver foto</button>` : ''}
               ${t.respuestaFoto ? `<button onclick="verFotoRespuesta('${escaparJsAttr(t.id)}')" class="px-2.5 py-1.5 rounded-lg text-[11px] font-bold bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 border border-emerald-500/30"><i class="fa-solid fa-camera mr-1"></i>Captura</button>` : ''}
+              ${htmlRevisionTicket(t)}
               <button onclick="${resuelto ? 'reabrirTicket' : 'resolverTicket'}('${escaparJsAttr(t.id)}')" class="px-2.5 py-1.5 rounded-lg text-[11px] font-bold ${resuelto ? 'bg-gray-800 hover:bg-gray-700 text-gray-300 border border-gray-700' : 'bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 border border-emerald-500/30'}">${resuelto ? 'Reabrir' : 'Resolver'}</button>
             </div>
           </div>`;
@@ -12101,6 +12103,8 @@
       if (!esStaffSesion()) return;
       const t = ticketsCuentas.find(x => x.id === id);
       if (!t) return;
+      try { const av = document.getElementById('resolverAvisoDescuento'); const costo = Number(t.costo) || Number(t.costoUnitario) || 0; const mostrar = esAdminSesionActual() && !!t.proveedorUid;
+        if (av) { av.classList.toggle('hidden', !mostrar); if (mostrar) av.textContent = `Este ticket es de ${t.proveedorNombre || 'un proveedor'}. Si lo resuelves tú (cuenta arreglada o reemplazo), se le descuenta ${costo ? formatoCOP(costo) : 'el costo de la cuenta'}. Si solo lo cierras sin cambios, no se descuenta.`; } } catch (e) { /* nada */ }
       resolviendoTicketId = id;
       const enlazado = !!t.compraId;
       const admin = esAdminSesionActual();
@@ -12292,8 +12296,10 @@
         if (resultado === 'reemplazo' && resumen.cuentaNueva) msg = `Ticket resuelto. ${resumen.cuentaNueva} quedó enlazada a ${t.cuenta}${resumen.garantiaReiniciada ? ' y su garantía se reinició.' : '.'}`;
         else if (resumen.garantiaReiniciada) msg = 'Ticket resuelto. La garantía de esa cuenta se reinició.';
         if (!admin && (resultado === 'arreglada' || resultado === 'reemplazo')) msg += ' El cliente la ve en su ticket; la compra la actualiza el administrador.';
+        // Regla: si el proveedor no lo arregló ni lo reemplazó y lo resuelves TÚ (arreglada o reemplazo), se le descuenta.
+        // Si lo resuelve el propio proveedor (o un moderador), no se descuenta: tú lo apruebas o lo rechazas.
+        if (admin && t.proveedorUid && (resultado === 'arreglada' || resultado === 'reemplazo')) { registrarDescuentoReemplazo(t); msg += ' Se le descontó al proveedor el costo de la cuenta.'; }
         mostrarToast(msg);
-        if (resultado === 'reemplazo' && t.proveedorUid) registrarDescuentoReemplazo(t);
         if (t.clienteUid) avisarClienteTicket(t.clienteUid, 'Tu ticket fue resuelto', `Revisa la respuesta sobre ${t.cuenta} en "Mis reportes", dentro de Mis Cuentas.`);
         delete fotosTicketsCache[id]; delete fotosTicketsCache[id + '_resp'];
         cerrarResolverTicket();
@@ -15003,7 +15009,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-09m';
+    const VERSION_PAGINA = '2026-10-09o';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261009_serdealer', fecha: '2026-10-09', titulo: 'Ahora puedes pedir ser Dealer 👑', mensaje: 'En tu perfil ves cuánto te falta para **pedir ser Dealer**. Cuando cumples, toca **Pedir ser Dealer** y te avisamos en la campana. Los Dealers tienen **promos y regalos por volumen**.' },
       { id: 'act_20261009_registro', fecha: '2026-10-09', titulo: 'Registro más rápido ⚡', mensaje: 'Crear tu cuenta ahora es más rápido: solo correo, contraseña y WhatsApp, **sin códigos**.' },
@@ -16309,7 +16315,9 @@
     async function registrarDescuentoReemplazo(t) {
       if (!esAdminSesionActual() || !t || !t.proveedorUid) return;
       try {
-        let costo = Number(t.costo) || 0;
+        const ya = await db.collection('descuentos_proveedor').doc('tk_' + t.id).get();
+        if (ya.exists) return;   // ese ticket ya tiene su descuento: no se cobra dos veces
+        let costo = Number(t.costo) || Number(t.costoUnitario) || 0;
         if (!costo && t.loteId) { const l = (lotesProveedores || []).find(x => x.id === t.loteId); if (l) costo = Number(l.costoUnitario) || 0; }
         await db.collection('descuentos_proveedor').doc('tk_' + t.id).set({ proveedorUid: t.proveedorUid, proveedorNombre: t.proveedorNombre || '', ticketId: t.id, cuenta: t.cuenta || '', productoNombre: t.productoNombre || '', monto: costo, fecha: new Date().toISOString(), aplicado: false, pagoId: '', por: currentUser.email }, { merge: true });
       } catch (e) { console.warn('Descuento al proveedor:', e); }
@@ -19319,6 +19327,8 @@
 
     // ==================== NOVEDADES INTERNAS DEL PANEL (solo el equipo) ====================
     const ACTUALIZACIONES_INTERNAS = [
+      { fecha: '2026-10-09', titulo: '🧾 Descuento al proveedor', mensaje: 'El proveedor resuelve de dos formas: **cuenta arreglada** o **reemplazo**; en ambas no se le descuenta nada. Si no lo hace y lo resuelves **tú** (arreglada o reemplazo), se le descuenta el costo de la cuenta. Si solo cierras el ticket sin cambios, no se descuenta.', ir: 'tickets' },
+      { fecha: '2026-10-09', titulo: '✓ Revisar tickets resueltos por otros', mensaje: 'Los tickets que resuelve un moderador te aparecen con **✓ Aprobar** (no se descuenta nada) y **✗ Rechazar** (se reabre y se le descuenta al proveedor el costo de la cuenta, con aviso). Un ticket nunca se descuenta dos veces.', ir: 'tickets' },
       { fecha: '2026-10-09', titulo: '🛡 Garantía siempre desde la compra', mensaje: 'La garantía de cada cuenta cuenta **desde que el cliente la compra**, nunca desde que se subió al stock (se quitó esa opción). La fecha de subida solo se usa para la liquidación. Las compras ya hechas se corrigieron solas.', ir: '' },
       { fecha: '2026-10-09', titulo: '👁 Ves todas las promos en la tienda', mensaje: 'En cada tarjeta ves un recuadro con las promos vigentes y a quién aplican (**👑 Solo Dealers**, **🎁 Clientes**, **⚡ Todos**), y un aviso si un precio por cantidad parece mal escrito. **Para vender:** revisas en segundos que cada cliente vea la promo correcta.', ir: 'campanas' },
       { fecha: '2026-10-09', titulo: '🟢 Etiqueta "NUEVO" en los estados', mensaje: 'Encima del logo aparece **NUEVO** (o **2 NUEVOS**, **3 NUEVOS**…) cuando hay estados que ese cliente no ha visto, en celular y en PC. **Para vender:** cada estado nuevo se nota apenas entran a la tienda.', ir: 'marketing' },
@@ -20037,6 +20047,37 @@
         const links = `<p class="text-[10px] mt-1 flex gap-3 flex-wrap">${pr ? `<button type="button" onclick="irATabAdmin('dealers');setTimeout(()=>{dlVista='promos';pintarTabsDealers();pintarVistaDealers();},300)" class="underline text-amber-200">Editar promo Dealer/clientes</button>` : ''}${escalasDe(prod).length ? `<button type="button" onclick="irAPrecioPorCantidad('${prod.docId}')" class="underline text-emerald-200">Editar precio por cantidad</button>` : ''}</p>`;
         return `<div class="mb-2.5 px-3 py-2 rounded-xl border border-dashed border-gray-500/60 bg-black/25"><p class="text-[9px] font-black uppercase tracking-[0.14em] text-gray-400 mb-0.5"><i class="fa-solid fa-eye mr-1"></i>Promos vigentes · solo tú las ves aquí</p>${items.join('')}${links}</div>`;
       } catch (e) { return ''; }
+    }
+
+
+    // ==================== REVISIÓN DE TICKETS RESUELTOS POR OTROS ====================
+    // Aprobar: queda resuelto y NO se descuenta nada. Rechazar: se reabre y SÍ se le descuenta al proveedor el costo de la cuenta.
+    function resueltoPorOtro(t) { const quien = String(t.resueltoPor || '').trim().toLowerCase(); return t.estado === 'resuelto' && quien && !ADMIN_EMAILS.some(e => e.trim().toLowerCase() === quien); }
+    function htmlRevisionTicket(t) {
+      if (!esAdminSesionActual()) return '';
+      if (t.revisado === 'aprobado') return `<span class="px-2 py-1 rounded-lg text-[10px] font-bold bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 text-center">✓ Aprobado por ti</span>`;
+      if (t.revisado === 'rechazado' && t.estado !== 'resuelto') return `<span class="px-2 py-1 rounded-lg text-[10px] font-bold bg-red-500/15 text-red-300 border border-red-500/30 text-center">✗ Rechazado · descontado</span>`;
+      if (!resueltoPorOtro(t)) return '';
+      const id = escaparJsAttr(t.id);
+      return `<span class="text-[10px] text-amber-200 text-center leading-tight">Resolvió<br>${escaparHtml(String(t.resueltoPor).split('@')[0])}</span>
+        <button onclick="aprobarResolucionTicket('${id}')" class="px-2.5 py-1.5 rounded-lg text-[11px] font-black bg-emerald-500 hover:bg-emerald-400 text-black">✓ Aprobar</button>
+        <button onclick="rechazarResolucionTicket('${id}')" class="px-2.5 py-1.5 rounded-lg text-[11px] font-black bg-red-500/15 hover:bg-red-500/25 text-red-300 border border-red-500/40">✗ Rechazar</button>`;
+    }
+    async function aprobarResolucionTicket(id) {
+      const t = ticketsCuentas.find(x => x.id === id); if (!t || !esAdminSesionActual()) return;
+      try { await db.collection('tickets_cuentas').doc(id).update({ revisado: 'aprobado', revisadoPor: currentUser.email, revisadoEl: new Date().toISOString() }); mostrarToast('✓ Resolución aprobada: no se descuenta nada'); }
+      catch (e) { alert('No se pudo: ' + e.message); }
+    }
+    async function rechazarResolucionTicket(id) {
+      const t = ticketsCuentas.find(x => x.id === id); if (!t || !esAdminSesionActual()) return;
+      const costoTxt = t.proveedorUid ? ' y se le descuenta al proveedor el costo de esta cuenta' : '';
+      const motivo = await pedirTextoModal(`Rechazar la resolución${t.proveedorNombre ? ' de ' + t.proveedorNombre : ''}: el ticket se reabre${costoTxt}. ¿Motivo? (lo verá el proveedor)`, 'La cuenta sigue sin funcionar.');
+      if (motivo === null) return;
+      try {
+        await db.collection('tickets_cuentas').doc(id).update({ estado: 'abierto', revisado: 'rechazado', motivoRechazo: motivo, revisadoPor: currentUser.email, revisadoEl: new Date().toISOString(), resolucion: '', resueltoPor: '', resueltoEl: '' });
+        if (t.proveedorUid) { await registrarDescuentoReemplazo(t); try { await notificarUsuarioPanel(t.proveedorUid, 'anuncio', '✗ Rechazamos una resolución', `${t.cuenta || 'Una cuenta'}: ${motivo} Se descuenta su costo de lo que te debemos.`); } catch (x) { /* nada */ } }
+        mostrarToast(t.proveedorUid ? 'Rechazada: ticket reabierto y descuento registrado' : 'Rechazada: ticket reabierto');
+      } catch (e) { alert('No se pudo: ' + e.message); }
     }
 
     // ==================== NETFLIX EN LA TIENDA: SIN CONTRASEÑA ====================
