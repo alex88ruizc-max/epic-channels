@@ -2645,9 +2645,9 @@
             <input type="number" id="nuevoProdGarN" min="1" max="999" oninput="garantiaDesdeUI('nuevoProd')" placeholder="29" class="bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none">
             <select id="nuevoProdGarU" onchange="garantiaDesdeUI('nuevoProd')" class="bg-gray-800 border border-gray-700 rounded-xl px-2 py-2 text-xs text-white focus:outline-none"><option value="h">Horas</option><option value="d" selected>Días</option><option value="m">Meses</option><option value="y">Años</option></select>
           </div>
-          <select id="nuevoProdGarInicio" class="mt-2 w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none">
+          <select id="nuevoProdGarInicio" class="hidden mt-2 w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none">
             <option value="compra">Cuenta desde la compra (producto cerrado: links, correos, alquiladas)</option>
-            <option value="subida">Cuenta desde que se subió al stock (producto abierto)</option>
+            
           </select>
           <p id="nuevoProdGarTxt" class="text-[10px] text-emerald-300 mt-1"></p>
         </div>
@@ -2761,9 +2761,9 @@
             <input type="number" id="editProdGarN" min="1" max="999" oninput="garantiaDesdeUI('editProd')" placeholder="29" class="bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none">
             <select id="editProdGarU" onchange="garantiaDesdeUI('editProd')" class="bg-gray-800 border border-gray-700 rounded-xl px-2 py-2 text-xs text-white focus:outline-none"><option value="h">Horas</option><option value="d" selected>Días</option><option value="m">Meses</option><option value="y">Años</option></select>
           </div>
-          <select id="editProdGarInicio" class="mt-2 w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none">
+          <select id="editProdGarInicio" class="hidden mt-2 w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none">
             <option value="compra">Cuenta desde la compra (producto cerrado: links, correos, alquiladas)</option>
-            <option value="subida">Cuenta desde que se subió al stock (producto abierto)</option>
+            
           </select>
           <p id="editProdGarTxt" class="text-[10px] text-emerald-300 mt-1"></p>
         </div>
@@ -8206,7 +8206,7 @@
           stock: 0,
           activo: true,
           esVip: esVip,
-          tipoGarantia: tipoGarantia, garantiaInicio: (document.getElementById('nuevoProdGarInicio') || {}).value === 'subida' ? 'subida' : 'compra',
+          tipoGarantia: tipoGarantia, garantiaInicio: 'compra',
           ...encargoDesdeUI('nuevoProd'), ...tarjetaDesdeUI('nuevoProd'), ...duracionDesdeUI('nuevoProd'),
           imagenUrl: imagenNuevoProductoBase64Temporal || '',
           fechaCreacion: new Date().toISOString()
@@ -8935,7 +8935,7 @@
           if (stockBajo) conteoBajo++;
           const repetido = conteoNombres[nombreProductoNormalizado(p.nombre)] > 1;
 
-          let txtG = parseGarantia(p.tipoGarantia) ? textoGarantia(p.tipoGarantia, true) + (p.garantiaInicio === 'subida' ? ' (desde subida)' : '') : '24 Horas';
+          let txtG = parseGarantia(p.tipoGarantia) ? textoGarantia(p.tipoGarantia, true) : '24 Horas';
           if (p.tipoGarantia === 'ninguna') txtG = 'Sin garantía';
           else if (p.tipoGarantia === '') txtG = 'Sin definir';
 
@@ -9120,7 +9120,7 @@
           descripcion: desc,
           precio: precio,
           minCompra: minCompra,
-          tipoGarantia: tipoGarantia, garantiaInicio: (document.getElementById('editProdGarInicio') || {}).value === 'subida' ? 'subida' : 'compra',
+          tipoGarantia: tipoGarantia, garantiaInicio: 'compra',
           ...encargoDesdeUI('editProd'), ...tarjetaDesdeUI('editProd'), ...duracionDesdeUI('editProd')
         };
 
@@ -15003,7 +15003,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-09l';
+    const VERSION_PAGINA = '2026-10-09m';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261009_serdealer', fecha: '2026-10-09', titulo: 'Ahora puedes pedir ser Dealer 👑', mensaje: 'En tu perfil ves cuánto te falta para **pedir ser Dealer**. Cuando cumples, toca **Pedir ser Dealer** y te avisamos en la campana. Los Dealers tienen **promos y regalos por volumen**.' },
       { id: 'act_20261009_registro', fecha: '2026-10-09', titulo: 'Registro más rápido ⚡', mensaje: 'Crear tu cuenta ahora es más rápido: solo correo, contraseña y WhatsApp, **sin códigos**.' },
@@ -16266,11 +16266,9 @@
     }
     // En garantías por horas, un ticket resuelto reinicia el tiempo; en las demás sigue el mismo tiempo
     function garantiaReinicia(tipo) { const g = parseGarantia(tipo); return !!g && g.u === 'h'; }
-    function inicioGarantiaCompra(c) {
-      if (c && c.garantiaInicio) return c.garantiaInicio;
-      try { const prod = catalogoUnificado.find(p => p.docId === c.productoId || p.id === c.productoId); const gi = prod ? (prod.garantiaInicio || (snapshotInventario[prod.docId] || {}).garantiaInicio) : ''; if (gi) return gi; } catch (e) { /* nada */ }
-      return 'compra';
-    }
+    // La garantía SIEMPRE corre desde la compra. La fecha de subida solo sirve para la liquidación (días en stock).
+    function inicioGarantiaCompra(c) { return 'compra'; }
+
     // Desde cuándo corre la garantía de una cuenta: la compra, o la subida al stock si el producto es "abierto"
     function desdeGarantiaCuenta(c, cuenta) {
       let desde = new Date(c.fecha).getTime();
@@ -19321,6 +19319,7 @@
 
     // ==================== NOVEDADES INTERNAS DEL PANEL (solo el equipo) ====================
     const ACTUALIZACIONES_INTERNAS = [
+      { fecha: '2026-10-09', titulo: '🛡 Garantía siempre desde la compra', mensaje: 'La garantía de cada cuenta cuenta **desde que el cliente la compra**, nunca desde que se subió al stock (se quitó esa opción). La fecha de subida solo se usa para la liquidación. Las compras ya hechas se corrigieron solas.', ir: '' },
       { fecha: '2026-10-09', titulo: '👁 Ves todas las promos en la tienda', mensaje: 'En cada tarjeta ves un recuadro con las promos vigentes y a quién aplican (**👑 Solo Dealers**, **🎁 Clientes**, **⚡ Todos**), y un aviso si un precio por cantidad parece mal escrito. **Para vender:** revisas en segundos que cada cliente vea la promo correcta.', ir: 'campanas' },
       { fecha: '2026-10-09', titulo: '🟢 Etiqueta "NUEVO" en los estados', mensaje: 'Encima del logo aparece **NUEVO** (o **2 NUEVOS**, **3 NUEVOS**…) cuando hay estados que ese cliente no ha visto, en celular y en PC. **Para vender:** cada estado nuevo se nota apenas entran a la tienda.', ir: 'marketing' },
       { fecha: '2026-10-09', titulo: '👑 Solicitudes para ser Dealer', mensaje: 'Los clientes que cumplen tus requisitos (días como cliente y compras, que cambias en **Dealers → Solicitudes**) piden ser Dealer y tú apruebas o rechazas. Te avisa por Telegram. **Para vender:** cada cliente ve cuánto le falta, y eso lo motiva a comprar más.', ir: 'dealers' },
