@@ -1819,6 +1819,7 @@
 
       <!-- ==================== ADMIN: ASISTENTE DE AYUDA ==================== -->
       <div id="adminSecAsistente" class="hidden space-y-4 pb-28 sm:pb-0">
+        <div id="faqAdmin" class="p-4 rounded-2xl bg-gray-900 border border-emerald-500/30"><p class="text-[12px] text-gray-500"><i class="fa-solid fa-spinner fa-spin"></i></p></div>
         <div class="p-4 bg-gray-900 border border-gray-800 rounded-2xl">
           <div class="flex items-start justify-between gap-3">
             <div class="min-w-0">
@@ -4798,6 +4799,7 @@
       // Novedades siempre de primero
       const sinVer = (typeof novedadesSinVer === 'function') ? novedadesSinVer().length : 0;
       m.unshift({ t: sinVer ? `Novedades (${sinVer})` : 'Novedades', i: 'fa-bullhorn', fn: 'novedades' });
+      if ((faqPublicada || []).length) m.unshift({ t: 'Preguntas frecuentes', i: 'fa-book-open', fn: 'faq' });
       return m;
     }
 
@@ -4921,6 +4923,7 @@
         case 'persona_directo': asistenteTriagePersona = true; asistenteResponderTema('persona'); break;
         case 'ayuda_recarga': asistenteAyudaRecarga(); break;
         case 'reportar_pago': abrirReportePago(); break;
+        case 'faq': abrirFaq(); break;
         case 'mis_recargas': cerrarAsistente(); cambiarVista('mis-cuentas'); try { cambiarTabPerfil('recargas'); } catch (e) { /* nada */ } break;
         case 'mi_netflix': cerrarAsistente(); cambiarVista('mis-cuentas'); setTimeout(() => { const c = document.getElementById('perfilNetflixCaja'); if (c && !c.classList.contains('hidden')) c.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 300); break;
         case 'listar_reportes': asistenteListarReportes(); break;
@@ -7888,6 +7891,7 @@
       if (tab === 'ajustes') cargarDatosAjustesEnForm();
       if (tab === 'proveedores') { iniciarDescuentosAdmin(); renderizarAdminProveedores(); prepararAsignarCorreos(); prepararPedidosReseller(); }
       if (tab === 'asistente') cargarEditorAsistente();
+      if (tab === 'asistente') { try { cargarFaqAdmin(); } catch (e) { /* nada */ } }
       if (tab === 'tickets') { try { iniciarDescuentosAdmin(); } catch (e) { /* nada */ } }
       if (tab === 'tickets') { renderizarTickets(); limpiarFotosRespuestaVencidas(); }
       if (tab === 'promociones') { renderizarPromoProductos(); renderizarPromoActivas(); }
@@ -14152,6 +14156,7 @@
     // ==================== HISTORIAL DE RECARGAS DEL CLIENTE ====================
     let misRecargas = [], unsubMisRecargas = null, filtroMisRecargas = 'todas';
 
+    setTimeout(() => { try { cargarFaqPublicada(); } catch (e) { /* nada */ } }, 2500);
     function iniciarMisRecargas() {
       renderizarMisRecargas();
       if (unsubMisRecargas || !currentUser) return;
@@ -14954,8 +14959,9 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-09d';
+    const VERSION_PAGINA = '2026-10-09e';
     const ACTUALIZACIONES_PAGINA = [
+      { id: 'act_20261009_faq', fecha: '2026-10-09', titulo: 'Preguntas frecuentes 📖', mensaje: 'Resuelve tus dudas al instante: en **¿Necesitas ayuda?** y en tu perfil tienes las **preguntas frecuentes** de las secciones que usas, con buscador.' },
       { id: 'act_20261009_pago', fecha: '2026-10-09', titulo: '¿Pagaste y no ves tu saldo? 💸', mensaje: 'Ahora lo reportas en segundos desde **Mis recargas**, la ventana de recarga o **¿Necesitas ayuda?**: adjuntas tu comprobante y **primero buscamos tu pago solos**; si ya llegó, se acredita al instante. Si no, lo revisamos y te avisamos en la campana.' },
       { id: 'act_20261009_notif', fecha: '2026-10-09', titulo: 'Notificaciones con acceso directo 🔔', mensaje: 'Ahora tus notificaciones te llevan directo: toca un aviso de **nuevo stock** y se abre la compra de ese producto; toca una **renovación**, un **regalo** o una **respuesta** y llegas justo ahí. Menos pasos, compras más rápido.' },
       { id: 'act_20261008_cantidad', fecha: '2026-10-08', titulo: 'Pide sobre pedido 📦', mensaje: '¿Necesitas más de lo que hay? Haz tu pedido completo: **te entregamos ya lo disponible** y lo que falte **se libera solo en tu cuenta** apenas entre nuevo stock. Sin volver a pedir, sin esperar mensajes.' },
@@ -19261,6 +19267,7 @@
 
     // ==================== NOVEDADES INTERNAS DEL PANEL (solo el equipo) ====================
     const ACTUALIZACIONES_INTERNAS = [
+      { fecha: '2026-10-09', titulo: '📖 Preguntas frecuentes', mensaje: 'En Asistente de ayuda revisas, editas y publicas las preguntas frecuentes; cada cliente ve solo las de su perfil (crédito, alquiler, Dealer). Difunde su novedad **después de publicarlas**. **Para vender:** menos dudas y tickets sencillos, más tiempo para vender.', ir: 'asistente' },
       { fecha: '2026-10-09', titulo: '🖼 Imágenes que siempre caben', mensaje: 'Todas las imágenes de estado ponen el contenido en la zona que WhatsApp no tapa, y la novedad ajusta su tarjeta al texto. **Para vender:** tu precio y tu enlace siempre se ven completos.', ir: 'marketing' },
       { fecha: '2026-10-09', titulo: '💳 Recordatorio diario del crédito', mensaje: 'Cada mañana, el cliente con crédito pre-aprobado disponible recibe un aviso en su campana: que lo use para comprar cuentas y que se paga con su próxima recarga. **Para vender:** el crédito sin usar es una venta esperando.', ir: 'usuarios' },
       { fecha: '2026-10-09', titulo: '💸 Pagos reportados', mensaje: 'En Tickets aparecen los clientes que pagaron y no ven su saldo, con su comprobante y las **posibles coincidencias** con pagos sin identificar: un toque y queda asignado. Muchos se resuelven solos antes de llegarte. **Para vender:** un "ya pagué" resuelto rápido es un cliente que vuelve a comprar.', ir: 'tickets' },
@@ -19434,6 +19441,101 @@
         return o;
       } catch (e) { return c; }
     }
+
+
+    // ==================== PREGUNTAS FRECUENTES ====================
+    // Borrador privado (secretos/faq_borrador, solo el administrador) → al publicar se copia a configuracion/faq (lo leen los clientes).
+    const FAQ_PREDETERMINADAS = [{"id": "f01", "tema": "Compras y recargas", "perfil": "todos", "pregunta": "¿Cómo compro?", "respuesta": "Recarga tu saldo, elige el producto y la cantidad, y toca **Comprar**. Tus cuentas aparecen al instante en **Mis cuentas**."}, {"id": "f02", "tema": "Compras y recargas", "perfil": "todos", "pregunta": "¿Cómo recargo?", "respuesta": "Toca **Recargar saldo**, elige el monto y paga el **valor exacto** que te indicamos. Se acredita solo en unos minutos."}, {"id": "f03", "tema": "Compras y recargas", "perfil": "todos", "pregunta": "Pagué y no veo mi saldo", "respuesta": "En **Mis recargas** toca **Reportar pago** y adjunta tu comprobante. Primero buscamos tu pago automáticamente; si no aparece, lo revisamos y te avisamos en la campana."}, {"id": "f04", "tema": "Compras y recargas", "perfil": "todos", "pregunta": "¿Qué es \"Pide sobre pedido\"?", "respuesta": "Si necesitas más de lo que hay, haces tu pedido completo: **recibes ya lo disponible** y el resto **se libera solo en tu cuenta** cuando entra stock."}, {"id": "f05", "tema": "Compras y recargas", "perfil": "todos", "pregunta": "¿Qué es \"Avísame\"?", "respuesta": "Si un producto está agotado, toca **Avísame** y te llega una notificación cuando vuelva."}, {"id": "f06", "tema": "Garantía y reportes", "perfil": "todos", "pregunta": "¿Qué es la garantía?", "respuesta": "Es el tiempo en que respondemos si una cuenta falla. En cada compra ves cuánto le queda."}, {"id": "f07", "tema": "Garantía y reportes", "perfil": "todos", "pregunta": "Una cuenta no funciona", "respuesta": "En **Mis cuentas**, toca **Reportar** en la cuenta que falla y adjunta una foto del error. Ves la respuesta en **Mis reportes**."}, {"id": "f08", "tema": "Mi cuenta", "perfil": "todos", "pregunta": "¿Para qué son las notificaciones?", "respuesta": "Te avisan de stock nuevo, promociones, regalos y respuestas. **Al tocarlas te llevan directo** a donde tienes que ir."}, {"id": "f09", "tema": "Mi cuenta", "perfil": "todos", "pregunta": "¿Cómo cambio mis datos o mi contraseña?", "respuesta": "En tu perfil, en **Mis datos** y **Contraseña**."}, {"id": "f10", "tema": "Crédito", "perfil": "credito", "pregunta": "¿Qué es el crédito pre-aprobado?", "respuesta": "Un saldo extra que puedes usar **solo para comprar cuentas** en la tienda; no se retira ni se transfiere. Tu próxima recarga lo paga automáticamente."}, {"id": "f11", "tema": "Alquileres", "perfil": "alquiler", "pregunta": "¿Cómo renuevo mi cuenta de alquiler?", "respuesta": "En tu perfil, en **Por vencer**, toca **Renovar**. Sigues con la misma cuenta y te avisamos antes de que venza."}, {"id": "f12", "tema": "Dealer", "perfil": "dealer", "pregunta": "¿Qué es el nivel Dealer?", "respuesta": "Según las cuentas que compras en el mes subes de **Bronce** a **Plata** y a **Oro**; con más nivel, tus regalos por compra se multiplican. Se reinicia cada mes."}, {"id": "f13", "tema": "Dealer", "perfil": "dealer", "pregunta": "¿Cómo funcionan los regalos Dealer?", "respuesta": "En los productos con promo, al comprar la cantidad indicada recibes cuentas de regalo. **Las compras del mismo día se suman.**"}, {"id": "f14", "tema": "Dealer", "perfil": "dealer", "pregunta": "¿Qué es \"Mi negocio\"?", "respuesta": "Tu resumen privado: cuentas disponibles, entregadas este mes, por vencer y tu ganancia estimada (según los precios que anotas al asignar)."}, {"id": "f15", "tema": "Dealer", "perfil": "dealer", "pregunta": "¿Para qué sirve \"Asignar a un cliente\"?", "respuesta": "Para anotar a quién le entregaste cada cuenta y enviársela por WhatsApp con el mensaje listo."}];
+    const FAQ_PERFILES = { todos: 'Todos', credito: 'Con crédito', alquiler: 'Con alquiler', dealer: '👑 Dealer' };
+    var faqPublicada = null, faqBorrador = null, faqVerComo = 'todos';
+    async function cargarFaqPublicada() { try { const d = await db.collection('configuracion').doc('faq').get(); faqPublicada = d.exists && d.data().publicado && Array.isArray(d.data().items) ? d.data().items : []; } catch (e) { faqPublicada = []; } try { pintarAccesoFaqPerfil(); } catch (e) { /* nada */ } return faqPublicada; }
+    function perfilesDelUsuario() {
+      const p = ['todos'];
+      if ((Number(userCupo) || 0) > 0 || (Number(userDeuda) || 0) > 0) p.push('credito');
+      if ((typeof misAlquileres !== 'undefined' && misAlquileres.length) || (misComprasPerfilCache || []).some(c => c.tipoVenta === 'alquiler')) p.push('alquiler');
+      if (userTipoCuenta === 'revendedor') p.push('dealer');
+      return p;
+    }
+    function htmlListaFaq(items, perfiles, filtro) {
+      const q = String(filtro || '').toLowerCase().trim();
+      const L = items.filter(f => perfiles.includes(f.perfil || 'todos') && (!q || (f.pregunta + ' ' + f.respuesta).toLowerCase().includes(q)));
+      if (!L.length) return '<p class="text-[12px] text-gray-500 text-center py-6">No encontramos preguntas con esa búsqueda.</p>';
+      const temas = []; L.forEach(f => { if (!temas.includes(f.tema)) temas.push(f.tema); });
+      return temas.map(t => `<p class="text-[10px] font-black uppercase tracking-[0.14em] ${t === 'Dealer' ? 'text-amber-300' : 'text-gray-500'} mt-3 mb-1">${t === 'Dealer' ? '👑 ' : ''}${escaparHtml(t)}</p>` + L.filter(f => f.tema === t).map(f => `<details class="border-t border-gray-800 group"><summary class="py-2.5 flex items-center justify-between gap-2 cursor-pointer list-none"><span class="text-[13px] font-bold text-white">${escaparHtml(f.pregunta)}</span><i class="fa-solid fa-chevron-down text-[10px] text-gray-500 group-open:rotate-180 transition"></i></summary><p class="pb-3 text-[12px] text-gray-300 leading-relaxed">${asistenteFormatear(f.respuesta)}</p></details>`).join('')).join('');
+    }
+    async function abrirFaq() {
+      try { cerrarAsistente(); } catch (e) { /* nada */ }
+      let m = document.getElementById('modalFaq');
+      if (!m) { m = document.createElement('div'); m.id = 'modalFaq'; m.className = 'fixed inset-0 z-[96] hidden items-center justify-center p-4 bg-black/75 backdrop-blur-sm'; m.onclick = ev => { if (ev.target === m) cerrarFaq(); }; document.body.appendChild(m); }
+      m.innerHTML = `<div class="w-full max-w-md rounded-3xl bg-gray-900 border border-emerald-500/30 p-5 max-h-[88vh] flex flex-col">
+        <div class="flex items-center justify-between"><p class="text-base font-black text-white">📖 Preguntas frecuentes</p><button type="button" onclick="cerrarFaq()" aria-label="Cerrar" class="w-8 h-8 rounded-full bg-gray-800 text-gray-300"><i class="fa-solid fa-xmark"></i></button></div>
+        <input id="faqBuscar" oninput="filtrarFaq()" placeholder="Buscar una pregunta…" class="mt-3 w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none">
+        <div id="faqLista" class="mt-1 overflow-y-auto flex-1 min-h-0"><p class="text-[12px] text-gray-500 text-center py-6"><i class="fa-solid fa-spinner fa-spin"></i></p></div>
+      </div>`;
+      m.classList.remove('hidden'); m.style.display = 'flex';
+      if (faqPublicada === null) await cargarFaqPublicada();
+      filtrarFaq();
+    }
+    function filtrarFaq() { const l = document.getElementById('faqLista'); if (l) l.innerHTML = htmlListaFaq(faqPublicada || [], perfilesDelUsuario(), (document.getElementById('faqBuscar') || {}).value); }
+    function cerrarFaq() { const m = document.getElementById('modalFaq'); if (m) { m.classList.add('hidden'); m.style.display = 'none'; } }
+    function pintarAccesoFaqPerfil() {
+      const sec = document.getElementById('perfilSecCuentas'); if (!sec) return;
+      let f = document.getElementById('perfilAccesoFaq');
+      const hay = (faqPublicada || []).length > 0;
+      if (!f && hay) { f = document.createElement('button'); f.type = 'button'; f.id = 'perfilAccesoFaq'; f.onclick = abrirFaq; f.className = 'w-full mb-3 p-3 rounded-2xl bg-gray-900 border border-gray-800 hover:border-emerald-500/40 flex items-center gap-3 text-left'; f.innerHTML = '<span class="text-lg">📖</span><span class="flex-1 min-w-0"><span class="block text-xs font-black text-white">Preguntas frecuentes</span><span class="block text-[11px] text-gray-400">Todo sobre tu cuenta, en un lugar</span></span><i class="fa-solid fa-chevron-right text-[11px] text-gray-500"></i>'; sec.insertBefore(f, sec.firstChild); }
+      if (f) f.classList.toggle('hidden', !hay || esStaffSesion());
+    }
+    // ---- Panel: revisar, editar y publicar ----
+    async function cargarFaqAdmin() {
+      if (!esAdminSesionActual()) return;
+      try { const d = await db.collection('secretos').doc('faq_borrador').get(); faqBorrador = d.exists && Array.isArray(d.data().items) ? d.data().items : JSON.parse(JSON.stringify(FAQ_PREDETERMINADAS)); } catch (e) { faqBorrador = JSON.parse(JSON.stringify(FAQ_PREDETERMINADAS)); }
+      await cargarFaqPublicada(); pintarFaqAdmin();
+    }
+    function faqHayCambios() { return JSON.stringify(faqBorrador || []) !== JSON.stringify(faqPublicada || []); }
+    function pintarFaqAdmin() {
+      const c = document.getElementById('faqAdmin'); if (!c || !faqBorrador) return;
+      const pub = (faqPublicada || []).length > 0, cambios = faqHayCambios();
+      const estado = !pub ? '<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/15 text-amber-300 border border-amber-500/30">Borrador · sin publicar</span>' : (cambios ? '<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-sky-500/15 text-sky-300 border border-sky-500/30">Publicado · con cambios sin publicar</span>' : '<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">Publicado ✓</span>');
+      const perfilesVista = faqVerComo === 'todos' ? ['todos'] : ['todos', faqVerComo];
+      c.innerHTML = `<div class="flex items-center justify-between gap-2"><p class="text-sm font-black text-white">📖 Preguntas frecuentes</p>${estado}</div>
+        <p class="text-[11px] text-gray-400 mt-1">Revísalas antes de publicar: tus clientes no ven nada hasta que toques <b class="text-white">Publicar</b>. Cada cliente ve solo las de su perfil.</p>
+        <div class="flex flex-wrap items-center gap-1.5 mt-2"><span class="text-[11px] text-gray-400">Ver como:</span>${Object.keys(FAQ_PERFILES).map(k => `<button type="button" onclick="faqVerComo='${k}';pintarFaqAdmin()" class="px-2.5 py-1 rounded-full text-[11px] font-bold border ${faqVerComo === k ? 'bg-emerald-500 text-black border-emerald-400' : 'bg-gray-800 text-gray-300 border-gray-700'}">${k === 'todos' ? 'Cliente' : FAQ_PERFILES[k]}</button>`).join('')}</div>
+        <div class="mt-2 space-y-1.5">${faqBorrador.filter(f => perfilesVista.includes(f.perfil || 'todos')).map(f => `<div class="p-2.5 rounded-xl bg-gray-800/60 border border-gray-700/60"><div class="flex items-start justify-between gap-2"><div class="min-w-0"><p class="text-[12px] font-bold text-white">${escaparHtml(f.pregunta)}</p><p class="text-[10px] text-gray-500">${escaparHtml(f.tema)} · ${FAQ_PERFILES[f.perfil || 'todos']}</p></div><div class="shrink-0 flex gap-1"><button type="button" onclick="editarFaq('${f.id}')" class="px-2 py-1 rounded-lg bg-gray-700 text-gray-200 text-[10px] font-bold"><i class="fa-solid fa-pen"></i></button><button type="button" onclick="borrarFaq('${f.id}')" class="px-2 py-1 rounded-lg bg-red-500/15 text-red-300 text-[10px] font-bold"><i class="fa-solid fa-trash"></i></button></div></div><p class="text-[11px] text-gray-300 mt-1 leading-relaxed">${asistenteFormatear(f.respuesta)}</p></div>`).join('')}</div>
+        <div class="grid grid-cols-2 gap-2 mt-3"><button type="button" onclick="editarFaq('')" class="py-2.5 rounded-xl bg-gray-800 hover:bg-gray-700 border border-gray-700 text-gray-100 font-bold text-xs"><i class="fa-solid fa-plus mr-1"></i>Agregar pregunta</button><button type="button" onclick="publicarFaq()" ${pub && !cambios ? 'disabled' : ''} class="py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 disabled:opacity-40 text-black font-black text-xs"><i class="fa-solid fa-globe mr-1"></i>${pub ? 'Publicar cambios' : 'Publicar'}</button></div>
+        ${pub ? '<button type="button" onclick="despublicarFaq()" class="mt-2 w-full py-2 text-[11px] text-gray-400 underline">Ocultar a los clientes</button>' : ''}`;
+    }
+    async function guardarBorradorFaq() { try { await db.collection('secretos').doc('faq_borrador').set({ items: faqBorrador, actualizadoEl: new Date().toISOString() }); } catch (e) { alert('No se pudo guardar: ' + e.message); } pintarFaqAdmin(); }
+    function editarFaq(id) {
+      const f = (faqBorrador || []).find(x => x.id === id) || { id: '', tema: 'Compras y recargas', perfil: 'todos', pregunta: '', respuesta: '' };
+      let m = document.getElementById('modalEditarFaq');
+      if (!m) { m = document.createElement('div'); m.id = 'modalEditarFaq'; m.className = 'fixed inset-0 z-[97] hidden items-center justify-center p-4 bg-black/75 backdrop-blur-sm'; document.body.appendChild(m); }
+      const inp = 'mt-1 w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none';
+      const temas = Array.from(new Set((faqBorrador || []).map(x => x.tema).concat(['Compras y recargas', 'Garantía y reportes', 'Mi cuenta', 'Crédito', 'Alquileres', 'Dealer'])));
+      m.innerHTML = `<div class="w-full max-w-sm rounded-3xl bg-gray-900 border border-gray-700 p-5 space-y-3 max-h-[88vh] overflow-y-auto">
+        <p class="text-base font-black text-white">${id ? 'Editar pregunta' : 'Nueva pregunta'}</p>
+        <label class="block text-[11px] text-gray-400">Pregunta<input id="efPregunta" maxlength="120" value="${escaparHtml(f.pregunta)}" class="${inp}"></label>
+        <label class="block text-[11px] text-gray-400">Respuesta (lo que escribas entre **así** sale resaltado)<textarea id="efRespuesta" rows="5" maxlength="600" class="${inp}">${escaparHtml(f.respuesta)}</textarea></label>
+        <div class="grid grid-cols-2 gap-2"><label class="text-[11px] text-gray-400">Tema<select id="efTema" class="${inp}">${temas.map(t => `<option ${t === f.tema ? 'selected' : ''}>${escaparHtml(t)}</option>`).join('')}</select></label>
+        <label class="text-[11px] text-gray-400">La ven<select id="efPerfil" class="${inp}">${Object.keys(FAQ_PERFILES).map(k => `<option value="${k}" ${k === (f.perfil || 'todos') ? 'selected' : ''}>${FAQ_PERFILES[k]}</option>`).join('')}</select></label></div>
+        <div class="grid grid-cols-2 gap-2"><button type="button" onclick="document.getElementById('modalEditarFaq').classList.add('hidden');document.getElementById('modalEditarFaq').style.display='none'" class="py-2.5 rounded-xl bg-gray-800 text-gray-200 font-bold text-xs">Cancelar</button><button type="button" onclick="guardarFaqEditada('${f.id}')" class="py-2.5 rounded-xl bg-emerald-500 text-black font-black text-xs">Guardar</button></div>
+      </div>`;
+      m.classList.remove('hidden'); m.style.display = 'flex';
+    }
+    function guardarFaqEditada(id) {
+      const v = k => String((document.getElementById(k) || {}).value || '').trim();
+      const nueva = { id: id || 'f' + Date.now().toString(36), tema: v('efTema') || 'Mi cuenta', perfil: v('efPerfil') || 'todos', pregunta: v('efPregunta'), respuesta: v('efRespuesta') };
+      if (!nueva.pregunta || !nueva.respuesta) { alert('Escribe la pregunta y la respuesta.'); return; }
+      const i = faqBorrador.findIndex(x => x.id === id); if (i >= 0) faqBorrador[i] = nueva; else faqBorrador.push(nueva);
+      const m = document.getElementById('modalEditarFaq'); if (m) { m.classList.add('hidden'); m.style.display = 'none'; }
+      guardarBorradorFaq();
+    }
+    async function borrarFaq(id) { const f = faqBorrador.find(x => x.id === id); if (!f || !await confirmarModal(`¿Borrar "${f.pregunta}" del borrador?`, { textoAceptar: 'Sí, borrar' })) return; faqBorrador = faqBorrador.filter(x => x.id !== id); guardarBorradorFaq(); }
+    async function publicarFaq() {
+      if (!await confirmarModal(`¿Publicar las ${faqBorrador.length} preguntas frecuentes?\n\nTus clientes las verán en "¿Necesitas ayuda?" y en su perfil, cada uno solo las de su perfil.`, { textoAceptar: 'Sí, publicar' })) return;
+      try { await db.collection('configuracion').doc('faq').set({ publicado: true, items: faqBorrador, actualizadoEl: new Date().toISOString() }); await guardarBorradorFaq(); faqPublicada = JSON.parse(JSON.stringify(faqBorrador)); pintarFaqAdmin(); mostrarToast('📖 Preguntas frecuentes publicadas'); }
+      catch (e) { alert('No se pudo publicar: ' + e.message); }
+    }
+    async function despublicarFaq() { if (!await confirmarModal('¿Ocultar las preguntas frecuentes a tus clientes?', { textoAceptar: 'Sí, ocultar' })) return; try { await db.collection('configuracion').doc('faq').set({ publicado: false, items: [] }); faqPublicada = []; pintarFaqAdmin(); mostrarToast('Preguntas frecuentes ocultas'); } catch (e) { alert(e.message); } }
 
     // ==================== NETFLIX EN LA TIENDA: SIN CONTRASEÑA ====================
     function esNombreNetflix(t) { return /netflix/i.test(String(t || '')); }
