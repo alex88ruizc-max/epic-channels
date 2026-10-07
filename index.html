@@ -15020,7 +15020,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-09t';
+    const VERSION_PAGINA = '2026-10-09u';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261009_serdealer', fecha: '2026-10-09', titulo: 'Ahora puedes pedir ser Dealer 👑', mensaje: 'En tu perfil ves cuánto te falta para **pedir ser Dealer**. Cuando cumples, toca **Pedir ser Dealer** y te avisamos en la campana. Los Dealers tienen **promos y regalos por volumen**.' },
       { id: 'act_20261009_registro', fecha: '2026-10-09', titulo: 'Registro más rápido ⚡', mensaje: 'Crear tu cuenta ahora es más rápido: solo correo, contraseña y WhatsApp, **sin códigos**.' },
@@ -19338,6 +19338,7 @@
 
     // ==================== NOVEDADES INTERNAS DEL PANEL (solo el equipo) ====================
     const ACTUALIZACIONES_INTERNAS = [
+      { fecha: '2026-10-09', titulo: '🔧 Aviso de servidor desactualizado', mensaje: 'Si la página le pide al servidor algo que todavía no conoce, ya no sale "Acción no reconocida": te dice que el servidor está desactualizado y qué versión publicar. **Ajustes → Probar conexión** también te avisa si el servidor está atrasado.', ir: 'ajustes' },
       { fecha: '2026-10-09', titulo: '🤝 Resolver en nombre del proveedor', mensaje: 'Si un proveedor tiene un imprevisto, tú o tus supervisores resuelven su ticket marcando **Resolver en nombre de…**: el cliente recibe su solución y al proveedor **no se le descuenta nada**. Queda marcado y aprobado, y el proveedor lo ve en su lista.', ir: 'tickets' },
       { fecha: '2026-10-09', titulo: '🖼 Emojis y banderas en las imágenes', mensaje: 'Las imágenes de Marketing ya no rompen los emojis ni las banderas de la etiqueta del producto (antes salían como rombos con "?"). Y los accesos de las notificaciones se eligen por el título, así un anuncio no muestra un botón equivocado.', ir: 'marketing' },
       { fecha: '2026-10-09', titulo: '🔔 Accesos directos del equipo', mensaje: 'Las solicitudes de correos ahora dicen **Pide correos** y su enlace **Asignar correos** abre Proveedores con ese proveedor elegido. Los avisos de **cliente nuevo** y **crédito aceptado** tienen **Ver cliente**, que abre Usuarios con ese cliente buscado.', ir: '' },
@@ -20994,6 +20995,7 @@
       return { cuentas: legado, stock: legado.length || stockPublico };
     }
 
+    const VERSION_SERVIDOR_NECESARIA = '2026-10-09g';   // la versión del servidor que necesita esta página
     async function llamarBackend(accion, datos) {
       if (modoPruebaCliente) { const rs = backendSimulado(accion, datos || {}); if (rs) return rs; }
       const url = obtenerBackendUrl();
@@ -21040,7 +21042,15 @@
         throw er;
       }
       try {
-        return await resp.json();
+        const j = await resp.json();
+        // El servidor publicado es más viejo que la página: decirlo claro (en vez de "Acción no reconocida")
+        if (j && j.ok === false && /acci[oó]n no reconocida/i.test(String(j.error || ''))) {
+          const staff = (function () { try { return esStaffSesion(); } catch (x) { return false; } })();
+          j.error = staff
+            ? `Tu servidor está desactualizado: no conoce "${accion}". Publica la versión ${VERSION_SERVIDOR_NECESARIA} en Apps Script (Implementar → Gestionar implementaciones → lápiz → Nueva versión → Implementar).`
+            : 'Esta función se está actualizando. Intenta de nuevo en unos minutos.';
+        }
+        return j;
       } catch (e) {
         const er = new Error('Respuesta inválida del servidor. Revisa que la URL termine en /exec.');
         er.codigoRed = true;
@@ -21152,7 +21162,9 @@
         if (r && r.ok) {
           capsServidor = Array.isArray(r.capacidades) ? r.capacidades.map(String) : []; capsServidorEn = Date.now();
           const faltan = Object.keys(FUNCIONES_SERVIDOR).filter(f => capsServidor.indexOf(f) === -1);
-          const estado = !faltan.length ? '\nServidor: actualizado' + (r.version ? ' (' + r.version + ')' : '')
+          const viejo = !r.version || String(r.version) < VERSION_SERVIDOR_NECESARIA;
+          const estado = viejo ? `\n⚠️ Servidor DESACTUALIZADO: tienes ${r.version || 'una versión antigua'} y esta página necesita ${VERSION_SERVIDOR_NECESARIA}. Publica el archivo nuevo en Apps Script (Implementar → Gestionar implementaciones → lápiz → Nueva versión → Implementar).`
+            : !faltan.length ? '\nServidor: actualizado' + (r.version ? ' (' + r.version + ')' : '')
             : '\nServidor: versión anterior. Todavía no tiene: ' + faltan.map(f => FUNCIONES_SERVIDOR[f]).join('; ') + '.';
           alert('Conexión correcta con el servidor seguro.\nUsuario verificado: ' + (r.email || '') + (r.firestore ? '\nAcceso a la base de datos: OK' : '\nAcceso a la base de datos: FALLÓ') + (r.telegram ? '\nTelegram: configurado' : '\nTelegram: falta el token o el chat en Ajustes') + estado);
         }
