@@ -8514,6 +8514,7 @@
               ${esComboT ? '' : htmlGarantiaTarjeta(prod)}${esComboT ? '' : htmlDuracionTarjeta(prod)}
               ${(!promoD && promoParaMi(prod.docId)) ? (() => { const pc = promoParaMi(prod.docId); return `<div class="mb-2.5 px-3 py-2 rounded-xl border border-pink-400/40 bg-gradient-to-r from-pink-500/15 to-violet-500/10"><p class="text-[11px] font-black text-pink-200">🎁 Promo: compra ${pc.compra || 10}, lleva ${pc.regalo || 1} gratis</p><p class="text-[10px] text-pink-100/70 mt-0.5">${pc.vence ? 'Válida ' + textoVencePromo(pc) : 'Por tiempo limitado'} · las compras del mismo día se suman.</p></div>`; })() : ''}
               ${promoD ? `<div class="mb-2.5 px-3 py-2 rounded-xl border border-yellow-400/40" style="background:linear-gradient(135deg,rgba(247,215,116,.12),rgba(184,134,11,.06))"><p class="text-[11px] font-black dealer-texto">🎁 Promo de hoy: compra ${promoD.compra || 10}, lleva ${(promoD.regalo || 1) * ((multiplicadoresDealer()[nivelDealerDe(progresoDealer.mes || 0).id]) || 1)}</p><p class="text-[10px] text-amber-100/70 mt-0.5 leading-snug">${promoD.vence ? 'Válida ' + textoVencePromo(promoD) : 'Válido mientras veas este mensaje'} · ¡aprovecha, pocas unidades! <span class="text-amber-200/90">Solo tú lo ves porque eres un partner especial 👑</span></p></div>` : ''}
+              ${esStaffSesion() && !modoPruebaCliente ? htmlPromosVistaEquipo(prod) : ''}
               ${esComboT ? htmlIncluyeCombo(prod) : ''}
               
               <div class="mb-4">
@@ -15002,7 +15003,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-09j';
+    const VERSION_PAGINA = '2026-10-09l';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261009_serdealer', fecha: '2026-10-09', titulo: 'Ahora puedes pedir ser Dealer 👑', mensaje: 'En tu perfil ves cuánto te falta para **pedir ser Dealer**. Cuando cumples, toca **Pedir ser Dealer** y te avisamos en la campana. Los Dealers tienen **promos y regalos por volumen**.' },
       { id: 'act_20261009_registro', fecha: '2026-10-09', titulo: 'Registro más rápido ⚡', mensaje: 'Crear tu cuenta ahora es más rápido: solo correo, contraseña y WhatsApp, **sin códigos**.' },
@@ -18483,7 +18484,7 @@
       const id = (document.getElementById('escProducto') || {}).value, p = catalogoUnificado.find(x => x.docId === id), c = document.getElementById('escFilas'); if (!p || !c) return;
       const sn = snapshotInventario[id] || {}, guard = Array.isArray(sn.escalas) ? sn.escalas : [], lista = Number(p.precioLista || p.precio) || 0;
       const filas = [0, 1, 2].map(k => guard[k] || { desde: '', precio: '' });
-      c.innerHTML = `<p class="text-[11px] text-gray-300">Precio normal: <b class="text-white">${formatoCOP(lista)}</b> c/u · compra mínima ${p.minCompra || 1}</p>` + filas.map((r, k) => `<div class="grid grid-cols-[auto_1fr_auto_1fr] items-center gap-2 text-[11px] text-gray-400"><span>Desde</span><input type="number" min="2" id="escDesde${k}" value="${escaparHtml(r.desde)}" placeholder="${[5, 10, 20][k]}" oninput="previaEscalas()" class="bg-gray-800 border border-gray-700 rounded-lg px-2 py-1.5 text-xs text-white focus:outline-none"><span>a</span><input type="number" min="0" step="100" id="escPrecio${k}" value="${escaparHtml(r.precio)}" placeholder="$ c/u" oninput="previaEscalas()" class="bg-gray-800 border border-gray-700 rounded-lg px-2 py-1.5 text-xs text-white focus:outline-none"></div>`).join('') + '<p id="escPrevia" class="text-[11px] text-emerald-200"></p>';
+      c.innerHTML = `<p class="text-[11px] text-gray-300">Precio normal: <b class="text-white">${formatoCOP(lista)}</b> c/u · compra mínima ${p.minCompra || 1}</p>` + filas.map((r, k) => `<div class="grid grid-cols-[auto_minmax(0,1fr)_auto_minmax(0,1.4fr)] items-center gap-2 text-[11px] text-gray-400"><span>Desde</span><input type="number" min="2" id="escDesde${k}" value="${escaparHtml(r.desde)}" placeholder="${[5, 10, 20][k]}" oninput="previaEscalas()" class="w-full min-w-0 bg-gray-800 border border-gray-700 rounded-lg px-2 py-1.5 text-xs text-white focus:outline-none"><span>a</span><input type="number" min="0" step="100" id="escPrecio${k}" value="${escaparHtml(r.precio)}" placeholder="$ c/u" oninput="previaEscalas()" class="w-full min-w-0 bg-gray-800 border border-gray-700 rounded-lg px-2 py-1.5 text-xs text-white focus:outline-none"></div>`).join('') + '<p id="escPrevia" class="text-[11px] text-emerald-200"></p>';
       previaEscalas();
     }
     function leerEscalasEditor() { return [0, 1, 2].map(k => ({ desde: parseInt((document.getElementById('escDesde' + k) || {}).value, 10) || 0, precio: Math.round(Number((document.getElementById('escPrecio' + k) || {}).value) || 0) })).filter(e => e.desde > 1 && e.precio > 0).sort((a, b) => a.desde - b.desde); }
@@ -18497,6 +18498,10 @@
       const id = (document.getElementById('escProducto') || {}).value, p = catalogoUnificado.find(x => x.docId === id); if (!p) return;
       const lista = Number(p.precioLista || p.precio) || 0, esc = leerEscalasEditor();
       if (esc.some(e => e.precio >= lista)) { alert('Cada escalón debe tener un precio menor al normal (' + formatoCOP(lista) + ').'); return; }
+      const ord = esc.slice().sort((a, b) => a.desde - b.desde);
+      for (let k = 1; k < ord.length; k++) if (ord[k].precio > ord[k - 1].precio) { alert(`Revisa los escalones: a más cantidad el precio debe bajar.\n\n${ord[k - 1].desde}+ cuesta ${formatoCOP(ord[k - 1].precio)} y ${ord[k].desde}+ cuesta ${formatoCOP(ord[k].precio)}.`); return; }
+      const raro = ord.find(e => e.precio < lista * 0.5);
+      if (raro && !await confirmarModal(`⚠️ ¿Seguro? ${raro.desde}+ a ${formatoCOP(raro.precio)} es menos de la mitad del precio normal (${formatoCOP(lista)}).\n\nSi quisiste escribir ${formatoCOP(raro.precio * 10)}, corrígelo antes de guardar.`, { textoAceptar: 'Sí, es correcto', tipo: 'pregunta' })) return;
       try { await db.collection('inventario').doc(id).set({ escalas: esc }, { merge: true }); mostrarToast(esc.length ? '✓ Precios por cantidad guardados para ' + p.nombre : 'Precios por cantidad quitados de ' + p.nombre); }
       catch (e) { alert('No se pudo guardar: ' + e.message); }
     }
@@ -19316,6 +19321,7 @@
 
     // ==================== NOVEDADES INTERNAS DEL PANEL (solo el equipo) ====================
     const ACTUALIZACIONES_INTERNAS = [
+      { fecha: '2026-10-09', titulo: '👁 Ves todas las promos en la tienda', mensaje: 'En cada tarjeta ves un recuadro con las promos vigentes y a quién aplican (**👑 Solo Dealers**, **🎁 Clientes**, **⚡ Todos**), y un aviso si un precio por cantidad parece mal escrito. **Para vender:** revisas en segundos que cada cliente vea la promo correcta.', ir: 'campanas' },
       { fecha: '2026-10-09', titulo: '🟢 Etiqueta "NUEVO" en los estados', mensaje: 'Encima del logo aparece **NUEVO** (o **2 NUEVOS**, **3 NUEVOS**…) cuando hay estados que ese cliente no ha visto, en celular y en PC. **Para vender:** cada estado nuevo se nota apenas entran a la tienda.', ir: 'marketing' },
       { fecha: '2026-10-09', titulo: '👑 Solicitudes para ser Dealer', mensaje: 'Los clientes que cumplen tus requisitos (días como cliente y compras, que cambias en **Dealers → Solicitudes**) piden ser Dealer y tú apruebas o rechazas. Te avisa por Telegram. **Para vender:** cada cliente ve cuánto le falta, y eso lo motiva a comprar más.', ir: 'dealers' },
       { fecha: '2026-10-09', titulo: '⚡ Registro sin código', mensaje: 'Se quitó el código de 4 letras y el correo de verificación. Los correos temporales siguen bloqueados y hay una protección invisible contra robots. **Para vender:** menos pasos, más registros.', ir: '' },
@@ -19996,6 +20002,42 @@
     function registroPareceRobot() {
       const t = document.getElementById('authSitioWeb');
       return (t && String(t.value || '').trim() !== '') || (authAbiertoEl && Date.now() - authAbiertoEl < 2500);   // campo trampa lleno o formulario enviado en menos de 2,5 s
+    }
+
+
+    // ==================== PROMOS VIGENTES VISTAS POR EL EQUIPO ====================
+    // El administrador y los moderadores ven en la tarjeta todas las promos activas del producto, con a quién aplica cada una.
+    // Lleva directo al editor de "Precio por cantidad" con el producto ya elegido
+    function irAPrecioPorCantidad(id) {
+      cambiarVista('admin'); irATabAdmin('campanas');
+      let n = 0; const t = setInterval(() => {
+        const sel = document.getElementById('escProducto');
+        if ((sel && Array.from(sel.options).some(o => o.value === id)) || ++n > 25) {
+          clearInterval(t); if (!sel) return;
+          sel.value = id; pintarEscalasEditor();
+          const caja = sel.closest('.rounded-2xl') || sel; caja.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          caja.classList.add('ring-2', 'ring-amber-400'); setTimeout(() => caja.classList.remove('ring-2', 'ring-amber-400'), 2500);
+        }
+      }, 150);
+    }
+    function htmlPromosVistaEquipo(prod) {
+      try {
+        const pr = ((cfgDealer && cfgDealer.promos) || {})[prod.docId]; const items = [];
+        if (pr && pr.activo !== false) {
+          window.__hayPromoPerfil = true;
+          const regaloNom = pr.regaloProductoId && pr.regaloProductoId !== prod.docId ? ' ' + nombreProd(pr.regaloProductoId) : '';
+          const vence = pr.vence ? ' · ' + textoVencePromo(pr.vence) : '';
+          if (aplicaPromo(pr, 'dealer')) { const mu = multiplicadoresDealer() || {}; items.push(`<p class="text-[11px] text-amber-100"><b class="dealer-texto">👑 Solo Dealers:</b> compra ${pr.compra || 10}, lleva ${pr.regalo || 1}${regaloNom} gratis${(Number(mu.plata) || 1) > 1 || (Number(mu.oro) || 1) > 1 ? ` <span class="text-amber-100/60">(Plata ×${mu.plata || 1}, Oro ×${mu.oro || 1})</span>` : ''}${vence}</p>`); }
+          if (aplicaPromo(pr, 'cliente')) items.push(`<p class="text-[11px] text-emerald-100"><b class="text-emerald-300">🎁 Clientes:</b> compra ${pr.compra || 10}, lleva ${pr.regalo || 1}${regaloNom} gratis${vence}</p>`);
+        }
+        const sn = snapshotInventario[prod.docId] || {};
+        if (Number(sn.promoPct) > 0 && (!sn.promoHasta || Date.parse(sn.promoHasta) > Date.now())) items.push(`<p class="text-[11px] text-rose-100"><b class="text-rose-300">⚡ Todos:</b> -${sn.promoPct} %${sn.promoHasta ? ' hasta las ' + new Date(sn.promoHasta).toLocaleTimeString('es-CO', { hour: 'numeric', minute: '2-digit' }) : ''}</p>`);
+        const esc = escalasDe(prod), base = Number(prod.precioLista || prod.precio) || 0, rarosE = esc.filter(e => base && e.precio < base * 0.5);
+        if (rarosE.length) items.push(`<p class="text-[11px] text-red-200"><b>⚠️ Revisa:</b> ${rarosE.map(e => e.desde + '+ a ' + formatoCOP(e.precio)).join(', ')} es menos de la mitad del precio normal. ¿Error al escribir? <button type="button" onclick="irAPrecioPorCantidad('${prod.docId}')" class="underline font-bold">Corregir</button></p>`);
+        if (!items.length) return '';
+        const links = `<p class="text-[10px] mt-1 flex gap-3 flex-wrap">${pr ? `<button type="button" onclick="irATabAdmin('dealers');setTimeout(()=>{dlVista='promos';pintarTabsDealers();pintarVistaDealers();},300)" class="underline text-amber-200">Editar promo Dealer/clientes</button>` : ''}${escalasDe(prod).length ? `<button type="button" onclick="irAPrecioPorCantidad('${prod.docId}')" class="underline text-emerald-200">Editar precio por cantidad</button>` : ''}</p>`;
+        return `<div class="mb-2.5 px-3 py-2 rounded-xl border border-dashed border-gray-500/60 bg-black/25"><p class="text-[9px] font-black uppercase tracking-[0.14em] text-gray-400 mb-0.5"><i class="fa-solid fa-eye mr-1"></i>Promos vigentes · solo tú las ves aquí</p>${items.join('')}${links}</div>`;
+      } catch (e) { return ''; }
     }
 
     // ==================== NETFLIX EN LA TIENDA: SIN CONTRASEÑA ====================
