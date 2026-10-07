@@ -1684,6 +1684,13 @@
           <p class="text-sm font-black text-white"><i class="fa-solid fa-image text-fuchsia-300 mr-1"></i> Imágenes para estados y publicaciones</p>
           <div class="flex flex-wrap gap-1.5" id="mkTiposImagen"></div>
           <select id="mkProducto" onchange="dibujarMarketing()" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none"></select>
+          <div id="mkNovedadEditor" class="hidden space-y-2">
+            <select id="mkNovSel" onchange="cargarNovedadMk(this.value)" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none" aria-label="Novedad"></select>
+            <div class="grid grid-cols-[70px_1fr] gap-2"><label class="text-[10px] text-gray-400">Emoji<input id="mkNovEmoji" oninput="mkNov.emoji=this.value;dibujarMarketing()" class="mt-1 w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none text-center text-base"></label><label class="text-[10px] text-gray-400">Título<input id="mkNovTitulo" oninput="mkNov.titulo=this.value;dibujarMarketing()" class="mt-1 w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"></label></div>
+            <label class="block text-[10px] text-gray-400">Mensaje (lo que escribas entre **así** sale resaltado)<textarea id="mkNovMensaje" rows="4" oninput="mkNov.mensaje=this.value;dibujarMarketing()" class="mt-1 w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"></textarea></label>
+            <div class="flex items-center gap-2 flex-wrap"><span class="text-[10px] text-gray-400">Color de la tarjeta:</span><div id="mkNovColores" class="flex gap-1.5"></div></div>
+            <p class="text-[10px] text-gray-500">Estos cambios son solo para la imagen: no modifican la novedad que reciben tus clientes.</p>
+          </div>
           <div class="grid grid-cols-2 gap-2">
             <select id="mkFormato" onchange="dibujarMarketing()" class="bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"><option value="estado">Estado / Historia (9:16)</option><option value="post">Publicación (cuadrada)</option><option value="banner">Banner horizontal (Facebook)</option></select>
             <select id="mkEstilo" onchange="dibujarMarketing()" class="bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"><option value="marca">Color de la marca</option><option value="oscuro">Oscuro elegante</option><option value="dorado">Dorado premium</option></select>
@@ -1745,6 +1752,10 @@
             <div id="resultadoVersion" class="hidden mt-2"></div>
           </div>
           <div id="listaActualizaciones" class="divide-y divide-gray-800"></div>
+        </div>
+        <div class="bg-gray-900 border border-amber-500/30 rounded-2xl overflow-hidden">
+          <div class="px-4 py-3 border-b border-gray-800"><h4 class="text-sm font-black text-white flex items-center gap-2"><i class="fa-solid fa-toolbox text-amber-300"></i> Novedades internas del panel</h4><p class="text-[11px] text-gray-400 mt-0.5">Solo para ti y tu equipo: herramientas nuevas del panel y cómo usarlas para vender más. No se envían a los clientes.</p></div>
+          <div id="listaNovedadesInternas" class="divide-y divide-gray-800"></div>
         </div>
         <div class="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden">
           <div class="px-4 py-3 border-b border-gray-800 flex items-center gap-2"><i class="fa-solid fa-clock-rotate-left text-gray-400"></i><h4 class="text-sm font-black text-white">Tus novedades</h4><span id="novTotal" class="ml-auto text-[11px] text-gray-400"></span></div>
@@ -14921,7 +14932,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-08y';
+    const VERSION_PAGINA = '2026-10-08z';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261008_cantidad', fecha: '2026-10-08', titulo: 'Pide en cantidad, aunque no haya todo 📦', mensaje: 'Si necesitas más cuentas de las que hay, ahora puedes pedirlas igual: **recibes ya lo disponible** y el resto **te llega solo** apenas entre stock. Lo pendiente lo puedes cancelar cuando quieras y se te devuelve.' },
       { id: 'act_20261008_precios', fecha: '2026-10-08', titulo: 'Precios por cantidad y packs 💰', mensaje: 'En varios productos, **entre más llevas, menos pagas por cada cuenta**. Mira la fila **"Por cantidad"** en la tarjeta y los **packs** con precio especial.' },
@@ -14954,6 +14965,7 @@
     function actualizacionDifundida(a) { return (novedadesClientes || []).some(n => n.plantillaId === a.id && n.difundida); }
 
     function renderizarActualizacionesPagina() {
+      try { renderizarNovedadesInternas(); } catch (e) { /* nada */ }
       const cont = document.getElementById('listaActualizaciones');
       if (!cont) return;
       const v = document.getElementById('txtVersionPagina'); if (v) v.textContent = 'Versión de esta página: ' + VERSION_PAGINA;
@@ -14968,6 +14980,7 @@
           <div class="flex flex-wrap gap-1.5 mt-2.5">
             ${b('bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 border border-emerald-500/40', `copiarActualizacion('${a.id}')`, 'fa-brands fa-whatsapp', 'Copiar')}
             ${b('bg-sky-500 hover:bg-sky-400 text-black', `difundirActualizacion('${a.id}')`, 'fa-solid fa-bullhorn', dif ? 'Difundir otra vez' : 'Difundir')}
+            ${b('bg-violet-500/20 hover:bg-violet-500/30 text-violet-200 border border-violet-400/40', `abrirNovedadEnMarketing('${a.id}')`, 'fa-solid fa-image', 'Imagen')}
           </div>
         </div>`;
       }).join('') + (ACTUALIZACIONES_PAGINA.length > 1 ? `<div class="px-4 py-3 flex flex-wrap gap-2">${b('bg-gray-800 hover:bg-gray-700 text-gray-100 border border-gray-700', 'copiarTodasActualizaciones()', 'fa-solid fa-copy', 'Copiar todas en un mensaje')}${pend ? b('bg-sky-500/20 hover:bg-sky-500/30 text-sky-200 border border-sky-500/40', 'difundirActualizacionesPendientes()', 'fa-solid fa-bullhorn', 'Difundir las ' + pend + ' nuevas') : ''}</div>` : '');
@@ -17023,9 +17036,10 @@
     function dibujarMarketing() {
       const o = opcionesMk(), prod = catalogoUnificado.find(p => p.docId === o.id); const img = document.getElementById('mkVista');
       if (!img || (!prod && mkTipoImagen === 'producto')) return;
+      if (mkTipoImagen === 'novedad') { img.src = lienzoNovedadMk(o.fmt === 'banner' ? 'post' : o.fmt).toDataURL('image/png'); return; }
       img.src = lienzoActualMk(prod, o).toDataURL('image/png');
     }
-    function nombreArchivoMk(prod) { return String(prod.nombre || 'producto').toLowerCase().replace(/[^a-z0-9]+/g, '-').slice(0, 40) + '.png'; }
+    function nombreArchivoMk(prod) { if (mkTipoImagen === 'novedad') return 'novedad-' + String(mkNov.titulo || 'epic').toLowerCase().replace(/[^a-z0-9]+/g, '-').slice(0, 30) + '.png'; return String((prod && prod.nombre) || 'producto').toLowerCase().replace(/[^a-z0-9]+/g, '-').slice(0, 40) + '.png'; }
     function descargarMarketing() {
       const o = opcionesMk(), prod = catalogoUnificado.find(p => p.docId === o.id); if (!prod && mkTipoImagen === 'producto') return;
       const a = document.createElement('a'); a.href = lienzoActualMk(prod, o).toDataURL('image/png'); a.download = nombreArchivoMk(prod); document.body.appendChild(a); a.click(); a.remove();
@@ -17036,7 +17050,7 @@
       try {
         const blob = await new Promise(r => c.toBlob(r, 'image/png'));
         const file = new File([blob], nombreArchivoMk(prod), { type: 'image/png' });
-        if (navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share({ files: [file], text: textoProductoMk(prod) }); return; }
+        if (navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share({ files: [file], text: mkTipoImagen === 'novedad' ? `${mkNov.titulo}\n👉 ${enlaceMk()}` : textoProductoMk(prod) }); return; }
       } catch (e) { /* si no se puede compartir, se descarga */ }
       descargarMarketing(); mostrarToast('Tu celular no permite compartir directo: la imagen se descargó.');
     }
@@ -17476,8 +17490,11 @@
     }
     function pintarTiposImagen() {
       const c = document.getElementById('mkTiposImagen'); if (!c) return;
-      c.innerHTML = [['producto', '🖼 Un producto'], ['lista', '📋 Lista de precios'], ['promos', '🔥 Promos de hoy']].map(([k, t]) => `<button type="button" onclick="mkTipoImagen='${k}';pintarTiposImagen();pintarDisenosMk();dibujarMarketing()" class="px-3 py-1.5 rounded-full text-[11px] font-bold border ${mkTipoImagen === k ? 'bg-fuchsia-500 text-white border-fuchsia-400' : 'bg-gray-800 text-gray-300 border-gray-700'}">${t}</button>`).join('');
+      c.innerHTML = [['producto', '🖼 Un producto'], ['lista', '📋 Lista de precios'], ['promos', '🔥 Promos de hoy'], ['novedad', '📣 Novedad']].map(([k, t]) => `<button type="button" onclick="mkTipoImagen='${k}';pintarTiposImagen();pintarDisenosMk();dibujarMarketing()" class="px-3 py-1.5 rounded-full text-[11px] font-bold border ${mkTipoImagen === k ? 'bg-fuchsia-500 text-white border-fuchsia-400' : 'bg-gray-800 text-gray-300 border-gray-700'}">${t}</button>`).join('');
       const sel = document.getElementById('mkProducto'); if (sel) sel.classList.toggle('hidden', mkTipoImagen !== 'producto');
+      const ed = document.getElementById('mkNovedadEditor'); if (ed) ed.classList.toggle('hidden', mkTipoImagen !== 'novedad');
+      const ds = document.getElementById('mkDisenos'); if (ds) ds.classList.toggle('hidden', mkTipoImagen === 'novedad');
+      if (mkTipoImagen === 'novedad') prepararEditorNovedadMk();
     }
     // Imagen con varios productos (lista de precios o promos del día)
     function lienzoLista(tipo, formato, estilo, frase) {
@@ -17841,6 +17858,7 @@
     // La imagen actual según lo elegido (diseño, formato, tipo)
     function lienzoActualMk(prod, o) {
       o = o || opcionesMk();
+      if (mkTipoImagen === 'novedad') return lienzoNovedadMk(o.fmt === 'banner' ? 'post' : o.fmt);
       if (mkTipoImagen !== 'producto') return lienzoLista(mkTipoImagen, o.fmt === 'banner' ? 'post' : o.fmt, o.est, o.frase);
       if (mkDiseno === 'clasico') { const c = lienzoSeguro(prod, o.fmt === 'banner' ? 'post' : o.fmt, o.est, o.frase); const cx = c.getContext('2d'); dibujarSticker(cx, textoStickerMk(prod), c.width - 230, o.fmt === 'post' || o.fmt === 'banner' ? 90 : 150); dibujarQrMk(cx, c.width - 190, c.height - (o.fmt === 'estado' ? 470 : 330), 170, false); return c; }
       // En formato Estado se centra el contenido entre arriba y el botón de abajo
@@ -19138,6 +19156,98 @@
       const cont = document.getElementById('listaRecargasAuto');
       if (cont && L.length > recAutoMostrar) cont.insertAdjacentHTML('beforeend', `<button type="button" onclick="recAutoMostrar+=15;pintarListaRecargasAuto()" class="w-full py-2.5 text-[11px] font-bold text-emerald-300 hover:bg-gray-800/60">Ver más (${L.length - recAutoMostrar} más)</button>`);
       if (cont && q && !L.length) cont.innerHTML = '<p class="px-4 py-6 text-center text-gray-500 text-sm">No hay recargas automáticas que coincidan en los últimos 60 días.</p>';
+    }
+
+
+    // ==================== NOVEDAD COMO IMAGEN (Marketing → 📣 Novedad) ====================
+    const COLORES_NOV = { turquesa: ['#2dd4bf', '#0d4a45', '#5eead4'], verde: ['#34d399', '#064e3b', '#6ee7b7'], dorado: ['#f5c542', '#4a3606', '#fcd34d'], violeta: ['#a78bfa', '#2e1065', '#c4b5fd'], rosa: ['#fb7185', '#4c0519', '#fda4af'] };
+    var mkNov = { id: '', emoji: '📣', titulo: '', mensaje: '', color: 'turquesa', fecha: '' };
+    function separarEmojiTitulo(t) { const m = String(t || '').match(/^(.*?)\s*([\p{Extended_Pictographic}\uFE0F\u200D]+)\s*$/u); return m ? { titulo: m[1].trim(), emoji: m[2] } : { titulo: String(t || '').trim(), emoji: '📣' }; }
+    function cargarNovedadMk(id) {
+      const a = ACTUALIZACIONES_PAGINA.find(x => x.id === id) || ACTUALIZACIONES_PAGINA[0]; if (!a) return;
+      const t = separarEmojiTitulo(a.titulo);
+      mkNov = Object.assign(mkNov, { id: a.id, emoji: t.emoji, titulo: t.titulo, mensaje: a.mensaje, fecha: a.fecha || '' });
+      const set = (i, v) => { const e = document.getElementById(i); if (e) e.value = v; };
+      set('mkNovSel', a.id); set('mkNovEmoji', mkNov.emoji); set('mkNovTitulo', mkNov.titulo); set('mkNovMensaje', mkNov.mensaje);
+      dibujarMarketing();
+    }
+    function prepararEditorNovedadMk() {
+      const sel = document.getElementById('mkNovSel'); if (sel && !sel.options.length) sel.innerHTML = ACTUALIZACIONES_PAGINA.map(a => `<option value="${escaparHtml(a.id)}">${escaparHtml(a.titulo)}</option>`).join('');
+      const c = document.getElementById('mkNovColores'); if (c) c.innerHTML = Object.keys(COLORES_NOV).map(k => `<button type="button" onclick="mkNov.color='${k}';prepararEditorNovedadMk();dibujarMarketing()" aria-label="${k}" class="w-7 h-7 rounded-full border-2 ${mkNov.color === k ? 'border-white' : 'border-transparent'}" style="background:${COLORES_NOV[k][0]}"></button>`).join('');
+      if (!mkNov.id) cargarNovedadMk(ACTUALIZACIONES_PAGINA[0] && ACTUALIZACIONES_PAGINA[0].id);
+    }
+    function abrirNovedadEnMarketing(id) {
+      cambiarTabAdmin('marketing');
+      setTimeout(() => { try { mkTipoImagen = 'novedad'; pintarTiposImagen(); cargarNovedadMk(id); const v = document.getElementById('mkVista'); if (v) v.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (e) { console.warn(e); } }, 350);
+    }
+    // Texto con **resaltados**, envuelto en líneas que caben en el ancho
+    function lineasConResaltado(x, texto, ancho) {
+      const partes = []; String(texto || '').split(/(\*\*.+?\*\*)/g).forEach(seg => { if (!seg) return; const b = /^\*\*.+\*\*$/.test(seg); (b ? seg.slice(2, -2) : seg).split(/(\s+)/).forEach(w => { if (w) partes.push({ w, b }); }); });
+      const lineas = []; let ac = [], an = 0;
+      partes.forEach(p => { const fw = p.b ? '800' : '500'; x.font = x.font.replace(/^\d{3}/, fw); const w = x.measureText(p.w).width; if (an + w > ancho && ac.length && p.w.trim()) { lineas.push(ac); ac = []; an = 0; if (!p.w.trim()) return; } if (!ac.length && !p.w.trim()) return; ac.push({ w: p.w, b: p.b, ancho: w }); an += w; });
+      if (ac.length) lineas.push(ac);
+      return lineas.map(l => { while (l.length && !l[l.length - 1].w.trim()) l.pop(); return l; });
+    }
+    function lienzoNovedadMk(fmt) {
+      const W = 1080, H = fmt === 'post' ? 1080 : 1920, c = document.createElement('canvas'); c.width = W; c.height = H; const x = c.getContext('2d');
+      const [borde, fondo, resalte] = COLORES_NOV[mkNov.color] || COLORES_NOV.turquesa, F = 'system-ui, -apple-system, "Segoe UI", Roboto, sans-serif';
+      x.fillStyle = '#05080f'; x.fillRect(0, 0, W, H);
+      const rg = x.createRadialGradient(W / 2, H * 0.35, 20, W / 2, H * 0.35, W * 0.9); rg.addColorStop(0, hexARgba(borde, 0.18)); rg.addColorStop(1, 'rgba(0,0,0,0)'); x.fillStyle = rg; x.fillRect(0, 0, W, H);
+      // logo y marca
+      let y = fmt === 'post' ? 60 : 110;
+      x.textAlign = 'center';
+      if (mkLogoImg && mkLogoListo) { const r = 62; x.save(); x.beginPath(); x.arc(W / 2, y + r, r, 0, Math.PI * 2); x.clip(); x.drawImage(mkLogoImg, W / 2 - r, y, r * 2, r * 2); x.restore(); x.strokeStyle = '#f5c542'; x.lineWidth = 6; x.beginPath(); x.arc(W / 2, y + r, r, 0, Math.PI * 2); x.stroke(); y += r * 2 + 34; }
+      x.fillStyle = 'rgba(255,255,255,.7)'; x.font = `800 30px ${F}`; x.fillText(nombreTienda().toUpperCase().split('').join(' '), W / 2, y + 20); y += 60;
+      // tarjeta
+      const mx = 70, cy = y + 10, ch = H - cy - (fmt === 'post' ? 50 : 120), cw = W - mx * 2;
+      x.save(); x.shadowColor = hexARgba(borde, 0.45); x.shadowBlur = 70; textoRedondeado(x, mx, cy, cw, ch, 56); const gf = x.createLinearGradient(mx, cy, mx + cw, cy + ch); gf.addColorStop(0, fondo); gf.addColorStop(0.6, '#0b1a1c'); gf.addColorStop(1, '#080d14'); x.fillStyle = gf; x.fill(); x.restore();
+      textoRedondeado(x, mx, cy, cw, ch, 56); x.lineWidth = 5; x.strokeStyle = hexARgba(borde, 0.85); x.stroke();
+      x.fillStyle = borde; textoRedondeado(x, mx + 60, cy, cw - 120, 12, 6); x.fill();
+      // cabecera de la tarjeta
+      x.textAlign = 'left'; x.fillStyle = resalte; x.font = `900 30px ${F}`; x.fillText('✨  N O V E D A D', mx + 60, cy + 90);
+      x.textAlign = 'right'; x.fillStyle = 'rgba(255,255,255,.55)'; x.font = `600 28px ${F}`; const f = String(mkNov.fecha || '').split('-'); x.fillText(f.length === 3 ? `${f[2]}/${f[1]}/${f[0]}` : '', mx + cw - 60, cy + 90);
+      // emoji, título, separador
+      x.textAlign = 'center'; let yy = cy + (fmt === 'post' ? 210 : 290);
+      x.font = `${fmt === 'post' ? 120 : 170}px ${F}`; x.fillText(mkNov.emoji || '📣', W / 2, yy); yy += fmt === 'post' ? 90 : 130;
+      x.fillStyle = '#ffffff'; let tp = fmt === 'post' ? 58 : 72; x.font = `900 ${tp}px ${F}`;
+      const tl = []; let lin = '';
+      String(mkNov.titulo || '').split(/\s+/).filter(Boolean).forEach(w => { const t = lin ? lin + ' ' + w : w; if (x.measureText(t).width > cw - 140 && lin) { tl.push(lin); lin = w; } else lin = t; });
+      if (lin) tl.push(lin);
+      tl.forEach(l => { x.fillText(l, W / 2, yy); yy += tp * 1.15; });
+      yy += 10; x.fillStyle = 'rgba(255,255,255,.14)'; x.fillRect(mx + 80, yy, cw - 160, 3); yy += 70;
+      // mensaje (ajusta el tamaño para que quepa siempre)
+      const limite = cy + ch - 140; let fs = fmt === 'post' ? 40 : 50, lineas;
+      for (; fs >= 30; fs -= 2) { x.font = `500 ${fs}px ${F}`; lineas = lineasConResaltado(x, mkNov.mensaje, cw - 140); if (yy + lineas.length * fs * 1.5 <= limite) break; }
+      if (fs < 30) { fs = 30; x.font = `500 ${fs}px ${F}`; lineas = lineasConResaltado(x, mkNov.mensaje, cw - 140); }
+      const caben = Math.max(1, Math.floor((limite - yy) / (fs * 1.5)));
+      if (lineas.length > caben) { lineas = lineas.slice(0, caben); const ult = lineas[caben - 1]; ult.push({ w: '…', b: false }); }   // si no cabe, se corta prolijo
+      lineas.forEach(l => {
+        const total = l.reduce((t, p) => { x.font = `${p.b ? 800 : 500} ${fs}px ${F}`; return t + x.measureText(p.w).width; }, 0);
+        let xx = W / 2 - total / 2; x.textAlign = 'left';
+        l.forEach(p => { x.font = `${p.b ? 800 : 500} ${fs}px ${F}`; x.fillStyle = p.b ? resalte : 'rgba(255,255,255,.86)'; x.fillText(p.w, xx, yy); xx += x.measureText(p.w).width; });
+        yy += fs * 1.5;
+      });
+      // dominio
+      x.textAlign = 'center'; x.fillStyle = resalte; x.font = `800 38px ${F}`; x.fillText(enlaceMk(), W / 2, cy + ch - 70);
+      return c;
+    }
+
+    // ==================== NOVEDADES INTERNAS DEL PANEL (solo el equipo) ====================
+    const ACTUALIZACIONES_INTERNAS = [
+      { fecha: '2026-10-08', titulo: '🔍 Auditar saldo y parche de seguridad', mensaje: 'En Editar cliente, **Auditar** reconstruye el saldo de cualquier cliente y te dice si cuadra; si falta dinero lo devuelves con un toque. Además, ningún saldo se puede borrar por accidente. **Para vender:** un cliente que confía en su saldo recarga más y más seguido.', ir: 'usuarios' },
+      { fecha: '2026-10-08', titulo: '⚡ Recargas automáticas con buscador', mensaje: 'En Métodos de Pago, la lista de recargas automáticas va ordenada, con 60 días de historial y buscador por monto o correo. **Para vender:** resuelves al instante cualquier "ya pagué y no me llegó", sin perder la venta.', ir: 'pagos' },
+      { fecha: '2026-10-08', titulo: '📣 Plan diario por Telegram', mensaje: 'Cada mañana te llega qué publicar, a qué hora y con el mensaje listo. **Para vender:** publicar todos los días a tu hora pico mantiene tu tienda en la mente de tus clientes.', ir: 'campanas' },
+      { fecha: '2026-10-08', titulo: '🚀 Campañas', mensaje: 'Venta relámpago, precio por cantidad, packs, recarga bonificada, reactivación con cupón, liquidación de cuentas viejas y "casi compraron". **Para vender:** usa la venta relámpago a tu hora pico y la reactivación cada semana.', ir: 'campanas' },
+      { fecha: '2026-10-08', titulo: '🔔 Avisos de renovación', mensaje: 'El cliente recibe en su campana un aviso antes de que venza su alquiler, y tú tienes el botón **Avisar** para escribirle por WhatsApp. **Para vender:** cada renovación es una venta que no tienes que salir a buscar.', ir: 'netflix' },
+      { fecha: '2026-10-08', titulo: '📊 Actividad de la página', mensaje: 'Horas pico, días fuertes, de dónde llegan y quiénes compran. **Para vender:** publica una hora antes de tu hora pico y empuja los productos de los días fuertes.', ir: 'actividad' },
+      { fecha: '2026-10-08', titulo: '🎭 Simulador con perfiles', mensaje: 'Prueba la tienda como cliente común, normal o Dealer (Bronce, Plata, Oro), con saldo, crédito, cupón o VIP, sin tocar nada real. **Para vender:** revisa que cada tipo de cliente vea sus promos antes de anunciarlas.', ir: 'ajustes' },
+      { fecha: '2026-10-08', titulo: '🎁 Regalos a clientes', mensaje: 'Botón **Regalo** en cada cliente: le das una cuenta con garantía y le llega una ventana especial. **Para vender:** regala una cuenta a tus mejores clientes después de una compra grande; vuelven más.', ir: 'usuarios' },
+      { fecha: '2026-10-08', titulo: '✏️ Editar desde la tienda', mensaje: 'En cada tarjeta de la tienda tienes el lápiz para editar el producto al instante, y el botón **Configurar**. **Para vender:** ajusta precios y promos mientras ves la tienda como la ve el cliente.', ir: 'productos' },
+      { fecha: '2026-10-08', titulo: '🖼 Marketing renovado', mensaje: 'Mensajes más profesionales y sin VIP, 11 diseños para estados, imágenes de novedades y botones para WhatsApp y WA Business. **Para vender:** comparte la imagen de cada novedad en tu estado el día que la anuncias.', ir: 'marketing' }
+    ];
+    function renderizarNovedadesInternas() {
+      const c = document.getElementById('listaNovedadesInternas'); if (!c) return;
+      c.innerHTML = ACTUALIZACIONES_INTERNAS.map(a => `<div class="px-4 py-3"><div class="flex items-start justify-between gap-2"><p class="text-sm font-black text-white">${escaparHtml(a.titulo)}</p><span class="shrink-0 text-[10px] text-gray-500">${escaparHtml(a.fecha.split('-').reverse().join('/'))}</span></div><p class="text-xs text-gray-300 mt-1 leading-relaxed">${asistenteFormatear(a.mensaje)}</p>${a.ir ? `<button type="button" onclick="irATabAdmin('${a.ir}')" class="mt-2 px-2.5 py-1.5 rounded-lg text-[11px] font-bold bg-amber-400/15 hover:bg-amber-400/25 text-amber-200 border border-amber-400/40"><i class="fa-solid fa-arrow-right mr-1"></i>Ir a la sección</button>` : ''}</div>`).join('');
     }
 
     // ==================== NETFLIX EN LA TIENDA: SIN CONTRASEÑA ====================
