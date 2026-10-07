@@ -9540,8 +9540,17 @@
       const docId = document.getElementById('selectStockProducto').value;
       if (!docId) { alert("No tienes productos seleccionables."); return; }
 
-      const lineas = document.getElementById('txtStockLineas').value.split('\n').map(l => l.trim()).filter(l => l);
+      let lineas = document.getElementById('txtStockLineas').value.split('\n').map(l => l.trim()).filter(l => l);
       if (lineas.length === 0) return;
+      // Repetidas: dentro de la carga, ya en stock o ya vendidas
+      try {
+        const rev = await revisarRepetidasCuentas(lineas);
+        if (rev.repetidas.length) {
+          if (!rev.unicas.length) { alert(`Todas las cuentas están repetidas o ya existen:\n\n${textoRepetidas(rev.repetidas)}`); return; }
+          if (!await confirmarModal(`⚠ ${rev.repetidas.length} de ${lineas.length} ${rev.repetidas.length === 1 ? 'cuenta está repetida' : 'cuentas están repetidas'} y no se cargarán:\n\n${textoRepetidas(rev.repetidas)}\n\n¿Cargar solo las ${rev.unicas.length} nuevas?`, { textoAceptar: 'Sí, cargar las nuevas' })) return;
+          lineas = rev.unicas;
+        }
+      } catch (e) { console.warn('Revisión de repetidas:', e); }
 
       const costoUnitario = leerCostoUnitarioStock();
       const claveAccesoLote = ((document.getElementById('txtStockClaveAcceso') || {}).value || '').trim();
@@ -10451,7 +10460,7 @@
         } else if (l.estado === 'rechazado') {
           detalle = `<p class="text-[11px] text-red-300 mt-1">${escaparHtml(l.motivoRechazo || 'Sin motivo indicado')}</p>`;
         }
-        return `<div class="p-3 rounded-xl bg-gray-800/50 border border-gray-700/60"><div class="flex items-center justify-between gap-2"><p class="text-xs font-bold text-white truncate">${escaparHtml(l.productoNombre || nombreProductoProv(l.productoId))} <span class="font-normal text-gray-400">· ${l.cantidad} ${l.cantidad === 1 ? 'cuenta' : 'cuentas'}</span></p><span class="shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-full border ${c[1]}">${c[0]}</span></div><p class="text-[10px] text-gray-500">${fecha}</p>${detalle}</div>`;
+        return `<div class="p-3 rounded-xl bg-gray-800/50 border border-gray-700/60"><div class="flex items-center justify-between gap-2"><p class="text-xs font-bold text-white truncate">${escaparHtml(l.productoNombre || nombreProductoProv(l.productoId))} <span class="font-normal text-gray-400">· ${l.cantidad} ${l.cantidad === 1 ? 'cuenta' : 'cuentas'}${l.cantidadEnviada > l.cantidad ? ` de ${l.cantidadEnviada}` : ''}</span></p><span class="shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-full border ${c[1]}">${c[0]}</span></div>${(Array.isArray(l.repetidas) && l.repetidas.length) ? `<details class="mt-1"><summary class="cursor-pointer text-[10px] font-bold text-amber-300">⚠ ${l.repetidas.length} ${l.repetidas.length === 1 ? 'cuenta repetida no se cargó ni se paga' : 'cuentas repetidas no se cargaron ni se pagan'} · ver</summary><div class="mt-1 space-y-0.5">${l.repetidas.slice(0, 50).map(r => `<p class="text-[10px] text-gray-400 break-all">${escaparHtml(r.email || r.linea || '')} <span class="text-gray-500">· ${escaparHtml(r.motivo || '')}</span></p>`).join('')}</div></details>` : ''}<p class="text-[10px] text-gray-500">${fecha}</p>${detalle}</div>`;
       }).join('');
     }
 
@@ -10518,7 +10527,7 @@
       if (contP) {
         contP.innerHTML = !pend.length ? '<p class="px-4 py-6 text-center text-gray-500 text-sm">No hay lotes por aprobar.</p>' : pend.map(l => {
           const fecha = new Date(l.creadoEl).toLocaleString('es-CO', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
-          return `<div class="p-4 flex items-center justify-between gap-3"><div class="min-w-0"><p class="text-white font-bold text-sm truncate">${escaparHtml(l.productoNombre || l.productoId)} <span class="font-normal text-gray-400">· ${l.cantidad} ${l.cantidad === 1 ? 'cuenta' : 'cuentas'}</span></p><p class="text-[11px] text-gray-400">${escaparHtml(l.proveedorNombre || '')} · ${escaparHtml(l.proveedorEmail || '')} · ${fecha}</p></div><button onclick="abrirAprobarLote('${escaparJsAttr(l.id)}')" class="shrink-0 px-3 py-1.5 bg-amber-500 hover:bg-amber-400 text-black font-bold rounded-lg text-xs">Revisar</button></div>`;
+          return `<div class="p-4 flex items-center justify-between gap-3"><div class="min-w-0"><p class="text-white font-bold text-sm truncate">${escaparHtml(l.productoNombre || l.productoId)} <span class="font-normal text-gray-400">· ${l.cantidad} ${l.cantidad === 1 ? 'cuenta' : 'cuentas'}${l.cantidadEnviada > l.cantidad ? ` de ${l.cantidadEnviada}` : ''}</span></p><p class="text-[11px] text-gray-400">${escaparHtml(l.proveedorNombre || '')} · ${escaparHtml(l.proveedorEmail || '')} · ${fecha}</p></div><button onclick="abrirAprobarLote('${escaparJsAttr(l.id)}')" class="shrink-0 px-3 py-1.5 bg-amber-500 hover:bg-amber-400 text-black font-bold rounded-lg text-xs">Revisar</button></div>`;
         }).join('');
       }
 
@@ -10618,12 +10627,22 @@
         precio = Math.round(Number(precioTxt));
         if (!isFinite(precio) || precio < 0) { alert('El precio de venta no es válido.'); return; }
       }
-      const monto = costo * l.cantidad;
-      if (!await confirmarModal(`¿Aprobar ${l.cantidad} ${l.cantidad === 1 ? 'cuenta' : 'cuentas'} de ${l.productoNombre || l.productoId}? Se cargan al stock y se le deben ${formatoCOP(monto)} a ${l.proveedorNombre || l.proveedorEmail}.`, { textoAceptar: 'Sí, aprobar' })) return;
+      // Repetidas: dentro del lote, ya en stock o ya vendidas. No entran ni se pagan.
+      const revision = await revisarRepetidasCuentas((l.cuentas || []).map(String));
+      const nOk = revision.unicas.length, nRep = revision.repetidas.length, enviadas = (l.cuentas || []).length;
+      const monto = costo * nOk;
+      if (!nOk) {
+        if (await confirmarModal(`Las ${enviadas} cuentas de este lote están repetidas o ya existen:\n\n${textoRepetidas(revision.repetidas)}\n\nNo hay nada nuevo para cargar ni pagar. ¿Rechazar el lote?`, { textoAceptar: 'Sí, rechazar' })) {
+          try { await db.collection('stock_pendiente').doc(l.id).update({ estado: 'rechazado', motivoRechazo: 'Todas las cuentas estaban repetidas o ya existían', repetidas: revision.repetidas.slice(0, 300), revisadoPor: currentUser.email, revisadoEl: new Date().toISOString() }); cerrarAprobarLote(); } catch (e) { alert(e.message); }
+        }
+        return;
+      }
+      if (!await confirmarModal(`¿Aprobar ${nOk} ${nOk === 1 ? 'cuenta' : 'cuentas'} de ${l.productoNombre || l.productoId}?${nRep ? `\n\n⚠ De ${enviadas} enviadas, ${nRep} ${nRep === 1 ? 'está repetida' : 'están repetidas'} y NO se cargan ni se pagan:\n${textoRepetidas(revision.repetidas)}` : ''}\n\nSe cargan ${nOk} al stock y se le deben ${formatoCOP(monto)} a ${l.proveedorNombre || l.proveedorEmail}.`, { textoAceptar: 'Sí, aprobar' })) return;
 
       const btn = document.getElementById('btnAprobarLote');
       if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Cargando...'; }
       try {
+        let aprobadasFinal = nOk;
         const loteRef = db.collection('stock_pendiente').doc(l.id);
         const invRef = db.collection('inventario').doc(l.productoId);
         const privRef = db.collection('inventario_privado').doc(l.productoId);
@@ -10637,7 +10656,11 @@
           const legado = Array.isArray(inv.cuentas) ? inv.cuentas : [];
           const priv = (privDoc.exists && Array.isArray(privDoc.data().cuentas)) ? privDoc.data().cuentas : [];
           const ahoraSubida = new Date().toISOString();
-          const nuevas = (datos.cuentas || []).map(x => { const o = credencialDesdeLinea(String(x), costo, ahoraSubida); if (datos.claveAcceso) o.claveAcceso = String(datos.claveAcceso); if (datos.proveedorUid) { o.aportadoPor = datos.proveedorUid; o.aportadoNombre = datos.proveedorNombre || ''; } return o; });
+          // Se vuelve a revisar contra el stock de este producto en el momento exacto de aprobar
+          const yaAqui = new Set(priv.concat(legado).map(correoDeCuenta).filter(Boolean)), vistasT = new Set();
+          const lineasOk = revision.unicas.filter(x => { const e = correoDeCuenta(x); if (!e) return true; if (yaAqui.has(e) || vistasT.has(e)) return false; vistasT.add(e); return true; });
+          if (!lineasOk.length) throw new Error('Todas las cuentas de este lote ya están en el stock.');
+          const nuevas = lineasOk.map(x => { const o = credencialDesdeLinea(String(x), costo, ahoraSubida); if (datos.claveAcceso) o.claveAcceso = String(datos.claveAcceso); if (datos.proveedorUid) { o.aportadoPor = datos.proveedorUid; o.aportadoNombre = datos.proveedorNombre || ''; } return o; });
           const todas = priv.concat(legado).concat(nuevas);
           if (privDoc.exists || inventarioSeguroActivo()) {
             t.set(privRef, { cuentas: todas }, { merge: true });
@@ -10645,20 +10668,22 @@
           } else {
             t.set(invRef, { cuentas: todas, stock: todas.length }, { merge: true });
           }
-          t.update(loteRef, Object.assign({ estado: 'aprobado', costoUnitario: costo, monto: monto, aprobadoPor: currentUser.email, aprobadoEl: new Date().toISOString(), pagado: !!datos.pedidoId }, datos.pedidoId ? { pagadoEl: new Date().toISOString(), pagadoPor: 'pedido pagado por adelantado' } : {}));
+          aprobadasFinal = nuevas.length;
+          t.update(loteRef, Object.assign({ estado: 'aprobado', costoUnitario: costo, monto: costo * nuevas.length, cantidad: nuevas.length, cantidadEnviada: enviadas, repetidas: revision.repetidas.slice(0, 300).concat(revision.unicas.filter(x => lineasOk.indexOf(x) === -1).map(x => ({ linea: x, email: correoDeCuenta(x), motivo: 'ya estaba en el stock al aprobar' }))), aprobadoPor: currentUser.email, aprobadoEl: new Date().toISOString(), pagado: !!datos.pedidoId }, datos.pedidoId ? { pagadoEl: new Date().toISOString(), pagadoPor: 'pedido pagado por adelantado' } : {}));
         });
         if (precio !== null) {
           try { await db.collection('configuracion').doc('precios').set({ [l.productoId]: precio }, { merge: true }); } catch (ep) { console.warn('No se pudo actualizar el precio:', ep); }
         }
         const prod = catalogoUnificado.find(p => p.docId === l.productoId);
         if (prod && prod.activo !== false && !esProductoVip(prod)) {
-          try { publicarNovedadGlobal({ tipo: 'stock', productoId: l.productoId, cantidad: l.cantidad, titulo: `Nuevo stock: ${prod.nombre}` }); } catch (en) { console.warn(en); }
+          try { publicarNovedadGlobal({ tipo: 'stock', productoId: l.productoId, cantidad: aprobadasFinal, titulo: `Nuevo stock: ${prod.nombre}` }); } catch (en) { console.warn(en); }
         }
         cerrarAprobarLote();
         try { actualizarComisionesPorStock(l.proveedorUid); } catch (e) { console.warn(e); }
-        if (l.pedidoId) { try { await avanzarPedidoReseller(l.pedidoId, parseInt(l.cantidad, 10) || 0); } catch (e) { console.warn(e); } }
+        if (l.pedidoId) { try { await avanzarPedidoReseller(l.pedidoId, aprobadasFinal); } catch (e) { console.warn(e); } }
         setTimeout(() => { try { despacharPreordenesProducto(l.productoId); } catch (e) { console.warn(e); } }, 1200);
-        mostrarToast(`Lote aprobado: ${l.cantidad} cuentas cargadas. Se le deben ${formatoCOP(monto)} a ${l.proveedorNombre || 'el proveedor'}.`);
+        cacheVendidas.t = 0;
+        mostrarToast(`Lote aprobado: ${aprobadasFinal} cuentas cargadas${enviadas > aprobadasFinal ? ` (${enviadas - aprobadasFinal} repetidas no entraron)` : ''}. Se le deben ${formatoCOP(costo * aprobadasFinal)} a ${l.proveedorNombre || 'el proveedor'}.`);
       } catch (err) {
         alert('No se pudo aprobar: ' + err.message);
       } finally {
@@ -14528,7 +14553,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-07e';
+    const VERSION_PAGINA = '2026-10-07g';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261006b_recarga', fecha: '2026-10-06', titulo: 'Recargas más simples 💳', mensaje: 'Ahora pagas **el valor exacto** que eliges recargar. Tu saldo se acredita solo en 1 o 2 minutos, y si Nequi se demora, igual te llega apenas confirme.' },
       { id: 'act_20261006b_sinsaldo', fecha: '2026-10-06', titulo: 'Recarga y compra en un solo paso', mensaje: 'Si tocas **Comprar** y te falta saldo, toca **Recargar** ahí mismo. Cuando tu recarga entre, **tu compra se completa sola** y no tienes que volver a buscar el producto.' },
@@ -15206,19 +15231,34 @@
       const inf = document.getElementById('vmInfo');
       if (inf && p) inf.innerHTML = `${libres} ${libres === 1 ? 'cuenta libre' : 'cuentas libres'}${n > libres ? ' · <b class="text-red-300">no alcanzan</b>' : ''} · precio normal ${formatoCOP(unit)} c/u · sugerido <b class="text-white">${formatoCOP(sugerido)}</b>${t && t.dataset.manual && total !== sugerido ? ` · <span class="text-amber-300">cobrarás ${formatoCOP(total)}${sugerido ? ' (' + (total < sugerido ? '-' : '+') + formatoCOP(Math.abs(sugerido - total)) + ')' : ''}</span> <button type="button" onclick="delete document.getElementById('vmTotal').dataset.manual;vmCalcularTotal()" class="underline text-gray-400">usar sugerido</button>` : ''}${esProductoPrime(p) ? ' · incluye la contraseña de Prime Video' : ''}`;
     }
-    function textoVentaManual(prod, cuentas) {
-      const prime = esProductoPrime(prod);
-      let t = `✨ *${prod.nombre || 'Tu compra'}*\n`;
-      cuentas.forEach((raw, i) => {
-        const c = parseCredencialObj(raw);
-        const clavePlat = c.claveAcceso || (prime ? obtenerClaveMaster() : '');
-        t += `\n${cuentas.length > 1 ? `*Cuenta ${i + 1}*\n` : ''}📧 Correo: ${c.email}\n🔑 Contraseña: ${clavePlat && prime ? clavePlat : c.pass}\n`;
-        if (prime && c.pass) t += `✉️ Clave del correo (códigos): ${c.pass}\n`;
-        else if (clavePlat && !prime) t += `🔐 Contraseña de la plataforma: ${clavePlat}\n`;
+    // ==================== ENTREGA POR WHATSAPP: FORMATO SENCILLO ====================
+    // Una cuenta por línea (correo : clave del correo); la contraseña de la plataforma y la garantía, una sola vez al final.
+    function limpiarClaveEntrega(c) { return String(c || '').trim().split(/\s+/)[0]; }   // quita notas pegadas después de un espacio ("ok", "on"…)
+    function textoListaCuentasWa(nombre, cuentas, prime, tipoGarantia, desdeMs) {
+      const filas = [], vistos = new Set(); const platPorCuenta = [];
+      cuentas.forEach(raw => {
+        const c = parseCredencialObj(raw), email = String(c.email || '').trim(); if (!email || vistos.has(email.toLowerCase())) return; vistos.add(email.toLowerCase());
+        const plat = String(c.claveAcceso || (prime ? obtenerClaveMaster() : '') || '').trim();
+        filas.push({ email: email, clave: limpiarClaveEntrega(c.pass), plat: plat }); platPorCuenta.push(plat);
       });
-      t += `\n🌐 ${location.origin && /^https?:/.test(location.origin) ? location.host : 'epicchannels.quest'}`;
+      // contraseña de plataforma que más se repite = la "de todas"
+      const cuenta = {}; platPorCuenta.filter(Boolean).forEach(p => { cuenta[p] = (cuenta[p] || 0) + 1; });
+      const comun = Object.keys(cuenta).sort((a, b) => cuenta[b] - cuenta[a])[0] || '';
+      const nPlat = prime ? 'Prime Video' : 'la plataforma';
+      let t = `✨ *${nombre || 'Tu compra'}*${filas.length > 1 ? ' · ' + filas.length + ' cuentas' : ''}\n\n`;
+      if (!prime && !comun) t += '```\n' + filas.map(f => f.email + ' : ' + f.clave).join('\n') + '\n```\n';
+      else t += '```\n' + filas.map(f => f.email + ' : ' + f.clave + (f.plat && f.plat !== comun ? ' · ' + (prime ? 'Prime' : 'Plataforma') + ': ' + f.plat : '')).join('\n') + '\n```\n';
+      if (comun) t += `\n🔑 Contraseña de ${nPlat}${filas.length > 1 ? ' (todas)' : ''}: *${comun}*`;
+      if (prime || comun) t += `\n✉️ La clave al lado de cada correo es la del correo (para los códigos).`;
+      const g = parseGarantia(tipoGarantia);
+      if (g) { const v = new Date(venceGarantia(desdeMs || Date.now(), g)); t += `\n🛡 Garantía: ${textoGarantia(tipoGarantia)} (hasta el ${String(v.getDate()).padStart(2, '0')}/${String(v.getMonth() + 1).padStart(2, '0')}/${v.getFullYear()})`; }
+      t += `\n🌐 ${typeof enlaceMk === 'function' ? enlaceMk() : (location.host || 'epicchannels.quest')}`;
       return t;
     }
+    function textoVentaManual(prod, cuentas) {
+      return textoListaCuentasWa(prod.nombre, cuentas, esProductoPrime(prod), prod.tipoGarantia, Date.now());
+    }
+
     async function hacerVentaManual() {
       if (!puedeSeccion('venta_manual')) return;
       const id = document.getElementById('vmProducto').value;
@@ -16283,10 +16323,13 @@
     }
     function copiarLoteGrande(idx) {
       const c = misComprasPerfilCache[idx]; if (!c) return;
-      const lineas = Array.from(new Set(String(c.credenciales || '').split('\n').map(l => l.trim()).filter(Boolean)));
-      const prime = esProductoPrime(c), clavePlat = c.claveAcceso && (prime || String(c.claveAcceso) !== obtenerClaveMaster()) ? c.claveAcceso : '';
-      copiarTexto(lineas.join('\n') + (clavePlat ? '\n\nContraseña de la plataforma: ' + clavePlat : ''), `${lineas.length} cuentas copiadas`);
+      const lineas = String(c.credenciales || '').split('\n').map(l => l.trim()).filter(Boolean);
+      const prime = esProductoPrime(c), clave = c.claveAcceso && (prime || String(c.claveAcceso) !== obtenerClaveMaster()) ? c.claveAcceso : '';
+      const cuentas = lineas.map(l => { const o = parseCredencialObj(l); if (clave) o.claveAcceso = clave; return o; });
+      let tipo = c.tipoGarantia; try { tipo = resolverTipoGarantiaCompra(c).tipo || c.tipoGarantia; } catch (e) { /* nada */ }
+      copiarTexto(textoListaCuentasWa(c.productoNombre, cuentas, prime && !!clave, tipo, Date.parse(c.fecha) || Date.now()), `${cuentas.length} cuentas copiadas`);
     }
+
     async function reportarPegando(idx) {
       const c = misComprasPerfilCache[idx]; if (!c) return;
       const txt = prompt('Pega el correo de la cuenta que quieres reportar (o la línea correo:clave):', '');
@@ -17331,6 +17374,45 @@
         if (i === L.length - 1) mkTipoImagen = tipo;
       }, i * 60));
     }
+
+
+    // ==================== CUENTAS REPETIDAS: NO ENTRAN NI SE PAGAN ====================
+    // Una cuenta no entra si está repetida en la misma carga, si ya está en el stock de cualquier producto o si ya se vendió antes.
+    var cacheVendidas = { t: 0, mapa: null };
+    function correoDeCuenta(x) { try { if (x && typeof x === 'object') return String(x.email || x.correo || '').trim().toLowerCase(); return emailDeLineaCuenta(String(x || '')) || String(x || '').split(/[:\s]/)[0].trim().toLowerCase(); } catch (e) { return ''; } }
+    async function correosEnUso() {
+      const mapa = new Map();
+      const nombre = id => { const p = catalogoUnificado.find(q => q.docId === id) || snapshotInventario[id] || {}; return p.nombre || id; };
+      const agregar = (lista, motivo) => (Array.isArray(lista) ? lista : []).forEach(c => { const e = correoDeCuenta(c); if (e && !mapa.has(e)) mapa.set(e, motivo); });
+      try { Object.keys(snapshotInventarioPrivado || {}).forEach(id => agregar((snapshotInventarioPrivado[id] || {}).cuentas, 'ya está en el stock de ' + nombre(id))); } catch (e) { /* nada */ }
+      try { Object.keys(snapshotInventario || {}).forEach(id => agregar((snapshotInventario[id] || {}).cuentas, 'ya está en el stock de ' + nombre(id))); } catch (e) { /* nada */ }
+      // Vendidas antes (se consulta como máximo cada 2 minutos)
+      if (!cacheVendidas.mapa || Date.now() - cacheVendidas.t > 120000) {
+        const v = new Map();
+        try {
+          const snap = await db.collection('compras').get();
+          snap.forEach(d => { const c = d.data() || {}; const fecha = c.fecha ? new Date(c.fecha).toLocaleDateString('es-CO') : '';
+            const lista = Array.isArray(c.correos) && c.correos.length ? c.correos : String(c.credenciales || '').split('\n');
+            lista.forEach(l => { const e = correoDeCuenta(l); if (e && !v.has(e)) v.set(e, 'ya se vendió' + (fecha ? ' el ' + fecha : '') + (c.productoNombre ? ' (' + c.productoNombre + ')' : '')); }); });
+          cacheVendidas = { t: Date.now(), mapa: v };
+        } catch (e) { console.warn('No se pudieron revisar las ventas:', e); cacheVendidas = { t: Date.now(), mapa: cacheVendidas.mapa || new Map() }; }
+      }
+      cacheVendidas.mapa.forEach((motivo, e) => { if (!mapa.has(e)) mapa.set(e, motivo); });
+      return mapa;
+    }
+    async function revisarRepetidasCuentas(lineas) {
+      const enUso = await correosEnUso(), vistos = new Set(), unicas = [], repetidas = [];
+      lineas.forEach(l => {
+        const e = correoDeCuenta(l);
+        if (!e) { unicas.push(l); return; }
+        if (vistos.has(e)) { repetidas.push({ linea: l, email: e, motivo: 'repetida en esta misma carga' }); return; }
+        vistos.add(e);
+        if (enUso.has(e)) { repetidas.push({ linea: l, email: e, motivo: enUso.get(e) }); return; }
+        unicas.push(l);
+      });
+      return { unicas: unicas, repetidas: repetidas };
+    }
+    function textoRepetidas(rep) { return rep.slice(0, 8).map(r => `• ${r.email}: ${r.motivo}`).join('\n') + (rep.length > 8 ? `\n…y ${rep.length - 8} más` : ''); }
 
     // ==================== NETFLIX EN LA TIENDA: SIN CONTRASEÑA ====================
     function esNombreNetflix(t) { return /netflix/i.test(String(t || '')); }
