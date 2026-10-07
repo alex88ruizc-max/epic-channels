@@ -1694,7 +1694,7 @@
           <textarea id="mkTexto" rows="12" class="w-full bg-gray-800 border border-gray-700 rounded-xl p-3 text-xs text-white font-mono resize-y focus:outline-none focus:border-fuchsia-500/60"></textarea>
           <div class="grid grid-cols-2 gap-2">
             <button type="button" onclick="copiarMensajeMk()" class="py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-black text-xs"><i class="fa-solid fa-copy mr-1"></i>Copiar</button>
-            <button type="button" onclick="whatsappMensajeMk()" class="py-2.5 rounded-xl bg-gray-800 hover:bg-gray-700 border border-emerald-500/40 text-emerald-200 font-bold text-xs"><i class="fa-brands fa-whatsapp mr-1"></i>Abrir en WhatsApp</button>
+            <button type="button" onclick="whatsappMensajeMk(false)" class="py-2.5 rounded-xl bg-gray-800 hover:bg-gray-700 border border-emerald-500/40 text-emerald-200 font-bold text-xs"><i class="fa-brands fa-whatsapp"></i> WhatsApp</button><button type="button" onclick="whatsappMensajeMk(true)" class="py-2.5 rounded-xl bg-gray-800 hover:bg-gray-700 border border-emerald-500/40 text-emerald-200 font-bold text-xs"><i class="fa-brands fa-whatsapp"></i> WA Business</button>
             <button type="button" onclick="guardarPlantillaMk()" class="py-2 rounded-xl bg-gray-800 hover:bg-gray-700 border border-gray-700 text-gray-200 font-bold text-[11px]"><i class="fa-solid fa-bookmark mr-1"></i>Guardar como plantilla</button>
             <button type="button" onclick="generarTextoMarketing()" class="py-2 rounded-xl bg-gray-800 hover:bg-gray-700 border border-gray-700 text-gray-400 font-bold text-[11px]"><i class="fa-solid fa-rotate mr-1"></i>Volver al automático</button>
           </div>
@@ -14859,7 +14859,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-08n';
+    const VERSION_PAGINA = '2026-10-08p';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261006b_recarga', fecha: '2026-10-06', titulo: 'Recargas más simples 💳', mensaje: 'Ahora pagas **el valor exacto** que eliges recargar. Tu saldo se acredita solo en 1 o 2 minutos, y si la transacción se demora, igual te llega apenas se confirme.' },
       { id: 'act_20261006b_sinsaldo', fecha: '2026-10-06', titulo: 'Recarga y compra en un solo paso', mensaje: 'Si tocas **Comprar** y te falta saldo, toca **Recargar** ahí mismo. Cuando tu recarga entre, **tu compra se completa sola** y no tienes que volver a buscar el producto.' },
@@ -16873,7 +16873,7 @@
 
     // ==================== MARKETING: IMÁGENES Y MENSAJES ====================
     var mkTipoTexto = 'promos', mkLogoImg = null, mkLogoListo = false;
-    function productosMarketing() { return catalogoUnificado.filter(p => p.activo !== false && !p.esCombo && Number(p.precio) > 0).sort((a, b) => String(a.nombre).localeCompare(String(b.nombre), 'es')); }
+    function productosMarketing() { return catalogoUnificado.filter(p => p.activo !== false && !p.esCombo && Number(p.precio) > 0 && !esProductoVip(p)).sort((a, b) => String(a.nombre).localeCompare(String(b.nombre), 'es')); }
     function dominioTienda() { if (typeof mkEnlaceCfg !== 'undefined' && mkEnlaceCfg) return mkEnlaceCfg; return (location.host && !/localhost|127\.0|\.local$/.test(location.host)) ? location.host : 'epicchannels.quest'; }
     function nombreTienda() { const t = aparienciaConfig && aparienciaConfig.titulo; return t && !/^cat[aá]logo oficial$/i.test(t) ? t : 'EPIC CHANNELS'; }
     function promoPerfilCliente(id) { const pr = ((cfgDealer && cfgDealer.promos) || {})[id]; return pr && pr.activo !== false && aplicaPromo(pr, 'cliente') ? pr : null; }
@@ -17328,7 +17328,14 @@
       return t;
     }
     function copiarMensajeMk() { const t = mensajeConEnlace(); if (!t) return; document.getElementById('mkTexto').value = t; copiarTexto(t, 'Mensaje copiado'); }
-    function whatsappMensajeMk() { const t = mensajeConEnlace(); if (!t) return; window.open('https://wa.me/?text=' + encodeURIComponent(t), '_blank', 'noopener'); }
+    function whatsappMensajeMk(business) {
+      const t = mensajeConEnlace(); if (!t) return;
+      const enc = encodeURIComponent(t), android = /Android/i.test(navigator.userAgent), ios = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+      if (business && android) { location.href = 'intent://send?text=' + enc + '#Intent;scheme=whatsapp;package=com.whatsapp.w4b;end'; return; }   // abre WhatsApp Business
+      if (!business && android) { location.href = 'intent://send?text=' + enc + '#Intent;scheme=whatsapp;package=com.whatsapp;end'; return; }       // abre WhatsApp normal
+      if (ios) { location.href = 'whatsapp://send?text=' + enc; return; }
+      window.open('https://web.whatsapp.com/send?text=' + enc, '_blank', 'noopener');
+    }
     async function guardarPlantillaMk() {
       const t = mensajeConEnlace(); if (!t) return;
       const nombre = await pedirTextoModal('Nombre de la plantilla:', (t.split('\n')[0] || 'Mi mensaje').replace(/[*_~]/g, '').slice(0, 40)); if (!nombre) return;
@@ -17369,10 +17376,12 @@
     function lienzoLista(tipo, formato, estilo, frase) {
       const W = 1080, H = formato === 'post' ? 1080 : 1920;
       const c = document.createElement('canvas'); c.width = W; c.height = H; const x = c.getContext('2d');
-      const acento = estilo === 'dorado' ? '#f7d774' : (estilo === 'oscuro' ? '#34d399' : '#e879f9');
-      const g = x.createLinearGradient(0, 0, W, H); g.addColorStop(0, '#0b1020'); g.addColorStop(1, estilo === 'dorado' ? '#1c1404' : '#160a22'); x.fillStyle = g; x.fillRect(0, 0, W, H);
+      const acento = estilo === 'dorado' ? '#f7d774' : (estilo === 'oscuro' ? '#34d399' : '#10d9a0');
+      const oro = '#f5c542';
+      const g = x.createLinearGradient(0, 0, W, H); g.addColorStop(0, '#0b1020'); g.addColorStop(1, estilo === 'dorado' ? '#1c1404' : (estilo === 'oscuro' ? '#0b1020' : '#04241c')); x.fillStyle = g; x.fillRect(0, 0, W, H);
       const rg = x.createRadialGradient(W * 0.85, 140, 20, W * 0.85, 140, 520); rg.addColorStop(0, hexARgba(acento, 0.28)); rg.addColorStop(1, 'rgba(0,0,0,0)'); x.fillStyle = rg; x.fillRect(0, 0, W, H);
-      x.fillStyle = acento; x.fillRect(0, 0, W, 10);
+      if (estilo !== 'dorado' && estilo !== 'oscuro') { const gt = x.createLinearGradient(0, 0, W, 0); gt.addColorStop(0, acento); gt.addColorStop(1, oro); x.fillStyle = gt; } else x.fillStyle = acento;
+      x.fillRect(0, 0, W, 10);
       let L = productosMarketing();
       if (tipo === 'promos') L = L.filter(p => p.promoPct || promoPerfilCliente(p.docId));
       const max = formato === 'post' ? 6 : 9; L = L.slice(0, max);
@@ -17397,7 +17406,7 @@
         if (p.promoPct && p.precioLista) { x.fillStyle = 'rgba(255,255,255,.45)'; x.font = '600 26px system-ui, sans-serif'; x.fillText(formatoCOP(p.precioLista), W - 96, y + 34); }
       });
       const by = H - (formato === 'post' ? 130 : 230);
-      textoRedondeado(x, 90, by, W - 180, 110, 55); const gb = x.createLinearGradient(90, 0, W - 90, 0); gb.addColorStop(0, acento); gb.addColorStop(1, '#ffffff'); x.fillStyle = gb; x.fill();
+      textoRedondeado(x, 90, by, W - 180, 110, 55); const gb = x.createLinearGradient(90, 0, W - 90, 0); gb.addColorStop(0, acento); gb.addColorStop(1, (estilo !== 'dorado' && estilo !== 'oscuro') ? oro : '#ffffff'); x.fillStyle = gb; x.fill();
       x.textAlign = 'center'; x.fillStyle = '#0b0f17'; ajustarTexto(x, 'Pide ya 👉 ' + enlaceMk(), W - 260, 50, 900, 'system-ui, sans-serif'); x.fillText('Pide ya 👉 ' + enlaceMk(), W / 2, by + 72);
       return c;
     }
@@ -17579,7 +17588,7 @@
 
     // ==================== MARKETING: ESTUDIO DE DISEÑOS CON LA PALETA DE CADA PRODUCTO ====================
     var mkDiseno = 'clasico', mkQrImg = null, mkQrPara = '';
-    const DISENOS_MK = [['clasico', 'Clásico'], ['impacto', 'Impacto'], ['tarjeta', 'Tarjeta'], ['neon', 'Neón'], ['claro', 'Claro']];
+    const DISENOS_MK = [['clasico', 'Clásico'], ['impacto', 'Impacto'], ['tarjeta', 'Tarjeta'], ['neon', 'Neón'], ['claro', 'Claro'], ['cine', '🎬 Cine'], ['cristal', '🧊 Cristal'], ['retro', '🌆 Retro'], ['oro', '👑 Oro'], ['ticket', '🎟 Ticket'], ['olas', '🌊 Olas']];
     function pintarDisenosMk() {
       const c = document.getElementById('mkDisenos'); if (!c) return;
       c.innerHTML = DISENOS_MK.map(([k, t]) => `<button type="button" onclick="mkDiseno='${k}';pintarDisenosMk();dibujarMarketing()" class="py-2 rounded-lg text-[10px] font-black border ${mkDiseno === k ? 'bg-fuchsia-500 text-white border-fuchsia-400' : 'bg-gray-800 text-gray-300 border-gray-700'}">${t}</button>`).join('');
@@ -17615,9 +17624,46 @@
       const W = fmt === 'banner' ? 1200 : 1080, H = fmt === 'banner' ? 628 : (fmt === 'post' ? 1080 : 1920), hor = fmt === 'banner';
       const c = document.createElement('canvas'); c.width = W; c.height = H; const x = c.getContext('2d');
       const m = marcaDeProducto(prod), P = paletaMk(m.color), F = "'Segoe UI', Roboto, Arial, sans-serif", FN = "'Arial Black', Impact, sans-serif";
-      const claro = diseno === 'claro', txt = claro ? '#0f172a' : '#ffffff', sub = claro ? '#475569' : 'rgba(255,255,255,.72)';
+      const claro = diseno === 'claro' || diseno === 'ticket', txt = claro ? '#0f172a' : '#ffffff', sub = claro ? '#475569' : 'rgba(255,255,255,.72)';
+      const ORO = '#f5c542';
       // ---- fondos ----
-      if (diseno === 'impacto') {
+      if (diseno === 'cine') {
+        x.fillStyle = '#07080c'; x.fillRect(0, 0, W, H);
+        const rg = x.createRadialGradient(W / 2, H * .42, 20, W / 2, H * .42, W * .7); rg.addColorStop(0, hexARgba(P.base, .55)); rg.addColorStop(.6, hexARgba(P.oscuro, .35)); rg.addColorStop(1, 'rgba(0,0,0,0)'); x.fillStyle = rg; x.fillRect(0, 0, W, H);
+        // franjas de cine arriba y abajo con perforaciones de película
+        const fh = hor ? 54 : 110; x.fillStyle = '#000'; x.fillRect(0, 0, W, fh); x.fillRect(0, H - fh, W, fh);
+        x.fillStyle = 'rgba(255,255,255,.85)'; const ph = fh * .42, pw = ph * 1.4; for (let i = 24; i < W - pw; i += pw * 1.9) { textoRedondeado(x, i, (fh - ph) / 2, pw, ph, 6); x.fill(); textoRedondeado(x, i, H - fh + (fh - ph) / 2, pw, ph, 6); x.fill(); }
+      } else if (diseno === 'cristal') {
+        // malla de colores + panel de vidrio
+        x.fillStyle = P.noche; x.fillRect(0, 0, W, H);
+        [[.15, .2, P.base, .9], [.9, .3, P.claro, .7], [.3, .85, P.base, .8], [.85, .9, '#ffffff', .25]].forEach(([fx, fy, col, al]) => { const g2 = x.createRadialGradient(W * fx, H * fy, 10, W * fx, H * fy, W * .6); g2.addColorStop(0, hexARgba(col, al)); g2.addColorStop(1, 'rgba(0,0,0,0)'); x.fillStyle = g2; x.fillRect(0, 0, W, H); });
+      } else if (diseno === 'retro') {
+        const g = x.createLinearGradient(0, 0, 0, H); g.addColorStop(0, '#120a2a'); g.addColorStop(.55, P.noche); g.addColorStop(1, '#05060a'); x.fillStyle = g; x.fillRect(0, 0, W, H);
+        // sol de rayas al fondo
+        const sx = W / 2, sy = H * (hor ? 1.05 : (fmt === 'post' ? .98 : .82)), r = hor ? 240 : (fmt === 'post' ? 300 : 340); x.save(); x.beginPath(); x.arc(sx, sy, r, 0, Math.PI * 2); x.clip(); const gs = x.createLinearGradient(0, sy - r, 0, sy + r); gs.addColorStop(0, P.claro); gs.addColorStop(1, P.base); x.fillStyle = gs; x.fillRect(sx - r, sy - r, r * 2, r * 2); x.fillStyle = 'rgba(5,6,10,.9)'; for (let k = 0; k < 7; k++) { const yy = sy + r * (.15 + k * .13), hh = 6 + k * 5; x.fillRect(sx - r, yy, r * 2, hh); } x.restore();
+        // rejilla en perspectiva
+        x.strokeStyle = hexARgba(P.claro, .35); x.lineWidth = 2; const hz = H * (hor ? .62 : (fmt === 'post' ? .78 : .76)); x.beginPath(); x.moveTo(0, hz); x.lineTo(W, hz); x.stroke();
+        for (let k = -8; k <= 8; k++) { x.beginPath(); x.moveTo(W / 2 + k * 70, hz); x.lineTo(W / 2 + k * 420, H); x.stroke(); }
+        for (let k = 1; k < 8; k++) { const yy = hz + (H - hz) * (k * k / 64); x.beginPath(); x.moveTo(0, yy); x.lineTo(W, yy); x.stroke(); }
+      } else if (diseno === 'oro') {
+        const g = x.createLinearGradient(0, 0, W, H); g.addColorStop(0, '#14110a'); g.addColorStop(1, '#050505'); x.fillStyle = g; x.fillRect(0, 0, W, H);
+        const rg = x.createRadialGradient(W * .5, H * .3, 10, W * .5, H * .3, W * .8); rg.addColorStop(0, 'rgba(245,197,66,.22)'); rg.addColorStop(1, 'rgba(0,0,0,0)'); x.fillStyle = rg; x.fillRect(0, 0, W, H);
+        x.strokeStyle = 'rgba(245,197,66,.75)'; x.lineWidth = 5; x.strokeRect(40, 40, W - 80, H - 80); x.strokeStyle = 'rgba(245,197,66,.3)'; x.lineWidth = 2; x.strokeRect(62, 62, W - 124, H - 124);
+        [[40, 40], [W - 40, 40], [40, H - 40], [W - 40, H - 40]].forEach(([px, py]) => { x.fillStyle = ORO; x.beginPath(); x.arc(px, py, 14, 0, Math.PI * 2); x.fill(); });
+      } else if (diseno === 'ticket') {
+        x.fillStyle = '#fbf6ea'; x.fillRect(0, 0, W, H);
+        x.fillStyle = hexARgba(P.base, .1); for (let yy = 0; yy < H; yy += 44) x.fillRect(0, yy, W, 22);
+        // boleto con bordes perforados
+        const mx = hor ? 40 : 60, my = hor ? 40 : 130, bw = W - mx * 2, bh = H - my * 2;
+        x.save(); x.shadowColor = 'rgba(0,0,0,.18)'; x.shadowBlur = 40; textoRedondeado(x, mx, my, bw, bh, 36); x.fillStyle = '#ffffff'; x.fill(); x.restore();
+        x.globalCompositeOperation = 'destination-out'; for (let yy = my + 40; yy < my + bh - 20; yy += 56) { x.beginPath(); x.arc(mx, yy, 16, 0, Math.PI * 2); x.fill(); x.beginPath(); x.arc(mx + bw, yy, 16, 0, Math.PI * 2); x.fill(); } x.globalCompositeOperation = 'source-over';
+        x.setLineDash([14, 14]); x.strokeStyle = hexARgba(P.base, .6); x.lineWidth = 4; x.beginPath(); x.moveTo(mx + 30, H - (hor ? 150 : 330)); x.lineTo(mx + bw - 30, H - (hor ? 150 : 330)); x.stroke(); x.setLineDash([]);
+        x.fillStyle = P.base; x.fillRect(mx, my, bw, 18);
+      } else if (diseno === 'olas') {
+        const g = x.createLinearGradient(0, 0, 0, H); g.addColorStop(0, P.noche); g.addColorStop(1, '#05060a'); x.fillStyle = g; x.fillRect(0, 0, W, H);
+        [[.78, P.oscuro, .9], [.84, P.base, .75], [.9, P.claro, .6]].forEach(([fy, col, al], k) => { x.beginPath(); x.moveTo(0, H); for (let px = 0; px <= W; px += 10) x.lineTo(px, H * fy + Math.sin(px / (120 + k * 40) + k) * (hor ? 18 : 34)); x.lineTo(W, H); x.closePath(); x.fillStyle = hexARgba(col, al); x.fill(); });
+        const rg = x.createRadialGradient(W * .5, H * .25, 10, W * .5, H * .25, W * .7); rg.addColorStop(0, hexARgba(P.base, .3)); rg.addColorStop(1, 'rgba(0,0,0,0)'); x.fillStyle = rg; x.fillRect(0, 0, W, H);
+      } else if (diseno === 'impacto') {
         const g = x.createLinearGradient(0, 0, W, H); g.addColorStop(0, P.claro); g.addColorStop(.5, P.base); g.addColorStop(1, P.oscuro); x.fillStyle = g; x.fillRect(0, 0, W, H);
         x.fillStyle = 'rgba(0,0,0,.55)'; x.beginPath(); x.moveTo(0, H * (hor ? .0 : .52)); x.lineTo(W, H * (hor ? .0 : .38)); x.lineTo(W, H); x.lineTo(0, H); x.closePath(); if (hor) { x.beginPath(); x.moveTo(W * .48, 0); x.lineTo(W, 0); x.lineTo(W, H); x.lineTo(W * .38, H); x.closePath(); } x.fill();
       } else if (diseno === 'neon') {
@@ -17637,15 +17683,15 @@
       let y = (hor ? 110 : (fmt === 'post' ? 120 : 230)) + (desplazar || 0);
       let fondoTarjeta = 0;
       x.fillStyle = sub; x.font = `700 ${hor ? 26 : 34}px ${F}`; x.fillText(nombreTienda().toUpperCase(), cx, y); y += hor ? 70 : 100;
-      if (diseno === 'tarjeta') {
-        const cw = hor ? 600 : 860, ch = hor ? 420 : (fmt === 'post' ? 620 : 900), cxx = cx - cw / 2, cyy = y - 30;
-        x.save(); x.shadowColor = hexARgba(P.base, .65); x.shadowBlur = 80; textoRedondeado(x, cxx, cyy, cw, ch, 44); x.fillStyle = '#0f1320'; x.fill(); x.restore();
-        textoRedondeado(x, cxx, cyy, cw, ch, 44); const gi = x.createRadialGradient(cxx, cyy, 10, cxx, cyy, cw); gi.addColorStop(0, hexARgba(P.base, .28)); gi.addColorStop(1, 'rgba(0,0,0,0)'); x.fillStyle = gi; x.fill(); x.lineWidth = 4; x.strokeStyle = hexARgba(P.base, .8); x.stroke();
-        x.fillStyle = P.base; x.fillRect(cxx + 44, cyy, cw - 88, 8); y = cyy + (hor ? 80 : 120); fondoTarjeta = cyy + ch;
+      if (diseno === 'tarjeta' || diseno === 'cristal') {
+        const cw = hor ? 600 : 860, ch = hor ? 420 : (fmt === 'post' ? 620 : 900), cxx = cx - cw / 2, cyy = y - 30, vidrio = diseno === 'cristal';
+        x.save(); x.shadowColor = vidrio ? 'rgba(0,0,0,.45)' : hexARgba(P.base, .65); x.shadowBlur = vidrio ? 50 : 80; textoRedondeado(x, cxx, cyy, cw, ch, 44); x.fillStyle = vidrio ? 'rgba(255,255,255,.12)' : '#0f1320'; x.fill(); x.restore();
+        textoRedondeado(x, cxx, cyy, cw, ch, 44); const gi = x.createRadialGradient(cxx, cyy, 10, cxx, cyy, cw); gi.addColorStop(0, vidrio ? 'rgba(255,255,255,.18)' : hexARgba(P.base, .28)); gi.addColorStop(1, 'rgba(0,0,0,0)'); x.fillStyle = gi; x.fill(); x.lineWidth = vidrio ? 2 : 4; x.strokeStyle = vidrio ? 'rgba(255,255,255,.55)' : hexARgba(P.base, .8); x.stroke();
+        if (!vidrio) { x.fillStyle = P.base; x.fillRect(cxx + 44, cyy, cw - 88, 8); } y = cyy + (hor ? 80 : 120); fondoTarjeta = cyy + ch;
       }
       // marca (etiqueta) en el color del producto
       const et = String(m.etiqueta).toUpperCase().split('').join(' ');
-      x.fillStyle = diseno === 'impacto' ? '#ffffff' : (claro ? P.oscuro : P.base);
+      x.fillStyle = diseno === 'impacto' || diseno === 'cine' ? '#ffffff' : (diseno === 'oro' ? ORO : (claro ? P.oscuro : P.base));
       if (diseno === 'neon') { x.shadowColor = P.base; x.shadowBlur = 45; }
       const tm = ajustarTexto(x, et, (hor ? 600 : W) - 160, hor ? 64 : (fmt === 'post' ? 84 : 104), '900', FN); x.font = `900 ${tm}px ${FN}`;
       if (diseno === 'neon') { x.strokeStyle = P.claro; x.lineWidth = 3; x.strokeText(et, cx, y + tm * .4); }
@@ -17655,7 +17701,7 @@
       y += hor ? 10 : 30;
       if (prod.promoPct && prod.precioLista) { x.fillStyle = claro ? '#94a3b8' : 'rgba(255,255,255,.55)'; x.font = `600 ${hor ? 34 : 46}px ${F}`; const t = formatoCOP(prod.precioLista); x.fillText(t, cx, y); const tw = x.measureText(t).width; x.strokeStyle = '#f43f5e'; x.lineWidth = 5; x.beginPath(); x.moveTo(cx - tw / 2 - 6, y - 14); x.lineTo(cx + tw / 2 + 6, y - 14); x.stroke(); y += hor ? 20 : 30; }
       const tp = hor ? 110 : (fmt === 'post' ? 140 : (diseno === 'impacto' ? 190 : 160));
-      x.font = `900 ${tp}px ${F}`; x.fillStyle = claro ? P.oscuro : '#ffffff';
+      x.font = `900 ${tp}px ${F}`; x.fillStyle = diseno === 'oro' ? ORO : (claro ? P.oscuro : '#ffffff');
       if (diseno === 'neon') { x.shadowColor = P.base; x.shadowBlur = 35; }
       x.fillText(formatoCOP(prod.precio || 0), cx, y + tp * .82); x.shadowBlur = 0; y += tp + (hor ? 20 : 40);
       // chips
@@ -17674,8 +17720,8 @@
       if (hor) dibujarQrMk(x, W * .8, H * .36, 190, claro); else dibujarQrMk(x, W - 190, H - (fmt === 'post' ? 330 : 470), 190, claro);
       if (!hor) {
         const yp = H - (fmt === 'post' ? 110 : 190);
-        textoRedondeado(x, 90, yp - 70, W - 180, 120, 60); const bg = x.createLinearGradient(90, 0, W - 90, 0); bg.addColorStop(0, P.base); bg.addColorStop(1, P.claro); x.fillStyle = bg; x.fill();
-        x.fillStyle = P.texto; x.font = `900 46px ${F}`; x.fillText('Pide ya 👉 ' + enlaceMk(), W / 2, yp + 6);
+        textoRedondeado(x, 90, yp - 70, W - 180, 120, 60); const bg = x.createLinearGradient(90, 0, W - 90, 0); bg.addColorStop(0, diseno === 'oro' ? ORO : P.base); bg.addColorStop(1, diseno === 'oro' ? '#fff3c4' : P.claro); x.fillStyle = bg; x.fill();
+        x.fillStyle = diseno === 'oro' ? '#2a1803' : P.texto; x.font = `900 46px ${F}`; x.fillText('Pide ya 👉 ' + enlaceMk(), W / 2, yp + 6);
       } else {
         // A la derecha: botón (debajo del QR si está activo)
         const bx = W * .58, bw = W - 60 - bx, by = conQr ? H - 92 : H / 2;
@@ -17909,7 +17955,9 @@
       const staff = esStaffSesion();
       // Clientes y Dealers: en la tienda. Tú y tu equipo: en la tienda y en el panel. Proveedores: nunca.
       const enLugar = visible('vistaTienda') || visible('vistaMisCuentas') || (staff && visible('vistaAdmin'));
-      const L = staff ? catalogoUnificado.filter(p => p.activo !== false && !p.esCombo).sort((a, b) => String(a.nombre).localeCompare(String(b.nombre), 'es')) : productosVisiblesStock();
+      const L = (staff ? catalogoUnificado.filter(p => p.activo !== false && !p.esCombo) : productosVisiblesStock())
+        .filter(p => !esProductoVip(p))
+        .sort((a, b) => (Number(b.stock) || 0) - (Number(a.stock) || 0) || String(a.nombre).localeCompare(String(b.nombre), 'es'));
       const mostrar = cfgVistaTienda.cintaStock !== false && enLugar && L.length > 0 && !(esProveedorSesion() && !staff);
       c.classList.toggle('hidden', !mostrar);
       if (!mostrar) return;
