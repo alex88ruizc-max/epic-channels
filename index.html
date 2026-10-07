@@ -7085,6 +7085,7 @@
         .filter(n => n && n.id).map(n => ({ ...n, origen: 'personal' }));
       const globales = (novedadesGlobales || [])
         .filter(n => n && n.id && !borradas.includes(n.id) && new Date(n.fecha).getTime() >= limite)
+        .filter(n => avisoVisibleParaUsuario(n))   // un cliente no ve avisos de productos que no puede comprar (por ejemplo VIP)
         .map(n => ({ ...n, origen: 'global' }));
       return [...personales, ...globales, ...notificacionesEquipo(borradas, limite)].sort((a, b) => (new Date(b.fecha).getTime() || 0) - (new Date(a.fecha).getTime() || 0));
     }
@@ -7177,11 +7178,13 @@
         if (!lista.length) {
           html += `<div class="text-center py-8"><i class="fa-regular fa-bell-slash text-2xl text-gray-600 mb-2"></i><p class="text-gray-500">No tienes notificaciones.</p></div>`;
         } else {
+          accionesNotif = [];
           html += lista.map(n => {
             const e = ESTILOS_NOTIF[n.tipo] || ESTILOS_NOTIF.anuncio;
             const esNueva = (new Date(n.fecha).getTime() || 0) > umbral;
+            const acc = accionDeNotificacion(n), ia = acc ? accionesNotif.push(acc) - 1 : -1;
             return `
-              <div class="p-3 rounded-xl border ${e.caja} flex items-start gap-3">
+              <div class="p-3 rounded-xl border ${e.caja} flex items-start gap-3${acc ? ' cursor-pointer hover:brightness-125 transition' : ''}"${acc ? ` onclick="ejecutarAccionNotif(${ia})" role="button"` : ''}>
                 <div class="w-8 h-8 rounded-lg bg-gray-900/60 flex items-center justify-center shrink-0"><i class="fa-solid ${e.icono} ${e.color}"></i></div>
                 <div class="flex-1 min-w-0">
                   <div class="flex items-center gap-1.5 flex-wrap mb-0.5">
@@ -7191,8 +7194,9 @@
                   </div>
                   <p class="font-bold text-white leading-snug">${escaparHtml(n.titulo || '')}</p>
                   ${n.mensaje ? `<p class="text-[11px] text-gray-400 mt-0.5 leading-relaxed">${escaparHtml(n.mensaje)}</p>` : ''}
+                  ${acc ? `<p class="text-[11px] font-bold text-emerald-300 mt-1">${acc.texto} ›</p>` : ''}
                 </div>
-                <button onclick="borrarNotificacionItem('${escaparJsAttr(n.id)}', '${n.origen}')" title="Borrar" class="shrink-0 w-7 h-7 rounded-lg text-gray-500 hover:text-red-400 hover:bg-red-500/10 flex items-center justify-center">
+                <button onclick="event.stopPropagation();borrarNotificacionItem('${escaparJsAttr(n.id)}', '${n.origen}')" title="Borrar" class="shrink-0 w-7 h-7 rounded-lg text-gray-500 hover:text-red-400 hover:bg-red-500/10 flex items-center justify-center">
                   <i class="fa-solid fa-xmark"></i>
                 </button>
               </div>`;
@@ -14935,8 +14939,9 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-09a';
+    const VERSION_PAGINA = '2026-10-09b';
     const ACTUALIZACIONES_PAGINA = [
+      { id: 'act_20261009_notif', fecha: '2026-10-09', titulo: 'Notificaciones con acceso directo 🔔', mensaje: 'Ahora tus notificaciones te llevan directo: toca un aviso de **nuevo stock** y se abre la compra de ese producto; toca una **renovación**, un **regalo** o una **respuesta** y llegas justo ahí. Menos pasos, compras más rápido.' },
       { id: 'act_20261008_cantidad', fecha: '2026-10-08', titulo: 'Pide sobre pedido 📦', mensaje: '¿Necesitas más de lo que hay? Haz tu pedido completo: **te entregamos ya lo disponible** y lo que falte **se libera solo en tu cuenta** apenas entre nuevo stock. Sin volver a pedir, sin esperar mensajes.' },
       { id: 'act_20261008_precios', fecha: '2026-10-08', titulo: 'Precios por cantidad y packs 💰', mensaje: 'En varios productos, **entre más llevas, menos pagas por cada cuenta**. Mira la fila **"Por cantidad"** en la tarjeta y los **packs** con precio especial.' },
       { id: 'act_20261008_envivo', fecha: '2026-10-08', titulo: 'Stock en vivo y "Avísame" 🟢', mensaje: 'Arriba de la tienda ves el **stock en tiempo real** de cada producto. En tu perfil tienes el **Radar de stock**: si algo está agotado, toca **Avísame** y te llega un aviso apenas vuelva.' },
@@ -19237,6 +19242,7 @@
 
     // ==================== NOVEDADES INTERNAS DEL PANEL (solo el equipo) ====================
     const ACTUALIZACIONES_INTERNAS = [
+      { fecha: '2026-10-09', titulo: '🔔 Notificaciones que venden', mensaje: 'Cada aviso de la campana es ahora un acceso directo: el de stock abre la compra rápida de ese producto, y los de renovación, regalo, reporte y recarga llevan al lugar exacto. **Para vender:** cada vez que subes stock, tus clientes quedan a dos toques de comprarlo.', ir: 'stock' },
       { fecha: '2026-10-08', titulo: '📦 Encargos sin cancelación', mensaje: 'Los clientes ya no pueden cancelar lo pendiente de un pedido sobre pedido: se les entrega solo cuando entra stock. Solo tú y tu equipo pueden cancelar un encargo en casos excepcionales, desde la lista de encargos. **Para vender:** cada encargo pagado es una venta asegurada.', ir: 'stock' },
       { fecha: '2026-10-08', titulo: '🔍 Auditar saldo y parche de seguridad', mensaje: 'En Editar cliente, **Auditar** reconstruye el saldo de cualquier cliente y te dice si cuadra; si falta dinero lo devuelves con un toque. Además, ningún saldo se puede borrar por accidente. **Para vender:** un cliente que confía en su saldo recarga más y más seguido.', ir: 'usuarios' },
       { fecha: '2026-10-08', titulo: '⚡ Recargas automáticas con buscador', mensaje: 'En Métodos de Pago, la lista de recargas automáticas va ordenada, con 60 días de historial y buscador por monto o correo. **Para vender:** resuelves al instante cualquier "ya pagué y no me llegó", sin perder la venta.', ir: 'pagos' },
@@ -19252,6 +19258,48 @@
     function renderizarNovedadesInternas() {
       const c = document.getElementById('listaNovedadesInternas'); if (!c) return;
       c.innerHTML = ACTUALIZACIONES_INTERNAS.map(a => `<div class="px-4 py-3"><div class="flex items-start justify-between gap-2"><p class="text-sm font-black text-white">${escaparHtml(a.titulo)}</p><span class="shrink-0 text-[10px] text-gray-500">${escaparHtml(a.fecha.split('-').reverse().join('/'))}</span></div><p class="text-xs text-gray-300 mt-1 leading-relaxed">${asistenteFormatear(a.mensaje)}</p>${a.ir ? `<button type="button" onclick="irATabAdmin('${a.ir}')" class="mt-2 px-2.5 py-1.5 rounded-lg text-[11px] font-bold bg-amber-400/15 hover:bg-amber-400/25 text-amber-200 border border-amber-400/40"><i class="fa-solid fa-arrow-right mr-1"></i>Ir a la sección</button>` : ''}</div>`).join('');
+    }
+
+
+    // ==================== NOTIFICACIONES CON ACCESO DIRECTO ====================
+    // Solo llevan a pantallas que el usuario ya puede ver. Las compras siguen pasando por el servidor con todas sus revisiones.
+    var accionesNotif = [];
+    function avisoVisibleParaUsuario(n) {
+      try {
+        if (!n.productoId || esStaffSesion()) return true;
+        const p = catalogoUnificado.find(x => x.docId === n.productoId);
+        if (!p) return !(snapshotInventario && snapshotInventario[n.productoId] && snapshotInventario[n.productoId].esVip === true);
+        return usuarioTienePermisoProducto(p);
+      } catch (e) { return true; }
+    }
+    function productoDeNotificacion(n) {
+      if (n.productoId) return catalogoUnificado.find(p => p.docId === n.productoId) || null;
+      const t = (String(n.titulo || '') + ' ' + String(n.mensaje || '')).toLowerCase();
+      // notificaciones viejas sin producto guardado: se reconoce por el nombre (el más largo que coincida)
+      return catalogoUnificado.filter(p => p.nombre && t.includes(String(p.nombre).toLowerCase())).sort((a, b) => String(b.nombre).length - String(a.nombre).length)[0] || null;
+    }
+    function accionDeNotificacion(n) {
+      try {
+        const id = String(n.id || ''), t = (String(n.titulo || '') + ' ' + String(n.mensaje || '')).toLowerCase();
+        if (n.origen === 'global' && /^(tk_|sol_)/.test(id)) return esStaffSesion() ? { texto: 'Abrir reportes', fn: () => irATabAdmin('tickets') } : null;
+        if (/cup[oó]n|descuento/.test(t)) return { texto: 'Ir a la tienda', fn: () => cambiarVista('tienda') };
+        if (n.tipo === 'renovacion' || /vence|renov/.test(t)) return { texto: 'Renovar', fn: () => cambiarVista('mis-cuentas') };
+        if (/regalo|obsequio/.test(t)) return { texto: 'Ver mi regalo', fn: () => cambiarVista('mis-cuentas') };
+        if (n.tipo === 'ticket' || /reporte|respond/.test(t)) return { texto: 'Ver respuesta', fn: () => { try { abrirMisReportes(); } catch (e) { cambiarVista('mis-cuentas'); } } };
+        if (n.tipo === 'recarga' || (n.tipo === 'saldo' && /recarg|acredit/.test(t))) return { texto: 'Ver mis recargas', fn: () => { cambiarVista('mis-cuentas'); try { cambiarTabPerfil('recargas'); } catch (e) { /* nada */ } } };
+        const p = productoDeNotificacion(n);
+        if (p && p.activo !== false && !p.esCombo && usuarioTienePermisoProducto(p)) {
+          return (Number(p.stock) || 0) > 0 ? { texto: 'Comprar', fn: () => { cambiarVista('tienda'); setTimeout(() => abrirCompraRapida(p.docId), 150); } }
+            : { texto: 'Avísame cuando llegue', fn: () => alternarAvisoStock(p.docId) };
+        }
+        if ((n.tipo === 'producto' || n.tipo === 'stock') && !(p && esProductoVip(p))) return { texto: 'Ver la tienda', fn: () => cambiarVista('tienda') };
+        return null;
+      } catch (e) { return null; }
+    }
+    function ejecutarAccionNotif(i) {
+      const a = accionesNotif[i]; if (!a) return;
+      try { cerrarModalNovedades(); } catch (e) { /* nada */ }
+      setTimeout(() => { try { a.fn(); } catch (e) { console.warn(e); } }, 120);
     }
 
     // ==================== NETFLIX EN LA TIENDA: SIN CONTRASEÑA ====================
