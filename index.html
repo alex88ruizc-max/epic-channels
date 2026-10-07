@@ -14918,7 +14918,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-08u';
+    const VERSION_PAGINA = '2026-10-08v';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261006b_recarga', fecha: '2026-10-06', titulo: 'Recargas más simples 💳', mensaje: 'Ahora pagas **el valor exacto** que eliges recargar. Tu saldo se acredita solo en 1 o 2 minutos, y si la transacción se demora, igual te llega apenas se confirme.' },
       { id: 'act_20261006b_sinsaldo', fecha: '2026-10-06', titulo: 'Recarga y compra en un solo paso', mensaje: 'Si tocas **Comprar** y te falta saldo, toca **Recargar** ahí mismo. Cuando tu recarga entre, **tu compra se completa sola** y no tienes que volver a buscar el producto.' },
@@ -17037,33 +17037,69 @@
     }
     // ----- Mensajes -----
     function textoProductoMk(p) {
-      const pc = promoPerfilCliente(p.docId);
-      return `✨ *${p.nombre}*\n` + (p.promoPct ? `~${formatoCOP(p.precioLista || 0)}~ 👉 *${formatoCOP(p.precio)}* (-${p.promoPct}%)\n` : `💰 *${formatoCOP(p.precio)}*\n`) + (pc ? `🎁 Compra ${pc.compra || 10}, lleva ${pc.regalo || 1} gratis\n` : '') + (parseGarantia(p.tipoGarantia) ? `🛡 Garantía ${textoGarantia(p.tipoGarantia)}\n` : '') + `\n👉 ${dominioTienda()}`;
+      const pc = promoPerfilCliente(p.docId), dur = (typeof infoVentaProducto === 'function' ? infoVentaProducto(p) : {}).duracion;
+      return `✨ *${p.nombre.toUpperCase()}*\n${LINEA_MK}\n\n💰 ${precioLineaMk(p)}${finPromoMk(p)}\n` + (pc ? `🎁 Compra ${pc.compra || 10} y llévate ${pc.regalo || 1} gratis\n` : '') +
+        (parseGarantia(p.tipoGarantia) ? `🛡 Garantía de ${textoGarantia(p.tipoGarantia)}\n` : '') + (dur ? `📅 Cuenta por ${textoDuracion(dur)}\n` : '') + `⚡ Entrega inmediata, 24/7\n\n👉 Pídelo en *${enlaceMk()}*`;
     }
+
     function pintarTiposTexto() {
       const c = document.getElementById('mkTiposTexto'); if (!c) return;
-      c.innerHTML = [['promos', '🔥 Promociones'], ['catalogo', '📋 Catálogo completo'], ['producto', '✨ Producto elegido'], ['nuevo', '🚨 ¡Llegó stock!'], ['urgencia', '⏰ Últimas unidades'], ['combos', '🎁 Combos'], ['recarga', '💳 Cómo comprar'], ['dealers', '👑 Para Dealers']].map(([k, t]) => `<button type="button" onclick="mkTipoTexto='${k}';pintarTiposTexto();generarTextoMarketing()" class="px-3 py-1.5 rounded-full text-[11px] font-bold border ${mkTipoTexto === k ? 'bg-fuchsia-500 text-white border-fuchsia-400' : 'bg-gray-800 text-gray-300 border-gray-700'}">${t}</button>`).join('');
+      const grupos = [['Promociona tu tienda', [['tienda', '🏪 Conoce la tienda'], ['confianza', '🛡 Garantía y confianza'], ['recarga', '💳 Cómo comprar'], ['revende', '💼 Gana revendiendo']]],
+        ['Promociona tus productos', [['promos', '🔥 Promociones'], ['catalogo', '📋 Catálogo'], ['producto', '✨ Producto elegido'], ['nuevo', '🚨 ¡Llegó stock!'], ['urgencia', '⏰ Últimas unidades'], ['combos', '🎁 Combos'], ['dealers', '👑 Para Dealers']]]];
+      c.innerHTML = grupos.map(([g, l]) => `<p class="w-full text-[10px] font-black uppercase tracking-wider text-gray-500 mt-1">${g}</p>` + l.map(([k, t]) => `<button type="button" onclick="mkTipoTexto='${k}';pintarTiposTexto();generarTextoMarketing()" class="px-3 py-1.5 rounded-full text-[11px] font-bold border ${mkTipoTexto === k ? 'bg-emerald-500 text-black border-emerald-400' : 'bg-gray-800 text-gray-300 border-gray-700'}">${t}</button>`).join('')).join('');
     }
+    // ==================== MENSAJES DE MARKETING (profesionales, sin VIP) ====================
+    const LINEA_MK = '━━━━━━━━━━━━━━';
+    function precioLineaMk(p) {
+      const esc = escalasDe(p);
+      if (p.promoPct && p.precioLista) return `~${formatoCOP(p.precioLista)}~ *${formatoCOP(p.precio)}* (-${p.promoPct} %)`;
+      return `*${formatoCOP(p.precio)}*` + (esc.length ? ` · desde ${esc[esc.length - 1].desde}: *${formatoCOP(esc[esc.length - 1].precio)}*` : '');
+    }
+    function finPromoMk(p) { const sn = snapshotInventario[p.docId] || {}; if (!(Number(sn.promoPct) > 0) || !sn.promoHasta) return ''; const d = new Date(sn.promoHasta); return d > new Date() ? ` · hasta las ${d.toLocaleTimeString('es-CO', { hour: 'numeric', minute: '2-digit' })}` : ''; }
     function generarTextoMarketing() {
       const t = document.getElementById('mkTexto'); if (!t) return;
-      const L = productosMarketing(), dom = dominioTienda(), tienda = nombreTienda();
+      const L = productosMarketing(), enl = enlaceMk(), tienda = nombreTienda(), T = tienda.toUpperCase();
+      const cta = `👉 Compra en *${enl}*`;
       let out = '';
-      if (mkTipoTexto === 'promos') {
-        const pr = L.filter(p => p.promoPct || promoPerfilCliente(p.docId));
-        out = pr.length ? `🔥 *PROMOCIONES ${tienda.toUpperCase()}* 🔥\n\n` + pr.map(p => { const pc = promoPerfilCliente(p.docId); return `▫️ *${p.nombre}*\n` + (p.promoPct ? `   ~${formatoCOP(p.precioLista || 0)}~ 👉 *${formatoCOP(p.precio)}* (-${p.promoPct}%)\n` : `   ${formatoCOP(p.precio)}\n`) + (pc ? `   🎁 Compra ${pc.compra || 10}, lleva ${pc.regalo || 1} gratis\n` : ''); }).join('\n') + `\n⏳ Válido por tiempo limitado · pocas unidades\n⚡ Entrega inmediata en tu cuenta\n👉 ${dom}` : 'No hay promociones activas. Activa descuentos en Promociones o promos por cantidad en Usuarios → Promociones por perfil.';
+      if (mkTipoTexto === 'tienda') {
+        const cats = Array.from(new Set(L.map(p => p.categoria).filter(Boolean))).slice(0, 5);
+        out = `*${T}*\n_Tu proveedor de cuentas digitales, 24/7_\n${LINEA_MK}\n\n` +
+          `${cats.length ? '🎬 ' + cats.join(' · ') + '\n' : ''}⚡ Entrega *al instante*, de día y de noche\n🛡 Todas con *garantía*\n💳 Recargas que se acreditan solas\n📦 Precios especiales por cantidad para revendedores\n\n` +
+          `Crea tu cuenta gratis, recarga y compra en segundos.\n${cta}`;
+      } else if (mkTipoTexto === 'confianza') {
+        out = `🛡 *COMPRA CON TRANQUILIDAD EN ${T}*\n${LINEA_MK}\n\n✅ Cada cuenta tiene *garantía*: si falla, la reportas desde *Mis Cuentas* y te respondemos ahí mismo.\n✅ Tus compras quedan guardadas en tu perfil, siempre a mano.\n✅ Entrega automática: no esperas a que nadie te responda.\n✅ Atención por tickets dentro de la plataforma.\n\n${cta}`;
+      } else if (mkTipoTexto === 'revende') {
+        const conEsc = L.filter(p => escalasDe(p).length);
+        out = `💼 *GANA REVENDIENDO CUENTAS DIGITALES*\n${LINEA_MK}\n\nCompra al por mayor en *${tienda}* y revende con tu margen.\n\n` +
+          (conEsc.length ? `💰 *Precios por cantidad*\n${conEsc.slice(0, 4).map(p => `▪ ${p.nombre}: ${[`${p.minCompra || 1}+ ${formatoCOP(p.precioLista || p.precio)}`].concat(escalasDe(p).map(e => `${e.desde}+ ${formatoCOP(e.precio)}`)).join(' · ')}`).join('\n')}\n\n` : '') +
+          `⚡ Stock disponible 24/7 y entrega inmediata\n👑 Programa Dealer con regalos por volumen\n🛡 Garantía en cada cuenta\n\n${cta}`;
+      } else if (mkTipoTexto === 'promos') {
+        const pr = L.filter(p => p.promoPct || promoPerfilCliente(p.docId) || escalasDe(p).length);
+        out = pr.length ? `🔥 *PROMOCIONES ${T}*\n${LINEA_MK}\n\n` + pr.map(p => { const pc = promoPerfilCliente(p.docId); return `*${p.nombre}*\n${precioLineaMk(p)}${finPromoMk(p)}` + (pc ? `\n🎁 Compra ${pc.compra || 10} y llévate ${pc.regalo || 1} gratis` : ''); }).join('\n\n') + `\n\n⏳ Por tiempo limitado · ⚡ entrega inmediata\n${cta}` : 'No hay promociones activas. Crea una en Campañas (venta relámpago, precio por cantidad) o en Promociones.';
       } else if (mkTipoTexto === 'catalogo') {
         const cats = {}; L.forEach(p => { (cats[p.categoria || 'Otros'] = cats[p.categoria || 'Otros'] || []).push(p); });
-        out = `📋 *CATÁLOGO ${tienda.toUpperCase()}*\n` + Object.keys(cats).sort().map(c => `\n*${c}*\n` + cats[c].map(p => `▫️ ${p.nombre}: *${formatoCOP(p.precio)}*${p.promoPct ? ' 🏷 -' + p.promoPct + '%' : ''}`).join('\n')).join('\n') + `\n\n⚡ Recarga tu saldo y recibe tus cuentas al instante\n👉 ${dom}`;
+        out = `📋 *CATÁLOGO ${T}*\n${LINEA_MK}\n` + Object.keys(cats).sort().map(c => `\n*${c.toUpperCase()}*\n` + cats[c].map(p => `▪ ${p.nombre} — ${precioLineaMk(p)}${(Number(p.stock) || 0) <= 0 ? ' _(agotado)_' : ''}`).join('\n')).join('\n') + `\n\n⚡ Recarga y recibe tus cuentas al instante\n${cta}`;
       } else if (mkTipoTexto === 'producto') {
-        const p = catalogoUnificado.find(x => x.docId === opcionesMk().id); out = p ? textoProductoMk(p) : '';
-      } else if (['nuevo', 'urgencia', 'combos', 'recarga'].indexOf(mkTipoTexto) !== -1) {
-        out = textoExtraMk(mkTipoTexto);
+        const p = catalogoUnificado.find(x => x.docId === opcionesMk().id && !esProductoVip(x)); out = p ? textoProductoMk(p) : 'Elige un producto (los VIP no se promocionan).';
+      } else if (mkTipoTexto === 'nuevo') {
+        const con = L.filter(p => (Number(p.stock) || 0) > 0).sort((a, b) => (Number(b.stock) || 0) - (Number(a.stock) || 0));
+        out = con.length ? `🚨 *¡LLEGÓ STOCK!*\n${LINEA_MK}\n\n` + con.slice(0, 12).map(p => `✅ *${p.nombre}* — ${formatoCOP(p.precio)}`).join('\n') + `\n\nDisponible ahora mismo, entrega al instante.\n${cta}` : 'No hay productos con stock en este momento.';
+      } else if (mkTipoTexto === 'urgencia') {
+        const poc = L.filter(p => { const n = Number(p.stock) || 0; return n > 0 && n <= 5; });
+        out = poc.length ? `⏰ *ÚLTIMAS UNIDADES*\n${LINEA_MK}\n\n` + poc.map(p => `*${p.nombre}*: quedan *${p.stock}* · ${formatoCOP(p.precio)}`).join('\n') + `\n\nCuando se acaben, toca esperar a la próxima carga.\n${cta}` : 'Ningún producto tiene pocas unidades ahora mismo.';
+      } else if (mkTipoTexto === 'combos') {
+        const cb = catalogoUnificado.filter(p => p.esCombo && p.activo !== false && !esProductoVip(p));
+        out = cb.length ? `🎁 *COMBOS ${T}*\n${LINEA_MK}\n\nMás servicios, mejor precio:\n\n` + cb.map(p => `*${p.nombre}* — ${formatoCOP(p.precio)}`).join('\n') + `\n\n${cta}` : 'No tienes combos activos. Arma uno en Productos → Armar combo.';
+      } else if (mkTipoTexto === 'recarga') {
+        out = `💳 *¿CÓMO COMPRAR EN ${T}?*\n${LINEA_MK}\n\n1️⃣ Entra a *${enl}* y crea tu cuenta gratis\n2️⃣ Recarga tu saldo desde tu banco\n3️⃣ Elige tu producto y toca *Comprar*\n4️⃣ Recibe tus cuentas al instante en *Mis Cuentas*\n\n🛡 Si una cuenta falla, la reportas desde tu perfil y te respondemos ahí mismo.\n${cta}`;
       } else {
-        const pd = Object.keys((cfgDealer && cfgDealer.promos) || {}).map(id => Object.assign({ id: id }, cfgDealer.promos[id])).filter(x => x.activo !== false && aplicaPromo(x, 'dealer'));
-        out = pd.length ? `👑 *PROMOS EXCLUSIVAS PARA DEALERS*\n\n` + pd.map(x => { const p = catalogoUnificado.find(q => q.docId === x.id); return p ? `▫️ *${p.nombre}*: compra ${x.compra || 10}, llévate ${x.regalo || 1}${x.regaloProductoId ? ' ' + nombreProd(x.regaloProductoId) : ''} 🎁` : ''; }).filter(Boolean).join('\n') + `\n\n🥇 En nivel Oro tus regalos se multiplican\n⏳ Las compras del mismo día se suman\n👉 ${dom}` : 'No hay promos activas para Dealers.';
+        const pd = Object.keys((cfgDealer && cfgDealer.promos) || {}).map(id => Object.assign({ id: id }, cfgDealer.promos[id])).filter(x => x.activo !== false && aplicaPromo(x, 'dealer'))
+          .filter(x => { const p = catalogoUnificado.find(q => q.docId === x.id); const rg = x.regaloProductoId ? catalogoUnificado.find(q => q.docId === x.regaloProductoId) : null; return p && !esProductoVip(p) && !(rg && esProductoVip(rg)); });
+        out = pd.length ? `👑 *PROMOS PARA DEALERS ${T}*\n${LINEA_MK}\n\n` + pd.map(x => { const p = catalogoUnificado.find(q => q.docId === x.id); return `*${p.nombre}*\nCompra ${x.compra || 10} y llévate ${x.regalo || 1}${x.regaloProductoId && x.regaloProductoId !== x.id ? ' ' + nombreProd(x.regaloProductoId) : ''} gratis 🎁`; }).join('\n\n') + `\n\n🥇 En nivel Oro tus regalos se multiplican\n⏳ Las compras del mismo día se suman\n${cta}` : 'No hay promos activas para Dealers (los productos VIP no se incluyen).';
       }
       t.value = out;
     }
+
 
 
     // ==================== TIENDAS PARA CLIENTES — FASE 1 (vitrina oculta + solicitudes) ====================
