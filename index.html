@@ -1933,6 +1933,11 @@
       </div>
 
       <div id="adminSecAjustes" class="hidden space-y-6 pb-28 sm:pb-0">
+        <div class="p-4 rounded-2xl bg-gray-900 border border-gray-800 flex flex-col sm:flex-row sm:items-center gap-3 max-w-3xl">
+          <div class="flex-1 min-w-0"><p class="text-sm font-black text-white"><i class="fa-solid fa-flask text-amber-300 mr-1.5"></i>Simulador de cliente</p>
+            <p class="text-[11px] text-gray-400 mt-0.5">Se actualiza solo: usa exactamente la misma tienda que tus clientes (versión <b id="simVersionTxt" class="text-gray-200"></b>). Las compras de prueba no tocan saldo, stock ni ventas reales.</p></div>
+          <button type="button" onclick="reiniciarDatosSimulador()" class="shrink-0 px-4 py-2.5 rounded-xl bg-amber-400/15 hover:bg-amber-400/25 border border-amber-400/50 text-amber-200 text-xs font-black"><i class="fa-solid fa-rotate mr-1"></i>Reiniciar datos de prueba</button>
+        </div>
         <div class="p-5 bg-gray-900 border border-cyan-500/30 rounded-2xl shadow-xl max-w-3xl space-y-3">
           <div class="flex items-center justify-between gap-2"><h3 class="text-base font-black text-white flex items-center gap-2">🏪 Tiendas para clientes <span class="px-2 py-0.5 rounded-full bg-cyan-500/15 text-cyan-300 text-[10px] font-black">BETA</span></h3><span id="ctSolBadge" class="hidden px-2 py-0.5 rounded-full bg-cyan-500 text-black text-[10px] font-black"></span></div>
           <p class="text-xs text-gray-400">Mientras esté apagado, nadie ve "Crea tu tienda", salvo los correos de prueba que pongas abajo.</p>
@@ -2257,6 +2262,19 @@
           <div id="escFilas" class="space-y-2"></div>
           <button type="button" onclick="guardarEscalas()" class="w-full py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-black text-xs">Guardar precios por cantidad</button>
         </div>
+        <div class="p-4 rounded-2xl bg-gray-900 border border-violet-500/30 space-y-3">
+          <p class="text-sm font-black text-white">🧠 Plan de marketing de la semana</p>
+          <p class="text-[11px] text-gray-400 -mt-2">Se arma con tu actividad real: horas pico, días fuertes, lo que más se vende, el stock que sobra y los clientes que no vuelven. Cada día trae su estado listo para WhatsApp.</p>
+          <button type="button" onclick="generarPlanMarketing()" class="w-full py-2.5 rounded-xl bg-violet-500 hover:bg-violet-400 text-white font-black text-xs"><i class="fa-solid fa-wand-magic-sparkles mr-1"></i>Generar mi plan</button>
+          <div id="planMarketing" class="space-y-2"></div>
+        </div>
+        <div class="p-4 rounded-2xl bg-gray-900 border border-gray-800 space-y-3">
+          <div class="flex items-center justify-between gap-2"><p class="text-sm font-black text-white">🔔 Avisos de renovación</p><label class="flex items-center gap-2 text-[11px] text-white font-bold"><input type="checkbox" id="avRenActivo" checked class="accent-emerald-500 w-4 h-4"> Activos</label></div>
+          <p class="text-[11px] text-gray-400 -mt-2">A los clientes con alquileres (y productos tipo Alquiler) les llega a su campana: "Tu Netflix vence en 3 días. ¿Deseas renovarla?". Se envía solo cada mañana, una vez por fecha.</p>
+          <label class="block text-[10px] text-gray-400">Avisar cuántos días antes (separados por coma; 0 = el día que vence)<input id="avRenDias" value="3, 0" class="mt-1 w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"></label>
+          <label class="block text-[10px] text-gray-400">Botón "Avisar" de cada alquiler abre<select id="avRenApp" class="mt-1 w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"><option value="business">WhatsApp Business</option><option value="normal">WhatsApp normal</option></select></label>
+          <button type="button" onclick="guardarAvisosRenovacion()" class="w-full py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-black text-xs">Guardar avisos</button>
+        </div>
         <div class="p-4 rounded-2xl bg-gray-900 border border-gray-800 space-y-3">
           <p class="text-sm font-black text-white">🔄 Reactivación: clientes que no vuelven</p>
           <p class="text-[11px] text-gray-400 -mt-2">Clientes que compraron antes pero llevan días sin comprar. Envíales un cupón personal: el servidor lo aplica una sola vez y vence solo.</p>
@@ -2467,6 +2485,7 @@
         <span class="text-[9px] font-black text-yellow-400 block tracking-wider">MODO SIMULACIÓN</span>
         <span id="txtSaldoSimulado" class="text-xs font-black text-white">$1.000.000</span>
       </div>
+      <button onclick="abrirSimularComo()" title="Simular como otro tipo de cliente" class="px-2.5 h-8 rounded-lg bg-yellow-400 hover:bg-yellow-300 text-black text-[11px] font-black flex items-center gap-1"><i class="fa-solid fa-masks-theater"></i><span id="txtPerfilSim">Cliente</span></button>
       <button onclick="reiniciarSaldoSimulado()" title="Volver a $1.000.000" class="w-8 h-8 rounded-lg bg-gray-800 hover:bg-gray-700 text-yellow-400 text-xs flex items-center justify-center">
         <i class="fa-solid fa-rotate"></i>
       </button>
@@ -6714,6 +6733,7 @@
     }
 
     function salirModoPruebaCliente() {
+      try { restaurarPerfilReal(); } catch (e) { /* nada */ }
       modoPruebaCliente = false;
       comprasSimuladas = [];
       if (timerRecargaSim) { clearTimeout(timerRecargaSim); timerRecargaSim = null; }
@@ -6753,7 +6773,9 @@
         id: 'sim_' + Date.now() + '_' + Math.random().toString(16).slice(2, 6), simulada: true,
         productoId: prod.docId, productoNombre: prod.nombre || prod.docId, categoria: prod.categoria || 'Streaming',
         cantidad: cantidad, total: total, credenciales: cuentas.map(c => `${c.email}:${c.pass}`).join('\n'),
-        claveAcceso: resolverClaveAccesoCuentas(cuentas), tipoGarantia: prod.tipoGarantia || '', fecha: new Date().toISOString()
+        claveAcceso: resolverClaveAccesoCuentas(cuentas), tipoGarantia: prod.tipoGarantia || '', fecha: new Date().toISOString(),
+        duracionCuenta: (infoVentaProducto(prod) || {}).duracion || '', tipoVenta: (infoVentaProducto(prod) || {}).alquiler ? 'alquiler' : 'normal',
+        venceCuenta: (() => { const g = parseGarantia((infoVentaProducto(prod) || {}).duracion); return g ? new Date(venceGarantia(Date.now(), g)).toISOString() : ''; })()
       }, extra || {});
       comprasSimuladas.unshift(compra);
       // Netflix: también queda como cuenta en alquiler (tarjeta roja con "Pedir código" y renovación)
@@ -8303,7 +8325,7 @@
       const esVip = prod.esVip === true || PRODUCTOS_VIP_EXCLUSIVOS.some(vipKey => vipKey === prod.id || vipKey === prod.docId || (prod.aliases && prod.aliases.includes(vipKey)));
 
       // Cliente normal: Netflix, VIP y las categorías o productos que le habilite el administrador
-      if (userTipoCuenta === 'normal' && !modoPruebaCliente) {
+      if (userTipoCuenta === 'normal' && (!modoPruebaCliente || simPerfil)) {
         const bloq = userProductosBloqueados.includes(prod.id) || userProductosBloqueados.includes(prod.docId);
         const ok = esNombreNetflix(prod.nombre) || esVip || userCategoriasPermitidas.indexOf(prod.categoria) !== -1 || categoriasNormalesDef.indexOf(prod.categoria) !== -1 || userProductosPermitidos.includes(prod.id) || userProductosPermitidos.includes(prod.docId);
         return ok && !bloq;
@@ -8467,7 +8489,7 @@
 
     async function comprarProducto(docId, desdeMixto) {
       if (!currentUser) { abrirModalAuth('login'); return; }
-      if (modoPruebaCliente) { comprarProductoSimulado(docId); return; }
+      if (modoPruebaCliente && ((catalogoUnificado.find(p => p.docId === docId) || {}).esCombo || !obtenerBackendUrl())) { comprarProductoSimulado(docId); return; }
 
       const prodInfo = catalogoUnificado.find(p => p.docId === docId) || {};
       const minRequerido = prodInfo.minCompra || 5;
@@ -8649,7 +8671,7 @@
         // Si ya se sabe que el saldo no alcanza pero el crédito sí, se pregunta antes: así hay un solo viaje al servidor
         let usarCreditoYa = false;
         try {
-          const totalEsp = precioPorCantidad(prodInfo, cantidad) * cantidad, falta = totalEsp - (Number(userSaldo) || 0), libreCred = Math.max(0, (Number(userCupo) || 0) - (Number(userDeuda) || 0));
+          const totalEsp = precioPorCantidad(prodInfo, cantidad) * cantidad, falta = totalEsp - (Number(modoPruebaCliente ? saldoSimulado : userSaldo) || 0), libreCred = (modoPruebaCliente && !simPerfil) ? 0 : Math.max(0, (Number(userCupo) || 0) - (Number(userDeuda) || 0));
           if (!conCombo && totalEsp > 0 && falta > 0 && libreCred >= falta) {
             if (btnCompra) btnCompra.innerHTML = htmlBtn;
             if (!await confirmarModal(`Te faltan ${formatoCOP(falta)} COP para esta compra.\n\n¿Completarla con tu crédito? Tienes ${formatoCOP(libreCred)} disponibles. Quedarás debiendo ${formatoCOP(userDeuda + falta)} COP y tu próxima recarga paga primero esa deuda.`, { tipo: 'pregunta', textoAceptar: 'Sí, usar mi crédito' })) return;
@@ -8706,6 +8728,7 @@
           lanzarConfeti();
         }
 
+        if (r.simulada) { const avS = document.getElementById('avisoEntregaSimulada'); if (avS) avS.classList.remove('hidden'); }
         // El aviso de venta a Telegram lo envía el servidor seguro
         verificarSubidaNivel(cuentasEntregadas.length);
         if (encargoTrasCompra) { try { await completarEncargoTrasCompra(docId); } catch (e) { console.warn(e); } }
@@ -10625,7 +10648,7 @@
 
     function esModeradorSesion() { return rolActual === 'moderador' && !esAdminSesionActual(); }
     function esProveedorSesion() { return rolActual === 'proveedor' && !esAdminSesionActual(); }
-    function esStaffSesion() { return esAdminSesionActual() || esModeradorSesion(); }
+    function esStaffSesion() { if (modoPruebaCliente && simPerfil) return false; return esAdminSesionActual() || esModeradorSesion(); }
 
     function leerRolCache(uid) { try { return localStorage.getItem('epic_rol_' + uid) || 'cliente'; } catch (e) { return 'cliente'; } }
     function guardarRolCache(uid, rol) { try { localStorage.setItem('epic_rol_' + uid, rol); } catch (e) { /* sin almacenamiento */ } }
@@ -14871,7 +14894,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-08q';
+    const VERSION_PAGINA = '2026-10-08s';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261006b_recarga', fecha: '2026-10-06', titulo: 'Recargas más simples 💳', mensaje: 'Ahora pagas **el valor exacto** que eliges recargar. Tu saldo se acredita solo en 1 o 2 minutos, y si la transacción se demora, igual te llega apenas se confirme.' },
       { id: 'act_20261006b_sinsaldo', fecha: '2026-10-06', titulo: 'Recarga y compra en un solo paso', mensaje: 'Si tocas **Comprar** y te falta saldo, toca **Recargar** ahí mismo. Cuando tu recarga entre, **tu compra se completa sola** y no tienes que volver a buscar el producto.' },
@@ -15958,7 +15981,7 @@
     function pintarBannerDealer() {
       const b = document.getElementById('bannerDealer');
       if (!b) return;
-      const es = userTipoCuenta === 'revendedor' && !esStaffSesion() && !modoPruebaCliente;
+      const es = userTipoCuenta === 'revendedor' && !esStaffSesion() && (!modoPruebaCliente || !!simPerfil);
       b.classList.toggle('hidden', !es);
       if (!es) return;
       const lista = promosDealerActivas().filter(x => catalogoUnificado.some(p => p.docId === x.id && p.activo !== false && usuarioTienePermisoProducto(p)));
@@ -16458,7 +16481,7 @@
     // Privado del Dealer: solo él lo ve en la página. Sus clientes no se registran; es solo una etiqueta.
     var misEntregas = {}, unsubEntregas = null, entregaEditando = null;
     function claveEntrega(compraId, cuenta) { return compraId + '_' + String(cuenta || '').toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 60); }
-    function esDealerSesion() { return userTipoCuenta === 'revendedor' && !esStaffSesion() && !modoPruebaCliente; }
+    function esDealerSesion() { return userTipoCuenta === 'revendedor' && !esStaffSesion() && (!modoPruebaCliente || !!simPerfil); }
     function iniciarEntregasDealer() {
       if (unsubEntregas || !currentUser || !esDealerSesion()) return;
       try {
@@ -16765,7 +16788,7 @@
     // ==================== COMPRA SOBRE PEDIDO ====================
     var misPreordenes = [], unsubMisPre = null, preordenesTodas = [], unsubPreAdm = null;
     function puedePedirEncargo(prod) {
-      if (!currentUser || modoPruebaCliente || prod.esCombo) return false;
+      if (!currentUser || prod.esCombo) return false;
       if (esProveedorSesion() && !esStaffSesion() && (userTipoCuenta === 'externo' || userTipoCuenta === 'reseller')) return false;
       return !esProductoNetflix(prod) && datosEncargo(prod).activo;
     }
@@ -17866,6 +17889,7 @@
     }
     function registrarVisita(user) {
       try {
+        if (modoPruebaCliente) return;
         if (window.__visitaRegistrada) return;
         try { if (sessionStorage.getItem('visitaRegistrada')) return; } catch (e) { /* navegador sin almacenamiento: se usa la memoria */ }
         window.__visitaRegistrada = true;
@@ -17964,7 +17988,7 @@
     function pintarCintaStock() {
       const c = document.getElementById('cintaStock'), mov = document.getElementById('cintaStockMov'); if (!c || !mov) return;
       const visible = id => { const e = document.getElementById(id); return !!e && !e.classList.contains('hidden'); };
-      const staff = esStaffSesion();
+      const staff = esStaffSesion() && !modoPruebaCliente;
       // Clientes y Dealers: en la tienda. Tú y tu equipo: en la tienda y en el panel. Proveedores: nunca.
       const enLugar = visible('vistaTienda') || visible('vistaMisCuentas') || (staff && visible('vistaAdmin'));
       const L = (staff ? catalogoUnificado.filter(p => p.activo !== false && !p.esCombo) : productosVisiblesStock())
@@ -18007,6 +18031,7 @@
     }
     async function alternarAvisoStock(id) {
       if (!currentUser) return;
+      if (modoPruebaCliente) { mostrarToast('(Simulación) Aquí el cliente quedaría avisado cuando llegue stock.'); return; }
       const p = catalogoUnificado.find(x => x.docId === id) || {}, ref = db.collection('avisos_stock').doc(id + '_' + currentUser.uid);
       try {
         if (misAvisosStock.has(id)) { await ref.delete(); misAvisosStock.delete(id); mostrarToast('Ya no te avisaremos de ' + (p.nombre || 'este producto')); }
@@ -18102,7 +18127,7 @@
     async function comprarMixto(docId, cantidad) {
       const prod = catalogoUnificado.find(p => p.docId === docId) || {}, st = Number(prod.stock) || 0, resto = cantidad - st;
       const total = precioPorCantidad(prod, cantidad) * cantidad;
-      const disponible = (Number(userSaldo) || 0) + Math.max(0, (Number(userCupo) || 0) - (Number(userDeuda) || 0));
+      const disponible = modoPruebaCliente ? saldoSimulado : (Number(userSaldo) || 0) + Math.max(0, (Number(userCupo) || 0) - (Number(userDeuda) || 0));
       if (disponible < total) { abrirModalSaldoInsuficiente(`Saldo insuficiente. Tienes ${formatoCOP(userSaldo || 0)} y el total (${st} ahora + ${resto} por encargo) es ${formatoCOP(total)}.`); return; }
       if (!await confirmarModal(`Pediste ${cantidad} y hay ${st} disponibles.\n\n⚡ ${st} se compran y se entregan ahora.\n⏳ ${resto} quedan por encargo: se pagan ahora y te llegan solas apenas entre stock (en orden de llegada). Lo pendiente lo puedes cancelar y se te devuelve.\n\nTotal: ${formatoCOP(total)}`, { tipo: 'pregunta', textoAceptar: 'Sí, comprar y encargar' })) return;
       encargoTrasCompra = { docId: docId, cantidad: resto, t: Date.now() };
@@ -18281,7 +18306,7 @@
       if (f && !f.dataset.listo) { f.innerHTML = opts; f.dataset.listo = '1'; }
       if (e && !e.dataset.listo) { e.innerHTML = opts; e.dataset.listo = '1'; }
       const pk = document.getElementById('packProducto'); if (pk && !pk.dataset.listo) { pk.innerHTML = opts; pk.dataset.listo = '1'; }
-      pintarEscalasEditor(); pintarFlashActivas(); cargarCasiCompraron(); cargarReactivacion(); cargarBonoEditor(); pintarPacks(); pintarLiquidacion();
+      pintarEscalasEditor(); pintarFlashActivas(); cargarCasiCompraron(); cargarReactivacion(); cargarBonoEditor(); pintarPacks(); pintarLiquidacion(); cargarAvisosRenovacionUI();
     }
     function pintarEscalasEditor() {
       const id = (document.getElementById('escProducto') || {}).value, p = catalogoUnificado.find(x => x.docId === id), c = document.getElementById('escFilas'); if (!p || !c) return;
@@ -18678,7 +18703,7 @@
 
 
     // ==================== EDITAR DESDE LA TIENDA (solo tú y moderadores con permiso) ====================
-    function puedeEditarDesdeTienda() { try { return !!currentUser && esStaffSesion() && (esAdminSesionActual() || puedeSeccion('productos')); } catch (e) { return false; } }
+    function puedeEditarDesdeTienda() { try { return !!currentUser && !modoPruebaCliente && esStaffSesion() && (esAdminSesionActual() || puedeSeccion('productos')); } catch (e) { return false; } }
     function btnEditarDesdeTienda(prod) {
       if (!puedeEditarDesdeTienda() || !prod || !prod.docId) return '';
       return `<button type="button" onclick="editarDesdeTienda('${escaparJsAttr(prod.docId)}')" title="Editar este producto" aria-label="Editar producto" class="w-8 h-8 rounded-lg bg-black/40 hover:bg-amber-400 hover:text-black border border-white/20 text-amber-200 flex items-center justify-center transition"><i class="fa-solid fa-pen text-[11px]"></i></button>`;
@@ -18734,6 +18759,205 @@
       document.addEventListener('click', ev => { const sel = ev.target && ev.target.closest ? ev.target.closest('select') : null; if (sel && usarSelectorPropio() && !sel.multiple && sel.dataset.nativo === undefined) { ev.preventDefault(); } }, true);
       document.addEventListener('keydown', ev => { if (ev.key === 'Escape') cerrarSelectorPropio(); const sel = ev.target && ev.target.tagName === 'SELECT' ? ev.target : null; if (sel && (ev.key === 'Enter' || ev.key === ' ') && usarSelectorPropio()) interceptar(ev); }, true);
     })();
+
+
+    // ==================== SERVIDOR DE PRUEBA DEL SIMULADOR ====================
+    // El simulador recorre el MISMO código que una compra real; solo el último paso (el servidor) se reemplaza por esta respuesta de prueba.
+    // Así cada función nueva de la tienda aparece en el simulador automáticamente. Nada real se toca.
+    function backendSimulado(accion, d) {
+      const err = (msg, codigo) => Object.assign({ ok: false, error: msg, simulada: true }, codigo ? { codigo } : {});
+      if (accion === 'comprar') {
+        const prod = catalogoUnificado.find(p => p.docId === d.productoId); if (!prod) return err('Producto no disponible.');
+        const n = Math.max(1, parseInt(d.cantidad, 10) || 1), st = Number(prod.stock) || 0;
+        if (n > st) return err(`(Simulación) Stock insuficiente. Solo quedan ${st} cuentas.`);
+        const conCombo = !!d.combo && prod.combo, total = precioPorCantidad(prod, n) * n + (conCombo ? prod.combo.precio * n : 0);
+        if (saldoSimulado < total) {
+          const falta = total - saldoSimulado, libre = Math.max(0, (Number(userCupo) || 0) - (Number(userDeuda) || 0));
+          if (simPerfil && libre >= falta) { if (!d.usarCredito) return Object.assign(err('Usa tu crédito', 'USAR_CREDITO'), { faltante: falta, cupoDisponible: libre }); userDeuda += falta; saldoSimulado = 0; }
+          else return err(`(Simulación) Saldo insuficiente. Tienes ${formatoCOP(saldoSimulado)} y el total es ${formatoCOP(total)}.`, 'SALDO_INSUFICIENTE');
+        } else saldoSimulado -= total;
+        actualizarSaldoHeader();
+        const desde = comprasSimuladas.reduce((t, c) => t + (parseInt(c.cantidad, 10) || 0), 0);
+        const cuentas = cuentasDemoSim(prod, n, desde);
+        registrarCompraSim(prod, cuentas, n, total);
+        let combo = null;
+        if (conCombo) { const pc = Object.assign({}, catalogoUnificado.find(p => p.docId === prod.combo.productoId) || {}, { docId: prod.combo.productoId }); const cc = cuentasDemoSim(pc, n, desde + n); registrarCompraSim(pc, cc, n, prod.combo.precio * n, { esCombo: true }); combo = { cuentas: cc, productoId: pc.docId, productoNombre: pc.nombre, tipoGarantia: pc.tipoGarantia }; }
+        setTimeout(() => { try { renderizarCatalogo(); } catch (e) { /* nada */ } }, 0);
+        return { ok: true, simulada: true, total: total, saldo: saldoSimulado, cuentas: cuentas, combo: combo };
+      }
+      if (accion === 'preorden_crear') {
+        const prod = catalogoUnificado.find(p => p.docId === d.productoId); if (!prod) return err('Producto no disponible.');
+        const n = Math.max(1, parseInt(d.cantidad, 10) || 1), total = precioPorCantidad(prod, n) * n;
+        if (saldoSimulado < total) return err(`(Simulación) Saldo insuficiente para el encargo (${formatoCOP(total)}).`, 'SALDO_INSUFICIENTE');
+        saldoSimulado -= total; actualizarSaldoHeader();
+        return { ok: true, simulada: true, id: 'sim_po_' + Date.now(), total: total, saldo: saldoSimulado };
+      }
+      if (accion === 'renovar_compra') {
+        const c = comprasSimuladas.find(x => x.id === d.compraId); if (!c) return err('Compra no encontrada.');
+        const prod = catalogoUnificado.find(p => p.docId === c.productoId); const v = prod ? infoVentaProducto(prod) : {};
+        if (!v.alquiler) return err('Este producto no se renueva: compra cuentas nuevas.');
+        const total = (Number(prod.precio) || 0) * (parseInt(c.cantidad, 10) || 1);
+        if (saldoSimulado < total) return err(`(Simulación) Saldo insuficiente. La renovación cuesta ${formatoCOP(total)}.`, 'SALDO_INSUFICIENTE');
+        saldoSimulado -= total; actualizarSaldoHeader();
+        const desde = Math.max(Date.now(), Date.parse(c.venceCuenta || '') || Date.now());
+        c.venceCuenta = new Date(venceGarantia(desde, parseGarantia(v.duracion))).toISOString();
+        return { ok: true, simulada: true, total: total, saldo: saldoSimulado, venceCuenta: c.venceCuenta };
+      }
+      if (accion === 'binance_tasa') return { ok: true, tasa: 3900, minimo: 5 };
+      return null;   // el resto lo maneja el simulador como antes
+    }
+    setTimeout(() => { const v = document.getElementById('simVersionTxt'); if (v) v.textContent = VERSION_PAGINA; }, 0);
+    function reiniciarDatosSimulador() {
+      saldoSimulado = SALDO_SIMULADO_INICIAL; comprasSimuladas = [];
+      try { actualizarSaldoHeader(); renderizarCatalogo(); } catch (e) { /* nada */ }
+      mostrarToast('Simulador reiniciado: $' + SALDO_SIMULADO_INICIAL.toLocaleString('es-CO') + ' de saldo de prueba y sin compras.');
+    }
+
+
+    // ==================== AVISOS DE RENOVACIÓN ====================
+    var cfgAvisosRen = { activo: true, dias: [3, 0], app: 'business' };
+    async function cargarAvisosRenovacionUI() {
+      try { const d = await db.collection('configuracion').doc('avisos_renovacion').get(); if (d.exists) cfgAvisosRen = Object.assign(cfgAvisosRen, d.data()); } catch (e) { /* nada */ }
+      const a = document.getElementById('avRenActivo'), dd = document.getElementById('avRenDias'), ap = document.getElementById('avRenApp');
+      if (a) a.checked = cfgAvisosRen.activo !== false; if (dd) dd.value = (cfgAvisosRen.dias || [3, 0]).join(', '); if (ap) ap.value = cfgAvisosRen.app === 'normal' ? 'normal' : 'business';
+    }
+    async function guardarAvisosRenovacion() {
+      const dias = Array.from(new Set(String((document.getElementById('avRenDias') || {}).value || '').split(/[,\s]+/).map(n => parseInt(n, 10)).filter(n => n >= 0 && n <= 30))).sort((a, b) => b - a);
+      if (!dias.length) { alert('Escribe al menos un día, por ejemplo: 3, 0'); return; }
+      cfgAvisosRen = { activo: !!(document.getElementById('avRenActivo') || {}).checked, dias: dias, app: (document.getElementById('avRenApp') || {}).value === 'normal' ? 'normal' : 'business' };
+      try { await db.collection('configuracion').doc('avisos_renovacion').set(cfgAvisosRen); mostrarToast('🔔 Avisos de renovación guardados: ' + dias.map(d => d === 0 ? 'el día que vence' : d + (d === 1 ? ' día antes' : ' días antes')).join(', ')); }
+      catch (e) { alert('No se pudo guardar: ' + e.message); }
+    }
+    // Abre WhatsApp (o WhatsApp Business) con el número y el mensaje listos
+    function abrirWhatsappNumero(numero, texto, business) {
+      let tel = String(numero || '').replace(/\D/g, ''); if (tel.length === 10) tel = '57' + tel;
+      const enc = encodeURIComponent(texto), android = /Android/i.test(navigator.userAgent);
+      if (android) { location.href = `intent://send?phone=${tel}&text=${enc}#Intent;scheme=whatsapp;package=${business ? 'com.whatsapp.w4b' : 'com.whatsapp'};end`; return; }
+      window.open(`https://wa.me/${tel}?text=${enc}`, '_blank', 'noopener');
+    }
+    async function avisarRenovacionWhatsapp(id) {
+      const a = (typeof netflixCuentasAdmin !== 'undefined' ? netflixCuentasAdmin : []).find(x => x.id === id); if (!a) return;
+      if (!cfgAvisosRen.__cargado) { try { const d = await db.collection('configuracion').doc('avisos_renovacion').get(); if (d.exists) cfgAvisosRen = Object.assign(cfgAvisosRen, d.data()); } catch (e) { /* nada */ } cfgAvisosRen.__cargado = true; }
+      const nom = String(a.clienteNombre || '').split(' ')[0] || '', plat = a.plataforma || 'Netflix', f = esFechaNetflix(a.proximoPago) ? a.proximoPago.split('-').reverse().slice(0, 2).join('/') : '', precio = Number(a.precio) || 0;
+      const est = estadoNetflix(a), cuando = est.dias === 0 ? 'vence hoy' : (est.dias < 0 ? 'venció el ' + f : 'vence el ' + f);
+      const texto = `Hola${nom ? ' ' + nom : ''} 👋 tu ${plat} ${cuando}. ¿Deseas renovarla${precio ? ' por ' + formatoCOP(precio) : ''}?\n\nPuedes renovarla desde tu perfil en ${enlaceMk()} o respondiendo este mensaje. ¡Gracias por tu confianza! 🙌`;
+      abrirWhatsappNumero(a.clienteWhatsapp || a.whatsapp, texto, cfgAvisosRen.app !== 'normal');
+    }
+
+    // ==================== PLAN INTELIGENTE DE MARKETING (con tu actividad real) ====================
+    var planMk = [];
+    async function generarPlanMarketing() {
+      const c = document.getElementById('planMarketing'); if (!c) return;
+      c.innerHTML = '<p class="text-[11px] text-gray-400"><i class="fa-solid fa-spinner fa-spin mr-1"></i>Analizando tu actividad…</p>';
+      try {
+        const desde = new Date(Date.now() - 14 * 86400000).toISOString();
+        const [sv, sc] = await Promise.all([db.collection('visitas').where('fecha', '>=', desde).get().catch(() => ({ forEach() {} })), db.collection('compras').where('fecha', '>=', desde).get()]);
+        const V = [], C = []; sv.forEach(d => V.push(d.data() || {})); sc.forEach(d => { const x = d.data() || {}; if (!x.esRenovacion && !x.regalo) C.push(x); });
+        const porHora = Array(24).fill(0), porDia = Array(7).fill(0);
+        V.forEach(v => { if (v.hora >= 0) porHora[v.hora]++; if (v.diaSemana >= 0) porDia[v.diaSemana]++; });
+        C.forEach(x => { const b = partesBogota(new Date(x.fecha)); porHora[b.hora] += 2; porDia[b.diaSemana] += 2; });   // una compra pesa más que una visita
+        const sinDatos = (V.length + C.length) < 15;   // con muy pocos datos se usa el horario típico (noche)
+        const pico = sinDatos ? 20 : porHora.indexOf(Math.max(...porHora));
+        const horaPost = (pico + 23) % 24;   // una hora antes del pico
+        const segunda = sinDatos ? 12 : porHora.map((n, h) => [n, h]).filter(([n, h]) => Math.abs(h - pico) >= 4).sort((a, b) => b[0] - a[0])[0][1];
+        const dias = sinDatos ? [5, 6, 0, 1, 2, 3, 4] : porDia.map((n, d) => [n, d]).sort((a, b) => b[0] - a[0]).map(x => x[1]);
+        const vendidos = {}; C.forEach(x => { if (x.productoId) vendidos[x.productoId] = (vendidos[x.productoId] || 0) + (parseInt(x.cantidad, 10) || 1); });
+        const prods = productosMarketing().filter(p => Number(p.stock) > 0);
+        const top = prods.slice().sort((a, b) => (vendidos[b.docId] || 0) - (vendidos[a.docId] || 0));
+        const sobra = prods.slice().sort((a, b) => (Number(b.stock) || 0) - (Number(a.stock) || 0));
+        const conPromo = prods.filter(p => p.promoPct || promoPerfilCliente(p.docId) || escalasDe(p).length);
+        const ya = new Set(); const elegir = (lista) => { const p = lista.find(x => !ya.has(x.docId)) || lista[0]; if (p) ya.add(p.docId); return p; };
+        const DIAS = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+        const hoy = new Date(); const fechaDe = k => { const d = new Date(hoy); d.setDate(hoy.getDate() + k); return d; };
+        const enlace = enlaceMk();
+        const tipos = [
+          { t: '🔥 Producto estrella', d: 'impacto', lista: top, msg: p => `🔥 *${p.nombre}* — el más pedido de la semana\n\n💲 ${formatoCOP(p.precio)} c/u\n⚡ Entrega inmediata${parseGarantia(p.tipoGarantia) ? ' · 🛡 Garantía ' + textoGarantia(p.tipoGarantia) : ''}\n\n👉 Pídelo ya en ${enlace}` },
+          { t: '📦 Mueve el stock', d: 'tarjeta', lista: sobra, msg: p => `📦 ¡Llegó stock de *${p.nombre}*!\n\nTenemos ${p.stock} disponibles a ${formatoCOP(p.precio)} c/u. Ideal para revender 💼\n\n👉 ${enlace}` },
+          { t: '💰 Precio por cantidad', d: 'oro', lista: conPromo.length ? conPromo : top, msg: p => { const e = escalasDe(p); return e.length ? `💰 *Entre más llevas, menos pagas*\n\n${p.nombre}\n${[`${p.minCompra || 1}+ ${formatoCOP(p.precioLista || p.precio)}`].concat(e.map(x => `${x.desde}+ ${formatoCOP(x.precio)}`)).join(' · ')}\n\n👉 ${enlace}` : `🎁 *Promo en ${p.nombre}*\n\n${p.promoPct ? '-' + p.promoPct + '% hoy · ' : ''}${formatoCOP(p.precio)} c/u\n\n👉 ${enlace}`; } },
+          { t: '📋 Lista de precios', d: 'lista', lista: top, msg: () => `📋 *LISTA DE PRECIOS — ${nombreTienda()}*\n\n${productosMarketing().slice(0, 8).map(p => `▪️ ${p.nombre}: ${formatoCOP(p.precio)}`).join('\n')}\n\n👉 Pide ya en ${enlace}` },
+          { t: '⏰ Urgencia', d: 'neon', lista: prods.filter(p => Number(p.stock) <= 10).concat(top), msg: p => `⏰ *¡ÚLTIMAS UNIDADES!*\n\n${p.nombre}: quedan solo ${p.stock} 😱\n${formatoCOP(p.precio)} c/u\n\nCuando se acaben, se acaban 👀\n👉 ${enlace}` },
+          { t: '🙌 Confianza', d: 'claro', lista: top, msg: p => `🙌 *¿Por qué comprar en ${nombreTienda()}?*\n\n✅ Entrega inmediata, 24/7\n✅ Garantía en tus cuentas\n✅ Recarga y compra en minutos\n\nHoy recomendamos: *${p.nombre}* a ${formatoCOP(p.precio)}\n👉 ${enlace}` },
+          { t: '🎉 Fin de semana', d: 'retro', lista: top, msg: p => `🎉 *Plan de fin de semana*\n\nMaratón con *${p.nombre}* 🍿\n${formatoCOP(p.precio)} c/u · entrega al instante\n\n👉 ${enlace}` }
+        ];
+        planMk = [];
+        for (let k = 0; k < 7; k++) {
+          const f = fechaDe(k), ds = f.getDay(), fuerte = dias.indexOf(ds) < 3;
+          const tp = ds === 5 || ds === 6 ? tipos[6] : tipos[k % 6];
+          const p = tp.d === 'lista' ? null : elegir(tp.lista.length ? tp.lista : prods);
+          if (tp.d !== 'lista' && !p) continue;
+          planMk.push({ fecha: f, dia: DIAS[ds], fuerte, hora: fuerte ? horaPost : segunda, tipo: tp.t, diseno: tp.d, producto: p, mensaje: tp.msg(p || {}), extra: fuerte ? 'Día fuerte: publica también un segundo estado a las ' + horaBonita(segunda) : '' });
+        }
+        const inactivos = await contarInactivos().catch(() => 0);
+        c.innerHTML = `<div class="p-3 rounded-xl bg-violet-500/10 border border-violet-400/30 text-[11px] text-violet-100 leading-relaxed">${sinDatos ? 'Aún hay poca actividad registrada, así que el plan usa el horario típico (estado a las 7 p. m., segundo a las 12 p. m.). Se afina solo a medida que entren visitas y ventas.' : `📈 Tu hora pico es <b>${horaBonita(pico)}</b>; publica a las <b>${horaBonita(horaPost)}</b> · Días más fuertes: <b>${dias.slice(0, 2).map(d => DIAS[d]).join(' y ')}</b>.`}${inactivos ? `<br>🔄 Tienes <b>${inactivos}</b> clientes que no compran hace 15 días: envíales un cupón en "Reactivación".` : ''}</div>` +
+          planMk.map((x, i) => `<div class="p-3 rounded-xl bg-gray-800/60 border ${x.fuerte ? 'border-amber-400/40' : 'border-gray-700/60'}"><div class="flex items-center justify-between gap-2"><p class="text-xs font-black text-white">${x.dia} ${x.fecha.getDate()}/${x.fecha.getMonth() + 1} · ${horaBonita(x.hora)}${x.fuerte ? ' <span class="text-amber-300">★</span>' : ''}</p><span class="text-[10px] font-bold text-violet-200">${x.tipo}</span></div>${x.producto ? `<p class="text-[11px] text-gray-300 mt-0.5">${escaparHtml(x.producto.nombre)} · diseño ${escaparHtml((DISENOS_MK.find(d => d[0] === x.diseno) || [, x.diseno])[1])}</p>` : '<p class="text-[11px] text-gray-300 mt-0.5">Imagen: lista de precios</p>'}${x.extra ? `<p class="text-[10px] text-amber-200 mt-0.5">${x.extra}</p>` : ''}<pre class="mt-2 p-2 rounded-lg bg-gray-900 text-[11px] text-gray-200 whitespace-pre-wrap font-sans">${escaparHtml(x.mensaje)}</pre><div class="grid grid-cols-3 gap-1.5 mt-2"><button type="button" onclick="copiarTexto(planMk[${i}].mensaje,'Mensaje copiado')" class="py-1.5 rounded-lg bg-gray-700 text-white text-[10px] font-bold"><i class="fa-solid fa-copy mr-1"></i>Copiar</button><button type="button" onclick="planAWhatsapp(${i})" class="py-1.5 rounded-lg bg-emerald-600 text-white text-[10px] font-bold"><i class="fa-brands fa-whatsapp mr-1"></i>WhatsApp</button><button type="button" onclick="planAImagen(${i})" class="py-1.5 rounded-lg bg-violet-600 text-white text-[10px] font-bold"><i class="fa-solid fa-image mr-1"></i>Imagen</button></div></div>`).join('');
+      } catch (e) { c.innerHTML = `<p class="text-[11px] text-red-300">No se pudo generar: ${escaparHtml(e.message)}</p>`; }
+    }
+    async function contarInactivos() {
+      const sc = await db.collection('compras').where('fecha', '>=', new Date(Date.now() - 120 * 86400000).toISOString()).get(); const ult = {};
+      sc.forEach(d => { const x = d.data() || {}; if (!x.usuarioId) return; const t = Date.parse(x.fecha) || 0; if (!ult[x.usuarioId] || t > ult[x.usuarioId]) ult[x.usuarioId] = t; });
+      return Object.values(ult).filter(t => t < Date.now() - 15 * 86400000).length;
+    }
+    function planAWhatsapp(i) { const x = planMk[i]; if (!x) return; const enc = encodeURIComponent(x.mensaje); if (/Android/i.test(navigator.userAgent)) { location.href = 'intent://send?text=' + enc + '#Intent;scheme=whatsapp;package=' + (cfgAvisosRen.app === 'normal' ? 'com.whatsapp' : 'com.whatsapp.w4b') + ';end'; return; } window.open('https://wa.me/?text=' + enc, '_blank', 'noopener'); }
+    function planAImagen(i) {
+      const x = planMk[i]; if (!x) return;
+      try {
+        cambiarTabAdmin('marketing');
+        setTimeout(() => {
+          try {
+            if (x.diseno === 'lista') { mkTipoImagen = 'lista'; } else { mkTipoImagen = 'producto'; mkDiseno = x.diseno; const sel = document.getElementById('mkProducto'); if (sel && x.producto) sel.value = x.producto.docId; }
+            pintarTiposImagen(); pintarDisenosMk(); dibujarMarketing();
+            const v = document.getElementById('mkVista'); if (v) v.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            mostrarToast('Imagen lista en Marketing: descárgala y súbela a tu estado');
+          } catch (e) { console.warn(e); }
+        }, 400);
+      } catch (e) { alert(e.message); }
+    }
+
+    // ==================== SIMULAR COMO… (perfil de prueba) ====================
+    // Todo vive en la memoria del navegador mientras simulas; al salir vuelve tu cuenta real. Nada se guarda en la base de datos.
+    var simPerfil = null, simRespaldo = null;
+    function abrirSimularComo() {
+      const p = simPerfil || { tipo: 'cliente', nivel: 'bronce', vip: false, saldo: saldoSimulado, cupo: 0, deuda: 0, cupon: 0 };
+      let m = document.getElementById('modalSimularComo');
+      if (!m) { m = document.createElement('div'); m.id = 'modalSimularComo'; m.className = 'fixed inset-0 z-[96] hidden items-center justify-center p-4 bg-black/75 backdrop-blur-sm'; m.onclick = ev => { if (ev.target === m) cerrarSimularComo(); }; document.body.appendChild(m); }
+      const op = (v, t, a) => `<option value="${v}" ${String(a) === String(v) ? 'selected' : ''}>${t}</option>`;
+      m.innerHTML = `<div class="w-full max-w-sm rounded-3xl bg-gray-900 border border-yellow-500/50 p-5 space-y-3 max-h-[88vh] overflow-y-auto">
+        <div class="flex items-center justify-between"><p class="text-base font-black text-white">🎭 Simular como…</p><button type="button" onclick="cerrarSimularComo()" class="w-8 h-8 rounded-full bg-gray-800 text-gray-300"><i class="fa-solid fa-xmark"></i></button></div>
+        <label class="block text-[11px] text-gray-400">Tipo de cliente<select id="simTipo" onchange="document.getElementById('simNivelCaja').classList.toggle('hidden', this.value!=='revendedor')" class="mt-1 w-full ${'bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none'}">${op('cliente', 'Cliente común', p.tipo)}${op('normal', 'Cliente normal (categorías limitadas)', p.tipo)}${op('revendedor', '👑 Dealer', p.tipo)}</select></label>
+        <label id="simNivelCaja" class="block text-[11px] text-gray-400 ${p.tipo === 'revendedor' ? '' : 'hidden'}">Nivel Dealer del mes<select id="simNivel" class="mt-1 w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none">${op('bronce', '🥉 Bronce', p.nivel)}${op('plata', '🥈 Plata', p.nivel)}${op('oro', '👑 Oro', p.nivel)}</select></label>
+        <label class="flex items-center justify-between gap-2 text-sm text-white"><span>Acceso a productos VIP</span><input type="checkbox" id="simVip" ${p.vip ? 'checked' : ''} class="accent-yellow-400 w-5 h-5"></label>
+        <div class="grid grid-cols-2 gap-2"><label class="text-[11px] text-gray-400">Saldo de prueba<input type="number" id="simSaldo" min="0" step="1000" value="${p.saldo}" class="mt-1 w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none"></label><label class="text-[11px] text-gray-400">Cupón (%)<input type="number" id="simCupon" min="0" max="50" value="${p.cupon || 0}" class="mt-1 w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none"></label></div>
+        <div class="grid grid-cols-2 gap-2"><label class="text-[11px] text-gray-400">Crédito (cupo)<input type="number" id="simCupo" min="0" step="1000" value="${p.cupo || 0}" class="mt-1 w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none"></label><label class="text-[11px] text-gray-400">Deuda actual<input type="number" id="simDeuda" min="0" step="1000" value="${p.deuda || 0}" class="mt-1 w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none"></label></div>
+        <p class="text-[10px] text-gray-500">Solo vive en este navegador mientras simulas. Al salir del simulador vuelve tu cuenta real; nada se guarda.</p>
+        <button type="button" onclick="aplicarSimularComo()" class="w-full py-3 rounded-xl bg-yellow-400 hover:bg-yellow-300 text-black font-black text-sm">Aplicar perfil</button>
+      </div>`;
+      m.classList.remove('hidden'); m.style.display = 'flex';
+    }
+    function cerrarSimularComo() { const m = document.getElementById('modalSimularComo'); if (m) { m.classList.add('hidden'); m.style.display = 'none'; } }
+    function cuentasParaNivel(id) { for (let n = 0; n <= 5000; n += 1) { if (nivelDealerDe(n).id === id) return n; } return 0; }
+    function aplicarSimularComo() {
+      if (!modoPruebaCliente) return;
+      if (!simRespaldo) simRespaldo = { tipo: userTipoCuenta, permitidos: userProductosPermitidos.slice(), categorias: userCategoriasPermitidas.slice(), bloqueados: userProductosBloqueados.slice(), cupo: userCupo, deuda: userDeuda, cupon: (typeof miCupon !== 'undefined' ? miCupon : null), progreso: JSON.parse(JSON.stringify(progresoDealer || { mes: 0, hoy: {} })) };
+      const v = id => (document.getElementById(id) || {}).value, chk = id => !!(document.getElementById(id) || {}).checked;
+      simPerfil = { tipo: v('simTipo') || 'cliente', nivel: v('simNivel') || 'bronce', vip: chk('simVip'), saldo: Math.max(0, Number(v('simSaldo')) || 0), cupo: Math.max(0, Number(v('simCupo')) || 0), deuda: Math.max(0, Number(v('simDeuda')) || 0), cupon: Math.max(0, Math.min(50, Number(v('simCupon')) || 0)) };
+      userTipoCuenta = simPerfil.tipo === 'cliente' ? '' : simPerfil.tipo;
+      userProductosPermitidos = simPerfil.vip ? catalogoUnificado.filter(p => esProductoVip(p)).map(p => p.docId) : [];
+      userCategoriasPermitidas = []; userProductosBloqueados = [];
+      userCupo = simPerfil.cupo; userDeuda = simPerfil.deuda; saldoSimulado = simPerfil.saldo;
+      miCupon = simPerfil.cupon ? { pct: simPerfil.cupon, vence: new Date(Date.now() + 48 * 3600000).toISOString(), usado: false } : null;
+      progresoDealer = { mes: simPerfil.tipo === 'revendedor' ? cuentasParaNivel(simPerfil.nivel) : 0, hoy: {} };
+      cerrarSimularComo();
+      const etq = { cliente: 'Cliente', normal: 'Cliente normal', revendedor: 'Dealer ' + ({ bronce: 'Bronce', plata: 'Plata', oro: 'Oro' })[simPerfil.nivel] }[simPerfil.tipo] + (simPerfil.vip ? ' · VIP' : '');
+      const t = document.getElementById('txtPerfilSim'); if (t) t.textContent = etq;
+      try { if (simPerfil.tipo === 'revendedor' && (!cfgDealer || !cfgDealer.promos)) cargarCfgDealer().then(() => { try { renderizarCatalogo(); } catch (e) { /* nada */ } }); actualizarSaldoHeader(); renderizarFiltrosCategorias(); renderizarCatalogo(); pintarBannerCupon(); pintarBannerDealer(); } catch (e) { console.warn(e); }
+      mostrarToast('🎭 Ahora ves la tienda como: ' + etq);
+    }
+    function restaurarPerfilReal() {
+      if (!simRespaldo) { simPerfil = null; return; }
+      userTipoCuenta = simRespaldo.tipo; userProductosPermitidos = simRespaldo.permitidos; userCategoriasPermitidas = simRespaldo.categorias; userProductosBloqueados = simRespaldo.bloqueados;
+      userCupo = simRespaldo.cupo; userDeuda = simRespaldo.deuda; miCupon = simRespaldo.cupon; progresoDealer = simRespaldo.progreso;
+      simRespaldo = null; simPerfil = null; const t = document.getElementById('txtPerfilSim'); if (t) t.textContent = 'Cliente';
+    }
 
     // ==================== NETFLIX EN LA TIENDA: SIN CONTRASEÑA ====================
     function esNombreNetflix(t) { return /netflix/i.test(String(t || '')); }
@@ -19546,6 +19770,7 @@
     }
 
     async function llamarBackend(accion, datos) {
+      if (modoPruebaCliente) { const rs = backendSimulado(accion, datos || {}); if (rs) return rs; }
       const url = obtenerBackendUrl();
       if (!url) throw new Error('El servidor seguro no está configurado.');
       if (!currentUser) throw new Error('Debes iniciar sesión.');
@@ -20791,6 +21016,7 @@
         if (esNetflixNf(a)) botones += `<button id="btnOtpNf_a_${id}" onclick="pedirCodigoNetflix('${id}','a')" class="px-2.5 py-1.5 rounded-lg text-[11px] font-bold flex items-center gap-1 transition bg-emerald-500 hover:bg-emerald-400 text-black"><i class="fa-solid fa-key"></i> Código</button>`;
         if (esNetflixNf(a) && a.clienteUid) botones += btn('bg-red-500/15 hover:bg-red-500/25 text-red-300 border border-red-500/30', `abrirEnlaceCodigo('${id}')`, 'fa-link', 'Enlace');
         botones += btn('bg-green-600 hover:bg-green-500 text-white', `registrarPagoNetflix('${id}')`, 'fa-money-bill-wave', 'Registrar pago');
+        if (a.clienteWhatsapp || a.whatsapp) botones += btn('bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-200 border border-emerald-500/40', `avisarRenovacionWhatsapp('${id}')`, 'fa-paper-plane', 'Avisar');
         botones += btn(gris, `abrirModalNetflixVincular('${id}')`, 'fa-link', a.clienteUid ? 'Cambiar usuario' : 'Vincular');
         botones += (est.clave === 'vencida')
           ? btn('bg-red-600 hover:bg-red-500 text-white', `noRenovoNetflix('${id}')`, 'fa-ban', 'No renovó')
