@@ -788,6 +788,7 @@
       </div>
 
       <div id="perfilSecDatos" class="hidden">
+        <div id="tgClienteCaja" class="mb-3"></div>
         <form onsubmit="guardarDatosPerfil(event)" class="p-4 sm:p-5 bg-gray-900 border border-gray-800 rounded-2xl space-y-3">
           <div>
             <label for="perfilEmail" class="block text-xs text-gray-400 mb-1">Correo electrónico</label>
@@ -2191,6 +2192,13 @@
                 <i class="fa-brands fa-telegram"></i> Integración de Telegram
               </h4>
               <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div class="sm:col-span-2 p-3 rounded-xl bg-sky-500/5 border border-sky-500/30 space-y-2">
+                  <p class="text-[12px] font-black text-sky-200">✈️ Bot de avisos para clientes</p>
+                  <p class="text-[11px] text-gray-400">Un bot APARTE del tuyo (créalo en @BotFather). Tus clientes lo conectan en su perfil → Mis datos y reciben sus compras, recargas y stock nuevo. Nunca se envían contraseñas.</p>
+                  <input type="password" id="ajusteTgClientesToken" autocomplete="off" placeholder="Token del bot de clientes" class="w-full bg-gray-900 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white font-mono focus:outline-none">
+                  <button type="button" onclick="guardarYProbarTgClientes()" class="w-full py-2 rounded-xl bg-sky-500 hover:bg-sky-400 text-black font-black text-xs">Guardar y probar</button>
+                  <p id="tgClientesEstado" class="text-[11px] text-gray-400"></p>
+                </div>
                 <div>
                   <label class="block text-[11px] text-gray-400 mb-1">Bot Token</label>
                   <input type="text" id="ajusteTelegramToken" placeholder="123456789:AAF..." class="w-full bg-gray-900 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white font-mono focus:outline-none">
@@ -7338,6 +7346,7 @@
     }
 
     async function publicarNovedadGlobal({ tipo, titulo, mensaje, productoId, cantidad, soloDealers }) {
+      try { if (tipo === 'stock' && productoId && !soloDealers && obtenerBackendUrl()) llamarBackend('tg_avisar_stock', { productoId, cantidad: cantidad || 0 }).catch(() => {}); } catch (e) { /* opcional */ }
       try {
         const ref = db.collection('configuracion').doc('novedades');
         await db.runTransaction(async (t) => {
@@ -8917,6 +8926,7 @@
       const modalE = document.getElementById('modalEntrega');
       modalE.classList.remove('hidden');
       modalE.style.display = 'flex';
+      try { if (!modoPruebaCliente) sugerirTelegramTrasCompra(); } catch (e) { /* nada */ }
     }
 
     function renderizarAdminProductos() {
@@ -15022,8 +15032,9 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-09v';
+    const VERSION_PAGINA = '2026-10-09x';
     const ACTUALIZACIONES_PAGINA = [
+      { id: 'act_20261009_telegram', fecha: '2026-10-09', titulo: 'Avisos por Telegram ✈️', mensaje: 'Conecta Telegram en tu perfil → **Mis datos** y recibe al instante tus **compras**, tus **recargas** y el **stock nuevo** de lo que compras. Tú eliges qué recibir, y nunca te enviamos contraseñas por ahí.' },
       { id: 'act_20261009_serdealer', fecha: '2026-10-09', titulo: 'Ahora puedes pedir ser Dealer 👑', mensaje: 'En tu perfil ves cuánto te falta para **pedir ser Dealer**. Cuando cumples, toca **Pedir ser Dealer** y te avisamos en la campana. Los Dealers tienen **promos y regalos por volumen**.' },
       { id: 'act_20261009_registro', fecha: '2026-10-09', titulo: 'Registro más rápido ⚡', mensaje: 'Crear tu cuenta ahora es más rápido: solo correo, contraseña y WhatsApp, **sin códigos**.' },
       { id: 'act_20261009_estados', fecha: '2026-10-09', titulo: 'Mira nuestros estados 📲', mensaje: 'Cuando el logo de la tienda tiene **un círculo de colores**, hay un estado nuevo: tócalo para ver las novedades, ofertas y stock del día, como en WhatsApp.' },
@@ -15837,6 +15848,7 @@
         });
         document.getElementById('acCantidad').value = '';
         mostrarToast(`Listo: ${n} asignados a ${prov.nombre}. Le aparecerán en su panel.`);
+        try { await notificarUsuarioPanel(uid, 'anuncio', `📬 Te asignamos ${n} correo${n === 1 ? '' : 's'}`, `De ${prod.nombre}. Están en Correos para trabajar: crea las cuentas y súbelas.`); } catch (e) { /* opcional */ }
       } catch (err) { alert('No se pudo asignar: ' + err.message); }
       finally { if (btn) btn.disabled = false; }
     }
@@ -15865,7 +15877,29 @@
 
     // ----- Panel del proveedor -----
     let misAsignaciones = [], unsubMisAsign = null, provCorreosAbierto = false;
+    var miSolicitudCorreos = null, unsubMisSolic = null;
+    function iniciarMisSolicitudesCorreo() {
+      if (unsubMisSolic || !currentUser || !esProveedorSesion()) return;
+      try {
+        unsubMisSolic = db.collection('solicitudes_correos').where('proveedorUid', '==', currentUser.uid).onSnapshot(snap => {
+          const pend = []; snap.forEach(d => { const x = d.data() || {}; if (x.estado === 'pendiente') pend.push(Object.assign({ id: d.id }, x)); });
+          pend.sort((a, b) => String(b.fecha).localeCompare(String(a.fecha)));
+          miSolicitudCorreos = pend[0] || null; solicitudesPropiasPendiente = !!miSolicitudCorreos;
+          pintarBotonSolicitarCorreos();
+        }, () => {});
+      } catch (e) { /* nada */ }
+    }
+    function pintarBotonSolicitarCorreos() {
+      const b = document.getElementById('btnSolicitarCorreos'); if (!b) return;
+      const p = miSolicitudCorreos;
+      b.disabled = !!p; b.classList.toggle('opacity-60', !!p); b.classList.toggle('cursor-not-allowed', !!p);
+      b.innerHTML = p ? '<i class="fa-solid fa-hourglass-half mr-1"></i>Solicitud enviada' : '<i class="fa-solid fa-hand mr-1"></i>Pedir correos';
+      let av = document.getElementById('provSolicitudPend');
+      if (!av) { const r = document.getElementById('provCorreosResumen'); if (r) { av = document.createElement('p'); av.id = 'provSolicitudPend'; av.className = 'px-4 -mt-2 pb-3 text-[11px] text-amber-300'; r.parentNode.insertBefore(av, r.nextSibling); } }
+      if (av) { av.classList.toggle('hidden', !p); if (p) { const f = new Date(p.fecha); av.textContent = `⏳ Pediste ${p.cantidad ? p.cantidad + ' correos' : 'correos'} el ${f.toLocaleDateString('es-CO', { day: '2-digit', month: '2-digit' })} a las ${f.toLocaleTimeString('es-CO', { hour: 'numeric', minute: '2-digit' })} · espera a que te los asignen.`; } }
+    }
     function iniciarMisCorreosProveedor() {
+      iniciarMisSolicitudesCorreo();
       if (unsubMisAsign || !currentUser || !esProveedorSesion()) return;
       try {
         unsubMisAsign = db.collection('asignaciones_proveedor').where('proveedorUid', '==', currentUser.uid).onSnapshot(snap => {
@@ -15873,8 +15907,8 @@
           misAsignaciones = []; snap.forEach(d => misAsignaciones.push(Object.assign({ id: d.id }, d.data() || {})));
           misAsignaciones.sort((a, b) => String(b.fecha).localeCompare(String(a.fecha)));
           const nuevos = misAsignaciones.filter(a => !a.visto).length;
-          if (nuevos > antes && antes >= 0 && misAsignaciones.length) mostrarToast('📬 Tienes correos nuevos para trabajar.');
           renderizarMisCorreosProveedor();
+          if (nuevos > 0) mostrarAvisoCorreosNuevos();
         }, e => console.warn('Mis correos:', e));
       } catch (e) { console.warn(e); }
     }
@@ -15894,6 +15928,27 @@
     async function alternarMisCorreos() {
       provCorreosAbierto = !provCorreosAbierto; renderizarMisCorreosProveedor();
       if (provCorreosAbierto) { for (const a of misAsignaciones.filter(x => !x.visto)) { try { await db.collection('asignaciones_proveedor').doc(a.id).update({ visto: true }); } catch (e) { /* nada */ } } }
+    }
+    // Aviso único: sale una vez por cada tanda de correos asignados (al verlo se marcan como vistos)
+    var avisoCorreosAbierto = false;
+    function mostrarAvisoCorreosNuevos() {
+      const nuevos = misAsignaciones.filter(a => !a.visto); if (!nuevos.length || avisoCorreosAbierto) return;
+      avisoCorreosAbierto = true;
+      const total = nuevos.reduce((t, a) => t + (Number(a.cantidad) || 0), 0), prods = Array.from(new Set(nuevos.map(a => a.productoNombre).filter(Boolean)));
+      let m = document.getElementById('modalCorreosNuevos');
+      if (!m) { m = document.createElement('div'); m.id = 'modalCorreosNuevos'; m.className = 'fixed inset-0 z-[97] hidden items-center justify-center p-4 bg-black/75 backdrop-blur-sm'; document.body.appendChild(m); }
+      m.innerHTML = `<div class="w-full max-w-sm rounded-3xl bg-gray-900 border border-emerald-500/50 p-6 text-center">
+        <p class="text-5xl">📬</p><p class="text-lg font-black text-white mt-2">¡Te llegaron ${total} correo${total === 1 ? '' : 's'}!</p>
+        <p class="text-[12px] text-gray-400 mt-1">${prods.length ? 'De ' + escaparHtml(prods.join(', ')) + '. ' : ''}Ya están en <b class="text-white">Correos para trabajar</b>. Crea las cuentas y súbelas en Subir stock.</p>
+        <button type="button" onclick="cerrarAvisoCorreosNuevos(true)" class="mt-4 w-full py-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-black text-sm">Ver mis correos</button>
+        <button type="button" onclick="cerrarAvisoCorreosNuevos(false)" class="mt-2 w-full py-2 text-[12px] text-gray-400">Entendido</button></div>`;
+      m.classList.remove('hidden'); m.style.display = 'flex';
+    }
+    async function cerrarAvisoCorreosNuevos(abrir) {
+      const m = document.getElementById('modalCorreosNuevos'); if (m) { m.classList.add('hidden'); m.style.display = 'none'; }
+      if (abrir) { provCorreosAbierto = true; renderizarMisCorreosProveedor(); const c = document.getElementById('provCorreosCaja'); if (c) c.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+      for (const a of misAsignaciones.filter(x => !x.visto)) { try { await db.collection('asignaciones_proveedor').doc(a.id).update({ visto: true }); } catch (e) { /* nada */ } }
+      avisoCorreosAbierto = false;
     }
     function copiarCorreosAsignados(id) { const a = misAsignaciones.find(x => x.id === id); if (a) copiarTexto((a.cuentas || []).join('\n'), 'Correos copiados'); }
     async function solicitarCorreos() {
@@ -19340,6 +19395,8 @@
 
     // ==================== NOVEDADES INTERNAS DEL PANEL (solo el equipo) ====================
     const ACTUALIZACIONES_INTERNAS = [
+      { fecha: '2026-10-09', titulo: '✈️ Avisos por Telegram para clientes', mensaje: 'Con un bot aparte (Ajustes → Bot de avisos para clientes), cada cliente conecta su Telegram con un enlace de un solo uso y recibe solo SUS compras, recargas y el stock de lo que compra. **Para vender:** cuando subes stock, les llega el aviso a quienes ya compran ese producto.', ir: 'ajustes' },
+      { fecha: '2026-10-09', titulo: '✉️ Una solicitud de correos a la vez', mensaje: 'Cada proveedor solo puede tener **una solicitud de correos pendiente**: el botón queda en "Solicitud enviada" hasta que la atiendas o la descartes. Cuando le asignas correos, le sale una ventana única **📬 ¡Te llegaron N correos!** y un aviso en su campana.', ir: 'proveedores' },
       { fecha: '2026-10-09', titulo: '💻 Recarga más cómoda en el PC', mensaje: 'En el computador, el pedido de recarga ya no se ve gigante: con QR se muestra en dos columnas (datos y QR) y sin QR en una sola, y todo cabe en la pantalla sin desplazarse.', ir: '' },
       { fecha: '2026-10-09', titulo: '🔧 Aviso de servidor desactualizado', mensaje: 'Si la página le pide al servidor algo que todavía no conoce, ya no sale "Acción no reconocida": te dice que el servidor está desactualizado y qué versión publicar. **Ajustes → Probar conexión** también te avisa si el servidor está atrasado.', ir: 'ajustes' },
       { fecha: '2026-10-09', titulo: '🤝 Resolver en nombre del proveedor', mensaje: 'Si un proveedor tiene un imprevisto, tú o tus supervisores resuelven su ticket marcando **Resolver en nombre de…**: el cliente recibe su solución y al proveedor **no se le descuenta nada**. Queda marcado y aprobado, y el proveedor lo ve en su lista.', ir: 'tickets' },
@@ -20186,6 +20243,52 @@
       av.textContent = esAdminSesionActual() ? `Este ticket es de ${nom}. Si lo resuelves tú (cuenta arreglada o reemplazo), se le descuenta ${costo ? formatoCOP(costo) : 'el costo de la cuenta'}. Si solo lo cierras sin cambios, no se descuenta.` : `Este ticket es de ${nom}. El administrador revisará tu resolución.`;
     }
 
+
+    // ==================== AVISOS POR TELEGRAM (CLIENTES) ====================
+    var miTg = null, unsubMiTg = null, tgEsperando = false;
+    function iniciarTgCliente() {
+      if (unsubMiTg || !currentUser || esStaffSesion() || modoPruebaCliente) return;
+      try { unsubMiTg = db.collection('usuarios_tg').doc(currentUser.uid).onSnapshot(d => { miTg = d.exists ? d.data() : null; if (miTg && tgEsperando) { tgEsperando = false; mostrarToast('✈️ ¡Telegram conectado!'); } pintarTgCliente(); }, () => {}); } catch (e) { /* nada */ }
+    }
+    function pintarTgCliente() {
+      const c = document.getElementById('tgClienteCaja'); if (!c) return;
+      if (!currentUser || esStaffSesion()) { c.innerHTML = ''; return; }
+      if (!miTg) {
+        c.innerHTML = `<div class="flex items-center gap-3 p-3 rounded-2xl bg-gray-900 border border-sky-500/30"><span class="text-xl">✈️</span><span class="flex-1 min-w-0"><span class="block text-xs font-black text-white">Avisos por Telegram</span><span class="block text-[11px] text-gray-400">${tgEsperando ? 'Abre Telegram y toca <b class="text-sky-300">Iniciar</b> en el bot…' : 'Tus compras y el stock nuevo, al instante'}</span></span><button type="button" id="btnTgConectar" onclick="conectarTgCliente()" class="shrink-0 px-3 py-1.5 rounded-lg bg-sky-400 hover:bg-sky-300 text-black text-[11px] font-black">${tgEsperando ? 'Abrir de nuevo' : 'Conectar'}</button></div>`;
+        return;
+      }
+      const p = miTg.prefs || {}, fila = (k, t, sub) => `<label class="flex items-center gap-3 py-1.5 cursor-pointer"><span class="flex-1 text-[12px] text-gray-200">${t}${sub ? ` <span class="text-[10px] text-gray-500">· ${sub}</span>` : ''}</span><input type="checkbox" ${p[k] !== false ? 'checked' : ''} onchange="cambiarPrefTg('${k}', this.checked)" class="accent-sky-400 w-4 h-4"></label>`;
+      c.innerHTML = `<div class="p-3 rounded-2xl bg-gray-900 border border-sky-500/30"><div class="flex items-center justify-between gap-2"><p class="text-xs font-black text-white">✈️ Telegram conectado</p><button type="button" onclick="desconectarTgCliente()" class="text-[11px] text-gray-400 underline">Desconectar</button></div>
+        <div class="mt-1.5 divide-y divide-gray-800">${fila('compras', 'Mis compras')}${fila('recargas', 'Mis recargas acreditadas')}${fila('stock', 'Stock nuevo', 'solo de lo que compro')}</div>
+        <p class="text-[10px] text-gray-500 mt-1">Nunca te enviamos contraseñas por Telegram.</p></div>`;
+    }
+    async function conectarTgCliente() {
+      const b = document.getElementById('btnTgConectar'); if (b) { b.disabled = true; b.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>'; }
+      try {
+        const r = await llamarBackend('tg_vincular', {}); if (!r.ok) { alert(r.error || 'No se pudo.'); return; }
+        tgEsperando = true; pintarTgCliente();
+        const w = window.open(r.enlace, '_blank', 'noopener'); if (!w) location.href = r.enlace;
+      } catch (e) { alert(e.message); }
+      finally { const b2 = document.getElementById('btnTgConectar'); if (b2) b2.disabled = false; }
+    }
+    async function cambiarPrefTg(k, v) { try { const prefs = Object.assign({ compras: true, recargas: true, stock: true }, (miTg || {}).prefs || {}); prefs[k] = !!v; await db.collection('usuarios_tg').doc(currentUser.uid).update({ prefs }); } catch (e) { alert('No se pudo guardar: ' + e.message); } }
+    async function desconectarTgCliente() { if (!await confirmarModal('¿Dejar de recibir avisos por Telegram?', { textoAceptar: 'Sí, desconectar' })) return; try { await db.collection('usuarios_tg').doc(currentUser.uid).delete(); mostrarToast('Telegram desconectado'); } catch (e) { alert(e.message); } }
+    // Recordatorio único después de la primera compra
+    function sugerirTelegramTrasCompra() {
+      try { if (miTg || esStaffSesion() || localStorage.getItem('tgSugerido')) return; localStorage.setItem('tgSugerido', '1'); } catch (e) { return; }
+      setTimeout(() => mostrarToast('✈️ ¿Quieres este aviso en Telegram? Conéctalo en tu perfil → Mis datos.'), 1800);
+    }
+    // ---- Panel: token del bot de clientes ----
+    async function guardarYProbarTgClientes() {
+      const v = String((document.getElementById('ajusteTgClientesToken') || {}).value || '').trim(), est = document.getElementById('tgClientesEstado');
+      try {
+        if (v) { if (!/^\d{6,}:[A-Za-z0-9_-]{30,}$/.test(v)) { alert('Ese token no tiene el formato correcto (números:letras).'); return; } await db.collection('secretos').doc('ajustes').set({ telegramClientesToken: v, actualizadoEl: new Date().toISOString() }, { merge: true }); document.getElementById('ajusteTgClientesToken').value = ''; }
+        if (est) est.textContent = 'Probando…';
+        const r = await llamarBackend('tg_probar', {});
+        if (est) est.innerHTML = r.ok ? `<span class="text-emerald-300">✓ Conectado a <b>@${escaparHtml(r.bot)}</b> · ${r.conectados} cliente${r.conectados === 1 ? '' : 's'} con avisos.</span>` : `<span class="text-red-300">${escaparHtml(r.error || 'No se pudo.')}</span>`;
+      } catch (e) { if (est) est.innerHTML = `<span class="text-red-300">${escaparHtml(e.message)}</span>`; }
+    }
+
     // ==================== NETFLIX EN LA TIENDA: SIN CONTRASEÑA ====================
     function esNombreNetflix(t) { return /netflix/i.test(String(t || '')); }
     function esProductoNetflix(p) {
@@ -20252,7 +20355,7 @@
     }
 
     function cambiarTabPerfil(tab) {
-      setTimeout(() => { try { renderizarCreditoCliente(); } catch (e) { /* nada */ } }, 0);
+      setTimeout(() => { try { renderizarCreditoCliente(); } catch (e) { /* nada */ } try { if (tab === 'datos') { iniciarTgCliente(); pintarTgCliente(); } } catch (e) { /* nada */ } }, 0);
       try {
         ['cuentas', 'recargas', 'credito', 'datos', 'seguridad'].forEach(t => {
           const nombre = t.charAt(0).toUpperCase() + t.slice(1);
@@ -20839,6 +20942,7 @@
         renderFiltrosGarantiaPerfil();
         try { pintarPerfilVentas(); } catch (e) { console.warn(e); }
         try { iniciarSolicitudDealer(); pintarTarjetaSerDealer(); } catch (e) { /* nada */ }
+        try { iniciarTgCliente(); pintarTgCliente(); } catch (e) { /* nada */ }
         filtrarMisCuentasPerfil();
         iniciarRelojGarantiasPerfil();
       } catch (err) {
@@ -20998,7 +21102,7 @@
       return { cuentas: legado, stock: legado.length || stockPublico };
     }
 
-    const VERSION_SERVIDOR_NECESARIA = '2026-10-09g';   // la versión del servidor que necesita esta página
+    const VERSION_SERVIDOR_NECESARIA = '2026-10-09h';   // la versión del servidor que necesita esta página
     async function llamarBackend(accion, datos) {
       if (modoPruebaCliente) { const rs = backendSimulado(accion, datos || {}); if (rs) return rs; }
       const url = obtenerBackendUrl();
