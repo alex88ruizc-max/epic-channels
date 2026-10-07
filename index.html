@@ -367,6 +367,24 @@
   
     /* En el simulador, la barra amarilla tiene su propio espacio y no tapa la tienda */
     body.en-simulacion #vistaTienda, body.en-simulacion #vistaMisCuentas, body.en-simulacion #vistaNetflix { padding-top: 3.75rem; }
+  
+    /* ===== Estados (como WhatsApp) ===== */
+    .est-anillo { border-radius: 9999px; padding: 3px; cursor: pointer; background: conic-gradient(#10d9a0, #f5c542, #10d9a0); }
+    .est-anillo.visto { background: #6b7280; }
+    .est-anillo > * { display: block; border-radius: 9999px; border: 2px solid #05080f !important; }
+    #visorEstados { position: fixed; inset: 0; z-index: 130; background: rgba(0,0,0,.92); display: none; align-items: center; justify-content: center; }
+    #visorEstados.abierto { display: flex; }
+    #visorEstados .marco { position: relative; width: 100%; height: 100%; background: #000; overflow: hidden; touch-action: none; }
+    @media (min-width: 768px) { #visorEstados .marco { width: min(420px, calc((100vh - 40px) * 9 / 16)); height: min(calc(100vh - 40px), 747px); border-radius: 16px; } }
+    #visorEstados img.est { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
+    #visorEstados .barras { position: absolute; top: calc(env(safe-area-inset-top, 0px) + 8px); left: 8px; right: 8px; display: flex; gap: 4px; z-index: 3; }
+    #visorEstados .barras span { flex: 1; height: 3px; border-radius: 2px; background: rgba(255,255,255,.35); overflow: hidden; }
+    #visorEstados .barras i { display: block; height: 100%; width: 0; background: #fff; }
+    #visorEstados .cab { position: absolute; top: calc(env(safe-area-inset-top, 0px) + 18px); left: 10px; right: 10px; display: flex; align-items: center; gap: 8px; z-index: 5; color: #fff; }
+    #visorEstados .x { margin-left: auto; width: 38px; height: 38px; border-radius: 9999px; background: rgba(0,0,0,.55); border: 1px solid rgba(255,255,255,.4); color: #fff; font-size: 18px; display: flex; align-items: center; justify-content: center; }
+    #visorEstados .zona { position: absolute; top: 70px; bottom: 0; width: 40%; z-index: 4; }
+    #visorEstados .flecha { display: none; }
+    @media (min-width: 768px) { #visorEstados .flecha { display: flex; position: fixed; top: 50%; transform: translateY(-50%); width: 44px; height: 44px; border-radius: 9999px; background: rgba(255,255,255,.12); color: #fff; align-items: center; justify-content: center; z-index: 6; } }
   </style>
 </head>
 <body class="min-h-screen flex flex-col justify-between">
@@ -511,6 +529,7 @@
             <h1 id="txtCatTitulo" class="text-lg sm:text-xl font-black text-white flex items-center gap-2 flex-wrap leading-tight">
               Catálogo Oficial <span id="txtCatInsignia" class="text-[10px] bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 px-2 py-0.5 rounded-full">Mayorista 24/7</span>
             </h1>
+            <p id="txtNuevoEstado" class="hidden text-[11px] font-black text-emerald-300 mt-0.5 cursor-pointer" onclick="abrirEstados()">● Nuevo estado</p>
             <p id="txtCatSubtitulo" class="text-xs text-gray-400 mt-0.5 line-clamp-1">Cuentas streaming y correos electrónicos con entrega directa a tu saldo.</p>
           </div>
         </div>
@@ -1683,6 +1702,7 @@
       <!-- (las secciones de venta manual y asignación de correos viven en Cargar Cuentas y Proveedores) -->
       <!-- ==================== ADMIN: NOVEDADES PARA CLIENTES ==================== -->
       <div id="adminSecMarketing" class="hidden space-y-4 pb-28 sm:pb-0">
+        <div id="estadosAdmin" class="p-4 rounded-2xl bg-gray-900 border border-emerald-500/30"></div>
         <div class="p-4 rounded-2xl border border-fuchsia-500/30 bg-gradient-to-br from-fuchsia-500/10 to-gray-900">
           <label class="float-right text-[10px] text-gray-400 text-right">Enlace de tu tienda<input id="mkEnlace" onchange="guardarEnlaceMk()" maxlength="60" class="mt-1 block w-44 bg-gray-800 border border-gray-700 rounded-lg px-2 py-1.5 text-[11px] text-fuchsia-200 focus:outline-none"></label>
           <h3 class="text-base font-black text-white flex items-center gap-2"><i class="fa-solid fa-wand-magic-sparkles text-fuchsia-300"></i> Tu marketing</h3>
@@ -1711,6 +1731,7 @@
           <input type="text" id="mkFrase" maxlength="60" oninput="dibujarMarketing()" placeholder="Frase opcional (ej: ¡Solo por hoy!)" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none">
           <div class="flex justify-center"><img id="mkVista" alt="Vista previa" class="max-h-[60vh] w-auto rounded-xl border border-gray-700 shadow-2xl"></div>
           <div class="grid grid-cols-2 gap-2">
+            <button type="button" onclick="publicarEstadoDesdeMarketing()" class="col-span-2 w-full py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-black text-xs"><i class="fa-solid fa-circle-play mr-1"></i>Publicar como estado (24 h)</button>
             <button type="button" onclick="descargarMarketing()" class="py-2.5 rounded-xl bg-fuchsia-500 hover:bg-fuchsia-400 text-white font-black text-xs"><i class="fa-solid fa-download mr-1"></i>Descargar</button>
             <button type="button" onclick="compartirMarketing()" class="py-2.5 rounded-xl bg-gray-800 hover:bg-gray-700 border border-gray-700 text-gray-100 font-bold text-xs"><i class="fa-solid fa-share-nodes mr-1"></i>Compartir</button>
           </div>
@@ -7914,6 +7935,7 @@
       if (tab === 'actividad') { try { cargarActividad(); } catch (e) { console.warn(e); } }
       if (tab === 'campanas') { try { prepararCampanas(); } catch (e) { console.warn(e); } }
       if (tab === 'dealers') { try { prepararDealers(); } catch (e) { console.warn(e); } }
+      if (tab === 'marketing') { try { iniciarEstados(); pintarEstadosAdmin(); } catch (e) { /* nada */ } }
       if (tab === 'usuarios' || tab === 'ajustes') { try { if (esAdminSesionActual()) prepararCfgTiendas(); } catch (e) { /* nada */ } }
       if (tab === 'marketing') { try { if (!cfgDealer) cargarCfgDealer().then(prepararMarketing); } catch (e) { /* nada */ } prepararMarketing(); }
       if (tab === 'novedades') { iniciarNovedadesClientes(); renderizarNovedadesAdmin(); renderizarActualizacionesPagina(); }
@@ -14975,8 +14997,9 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-09g';
+    const VERSION_PAGINA = '2026-10-09h';
     const ACTUALIZACIONES_PAGINA = [
+      { id: 'act_20261009_estados', fecha: '2026-10-09', titulo: 'Mira nuestros estados 📲', mensaje: 'Cuando el logo de la tienda tiene **un círculo de colores**, hay un estado nuevo: tócalo para ver las novedades, ofertas y stock del día, como en WhatsApp.' },
       { id: 'act_20261009_agrupadas', fecha: '2026-10-09', titulo: 'Tus compras, más ordenadas 🗂', mensaje: 'Si compras el mismo producto varias veces en el día, ahora lo ves **en una sola tarjeta**: tócala para ver cada compra, y **copia todas las cuentas** de una vez.' },
       { id: 'act_20261009_niveldealer', fecha: '2026-10-09', titulo: 'Dealers: tu nivel a la vista 👑', mensaje: 'En tu perfil ves tu **nivel Dealer del mes** (Bronce, Plata u Oro), cuántas cuentas llevas y **cuántas te faltan** para subir y multiplicar tus regalos.' },
       { id: 'act_20261009_faq', fecha: '2026-10-09', titulo: 'Preguntas frecuentes 📖', mensaje: 'Resuelve tus dudas al instante: en **¿Necesitas ayuda?** y en tu perfil tienes las **preguntas frecuentes** de las secciones que usas, con buscador.' },
@@ -19286,6 +19309,7 @@
 
     // ==================== NOVEDADES INTERNAS DEL PANEL (solo el equipo) ====================
     const ACTUALIZACIONES_INTERNAS = [
+      { fecha: '2026-10-09', titulo: '📲 Estados en tu tienda', mensaje: 'En Marketing subes imágenes como estados (o publicas con un toque cualquier imagen de Marketing o de Novedades). Duran 24 horas y ves **quién los vio**, con nombre y hora. **Para vender:** escríbele a quien vio tu estado de ofertas y todavía no compró.', ir: 'marketing' },
       { fecha: '2026-10-09', titulo: '👑 Sección Dealers', mensaje: 'Todo sobre tus Dealers en un lugar: resumen del mes (cuánto te compran y qué parte de tus ventas son), lista con nivel y avance, filtros **⚡ Cerca de subir** y **😴 Sin comprar 7 días**, promos y niveles, y avisos solo para ellos. **Para vender:** a fin de mes, envía el aviso a los que están cerca de subir.', ir: 'dealers' },
       { fecha: '2026-10-09', titulo: '👑 Nivel Dealer en el perfil', mensaje: 'Cada Dealer ve su nivel del mes con barra de avance y cuántas cuentas le faltan para el siguiente. **Para vender:** anuncia la novedad a tus Dealers a fin de mes; muchos compran para subir de nivel antes del reinicio.', ir: 'usuarios' },
       { fecha: '2026-10-09', titulo: '📖 Preguntas frecuentes', mensaje: 'En Asistente de ayuda revisas, editas y publicas las preguntas frecuentes; cada cliente ve solo las de su perfil (crédito, alquiler, Dealer). Difunde su novedad **después de publicarlas**. **Para vender:** menos dudas y tickets sencillos, más tiempo para vender.', ir: 'asistente' },
@@ -19732,6 +19756,159 @@
       for (const x of L) { const inf = infoDealer(x); try { await notificarUsuarioPanel(x.uid, 'anuncio', `⚡ Te faltan ${inf.falta} cuentas para Dealer ${inf.nv.sig}`, `Llevas ${x.mes} este mes. Al subir, tus regalos por compra se multiplican. ¡Aprovecha antes de que termine el mes!`); ok++; } catch (e) { console.warn(e); } }
       mostrarToast(`⚡ Aviso enviado a ${ok} Dealers`);
     }
+
+
+    // ==================== ESTADOS (solo imágenes, como WhatsApp) ====================
+    var estadosActivos = [], estadosImg = {}, unsubEstados = null, estIdx = 0, estTimer = null, estInicio = 0, estPausa = 0, estRestante = 5000;
+    var estVistosMem = new Set();   // respaldo si el navegador no deja guardar (modo privado)
+    function estadosVistosLocal() { let v = []; try { v = JSON.parse(localStorage.getItem('estadosVistos') || '[]'); } catch (e) { v = []; } return v.concat(Array.from(estVistosMem)); }
+    function marcarEstadoVistoLocal(id) { estVistosMem.add(id); try { const v = JSON.parse(localStorage.getItem('estadosVistos') || '[]'); if (!v.includes(id)) { v.push(id); localStorage.setItem('estadosVistos', JSON.stringify(v.slice(-60))); } } catch (e) { /* nada */ } }
+    function iniciarEstados() {
+      if (unsubEstados) return;
+      try {
+        unsubEstados = db.collection('estados').where('expiraEl', '>', new Date().toISOString()).orderBy('expiraEl').onSnapshot(sn => {
+          estadosActivos = []; sn.forEach(d => estadosActivos.push(Object.assign({ id: d.id }, d.data())));
+          estadosActivos = estadosActivos.filter(e => Date.parse(e.expiraEl) > Date.now()).sort((a, b) => String(a.creadoEl).localeCompare(String(b.creadoEl)));
+          pintarAnilloEstados(); try { pintarEstadosAdmin(); } catch (e) { /* nada */ }
+        }, () => {});
+      } catch (e) { /* nada */ }
+    }
+    function pintarAnilloEstados() {
+      const cont = document.getElementById('contenedorLogoMarca'), img = document.getElementById('imgLogoMarca'), lbl = document.getElementById('txtNuevoEstado');
+      if (!cont) return;
+      const hay = estadosActivos.length > 0, vistos = estadosVistosLocal(), nuevos = hay && estadosActivos.some(e => !vistos.includes(e.id));
+      if (hay) {
+        cont.classList.remove('hidden');
+        if (img && !img.getAttribute('src')) { img.removeAttribute('src'); img.alt = '📲'; img.style.background = '#0f1623'; }
+        cont.classList.add('est-anillo'); cont.classList.toggle('visto', !nuevos); cont.onclick = abrirEstados; cont.title = nuevos ? 'Ver nuevo estado' : 'Ver estados';
+      } else { cont.classList.remove('est-anillo', 'visto'); cont.onclick = null; if (img && !img.getAttribute('src')) cont.classList.add('hidden'); }
+      if (lbl) lbl.classList.toggle('hidden', !nuevos || window.innerWidth < 768);   // en el PC dice "Nuevo estado"; en el celular solo el círculo
+    }
+    async function imagenEstado(id) {
+      if (estadosImg[id]) return estadosImg[id];
+      try { const d = await db.collection('estados_img').doc(id).get(); estadosImg[id] = d.exists ? (d.data() || {}).imagen || '' : ''; } catch (e) { estadosImg[id] = ''; }
+      return estadosImg[id];
+    }
+    function abrirEstados() {
+      if (!estadosActivos.length) return;
+      const vistos = estadosVistosLocal(); const primero = estadosActivos.findIndex(e => !vistos.includes(e.id));
+      estIdx = primero >= 0 ? primero : 0;
+      let v = document.getElementById('visorEstados');
+      if (!v) {
+        v = document.createElement('div'); v.id = 'visorEstados'; document.body.appendChild(v);
+        document.addEventListener('keydown', ev => { if (!v.classList.contains('abierto')) return; if (ev.key === 'Escape') cerrarEstados(); if (ev.key === 'ArrowRight') moverEstado(1); if (ev.key === 'ArrowLeft') moverEstado(-1); });
+      }
+      v.innerHTML = `<button type="button" class="flecha" style="left:calc(50% - 280px)" onclick="moverEstado(-1)" aria-label="Anterior"><i class="fa-solid fa-chevron-left"></i></button>
+        <div class="marco" id="estMarco"><div class="barras">${estadosActivos.map(() => '<span><i></i></span>').join('')}</div>
+        <div class="cab">${(document.getElementById('imgLogoMarca') || {}).src ? `<img src="${document.getElementById('imgLogoMarca').src}" alt="" class="w-8 h-8 rounded-full object-cover border border-amber-400/60">` : ''}<div class="min-w-0"><p class="text-[13px] font-black leading-tight">${escaparHtml(nombreTienda())}</p><p id="estHace" class="text-[11px] opacity-75"></p></div><button type="button" class="x" onclick="cerrarEstados()" aria-label="Cerrar">✕</button></div>
+        <img class="est" id="estImg" alt="Estado"><p id="estTexto" class="hidden absolute left-0 right-0 bottom-0 z-[3] p-4 pb-8 text-center text-white text-sm font-bold" style="background:linear-gradient(0deg,rgba(0,0,0,.75),transparent)"></p>
+        <div class="zona" style="left:0" onclick="moverEstado(-1)"></div><div class="zona" style="right:0" onclick="moverEstado(1)"></div></div>
+        <button type="button" class="flecha" style="right:calc(50% - 280px)" onclick="moverEstado(1)" aria-label="Siguiente"><i class="fa-solid fa-chevron-right"></i></button>`;
+      v.classList.add('abierto'); document.body.style.overflow = 'hidden';
+      // mantener presionado = pausa; deslizar hacia abajo = cerrar
+      const m = document.getElementById('estMarco'); let y0 = null, t0 = 0;
+      m.addEventListener('pointerdown', ev => { y0 = ev.clientY; t0 = Date.now(); pausarEstado(true); });
+      m.addEventListener('pointerup', ev => { const dy = y0 === null ? 0 : ev.clientY - y0; y0 = null; if (dy > 90) { cerrarEstados(); return; } pausarEstado(false); });
+      mostrarEstado();
+    }
+    async function mostrarEstado() {
+      const e = estadosActivos[estIdx]; if (!e) { cerrarEstados(); return; }
+      clearTimeout(estTimer);
+      document.querySelectorAll('#visorEstados .barras i').forEach((b, k) => { b.style.transition = 'none'; b.style.width = k < estIdx ? '100%' : '0'; });
+      const h = document.getElementById('estHace'); if (h) h.textContent = tiempoRelativo(e.creadoEl);
+      const tx = document.getElementById('estTexto'); if (tx) { tx.textContent = e.texto || ''; tx.classList.toggle('hidden', !e.texto); }
+      const img = document.getElementById('estImg'); if (img) { img.style.opacity = '0.3'; img.src = await imagenEstado(e.id); img.style.opacity = '1'; }
+      if (estadosActivos[estIdx + 1]) imagenEstado(estadosActivos[estIdx + 1].id);   // se prepara el siguiente
+      marcarEstadoVistoLocal(e.id); registrarVistaEstado(e); pintarAnilloEstados();
+      estRestante = 5000; arrancarBarraEstado();
+    }
+    function arrancarBarraEstado() {
+      const b = document.querySelectorAll('#visorEstados .barras i')[estIdx]; if (!b) return;
+      const hecho = 1 - estRestante / 5000;
+      b.style.transition = 'none'; b.style.width = (hecho * 100) + '%';
+      requestAnimationFrame(() => requestAnimationFrame(() => { b.style.transition = `width ${estRestante}ms linear`; b.style.width = '100%'; }));
+      estInicio = Date.now(); clearTimeout(estTimer); estTimer = setTimeout(() => moverEstado(1), estRestante);
+    }
+    function pausarEstado(on) {
+      const b = document.querySelectorAll('#visorEstados .barras i')[estIdx]; if (!b) return;
+      if (on) { clearTimeout(estTimer); estRestante = Math.max(300, estRestante - (Date.now() - estInicio)); const w = getComputedStyle(b).width; b.style.transition = 'none'; b.style.width = w; }
+      else arrancarBarraEstado();
+    }
+    function moverEstado(d) { estIdx += d; if (estIdx < 0) estIdx = 0; if (estIdx >= estadosActivos.length) { cerrarEstados(); return; } mostrarEstado(); }
+    function cerrarEstados() { clearTimeout(estTimer); const v = document.getElementById('visorEstados'); if (v) { v.classList.remove('abierto'); v.innerHTML = ''; } document.body.style.overflow = ''; pintarAnilloEstados(); }
+    function registrarVistaEstado(e) {
+      try {
+        if (modoPruebaCliente) return;
+        if (currentUser && !esStaffSesion()) {
+          db.collection('estados_vistas').doc(e.id + '_' + currentUser.uid).set({ estadoId: e.id, uid: currentUser.uid, email: currentUser.email || '', nombre: (datosUsuarioNotif && datosUsuarioNotif.nombre) || '', dealer: userTipoCuenta === 'revendedor', fecha: new Date().toISOString() }).catch(() => {});
+        } else if (!currentUser) {
+          const k = 'estAnon_' + e.id; let ya = estVistosMem.has(k); try { ya = ya || !!localStorage.getItem(k); localStorage.setItem(k, '1'); } catch (x) { /* nada */ } if (ya) return; estVistosMem.add(k);
+          db.collection('estados').doc(e.id).update({ vistasAnonimas: firebase.firestore.FieldValue.increment(1) }).catch(() => {});
+        }
+      } catch (x) { /* nada */ }
+    }
+    // ---- Panel: subir, publicar desde Marketing, ver quién lo vio y borrar ----
+    async function publicarEstado(dataUrl, texto) {
+      if (!esAdminSesionActual()) return;
+      if (!dataUrl || dataUrl.length > 900000) { alert('La imagen pesa demasiado. Prueba con otra.'); return; }
+      const id = db.collection('estados').doc().id, ahora = new Date();
+      const b = db.batch();
+      b.set(db.collection('estados_img').doc(id), { imagen: dataUrl });
+      b.set(db.collection('estados').doc(id), { creadoEl: ahora.toISOString(), expiraEl: new Date(ahora.getTime() + 24 * 3600000).toISOString(), texto: String(texto || '').slice(0, 140), por: currentUser.email, vistasAnonimas: 0 });
+      await b.commit(); estadosImg[id] = dataUrl;
+      mostrarToast('📲 Estado publicado: se borra solo en 24 horas');
+    }
+    async function subirEstadoArchivo(input) {
+      const f = input.files && input.files[0]; input.value = ''; if (!f) return;
+      try {
+        const img = await comprimirImagenAJpeg(f, 1280, 0.8);
+        const texto = await pedirTextoModal('Texto del estado (opcional)', '');
+        if (texto === null) return;
+        await publicarEstado(img, texto);
+      } catch (e) { alert(e.message); }
+    }
+    async function publicarEstadoDesdeMarketing() {
+      try {
+        const o = opcionesMk(), prod = catalogoUnificado.find(p => p.docId === o.id);
+        const base = lienzoActualMk(prod, Object.assign({}, o, { fmt: 'estado' })), c = document.createElement('canvas'); c.width = 720; c.height = 1280; c.getContext('2d').drawImage(base, 0, 0, 720, 1280);
+        if (!await confirmarModal('¿Publicar esta imagen como estado?\n\nTus clientes la verán al tocar el logo de la tienda durante 24 horas.', { textoAceptar: 'Sí, publicar' })) return;
+        await publicarEstado(c.toDataURL('image/jpeg', 0.82), '');
+      } catch (e) { alert(e.message); }
+    }
+    var estVistasAbierto = '';
+    async function pintarEstadosAdmin() {
+      const c = document.getElementById('estadosAdmin'); if (!c || !esAdminSesionActual()) return;
+      const L = estadosActivos.slice().reverse();
+      c.innerHTML = `<div class="flex items-center justify-between gap-2"><p class="text-sm font-black text-white">📲 Estados</p><span class="text-[11px] text-gray-400">${L.length} activo${L.length === 1 ? '' : 's'} · se borran solos a las 24 h</span></div>
+        <label class="mt-2 block w-full py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-black text-xs text-center cursor-pointer"><i class="fa-solid fa-camera mr-1"></i>Subir imagen<input type="file" accept="image/*" class="hidden" onchange="subirEstadoArchivo(this)"></label>
+        <div class="mt-2 space-y-2">${L.map(e => { const resta = Math.max(0, Date.parse(e.expiraEl) - Date.now()), hh = Math.floor(resta / 3600000), mm = Math.floor(resta % 3600000 / 60000);
+          return `<div class="p-2 rounded-xl bg-gray-800/60 border border-gray-700/60"><div class="flex gap-2.5"><img id="estMini_${e.id}" alt="" class="w-12 h-20 rounded-lg object-cover bg-gray-900 shrink-0"><div class="flex-1 min-w-0"><p class="text-[12px] font-bold text-white truncate">${escaparHtml(e.texto || 'Estado')}</p><p class="text-[10px] text-gray-400">${tiempoRelativo(e.creadoEl)} · quedan ${hh} h ${mm} min</p>
+            <div class="flex gap-1.5 mt-1.5"><button type="button" onclick="verQuienVioEstado('${e.id}')" class="px-2 py-1 rounded-lg bg-gray-700 text-gray-100 text-[11px] font-bold">👁 Visto por <span id="estCnt_${e.id}">…</span></button><button type="button" onclick="borrarEstado('${e.id}')" class="px-2 py-1 rounded-lg bg-red-500/15 text-red-300 text-[11px] font-bold">🗑 Borrar</button></div></div></div>
+            <div id="estVistas_${e.id}" class="${estVistasAbierto === e.id ? '' : 'hidden'} mt-2"></div></div>`; }).join('') || '<p class="text-[11px] text-gray-500 text-center py-3">No tienes estados activos.</p>'}</div>`;
+      for (const e of L) {
+        imagenEstado(e.id).then(src => { const m = document.getElementById('estMini_' + e.id); if (m && src) m.src = src; });
+        db.collection('estados_vistas').where('estadoId', '==', e.id).get().then(sn => { const n = document.getElementById('estCnt_' + e.id); if (n) n.textContent = sn.size + (Number(e.vistasAnonimas) || 0); if (estVistasAbierto === e.id) pintarQuienVio(e, sn); }).catch(() => {});
+      }
+    }
+    async function verQuienVioEstado(id) {
+      estVistasAbierto = estVistasAbierto === id ? '' : id;
+      const box = document.getElementById('estVistas_' + id); if (!box) return;
+      if (!estVistasAbierto) { box.classList.add('hidden'); return; }
+      box.classList.remove('hidden'); box.innerHTML = '<p class="text-[11px] text-gray-400"><i class="fa-solid fa-spinner fa-spin"></i></p>';
+      const e = estadosActivos.find(x => x.id === id); const sn = await db.collection('estados_vistas').where('estadoId', '==', id).get(); pintarQuienVio(e, sn);
+    }
+    function pintarQuienVio(e, sn) {
+      const box = document.getElementById('estVistas_' + e.id); if (!box) return;
+      const L = []; sn.forEach(d => L.push(d.data() || {})); L.sort((a, b) => String(b.fecha).localeCompare(String(a.fecha)));
+      const anon = Number(e.vistasAnonimas) || 0, ini = t => String(t || '?').trim().split(/[\s@.]+/).filter(Boolean).slice(0, 2).map(x => x[0]).join('').toUpperCase();
+      box.innerHTML = `<p class="text-[11px] font-black text-white mb-1">👁 Visto por ${L.length + anon}</p>` + (L.map(v => `<div class="flex items-center gap-2.5 py-1.5 border-t border-gray-700/60"><span class="w-8 h-8 rounded-full bg-emerald-500/15 text-emerald-300 text-[11px] font-black flex items-center justify-center shrink-0">${escaparHtml(ini(v.nombre || v.email))}</span><span class="flex-1 min-w-0"><span class="block text-[12px] text-white truncate">${escaparHtml(v.nombre || String(v.email || '').split('@')[0])}${v.dealer ? ' <span class="text-[10px] text-amber-300">👑 Dealer</span>' : ''}</span><span class="block text-[10px] text-gray-400 truncate">${escaparHtml(v.email || '')}</span></span><span class="text-[10px] text-gray-400 shrink-0">${new Date(v.fecha).toLocaleString('es-CO', { day: '2-digit', month: '2-digit', hour: 'numeric', minute: '2-digit' })}</span></div>`).join('') || '<p class="text-[11px] text-gray-500">Todavía nadie con cuenta lo ha visto.</p>') + (anon ? `<p class="text-[10px] text-gray-500 mt-1">+ ${anon} visitante${anon === 1 ? '' : 's'} sin cuenta</p>` : '');
+    }
+    async function borrarEstado(id) {
+      if (!await confirmarModal('¿Borrar este estado? Tus clientes dejarán de verlo.', { textoAceptar: 'Sí, borrar' })) return;
+      try { const b = db.batch(); b.delete(db.collection('estados').doc(id)); b.delete(db.collection('estados_img').doc(id)); await b.commit(); mostrarToast('Estado borrado'); } catch (e) { alert(e.message); }
+    }
+    setTimeout(() => { try { iniciarEstados(); } catch (e) { /* nada */ } }, 1200);
+    window.addEventListener('resize', () => { try { pintarAnilloEstados(); } catch (e) { /* nada */ } });
 
     // ==================== NETFLIX EN LA TIENDA: SIN CONTRASEÑA ====================
     function esNombreNetflix(t) { return /netflix/i.test(String(t || '')); }
