@@ -364,6 +364,9 @@
     #selPropio .op.on { background: rgba(16,185,129,.15); color: #fff; font-weight: 800; }
     #selPropio .op[disabled] { opacity: .4; }
     #selPropio .grupo { padding: .6rem .9rem .25rem; font-size: .65rem; font-weight: 900; letter-spacing: .12em; text-transform: uppercase; color: #6b7280; }
+  
+    /* En el simulador, la barra amarilla tiene su propio espacio y no tapa la tienda */
+    body.en-simulacion #vistaTienda, body.en-simulacion #vistaMisCuentas, body.en-simulacion #vistaNetflix { padding-top: 3.75rem; }
   </style>
 </head>
 <body class="min-h-screen flex flex-col justify-between">
@@ -6720,6 +6723,7 @@
 
     function activarModoPruebaCliente() {
       modoPruebaCliente = true;
+      document.body.classList.add('en-simulacion');
       saldoSimulado = SALDO_SIMULADO_INICIAL; // cada activación arranca con $1.000.000
       comprasSimuladas = [];
       respaldoRealSim = { alquileres: misAlquileres, reportes: misReportes, pedido: pedidoRecargaActivo };
@@ -6735,6 +6739,7 @@
     function salirModoPruebaCliente() {
       try { restaurarPerfilReal(); } catch (e) { /* nada */ }
       modoPruebaCliente = false;
+      document.body.classList.remove('en-simulacion');
       comprasSimuladas = [];
       if (timerRecargaSim) { clearTimeout(timerRecargaSim); timerRecargaSim = null; }
       if (respaldoRealSim) { misAlquileres = respaldoRealSim.alquileres || []; misReportes = respaldoRealSim.reportes || []; pedidoRecargaActivo = respaldoRealSim.pedido || null; respaldoRealSim = null; }
@@ -14894,7 +14899,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-08s';
+    const VERSION_PAGINA = '2026-10-08t';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261006b_recarga', fecha: '2026-10-06', titulo: 'Recargas más simples 💳', mensaje: 'Ahora pagas **el valor exacto** que eliges recargar. Tu saldo se acredita solo en 1 o 2 minutos, y si la transacción se demora, igual te llega apenas se confirme.' },
       { id: 'act_20261006b_sinsaldo', fecha: '2026-10-06', titulo: 'Recarga y compra en un solo paso', mensaje: 'Si tocas **Comprar** y te falta saldo, toca **Recargar** ahí mismo. Cuando tu recarga entre, **tu compra se completa sola** y no tienes que volver a buscar el producto.' },
@@ -17994,7 +17999,7 @@
       const L = (staff ? catalogoUnificado.filter(p => p.activo !== false && !p.esCombo) : productosVisiblesStock())
         .filter(p => !esProductoVip(p))
         .sort((a, b) => (Number(b.stock) || 0) - (Number(a.stock) || 0) || String(a.nombre).localeCompare(String(b.nombre), 'es'));
-      const mostrar = cfgVistaTienda.cintaStock !== false && enLugar && L.length > 0 && !(esProveedorSesion() && !staff);
+      const mostrar = cfgVistaTienda.cintaStock !== false && enLugar && L.length > 0 && !(esProveedorSesion() && !staff) && !modoPruebaCliente;   // en el simulador no se muestra
       c.classList.toggle('hidden', !mostrar);
       if (!mostrar) return;
       const item = p => { const n = Number(p.stock) || 0, d = cambioReciente(p.docId); return `<a href="#" onclick="abrirCompraRapida('${escaparJsAttr(p.docId)}');return false" class="hover:text-white">${escaparHtml(p.nombre)} <b class="${n ? (n <= 5 ? 'text-amber-300' : 'text-gray-200') : 'text-red-400'}">${n ? n : 'agotado'}</b>${d === 'sube' ? ' <span class="text-emerald-300">↑</span>' : (d === 'baja' ? ' <span class="text-red-300">↓</span>' : '')}</a>`; };
