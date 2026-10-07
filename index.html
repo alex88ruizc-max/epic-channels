@@ -7934,12 +7934,15 @@
           const crudos = novedadesGlobales.slice(), k2 = n => String(n.titulo || '') + '|' + String(n.mensaje || '');
           const hayRep = crudos.filter(n => n && n.tipo === 'anuncio').some((n, i, a) => a.findIndex(m => k2(m) === k2(n)) !== i);
           const hayNequi = crudos.some(n => n && n.tipo === 'anuncio' && /nequi/i.test(String(n.mensaje || '')));
-          if ((hayRep || hayNequi) && currentUser && esAdminSesionActual() && !window.__limpiezaNovedades) {
+          const viejaCantidad = n => n && n.tipo === 'anuncio' && /^Pide en cantidad, aunque no haya todo/.test(String(n.titulo || ''));
+          const hayVieja = crudos.some(viejaCantidad);
+          if ((hayRep || hayNequi || hayVieja) && currentUser && esAdminSesionActual() && !window.__limpiezaNovedades) {
             window.__limpiezaNovedades = true;
             const vistos = new Set();
-            const limpios = crudos.map(n => (n && n.tipo === 'anuncio' && /nequi/i.test(String(n.mensaje || ''))) ? Object.assign({}, n, { mensaje: String(n.mensaje).replace(/si Nequi se demora, igual te llega apenas confirme/i, 'si la transacción se demora, igual te llega apenas se confirme').replace(/Nequi/gi, 'la transacción') }) : n)
+            const limpios = crudos.map(n => viejaCantidad(n) ? Object.assign({}, n, { titulo: 'Pide sobre pedido 📦', mensaje: '¿Necesitas más de lo que hay? Haz tu pedido completo: te entregamos ya lo disponible y lo que falte se libera solo en tu cuenta apenas entre nuevo stock. Sin volver a pedir, sin esperar mensajes.' }) : n).map(n => (n && n.tipo === 'anuncio' && /nequi/i.test(String(n.mensaje || ''))) ? Object.assign({}, n, { mensaje: String(n.mensaje).replace(/si Nequi se demora, igual te llega apenas confirme/i, 'si la transacción se demora, igual te llega apenas se confirme').replace(/Nequi/gi, 'la transacción') }) : n)
               .filter(n => { if (!n || n.tipo !== 'anuncio') return true; const k = String(n.titulo || ''); if (vistos.has(k)) return false; vistos.add(k); return true; });
             db.collection('configuracion').doc('novedades').set({ items: limpios }, { merge: true }).catch(e => console.warn(e));
+            if (hayVieja) db.collection('configuracion').doc('novedades_clientes').get().then(d => { const l = d.exists && Array.isArray((d.data() || {}).lista) ? d.data().lista : null; if (!l) return; let cambio = false; const nl = l.map(x => x && x.plantillaId === 'act_20261008_cantidad' && /aunque no haya todo/.test(String(x.titulo || '')) ? (cambio = true, Object.assign({}, x, { titulo: 'Pide sobre pedido 📦', mensaje: '¿Necesitas más de lo que hay? Haz tu pedido completo: **te entregamos ya lo disponible** y lo que falte **se libera solo en tu cuenta** apenas entre nuevo stock. Sin volver a pedir, sin esperar mensajes.' })) : x); if (cambio) db.collection('configuracion').doc('novedades_clientes').set({ lista: nl }, { merge: true }); }).catch(() => {});
           }
         } catch (e) { /* nada */ }
         // Si un anuncio quedó publicado dos veces, se muestra una sola vez (el más reciente)
@@ -14932,9 +14935,9 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-08z';
+    const VERSION_PAGINA = '2026-10-09a';
     const ACTUALIZACIONES_PAGINA = [
-      { id: 'act_20261008_cantidad', fecha: '2026-10-08', titulo: 'Pide en cantidad, aunque no haya todo 📦', mensaje: 'Si necesitas más cuentas de las que hay, ahora puedes pedirlas igual: **recibes ya lo disponible** y el resto **te llega solo** apenas entre stock. Lo pendiente lo puedes cancelar cuando quieras y se te devuelve.' },
+      { id: 'act_20261008_cantidad', fecha: '2026-10-08', titulo: 'Pide sobre pedido 📦', mensaje: '¿Necesitas más de lo que hay? Haz tu pedido completo: **te entregamos ya lo disponible** y lo que falte **se libera solo en tu cuenta** apenas entre nuevo stock. Sin volver a pedir, sin esperar mensajes.' },
       { id: 'act_20261008_precios', fecha: '2026-10-08', titulo: 'Precios por cantidad y packs 💰', mensaje: 'En varios productos, **entre más llevas, menos pagas por cada cuenta**. Mira la fila **"Por cantidad"** en la tarjeta y los **packs** con precio especial.' },
       { id: 'act_20261008_envivo', fecha: '2026-10-08', titulo: 'Stock en vivo y "Avísame" 🟢', mensaje: 'Arriba de la tienda ves el **stock en tiempo real** de cada producto. En tu perfil tienes el **Radar de stock**: si algo está agotado, toca **Avísame** y te llega un aviso apenas vuelva.' },
       { id: 'act_20261008_rapida', fecha: '2026-10-08', titulo: 'Compra rápida ⚡', mensaje: 'Toca cualquier producto en la cinta **En vivo** y cómpralo al instante, sin tener que buscarlo en la tienda.' },
@@ -16847,7 +16850,7 @@
         m = document.createElement('div'); m.id = 'modalPreorden';
         m.className = 'fixed inset-0 bg-black/80 backdrop-blur-sm z-[60] hidden items-center justify-center p-4';
         m.innerHTML = `<div class="bg-gray-900 border border-sky-400/50 rounded-3xl max-w-sm w-full shadow-2xl max-h-[88vh] overflow-y-auto"><div class="p-5"><div class="flex items-center gap-3"><span class="w-11 h-11 rounded-2xl bg-sky-500/15 border border-sky-400/40 text-sky-300 flex items-center justify-center"><i class="fa-solid fa-hourglass-half"></i></span><div><p class="text-base font-black text-white">Pedir sobre pedido</p><p id="poNombre" class="text-[11px] text-gray-400"></p></div></div>
-          <p class="mt-3 text-[11px] text-gray-300 leading-relaxed">Pagas ahora con tu saldo y quedas en la <b class="text-white">lista de espera</b>. Apenas llegue stock te entregamos tus cuentas (si llega una parte, te entregamos esa parte). Puedes cancelar lo pendiente cuando quieras y te devolvemos ese saldo.</p>
+          <p class="mt-3 text-[11px] text-gray-300 leading-relaxed">Pagas ahora con tu saldo y quedas en la <b class="text-white">lista de espera</b>. Apenas llegue stock te entregamos tus cuentas automáticamente (si llega una parte, te entregamos esa parte). No tienes que volver a pedir.</p>
           <label class="block mt-3 text-[11px] text-gray-400">¿Cuántas necesitas?<input type="number" id="poCantidad" min="1" max="500" oninput="poTotal()" class="mt-1 w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none"></label>
           <p id="poTotalTxt" class="mt-2 text-sm font-black text-sky-200"></p></div>
           <div class="grid grid-cols-2 gap-2 p-4 border-t border-gray-800"><button type="button" onclick="cerrarPreorden()" class="py-2.5 rounded-xl bg-gray-800 border border-gray-700 text-gray-200 font-bold text-xs">Cancelar</button><button type="button" id="btnPoConfirmar" onclick="confirmarPreorden()" class="py-2.5 rounded-xl bg-sky-500 hover:bg-sky-400 text-black font-black text-xs">Pagar y pedir</button></div></div>`;
@@ -16892,7 +16895,7 @@
       const caja = document.getElementById('misPreordenesCaja'); if (!caja) return;
       const act = misPreordenes.filter(p => p.estado === 'pendiente' || p.estado === 'parcial');
       caja.classList.toggle('hidden', !act.length);
-      caja.innerHTML = act.length ? `<div class="bg-gray-900 border border-sky-500/40 rounded-2xl p-3"><p class="text-[11px] font-black text-sky-200 uppercase tracking-wider mb-2"><i class="fa-solid fa-hourglass-half mr-1"></i>Pedidos en espera</p><div class="space-y-2">${act.map(p => { const pct = Math.round((p.entregadas || 0) / Math.max(1, p.cantidad) * 100); return `<div class="p-2.5 rounded-xl bg-gray-800/50 border border-gray-700/60"><div class="flex items-center justify-between gap-2"><p class="text-xs font-black text-white truncate">${escaparHtml(p.productoNombre)}</p><span class="text-[11px] font-black text-sky-200 shrink-0">${p.entregadas || 0}/${p.cantidad}</span></div><div class="mt-1.5 h-1.5 rounded-full bg-gray-900 overflow-hidden"><div class="h-full bg-sky-400" style="width:${pct}%"></div></div><div class="flex items-center justify-between gap-2 mt-1.5"><p class="text-[10px] text-gray-400">Pagaste ${formatoCOP(p.total || 0)} · ${escaparHtml(bcFecha(p.creadoEl))}</p><button type="button" onclick="cancelarPreorden('${escaparJsAttr(p.id)}')" class="text-[10px] text-red-300/80 underline shrink-0">Cancelar lo pendiente</button></div></div>`; }).join('')}</div><p class="text-[10px] text-gray-500 mt-2">Las cuentas que te entreguemos aparecen abajo en Mis compras.</p></div>` : '';
+      caja.innerHTML = act.length ? `<div class="bg-gray-900 border border-sky-500/40 rounded-2xl p-3"><p class="text-[11px] font-black text-sky-200 uppercase tracking-wider mb-2"><i class="fa-solid fa-hourglass-half mr-1"></i>Pedidos en espera</p><div class="space-y-2">${act.map(p => { const pct = Math.round((p.entregadas || 0) / Math.max(1, p.cantidad) * 100); return `<div class="p-2.5 rounded-xl bg-gray-800/50 border border-gray-700/60"><div class="flex items-center justify-between gap-2"><p class="text-xs font-black text-white truncate">${escaparHtml(p.productoNombre)}</p><span class="text-[11px] font-black text-sky-200 shrink-0">${p.entregadas || 0}/${p.cantidad}</span></div><div class="mt-1.5 h-1.5 rounded-full bg-gray-900 overflow-hidden"><div class="h-full bg-sky-400" style="width:${pct}%"></div></div><div class="flex items-center justify-between gap-2 mt-1.5"><p class="text-[10px] text-gray-400">Pagaste ${formatoCOP(p.total || 0)} · ${escaparHtml(bcFecha(p.creadoEl))}</p><span class="text-[10px] text-sky-300/80 shrink-0">Se entrega solo</span></div></div>`; }).join('')}</div><p class="text-[10px] text-gray-500 mt-2">Las cuentas que te entreguemos aparecen abajo en Mis compras.</p></div>` : '';
     }
     async function cancelarPreorden(id) {
       const p = misPreordenes.concat(preordenesTodas).find(x => x.id === id); if (!p) return;
@@ -18219,7 +18222,7 @@
       const total = precioPorCantidad(prod, cantidad) * cantidad;
       const disponible = modoPruebaCliente ? saldoSimulado : (Number(userSaldo) || 0) + Math.max(0, (Number(userCupo) || 0) - (Number(userDeuda) || 0));
       if (disponible < total) { abrirModalSaldoInsuficiente(`Saldo insuficiente. Tienes ${formatoCOP(userSaldo || 0)} y el total (${st} ahora + ${resto} por encargo) es ${formatoCOP(total)}.`); return; }
-      if (!await confirmarModal(`Pediste ${cantidad} y hay ${st} disponibles.\n\n⚡ ${st} se compran y se entregan ahora.\n⏳ ${resto} quedan por encargo: se pagan ahora y te llegan solas apenas entre stock (en orden de llegada). Lo pendiente lo puedes cancelar y se te devuelve.\n\nTotal: ${formatoCOP(total)}`, { tipo: 'pregunta', textoAceptar: 'Sí, comprar y encargar' })) return;
+      if (!await confirmarModal(`Pediste ${cantidad} y hay ${st} disponibles.\n\n⚡ ${st} se compran y se entregan ahora.\n⏳ ${resto} quedan por encargo: se pagan ahora y se liberan solas en tu cuenta apenas entre stock (en orden de llegada).\n\nTotal: ${formatoCOP(total)}`, { tipo: 'pregunta', textoAceptar: 'Sí, comprar y encargar' })) return;
       encargoTrasCompra = { docId: docId, cantidad: resto, t: Date.now() };
       const inp = document.getElementById('cant_' + docId); if (inp) inp.value = String(st);
       await comprarProducto(docId, true);
@@ -19234,6 +19237,7 @@
 
     // ==================== NOVEDADES INTERNAS DEL PANEL (solo el equipo) ====================
     const ACTUALIZACIONES_INTERNAS = [
+      { fecha: '2026-10-08', titulo: '📦 Encargos sin cancelación', mensaje: 'Los clientes ya no pueden cancelar lo pendiente de un pedido sobre pedido: se les entrega solo cuando entra stock. Solo tú y tu equipo pueden cancelar un encargo en casos excepcionales, desde la lista de encargos. **Para vender:** cada encargo pagado es una venta asegurada.', ir: 'stock' },
       { fecha: '2026-10-08', titulo: '🔍 Auditar saldo y parche de seguridad', mensaje: 'En Editar cliente, **Auditar** reconstruye el saldo de cualquier cliente y te dice si cuadra; si falta dinero lo devuelves con un toque. Además, ningún saldo se puede borrar por accidente. **Para vender:** un cliente que confía en su saldo recarga más y más seguido.', ir: 'usuarios' },
       { fecha: '2026-10-08', titulo: '⚡ Recargas automáticas con buscador', mensaje: 'En Métodos de Pago, la lista de recargas automáticas va ordenada, con 60 días de historial y buscador por monto o correo. **Para vender:** resuelves al instante cualquier "ya pagué y no me llegó", sin perder la venta.', ir: 'pagos' },
       { fecha: '2026-10-08', titulo: '📣 Plan diario por Telegram', mensaje: 'Cada mañana te llega qué publicar, a qué hora y con el mensaje listo. **Para vender:** publicar todos los días a tu hora pico mantiene tu tienda en la mente de tus clientes.', ir: 'campanas' },
