@@ -318,6 +318,9 @@
     .caja-pedido select { height: 36px; border-radius: 10px; padding: 0 8px; font-size: 12.5px; font-weight: 900; color: #032130; background: #7dd3fc; border: none; outline: none; cursor: pointer; }
     .caja-pedido select:focus { box-shadow: 0 0 0 2px #e0f2fe; }
     .caja-pedido select option { color: #0f172a; background: #fff; }
+    .caja-pedido .btn-cuantas { height: 36px; min-width: 92px; border-radius: 10px; padding: 0 10px; font-size: 12.5px; font-weight: 900; color: #032130; background: #7dd3fc; display: inline-flex; align-items: center; justify-content: center; gap: 6px; flex-shrink: 0; }
+    .caja-pedido .op-cuantas { padding: 7px 12px; border-radius: 10px; font-size: 12.5px; font-weight: 900; color: #e0f2fe; background: rgba(56,189,248,.14); border: 1px solid rgba(56,189,248,.55); }
+    .caja-pedido .op-cuantas.on, .caja-pedido .op-cuantas:active { color: #032130; background: #7dd3fc; border-color: #7dd3fc; }
     @media (prefers-reduced-motion: reduce) { .caja-pedido .ico { animation: none; } }
   
     .esc-chip { display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px; border-radius: 8px; font-size: 10.5px; font-weight: 800; color: #a7f3d0; background: rgba(16,185,129,.08); border: 1px solid rgba(16,185,129,.25); transition: all .2s; }
@@ -8268,6 +8271,7 @@
         html += `<button onclick="filtrarCategoria('${cat}')" class="btn-cat ${esActiva ? 'active bg-emerald-500 text-black font-bold' : 'bg-gray-800 hover:bg-gray-700 text-gray-300 font-medium'} px-4 py-1.5 rounded-xl whitespace-nowrap flex items-center gap-2"><i class="fa-solid ${icono}"></i> ${cat}</button>`;
       });
 
+      if (puedeEditarDesdeTienda()) html += `<button type="button" onclick="irAConfigurarProductos()" class="btn-cat shrink-0 bg-amber-400/15 hover:bg-amber-400/25 border border-amber-400/50 text-amber-200 font-bold px-4 py-2 rounded-xl text-sm flex items-center gap-2" title="Ir a la configuración de productos"><i class="fa-solid fa-gear"></i> Configurar</button>`;
       contenedor.innerHTML = html;
     }
 
@@ -8373,7 +8377,7 @@
                 ${esNf ? `<span class="nf-wordmark text-[13px]">NETFLIX</span>` : marcaT ? `<span class="brand-wordmark text-[13px] truncate max-w-[70%]">${escaparHtml(marcaT.etiqueta)}</span>` : `<span class="text-[11px] font-bold ${badgeStyle} px-3 py-1 rounded-full flex items-center gap-1">
                   <i class="fa-solid ${badgeIcon}"></i> ${badgeText}
                 </span>`}
-                ${htmlBateriaStock(prod.docId, stockDisponible, agotado)}
+                <span class="inline-flex items-center gap-2">${htmlBateriaStock(prod.docId, stockDisponible, agotado)}${btnEditarDesdeTienda(prod)}</span>
               </div>
 
               <div class="flex items-start justify-between gap-3 mb-1">
@@ -14848,7 +14852,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-08j';
+    const VERSION_PAGINA = '2026-10-08l';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261006b_recarga', fecha: '2026-10-06', titulo: 'Recargas más simples 💳', mensaje: 'Ahora pagas **el valor exacto** que eliges recargar. Tu saldo se acredita solo en 1 o 2 minutos, y si la transacción se demora, igual te llega apenas se confirme.' },
       { id: 'act_20261006b_sinsaldo', fecha: '2026-10-06', titulo: 'Recarga y compra en un solo paso', mensaje: 'Si tocas **Comprar** y te falta saldo, toca **Recargar** ahí mismo. Cuando tu recarga entre, **tu compra se completa sola** y no tienes que volver a buscar el producto.' },
@@ -18024,6 +18028,8 @@
       if (mixto) el.innerHTML = `⚡ <b class="text-white">${st}</b> se entregan ya &nbsp;·&nbsp; ⏳ <b class="text-white">${resto}</b> llegan cuando entre stock`;
       const sel = document.getElementById('selPedido_' + docId);
       if (sel) { const ex = Array.from(sel.options).some(o => o.value === String(val)); sel.value = mixto && ex ? String(val) : (mixto ? 'otra' : ''); if (mixto && !ex) sel.options[sel.options.length - 1].text = val + ' ✓'; else sel.options[sel.options.length - 1].text = 'Otra…'; }
+      const tp = document.getElementById('txtPedido_' + docId); if (tp) tp.textContent = mixto ? String(val) : 'Cuántas';
+      document.querySelectorAll(`#opsPedido_${docId} [data-op]`).forEach(b => b.classList.toggle('on', mixto && (b.dataset.op === String(val) || (b.dataset.op === 'otra' && !Array.from(sel ? sel.options : []).some(o => o.value === String(val))))));
       if (btn && !btn.disabled && !btn.dataset.ocupado) { if (!btn.dataset.html) btn.dataset.html = btn.innerHTML; btn.innerHTML = mixto ? `<i class="fa-solid fa-cart-shopping"></i> Comprar ${st} + encargar ${resto}` : btn.dataset.html; }
     }
     async function comprarMixto(docId, cantidad) {
@@ -18067,7 +18073,7 @@
         <div class="flex items-start justify-between gap-2"><div class="min-w-0"><p class="text-[10px] font-black tracking-[0.2em] uppercase" style="color:${m2.color}">${escaparHtml(m2.etiqueta)}</p><p class="text-base font-black text-white leading-snug">${escaparHtml(p.nombre)}</p><p class="text-xs text-gray-400 mt-0.5">${formatoCOP(p.precio)} c/u · ${st ? `<span class="${st <= 5 ? 'text-amber-300' : 'text-emerald-300'} font-bold">${st} disponibles</span>` : '<span class="text-red-300 font-bold">agotado</span>'}</p></div><button type="button" onclick="cerrarCompraRapida()" class="w-8 h-8 shrink-0 rounded-full bg-gray-800 text-gray-300"><i class="fa-solid fa-xmark"></i></button></div>
         ${maxC > 0 ? `<div class="flex items-center justify-between gap-3 mt-4"><div><p class="text-[10px] text-gray-400">Total</p><p id="crTotal" class="text-xl font-black text-white">$0</p></div>
           <div class="flex items-center bg-gray-800 border border-gray-700 rounded-xl p-0.5"><button type="button" onclick="crCambiar(-1)" class="w-9 h-9 rounded-lg bg-gray-700/60 text-white font-black">-</button><input id="crCant" type="number" inputmode="numeric" value="${ini}" min="${minC}" max="${maxC}" onfocus="this.select()" oninput="crRecalcular()" onchange="crCambiar(0)" class="w-14 text-center bg-transparent text-white font-bold focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"><button type="button" onclick="crCambiar(1)" class="w-9 h-9 rounded-lg bg-gray-700/60 text-white font-black">+</button></div></div>
-          ${encargoUtil(p, st) ? `<div class="caja-pedido mt-3"><div class="flex items-center gap-2.5"><span class="ico"><i class="fa-solid fa-box-open text-sm"></i></span><div class="min-w-0 flex-1"><p class="text-[13.5px] font-black text-white leading-tight">¿Lo necesitas en cantidad?</p><p class="text-[11px] text-sky-200">Lo que falte te llega cuando entre stock</p></div><select onchange="crElegirPedido(this)"><option value="">Cuántas</option>${opcionesPedido(p, st).map(n => `<option value="${n}">${n}</option>`).join('')}<option value="otra">Otra…</option></select></div></div>` : ''}
+          ${encargoUtil(p, st) ? `<div class="caja-pedido mt-3"><div class="flex items-center gap-2.5"><span class="ico"><i class="fa-solid fa-box-open text-sm"></i></span><div class="min-w-0 flex-1"><p class="text-[13.5px] font-black text-white leading-tight">¿Lo necesitas en cantidad?</p><p class="text-[11px] text-sky-200">Lo que falte te llega cuando entre stock</p></div></div><div class="flex flex-wrap gap-1.5 mt-2.5">${opcionesPedido(p, st).map(n => `<button type="button" data-crop="${n}" onclick="crElegirPedido({value:'${n}'})" class="op-cuantas">${n}</button>`).join('')}<button type="button" data-crop="otra" onclick="crElegirPedido({value:'otra'})" class="op-cuantas">Otra…</button></div></div>` : ''}
           <p id="crMixto" class="hidden mt-2 text-[11px] text-sky-100 px-2.5 py-1.5 rounded-lg bg-sky-500/10 border border-sky-400/30"></p>
           <button type="button" id="btnCompraRapida" onclick="confirmarCompraRapida()" class="mt-3 w-full py-3 rounded-xl text-black font-black text-sm" style="background:${m2.color}"><i class="fa-solid fa-bolt mr-1"></i>Comprar</button>
           ${minC > 1 ? `<p class="text-[10px] text-gray-500 mt-1.5 text-center">Compra mínima: ${minC}</p>` : ''}`
@@ -18087,6 +18093,7 @@
       const mixto = n > st && st > 0;
       if (mx) { mx.classList.toggle('hidden', !mixto); if (mixto) mx.innerHTML = `⚡ <b>${st}</b> se entregan ya · ⏳ <b>${n - st}</b> quedan por encargo.`; }
       if (b) b.innerHTML = mixto ? `<i class="fa-solid fa-bolt mr-1"></i>Comprar ${st} + encargar ${n - st}` : `<i class="fa-solid fa-bolt mr-1"></i>Comprar ${n}`;
+      document.querySelectorAll('#modalCompraRapida [data-crop]').forEach(x => { const conocido = Array.from(document.querySelectorAll('#modalCompraRapida [data-crop]')).some(y => y.dataset.crop === String(n)); x.classList.toggle('on', mixto && (x.dataset.crop === String(n) || (x.dataset.crop === 'otra' && !conocido))); });
     }
     async function confirmarCompraRapida() {
       const id = crId, i = document.getElementById('crCant'); if (!id || !i) return;
@@ -18136,7 +18143,9 @@
       return `<div class="caja-pedido mb-3"><span class="nuevo">NUEVO</span>
         <div class="flex items-center gap-2.5"><span class="ico"><i class="fa-solid fa-box-open text-sm"></i></span>
           <div class="min-w-0 flex-1"><p class="text-[13.5px] font-black text-white leading-tight">¿Lo necesitas en cantidad?</p><p class="text-[11px] text-sky-200 leading-snug">Pídelo ya: lo que falte te llega apenas entre stock</p></div>
-          <select id="selPedido_${id}" onchange="elegirBajoPedido('${escaparJsAttr(id)}', this.value)" aria-label="Cuántas necesitas"><option value="">Cuántas</option>${ops.map(n => `<option value="${n}">${n}</option>`).join('')}<option value="otra">Otra…</option></select></div>
+          <select id="selPedido_${id}" class="hidden" aria-hidden="true" tabindex="-1"><option value="">Cuántas</option>${ops.map(n => `<option value="${n}">${n}</option>`).join('')}<option value="otra">Otra…</option></select>
+          <button type="button" id="btnPedido_${id}" onclick="alternarOpcionesPedido('${escaparJsAttr(id)}')" class="btn-cuantas" aria-label="Cuántas necesitas"><span id="txtPedido_${id}">Cuántas</span><i class="fa-solid fa-chevron-down text-[10px]"></i></button></div>
+        <div id="opsPedido_${id}" class="hidden flex flex-wrap gap-1.5 mt-2.5">${ops.map(n => `<button type="button" data-op="${n}" onclick="elegirOpcionPedido('${escaparJsAttr(id)}','${n}')" class="op-cuantas">${n}</button>`).join('')}<button type="button" data-op="otra" onclick="elegirOpcionPedido('${escaparJsAttr(id)}','otra')" class="op-cuantas">Otra…</button></div>
         <p id="mixto_${id}" class="hidden"></p></div>`;
     }
     // Texto claro del máximo: lo disponible ya + lo que se puede encargar
@@ -18590,6 +18599,25 @@
     }
     function alternarIconos(pref) { const g = document.getElementById(pref + 'TjIconos'); if (!g) return; pintarIconoElegido(pref); g.classList.toggle('hidden'); }
     function elegirIconoTarjeta(pref, ic) { const sel = document.getElementById(pref + 'TjIcono'); if (sel) sel.value = ic; pintarIconoElegido(pref); const g = document.getElementById(pref + 'TjIconos'); if (g) g.classList.add('hidden'); }
+
+
+    // Opciones de "Cuántas" dentro de la caja (sin la lista grande del celular)
+    function alternarOpcionesPedido(id) { const o = document.getElementById('opsPedido_' + id); if (o) o.classList.toggle('hidden'); }
+    async function elegirOpcionPedido(id, v) {
+      const o = document.getElementById('opsPedido_' + id); if (o) o.classList.add('hidden');
+      const sel = document.getElementById('selPedido_' + id); if (sel && v !== 'otra') sel.value = v;
+      await elegirBajoPedido(id, v);
+    }
+
+
+    // ==================== EDITAR DESDE LA TIENDA (solo tú y moderadores con permiso) ====================
+    function puedeEditarDesdeTienda() { try { return !!currentUser && esStaffSesion() && (esAdminSesionActual() || puedeSeccion('productos')); } catch (e) { return false; } }
+    function btnEditarDesdeTienda(prod) {
+      if (!puedeEditarDesdeTienda() || !prod || !prod.docId) return '';
+      return `<button type="button" onclick="editarDesdeTienda('${escaparJsAttr(prod.docId)}')" title="Editar este producto" aria-label="Editar producto" class="w-8 h-8 rounded-lg bg-black/40 hover:bg-amber-400 hover:text-black border border-white/20 text-amber-200 flex items-center justify-center transition"><i class="fa-solid fa-pen text-[11px]"></i></button>`;
+    }
+    function editarDesdeTienda(id) { if (!puedeEditarDesdeTienda()) return; try { abrirModalEditarProducto(id); } catch (e) { alert('No se pudo abrir el editor: ' + e.message); } }
+    function irAConfigurarProductos() { if (!puedeEditarDesdeTienda()) return; cambiarVista('admin'); setTimeout(() => { try { irATabAdmin('productos'); } catch (e) { cambiarTabAdmin('productos'); } }, 50); }
 
     // ==================== NETFLIX EN LA TIENDA: SIN CONTRASEÑA ====================
     function esNombreNetflix(t) { return /netflix/i.test(String(t || '')); }
