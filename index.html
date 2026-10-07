@@ -1201,18 +1201,18 @@
         <div id="ventaManualCaja" class="solo-admin mb-4 bg-gray-900 border border-emerald-500/30 rounded-2xl overflow-hidden">
           <button type="button" onclick="document.getElementById('vmCuerpo').classList.toggle('hidden')" class="w-full text-left p-4 flex items-center gap-3">
             <span class="w-9 h-9 shrink-0 rounded-xl bg-emerald-500/15 text-emerald-300 flex items-center justify-center"><i class="fa-brands fa-whatsapp"></i></span>
-            <span class="min-w-0 flex-grow"><span class="block font-bold text-white text-sm">Venta manual (WhatsApp)</span><span class="block text-[11px] text-gray-400">Saca cuentas del inventario y copia el mensaje listo para el cliente</span></span>
+            <span class="min-w-0 flex-grow"><span class="block font-bold text-white text-sm">Venta manual (WhatsApp)</span><span class="block text-[11px] text-gray-400">Vende por WhatsApp: entrega cuentas de tu stock y copia el mensaje listo</span></span>
             <i class="fa-solid fa-chevron-down text-gray-400"></i>
           </button>
           <div id="vmCuerpo" class="hidden border-t border-gray-800 p-4 space-y-2.5">
             <select id="vmProducto" onchange="vmCambioProducto()" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none"></select>
             <div class="grid grid-cols-3 gap-2">
-              <label class="text-[10px] text-gray-400">Cantidad<input type="number" id="vmCantidad" min="1" value="1" class="mt-1 w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"></label>
-              <label class="text-[10px] text-gray-400">Precio c/u ($)<input type="number" id="vmPrecio" min="0" step="100" class="mt-1 w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"></label>
+              <label class="text-[10px] text-gray-400">Cantidad<input type="number" id="vmCantidad" min="1" value="1" oninput="vmCalcularTotal()" class="mt-1 w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"></label>
+              <label class="text-[10px] text-gray-400">Total a cobrar ($)<input type="number" id="vmTotal" min="0" step="100" oninput="this.dataset.manual='1';vmCalcularTotal()" class="mt-1 w-full bg-gray-800 border border-emerald-600/60 rounded-xl px-3 py-2 text-xs text-white font-bold focus:outline-none"><input type="hidden" id="vmPrecio"></label>
               <label class="text-[10px] text-gray-400">Cliente (nota)<input type="text" id="vmCliente" maxlength="80" placeholder="Opcional" class="mt-1 w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"></label>
             </div>
             <p id="vmInfo" class="text-[11px] text-gray-400"></p>
-            <button type="button" id="btnVentaManual" onclick="hacerVentaManual()" class="w-full py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-black text-xs"><i class="fa-solid fa-box-open mr-1"></i>Sacar del inventario y armar mensaje</button>
+            <button type="button" id="btnVentaManual" onclick="hacerVentaManual()" class="w-full py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-black text-xs"><i class="fa-brands fa-whatsapp mr-1"></i>Vender y armar mensaje</button>
           </div>
         </div>
         <div class="p-5 bg-gray-900 border border-gray-800 rounded-2xl max-w-2xl mb-24 sm:mb-0">
@@ -1361,6 +1361,11 @@
                 <label class="block text-[11px] text-gray-400 mb-1">Monto mínimo (COP)</label>
                 <input type="number" id="recargaAutoMinimo" min="1000" step="500" value="5000" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none">
               </div>
+            </div>
+            <div class="p-2.5 rounded-xl bg-gray-800/60 border border-gray-700/60">
+              <label class="block text-xs font-bold text-white mb-1">Importe extra</label>
+              <select id="selRecargaExtra" class="w-full bg-gray-900 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"><option value="0">0 · Exacto: paga justo lo que eligió (recomendado)</option><option value="1">1 · Aleatorio: siempre un extra al azar de $1 a $49</option></select>
+              <p class="text-[10px] text-gray-400 mt-1.5">Los dos son igual de seguros. Con "Exacto", si dos personas recargan el mismo valor al tiempo, a la segunda se le suma $1, a la tercera $2… El extra nunca es comisión: todo va al saldo del cliente.</p>
             </div>
             <p id="recargaAutoEstadoAdmin" class="text-[11px] text-gray-400"></p>
             <div class="flex flex-wrap gap-2">
@@ -7583,7 +7588,7 @@
       if (tab === 'tickets') { renderizarTickets(); limpiarFotosRespuestaVencidas(); }
       if (tab === 'promociones') { renderizarPromoProductos(); renderizarPromoActivas(); }
       if (tab === 'vista') { renderizarEditorVistaPanel(); cargarPermisosModerador(); }
-      if (tab === 'ajustes') { try { prepararCfgTiendas(); } catch (e) { /* nada */ } }
+      if (tab === 'usuarios' || tab === 'ajustes') { try { if (esAdminSesionActual()) prepararCfgTiendas(); } catch (e) { /* nada */ } }
       if (tab === 'marketing') { try { if (!cfgDealer) cargarCfgDealer().then(prepararMarketing); } catch (e) { /* nada */ } prepararMarketing(); }
       if (tab === 'novedades') { iniciarNovedadesClientes(); renderizarNovedadesAdmin(); renderizarActualizacionesPagina(); }
       if (tab === 'cortes') { try { iniciarNetflixAdmin(); } catch (e) { /* nada */ } renderizarCortes(); }
@@ -7896,6 +7901,8 @@
         for (const alias of prodBase.aliases) {
           if (snapshotInventario[alias]) { docInventario = snapshotInventario[alias]; break; }
         }
+        // Solo se muestra si existe en tu inventario: un producto borrado no vuelve con datos viejos
+        if (!docInventario) return;
         const docIdFinal = docInventario ? docInventario.id || key : key;
         const infoCuentasBase = resolverCuentasYStock(docIdFinal, docInventario);
         const cuentas = infoCuentasBase.cuentas;
@@ -7913,12 +7920,12 @@
           if (docInventario.descripcion !== undefined) descripcionFinal = docInventario.descripcion;
         }
 
-        let precioFinal = prodBase.precioDefault;
+        let precioFinal = 0;   // sin precios fijos viejos: si no le has puesto precio, queda "Sin precio"
         if (preciosConfig[key] !== undefined) precioFinal = preciosConfig[key];
         else if (preciosConfig[docIdFinal] !== undefined) precioFinal = preciosConfig[docIdFinal];
         else if (docInventario && docInventario.precio !== undefined) precioFinal = docInventario.precio;
 
-        let minCompraFinal = prodBase.minCompraDefault;
+        let minCompraFinal = 1;
         if (minimosConfig[key] !== undefined) minCompraFinal = minimosConfig[key];
         else if (minimosConfig[docIdFinal] !== undefined) minCompraFinal = minimosConfig[docIdFinal];
         else if (docInventario && docInventario.minCompra !== undefined) minCompraFinal = docInventario.minCompra;
@@ -7934,7 +7941,7 @@
           stock: infoCuentasBase.stock,
           cuentas: cuentas,
           precio: precioFinal,
-          minCompra: parseInt(minCompraFinal) || prodBase.minCompraDefault,
+          minCompra: parseInt(minCompraFinal) || 1,
           imagenUrl: imagenFinal,
           esVip: esVipFinal,
           tipoGarantia: tipoGarantiaFinal,
@@ -8051,6 +8058,7 @@
 
       const filtrados = catalogoUnificado.filter(p => {
         if (p.activo === false) return false;
+        if (!(Number(p.precio) > 0) && !p.esCombo) return false;   // sin precio puesto: no se vende
         if (!usuarioTienePermisoProducto(p)) return false;
         if (categoriaActiva === 'todas') return true;
         return p.categoria === categoriaActiva;
@@ -9897,7 +9905,7 @@
       try {
         unsubRecargaCfg = db.collection('configuracion').doc('recarga_auto').onSnapshot(doc => {
           const d = doc.exists ? (doc.data() || {}) : {};
-          recargaAutoCfg = { activa: d.activa === true, minutos: parseInt(d.minutos, 10) || 30, minimo: parseInt(d.minimo, 10) || 5000 };
+          recargaAutoCfg = { activa: d.activa === true, minutos: parseInt(d.minutos, 10) || 30, minimo: parseInt(d.minimo, 10) || 5000, importeExtra: parseInt(d.importeExtra, 10) === 1 ? 1 : 0 };
           renderizarRecargaAuto();
           renderizarMetodosPagoEnClientes();
           renderizarRecargaAutoAdmin();
@@ -9955,7 +9963,7 @@
         const set = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v; };
         set('recAutoMonto', formatoCOP(pedidoRecargaActivo.monto));
         const extra = pedidoRecargaActivo.base ? (pedidoRecargaActivo.monto - pedidoRecargaActivo.base) : 0;
-        set('recAutoExtra', extra > 0 ? `Incluye ${formatoCOP(extra)} para identificar tu pago. No es comisión: todo se suma a tu saldo.` : 'Los pesos extra sirven para identificar tu pago. No es comisión: todo se suma a tu saldo.');
+        set('recAutoExtra', extra > 0 ? `Incluye ${formatoCOP(extra)} para identificar tu pago. No es comisión: todo se suma a tu saldo.` : (pedidoRecargaActivo.base ? 'Paga exactamente este valor para que se acredite solo.' : 'Los pesos extra sirven para identificar tu pago. No es comisión: todo se suma a tu saldo.'));
         set('recAutoNombre', metodo ? metodo.nombre : 'Llave Bre-B');
         set('recAutoLlave', metodo ? metodo.llave : '—');
         set('recAutoTitular', metodo && metodo.titular ? 'Titular: ' + metodo.titular : '');
@@ -10129,6 +10137,7 @@
       if (mi && document.activeElement !== mi) mi.value = recargaAutoCfg.minutos;
       const mn = document.getElementById('recargaAutoMinimo');
       if (mn && document.activeElement !== mn) mn.value = recargaAutoCfg.minimo;
+      const ex = document.getElementById('selRecargaExtra'); if (ex && document.activeElement !== ex) ex.value = String(recargaAutoCfg.importeExtra || 0);
       renderizarEstadoRecargaAdmin();
     }
 
@@ -10156,7 +10165,7 @@
       const metodoId = (document.getElementById('selRecargaMetodo') || {}).value || '';
       const elegido = metodosPagoList.find(m => m.docId === metodoId) || metodoRecargaAuto();
       if (activa && !elegido) { alert('Primero elige arriba el método de pago (tu llave Bre-B) que verán los clientes.'); return; }
-      const datos = { activa: activa, minutos: minutos, minimo: minimo, actualizadoEl: new Date().toISOString() };
+      const datos = { activa: activa, minutos: minutos, minimo: minimo, importeExtra: (document.getElementById('selRecargaExtra') || {}).value === '1' ? 1 : 0, exactoSiUnico: (document.getElementById('selRecargaExtra') || {}).value !== '1', actualizadoEl: new Date().toISOString() };
       if (activa && !recargaAutoCfg.activa) datos.activadaEl = new Date().toISOString();
       try {
         const lote = db.batch();
@@ -14512,8 +14521,13 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-06w';
+    const VERSION_PAGINA = '2026-10-07d';
     const ACTUALIZACIONES_PAGINA = [
+      { id: 'act_20261006b_recarga', fecha: '2026-10-06', titulo: 'Recargas más simples 💳', mensaje: 'Ahora pagas **el valor exacto** que eliges recargar. Tu saldo se acredita solo en 1 o 2 minutos, y si Nequi se demora, igual te llega apenas confirme.' },
+      { id: 'act_20261006b_sinsaldo', fecha: '2026-10-06', titulo: 'Recarga y compra en un solo paso', mensaje: 'Si tocas **Comprar** y te falta saldo, toca **Recargar** ahí mismo. Cuando tu recarga entre, **tu compra se completa sola** y no tienes que volver a buscar el producto.' },
+      { id: 'act_20261006b_lote', fecha: '2026-10-06', titulo: 'Compras grandes más ordenadas', mensaje: 'Cuando compras varias cuentas las ves en **una lista limpia** con el botón **Copiar todas**. Para reportar una, toca **Reportar una cuenta** y pega su correo.' },
+      { id: 'act_20261006b_tickets', fecha: '2026-10-06', titulo: 'Avisos de tus reportes', mensaje: 'Cuando resolvemos un reporte te sale un **aviso pequeño amarillo** una sola vez, y la respuesta queda en **Mis Reportes**.' },
+      { id: 'act_20261006b_netflix', fecha: '2026-10-06', titulo: 'Netflix: un solo dispositivo', mensaje: 'Cada pantalla de Netflix es para **uso exclusivo en 1 dispositivo**. Si el perfil se usa en más de uno a la vez, se puede perder el acceso.' },
       { id: 'act_20261006_credito', fecha: '2026-10-06', titulo: 'Tu crédito, más fácil', mensaje: 'Si tienes **crédito pre-aprobado** te avisamos en la tienda. En tu perfil hay una pestaña **Crédito** donde lo aceptas y ves cuánto debes y tu historial.' },
       { id: 'act_20261006_negocio', fecha: '2026-10-06', titulo: 'Dealers: Mi negocio 👑', mensaje: 'Los Dealers ahora pueden **asignar cada cuenta a su cliente**, entregarla por WhatsApp con un toque y ver **su ganancia del mes** y qué cuentas están por vencer.' },
       { id: 'act_20261006_garantia', fecha: '2026-10-06', titulo: 'Garantías más claras', mensaje: 'Cada producto muestra ahora su **tiempo de garantía exacto** (horas, días, meses o años) y en **Mis Cuentas** ves cuánto te queda en cada cuenta.' },
@@ -15171,7 +15185,19 @@
       const id = (document.getElementById('vmProducto') || {}).value;
       const p = catalogoUnificado.find(x => x.docId === id);
       const pr = document.getElementById('vmPrecio'); if (pr && p) pr.value = (p.precioLista !== undefined ? p.precioLista : p.precio) || '';
-      const inf = document.getElementById('vmInfo'); if (inf && p) inf.textContent = `${stockLibreDeProducto(id)} cuentas libres${esProductoPrime(p) ? ' · se incluye la contraseña de Prime Video' : ''}.`;
+      const t = document.getElementById('vmTotal'); if (t) delete t.dataset.manual;
+      vmCalcularTotal();
+    }
+    // Total = cantidad × precio del producto; si lo editas, se respeta tu total
+    function vmCalcularTotal() {
+      const id = (document.getElementById('vmProducto') || {}).value, p = catalogoUnificado.find(x => x.docId === id);
+      const n = Math.max(1, parseInt((document.getElementById('vmCantidad') || {}).value, 10) || 1);
+      const unit = Math.round(Number((document.getElementById('vmPrecio') || {}).value) || 0), sugerido = unit * n;
+      const t = document.getElementById('vmTotal');
+      if (t && !t.dataset.manual) t.value = sugerido || '';
+      const total = Math.round(Number(t && t.value) || 0), libres = p ? stockLibreDeProducto(id) : 0;
+      const inf = document.getElementById('vmInfo');
+      if (inf && p) inf.innerHTML = `${libres} ${libres === 1 ? 'cuenta libre' : 'cuentas libres'}${n > libres ? ' · <b class="text-red-300">no alcanzan</b>' : ''} · precio normal ${formatoCOP(unit)} c/u · sugerido <b class="text-white">${formatoCOP(sugerido)}</b>${t && t.dataset.manual && total !== sugerido ? ` · <span class="text-amber-300">cobrarás ${formatoCOP(total)}${sugerido ? ' (' + (total < sugerido ? '-' : '+') + formatoCOP(Math.abs(sugerido - total)) + ')' : ''}</span> <button type="button" onclick="delete document.getElementById('vmTotal').dataset.manual;vmCalcularTotal()" class="underline text-gray-400">usar sugerido</button>` : ''}${esProductoPrime(p) ? ' · incluye la contraseña de Prime Video' : ''}`;
     }
     function textoVentaManual(prod, cuentas) {
       const prime = esProductoPrime(prod);
@@ -15191,10 +15217,11 @@
       const id = document.getElementById('vmProducto').value;
       const prod = catalogoUnificado.find(x => x.docId === id);
       const n = Math.max(1, parseInt(document.getElementById('vmCantidad').value, 10) || 1);
-      const precio = Math.max(0, Math.round(Number(document.getElementById('vmPrecio').value) || 0));
+      const totalCobro = Math.max(0, Math.round(Number((document.getElementById('vmTotal') || {}).value) || 0));
+      const precio = Math.round(totalCobro / Math.max(1, parseInt(document.getElementById('vmCantidad').value, 10) || 1));
       const cliente = String(document.getElementById('vmCliente').value || '').trim().slice(0, 80);
       if (!prod) { alert('Elige el producto.'); return; }
-      if (!await confirmarModal(`¿Sacar ${n} ${n === 1 ? 'cuenta' : 'cuentas'} de ${prod.nombre} por ${formatoCOP(precio * n)}?`, { textoAceptar: 'Sí, sacar' })) return;
+      if (!await confirmarModal(`¿Vender ${n} ${n === 1 ? 'cuenta' : 'cuentas'} de ${prod.nombre} por ${formatoCOP(totalCobro)}?\n\nSe entregan de tu stock y queda registrada como venta.`, { textoAceptar: 'Sí, vender' })) return;
       const btn = document.getElementById('btnVentaManual'); if (btn) btn.disabled = true;
       try {
         let res = null;
@@ -15204,13 +15231,13 @@
           const costo = res.sacadas.reduce((t, x) => t + (parseCredencialObj(x).costo || 0), 0);
           tx.set(ref, {
             usuarioId: '', usuarioEmail: cliente ? 'WhatsApp · ' + cliente : 'Venta por WhatsApp', productoId: id, productoNombre: prod.nombre || id, categoria: prod.categoria || '',
-            cantidad: n, precioUnitario: precio, total: precio * n, costoTotal: costo, gananciaNeta: precio * n - costo, tipoGarantia: prod.tipoGarantia || '',
+            cantidad: n, precioUnitario: precio, total: totalCobro, costoTotal: costo, gananciaNeta: totalCobro - costo, tipoGarantia: prod.tipoGarantia || '',
             credenciales: res.sacadas.map(x => { const c = parseCredencialObj(x); return c.email + ':' + c.pass; }).join('\n'),
             correos: res.sacadas.map(x => String(parseCredencialObj(x).email || '').toLowerCase()), fecha: new Date().toISOString(), procesadoPor: 'manual', ventaManual: true, vendidoPor: currentUser.email
           });
         });
         const texto = textoVentaManual(prod, res.sacadas);
-        document.getElementById('vmCantidad').value = 1; document.getElementById('vmCliente').value = '';
+        document.getElementById('vmCantidad').value = 1; document.getElementById('vmCliente').value = ''; vmCambioProducto();
         abrirDialogoTextoCopiable('Venta lista para WhatsApp', texto);
       } catch (err) { alert('No se pudo: ' + err.message); }
       finally { if (btn) btn.disabled = false; }
@@ -16065,6 +16092,12 @@
     // En cada cuenta de Mis Cuentas: a quién se la asignó (solo Dealers)
     function pintarEntregasDealer() {
       if (!esDealerSesion()) return;
+      document.querySelectorAll('[data-alq-dealer]').forEach(b => { const a = (misAlquileres || []).find(x => x.id === b.getAttribute('data-alq-dealer')); if (a) b.outerHTML = htmlDealerEnAlquiler(a); });
+      // Tarjetas de pantallas dibujadas antes de saber que la cuenta es Dealer: se les agrega el botón
+      document.querySelectorAll('[id^="resNf_"]').forEach(r => {
+        const alqId = r.id.split('_').slice(2).join('_'), card = r.parentElement; if (!card || card.querySelector('[data-alq-dealer]')) return;
+        const a = (misAlquileres || []).find(x => x.id === alqId); if (a) card.insertAdjacentHTML('beforeend', htmlDealerEnAlquiler(a));
+      });
       document.querySelectorAll('[data-reporte-slot]').forEach(slot => {
         const idx = parseInt(slot.getAttribute('data-idx'), 10), c = misComprasPerfilCache[idx]; if (!c) return;
         const cuenta = slot.getAttribute('data-cuenta') || '';
@@ -16768,7 +16801,12 @@
       ['Pagos a proveedores', 'proveedores', 'pagar proveedor deuda nequi daviplata lote aprobar', ''],
       ['Informe de tickets', 'tickets', 'informe estadistica reportes proveedor falla', ''],
       ['Permisos del moderador', 'vista', 'moderador permisos acceso', ''],
-      ['Tiendas para clientes', 'ajustes', 'tienda crear demo suscripcion revender', ''],
+      ['Tiendas para clientes', 'usuarios', 'tienda crear demo suscripcion revender', ''],
+      ['Niveles de clientes', 'usuarios', 'nivel puntos cliente', ''],
+      ['Mensaje de entrega al cliente', 'productos', 'plantilla entrega mensaje compra', ''],
+      ['Mensaje de stock para Telegram', 'stock', 'plantilla stock telegram difundir', ''],
+      ['Control de accesos y reportes', 'reporte', 'administradores excluidos reporte correos', ''],
+      ['Avisos automáticos de la campana', 'novedades', 'campana aviso automatico anuncio publicar', ''],
       ['Servidor y Telegram', 'ajustes', 'servidor apps script telegram url probar', ''],
       ['Recarga automática (Bre-B)', 'pagos', 'recarga automatica breb nequi llave qr', ''],
       ['Imágenes para estados', 'marketing', 'imagen estado historia instagram whatsapp publicidad texto', ''],
@@ -17058,7 +17096,7 @@
       if (vistaProductos === 'lista') {
         alt.innerHTML = '<div class="rounded-2xl border border-gray-800 overflow-hidden divide-y divide-gray-800">' + lista.map(({ p, i }) => `<div class="flex items-center gap-3 px-3 py-2.5 ${i.activo ? '' : 'opacity-60'} hover:bg-gray-800/40">
           <span class="w-9 h-9 shrink-0 rounded-xl flex items-center justify-center text-[11px] font-black" style="background:${hexARgba(i.marca.color, 0.18)};color:${i.marca.color}">${p.imagenUrl ? `<img loading="lazy" src="${p.imagenUrl}" class="w-9 h-9 rounded-xl object-cover">` : escaparHtml(String(p.nombre || '?').charAt(0).toUpperCase())}</span>
-          <div class="min-w-0 flex-grow"><p class="text-sm font-bold text-white truncate">${escaparHtml(p.nombre)}${p.esCombo ? ' <span class="text-amber-300 text-[10px]">COMBO</span>' : ''}</p><p class="text-[10px] text-gray-400 truncate">${escaparHtml(p.categoria || '')} · ${escaparHtml(i.txtG)}${i.bajo ? ' · <span class="text-amber-300 font-bold">stock bajo</span>' : ''}</p></div>
+          <div class="min-w-0 flex-grow"><p class="text-sm font-bold text-white truncate">${escaparHtml(p.nombre)}${p.esCombo ? ' <span class="text-amber-300 text-[10px]">COMBO</span>' : ''}</p><p class="text-[10px] text-gray-400 truncate">${escaparHtml(p.categoria || '')} · ${escaparHtml(i.txtG)}${i.bajo ? ' · <span class="text-amber-300 font-bold">stock bajo</span>' : ''}${!(Number(p.precio) > 0) && !p.esCombo ? ' · <span class="text-red-300 font-bold">sin precio</span>' : ''}</p></div>
           <div class="shrink-0 text-right"><p class="text-sm font-black text-white">${precioHtml(p)}</p><p class="text-[10px] ${i.stock > 0 ? 'text-emerald-300' : 'text-red-300'}">${i.stock} disp.</p></div>
           ${sw(p, i)}<button type="button" onclick="abrirModalEditarProducto('${p.docId}')" class="shrink-0 w-8 h-8 rounded-lg bg-gray-800 hover:bg-gray-700 text-sky-300" title="Editar"><i class="fa-solid fa-pen"></i></button>
         </div>`).join('') + '</div>';
@@ -17068,7 +17106,7 @@
         <div class="h-1" style="background:${i.marca.color}"></div>
         <div class="p-3.5">
           <div class="flex items-start justify-between gap-2"><div class="min-w-0"><p class="text-[10px] font-black tracking-[0.2em] uppercase truncate" style="color:${i.marca.color}">${escaparHtml(i.marca.etiqueta)}</p><p class="text-sm font-black text-white leading-snug mt-0.5">${escaparHtml(p.nombre)}</p></div>${sw(p, i)}</div>
-          <div class="flex flex-wrap gap-1 mt-2">${p.esVip ? '<span class="px-1.5 py-0.5 rounded bg-yellow-500/15 text-yellow-300 text-[9px] font-black">VIP</span>' : ''}${p.esCombo ? '<span class="px-1.5 py-0.5 rounded bg-amber-400/15 text-amber-300 text-[9px] font-black">COMBO</span>' : ''}${i.promo ? `<span class="px-1.5 py-0.5 rounded bg-rose-500/20 text-rose-300 text-[9px] font-black">${p.promoPct ? '-' + p.promoPct + '%' : 'PROMO'}</span>` : ''}${i.bajo ? '<span class="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 text-[9px] font-black animate-pulse">STOCK BAJO</span>' : ''}<span class="px-1.5 py-0.5 rounded bg-gray-800 text-gray-300 text-[9px]">${escaparHtml(p.categoria || '')}</span><span class="px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-300 text-[9px]">🛡 ${escaparHtml(i.txtG)}</span></div>
+          <div class="flex flex-wrap gap-1 mt-2">${p.esVip ? '<span class="px-1.5 py-0.5 rounded bg-yellow-500/15 text-yellow-300 text-[9px] font-black">VIP</span>' : ''}${p.esCombo ? '<span class="px-1.5 py-0.5 rounded bg-amber-400/15 text-amber-300 text-[9px] font-black">COMBO</span>' : ''}${i.promo ? `<span class="px-1.5 py-0.5 rounded bg-rose-500/20 text-rose-300 text-[9px] font-black">${p.promoPct ? '-' + p.promoPct + '%' : 'PROMO'}</span>` : ''}${i.bajo ? '<span class="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 text-[9px] font-black animate-pulse">STOCK BAJO</span>' : ''}${!(Number(p.precio) > 0) && !p.esCombo ? '<span class="px-1.5 py-0.5 rounded bg-red-500/20 text-red-300 text-[9px] font-black">SIN PRECIO · no se vende</span>' : ''}<span class="px-1.5 py-0.5 rounded bg-gray-800 text-gray-300 text-[9px]">${escaparHtml(p.categoria || '')}</span><span class="px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-300 text-[9px]">🛡 ${escaparHtml(i.txtG)}</span></div>
           <div class="flex items-end justify-between gap-2 mt-3"><div><p class="text-xl font-black text-white">${precioHtml(p)}</p><p class="text-[10px] text-gray-500">mín. ${i.minimo} ${i.minimo === 1 ? 'cuenta' : 'cuentas'}</p></div><div class="text-right"><p class="text-lg font-black ${i.stock > 0 ? 'text-emerald-300' : 'text-red-300'}">${i.stock}</p><p class="text-[10px] text-gray-500">disponibles</p></div></div>
           <div class="grid ${i.stock > 0 ? 'grid-cols-3' : 'grid-cols-2'} gap-1.5 mt-3">
             ${i.stock > 0 ? `<button type="button" onclick="verDetalleCuentas('${p.docId}')" class="py-2 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-200 text-[11px] font-bold"><i class="fa-solid fa-eye mr-1"></i>Cuentas</button>` : ''}
@@ -17077,6 +17115,84 @@
           </div>
         </div></div>`).join('') + '</div>';
     }
+
+
+    // ==================== ALQUILERES COMO VENTAS ====================
+    // El producto de la tienda que corresponde a un alquiler (Netflix u otra plataforma)
+    function productoDeAlquiler(a) {
+      const plat = String(a.plataforma || 'Netflix');
+      const p = catalogoUnificado.find(x => x.docId === a.productoId) || catalogoUnificado.find(x => new RegExp(plat.replace(/[^a-z0-9]/gi, '.?'), 'i').test(x.nombre || ''));
+      return { id: p ? p.docId : (a.productoId || 'netflix'), nombre: p ? p.nombre : ('Pantalla de ' + plat), categoria: p ? (p.categoria || 'Streaming') : 'Streaming' };
+    }
+    function lineaCredencialAlquiler(a) { return `${a.correo || ''}:${a.perfil ? 'Perfil: ' + a.perfil : 'Cuenta completa'}${a.pin ? ' · PIN: ' + a.pin : ''}`; }
+    // Un pago de alquiler queda también como una venta normal (reportes, ranking de productos y compras del cliente)
+    function ventaDeAlquiler(a, monto, tipoVenta, extra) {
+      const pr = productoDeAlquiler(a), costo = Math.max(0, Number(a.costo) || 0), meses = parseInt(a.plan, 10) || 1;
+      return Object.assign({
+        usuarioId: a.clienteUid || '', usuarioEmail: a.clienteEmail || '', clienteNombre: a.clienteNombre || '',
+        productoId: pr.id, productoNombre: pr.nombre, categoria: pr.categoria, cantidad: 1, precioUnitario: monto, total: monto,
+        costoTotal: costo, gananciaNeta: monto - costo, credenciales: lineaCredencialAlquiler(a), tipoGarantia: a.duracion || (meses + 'm'),
+        fecha: new Date().toISOString(), alquilerId: a.id, origen: 'alquiler', tipoVenta: tipoVenta
+      }, extra || {});
+    }
+    // Dealer: anotar a qué cliente le dio una pantalla, aunque no venga de una compra en la tienda
+    function abrirEntregaDealerAlquiler(alqId) {
+      const a = (misAlquileres || []).find(x => x.id === alqId) || (typeof alquileresCliente !== 'undefined' ? (alquileresCliente || []).find(x => x.id === alqId) : null);
+      if (!a) return;
+      const compraId = a.compraId || ('alq_' + a.id);
+      let idx = misComprasPerfilCache.findIndex(c => c.id === compraId);
+      if (idx < 0) { misComprasPerfilCache.push({ id: compraId, productoNombre: productoDeAlquiler(a).nombre, credenciales: lineaCredencialAlquiler(a), fecha: a.fechaInicio || a.creadoEl || '', alquilerId: a.id, virtual: true }); idx = misComprasPerfilCache.length - 1; }
+      abrirEntregaDealer(idx, a.correo || '');
+    }
+    function htmlDealerEnAlquiler(a) {
+      if (!esDealerSesion()) return '';
+      const e = misEntregas[claveEntrega(a.compraId || ('alq_' + a.id), a.correo || '')];
+      return `<button type="button" data-alq-dealer="${escaparHtml(a.id)}" onclick="abrirEntregaDealerAlquiler('${escaparJsAttr(a.id)}')" class="mt-2 text-[10px] font-bold px-2 py-0.5 rounded-full border ${e && e.clienteNombre ? (e.entregada ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30' : 'bg-yellow-400/15 text-yellow-200 border-yellow-400/40') : 'border-yellow-400/40 text-yellow-200'}"><i class="fa-solid ${e && e.clienteNombre ? 'fa-user' : 'fa-user-plus'} mr-1"></i>${e && e.clienteNombre ? escaparHtml(e.clienteNombre) + (e.entregada ? ' · entregada' : ' · por entregar') : 'Asignar a un cliente'}</button>`;
+    }
+
+
+    // ==================== CADA SECCIÓN CON SU PROPIA CONFIGURACIÓN ====================
+    // Los ajustes que aplican a una sola sección se llevan al final de esa sección (los mismos campos y botones, sin cambiar nada).
+    const REPARTO_AJUSTES = [
+      { titulo: /Tiendas para clientes/i, destino: 'usuarios', tiendas: true },
+      { titulo: /Niveles de clientes/i, destino: 'usuarios', guardar: true },
+      { titulo: /Apariencia de la plataforma/i, destino: 'apariencia', paraModerador: true },
+      { titulo: /Mensaje de entrega al cliente/i, destino: 'productos' },
+      { titulo: /Novedades para clientes/i, destino: 'novedades', nuevoTitulo: 'Avisos automáticos de la campana' },
+      { titulo: /Mensaje de stock para Telegram/i, destino: 'stock' },
+      { titulo: /Control de Accesos y Reportes/i, destino: 'reporte', guardar: true }
+    ];
+    function cajaConfigSeccion(destino) {
+      const sec = document.getElementById('adminSec' + destino.charAt(0).toUpperCase() + destino.slice(1)); if (!sec) return null;
+      let caja = sec.querySelector(':scope > .config-seccion');
+      if (!caja) {
+        caja = document.createElement('div');
+        caja.className = 'config-seccion mt-6 pt-4 border-t border-dashed border-gray-700 space-y-4';
+        caja.innerHTML = '<p class="text-[11px] font-black uppercase tracking-[0.14em] text-gray-400"><i class="fa-solid fa-gear mr-1"></i>Configuración de esta sección</p>';
+        sec.appendChild(caja);
+      }
+      return caja;
+    }
+    function repartirAjustesPorSeccion() {
+      const secAj = document.getElementById('adminSecAjustes'); if (!secAj || secAj.dataset.repartido) return;
+      const form = secAj.querySelector('form');
+      REPARTO_AJUSTES.forEach(r => {
+        let bloque = null;
+        if (r.tiendas) bloque = Array.from(secAj.children).find(c => r.titulo.test((c.querySelector('h3') || {}).textContent || ''));
+        else if (form) { const h = Array.from(form.querySelectorAll('h3,h4')).find(x => r.titulo.test(x.textContent)); if (h) { bloque = h; while (bloque.parentElement && bloque.parentElement !== form) bloque = bloque.parentElement; } }
+        const caja = cajaConfigSeccion(r.destino); if (!bloque || !caja) return;
+        const envoltura = document.createElement('div');
+        envoltura.className = 'bg-gray-900 border border-gray-800 rounded-2xl p-4' + (r.paraModerador ? '' : ' solo-admin');
+        envoltura.appendChild(bloque);
+        if (r.nuevoTitulo) { const h = bloque.querySelector('h3,h4'); if (h) { const ic = h.querySelector('i'); h.textContent = ' ' + r.nuevoTitulo; if (ic) h.prepend(ic); } }
+        if (r.guardar) { const b = document.createElement('button'); b.type = 'button'; b.className = 'mt-3 w-full py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-black text-xs'; b.innerHTML = '<i class="fa-solid fa-floppy-disk mr-1"></i>Guardar'; b.onclick = () => guardarAjustesGeneralesAdmin({ preventDefault() {} }); envoltura.appendChild(b); }
+        caja.appendChild(envoltura);
+      });
+      // Si una sección solo tiene ajustes del administrador, el moderador no ve el título
+      document.querySelectorAll('.config-seccion').forEach(c => { if (!c.querySelector(':scope > div:not(.solo-admin)')) c.classList.add('solo-admin'); });
+      secAj.dataset.repartido = '1';
+    }
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', repartirAjustesPorSeccion); else repartirAjustesPorSeccion();
 
     // ==================== NETFLIX EN LA TIENDA: SIN CONTRASEÑA ====================
     function esNombreNetflix(t) { return /netflix/i.test(String(t || '')); }
@@ -18420,7 +18536,7 @@
             ? `<div class="grid grid-cols-2 gap-2 mt-3">${botonOtp}${botonRenovar}</div>${vencida ? '' : `<button type="button" onclick="abrirEnlaceCodigo('${id}')" class="mt-2 w-full py-2 rounded-xl bg-gray-800 hover:bg-gray-700 border border-gray-700 text-gray-200 font-bold text-[11px] flex items-center justify-center gap-1.5"><i class="fa-solid fa-link text-red-400"></i> Enlace para ver el código (compártelo con quien ve)</button>`}`
             : `<div class="mt-3">${botonRenovar}</div>`}
           <div id="resNf_${ambito}_${id}" class="mt-3"></div>
-        ${esNetflixNf(a) ? htmlAvisoNetflixDispositivo() : ''}</div>`;
+        ${esNetflixNf(a) ? htmlAvisoNetflixDispositivo() : ''}${htmlDealerEnAlquiler(a)}</div>`;
     }
 
     // ==================== CUENTAS COMPARTIDAS, "NO RENOVÓ" Y NETFLIX EN LA TIENDA ====================
@@ -19421,6 +19537,7 @@
         correo: correo, plan: plan, duracion: duracionNf, precio: precio, notas: val('nfNotas'), tipo: tipoFinal, plataforma: plataformaSel,
         actualizadoEl: new Date().toISOString()
       };
+      try { const prA = productoDeAlquiler({ plataforma: plataformaSel, productoId: previa && previa.productoId }); datos.productoId = prA.id; datos.productoNombre = prA.nombre; } catch (e) { /* nada */ }
       if (tipoFinal === 'compartida') { datos.perfil = perfil; datos.pin = pin; }
 
       if (asignada) {
@@ -19588,12 +19705,15 @@
       try {
         const ahora = new Date().toISOString();
         const lote = db.batch();
-        lote.set(db.collection('alquileres').doc(id), { proximoPago: nuevo, ultimoPago: ahora, ultimoMonto: precio, actualizadoEl: ahora }, { merge: true });
+        const prA = productoDeAlquiler(a);
+        lote.set(db.collection('alquileres').doc(id), { proximoPago: nuevo, ultimoPago: ahora, ultimoMonto: precio, actualizadoEl: ahora, productoId: prA.id, productoNombre: prA.nombre }, { merge: true });
         lote.set(db.collection('pagos_alquiler').doc(), {
           alquilerId: id, correo: a.correo || '', usuarioId: a.clienteUid || '', usuarioEmail: a.clienteEmail || '',
           clienteNombre: a.clienteNombre || '', monto: precio, meses: plan, desde: base, hasta: nuevo,
           fecha: ahora, metodo: 'manual', procesadoPor: 'admin'
         });
+        // También queda como venta normal del producto
+        if (precio > 0) lote.set(db.collection('compras').doc(), ventaDeAlquiler(a, precio, 'pago_alquiler', { metodoPago: 'manual', procesadoPor: (currentUser && currentUser.email) || 'admin', desde: base, hasta: nuevo }));
         await lote.commit();
         mostrarToast('Pago registrado. Próximo pago: ' + fechaCortaNetflix(nuevo));
       } catch (err) {
