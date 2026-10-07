@@ -15032,7 +15032,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-09x';
+    const VERSION_PAGINA = '2026-10-09y';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261009_telegram', fecha: '2026-10-09', titulo: 'Avisos por Telegram ✈️', mensaje: 'Conecta Telegram en tu perfil → **Mis datos** y recibe al instante tus **compras**, tus **recargas** y el **stock nuevo** de lo que compras. Tú eliges qué recibir, y nunca te enviamos contraseñas por ahí.' },
       { id: 'act_20261009_serdealer', fecha: '2026-10-09', titulo: 'Ahora puedes pedir ser Dealer 👑', mensaje: 'En tu perfil ves cuánto te falta para **pedir ser Dealer**. Cuando cumples, toca **Pedir ser Dealer** y te avisamos en la campana. Los Dealers tienen **promos y regalos por volumen**.' },
@@ -18540,9 +18540,10 @@
     function htmlEscalasTarjeta(prod) {
       const esc = escalasDe(prod); if (!esc.length) return '';
       const lista = Number(prod.precioLista || prod.precio) || 0, minC = Math.max(1, parseInt(prod.minCompra, 10) || 1);
-      const fila = [{ desde: minC, precio: lista }].concat(esc);
+      const fila = [{ desde: minC, precio: lista, base: true }].concat(esc);
+      const campana = esc.some(e => e.desde <= minC && e.precio < lista);   // escalón de campaña en la compra mínima: el normal se muestra tachado
       const sn = (snapshotInventario[prod.docId] || {}), packs = (Array.isArray(sn.escalas) ? sn.escalas : []).filter(e => e.pack && Number(e.precio) < lista && parseInt(e.desde, 10) > 1 && parseInt(e.desde, 10) <= Math.max(Number(prod.stock) || 0, maxTarjeta(prod, Number(prod.stock) || 0)));
-      return `${packs.length ? `<div class="flex items-center gap-1.5 flex-wrap mb-2">${packs.map(e => `<button type="button" onclick="elegirCantidad('${prod.docId}', ${parseInt(e.desde, 10)})" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-sky-500/15 hover:bg-sky-500/25 border border-sky-400/50 text-[11px] font-black text-sky-100">📦 Pack ${parseInt(e.desde, 10)} · ${formatoCOP(Number(e.precio) * parseInt(e.desde, 10))}<span class="text-[9px] font-bold text-emerald-300">ahorra ${formatoCOP((lista - Number(e.precio)) * parseInt(e.desde, 10))}</span></button>`).join('')}</div>` : ''}<div class="flex items-center gap-1.5 flex-wrap mb-2"><span class="text-[10px] text-gray-400"><i class="fa-solid fa-layer-group mr-1"></i>Por cantidad:</span>${fila.map((e, k) => `<span class="esc-chip" data-esc-de="${prod.docId}" data-desde="${e.desde}" data-hasta="${fila[k + 1] ? fila[k + 1].desde : ''}">${e.desde}+ ${formatoCOP(e.precio)}</span>`).join('')}</div>`;
+      return `${packs.length ? `<div class="flex items-center gap-1.5 flex-wrap mb-2">${packs.map(e => `<button type="button" onclick="elegirCantidad('${prod.docId}', ${parseInt(e.desde, 10)})" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-sky-500/15 hover:bg-sky-500/25 border border-sky-400/50 text-[11px] font-black text-sky-100">📦 Pack ${parseInt(e.desde, 10)} · ${formatoCOP(Number(e.precio) * parseInt(e.desde, 10))}<span class="text-[9px] font-bold text-emerald-300">ahorra ${formatoCOP((lista - Number(e.precio)) * parseInt(e.desde, 10))}</span></button>`).join('')}</div>` : ''}<div class="flex items-center gap-1.5 flex-wrap mb-2"><span class="text-[10px] text-gray-400"><i class="fa-solid fa-layer-group mr-1"></i>Por cantidad:</span>${fila.map((e, k) => e.base && campana ? `<span class="esc-chip line-through opacity-50">${e.desde}+ ${formatoCOP(e.precio)}</span>` : `<span class="esc-chip" data-esc-de="${prod.docId}" data-desde="${e.desde}" data-hasta="${fila[k + 1] ? fila[k + 1].desde : ''}">${e.desde}+ ${formatoCOP(e.precio)}</span>`).join('')}</div>`;
     }
     function prepararCampanas() {
       const prods = catalogoUnificado.filter(p => !p.esCombo && Number(p.precio) > 0).sort((a, b) => String(a.nombre).localeCompare(String(b.nombre), 'es'));
@@ -19395,6 +19396,7 @@
 
     // ==================== NOVEDADES INTERNAS DEL PANEL (solo el equipo) ====================
     const ACTUALIZACIONES_INTERNAS = [
+      { fecha: '2026-10-09', titulo: '🖼 Imagen de promo desde la tarjeta', mensaje: 'En el recuadro "Promos vigentes" de cada tarjeta, **Crear imagen de esta promo** arma un estado con el precio de campaña (normal tachado), el regalo y los precios por cantidad. Versión para clientes o para Dealers (nunca se mezclan); descárgala, compártela o publícala como estado. Además, en la tarjeta el precio normal sale **tachado** cuando hay campaña.', ir: '' },
       { fecha: '2026-10-09', titulo: '✈️ Avisos por Telegram para clientes', mensaje: 'Con un bot aparte (Ajustes → Bot de avisos para clientes), cada cliente conecta su Telegram con un enlace de un solo uso y recibe solo SUS compras, recargas y el stock de lo que compra. **Para vender:** cuando subes stock, les llega el aviso a quienes ya compran ese producto.', ir: 'ajustes' },
       { fecha: '2026-10-09', titulo: '✉️ Una solicitud de correos a la vez', mensaje: 'Cada proveedor solo puede tener **una solicitud de correos pendiente**: el botón queda en "Solicitud enviada" hasta que la atiendas o la descartes. Cuando le asignas correos, le sale una ventana única **📬 ¡Te llegaron N correos!** y un aviso en su campana.', ir: 'proveedores' },
       { fecha: '2026-10-09', titulo: '💻 Recarga más cómoda en el PC', mensaje: 'En el computador, el pedido de recarga ya no se ve gigante: con QR se muestra en dos columnas (datos y QR) y sin QR en una sola, y todo cabe en la pantalla sin desplazarse.', ir: '' },
@@ -20124,10 +20126,11 @@
         const sn = snapshotInventario[prod.docId] || {};
         if (Number(sn.promoPct) > 0 && (!sn.promoHasta || Date.parse(sn.promoHasta) > Date.now())) items.push(`<p class="text-[11px] text-rose-100"><b class="text-rose-300">⚡ Todos:</b> -${sn.promoPct} %${sn.promoHasta ? ' hasta las ' + new Date(sn.promoHasta).toLocaleTimeString('es-CO', { hour: 'numeric', minute: '2-digit' }) : ''}</p>`);
         const esc = escalasDe(prod), base = Number(prod.precioLista || prod.precio) || 0, rarosE = esc.filter(e => base && e.precio < base * 0.5);
+        if (esc.length) items.push(`<p class="text-[11px] text-emerald-100"><b class="text-emerald-300">💰 Por cantidad:</b> ${esc.map(e => e.desde + '+ ' + formatoCOP(e.precio)).join(' · ')}</p>`);
         if (rarosE.length) items.push(`<p class="text-[11px] text-red-200"><b>⚠️ Revisa:</b> ${rarosE.map(e => e.desde + '+ a ' + formatoCOP(e.precio)).join(', ')} es menos de la mitad del precio normal. ¿Error al escribir? <button type="button" onclick="irAPrecioPorCantidad('${prod.docId}')" class="underline font-bold">Corregir</button></p>`);
         if (!items.length) return '';
         const links = `<p class="text-[10px] mt-1 flex gap-3 flex-wrap">${pr ? `<button type="button" onclick="irATabAdmin('dealers');setTimeout(()=>{dlVista='promos';pintarTabsDealers();pintarVistaDealers();},300)" class="underline text-amber-200">Editar promo Dealer/clientes</button>` : ''}${escalasDe(prod).length ? `<button type="button" onclick="irAPrecioPorCantidad('${prod.docId}')" class="underline text-emerald-200">Editar precio por cantidad</button>` : ''}</p>`;
-        return `<div class="mb-2.5 px-3 py-2 rounded-xl border border-dashed border-gray-500/60 bg-black/25"><p class="text-[9px] font-black uppercase tracking-[0.14em] text-gray-400 mb-0.5"><i class="fa-solid fa-eye mr-1"></i>Promos vigentes · solo tú las ves aquí</p>${items.join('')}${links}</div>`;
+        return `<div class="mb-2.5 px-3 py-2 rounded-xl border border-dashed border-gray-500/60 bg-black/25"><p class="text-[9px] font-black uppercase tracking-[0.14em] text-gray-400 mb-0.5"><i class="fa-solid fa-eye mr-1"></i>Promos vigentes · solo tú las ves aquí</p>${items.join('')}${links}${esAdminSesionActual() ? `<button type="button" onclick="abrirImagenPromo('${prod.docId}')" class="mt-2 w-full py-2 rounded-xl font-black text-[11px] text-black" style="background:linear-gradient(90deg,#10b981,#f7d774)">🖼 Crear imagen de esta promo</button>` : ''}</div>`;
       } catch (e) { return ''; }
     }
 
@@ -20287,6 +20290,93 @@
         const r = await llamarBackend('tg_probar', {});
         if (est) est.innerHTML = r.ok ? `<span class="text-emerald-300">✓ Conectado a <b>@${escaparHtml(r.bot)}</b> · ${r.conectados} cliente${r.conectados === 1 ? '' : 's'} con avisos.</span>` : `<span class="text-red-300">${escaparHtml(r.error || 'No se pudo.')}</span>`;
       } catch (e) { if (est) est.innerHTML = `<span class="text-red-300">${escaparHtml(e.message)}</span>`; }
+    }
+
+
+    // ==================== IMAGEN DE PROMO DESDE LA TARJETA ====================
+    // Toma TODO lo vigente de un producto (precio de campaña, regalo, precios por cantidad, venta relámpago) y arma un estado.
+    // "Para clientes" y "Para Dealers" nunca se mezclan.
+    var promoImgId = '', promoImgPara = 'cliente';
+    function datosPromoProducto(prod, para) {
+      const lista = Number(prod.precioLista || prod.precio) || 0, minC = Math.max(1, parseInt(prod.minCompra, 10) || 1), esc = escalasDe(prod);
+      const campana = esc.find(e => e.desde <= minC && e.precio < lista);
+      const sn = snapshotInventario[prod.docId] || {}, flash = Number(sn.promoPct) > 0 && (!sn.promoHasta || Date.parse(sn.promoHasta) > Date.now()) ? { pct: Number(sn.promoPct), hasta: sn.promoHasta } : null;
+      let precio = campana ? campana.precio : (Number(prod.precio) || lista); if (flash) precio = Math.round(precio * (100 - flash.pct) / 100);
+      const pr = ((cfgDealer && cfgDealer.promos) || {})[prod.docId]; let regalo = null;
+      if (pr && pr.activo !== false && aplicaPromo(pr, para)) { const compra = Number(pr.compra) || 10, lleva = Number(pr.regalo) || 1, otro = pr.regaloProductoId && pr.regaloProductoId !== prod.docId ? nombreProd(pr.regaloProductoId) : ''; regalo = { compra, lleva, otro, vence: pr.vence || '' }; }
+      const mu = multiplicadoresDealer() || {};
+      return { lista, minC, precio, tachado: precio < lista ? lista : 0, escalones: esc.filter(e => e.desde > minC).slice(0, 4), flash, regalo, mult: para === 'dealer' ? { plata: Number(mu.plata) || 1, oro: Number(mu.oro) || 1 } : null };
+    }
+    function lienzoPromoProducto(prod, para) {
+      const W = 1080, H = 1920, c = document.createElement('canvas'); c.width = W; c.height = H; const x = c.getContext('2d');
+      const d = datosPromoProducto(prod, para), dealer = para === 'dealer', F = "'Segoe UI', Roboto, Arial, sans-serif";
+      const ac = dealer ? '#f7d774' : '#2dd4bf', acRgb = dealer ? '247,215,116' : '45,212,191';
+      // fondo
+      x.fillStyle = '#050a0f'; x.fillRect(0, 0, W, H);
+      const rg = x.createRadialGradient(W / 2, H * .25, 40, W / 2, H * .3, W * 1.1); rg.addColorStop(0, dealer ? 'rgba(120,90,10,.85)' : 'rgba(15,95,88,.9)'); rg.addColorStop(.55, 'rgba(6,23,27,.95)'); rg.addColorStop(1, '#050a0f'); x.fillStyle = rg; x.fillRect(0, 0, W, H);
+      x.textAlign = 'center'; let y = 170;
+      if (mkLogoImg && mkLogoListo) { const r = 66; x.save(); x.beginPath(); x.arc(W / 2, y + r, r, 0, Math.PI * 2); x.clip(); x.drawImage(mkLogoImg, W / 2 - r, y, r * 2, r * 2); x.restore(); y += r * 2 + 50; }
+      x.fillStyle = 'rgba(255,255,255,.75)'; x.font = `800 30px ${F}`; x.fillText(espaciarLetras(nombreTienda().toUpperCase()), W / 2, y); y += 90;
+      x.fillStyle = ac; x.font = `900 40px ${F}`; x.fillText(espaciarLetras(dealer ? '👑 PROMO DEALERS' : '🔥 PROMO DE HOY'), W / 2, y); y += 95;
+      x.fillStyle = '#fff'; x.font = `900 68px ${F}`; const nom = String(prod.nombre || ''); let fs = 68; while (x.measureText(nom).width > W - 160 && fs > 40) { fs -= 4; x.font = `900 ${fs}px ${F}`; } x.fillText(nom, W / 2, y); y += 100;
+      if (d.tachado) { x.fillStyle = 'rgba(255,255,255,.55)'; x.font = `700 54px ${F}`; const t = formatoCOP(d.tachado), tw = x.measureText(t).width; x.fillText(t, W / 2, y); x.strokeStyle = 'rgba(255,90,90,.9)'; x.lineWidth = 6; x.beginPath(); x.moveTo(W / 2 - tw / 2 - 8, y - 18); x.lineTo(W / 2 + tw / 2 + 8, y - 18); x.stroke(); y += 40; }
+      x.fillStyle = '#fff'; x.font = `900 170px ${F}`; x.fillText(formatoCOP(d.precio), W / 2, y + 150); y += 215;
+      x.fillStyle = 'rgba(255,255,255,.7)'; x.font = `600 36px ${F}`; x.fillText(`c/u · compra mínima ${d.minC}`, W / 2, y); y += 70;
+      if (d.flash) { x.fillStyle = '#fb7185'; x.font = `900 40px ${F}`; x.fillText(`⚡ -${d.flash.pct} %${d.flash.hasta ? ' hasta las ' + new Date(d.flash.hasta).toLocaleTimeString('es-CO', { hour: 'numeric', minute: '2-digit' }) : ''}`, W / 2, y); y += 70; }
+      if (d.regalo) {
+        const bw = 640, bh = d.mult ? 300 : 260, bx = (W - bw) / 2; x.save(); textoRedondeado(x, bx, y, bw, bh, 40); x.fillStyle = `rgba(${acRgb},.14)`; x.fill(); x.lineWidth = 4; x.strokeStyle = `rgba(${acRgb},.7)`; x.stroke(); x.restore();
+        x.font = `70px ${F}`; x.fillText('🎁', W / 2, y + 85); x.fillStyle = '#fff'; x.font = `900 58px ${F}`;
+        x.fillText(d.regalo.otro ? `Compra ${d.regalo.compra}, lleva ${d.regalo.lleva} de regalo` : `Compra ${d.regalo.compra}, lleva ${d.regalo.compra + d.regalo.lleva}`, W / 2, y + 165);
+        x.fillStyle = 'rgba(255,255,255,.75)'; x.font = `600 32px ${F}`; x.fillText(d.regalo.otro ? `de ${d.regalo.otro}` : `${d.regalo.lleva} cuenta${d.regalo.lleva === 1 ? '' : 's'} de regalo`, W / 2, y + 215);
+        if (d.mult) { x.fillStyle = ac; x.font = `800 32px ${F}`; x.fillText(`Plata ×${d.mult.plata} · Oro ×${d.mult.oro} en regalos`, W / 2, y + 265); }
+        y += bh + 60;
+      }
+      if (d.escalones.length) {
+        x.fillStyle = 'rgba(255,255,255,.7)'; x.font = `700 32px ${F}`; x.fillText('Entre más llevas, menos pagas', W / 2, y); y += 40;
+        x.font = `800 38px ${F}`; const txts = d.escalones.map(e => `${e.desde}+ ${formatoCOP(e.precio)}`), pad = 34, gap = 22, ws = txts.map(t => x.measureText(t).width + pad * 2), tot = ws.reduce((a, b) => a + b, 0) + gap * (ws.length - 1);
+        let cx = (W - tot) / 2; txts.forEach((t, k) => { x.save(); textoRedondeado(x, cx, y, ws[k], 78, 39); x.fillStyle = 'rgba(255,255,255,.06)'; x.fill(); x.lineWidth = 3; x.strokeStyle = 'rgba(255,255,255,.3)'; x.stroke(); x.restore(); x.fillStyle = '#fff'; x.fillText(t, cx + ws[k] / 2, y + 52); cx += ws[k] + gap; });
+        y += 120;
+      }
+      // botón de abajo
+      const by = Math.max(y + 40, H - 300), bw2 = 860; x.save(); textoRedondeado(x, (W - bw2) / 2, by, bw2, 120, 60); const g = x.createLinearGradient(0, 0, W, 0); g.addColorStop(0, ac); g.addColorStop(1, dealer ? '#d4a017' : '#14b8a6'); x.fillStyle = g; x.fill(); x.restore();
+      x.fillStyle = dealer ? '#1a1200' : '#00211d'; x.font = `900 48px ${F}`; x.fillText('Pide ya 👉 ' + enlaceMk(), W / 2, by + 78);
+      return aZonaSeguraEstado(c);
+    }
+    function abrirImagenPromo(id) {
+      const prod = catalogoUnificado.find(p => p.docId === id); if (!prod) return; promoImgId = id;
+      if (!mkLogoImg && aparienciaConfig && aparienciaConfig.logoUrl) { mkLogoImg = new Image(); mkLogoImg.crossOrigin = 'anonymous'; mkLogoImg.onload = () => { mkLogoListo = true; pintarImagenPromo(); }; mkLogoImg.onerror = () => { mkLogoImg = null; }; mkLogoImg.src = aparienciaConfig.logoUrl; }
+      const pr = ((cfgDealer && cfgDealer.promos) || {})[id], hayD = !!(pr && pr.activo !== false && aplicaPromo(pr, 'dealer'));
+      promoImgPara = 'cliente';
+      let m = document.getElementById('modalImagenPromo');
+      if (!m) { m = document.createElement('div'); m.id = 'modalImagenPromo'; m.className = 'fixed inset-0 z-[97] hidden items-center justify-center p-4 bg-black/80 backdrop-blur-sm'; m.onclick = ev => { if (ev.target === m) cerrarImagenPromo(); }; document.body.appendChild(m); }
+      m.innerHTML = `<div class="w-full max-w-sm rounded-3xl bg-gray-900 border border-emerald-500/40 p-4 space-y-3 max-h-[92vh] overflow-y-auto">
+        <div class="flex items-center justify-between"><p class="text-sm font-black text-white">🖼 Imagen de promo</p><button type="button" onclick="cerrarImagenPromo()" aria-label="Cerrar" class="w-8 h-8 rounded-full bg-gray-800 text-gray-300"><i class="fa-solid fa-xmark"></i></button></div>
+        <div id="promoImgTabs" class="flex gap-1.5">${['cliente', 'dealer'].filter(k => k === 'cliente' || hayD).map(k => `<button type="button" data-para="${k}" onclick="promoImgPara='${k}';pintarImagenPromo()" class="px-3 py-1.5 rounded-full text-[11px] font-black border">${k === 'cliente' ? '🎁 Para clientes' : '👑 Para Dealers'}</button>`).join('')}</div>
+        <img id="promoImgVista" alt="Imagen de promo" class="w-full rounded-2xl bg-black">
+        <div class="grid grid-cols-2 gap-2"><button type="button" onclick="descargarImagenPromo()" class="py-2.5 rounded-xl bg-gray-800 border border-gray-700 text-gray-100 font-bold text-xs"><i class="fa-solid fa-download mr-1"></i>Descargar</button><button type="button" onclick="compartirImagenPromo()" class="py-2.5 rounded-xl bg-emerald-600 text-white font-bold text-xs"><i class="fa-brands fa-whatsapp mr-1"></i>Compartir</button></div>
+        <button type="button" onclick="publicarEstadoImagenPromo()" class="w-full py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-black text-xs"><i class="fa-solid fa-circle-play mr-1"></i>Publicar como estado (24 h)</button>
+      </div>`;
+      m.classList.remove('hidden'); m.style.display = 'flex'; pintarImagenPromo();
+    }
+    function pintarImagenPromo() {
+      const prod = catalogoUnificado.find(p => p.docId === promoImgId), img = document.getElementById('promoImgVista'); if (!prod || !img) return;
+      document.querySelectorAll('#promoImgTabs [data-para]').forEach(b => { const on = b.dataset.para === promoImgPara; b.className = 'px-3 py-1.5 rounded-full text-[11px] font-black border ' + (on ? (promoImgPara === 'dealer' ? 'bg-amber-400 text-black border-amber-300' : 'bg-emerald-500 text-black border-emerald-400') : 'bg-gray-800 text-gray-300 border-gray-700'); });
+      img.src = lienzoPromoProducto(prod, promoImgPara).toDataURL('image/jpeg', 0.9);
+    }
+    function cerrarImagenPromo() { const m = document.getElementById('modalImagenPromo'); if (m) { m.classList.add('hidden'); m.style.display = 'none'; } }
+    function nombreArchivoPromo() { const p = catalogoUnificado.find(x => x.docId === promoImgId) || {}; return 'promo-' + (promoImgPara === 'dealer' ? 'dealers-' : '') + String(p.nombre || 'producto').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') + '.jpg'; }
+    function descargarImagenPromo() { const img = document.getElementById('promoImgVista'); if (!img) return; const a = document.createElement('a'); a.href = img.src; a.download = nombreArchivoPromo(); document.body.appendChild(a); a.click(); a.remove(); }
+    async function compartirImagenPromo() {
+      const img = document.getElementById('promoImgVista'); if (!img) return;
+      try { const blob = await (await fetch(img.src)).blob(), f = new File([blob], nombreArchivoPromo(), { type: 'image/jpeg' }); if (navigator.canShare && navigator.canShare({ files: [f] })) { await navigator.share({ files: [f], text: '👉 ' + enlaceMk() }); return; } } catch (e) { if (e && e.name === 'AbortError') return; }
+      descargarImagenPromo(); mostrarToast('Imagen descargada: adjúntala en WhatsApp');
+    }
+    async function publicarEstadoImagenPromo() {
+      const prod = catalogoUnificado.find(p => p.docId === promoImgId); if (!prod) return;
+      if (promoImgPara === 'dealer') { alert('Los estados los ven todos tus clientes: publica la versión "Para clientes". La de Dealers compártela solo con ellos.'); return; }
+      const base = lienzoPromoProducto(prod, 'cliente'), c = document.createElement('canvas'); c.width = 720; c.height = 1280; c.getContext('2d').drawImage(base, 0, 0, 720, 1280);
+      if (!await confirmarModal('¿Publicar esta promo como estado de tu tienda por 24 horas?', { textoAceptar: 'Sí, publicar' })) return;
+      try { await publicarEstado(c.toDataURL('image/jpeg', 0.82), ''); } catch (e) { alert(e.message); }
     }
 
     // ==================== NETFLIX EN LA TIENDA: SIN CONTRASEÑA ====================
