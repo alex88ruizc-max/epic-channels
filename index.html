@@ -12368,6 +12368,9 @@
           ${resuelto && t.resolucion ? `<p class="text-[10px] text-emerald-300 mt-0.5">${escaparHtml(t.resolucion)}</p>` : ''}
           ${(() => { const d = (misDescuentos || []).find(x => x.ticketId === t.id); return d ? `<p class="text-[11px] font-bold mt-1 ${d.aplicado ? 'text-gray-400' : 'text-red-300'}"><i class="fa-solid fa-arrow-down mr-1"></i>Cuenta reemplazada al cliente: −${formatoCOP(d.monto || 0)}${d.aplicado ? ' (ya descontado en un pago)' : ' de lo que se te debe'}</p>` : ''; })()}
           ${resuelto && t.fotoEliminada ? `<p class="text-[10px] text-gray-500 mt-0.5"><i class="fa-solid fa-image mr-1"></i>La foto se eliminó al resolver.</p>` : ''}
+          ${resuelto && t.resueltoPorProveedor ? `<p class="text-[10px] mt-0.5 ${t.revisado === 'aprobado' ? 'text-emerald-300' : 'text-amber-200'}">${t.revisado === 'aprobado' ? '✓ El administrador aprobó tu resolución' : '⏳ Tu resolución está en revisión'}</p>` : ''}
+          ${!resuelto && t.revisado === 'rechazado' && t.motivoRechazo ? `<p class="text-[10px] text-red-300 mt-0.5">✗ Rechazada: ${escaparHtml(t.motivoRechazo)}</p>` : ''}
+          ${!resuelto ? `<button type="button" onclick="abrirResolverProveedor('${escaparJsAttr(t.id)}')" class="mt-1.5 mr-1 px-2.5 py-1 rounded-lg text-[10px] font-black bg-emerald-500 hover:bg-emerald-400 text-black"><i class="fa-solid fa-circle-check mr-1"></i>Resolver</button>` : ''}
           ${t.tieneFoto ? `<button onclick="verFotoTicket('${escaparJsAttr(t.id)}')" class="mt-1.5 px-2.5 py-1 rounded-lg text-[10px] font-bold bg-sky-500/15 hover:bg-sky-500/25 text-sky-300 border border-sky-500/30"><i class="fa-solid fa-image mr-1"></i>Ver foto del error</button>` : ''}
         </div>`;
       }).join('');
@@ -15009,7 +15012,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-09o';
+    const VERSION_PAGINA = '2026-10-09p';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261009_serdealer', fecha: '2026-10-09', titulo: 'Ahora puedes pedir ser Dealer 👑', mensaje: 'En tu perfil ves cuánto te falta para **pedir ser Dealer**. Cuando cumples, toca **Pedir ser Dealer** y te avisamos en la campana. Los Dealers tienen **promos y regalos por volumen**.' },
       { id: 'act_20261009_registro', fecha: '2026-10-09', titulo: 'Registro más rápido ⚡', mensaje: 'Crear tu cuenta ahora es más rápido: solo correo, contraseña y WhatsApp, **sin códigos**.' },
@@ -19327,6 +19330,7 @@
 
     // ==================== NOVEDADES INTERNAS DEL PANEL (solo el equipo) ====================
     const ACTUALIZACIONES_INTERNAS = [
+      { fecha: '2026-10-09', titulo: '🛠 Los proveedores resuelven sus tickets', mensaje: 'Cada proveedor ve **Resolver** en los reportes de sus cuentas: "La arreglé" (con clave nueva opcional) o "Reemplazo" (otra cuenta). El cliente recibe la cuenta al instante y tú apruebas o rechazas. Nunca pueden sacar cuentas de tu stock.', ir: 'tickets' },
       { fecha: '2026-10-09', titulo: '🧾 Descuento al proveedor', mensaje: 'El proveedor resuelve de dos formas: **cuenta arreglada** o **reemplazo**; en ambas no se le descuenta nada. Si no lo hace y lo resuelves **tú** (arreglada o reemplazo), se le descuenta el costo de la cuenta. Si solo cierras el ticket sin cambios, no se descuenta.', ir: 'tickets' },
       { fecha: '2026-10-09', titulo: '✓ Revisar tickets resueltos por otros', mensaje: 'Los tickets que resuelve un moderador te aparecen con **✓ Aprobar** (no se descuenta nada) y **✗ Rechazar** (se reabre y se le descuenta al proveedor el costo de la cuenta, con aviso). Un ticket nunca se descuenta dos veces.', ir: 'tickets' },
       { fecha: '2026-10-09', titulo: '🛡 Garantía siempre desde la compra', mensaje: 'La garantía de cada cuenta cuenta **desde que el cliente la compra**, nunca desde que se subió al stock (se quitó esa opción). La fecha de subida solo se usa para la liquidación. Las compras ya hechas se corrigieron solas.', ir: '' },
@@ -20078,6 +20082,45 @@
         if (t.proveedorUid) { await registrarDescuentoReemplazo(t); try { await notificarUsuarioPanel(t.proveedorUid, 'anuncio', '✗ Rechazamos una resolución', `${t.cuenta || 'Una cuenta'}: ${motivo} Se descuenta su costo de lo que te debemos.`); } catch (x) { /* nada */ } }
         mostrarToast(t.proveedorUid ? 'Rechazada: ticket reabierto y descuento registrado' : 'Rechazada: ticket reabierto');
       } catch (e) { alert('No se pudo: ' + e.message); }
+    }
+
+
+    // ==================== EL PROVEEDOR RESUELVE SUS TICKETS ====================
+    // Dos caminos: la cuenta quedó arreglada (misma cuenta) o entrega un reemplazo. Lo hace el servidor, solo con sus propios tickets.
+    var provResolviendo = '';
+    function abrirResolverProveedor(id) {
+      const t = (proveedorTickets || []).find(x => x.id === id); if (!t) return; provResolviendo = id;
+      let m = document.getElementById('modalResolverProv');
+      if (!m) { m = document.createElement('div'); m.id = 'modalResolverProv'; m.className = 'fixed inset-0 z-[96] hidden items-center justify-center p-4 bg-black/75 backdrop-blur-sm'; m.onclick = ev => { if (ev.target === m) cerrarResolverProveedor(); }; document.body.appendChild(m); }
+      const inp = 'mt-1 w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none';
+      m.innerHTML = `<div class="w-full max-w-sm rounded-3xl bg-gray-900 border border-emerald-500/40 p-5 space-y-3 max-h-[88vh] overflow-y-auto">
+        <div class="flex items-center justify-between"><p class="text-base font-black text-white">Resolver reporte</p><button type="button" onclick="cerrarResolverProveedor()" aria-label="Cerrar" class="w-8 h-8 rounded-full bg-gray-800 text-gray-300"><i class="fa-solid fa-xmark"></i></button></div>
+        <p class="text-[11px] text-gray-400 break-all"><b class="text-white">${escaparHtml(t.cuenta || '')}</b> · ${escaparHtml(t.motivo || '')}</p>
+        <div class="grid grid-cols-2 gap-2">
+          <label class="p-3 rounded-xl border border-gray-700 bg-gray-800/60 cursor-pointer has-[:checked]:border-emerald-400 has-[:checked]:bg-emerald-500/10"><input type="radio" name="provRes" value="arreglada" checked onchange="pintarCamposResProv()" class="accent-emerald-500"> <span class="text-xs font-bold text-white">La arreglé</span><span class="block text-[10px] text-gray-400">Misma cuenta</span></label>
+          <label class="p-3 rounded-xl border border-gray-700 bg-gray-800/60 cursor-pointer has-[:checked]:border-emerald-400 has-[:checked]:bg-emerald-500/10"><input type="radio" name="provRes" value="reemplazo" onchange="pintarCamposResProv()" class="accent-emerald-500"> <span class="text-xs font-bold text-white">Reemplazo</span><span class="block text-[10px] text-gray-400">Entrego otra cuenta</span></label>
+        </div>
+        <label id="provCampoClave" class="block text-[11px] text-gray-400">Contraseña nueva (si la cambiaste)<input id="provClaveNueva" maxlength="80" class="${inp}" placeholder="Déjalo vacío si es la misma"></label>
+        <label id="provCampoCuenta" class="hidden block text-[11px] text-gray-400">Cuenta nueva (correo:clave)<input id="provCuentaNueva" class="${inp} font-mono" placeholder="correo@ejemplo.com:clave"></label>
+        <label class="block text-[11px] text-gray-400">Nota para el cliente (opcional)<input id="provNota" maxlength="200" class="${inp}" placeholder="Ej: ya está verificada, inicia sesión de nuevo"></label>
+        <p class="text-[10px] text-gray-500">El administrador revisa tu resolución. Si la aprueba, no se te descuenta nada.</p>
+        <button type="button" id="btnResProv" onclick="enviarResolverProveedor()" class="w-full py-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-black text-sm">Enviar resolución</button>
+      </div>`;
+      m.classList.remove('hidden'); m.style.display = 'flex';
+    }
+    function pintarCamposResProv() { const r = (document.querySelector('input[name="provRes"]:checked') || {}).value; document.getElementById('provCampoClave').classList.toggle('hidden', r !== 'arreglada'); document.getElementById('provCampoCuenta').classList.toggle('hidden', r !== 'reemplazo'); }
+    function cerrarResolverProveedor() { const m = document.getElementById('modalResolverProv'); if (m) { m.classList.add('hidden'); m.style.display = 'none'; } }
+    async function enviarResolverProveedor() {
+      const res = (document.querySelector('input[name="provRes"]:checked') || {}).value || 'arreglada';
+      const cuenta = String((document.getElementById('provCuentaNueva') || {}).value || '').trim();
+      if (res === 'reemplazo' && !/^\S+@\S+\.\S+\s*[:|]\s*\S+/.test(cuenta)) { alert('Escribe la cuenta nueva como correo:clave.'); return; }
+      const b = document.getElementById('btnResProv'); b.disabled = true; b.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
+      try {
+        const r = await llamarBackend('ticket_resolver', { ticketId: provResolviendo, resultado: res, nota: (document.getElementById('provNota') || {}).value || '', claveNueva: (document.getElementById('provClaveNueva') || {}).value || '', cuentaNueva: res === 'reemplazo' ? cuenta : '' });
+        if (!r.ok) { alert(r.error || 'No se pudo resolver.'); return; }
+        cerrarResolverProveedor(); mostrarToast('✓ Resolución enviada. El administrador la revisa.');
+      } catch (e) { alert(e.message); }
+      finally { if (b) { b.disabled = false; b.textContent = 'Enviar resolución'; } }
     }
 
     // ==================== NETFLIX EN LA TIENDA: SIN CONTRASEÑA ====================
