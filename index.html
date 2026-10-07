@@ -1116,6 +1116,10 @@
 
       <!-- ==================== ADMIN: TICKETS ==================== -->
       <div id="adminSecTickets" class="hidden space-y-4 pb-28 sm:pb-0">
+        <div id="cajaPagosReportados" class="hidden bg-gray-900 border border-amber-500/40 rounded-2xl overflow-hidden">
+          <div class="px-4 py-3 border-b border-gray-800"><h4 class="text-sm font-black text-white flex items-center gap-2">💸 Pagos reportados <span id="cntPagosRep" class="text-[11px] font-bold text-amber-300"></span></h4><p class="text-[11px] text-gray-400 mt-0.5">Clientes que pagaron y no ven su saldo. <b class="text-amber-200">Confirma en tu banco antes de acreditar.</b></p></div>
+          <div id="listaPagosReportados" class="divide-y divide-gray-800"></div>
+        </div>
         <div class="p-4 rounded-2xl border border-amber-500/30 bg-gradient-to-br from-amber-500/10 via-gray-900 to-gray-900">
           <div class="flex items-start justify-between gap-3">
             <div class="min-w-0">
@@ -3278,6 +3282,7 @@
       <button onclick="cerrarModalRecarga()" class="absolute top-4 right-4 text-gray-400 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
       <h3 class="text-xl font-bold text-white mb-1 flex items-center gap-2"><i class="fa-solid fa-wallet text-emerald-400"></i> Recargar Saldo</h3>
       <p class="text-xs text-gray-400 mb-4">Recarga con Bre-B y tu saldo se acredita solo, o usa otro método con comprobante.</p>
+      <div id="recargaReportePago" class="mb-3"><button type="button" onclick="abrirReportePago()" class="w-full text-left px-3 py-2 rounded-xl border border-amber-500/30 bg-amber-500/5 text-[11px] text-amber-200"><b>💸 ¿Pagaste y no se acreditó?</b> <span class="text-gray-400">Repórtalo aquí con tu comprobante ›</span></button></div>
 
       <div id="recargaCreditoAviso" class="hidden mb-4 p-3 rounded-xl border border-violet-500/40 bg-violet-500/10 text-[11px] text-violet-100 leading-snug"></div>
 
@@ -4915,6 +4920,7 @@
         case 'whatsapp': if (!asistenteTriagePersona) { asistenteTriage(); break; } cerrarAsistente(); abrirSoporteWhatsapp(); break;
         case 'persona_directo': asistenteTriagePersona = true; asistenteResponderTema('persona'); break;
         case 'ayuda_recarga': asistenteAyudaRecarga(); break;
+        case 'reportar_pago': abrirReportePago(); break;
         case 'mis_recargas': cerrarAsistente(); cambiarVista('mis-cuentas'); try { cambiarTabPerfil('recargas'); } catch (e) { /* nada */ } break;
         case 'mi_netflix': cerrarAsistente(); cambiarVista('mis-cuentas'); setTimeout(() => { const c = document.getElementById('perfilNetflixCaja'); if (c && !c.classList.contains('hidden')) c.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 300); break;
         case 'listar_reportes': asistenteListarReportes(); break;
@@ -7876,6 +7882,7 @@
       if (tab === 'apariencia') cargarDatosAparienciaAdmin();
       if (tab === 'pagos') cargarMetodosPagoAdmin();
       if (tab === 'recargas') cargarRecargasAdmin();
+      if (tab === 'tickets') { try { if (esAdminSesionActual() && typeof unsubPagosSinId !== 'undefined' && !unsubPagosSinId) iniciarPagosRecibidosAdmin(); iniciarPagosReportadosAdmin(); pintarPagosReportados(); } catch (e) { /* nada */ } }
       if (tab === 'historial') cargarHistorialVentasAdmin();
       if (tab === 'netflix') renderizarNetflixAdmin();
       if (tab === 'ajustes') cargarDatosAjustesEnForm();
@@ -10492,6 +10499,7 @@
           snap.forEach(d => pagosSinIdentificar.push(Object.assign({ id: d.id }, d.data())));
           pagosSinIdentificar.sort((a, b) => String(b.recibidoEl).localeCompare(String(a.recibidoEl)));
           renderizarPagosSinIdentificar();
+          try { pintarPagosReportados(); } catch (e) { /* nada */ }
         }, err => console.warn('Pagos sin identificar no disponibles:', err));
         // Ordenadas por fecha (de la más nueva) y de los últimos 60 días: ya no se pierde ninguna de la lista
         unsubPagosAcred = db.collection('pagos_recibidos').where('recibidoEl', '>=', new Date(Date.now() - 60 * 86400000).toISOString()).orderBy('recibidoEl', 'desc').limit(500).onSnapshot(snap => {
@@ -13584,8 +13592,12 @@
       const aviso = document.getElementById('recargaCreditoAviso');
       const hay = !modoPruebaCliente && (userDeuda > 0 || userCupo > 0);
       const libre = Math.max(0, userCupo - userDeuda);
+      // El primer día se muestra en el resumen del perfil; después queda solo en la pestaña Crédito
+      let primerDia = false;
+      try { const k = 'credVisto_' + (currentUser && currentUser.uid); let t = Number(localStorage.getItem(k)) || 0; if (hay && !t) { t = Date.now(); localStorage.setItem(k, String(t)); } primerDia = hay && Date.now() - t < 86400000; } catch (e) { primerDia = hay; }
+      const secCred = document.getElementById('perfilSecCredito'), enTabCredito = secCred && !secCred.classList.contains('hidden');
       if (caja) {
-        caja.classList.toggle('hidden', !hay);
+        caja.classList.toggle('hidden', !hay || !primerDia || enTabCredito);
         if (hay) caja.innerHTML = (libre > 0 ? `<div class="mb-3 p-3 rounded-xl bg-gradient-to-br from-violet-500/25 to-fuchsia-500/10 border border-violet-300/50 text-center">
             <p class="text-[10px] font-black text-violet-200 uppercase tracking-[0.2em]">Crédito pre-aprobado</p>
             <p class="text-2xl font-black text-white mt-1">${formatoCOP(libre)}</p>
@@ -14179,6 +14191,9 @@
         filtros.innerHTML = opc.map(([k, t, n]) => `<button type="button" onclick="filtrarMisRecargas('${k}')" class="shrink-0 px-3 py-1.5 rounded-full border ${filtroMisRecargas === k ? 'bg-gray-700 text-white border-gray-500' : 'bg-gray-900 text-gray-400 border-gray-800'}">${t} <span class="opacity-70">${n}</span></button>`).join('');
       }
       const lista = filtroMisRecargas === 'todas' ? misRecargas : misRecargas.filter(r => r.estado === filtroMisRecargas);
+      try { iniciarMisReportesPago(); } catch (e) { /* nada */ }
+      const extraRep = document.getElementById('recReportePagoCaja') || (() => { const d = document.createElement('div'); d.id = 'recReportePagoCaja'; d.className = 'space-y-2 mb-3'; cont.parentNode.insertBefore(d, cont); return d; })();
+      extraRep.innerHTML = htmlTarjetaReportePago() + htmlMisReportesPago();
       if (!misRecargas.length) {
         cont.innerHTML = `<div class="text-center py-10 px-4 bg-gray-900 border border-gray-800 rounded-2xl"><i class="fa-solid fa-receipt text-3xl text-gray-600 mb-3"></i><p class="text-gray-400 text-sm mb-3">Todavía no has hecho recargas.</p><button onclick="abrirModalRecarga()" class="px-4 py-2 bg-emerald-500 hover:bg-emerald-400 text-black font-bold text-xs rounded-xl">Recargar saldo</button></div>`;
         return;
@@ -14939,8 +14954,9 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-09b';
+    const VERSION_PAGINA = '2026-10-09d';
     const ACTUALIZACIONES_PAGINA = [
+      { id: 'act_20261009_pago', fecha: '2026-10-09', titulo: '¿Pagaste y no ves tu saldo? 💸', mensaje: 'Ahora lo reportas en segundos desde **Mis recargas**, la ventana de recarga o **¿Necesitas ayuda?**: adjuntas tu comprobante y **primero buscamos tu pago solos**; si ya llegó, se acredita al instante. Si no, lo revisamos y te avisamos en la campana.' },
       { id: 'act_20261009_notif', fecha: '2026-10-09', titulo: 'Notificaciones con acceso directo 🔔', mensaje: 'Ahora tus notificaciones te llevan directo: toca un aviso de **nuevo stock** y se abre la compra de ese producto; toca una **renovación**, un **regalo** o una **respuesta** y llegas justo ahí. Menos pasos, compras más rápido.' },
       { id: 'act_20261008_cantidad', fecha: '2026-10-08', titulo: 'Pide sobre pedido 📦', mensaje: '¿Necesitas más de lo que hay? Haz tu pedido completo: **te entregamos ya lo disponible** y lo que falte **se libera solo en tu cuenta** apenas entre nuevo stock. Sin volver a pedir, sin esperar mensajes.' },
       { id: 'act_20261008_precios', fecha: '2026-10-08', titulo: 'Precios por cantidad y packs 💰', mensaje: 'En varios productos, **entre más llevas, menos pagas por cada cuenta**. Mira la fila **"Por cantidad"** en la tarjeta y los **packs** con precio especial.' },
@@ -15996,7 +16012,7 @@
       asistenteAgregarBot('Revisemos tu recarga:\n**1)** Si usaste el **pago automático**, el saldo llega solo en 1 o 2 minutos si pagaste el valor **exacto**. Deja la ventana de recarga abierta.\n**2)** Si enviaste **comprobante**, queda en revisión y te avisamos en la campana.\n**3)** En **Mis recargas** ves el estado de cada una.', [
         { t: 'Ver mis recargas', i: 'fa-receipt', fn: 'mis_recargas' },
         { t: 'Abrir recarga', i: 'fa-plus', fn: 'recarga' },
-        { t: 'Sigue sin aparecer', i: 'fa-headset', fn: 'persona_directo' }
+        { t: 'Pagué y no aparece', i: 'fa-money-bill-transfer', fn: 'reportar_pago' }
       ]);
     }
 
@@ -17864,7 +17880,8 @@
       return c;
     }
     // La imagen actual según lo elegido (diseño, formato, tipo)
-    function lienzoActualMk(prod, o) {
+    function lienzoActualMk(prod, o) { o = o || opcionesMk(); const c = lienzoActualMkBase(prod, o); return o.fmt === 'estado' ? aZonaSeguraEstado(c) : c; }
+    function lienzoActualMkBase(prod, o) {
       o = o || opcionesMk();
       if (mkTipoImagen === 'novedad') return lienzoNovedadMk(o.fmt === 'banner' ? 'post' : o.fmt);
       if (mkTipoImagen !== 'producto') return lienzoLista(mkTipoImagen, o.fmt === 'banner' ? 'post' : o.fmt, o.est, o.frase);
@@ -19207,7 +19224,9 @@
       if (mkLogoImg && mkLogoListo) { const r = 62; x.save(); x.beginPath(); x.arc(W / 2, y + r, r, 0, Math.PI * 2); x.clip(); x.drawImage(mkLogoImg, W / 2 - r, y, r * 2, r * 2); x.restore(); x.strokeStyle = '#f5c542'; x.lineWidth = 6; x.beginPath(); x.arc(W / 2, y + r, r, 0, Math.PI * 2); x.stroke(); y += r * 2 + 34; }
       x.fillStyle = 'rgba(255,255,255,.7)'; x.font = `800 30px ${F}`; x.fillText(nombreTienda().toUpperCase().split('').join(' '), W / 2, y + 20); y += 60;
       // tarjeta
-      const mx = 70, cy = y + 10, ch = H - cy - (fmt === 'post' ? 50 : 120), cw = W - mx * 2;
+      const mx = 70, cy = y + 10, cw = W - mx * 2;
+      // alto de la tarjeta según el contenido (título + mensaje), sin dejar espacio vacío abajo
+      const ch = (() => { if (fmt === 'post') return H - cy - 50; const F2 = F; x.font = `900 72px ${F2}`; let n = 1, l = ''; String(mkNov.titulo || '').split(/\s+/).filter(Boolean).forEach(w => { const t = l ? l + ' ' + w : w; if (x.measureText(t).width > cw - 140 && l) { n++; l = w; } else l = t; }); x.font = `500 50px ${F2}`; const lm = lineasConResaltado(x, mkNov.mensaje, cw - 140).length; return Math.min(H - cy - 120, Math.max(1000, 290 + 130 + n * 83 + 80 + lm * 75 + 200)); })();
       x.save(); x.shadowColor = hexARgba(borde, 0.45); x.shadowBlur = 70; textoRedondeado(x, mx, cy, cw, ch, 56); const gf = x.createLinearGradient(mx, cy, mx + cw, cy + ch); gf.addColorStop(0, fondo); gf.addColorStop(0.6, '#0b1a1c'); gf.addColorStop(1, '#080d14'); x.fillStyle = gf; x.fill(); x.restore();
       textoRedondeado(x, mx, cy, cw, ch, 56); x.lineWidth = 5; x.strokeStyle = hexARgba(borde, 0.85); x.stroke();
       x.fillStyle = borde; textoRedondeado(x, mx + 60, cy, cw - 120, 12, 6); x.fill();
@@ -19242,6 +19261,9 @@
 
     // ==================== NOVEDADES INTERNAS DEL PANEL (solo el equipo) ====================
     const ACTUALIZACIONES_INTERNAS = [
+      { fecha: '2026-10-09', titulo: '🖼 Imágenes que siempre caben', mensaje: 'Todas las imágenes de estado ponen el contenido en la zona que WhatsApp no tapa, y la novedad ajusta su tarjeta al texto. **Para vender:** tu precio y tu enlace siempre se ven completos.', ir: 'marketing' },
+      { fecha: '2026-10-09', titulo: '💳 Recordatorio diario del crédito', mensaje: 'Cada mañana, el cliente con crédito pre-aprobado disponible recibe un aviso en su campana: que lo use para comprar cuentas y que se paga con su próxima recarga. **Para vender:** el crédito sin usar es una venta esperando.', ir: 'usuarios' },
+      { fecha: '2026-10-09', titulo: '💸 Pagos reportados', mensaje: 'En Tickets aparecen los clientes que pagaron y no ven su saldo, con su comprobante y las **posibles coincidencias** con pagos sin identificar: un toque y queda asignado. Muchos se resuelven solos antes de llegarte. **Para vender:** un "ya pagué" resuelto rápido es un cliente que vuelve a comprar.', ir: 'tickets' },
       { fecha: '2026-10-09', titulo: '🔔 Notificaciones que venden', mensaje: 'Cada aviso de la campana es ahora un acceso directo: el de stock abre la compra rápida de ese producto, y los de renovación, regalo, reporte y recarga llevan al lugar exacto. **Para vender:** cada vez que subes stock, tus clientes quedan a dos toques de comprarlo.', ir: 'stock' },
       { fecha: '2026-10-08', titulo: '📦 Encargos sin cancelación', mensaje: 'Los clientes ya no pueden cancelar lo pendiente de un pedido sobre pedido: se les entrega solo cuando entra stock. Solo tú y tu equipo pueden cancelar un encargo en casos excepcionales, desde la lista de encargos. **Para vender:** cada encargo pagado es una venta asegurada.', ir: 'stock' },
       { fecha: '2026-10-08', titulo: '🔍 Auditar saldo y parche de seguridad', mensaje: 'En Editar cliente, **Auditar** reconstruye el saldo de cualquier cliente y te dice si cuadra; si falta dinero lo devuelves con un toque. Además, ningún saldo se puede borrar por accidente. **Para vender:** un cliente que confía en su saldo recarga más y más seguido.', ir: 'usuarios' },
@@ -19282,6 +19304,7 @@
       try {
         const id = String(n.id || ''), t = (String(n.titulo || '') + ' ' + String(n.mensaje || '')).toLowerCase();
         if (n.origen === 'global' && /^(tk_|sol_)/.test(id)) return esStaffSesion() ? { texto: 'Abrir reportes', fn: () => irATabAdmin('tickets') } : null;
+        if (/cr[eé]dito/.test(t)) return { texto: 'Ver mi crédito', fn: () => { cambiarVista('mis-cuentas'); try { cambiarTabPerfil('credito'); } catch (e) { /* nada */ } } };
         if (/cup[oó]n|descuento/.test(t)) return { texto: 'Ir a la tienda', fn: () => cambiarVista('tienda') };
         if (n.tipo === 'renovacion' || /vence|renov/.test(t)) return { texto: 'Renovar', fn: () => cambiarVista('mis-cuentas') };
         if (/regalo|obsequio/.test(t)) return { texto: 'Ver mi regalo', fn: () => cambiarVista('mis-cuentas') };
@@ -19300,6 +19323,116 @@
       const a = accionesNotif[i]; if (!a) return;
       try { cerrarModalNovedades(); } catch (e) { /* nada */ }
       setTimeout(() => { try { a.fn(); } catch (e) { console.warn(e); } }, 120);
+    }
+
+
+    // ==================== REPORTAR UN PAGO NO ACREDITADO ====================
+    function htmlTarjetaReportePago() {
+      return `<button type="button" onclick="abrirReportePago()" class="w-full text-left p-3 rounded-2xl border border-amber-500/40 bg-amber-500/10 flex items-center gap-3"><span class="text-xl">💸</span><span class="flex-1 min-w-0"><span class="block text-xs font-black text-white">¿Pagaste y no se acreditó tu saldo?</span><span class="block text-[11px] text-gray-400">Repórtalo con tu comprobante y lo revisamos.</span></span><span class="shrink-0 px-2.5 py-1.5 rounded-lg bg-amber-400 text-black text-[11px] font-black">Reportar pago</span></button>`;
+    }
+    var fotoReportePago = '';
+    function abrirReportePago() {
+      try { cerrarModalRecarga(); } catch (e) { /* nada */ }
+      try { cerrarAsistente(); } catch (e) { /* nada */ }
+      let m = document.getElementById('modalReportePago');
+      if (!m) { m = document.createElement('div'); m.id = 'modalReportePago'; m.className = 'fixed inset-0 z-[96] hidden items-center justify-center p-4 bg-black/75 backdrop-blur-sm'; m.onclick = ev => { if (ev.target === m) cerrarReportePago(); }; document.body.appendChild(m); }
+      fotoReportePago = '';
+      const ahora = new Date(), hh = ahora.toLocaleString('es-CO', { day: '2-digit', month: '2-digit', year: 'numeric', hour: 'numeric', minute: '2-digit' });
+      const inp = 'mt-1 w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none';
+      m.innerHTML = `<div class="w-full max-w-sm rounded-3xl bg-gray-900 border border-amber-500/40 p-5 space-y-3 max-h-[88vh] overflow-y-auto">
+        <div class="flex items-center justify-between"><p class="text-base font-black text-white">💸 Reportar un pago</p><button type="button" onclick="cerrarReportePago()" aria-label="Cerrar" class="w-8 h-8 rounded-full bg-gray-800 text-gray-300"><i class="fa-solid fa-xmark"></i></button></div>
+        <p class="text-[11px] text-emerald-200 bg-emerald-500/10 border border-emerald-500/30 rounded-xl p-2.5"><b>Primero lo buscamos solos:</b> si tu pago ya llegó, se acredita al instante sin abrir reporte.</p>
+        <div class="grid grid-cols-2 gap-2"><label class="text-[11px] text-gray-400">Monto pagado<input id="rpMonto" type="number" inputmode="numeric" min="1000" placeholder="5064" class="${inp}"></label>
+        <label class="text-[11px] text-gray-400">Método<select id="rpMetodo" class="${inp}"><option value="breb">Bre-B</option><option value="binance">Binance</option><option value="otro">Otro</option></select></label></div>
+        <label class="block text-[11px] text-gray-400">Fecha y hora aproximada<input id="rpFecha" maxlength="40" value="${hh}" class="${inp}"></label>
+        <label class="block cursor-pointer"><span class="text-[11px] text-gray-400">Comprobante (obligatorio)</span><div id="rpFotoCaja" class="mt-1 p-4 rounded-xl border border-dashed border-gray-600 text-center text-[11px] text-gray-300"><i class="fa-solid fa-camera mr-1"></i>Toca para adjuntar la foto o captura</div><input id="rpFoto" type="file" accept="image/*" class="hidden" onchange="leerFotoReportePago(this)"></label>
+        <label class="block text-[11px] text-gray-400">Comentario (opcional)<input id="rpComentario" maxlength="200" placeholder="Ej: pagué desde Nequi" class="${inp}"></label>
+        <p id="rpEstado" class="hidden text-[11px] rounded-xl p-2.5"></p>
+        <button type="button" id="rpEnviar" onclick="enviarReportePago()" class="w-full py-3 rounded-xl bg-amber-400 hover:bg-amber-300 text-black font-black text-sm">Enviar reporte</button>
+      </div>`;
+      m.classList.remove('hidden'); m.style.display = 'flex';
+    }
+    function cerrarReportePago() { const m = document.getElementById('modalReportePago'); if (m) { m.classList.add('hidden'); m.style.display = 'none'; } }
+    async function leerFotoReportePago(input) {
+      const f = input.files && input.files[0]; if (!f) return;
+      const caja = document.getElementById('rpFotoCaja');
+      try { fotoReportePago = await comprimirImagenAJpeg(f, 1280, 0.72); if (caja) caja.innerHTML = `<img src="${fotoReportePago}" alt="Comprobante" class="mx-auto max-h-40 rounded-lg"><span class="block mt-1 text-emerald-300 font-bold">✓ Comprobante listo</span>`; }
+      catch (e) { fotoReportePago = ''; alert(e.message); }
+    }
+    async function enviarReportePago() {
+      const est = document.getElementById('rpEstado'), btn = document.getElementById('rpEnviar');
+      const msg = (t, ok) => { if (!est) return; est.className = 'text-[11px] rounded-xl p-2.5 ' + (ok ? 'text-emerald-200 bg-emerald-500/10 border border-emerald-500/30' : 'text-red-200 bg-red-500/10 border border-red-500/30'); est.textContent = t; est.classList.remove('hidden'); };
+      const monto = Number((document.getElementById('rpMonto') || {}).value) || 0;
+      if (!(monto >= 1000)) { msg('Escribe el monto que pagaste.', false); return; }
+      if (!fotoReportePago) { msg('Adjunta la foto del comprobante.', false); return; }
+      if (modoPruebaCliente) { msg('(Simulación) Aquí se buscaría tu pago y, si no aparece, se abriría el reporte.', true); return; }
+      btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i>Buscando tu pago…';
+      try {
+        const r = await llamarBackend('pago_reportar', { monto: monto, metodo: (document.getElementById('rpMetodo') || {}).value, fechaAprox: (document.getElementById('rpFecha') || {}).value, comentario: (document.getElementById('rpComentario') || {}).value, foto: fotoReportePago });
+        if (!r.ok) { msg(r.error || 'No se pudo enviar.', false); return; }
+        if (r.acreditado) { cerrarReportePago(); lanzarConfeti(['💸', '✨', '✅']); mostrarToast(`✅ ¡Encontramos tu pago! Se acreditaron ${formatoCOP(r.acreditado)} a tu saldo.`); return; }
+        msg('Listo: tu reporte quedó en revisión. Te avisaremos en la campana apenas lo revisemos.', true);
+        btn.classList.add('hidden');
+      } catch (e) { msg(e.message, false); }
+      finally { if (btn) { btn.disabled = false; btn.textContent = 'Enviar reporte'; } }
+    }
+    // Reportes del cliente (en Mis recargas)
+    var misReportesPago = [], unsubMisReportesPago = null;
+    function iniciarMisReportesPago() {
+      if (unsubMisReportesPago || !currentUser || modoPruebaCliente) return;
+      unsubMisReportesPago = db.collection('tickets_pagos').where('clienteUid', '==', currentUser.uid).onSnapshot(sn => { misReportesPago = []; sn.forEach(d => misReportesPago.push(Object.assign({ id: d.id }, d.data()))); misReportesPago.sort((a, b) => String(b.creadoEl).localeCompare(String(a.creadoEl))); try { renderizarMisRecargas(); } catch (e) { /* nada */ } }, () => {});
+    }
+    function htmlMisReportesPago() {
+      const L = misReportesPago.slice(0, 5); if (!L.length) return '';
+      const E = { abierto: ['En revisión', 'text-amber-300'], acreditado: ['Acreditado ✓', 'text-emerald-300'], rechazado: ['No confirmado', 'text-red-300'] };
+      return `<div class="p-3 rounded-2xl bg-gray-900 border border-gray-800"><p class="text-[11px] font-black text-gray-300 uppercase tracking-wider mb-1">Tus reportes de pago</p>${L.map(t => { const e = E[t.estado] || ['—', 'text-gray-400']; return `<div class="flex items-center justify-between gap-2 py-1.5 border-t border-gray-800 first:border-t-0 text-[11px]"><span class="text-gray-200">${formatoCOP(t.monto)} · ${new Date(t.creadoEl).toLocaleDateString('es-CO')}${t.estado === 'rechazado' && t.motivo ? `<span class="block text-[10px] text-gray-500">${escaparHtml(t.motivo)}</span>` : ''}</span><span class="font-bold ${e[1]} shrink-0">${e[0]}</span></div>`; }).join('')}</div>`;
+    }
+    // Panel: pagos reportados con posibles coincidencias
+    var pagosReportados = [], unsubPagosReportados = null;
+    function iniciarPagosReportadosAdmin() {
+      if (unsubPagosReportados || !esStaffSesion()) return;
+      unsubPagosReportados = db.collection('tickets_pagos').where('estado', '==', 'abierto').onSnapshot(sn => { pagosReportados = []; sn.forEach(d => pagosReportados.push(Object.assign({ id: d.id }, d.data()))); pagosReportados.sort((a, b) => String(a.creadoEl).localeCompare(String(b.creadoEl))); pintarPagosReportados(); }, () => {});
+    }
+    function pintarPagosReportados() {
+      const caja = document.getElementById('cajaPagosReportados'), c = document.getElementById('listaPagosReportados'); if (!caja || !c) return;
+      caja.classList.toggle('hidden', !pagosReportados.length);
+      const cnt = document.getElementById('cntPagosRep'); if (cnt) cnt.textContent = pagosReportados.length ? `(${pagosReportados.length})` : '';
+      const sinId = (typeof pagosSinIdentificar !== 'undefined' ? pagosSinIdentificar : []) || [];
+      c.innerHTML = pagosReportados.map(t => {
+        const cand = sinId.filter(p => Math.abs((Number(p.monto) || 0) - (Number(t.monto) || 0)) <= 100).slice(0, 3);
+        return `<div class="px-4 py-3 space-y-2"><div class="flex items-start justify-between gap-2"><div class="min-w-0"><p class="text-sm font-black text-white">${formatoCOP(t.monto)} · ${escaparHtml({ breb: 'Bre-B', binance: 'Binance', otro: 'Otro' }[t.metodo] || t.metodo)}</p><p class="text-[11px] text-gray-400 truncate">${escaparHtml(t.clienteEmail || '')} · dice que pagó: ${escaparHtml(t.fechaAprox || '—')}</p>${t.comentario ? `<p class="text-[11px] text-gray-300">"${escaparHtml(t.comentario)}"</p>` : ''}</div><span class="text-[10px] text-gray-500 shrink-0">${tiempoRelativo(t.creadoEl)}</span></div>
+          ${cand.map(p => `<button type="button" onclick="resolverPagoReportado('${escaparJsAttr(t.id)}','acreditar','${escaparJsAttr(p.txn || p.id)}')" class="w-full text-left p-2 rounded-xl border border-emerald-500/40 bg-emerald-500/10 text-[11px]"><b class="text-emerald-300">Posible coincidencia:</b> <span class="text-gray-200">${formatoCOP(p.monto)} · ${new Date(p.recibidoEl).toLocaleString('es-CO', { day: '2-digit', month: '2-digit', hour: 'numeric', minute: '2-digit' })} · ${escaparHtml(p.pagador || '')}</span> <span class="text-emerald-300 font-bold">→ asignar</span></button>`).join('')}
+          <div class="grid grid-cols-3 gap-1.5"><button type="button" onclick="verFotoTicket('${escaparJsAttr(t.id)}')" class="py-1.5 rounded-lg bg-gray-800 text-gray-200 text-[11px] font-bold">Ver foto</button><button type="button" onclick="resolverPagoReportado('${escaparJsAttr(t.id)}','acreditar','')" class="py-1.5 rounded-lg bg-emerald-500 text-black text-[11px] font-black">Acreditar</button><button type="button" onclick="resolverPagoReportado('${escaparJsAttr(t.id)}','rechazar','')" class="py-1.5 rounded-lg bg-red-500/15 border border-red-500/40 text-red-300 text-[11px] font-bold">Rechazar</button></div></div>`;
+      }).join('');
+    }
+    async function resolverPagoReportado(id, accion, txn) {
+      const t = pagosReportados.find(x => x.id === id); if (!t) return;
+      const datos = { id, accion };
+      if (accion === 'acreditar') {
+        if (!await confirmarModal(`¿Acreditar ${formatoCOP(t.monto)} a ${t.clienteEmail}?\n\n⚠️ Confirma en tu banco que el dinero llegó antes de acreditar. ${txn ? 'Se usará el pago sin identificar elegido (no se puede usar dos veces).' : 'Quedará registrado como verificado por ti.'}`, { textoAceptar: 'Sí, ya lo verifiqué' })) return;
+        if (txn) datos.txn = txn; else datos.monto = t.monto;
+      } else {
+        const motivo = await pedirTextoModal('¿Por qué no se confirma? (lo verá el cliente)', 'No encontramos tu pago con esos datos.'); if (motivo === null) return; datos.motivo = motivo;
+      }
+      try { const r = await llamarBackend('pago_resolver', datos); if (!r.ok) { alert(r.error || 'No se pudo.'); return; } mostrarToast(accion === 'acreditar' ? `✅ Acreditados ${formatoCOP(r.monto)}` : 'Reporte rechazado: el cliente fue avisado'); }
+      catch (e) { alert(e.message); }
+    }
+
+
+    // ==================== ZONA SEGURA PARA ESTADOS DE WHATSAPP ====================
+    // WhatsApp tapa la parte de arriba (barra y nombre) y la de abajo (texto y respuesta). Todo el contenido se ubica en el centro,
+    // con el fondo extendido, para que nunca quede nada cortado ni tapado.
+    function aZonaSeguraEstado(c) {
+      try {
+        if (!c || c.height < 1800) return c;
+        const W = c.width, H = c.height, s = 0.76, w = Math.round(W * s), h = Math.round(H * s), x0 = Math.round((W - w) / 2), y0 = 150;
+        const o = document.createElement('canvas'); o.width = W; o.height = H; const x = o.getContext('2d');
+        x.save(); x.filter = 'blur(40px) brightness(0.55)'; x.drawImage(c, -60, -60, W + 120, H + 120); x.restore();
+        x.fillStyle = 'rgba(5,8,15,0.35)'; x.fillRect(0, 0, W, H);
+        x.save(); x.shadowColor = 'rgba(0,0,0,0.55)'; x.shadowBlur = 50; textoRedondeado(x, x0, y0, w, h, 44); x.fillStyle = '#05080f'; x.fill(); x.restore();
+        x.save(); textoRedondeado(x, x0, y0, w, h, 44); x.clip(); x.drawImage(c, x0, y0, w, h); x.restore();
+        return o;
+      } catch (e) { return c; }
     }
 
     // ==================== NETFLIX EN LA TIENDA: SIN CONTRASEÑA ====================
@@ -19368,6 +19501,7 @@
     }
 
     function cambiarTabPerfil(tab) {
+      setTimeout(() => { try { renderizarCreditoCliente(); } catch (e) { /* nada */ } }, 0);
       try {
         ['cuentas', 'recargas', 'credito', 'datos', 'seguridad'].forEach(t => {
           const nombre = t.charAt(0).toUpperCase() + t.slice(1);
@@ -19696,7 +19830,7 @@
             </div>
             <div class="flex items-center justify-between gap-2 mt-2.5">
               <span class="text-[10px] text-gray-400">${g.enMargen ? 'Vence en breve' : 'Vence: ' + formatearFechaHoraCorta(g.vence)}</span>
-              <button onclick="reportarGarantiaCompra(${idx})" style="${estiloBotonReportar()}" class="shrink-0 px-3 py-1.5 border font-black text-[11px] rounded-lg flex items-center gap-1.5 hover:opacity-90 transition">
+              ${String(c.credenciales || '').split('\n').some(l => emailDeLineaCuenta(l)) ? '<span class="text-[10px] text-gray-400 text-right">Si una cuenta falla, usa su botón <b class="text-gray-200">Reportar</b></span>' : ''}<button onclick="reportarGarantiaCompra(${idx})" style="${estiloBotonReportar()}${String(c.credenciales || '').split('\n').some(l => emailDeLineaCuenta(l)) ? ';display:none' : ''}" class="shrink-0 px-3 py-1.5 border font-black text-[11px] rounded-lg flex items-center gap-1.5 hover:opacity-90 transition">
                 <i class="fa-solid fa-flag"></i> Reportar garantía
               </button>
             </div>
