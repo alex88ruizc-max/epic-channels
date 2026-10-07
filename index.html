@@ -8164,7 +8164,7 @@
     }
 
     function renderizarCatalogo() {
-      try { registrarCambiosStock(); setTimeout(() => { pintarCintaStock(); pintarRadarStock(); }, 0); } catch (e) { /* nada */ }
+      try { registrarCambiosStock(); setTimeout(() => { pintarCintaStock(); pintarRadarStock(); catalogoUnificado.forEach(p => { if (document.getElementById('mixto_' + p.docId)) pintarMixto(p.docId); }); }, 0); } catch (e) { /* nada */ }
       try { pintarBannerDealer(); } catch (e) { /* nada */ }
       const grid = document.getElementById('gridProductos');
       if (!grid) return;
@@ -8226,7 +8226,8 @@
         const llevaD = promoD ? ((progresoDealer.hoy || {})[prod.docId] || 0) % (promoD.compra || 10) : 0;
         const regaloD = promoD ? (promoD.regalo || 1) * (((multiplicadoresDealer() || {})[nivelDealerDe(progresoDealer.mes || 0).id]) || 1) : 0;
         const promoCli = !promoD ? promoParaMi(prod.docId) : null;
-        const hotBadgeHtml = (promoD ? `<div class="mb-3 mr-1.5 inline-flex"><span class="dealer-badge !tracking-normal !normal-case !text-[10px]"><i class="fa-solid fa-gift"></i> Por ${promoD.compra || 10} cuentas te llevas ${regaloD} gratis${llevaD ? ' · llevas ' + llevaD : ''}</span></div>` : '')
+        const badgeBajoPedido = (encargoMixtoActivo(prod) || (agotado && puedePedirEncargo(prod))) ? `<div class="mb-3 mr-1.5 inline-flex"><span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black text-sky-100 bg-sky-500/15 border border-sky-400/40"><i class="fa-solid fa-hourglass-half"></i> Disponible bajo pedido</span></div>` : '';
+        const hotBadgeHtml = badgeBajoPedido + (promoD ? `<div class="mb-3 mr-1.5 inline-flex"><span class="dealer-badge !tracking-normal !normal-case !text-[10px]"><i class="fa-solid fa-gift"></i> Por ${promoD.compra || 10} cuentas te llevas ${regaloD} gratis${llevaD ? ' · llevas ' + llevaD : ''}</span></div>` : '')
           + (promoCli ? `<div class="mb-3 mr-1.5 inline-flex"><span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black text-white bg-gradient-to-r from-pink-500 to-fuchsia-500 shadow-lg shadow-pink-500/30"><i class="fa-solid fa-gift"></i> Por ${promoCli.compra || 10} cuentas te llevas ${promoCli.regalo || 1} gratis</span></div>` : '') + (esComboT ? '<div class="mb-3 mr-1.5 inline-flex"><span class="combo-chip"><i class="fa-solid fa-gift"></i> Combo</span></div>' : '') + promoBadgeHtml + (esVipTienda ? `<div class="mb-3 mr-1.5 inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider text-black bg-gradient-to-r from-amber-300 via-yellow-400 to-amber-500 shadow-md shadow-amber-500/30"><i class="fa-solid fa-crown"></i> VIP</div>` : '') + (esHot ? `<div class="mb-3 inline-flex items-center gap-1.5 bg-red-500/10 text-red-400 border border-red-500/30 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider"><i class="fa-solid fa-fire animate-pulse text-red-500"></i> Producto Más Vendido / HOT</div>` : '');
 
         const imagenProdHtml = prod.imagenUrl 
@@ -8277,10 +8278,11 @@
                 </div>
                 <div class="flex items-center bg-gray-800 border border-gray-700 rounded-xl p-0.5">
                   <button type="button" onclick="cambiarCantidad('${prod.docId}', -1, ${maxTarjeta(prod, stockDisponible)}, ${limiteInferior})" ${agotado ? 'disabled' : ''} class="w-7 h-7 flex items-center justify-center rounded-lg bg-gray-700/60 hover:bg-gray-700 text-gray-200 font-black text-sm disabled:opacity-40">-</button>
-                  <input id="cant_${prod.docId}" type="number" value="${cantidadInicial}" min="${limiteInferior}" max="${maxTarjeta(prod, stockDisponible)}" readonly class="w-9 text-center bg-transparent text-white font-bold text-xs focus:outline-none select-none">
+                  <input id="cant_${prod.docId}" type="number" inputmode="numeric" value="${cantidadInicial}" min="${limiteInferior}" max="${maxTarjeta(prod, stockDisponible)}" ${agotado ? 'disabled' : ''} oninput="cantidadEscrita('${prod.docId}', false)" onchange="cantidadEscrita('${prod.docId}', true)" onfocus="this.select()" class="w-11 text-center bg-transparent text-white font-bold text-xs focus:outline-none focus:bg-gray-900/60 rounded-md [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none">
                   <button type="button" onclick="cambiarCantidad('${prod.docId}', 1, ${maxTarjeta(prod, stockDisponible)}, ${limiteInferior})" ${agotado ? 'disabled' : ''} class="w-7 h-7 flex items-center justify-center rounded-lg bg-gray-700/60 hover:bg-gray-700 text-gray-200 font-black text-sm disabled:opacity-40">+</button>
                 </div>
               </div>
+              ${encargoMixtoActivo(prod) && !agotado ? htmlChipsCantidad(prod, stockDisponible) : ''}
               <p id="mixto_${prod.docId}" class="hidden mb-2 px-2.5 py-1.5 rounded-lg bg-sky-500/10 border border-sky-400/30 text-[11px] text-sky-100 leading-snug"></p>
               <button id="btnComprar_${prod.docId}" onclick="comprarProducto('${prod.docId}')" ${agotado ? 'disabled' : ''} class="w-full py-2.5 rounded-xl text-xs font-bold ${agotado ? 'bg-gray-800 text-gray-500 cursor-not-allowed' : (esNf ? 'nf-btn' : (marcaT ? 'brand-btn' : estiloCat.btn))} transition flex items-center justify-center gap-1.5">
                 <i class="fa-solid fa-cart-shopping"></i> ${agotado ? ttH('botonAgotado') : ttH('botonComprar')}
@@ -14710,7 +14712,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-07s';
+    const VERSION_PAGINA = '2026-10-07v';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261006b_recarga', fecha: '2026-10-06', titulo: 'Recargas más simples 💳', mensaje: 'Ahora pagas **el valor exacto** que eliges recargar. Tu saldo se acredita solo en 1 o 2 minutos, y si la transacción se demora, igual te llega apenas se confirme.' },
       { id: 'act_20261006b_sinsaldo', fecha: '2026-10-06', titulo: 'Recarga y compra en un solo paso', mensaje: 'Si tocas **Comprar** y te falta saldo, toca **Recargar** ahí mismo. Cuando tu recarga entre, **tu compra se completa sola** y no tienes que volver a buscar el producto.' },
@@ -17759,7 +17761,7 @@
       const mostrar = cfgVistaTienda.cintaStock !== false && enLugar && L.length > 0 && !(esProveedorSesion() && !staff);
       c.classList.toggle('hidden', !mostrar);
       if (!mostrar) return;
-      const item = p => { const n = Number(p.stock) || 0, d = cambioReciente(p.docId); return `<a href="#" onclick="irAProductoTienda('${escaparJsAttr(p.docId)}');return false" class="hover:text-white">${escaparHtml(p.nombre)} <b class="${n ? (n <= 5 ? 'text-amber-300' : 'text-gray-200') : 'text-red-400'}">${n ? n : 'agotado'}</b>${d === 'sube' ? ' <span class="text-emerald-300">↑</span>' : (d === 'baja' ? ' <span class="text-red-300">↓</span>' : '')}</a>`; };
+      const item = p => { const n = Number(p.stock) || 0, d = cambioReciente(p.docId); return `<a href="#" onclick="abrirCompraRapida('${escaparJsAttr(p.docId)}');return false" class="hover:text-white">${escaparHtml(p.nombre)} <b class="${n ? (n <= 5 ? 'text-amber-300' : 'text-gray-200') : 'text-red-400'}">${n ? n : 'agotado'}</b>${d === 'sube' ? ' <span class="text-emerald-300">↑</span>' : (d === 'baja' ? ' <span class="text-red-300">↓</span>' : '')}</a>`; };
       const una = L.map(item).join('<span class="mx-2 text-gray-600">·</span>') + '<span class="mx-4"></span>';
       const html = una + una;   // repetida para que el movimiento sea continuo
       if (mov.dataset.html !== html) { mov.innerHTML = html; mov.dataset.html = html; mov.style.setProperty('--cinta-dur', Math.max(18, L.length * 5) + 's'); }
@@ -17874,9 +17876,10 @@
       const prod = catalogoUnificado.find(p => p.docId === docId), inp = document.getElementById('cant_' + docId), el = document.getElementById('mixto_' + docId), btn = document.getElementById('btnComprar_' + docId);
       if (!prod || !inp || !el) return;
       const val = parseInt(inp.value, 10) || 0, st = Number(prod.stock) || 0, resto = val - st;
-      const mixto = st > 0 && resto > 0 && encargoMixtoActivo(prod);
-      el.classList.toggle('hidden', !mixto);
-      if (mixto) el.innerHTML = `⚡ <b>${st}</b> se entregan ya · ⏳ <b>${resto}</b> quedan por encargo y te llegan solas cuando entre stock.`;
+      const conEncargo = st > 0 && encargoMixtoActivo(prod), mixto = conEncargo && resto > 0;
+      el.classList.toggle('hidden', !conEncargo);
+      if (mixto) { el.className = 'mb-2 px-2.5 py-1.5 rounded-lg bg-sky-500/10 border border-sky-400/30 text-[11px] text-sky-100 leading-snug'; el.innerHTML = `⚡ <b>${st}</b> se entregan ya · ⏳ <b>${resto}</b> quedan por encargo y te llegan solas cuando entre stock.`; }
+      else if (conEncargo) { el.className = 'mb-2 text-[10.5px] text-sky-200/80 leading-snug'; el.innerHTML = `<i class="fa-solid fa-hourglass-half mr-1"></i>¿Necesitas más de ${st}? Sube la cantidad: lo que falte queda <b>por encargo</b>.`; }
       if (btn && !btn.disabled && !btn.dataset.ocupado) { if (!btn.dataset.html) btn.dataset.html = btn.innerHTML; btn.innerHTML = mixto ? `<i class="fa-solid fa-cart-shopping"></i> Comprar ${st} + encargar ${resto}` : btn.dataset.html; }
     }
     async function comprarMixto(docId, cantidad) {
@@ -17898,6 +17901,82 @@
         if (r && r.ok) { mostrarToast(`⏳ Listo: ${e.cantidad} quedaron por encargo. Te llegan solas cuando entre stock.`); try { renderizarMisPreordenes(); } catch (x) { /* nada */ } }
         else alert(`Tus cuentas disponibles ya se entregaron, pero el encargo de ${e.cantidad} no se pudo crear: ${(r && r.error) || 'intenta de nuevo'}.`);
       } catch (x) { alert(`Tus cuentas disponibles ya se entregaron, pero el encargo de ${e.cantidad} no se pudo crear: ${x.message}`); }
+    }
+
+
+    // ==================== COMPRA RÁPIDA DESDE LA CINTA EN VIVO ====================
+    var crId = '';
+    function abrirCompraRapida(id) {
+      const p = catalogoUnificado.find(x => x.docId === id); if (!p) return;
+      if (!currentUser) { abrirModalAuth('login'); return; }
+      if (esStaffSesion()) { irAProductoTienda(id); return; }   // el equipo solo consulta
+      crId = id;
+      let m = document.getElementById('modalCompraRapida');
+      if (!m) {
+        m = document.createElement('div'); m.id = 'modalCompraRapida';
+        m.className = 'fixed inset-0 z-[90] hidden items-end sm:items-center justify-center bg-black/60 p-0 sm:p-4';
+        m.onclick = ev => { if (ev.target === m) cerrarCompraRapida(); };
+        document.body.appendChild(m);
+      }
+      const st = Number(p.stock) || 0, minC = Math.max(1, parseInt(p.minCompra, 10) || 1), m2 = marcaDeProducto(p);
+      const maxC = maxTarjeta(p, st), ini = Math.min(Math.max(minC, 1), Math.max(maxC, 1));
+      m.innerHTML = `<div class="w-full sm:max-w-sm rounded-t-3xl sm:rounded-3xl bg-gray-900 border border-gray-700 p-4 shadow-2xl" style="animation:credEntrar .25s ease-out">
+        <div class="flex items-start justify-between gap-2"><div class="min-w-0"><p class="text-[10px] font-black tracking-[0.2em] uppercase" style="color:${m2.color}">${escaparHtml(m2.etiqueta)}</p><p class="text-base font-black text-white leading-snug">${escaparHtml(p.nombre)}</p><p class="text-xs text-gray-400 mt-0.5">${formatoCOP(p.precio)} c/u · ${st ? `<span class="${st <= 5 ? 'text-amber-300' : 'text-emerald-300'} font-bold">${st} disponibles</span>` : '<span class="text-red-300 font-bold">agotado</span>'}</p></div><button type="button" onclick="cerrarCompraRapida()" class="w-8 h-8 shrink-0 rounded-full bg-gray-800 text-gray-300"><i class="fa-solid fa-xmark"></i></button></div>
+        ${maxC > 0 ? `<div class="flex items-center justify-between gap-3 mt-4"><div><p class="text-[10px] text-gray-400">Total</p><p id="crTotal" class="text-xl font-black text-white">$0</p></div>
+          <div class="flex items-center bg-gray-800 border border-gray-700 rounded-xl p-0.5"><button type="button" onclick="crCambiar(-1)" class="w-9 h-9 rounded-lg bg-gray-700/60 text-white font-black">-</button><input id="crCant" type="number" inputmode="numeric" value="${ini}" min="${minC}" max="${maxC}" onfocus="this.select()" oninput="crRecalcular()" onchange="crCambiar(0)" class="w-14 text-center bg-transparent text-white font-bold focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"><button type="button" onclick="crCambiar(1)" class="w-9 h-9 rounded-lg bg-gray-700/60 text-white font-black">+</button></div></div>
+          ${maxC > st && [10, 20, 30, 40, 50].some(n => n >= minC && n <= maxC) ? `<div class="flex items-center gap-1.5 mt-2 flex-wrap"><span class="text-[10px] text-gray-400">Rápido:</span>${[10, 20, 30, 40, 50].filter(n => n >= minC && n <= maxC).map(n => `<button type="button" onclick="document.getElementById('crCant').value=${n};crRecalcular()" class="px-2.5 py-1 rounded-lg text-[11px] font-black border border-sky-400/40 text-sky-200">${n}</button>`).join('')}</div>` : ''}
+          <p id="crMixto" class="hidden mt-2 text-[11px] text-sky-100 px-2.5 py-1.5 rounded-lg bg-sky-500/10 border border-sky-400/30"></p>
+          <button type="button" id="btnCompraRapida" onclick="confirmarCompraRapida()" class="mt-3 w-full py-3 rounded-xl text-black font-black text-sm" style="background:${m2.color}"><i class="fa-solid fa-bolt mr-1"></i>Comprar</button>
+          ${minC > 1 ? `<p class="text-[10px] text-gray-500 mt-1.5 text-center">Compra mínima: ${minC}</p>` : ''}`
+        : `<p class="mt-3 text-xs text-gray-300">Este producto está agotado por ahora.</p>${encargoMixtoActivo(p) || (puedePedirEncargo(p) && datosEncargo(p).activo) ? `<button type="button" onclick="cerrarCompraRapida();pedirSobrePedido('${escaparJsAttr(id)}')" class="mt-3 w-full py-3 rounded-xl bg-sky-500 text-black font-black text-sm">Pedir por encargo</button>` : `<button type="button" onclick="cerrarCompraRapida();alternarAvisoStock('${escaparJsAttr(id)}')" class="mt-3 w-full py-3 rounded-xl bg-gray-800 border border-sky-500/40 text-sky-200 font-black text-sm"><i class="fa-solid fa-bell mr-1"></i>Avísame cuando llegue</button>`}`}
+      </div>`;
+      m.classList.remove('hidden'); m.style.display = 'flex';
+      crRecalcular();
+    }
+    function cerrarCompraRapida() { const m = document.getElementById('modalCompraRapida'); if (m) { m.classList.add('hidden'); m.style.display = 'none'; } }
+    function crCambiar(d) { const i = document.getElementById('crCant'); if (!i) return; i.value = String(Math.max(Number(i.min) || 1, Math.min(Number(i.max) || 1, (parseInt(i.value, 10) || 1) + d))); crRecalcular(); }
+    function crRecalcular() {
+      const p = catalogoUnificado.find(x => x.docId === crId), i = document.getElementById('crCant'); if (!p || !i) return;
+      let n = parseInt(i.value, 10) || 0; const st = Number(p.stock) || 0;
+      if (n > (Number(i.max) || n)) { n = Number(i.max); i.value = String(n); mostrarToast('El máximo para este producto es ' + n); }
+      const t = document.getElementById('crTotal'); if (t) t.textContent = formatoCOP(n * (Number(p.precio) || 0));
+      const mx = document.getElementById('crMixto'), b = document.getElementById('btnCompraRapida');
+      const mixto = n > st && st > 0;
+      if (mx) { mx.classList.toggle('hidden', !mixto); if (mixto) mx.innerHTML = `⚡ <b>${st}</b> se entregan ya · ⏳ <b>${n - st}</b> quedan por encargo.`; }
+      if (b) b.innerHTML = mixto ? `<i class="fa-solid fa-bolt mr-1"></i>Comprar ${st} + encargar ${n - st}` : `<i class="fa-solid fa-bolt mr-1"></i>Comprar ${n}`;
+    }
+    async function confirmarCompraRapida() {
+      const id = crId, i = document.getElementById('crCant'); if (!id || !i) return;
+      const n = parseInt(i.value, 10) || 1;
+      if (!document.getElementById('cant_' + id)) { try { categoriaActiva = 'Todas'; renderizarCatalogo(); } catch (e) { /* nada */ } }
+      const inp = document.getElementById('cant_' + id); if (!inp) { alert('Este producto no está disponible ahora.'); return; }
+      inp.value = String(n);
+      try { actualizarTotalTarjeta(id); } catch (e) { /* nada */ }
+      const b = document.getElementById('btnCompraRapida'); if (b) { b.disabled = true; b.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Comprando…'; }
+      cerrarCompraRapida();
+      await comprarProducto(id);
+    }
+
+
+    // ==================== CANTIDAD ESCRITA Y BOTONES RÁPIDOS ====================
+    function limitesCantidad(docId) {
+      const inp = document.getElementById('cant_' + docId);
+      return { inp: inp, min: Math.max(1, Number(inp && inp.min) || 1), max: Math.max(0, Number(inp && inp.max) || 0) };
+    }
+    // Mientras escribe solo se recalcula; al salir del cuadro se ajusta al mínimo y al máximo
+    function cantidadEscrita(docId, final) {
+      const L = limitesCantidad(docId); if (!L.inp) return;
+      let v = parseInt(L.inp.value, 10);
+      if (final || (v > L.max && L.max > 0)) { if (!(v >= L.min)) v = L.min; if (L.max > 0 && v > L.max) { v = L.max; mostrarToast('El máximo para este producto es ' + L.max); } L.inp.value = String(v); }
+      actualizarTotalTarjeta(docId);
+      document.querySelectorAll(`[data-chip-de="${docId}"]`).forEach(b => { const on = String(b.dataset.n) === String(L.inp.value); b.classList.toggle('bg-sky-400', on); b.classList.toggle('text-black', on); });
+    }
+    function elegirCantidad(docId, n) { const L = limitesCantidad(docId); if (!L.inp) return; L.inp.value = String(Math.max(L.min, Math.min(L.max || n, n))); cantidadEscrita(docId, true); }
+    function htmlChipsCantidad(prod, stock) {
+      const max = maxTarjeta(prod, stock), min = Math.max(1, parseInt(prod.minCompra, 10) || 1);
+      const opciones = [10, 20, 30, 40, 50].filter(n => n >= min && n <= max);
+      if (!opciones.length) return '';
+      return `<div class="flex items-center gap-1.5 mb-2 flex-wrap"><span class="text-[10px] text-gray-400 mr-0.5">Rápido:</span>${opciones.map(n => `<button type="button" data-chip-de="${prod.docId}" data-n="${n}" onclick="elegirCantidad('${prod.docId}', ${n})" class="px-2.5 py-1 rounded-lg text-[11px] font-black border border-sky-400/40 text-sky-200 hover:bg-sky-500/20 transition">${n}</button>`).join('')}</div>`;
     }
 
     // ==================== NETFLIX EN LA TIENDA: SIN CONTRASEÑA ====================
