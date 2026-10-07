@@ -1582,7 +1582,8 @@
         </div>
 
         <div class="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden mt-4">
-          <div class="p-4 border-b border-gray-800"><h4 class="font-bold text-white text-sm flex items-center gap-2"><i class="fa-solid fa-bolt text-emerald-400"></i> Últimas recargas automáticas</h4></div>
+          <div class="p-4 border-b border-gray-800 space-y-2"><h4 class="font-bold text-white text-sm flex items-center gap-2"><i class="fa-solid fa-bolt text-emerald-400"></i> Recargas automáticas <span class="text-[10px] font-bold text-gray-400">· últimos 60 días, de la más nueva a la más vieja</span></h4>
+            <input id="buscaRecargaAuto" oninput="recAutoMostrar=15;pintarListaRecargasAuto()" placeholder="Buscar por monto, correo o pagador (ej. 5064)" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"></div>
           <div id="listaRecargasAuto" class="divide-y divide-gray-800"><p class="px-4 py-6 text-center text-gray-500 text-sm">Aún no hay recargas automáticas.</p></div>
         </div>
       </div>
@@ -2268,7 +2269,8 @@
         <div class="p-4 rounded-2xl bg-gray-900 border border-violet-500/30 space-y-3">
           <p class="text-sm font-black text-white">🧠 Plan de marketing de la semana</p>
           <p class="text-[11px] text-gray-400 -mt-2">Se arma con tu actividad real: horas pico, días fuertes, lo que más se vende, el stock que sobra y los clientes que no vuelven. Cada día trae su estado listo para WhatsApp.</p>
-          <button type="button" onclick="generarPlanMarketing()" class="w-full py-2.5 rounded-xl bg-violet-500 hover:bg-violet-400 text-white font-black text-xs"><i class="fa-solid fa-wand-magic-sparkles mr-1"></i>Generar mi plan</button>
+          <label class="flex items-center justify-between gap-3 p-2.5 rounded-xl bg-violet-500/10 border border-violet-400/30 cursor-pointer"><span class="text-[11px] text-violet-100"><b class="text-white">📣 Plan diario automático por Telegram</b><br>Cada mañana te llega el estado del día: a qué hora publicar, el mensaje listo y el enlace a su imagen.</span><input type="checkbox" id="chkPlanDiario" checked onchange="guardarPlanDiario(this.checked)" class="accent-violet-500 w-5 h-5 shrink-0"></label>
+          <button type="button" onclick="generarPlanMarketing()" class="w-full py-2.5 rounded-xl bg-violet-500 hover:bg-violet-400 text-white font-black text-xs"><i class="fa-solid fa-wand-magic-sparkles mr-1"></i>Ver el plan de toda la semana</button>
           <div id="planMarketing" class="space-y-2"></div>
         </div>
         <div class="p-4 rounded-2xl bg-gray-900 border border-gray-800 space-y-3">
@@ -2946,7 +2948,7 @@
       <div class="w-12 h-12 bg-emerald-500/10 text-emerald-400 rounded-2xl flex items-center justify-center mb-3 text-xl">
         <i class="fa-solid fa-user-pen"></i>
       </div>
-      <div class="flex items-center gap-2 mb-1"><h3 class="text-base font-black text-white">Editar cliente</h3><button type="button" id="btnRegaloCliente" onclick="abrirRegaloCliente()" title="Darle una cuenta de regalo" class="px-2 py-1 rounded-lg bg-pink-500/15 hover:bg-pink-500/25 border border-pink-400/40 text-pink-200 text-[11px] font-black"><i class="fa-solid fa-gift"></i> Regalo</button></div>
+      <div class="flex items-center gap-2 mb-1"><h3 class="text-base font-black text-white">Editar cliente</h3><button type="button" onclick="auditarSaldo(clienteEditarUidActual, (document.getElementById('txtEditarClienteEmail') || {}).textContent)" title="Revisar que el saldo cuadre" class="px-2 py-1 rounded-lg bg-sky-500/15 hover:bg-sky-500/25 border border-sky-400/40 text-sky-200 text-[11px] font-black"><i class="fa-solid fa-magnifying-glass-dollar"></i> Auditar</button><button type="button" id="btnRegaloCliente" onclick="abrirRegaloCliente()" title="Darle una cuenta de regalo" class="px-2 py-1 rounded-lg bg-pink-500/15 hover:bg-pink-500/25 border border-pink-400/40 text-pink-200 text-[11px] font-black"><i class="fa-solid fa-gift"></i> Regalo</button></div>
       <p id="txtEditarClienteEmail" class="text-xs text-emerald-400 font-mono mb-4 break-all">cliente@ejemplo.com</p>
 
       <form onsubmit="guardarEdicionCliente(event)" class="space-y-3" novalidate autocomplete="off">
@@ -6647,7 +6649,7 @@
             userTipoCuenta = ''; userCategoriasPermitidas = [];
             userProductosBloqueados = [];
             userPermisosSubirStock = [];
-            db.collection('usuarios').doc(user.uid).set({ email: user.email, saldo: 0, productos_permitidos: [], productos_bloqueados: [], permisos_subir_stock: [], notificacion_borrada: false, primer_ingreso: new Date().toISOString() }, { merge: true });
+            crearPerfilSiNoExiste(user, doc);
           }
           actualizarSaldoHeader();
           renderizarCatalogo();
@@ -9466,7 +9468,8 @@
           await db.collection('usuarios').doc(uid).set({ nombre: nombre, whatsapp: wa || 'Sin WhatsApp' }, { merge: true });
         }
         if (cambiaSaldo) {
-          await db.collection('usuarios').doc(uid).set({ saldo: nuevoSaldo }, { merge: true });
+          await db.collection('usuarios').doc(uid).set({ saldo: nuevoSaldo, ajusteSaldoEl: new Date().toISOString(), ajusteSaldoPor: currentUser.email }, { merge: true });
+          await registrarAjusteSaldo(uid, nuevoEmail || orig.email, orig.saldo, nuevoSaldo, 'Edición manual en Editar cliente');
         }
         if (esAdminSesionActual()) {
           const selRol = document.getElementById('editClienteRol');
@@ -10472,11 +10475,11 @@
           pagosSinIdentificar.sort((a, b) => String(b.recibidoEl).localeCompare(String(a.recibidoEl)));
           renderizarPagosSinIdentificar();
         }, err => console.warn('Pagos sin identificar no disponibles:', err));
-        unsubPagosAcred = db.collection('pagos_recibidos').where('estado', '==', 'acreditado').limit(40).onSnapshot(snap => {
-          const lista = [];
-          snap.forEach(d => lista.push(Object.assign({ id: d.id }, d.data())));
-          lista.sort((a, b) => String(b.recibidoEl).localeCompare(String(a.recibidoEl)));
-          renderizarRecargasAuto(lista.slice(0, 12));
+        // Ordenadas por fecha (de la más nueva) y de los últimos 60 días: ya no se pierde ninguna de la lista
+        unsubPagosAcred = db.collection('pagos_recibidos').where('recibidoEl', '>=', new Date(Date.now() - 60 * 86400000).toISOString()).orderBy('recibidoEl', 'desc').limit(500).onSnapshot(snap => {
+          recargasAutoTodas = [];
+          snap.forEach(d => { const x = Object.assign({ id: d.id }, d.data()); if (x.estado === 'acreditado') recargasAutoTodas.push(x); });
+          pintarListaRecargasAuto();
         }, err => console.warn(err));
       } catch (e) { console.warn(e); }
     }
@@ -14918,8 +14921,16 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-08v';
+    const VERSION_PAGINA = '2026-10-08y';
     const ACTUALIZACIONES_PAGINA = [
+      { id: 'act_20261008_cantidad', fecha: '2026-10-08', titulo: 'Pide en cantidad, aunque no haya todo 📦', mensaje: 'Si necesitas más cuentas de las que hay, ahora puedes pedirlas igual: **recibes ya lo disponible** y el resto **te llega solo** apenas entre stock. Lo pendiente lo puedes cancelar cuando quieras y se te devuelve.' },
+      { id: 'act_20261008_precios', fecha: '2026-10-08', titulo: 'Precios por cantidad y packs 💰', mensaje: 'En varios productos, **entre más llevas, menos pagas por cada cuenta**. Mira la fila **"Por cantidad"** en la tarjeta y los **packs** con precio especial.' },
+      { id: 'act_20261008_envivo', fecha: '2026-10-08', titulo: 'Stock en vivo y "Avísame" 🟢', mensaje: 'Arriba de la tienda ves el **stock en tiempo real** de cada producto. En tu perfil tienes el **Radar de stock**: si algo está agotado, toca **Avísame** y te llega un aviso apenas vuelva.' },
+      { id: 'act_20261008_rapida', fecha: '2026-10-08', titulo: 'Compra rápida ⚡', mensaje: 'Toca cualquier producto en la cinta **En vivo** y cómpralo al instante, sin tener que buscarlo en la tienda.' },
+      { id: 'act_20261008_perfil', fecha: '2026-10-08', titulo: 'Tu perfil, más útil ⭐', mensaje: 'Ahora ves tus **favoritos**, las cuentas **por vencer**, hasta cuándo **dura** cada cuenta y un botón para **volver a comprar** en un toque.' },
+      { id: 'act_20261008_renovar', fecha: '2026-10-08', titulo: 'Renueva tus alquileres 🔄', mensaje: 'Las cuentas de alquiler se pueden **renovar desde tu perfil** y seguir con la misma cuenta. Además, te avisamos **antes de que venzan** para que no pierdas el acceso.' },
+      { id: 'act_20261008_regalos', fecha: '2026-10-08', titulo: 'Regalos y cupones 🎁', mensaje: 'De vez en cuando la tienda te puede dar **cuentas de regalo** o un **cupón de descuento** personal. Te llegan a tu campana y se usan solos al comprar.' },
+      { id: 'act_20261008_binance', fecha: '2026-10-08', titulo: 'Recarga con Binance 🟡', mensaje: 'Si la tienda lo tiene activado, ahora puedes **recargar con USDT por Binance Pay**. Tu saldo se acredita solo, en pesos, con la tasa del día.' },
       { id: 'act_20261006b_recarga', fecha: '2026-10-06', titulo: 'Recargas más simples 💳', mensaje: 'Ahora pagas **el valor exacto** que eliges recargar. Tu saldo se acredita solo en 1 o 2 minutos, y si la transacción se demora, igual te llega apenas se confirme.' },
       { id: 'act_20261006b_sinsaldo', fecha: '2026-10-06', titulo: 'Recarga y compra en un solo paso', mensaje: 'Si tocas **Comprar** y te falta saldo, toca **Recargar** ahí mismo. Cuando tu recarga entre, **tu compra se completa sola** y no tienes que volver a buscar el producto.' },
       { id: 'act_20261006b_lote', fecha: '2026-10-06', titulo: 'Compras grandes más ordenadas', mensaje: 'Cuando compras varias cuentas las ves en **una lista limpia** con el botón **Copiar todas**. Para reportar una, toca **Reportar una cuenta** y pega su correo.' },
@@ -16937,6 +16948,7 @@
     function nombreTienda() { const t = aparienciaConfig && aparienciaConfig.titulo; return t && !/^cat[aá]logo oficial$/i.test(t) ? t : 'EPIC CHANNELS'; }
     function promoPerfilCliente(id) { const pr = ((cfgDealer && cfgDealer.promos) || {})[id]; return pr && pr.activo !== false && aplicaPromo(pr, 'cliente') ? pr : null; }
     function prepararMarketing() {
+      try { if (mkPendiente) setTimeout(aplicarMkPendiente, 300); } catch (e) { /* nada */ }
       const sel = document.getElementById('mkProducto'); if (!sel) return;
       const prev = sel.value;
       sel.innerHTML = productosMarketing().map(p => `<option value="${escaparHtml(p.docId)}">${escaparHtml(p.nombre)}${p.promoPct ? ' 🏷 -' + p.promoPct + '%' : ''}</option>`).join('');
@@ -18367,6 +18379,7 @@
       if (e && !e.dataset.listo) { e.innerHTML = opts; e.dataset.listo = '1'; }
       const pk = document.getElementById('packProducto'); if (pk && !pk.dataset.listo) { pk.innerHTML = opts; pk.dataset.listo = '1'; }
       pintarEscalasEditor(); pintarFlashActivas(); cargarCasiCompraron(); cargarReactivacion(); cargarBonoEditor(); pintarPacks(); pintarLiquidacion(); cargarAvisosRenovacionUI();
+      db.collection('configuracion').doc('plan_diario').get().then(d => { const c = document.getElementById('chkPlanDiario'); if (c) c.checked = !(d.exists && (d.data() || {}).activo === false); }).catch(() => {});
     }
     function pintarEscalasEditor() {
       const id = (document.getElementById('escProducto') || {}).value, p = catalogoUnificado.find(x => x.docId === id), c = document.getElementById('escFilas'); if (!p || !c) return;
@@ -19017,6 +19030,114 @@
       userTipoCuenta = simRespaldo.tipo; userProductosPermitidos = simRespaldo.permitidos; userCategoriasPermitidas = simRespaldo.categorias; userProductosBloqueados = simRespaldo.bloqueados;
       userCupo = simRespaldo.cupo; userDeuda = simRespaldo.deuda; miCupon = simRespaldo.cupon; progresoDealer = simRespaldo.progreso;
       simRespaldo = null; simPerfil = null; const t = document.getElementById('txtPerfilSim'); if (t) t.textContent = 'Cliente';
+    }
+
+
+    // ==================== PLAN DIARIO POR TELEGRAM ====================
+    async function guardarPlanDiario(on) { try { await db.collection('configuracion').doc('plan_diario').set({ activo: !!on }, { merge: true }); mostrarToast(on ? '📣 Plan diario activado: te llega cada mañana por Telegram' : 'Plan diario por Telegram apagado'); } catch (e) { alert(e.message); } }
+    // Enlace del Telegram: ?mk=producto.diseño#admin/marketing → abre Marketing con eso ya elegido
+    var mkPendiente = (() => { try { const v = new URLSearchParams(location.search).get('mk'); if (!v) return null; const i = v.lastIndexOf('.'); return { id: v.slice(0, i), diseno: v.slice(i + 1) }; } catch (e) { return null; } })();
+    function aplicarMkPendiente(intento) {
+      const x = mkPendiente; if (!x) return;
+      intento = intento || 0;
+      const sel = document.getElementById('mkProducto');
+      if (x.id && x.diseno !== 'lista' && sel && !Array.from(sel.options).some(o => o.value === x.id)) {
+        // el catálogo pudo cargar después de abrir Marketing: se vuelve a llenar la lista
+        const ps = productosMarketing(); if (ps.length) sel.innerHTML = ps.map(p => `<option value="${escaparHtml(p.docId)}">${escaparHtml(p.nombre)}${p.promoPct ? ' 🏷 -' + p.promoPct + '%' : ''}</option>`).join('');
+        if (!Array.from(sel.options).some(o => o.value === x.id) && intento < 25) { setTimeout(() => aplicarMkPendiente(intento + 1), 400); return; }   // espera a que carguen los productos
+      }
+      mkPendiente = null;
+      try { history.replaceState(null, '', location.pathname + location.hash); } catch (e) { /* nada */ }
+      setTimeout(() => {
+        try {
+          if (x.diseno === 'lista' || !x.id) { mkTipoImagen = 'lista'; }
+          else { mkTipoImagen = 'producto'; if (DISENOS_MK.some(d => d[0] === x.diseno)) mkDiseno = x.diseno; const sel = document.getElementById('mkProducto'); if (sel && Array.from(sel.options).some(o => o.value === x.id)) sel.value = x.id; }
+          pintarTiposImagen(); pintarDisenosMk(); dibujarMarketing();
+          const v = document.getElementById('mkVista'); if (v) v.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          mostrarToast('🖼 Imagen del plan de hoy lista: descárgala y súbela a tu estado');
+        } catch (e) { console.warn(e); }
+      }, 500);
+    }
+
+
+    // ==================== PARCHE DE SEGURIDAD DEL SALDO ====================
+    // Capa 1: el perfil se crea SOLO si el servidor confirma que no existe, dentro de una transacción.
+    // Si la "no existencia" viene de la memoria del navegador o de una lectura incompleta, no se escribe nada.
+    var creandoPerfil = false;
+    async function crearPerfilSiNoExiste(user, snap) {
+      try {
+        if (!user || creandoPerfil) return;
+        if (snap && snap.metadata && (snap.metadata.fromCache || snap.metadata.hasPendingWrites)) return;   // espera la respuesta real
+        creandoPerfil = true;
+        const ref = db.collection('usuarios').doc(user.uid);
+        await db.runTransaction(async (t) => {
+          const d = await t.get(ref);            // lectura directa del servidor
+          if (d.exists) return;                   // existe: no se toca nada
+          t.set(ref, { email: user.email, saldo: 0, productos_permitidos: [], productos_bloqueados: [], permisos_subir_stock: [], notificacion_borrada: false, primer_ingreso: new Date().toISOString() });
+        });
+      } catch (e) { console.warn('Perfil:', e); } finally { creandoPerfil = false; }
+    }
+    // Capa 3: registro de cada ajuste manual de saldo
+    async function registrarAjusteSaldo(uid, email, antes, despues, motivo) {
+      try { await db.collection('ajustes_saldo').add({ uid, email: email || '', antes: Number(antes) || 0, despues: Number(despues) || 0, diferencia: (Number(despues) || 0) - (Number(antes) || 0), motivo: motivo || 'Edición manual', por: currentUser.email, fecha: new Date().toISOString() }); } catch (e) { console.warn('Registro de ajuste:', e); }
+    }
+
+    // ==================== AUDITAR SALDO ====================
+    // Reconstruye el saldo de un cliente con todo lo registrado y lo compara con el saldo actual.
+    var auditoriaActual = null;
+    async function auditarSaldo(uid, email) {
+      if (!(esAdminSesionActual() || puedeSeccion('usuarios'))) return;
+      let m = document.getElementById('modalAuditoria');
+      if (!m) { m = document.createElement('div'); m.id = 'modalAuditoria'; m.className = 'fixed inset-0 z-[96] hidden items-center justify-center p-4 bg-black/75 backdrop-blur-sm'; m.onclick = ev => { if (ev.target === m) cerrarAuditoria(); }; document.body.appendChild(m); }
+      m.innerHTML = '<div class="w-full max-w-lg rounded-3xl bg-gray-900 border border-gray-700 p-6 text-center text-sm text-gray-300"><i class="fa-solid fa-spinner fa-spin mr-1"></i>Reconstruyendo el saldo…</div>';
+      m.classList.remove('hidden'); m.style.display = 'flex';
+      try {
+        const q = (col, campo) => db.collection(col).where(campo, '==', uid).get().then(sn => { const a = []; sn.forEach(d => a.push(Object.assign({ id: d.id }, d.data() || {}))); return a; }).catch(() => []);
+        const [ud, rec, comp, pre, cred, com, aj] = await Promise.all([db.collection('usuarios').doc(uid).get(), q('recargas', 'usuarioId'), q('compras', 'usuarioId'), q('preordenes', 'usuarioId'), q('creditos_movimientos', 'usuarioId'), q('comisiones_referidos', 'beneficiarioUid'), q('ajustes_saldo', 'uid')]);
+        const u = ud.data() || {}, mov = [];
+        rec.filter(r => r.estado === 'aprobado').forEach(r => { const v = (Number(r.monto) || 0) - (Number(r.abonoCredito) || 0) + (Number(r.bono) || 0); mov.push({ f: r.fecha, t: 'Recarga ' + (r.metodo || ''), v, extra: r.abonoCredito ? `(${formatoCOP(r.abonoCredito)} pagaron deuda de crédito)` : '' }); });
+        comp.filter(c => !c.regalo && !c.ventaManual).forEach(c => mov.push({ f: c.fecha, t: (c.esRenovacion ? 'Renovación ' : 'Compra ') + (c.productoNombre || '') + ' × ' + (c.cantidad || 1), v: -(Number(c.total) || 0) }));
+        pre.forEach(x => { mov.push({ f: x.creadoEl || x.fecha, t: 'Encargo ' + (x.productoNombre || '') + ' × ' + (x.cantidad || ''), v: -(Number(x.total) || 0) }); if (Number(x.devuelto) > 0) mov.push({ f: x.canceladoEl || x.actualizadoEl, t: 'Devolución de encargo cancelado', v: Number(x.devuelto) }); });
+        cred.filter(x => x.tipo === 'cupo' || x.tipo === 'prestamo').forEach(x => mov.push({ f: x.fecha, t: x.tipo === 'cupo' ? 'Crédito usado en ' + (x.origen || 'compra') : 'Préstamo de crédito', v: Number(x.monto) || 0 }));
+        com.filter(x => /acredit|pagad/i.test(String(x.estado || ''))).forEach(x => mov.push({ f: x.resueltoEl || x.fecha, t: 'Premio por referido', v: Number(x.monto) || 0 }));
+        aj.forEach(x => mov.push({ f: x.fecha, t: 'Ajuste manual (' + (x.motivo || '') + ') por ' + (x.por || ''), v: Number(x.diferencia) || 0 }));
+        mov.sort((a, b) => String(a.f).localeCompare(String(b.f)));
+        let acum = 0; mov.forEach(x => { acum += x.v; x.acum = acum; });
+        const real = Number(u.saldo) || 0, dif = real - acum;
+        auditoriaActual = { uid, email: email || u.email, real, esperado: acum };
+        const fila = x => `<div class="flex items-center justify-between gap-2 py-1.5 border-t border-gray-800 text-[11px]"><div class="min-w-0"><p class="text-gray-200 truncate">${escaparHtml(x.t)}</p><p class="text-[10px] text-gray-500">${x.f ? new Date(x.f).toLocaleString('es-CO', { day: '2-digit', month: '2-digit', year: '2-digit', hour: 'numeric', minute: '2-digit' }) : '—'} ${escaparHtml(x.extra || '')}</p></div><div class="shrink-0 text-right"><p class="font-black ${x.v >= 0 ? 'text-emerald-300' : 'text-rose-300'}">${x.v >= 0 ? '+' : '−'}${formatoCOP(Math.abs(x.v))}</p><p class="text-[10px] text-gray-500">${formatoCOP(x.acum)}</p></div></div>`;
+        m.innerHTML = `<div class="w-full max-w-lg rounded-3xl bg-gray-900 border border-gray-700 p-5 max-h-[88vh] flex flex-col">
+          <div class="flex items-center justify-between gap-2"><p class="text-base font-black text-white">🔍 Auditoría de saldo</p><button type="button" onclick="cerrarAuditoria()" class="w-8 h-8 rounded-full bg-gray-800 text-gray-300"><i class="fa-solid fa-xmark"></i></button></div>
+          <p class="text-[11px] text-gray-400 truncate">${escaparHtml(email || u.email || uid)}</p>
+          <div class="grid grid-cols-3 gap-2 mt-3 text-center"><div class="p-2 rounded-xl bg-gray-800"><p class="text-[10px] text-gray-400">Debería tener</p><p class="text-sm font-black text-white">${formatoCOP(acum)}</p></div><div class="p-2 rounded-xl bg-gray-800"><p class="text-[10px] text-gray-400">Tiene</p><p class="text-sm font-black text-white">${formatoCOP(real)}</p></div><div class="p-2 rounded-xl ${dif === 0 ? 'bg-emerald-500/15' : 'bg-rose-500/15'}"><p class="text-[10px] text-gray-400">Diferencia</p><p class="text-sm font-black ${dif === 0 ? 'text-emerald-300' : 'text-rose-300'}">${dif === 0 ? 'Cuadra ✓' : (dif > 0 ? '+' : '−') + formatoCOP(Math.abs(dif))}</p></div></div>
+          ${dif !== 0 ? `<p class="mt-2 text-[11px] ${dif < 0 ? 'text-rose-200' : 'text-amber-200'}">${dif < 0 ? 'Tiene menos de lo que debería. Puede deberse a la falla que ponía el saldo en $0 (ya corregida) o a un ajuste manual hecho antes de que existiera el registro.' : 'Tiene más de lo que muestran los registros: puede ser un ajuste manual anterior al registro de ajustes.'}</p>` : ''}
+          <div class="mt-3 overflow-y-auto flex-1 min-h-0">${mov.length ? mov.slice().reverse().map(fila).join('') : '<p class="text-[11px] text-gray-500 text-center py-4">Sin movimientos registrados.</p>'}</div>
+          ${dif < 0 && esAdminSesionActual() ? `<button type="button" onclick="restaurarSaldoAuditado()" class="mt-3 w-full py-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-black text-sm">Devolver ${formatoCOP(-dif)} (dejar en ${formatoCOP(acum)})</button>` : ''}
+        </div>`;
+      } catch (e) { m.innerHTML = `<div class="w-full max-w-lg rounded-3xl bg-gray-900 border border-gray-700 p-6 text-sm text-red-300">No se pudo auditar: ${escaparHtml(e.message)} <button type="button" onclick="cerrarAuditoria()" class="block mt-3 text-gray-300 underline">Cerrar</button></div>`; }
+    }
+    function cerrarAuditoria() { const m = document.getElementById('modalAuditoria'); if (m) { m.classList.add('hidden'); m.style.display = 'none'; } }
+    async function restaurarSaldoAuditado() {
+      const a = auditoriaActual; if (!a || !esAdminSesionActual()) return;
+      if (!await confirmarModal(`¿Dejar el saldo de ${a.email} en ${formatoCOP(a.esperado)}?\n\nHoy tiene ${formatoCOP(a.real)}. Quedará registrado como ajuste por auditoría.`, { textoAceptar: 'Sí, devolver' })) return;
+      try {
+        const ref = db.collection('usuarios').doc(a.uid);
+        await db.runTransaction(async (t) => { const d = await t.get(ref); t.update(ref, { saldo: a.esperado, ajusteSaldoEl: new Date().toISOString(), ajusteSaldoPor: currentUser.email }); a.real = Number((d.data() || {}).saldo) || 0; });
+        await registrarAjusteSaldo(a.uid, a.email, a.real, a.esperado, 'Auditoría: devolución de saldo');
+        mostrarToast('✓ Saldo corregido a ' + formatoCOP(a.esperado)); cerrarAuditoria();
+      } catch (e) { alert('No se pudo corregir: ' + e.message); }
+    }
+
+
+    // ==================== RECARGAS AUTOMÁTICAS: BUSCADOR Y "VER MÁS" ====================
+    var recargasAutoTodas = [], recAutoMostrar = 15;
+    function pintarListaRecargasAuto() {
+      const q = String((document.getElementById('buscaRecargaAuto') || {}).value || '').toLowerCase().trim(), qn = q.replace(/\D/g, '');
+      const L = !q ? recargasAutoTodas : recargasAutoTodas.filter(p => (qn && String(Math.round(Number(p.monto) || 0)).includes(qn)) || String(p.usuarioEmail || '').toLowerCase().includes(q) || String(p.pagador || '').toLowerCase().includes(q));
+      renderizarRecargasAuto(L.slice(0, recAutoMostrar));
+      const cont = document.getElementById('listaRecargasAuto');
+      if (cont && L.length > recAutoMostrar) cont.insertAdjacentHTML('beforeend', `<button type="button" onclick="recAutoMostrar+=15;pintarListaRecargasAuto()" class="w-full py-2.5 text-[11px] font-bold text-emerald-300 hover:bg-gray-800/60">Ver más (${L.length - recAutoMostrar} más)</button>`);
+      if (cont && q && !L.length) cont.innerHTML = '<p class="px-4 py-6 text-center text-gray-500 text-sm">No hay recargas automáticas que coincidan en los últimos 60 días.</p>';
     }
 
     // ==================== NETFLIX EN LA TIENDA: SIN CONTRASEÑA ====================
