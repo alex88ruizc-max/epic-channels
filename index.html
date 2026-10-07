@@ -15032,7 +15032,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-09y';
+    const VERSION_PAGINA = '2026-10-09z';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261009_telegram', fecha: '2026-10-09', titulo: 'Avisos por Telegram ✈️', mensaje: 'Conecta Telegram en tu perfil → **Mis datos** y recibe al instante tus **compras**, tus **recargas** y el **stock nuevo** de lo que compras. Tú eliges qué recibir, y nunca te enviamos contraseñas por ahí.' },
       { id: 'act_20261009_serdealer', fecha: '2026-10-09', titulo: 'Ahora puedes pedir ser Dealer 👑', mensaje: 'En tu perfil ves cuánto te falta para **pedir ser Dealer**. Cuando cumples, toca **Pedir ser Dealer** y te avisamos en la campana. Los Dealers tienen **promos y regalos por volumen**.' },
@@ -17866,12 +17866,15 @@
 
     // ==================== MARKETING: ESTUDIO DE DISEÑOS CON LA PALETA DE CADA PRODUCTO ====================
     var mkDiseno = 'clasico', mkQrImg = null, mkQrPara = '';
-    const DISENOS_MK = [['clasico', 'Clásico'], ['impacto', 'Impacto'], ['tarjeta', 'Tarjeta'], ['neon', 'Neón'], ['claro', 'Claro'], ['cine', '🎬 Cine'], ['cristal', '🧊 Cristal'], ['retro', '🌆 Retro'], ['oro', '👑 Oro'], ['ticket', '🎟 Ticket'], ['olas', '🌊 Olas']];
+    const DISENOS_MK = [['premium', '✨ Premium'], ['clasico', 'Clásico'], ['impacto', 'Impacto'], ['tarjeta', 'Tarjeta'], ['neon', 'Neón'], ['claro', 'Claro'], ['cine', '🎬 Cine'], ['cristal', '🧊 Cristal'], ['retro', '🌆 Retro'], ['oro', '👑 Oro'], ['ticket', '🎟 Ticket'], ['olas', '🌊 Olas']];
     function pintarDisenosMk() {
       const c = document.getElementById('mkDisenos'); if (!c) return;
       c.innerHTML = DISENOS_MK.map(([k, t]) => `<button type="button" onclick="mkDiseno='${k}';pintarDisenosMk();dibujarMarketing()" class="py-2 rounded-lg text-[10px] font-black border ${mkDiseno === k ? 'bg-fuchsia-500 text-white border-fuchsia-400' : 'bg-gray-800 text-gray-300 border-gray-700'}">${t}</button>`).join('');
       const est = document.getElementById('mkEstilo'); if (est) est.classList.toggle('hidden', mkDiseno !== 'clasico' || mkTipoImagen !== 'producto');
       c.classList.toggle('hidden', mkTipoImagen !== 'producto');
+      let op = document.getElementById('mkPremiumOpc'); if (!op) { op = document.createElement('div'); op.id = 'mkPremiumOpc'; op.className = 'mt-2 p-2.5 rounded-xl bg-gray-900/70 border border-gray-700'; c.parentNode.insertBefore(op, c.nextSibling); }
+      const ver = mkDiseno === 'premium' && mkTipoImagen === 'producto'; op.classList.toggle('hidden', !ver);
+      if (ver) { op.innerHTML = '<p class="text-[10px] text-gray-400 mb-1.5">✨ Premium se ve mejor en formato <b class="text-white">Estado</b>.</p>' + htmlOpcionesPremium('pintarDisenosMk();dibujarMarketing()'); cargarFuentesPremium().then(ok => { if (ok) dibujarMarketing(); }); }
     }
     function paletaMk(col) { return { base: col, claro: aclararHex(col, 0.45), muyClaro: aclararHex(col, 0.85), oscuro: aclararHex(col, -0.55), noche: aclararHex(col, -0.8), texto: textoSobreColor(col) }; }
     function activarQrMk() {
@@ -18015,6 +18018,7 @@
       o = o || opcionesMk();
       if (mkTipoImagen === 'novedad') return lienzoNovedadMk(o.fmt === 'banner' ? 'post' : o.fmt);
       if (mkTipoImagen !== 'producto') return lienzoLista(mkTipoImagen, o.fmt === 'banner' ? 'post' : o.fmt, o.est, o.frase);
+      if (mkDiseno === 'premium') { const pc = lienzoPremium(prod, 'cliente', () => dibujarMarketing()); if (o.fmt === 'estado') return pc; const W2 = 1080, H2 = o.fmt === 'banner' ? 628 : 1080, c2 = document.createElement('canvas'); c2.width = o.fmt === 'banner' ? 1200 : W2; c2.height = H2; const x2 = c2.getContext('2d'); x2.fillStyle = '#05070d'; x2.fillRect(0, 0, c2.width, c2.height); const sc = H2 / 1920, w2 = 1080 * sc; x2.drawImage(pc, (c2.width - w2) / 2, 0, w2, H2); return c2; }
       if (mkDiseno === 'clasico') { const c = lienzoSeguro(prod, o.fmt === 'banner' ? 'post' : o.fmt, o.est, o.frase); const cx = c.getContext('2d'); dibujarSticker(cx, textoStickerMk(prod), c.width - 230, o.fmt === 'post' || o.fmt === 'banner' ? 90 : 150); dibujarQrMk(cx, c.width - 190, c.height - (o.fmt === 'estado' ? 470 : 330), 170, false); return c; }
       // En formato Estado se centra el contenido entre arriba y el botón de abajo
       if (o.fmt === 'estado') { const prueba = lienzoEstudio(prod, o.fmt, mkDiseno, o.frase, 0); const libre = (1920 - 300) - prueba.__finY; return lienzoEstudio(prod, o.fmt, mkDiseno, o.frase, Math.max(0, Math.round(libre / 2) - 40)); }
@@ -19396,6 +19400,7 @@
 
     // ==================== NOVEDADES INTERNAS DEL PANEL (solo el equipo) ====================
     const ACTUALIZACIONES_INTERNAS = [
+      { fecha: '2026-10-09', titulo: '✨ Diseño Epic Premium para estados', mensaje: 'Nuevo diseño para tus estados: tipografías elegantes (serif, pincel y caligrafía), **6 fondos multicolor** (Noche, Esmeralda, Atardecer, Oro, Neón, Océano), el logo del producto casi invisible de fondo y **tu logo de marca opcional**. Cambias las palabras del título y el eslogan. Está en Marketing y en "Crear imagen de esta promo".', ir: 'marketing' },
       { fecha: '2026-10-09', titulo: '🖼 Imagen de promo desde la tarjeta', mensaje: 'En el recuadro "Promos vigentes" de cada tarjeta, **Crear imagen de esta promo** arma un estado con el precio de campaña (normal tachado), el regalo y los precios por cantidad. Versión para clientes o para Dealers (nunca se mezclan); descárgala, compártela o publícala como estado. Además, en la tarjeta el precio normal sale **tachado** cuando hay campaña.', ir: '' },
       { fecha: '2026-10-09', titulo: '✈️ Avisos por Telegram para clientes', mensaje: 'Con un bot aparte (Ajustes → Bot de avisos para clientes), cada cliente conecta su Telegram con un enlace de un solo uso y recibe solo SUS compras, recargas y el stock de lo que compra. **Para vender:** cuando subes stock, les llega el aviso a quienes ya compran ese producto.', ir: 'ajustes' },
       { fecha: '2026-10-09', titulo: '✉️ Una solicitud de correos a la vez', mensaje: 'Cada proveedor solo puede tener **una solicitud de correos pendiente**: el botón queda en "Solicitud enviada" hasta que la atiendas o la descartes. Cuando le asignas correos, le sale una ventana única **📬 ¡Te llegaron N correos!** y un aviso en su campana.', ir: 'proveedores' },
@@ -20296,7 +20301,7 @@
     // ==================== IMAGEN DE PROMO DESDE LA TARJETA ====================
     // Toma TODO lo vigente de un producto (precio de campaña, regalo, precios por cantidad, venta relámpago) y arma un estado.
     // "Para clientes" y "Para Dealers" nunca se mezclan.
-    var promoImgId = '', promoImgPara = 'cliente';
+    var promoImgId = '', promoImgPara = 'cliente', promoImgDiseno = 'premium';
     function datosPromoProducto(prod, para) {
       const lista = Number(prod.precioLista || prod.precio) || 0, minC = Math.max(1, parseInt(prod.minCompra, 10) || 1), esc = escalasDe(prod);
       const campana = esc.find(e => e.desde <= minC && e.precio < lista);
@@ -20352,6 +20357,8 @@
       m.innerHTML = `<div class="w-full max-w-sm rounded-3xl bg-gray-900 border border-emerald-500/40 p-4 space-y-3 max-h-[92vh] overflow-y-auto">
         <div class="flex items-center justify-between"><p class="text-sm font-black text-white">🖼 Imagen de promo</p><button type="button" onclick="cerrarImagenPromo()" aria-label="Cerrar" class="w-8 h-8 rounded-full bg-gray-800 text-gray-300"><i class="fa-solid fa-xmark"></i></button></div>
         <div id="promoImgTabs" class="flex gap-1.5">${['cliente', 'dealer'].filter(k => k === 'cliente' || hayD).map(k => `<button type="button" data-para="${k}" onclick="promoImgPara='${k}';pintarImagenPromo()" class="px-3 py-1.5 rounded-full text-[11px] font-black border">${k === 'cliente' ? '🎁 Para clientes' : '👑 Para Dealers'}</button>`).join('')}</div>
+        <div class="flex gap-1.5"><button type="button" data-dis="premium" onclick="promoImgDiseno='premium';pintarImagenPromo()" class="px-3 py-1.5 rounded-full text-[11px] font-black border">✨ Premium</button><button type="button" data-dis="simple" onclick="promoImgDiseno='simple';pintarImagenPromo()" class="px-3 py-1.5 rounded-full text-[11px] font-black border">Simple</button></div>
+        <div id="promoImgOpc"></div>
         <img id="promoImgVista" alt="Imagen de promo" class="w-full rounded-2xl bg-black">
         <div class="grid grid-cols-2 gap-2"><button type="button" onclick="descargarImagenPromo()" class="py-2.5 rounded-xl bg-gray-800 border border-gray-700 text-gray-100 font-bold text-xs"><i class="fa-solid fa-download mr-1"></i>Descargar</button><button type="button" onclick="compartirImagenPromo()" class="py-2.5 rounded-xl bg-emerald-600 text-white font-bold text-xs"><i class="fa-brands fa-whatsapp mr-1"></i>Compartir</button></div>
         <button type="button" onclick="publicarEstadoImagenPromo()" class="w-full py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-black text-xs"><i class="fa-solid fa-circle-play mr-1"></i>Publicar como estado (24 h)</button>
@@ -20361,8 +20368,12 @@
     function pintarImagenPromo() {
       const prod = catalogoUnificado.find(p => p.docId === promoImgId), img = document.getElementById('promoImgVista'); if (!prod || !img) return;
       document.querySelectorAll('#promoImgTabs [data-para]').forEach(b => { const on = b.dataset.para === promoImgPara; b.className = 'px-3 py-1.5 rounded-full text-[11px] font-black border ' + (on ? (promoImgPara === 'dealer' ? 'bg-amber-400 text-black border-amber-300' : 'bg-emerald-500 text-black border-emerald-400') : 'bg-gray-800 text-gray-300 border-gray-700'); });
-      img.src = lienzoPromoProducto(prod, promoImgPara).toDataURL('image/jpeg', 0.9);
+      document.querySelectorAll('#modalImagenPromo [data-dis]').forEach(b => { const on = b.dataset.dis === promoImgDiseno; b.className = 'px-3 py-1.5 rounded-full text-[11px] font-black border ' + (on ? 'bg-white text-black border-white' : 'bg-gray-800 text-gray-300 border-gray-700'); });
+      const op = document.getElementById('promoImgOpc'); if (op) op.innerHTML = promoImgDiseno === 'premium' ? htmlOpcionesPremium('pintarImagenPromo()') : '';
+      img.src = lienzoImagenPromoActual(prod, promoImgPara).toDataURL('image/jpeg', 0.9);
+      if (promoImgDiseno === 'premium' && !fuentesPremiumListas) cargarFuentesPremium().then(ok => { if (ok) pintarImagenPromo(); });
     }
+    function lienzoImagenPromoActual(prod, para) { return promoImgDiseno === 'premium' ? aZonaSeguraEstado(lienzoPremium(prod, para, () => pintarImagenPromo())) : lienzoPromoProducto(prod, para); }
     function cerrarImagenPromo() { const m = document.getElementById('modalImagenPromo'); if (m) { m.classList.add('hidden'); m.style.display = 'none'; } }
     function nombreArchivoPromo() { const p = catalogoUnificado.find(x => x.docId === promoImgId) || {}; return 'promo-' + (promoImgPara === 'dealer' ? 'dealers-' : '') + String(p.nombre || 'producto').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') + '.jpg'; }
     function descargarImagenPromo() { const img = document.getElementById('promoImgVista'); if (!img) return; const a = document.createElement('a'); a.href = img.src; a.download = nombreArchivoPromo(); document.body.appendChild(a); a.click(); a.remove(); }
@@ -20374,9 +20385,107 @@
     async function publicarEstadoImagenPromo() {
       const prod = catalogoUnificado.find(p => p.docId === promoImgId); if (!prod) return;
       if (promoImgPara === 'dealer') { alert('Los estados los ven todos tus clientes: publica la versión "Para clientes". La de Dealers compártela solo con ellos.'); return; }
-      const base = lienzoPromoProducto(prod, 'cliente'), c = document.createElement('canvas'); c.width = 720; c.height = 1280; c.getContext('2d').drawImage(base, 0, 0, 720, 1280);
+      const base = lienzoImagenPromoActual(prod, 'cliente'), c = document.createElement('canvas'); c.width = 720; c.height = 1280; c.getContext('2d').drawImage(base, 0, 0, 720, 1280);
       if (!await confirmarModal('¿Publicar esta promo como estado de tu tienda por 24 horas?', { textoAceptar: 'Sí, publicar' })) return;
       try { await publicarEstado(c.toDataURL('image/jpeg', 0.82), ''); } catch (e) { alert(e.message); }
+    }
+
+
+    // ==================== DISEÑO "EPIC PREMIUM" PARA ESTADOS ====================
+    // Fondo multicolor (6 paletas), tipografías elegantes, logo de marca opcional y el logo del producto casi invisible de fondo.
+    const PALETAS_PREMIUM = {
+      noche:     { nombre: 'Noche',     arriba: '#0a1230', medio: '#0d1640', abajo: '#2a0f4f', esqI: '0,212,255', esqD: '0,190,255', ondas: ['80,110,220', '110,90,220', '140,80,220'], acento: '#10b981', linea: '#22d3ee', muestra: 'linear-gradient(160deg,#00d4ff,#0a1230 45%,#2a0f4f)' },
+      esmeralda: { nombre: 'Esmeralda', arriba: '#032b22', medio: '#063b2e', abajo: '#0b1a33', esqI: '52,211,153', esqD: '16,185,129', ondas: ['16,120,100', '20,100,120', '30,80,140'], acento: '#f7d774', linea: '#34d399', muestra: 'linear-gradient(160deg,#34d399,#063b2e 45%,#0b1a33)' },
+      atardecer: { nombre: 'Atardecer', arriba: '#2a0b3d', medio: '#3b0a45', abajo: '#1a0b2e', esqI: '251,146,60', esqD: '236,72,153', ondas: ['190,60,120', '150,50,160', '110,50,180'], acento: '#fbbf24', linea: '#fb923c', muestra: 'linear-gradient(160deg,#fb923c,#ec4899 35%,#3b0a45 65%,#1a0b2e)' },
+      oro:       { nombre: 'Oro',       arriba: '#0b0b0f', medio: '#120f08', abajo: '#1f1405', esqI: '212,160,23', esqD: '245,197,66', ondas: ['120,90,20', '150,110,30', '180,130,40'], acento: '#f5c542', linea: '#f5c542', muestra: 'linear-gradient(160deg,#d4a017,#120f08 45%,#1f1405)' },
+      neon:      { nombre: 'Neón',      arriba: '#12002b', medio: '#16003a', abajo: '#0a0f3a', esqI: '255,0,229', esqD: '34,211,238', ondas: ['150,0,200', '90,40,220', '40,90,230'], acento: '#22d3ee', linea: '#ff00e5', muestra: 'linear-gradient(160deg,#ff00e5,#16003a 45%,#22d3ee)' },
+      oceano:    { nombre: 'Océano',    arriba: '#04263b', medio: '#05324d', abajo: '#0b1d51', esqI: '6,182,212', esqD: '56,189,248', ondas: ['20,120,170', '30,100,190', '50,80,200'], acento: '#34d399', linea: '#67e8f9', muestra: 'linear-gradient(160deg,#06b6d4,#05324d 45%,#0b1d51)' }
+    };
+    var premiumCfg = (() => { try { return Object.assign({ paleta: 'noche', logo: true, t1: 'Gran', t2: 'Promoción', eslogan: 'Tu entretenimiento, al instante' }, JSON.parse(localStorage.getItem('premiumCfg') || '{}')); } catch (e) { return { paleta: 'noche', logo: true, t1: 'Gran', t2: 'Promoción', eslogan: 'Tu entretenimiento, al instante' }; } })();
+    function guardarPremiumCfg() { try { localStorage.setItem('premiumCfg', JSON.stringify(premiumCfg)); } catch (e) { /* nada */ } }
+    var fuentesPremiumListas = false, fuentesPremiumCargando = null;
+    function cargarFuentesPremium() {
+      if (fuentesPremiumListas) return Promise.resolve(true);
+      if (fuentesPremiumCargando) return fuentesPremiumCargando;
+      if (!document.getElementById('fuentesPremium')) { const l = document.createElement('link'); l.id = 'fuentesPremium'; l.rel = 'stylesheet'; l.href = 'https://fonts.googleapis.com/css2?family=Playfair+Display:wght@900&family=Nunito:wght@900&family=Montserrat:wght@500;600;700;800&family=Kaushan+Script&family=Great+Vibes&display=swap'; document.head.appendChild(l); }
+      fuentesPremiumCargando = Promise.all(["900 96px 'Playfair Display'", "900 60px 'Nunito'", "600 30px 'Montserrat'", "800 30px 'Montserrat'", "150px 'Kaushan Script'", "90px 'Great Vibes'"].map(f => document.fonts.load(f).catch(() => null)))
+        .then(() => { fuentesPremiumListas = true; return true; }).catch(() => false);
+      return fuentesPremiumCargando;
+    }
+    var imgsProductoMk = {};
+    function imagenProductoMk(prod, alListo) {
+      const url = prod && prod.imagenUrl; if (!url) return null;
+      const k = prod.docId; if (imgsProductoMk[k] === false) return null;
+      if (imgsProductoMk[k] && imgsProductoMk[k].listo) return imgsProductoMk[k].img;
+      if (!imgsProductoMk[k]) { const img = new Image(); img.crossOrigin = 'anonymous'; imgsProductoMk[k] = { img, listo: false };
+        img.onload = () => { imgsProductoMk[k].listo = true; if (alListo) alListo(); }; img.onerror = () => { imgsProductoMk[k] = false; }; img.src = url; }
+      return null;
+    }
+    function lienzoPremium(prod, para, alListo) {
+      const W = 1080, H = 1920, c = document.createElement('canvas'); c.width = W; c.height = H; const x = c.getContext('2d');
+      const P = PALETAS_PREMIUM[premiumCfg.paleta] || PALETAS_PREMIUM.noche, d = datosPromoProducto(prod, para || 'cliente');
+      const SANS = "'Montserrat', 'Segoe UI', Arial, sans-serif", SERIF = "'Playfair Display', Georgia, 'Times New Roman', serif", BRUSH = "'Kaushan Script', 'Brush Script MT', cursive", SCRIPT = "'Great Vibes', 'Brush Script MT', cursive", REDON = "'Nunito', 'Segoe UI', Arial, sans-serif";
+      // ---- fondo multicolor ----
+      const lg = x.createLinearGradient(0, 0, 0, H); lg.addColorStop(0, P.arriba); lg.addColorStop(.55, P.medio); lg.addColorStop(1, P.abajo); x.fillStyle = lg; x.fillRect(0, 0, W, H);
+      let rg = x.createRadialGradient(0, 0, 10, 0, 0, W * 1.15); rg.addColorStop(0, `rgba(${P.esqI},.62)`); rg.addColorStop(.4, `rgba(${P.esqI},.18)`); rg.addColorStop(.7, `rgba(${P.esqI},0)`); x.fillStyle = rg; x.fillRect(0, 0, W, H);
+      rg = x.createRadialGradient(W, 0, 10, W, 0, W * .8); rg.addColorStop(0, `rgba(${P.esqD},.38)`); rg.addColorStop(.65, `rgba(${P.esqD},0)`); x.fillStyle = rg; x.fillRect(0, 0, W, H);
+      // ondas abajo
+      const onda = (y0, amp, col) => { x.beginPath(); x.moveTo(0, y0); x.bezierCurveTo(W * .2, y0 - amp, W * .35, y0 + amp, W * .55, y0); x.bezierCurveTo(W * .75, y0 - amp, W * .9, y0 + amp * .6, W, y0 - amp * .3); x.lineTo(W, H); x.lineTo(0, H); x.closePath(); x.fillStyle = col; x.fill(); };
+      onda(H * .66, 90, `rgba(${P.ondas[0]},.16)`); onda(H * .75, 80, `rgba(${P.ondas[1]},.18)`); onda(H * .85, 70, `rgba(${P.ondas[2]},.16)`);
+      // ---- logo del producto casi invisible de fondo ----
+      const mascara = (dib) => { const t = document.createElement('canvas'); t.width = W; t.height = H; const tx = t.getContext('2d'); dib(tx); tx.globalCompositeOperation = 'destination-in'; const m = tx.createRadialGradient(W / 2, H * .3, 40, W / 2, H * .3, W * .55); m.addColorStop(0, 'rgba(0,0,0,1)'); m.addColorStop(.45, 'rgba(0,0,0,.8)'); m.addColorStop(1, 'rgba(0,0,0,0)'); tx.fillStyle = m; tx.fillRect(0, 0, W, H); x.save(); x.globalAlpha = .1; x.filter = 'blur(7px)'; x.drawImage(t, 0, 0); x.restore(); };
+      const imgP = imagenProductoMk(prod, alListo);
+      if (imgP) mascara(tx => { const s = Math.min((W - 60) / imgP.width, (H * .5) / imgP.height); const iw = imgP.width * s, ih = imgP.height * s; tx.drawImage(imgP, (W - iw) / 2, H * .3 - ih / 2, iw, ih); });
+      else mascara(tx => { tx.textAlign = 'center'; const nm = String(prod.nombre || '').split(/\s+/).slice(0, 2); tx.font = `800 ${nm.join(' ').length > 10 ? 210 : 260}px ${SANS}`; const g = tx.createLinearGradient(0, H * .15, 0, H * .48); g.addColorStop(0, '#e0f2fe'); g.addColorStop(1, 'rgba(125,211,252,0)'); tx.fillStyle = g; nm.forEach((w, k) => tx.fillText(w.toLowerCase(), W / 2, H * .27 + k * 230)); });
+      // ---- contenido ----
+      x.textAlign = 'center'; let y = 150;
+      if (premiumCfg.logo) {
+        x.font = `700 28px ${SANS}`; const marca = espaciarLetras(nombreTienda().toUpperCase()), mw = x.measureText(marca).width, pw = mw + 150, px = (W - pw) / 2;
+        x.save(); textoRedondeado(x, px, y, pw, 96, 48); x.fillStyle = 'rgba(255,255,255,.07)'; x.fill(); x.lineWidth = 3; x.strokeStyle = 'rgba(212,160,23,.45)'; x.stroke(); x.restore();
+        if (mkLogoImg && mkLogoListo) { x.save(); x.beginPath(); x.arc(px + 50, y + 48, 36, 0, Math.PI * 2); x.clip(); x.drawImage(mkLogoImg, px + 14, y + 12, 72, 72); x.restore(); }
+        x.fillStyle = '#f3d27a'; x.fillText(marca, px + 100 + mw / 2, y + 58); y += 200;
+      } else y += 80;
+      x.fillStyle = '#fff'; x.font = `900 92px ${SERIF}`; x.fillText(premiumCfg.t1 || '', W / 2, y + 60); y += 90;
+      x.save(); x.translate(W / 2, y + 120); x.rotate(-0.07); x.font = `150px ${BRUSH}`; let fs = 150; while (x.measureText(premiumCfg.t2 || '').width > W - 120 && fs > 80) { fs -= 8; x.font = `${fs}px ${BRUSH}`; }
+      x.shadowColor = hexARgba(P.acento, .55); x.shadowBlur = 40; x.fillStyle = P.acento; x.fillText(premiumCfg.t2 || '', 0, 0); x.restore(); y += 210;
+      x.font = `900 62px ${REDON}`; const nom = String(prod.nombre || '').toUpperCase(); let fn = 62; while (x.measureText(nom).width > W - 300 && fn > 36) { fn -= 4; x.font = `900 ${fn}px ${REDON}`; }
+      const nw = x.measureText(nom).width; x.fillStyle = '#fff'; x.fillText(nom, W / 2, y + 40);
+      x.save(); x.shadowColor = P.linea; x.shadowBlur = 20; [-1, 1].forEach(s => { const g = x.createLinearGradient(W / 2 + s * (nw / 2 + 20), 0, W / 2 + s * (nw / 2 + 150), 0); g.addColorStop(0, P.linea); g.addColorStop(1, 'rgba(0,0,0,0)'); x.fillStyle = g; x.fillRect(Math.min(W / 2 + s * (nw / 2 + 20), W / 2 + s * (nw / 2 + 150)), y + 18, 130, 5); }); x.restore(); y += 100;
+      const desc = String(prod.descripcion || '').trim();
+      if (desc) { x.fillStyle = 'rgba(255,255,255,.92)'; x.font = `500 32px ${SANS}`; const pal = desc.split(/\s+/); let lin = '', n = 0; for (let i = 0; i < pal.length && n < 2; i++) { const t = lin ? lin + ' ' + pal[i] : pal[i]; if (x.measureText(t).width > W - 260 && lin) { x.fillText(n === 1 && i < pal.length ? lin + '…' : lin, W / 2, y); y += 44; n++; lin = pal[i]; } else lin = t; } if (n < 2 && lin) { x.fillText(lin, W / 2, y); y += 44; } y += 20; }
+      if (d.tachado) { x.fillStyle = 'rgba(255,255,255,.55)'; x.font = `600 46px ${SANS}`; const t = formatoCOP(d.tachado), tw = x.measureText(t).width; x.fillText(t, W / 2, y + 30); x.strokeStyle = 'rgba(248,113,113,.95)'; x.lineWidth = 5; x.beginPath(); x.moveTo(W / 2 - tw / 2 - 6, y + 14); x.lineTo(W / 2 + tw / 2 + 6, y + 14); x.stroke(); y += 50; }
+      x.fillStyle = '#fff'; x.font = `900 160px ${SERIF}`; x.fillText(formatoCOP(d.precio), W / 2, y + 150); y += 195;
+      x.fillStyle = 'rgba(255,255,255,.85)'; x.font = `500 32px ${SANS}`; x.fillText(`c/u · compra mínima ${d.minC}`, W / 2, y); y += 50;
+      if (d.flash) { x.fillStyle = '#fb7185'; x.font = `800 36px ${SANS}`; x.fillText(`⚡ -${d.flash.pct} %${d.flash.hasta ? ' hasta las ' + new Date(d.flash.hasta).toLocaleTimeString('es-CO', { hour: 'numeric', minute: '2-digit' }) : ''}`, W / 2, y + 10); y += 60; }
+      if (d.regalo) {
+        const bw = 600, bh = d.mult ? 190 : 160, bx = (W - bw) / 2; y += 10; x.save(); textoRedondeado(x, bx, y, bw, bh, 44); x.fillStyle = hexARgba(P.acento, .13); x.fill(); x.lineWidth = 3; x.strokeStyle = hexARgba(P.acento, .75); x.stroke(); x.restore();
+        x.fillStyle = '#fff'; x.font = `700 50px ${SANS}`; x.fillText('🎁 ' + (d.regalo.otro ? `Compra ${d.regalo.compra}, lleva ${d.regalo.lleva} de regalo` : `Compra ${d.regalo.compra}, lleva ${d.regalo.compra + d.regalo.lleva}`), W / 2, y + 72);
+        x.fillStyle = 'rgba(255,255,255,.85)'; x.font = `500 30px ${SANS}`; x.fillText(d.regalo.otro ? `de ${d.regalo.otro}` : `${d.regalo.lleva} cuenta${d.regalo.lleva === 1 ? '' : 's'} de regalo`, W / 2, y + 120);
+        if (d.mult) { x.fillStyle = P.acento; x.font = `700 30px ${SANS}`; x.fillText(`Plata ×${d.mult.plata} · Oro ×${d.mult.oro} en regalos`, W / 2, y + 163); }
+        y += bh + 34;
+      }
+      if (d.escalones.length) {
+        x.font = `600 34px ${SANS}`; const tx2 = d.escalones.map(e => `${e.desde}+ ${formatoCOP(e.precio)}`), ws = tx2.map(t => x.measureText(t).width + 60), tot = ws.reduce((a, b) => a + b, 0) + 18 * (ws.length - 1); let cx = (W - tot) / 2;
+        tx2.forEach((t, k) => { x.save(); textoRedondeado(x, cx, y, ws[k], 70, 35); x.fillStyle = 'rgba(255,255,255,.06)'; x.fill(); x.lineWidth = 3; x.strokeStyle = hexARgba(P.linea, .55); x.stroke(); x.restore(); x.fillStyle = '#fff'; x.fillText(t, cx + ws[k] / 2, y + 47); cx += ws[k] + 18; });
+        y += 100;
+      }
+      // eslogan y enlace, anclados abajo
+      const yEs = Math.max(y + 110, H - 300);
+      if (premiumCfg.eslogan) { x.fillStyle = '#fff'; x.font = `90px ${SCRIPT}`; let fe = 90; while (x.measureText(premiumCfg.eslogan).width > W - 120 && fe > 54) { fe -= 6; x.font = `${fe}px ${SCRIPT}`; } x.fillText(premiumCfg.eslogan, W / 2, yEs); }
+      x.font = `700 34px ${SANS}`; const web = enlaceMk(), ww = x.measureText(web).width + 100, wy = yEs + 50;
+      x.save(); x.shadowColor = hexARgba(P.acento, .5); x.shadowBlur = 30; textoRedondeado(x, (W - ww) / 2, wy, ww, 84, 42); const gw = x.createLinearGradient((W - ww) / 2, 0, (W + ww) / 2, 0); gw.addColorStop(0, aclararHex(P.acento, -0.25)); gw.addColorStop(1, P.acento); x.fillStyle = gw; x.fill(); x.restore();
+      x.fillStyle = textoSobreColor(P.acento) === '#000000' || textoSobreColor(P.acento) === '#000' ? '#0b0b0b' : '#fff'; x.fillText(web, W / 2, wy + 56);
+      return c;
+    }
+    // Controles (paleta, logo, textos) — se usan en la ventana de promo y en Marketing
+    function htmlOpcionesPremium(redibujar) {
+      const inp = 'w-full bg-gray-800 border border-gray-700 rounded-lg px-2.5 py-1.5 text-[11px] text-white focus:outline-none';
+      return `<div class="space-y-2">
+        <div class="flex flex-wrap gap-1.5">${Object.keys(PALETAS_PREMIUM).map(k => `<button type="button" title="${PALETAS_PREMIUM[k].nombre}" onclick="premiumCfg.paleta='${k}';guardarPremiumCfg();${redibujar}" class="flex items-center gap-1.5 pl-1 pr-2 py-1 rounded-full border text-[10px] font-bold ${premiumCfg.paleta === k ? 'border-white text-white bg-white/10' : 'border-gray-700 text-gray-300'}"><span class="w-5 h-5 rounded-full" style="background:${PALETAS_PREMIUM[k].muestra}"></span>${PALETAS_PREMIUM[k].nombre}</button>`).join('')}</div>
+        <label class="flex items-center gap-2 text-[11px] text-gray-200 cursor-pointer"><input type="checkbox" ${premiumCfg.logo ? 'checked' : ''} onchange="premiumCfg.logo=this.checked;guardarPremiumCfg();${redibujar}" class="accent-emerald-500 w-4 h-4"> Mostrar el logo de mi marca</label>
+        <div class="grid grid-cols-2 gap-1.5"><input class="${inp}" maxlength="18" value="${escaparHtml(premiumCfg.t1)}" placeholder="Palabra 1" oninput="premiumCfg.t1=this.value;guardarPremiumCfg();clearTimeout(window.__pmT);window.__pmT=setTimeout(()=>{${redibujar}},350)"><input class="${inp}" maxlength="16" value="${escaparHtml(premiumCfg.t2)}" placeholder="Palabra central" oninput="premiumCfg.t2=this.value;guardarPremiumCfg();clearTimeout(window.__pmT);window.__pmT=setTimeout(()=>{${redibujar}},350)"></div>
+        <input class="${inp}" maxlength="40" value="${escaparHtml(premiumCfg.eslogan)}" placeholder="Eslogan (vacío = sin eslogan)" oninput="premiumCfg.eslogan=this.value;guardarPremiumCfg();clearTimeout(window.__pmT);window.__pmT=setTimeout(()=>{${redibujar}},350)">
+      </div>`;
     }
 
     // ==================== NETFLIX EN LA TIENDA: SIN CONTRASEÑA ====================
