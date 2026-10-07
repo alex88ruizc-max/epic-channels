@@ -560,6 +560,10 @@
 
     <!-- VISTA: MI PERFIL (antes "Mis Cuentas"; se conserva el id vistaMisCuentas) -->
     <section id="vistaProveedor" class="hidden pb-24 sm:pb-6 max-w-2xl mx-auto space-y-4">
+      <div id="provTicketsCaja" class="hidden p-4 bg-gray-900 border border-amber-500/30 rounded-2xl">
+        <h3 class="text-sm font-black text-white mb-3 flex items-center gap-2"><i class="fa-solid fa-ticket text-amber-400"></i> Cuentas reportadas <span id="provTicketsAbiertos" class="hidden px-2 py-0.5 rounded-full bg-amber-500 text-black text-[10px] font-black"></span></h3>
+        <div id="provTickets" class="space-y-2"></div>
+      </div>
       <div id="provPedidosCaja" class="hidden bg-gray-900 border border-yellow-400/50 rounded-2xl overflow-hidden">
         <div class="p-4 flex items-center gap-3">
           <span class="relative w-10 h-10 shrink-0 rounded-xl bg-yellow-400/15 text-yellow-300 flex items-center justify-center"><i class="fa-solid fa-crown"></i><span id="provPedidosNuevos" class="hidden absolute -top-1.5 -right-1.5 min-w-[20px] h-5 px-1 rounded-full bg-red-500 text-white text-[11px] font-black flex items-center justify-center border-2 border-gray-950"></span></span>
@@ -615,10 +619,6 @@
         <div id="provLotes" class="space-y-2"><p class="text-center text-gray-500 text-xs py-4">Aún no has enviado cuentas.</p></div>
       </div>
 
-      <div id="provTicketsCaja" class="hidden p-4 bg-gray-900 border border-amber-500/30 rounded-2xl">
-        <h3 class="text-sm font-black text-white mb-3 flex items-center gap-2"><i class="fa-solid fa-ticket text-amber-400"></i> Cuentas reportadas <span id="provTicketsAbiertos" class="hidden px-2 py-0.5 rounded-full bg-amber-500 text-black text-[10px] font-black"></span></h3>
-        <div id="provTickets" class="space-y-2"></div>
-      </div>
 
       <div id="provMetodosCaja" class="p-4 bg-gray-900 border border-gray-800 rounded-2xl">
         <h3 class="text-sm font-black text-white mb-1 flex items-center gap-2"><i class="fa-solid fa-wallet text-emerald-400"></i> Cómo quieres que te paguemos</h3>
@@ -7109,6 +7109,7 @@
       nivel:    { icono: 'fa-trophy', color: 'text-yellow-400', caja: 'bg-yellow-500/10 border-yellow-500/30', etiqueta: 'Nivel' },
       anuncio:  { icono: 'fa-bullhorn', color: 'text-amber-400', caja: 'bg-amber-500/10 border-amber-500/30', etiqueta: 'Anuncio' },
       ticket:   { icono: 'fa-ticket', color: 'text-amber-300', caja: 'bg-amber-500/10 border-amber-500/30', etiqueta: 'Ticket' },
+      solicitud: { icono: 'fa-envelope-open-text', color: 'text-violet-300', caja: 'bg-violet-500/10 border-violet-500/30', etiqueta: 'Pide correos' },
       registro: { icono: 'fa-user-plus', color: 'text-emerald-300', caja: 'bg-emerald-500/10 border-emerald-500/30', etiqueta: 'Nuevo cliente' }
     };
 
@@ -7155,7 +7156,7 @@
       });
       (solicitudesCorreos || []).forEach(x => {
         if (x.estado !== 'pendiente' || !(Date.parse(x.fecha) >= limite)) return;
-        out.push({ id: 'sol_' + x.id, tipo: 'ticket', origen: 'global', fecha: x.fecha, titulo: (x.proveedorNombre || 'Un proveedor') + ' pide correos', mensaje: (x.cantidad ? x.cantidad + ' correos · ' : '') + 'Atiéndelo en Proveedores → Asignar correos' });
+        out.push({ id: 'sol_' + x.id, tipo: 'solicitud', proveedorUid: x.proveedorUid || '', origen: 'global', fecha: x.fecha, titulo: (x.proveedorNombre || 'Un proveedor') + ' pide correos', mensaje: (x.cantidad ? x.cantidad + ' correos · ' : '') + 'Atiéndelo en Proveedores → Asignar correos' });
       });
       (aceptacionesCredito || []).forEach(m => {
         if (!(Date.parse(m.fecha) >= limite)) return;
@@ -7164,7 +7165,7 @@
       registrosRecientes.forEach(u => {
         const f = Date.parse(u.fechaRegistro);
         if (!(f >= limite)) return;
-        out.push({ id: 'reg_' + u.uid, tipo: 'registro', origen: 'global', fecha: u.fechaRegistro, titulo: 'Se registró ' + (u.nombre || u.email || 'un cliente nuevo'), mensaje: (u.email || '') + (u.whatsapp && !whatsappEsVacio(u.whatsapp) ? ' · WhatsApp ' + u.whatsapp : '') });
+        out.push({ id: 'reg_' + u.uid, email: u.email || '', tipo: 'registro', origen: 'global', fecha: u.fechaRegistro, titulo: 'Se registró ' + (u.nombre || u.email || 'un cliente nuevo'), mensaje: (u.email || '') + (u.whatsapp && !whatsappEsVacio(u.whatsapp) ? ' · WhatsApp ' + u.whatsapp : '') });
       });
       return out.filter(n => !borradas.includes(n.id));
     }
@@ -12353,7 +12354,9 @@
       const caja = document.getElementById('provTicketsCaja');
       const cont = document.getElementById('provTickets');
       if (!caja || !cont) return;
-      caja.classList.remove('hidden');
+      // La caja solo aparece cuando el proveedor tiene al menos un reporte asignado
+      caja.classList.toggle('hidden', !proveedorTickets.length);
+      if (!proveedorTickets.length) { cont.innerHTML = ''; return; }
       const abiertos = proveedorTickets.filter(t => t.estado !== 'resuelto').length;
       if (!proveedorTickets.length) { cont.innerHTML = '<p class="text-xs text-gray-400 text-center py-3">Ninguna de tus cuentas tiene reportes. ¡Sigue así! 💪</p>'; const b0 = document.getElementById('provTicketsAbiertos'); if (b0) b0.classList.add('hidden'); return; }
       const b = document.getElementById('provTicketsAbiertos');
@@ -15012,7 +15015,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-09p';
+    const VERSION_PAGINA = '2026-10-09s';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261009_serdealer', fecha: '2026-10-09', titulo: 'Ahora puedes pedir ser Dealer 👑', mensaje: 'En tu perfil ves cuánto te falta para **pedir ser Dealer**. Cuando cumples, toca **Pedir ser Dealer** y te avisamos en la campana. Los Dealers tienen **promos y regalos por volumen**.' },
       { id: 'act_20261009_registro', fecha: '2026-10-09', titulo: 'Registro más rápido ⚡', mensaje: 'Crear tu cuenta ahora es más rápido: solo correo, contraseña y WhatsApp, **sin códigos**.' },
@@ -17084,7 +17087,7 @@
       x.textAlign = 'center'; x.fillStyle = 'rgba(255,255,255,.75)'; x.font = `700 34px ${F}`; x.fillText(nombreTienda().toUpperCase(), W / 2, y); y += 90;
       // marca
       x.fillStyle = col; x.shadowColor = hexARgba(col, .8); x.shadowBlur = 40;
-      const et = String(marca.etiqueta).toUpperCase().split('').join(' ');
+      const et = espaciarLetras(String(marca.etiqueta).toUpperCase());
       const tm = ajustarTexto(x, et, W - 140, formato === 'post' ? 92 : 110, '900', FN); x.font = `900 ${tm}px ${FN}`; x.fillText(et, W / 2, y + tm * .4); x.shadowBlur = 0; y += tm + 60;
       // nombre del producto
       x.fillStyle = '#ffffff'; x.font = `800 ${formato === 'post' ? 56 : 64}px ${F}`;
@@ -17903,7 +17906,7 @@
         if (!vidrio) { x.fillStyle = P.base; x.fillRect(cxx + 44, cyy, cw - 88, 8); } y = cyy + (hor ? 80 : 120); fondoTarjeta = cyy + ch;
       }
       // marca (etiqueta) en el color del producto
-      const et = String(m.etiqueta).toUpperCase().split('').join(' ');
+      const et = espaciarLetras(String(m.etiqueta).toUpperCase());
       x.fillStyle = diseno === 'impacto' || diseno === 'cine' ? '#ffffff' : (diseno === 'oro' ? ORO : (claro ? P.oscuro : P.base));
       if (diseno === 'neon') { x.shadowColor = P.base; x.shadowBlur = 45; }
       const tm = ajustarTexto(x, et, (hor ? 600 : W) - 160, hor ? 64 : (fmt === 'post' ? 84 : 104), '900', FN); x.font = `900 ${tm}px ${FN}`;
@@ -19291,7 +19294,7 @@
       let y = fmt === 'post' ? 60 : 110;
       x.textAlign = 'center';
       if (mkLogoImg && mkLogoListo) { const r = 62; x.save(); x.beginPath(); x.arc(W / 2, y + r, r, 0, Math.PI * 2); x.clip(); x.drawImage(mkLogoImg, W / 2 - r, y, r * 2, r * 2); x.restore(); x.strokeStyle = '#f5c542'; x.lineWidth = 6; x.beginPath(); x.arc(W / 2, y + r, r, 0, Math.PI * 2); x.stroke(); y += r * 2 + 34; }
-      x.fillStyle = 'rgba(255,255,255,.7)'; x.font = `800 30px ${F}`; x.fillText(nombreTienda().toUpperCase().split('').join(' '), W / 2, y + 20); y += 60;
+      x.fillStyle = 'rgba(255,255,255,.7)'; x.font = `800 30px ${F}`; x.fillText(espaciarLetras(nombreTienda().toUpperCase()), W / 2, y + 20); y += 60;
       // tarjeta
       const mx = 70, cy = y + 10, cw = W - mx * 2;
       // alto de la tarjeta según el contenido (título + mensaje), sin dejar espacio vacío abajo
@@ -19330,6 +19333,10 @@
 
     // ==================== NOVEDADES INTERNAS DEL PANEL (solo el equipo) ====================
     const ACTUALIZACIONES_INTERNAS = [
+      { fecha: '2026-10-09', titulo: '🖼 Emojis y banderas en las imágenes', mensaje: 'Las imágenes de Marketing ya no rompen los emojis ni las banderas de la etiqueta del producto (antes salían como rombos con "?"). Y los accesos de las notificaciones se eligen por el título, así un anuncio no muestra un botón equivocado.', ir: 'marketing' },
+      { fecha: '2026-10-09', titulo: '🔔 Accesos directos del equipo', mensaje: 'Las solicitudes de correos ahora dicen **Pide correos** y su enlace **Asignar correos** abre Proveedores con ese proveedor elegido. Los avisos de **cliente nuevo** y **crédito aceptado** tienen **Ver cliente**, que abre Usuarios con ese cliente buscado.', ir: '' },
+      { fecha: '2026-10-09', titulo: '📨 Solicitudes de correos en la campana', mensaje: 'Cuando un proveedor pide correos, la campana lo muestra como **Pide correos** y su acceso **Asignar correos** te lleva directo a Proveedores → Asignar correos, con ese proveedor ya elegido.', ir: 'proveedores' },
+      { fecha: '2026-10-09', titulo: '🎫 Reportes del proveedor arriba', mensaje: 'En la vista del proveedor, **Cuentas reportadas** aparece primero y solo cuando tiene un reporte. **Pedir correos** sigue igual, para que creen sus cuentas.', ir: '' },
       { fecha: '2026-10-09', titulo: '🛠 Los proveedores resuelven sus tickets', mensaje: 'Cada proveedor ve **Resolver** en los reportes de sus cuentas: "La arreglé" (con clave nueva opcional) o "Reemplazo" (otra cuenta). El cliente recibe la cuenta al instante y tú apruebas o rechazas. Nunca pueden sacar cuentas de tu stock.', ir: 'tickets' },
       { fecha: '2026-10-09', titulo: '🧾 Descuento al proveedor', mensaje: 'El proveedor resuelve de dos formas: **cuenta arreglada** o **reemplazo**; en ambas no se le descuenta nada. Si no lo hace y lo resuelves **tú** (arreglada o reemplazo), se le descuenta el costo de la cuenta. Si solo cierras el ticket sin cambios, no se descuenta.', ir: 'tickets' },
       { fecha: '2026-10-09', titulo: '✓ Revisar tickets resueltos por otros', mensaje: 'Los tickets que resuelve un moderador te aparecen con **✓ Aprobar** (no se descuenta nada) y **✗ Rechazar** (se reabre y se le descuenta al proveedor el costo de la cuenta, con aviso). Un ticket nunca se descuenta dos veces.', ir: 'tickets' },
@@ -19383,8 +19390,12 @@
     }
     function accionDeNotificacion(n) {
       try {
-        const id = String(n.id || ''), t = (String(n.titulo || '') + ' ' + String(n.mensaje || '')).toLowerCase();
-        if (n.origen === 'global' && /^(tk_|sol_)/.test(id)) return esStaffSesion() ? { texto: 'Abrir reportes', fn: () => irATabAdmin('tickets') } : null;
+        const id = String(n.id || ''), t = String(n.titulo || '').toLowerCase();   // las palabras clave se buscan en el título
+        if (n.origen === 'global' && /^sol_/.test(id)) return esAdminSesionActual() ? { texto: 'Asignar correos', fn: () => irAAsignarCorreos(n.proveedorUid) } : null;
+        if (n.origen === 'global' && /^reg_/.test(id)) return esStaffSesion() ? { texto: 'Ver cliente', fn: () => irAClientePanel(n.email || '') } : null;
+        if (n.origen === 'global' && /^cr_/.test(id)) return esStaffSesion() ? { texto: 'Ver cliente', fn: () => irAClientePanel((String(n.titulo || '').match(/\S+@\S+/) || [''])[0]) } : null;
+        if (n.origen === 'global' && /^tk_/.test(id)) return esStaffSesion() ? { texto: 'Abrir reportes', fn: () => { cambiarVista('admin'); irATabAdmin('tickets'); } } : null;
+        if (/ser dealer/.test(t)) return userTipoCuenta === 'revendedor' ? null : { texto: 'Ver en mi perfil', fn: () => { cambiarVista('mis-cuentas'); setTimeout(() => { const c = document.getElementById('perfilSerDealer'); if (c) c.scrollIntoView({ behavior: 'smooth', block: 'center' }); }, 500); } };
         if (/cr[eé]dito/.test(t)) return { texto: 'Ver mi crédito', fn: () => { cambiarVista('mis-cuentas'); try { cambiarTabPerfil('credito'); } catch (e) { /* nada */ } } };
         if (/cup[oó]n|descuento/.test(t)) return { texto: 'Ir a la tienda', fn: () => cambiarVista('tienda') };
         if (n.tipo === 'renovacion' || /vence|renov/.test(t)) return { texto: 'Renovar', fn: () => cambiarVista('mis-cuentas') };
@@ -20121,6 +20132,35 @@
         cerrarResolverProveedor(); mostrarToast('✓ Resolución enviada. El administrador la revisa.');
       } catch (e) { alert(e.message); }
       finally { if (b) { b.disabled = false; b.textContent = 'Enviar resolución'; } }
+    }
+
+
+    // Lleva a Proveedores → Asignar correos, abierto y con el proveedor elegido
+    // Abre Usuarios con ese cliente ya buscado
+    function irAClientePanel(email) {
+      cambiarVista('admin'); irATabAdmin('usuarios');
+      setTimeout(() => { const i = document.getElementById('txtBuscarUsuariosAdmin'); if (!i) return; i.value = email || ''; try { filtrarTablaUsuariosAdmin(); } catch (e) { /* nada */ } i.scrollIntoView({ behavior: 'smooth', block: 'center' }); }, 400);
+    }
+    function irAAsignarCorreos(uid) {
+      cambiarVista('admin'); irATabAdmin('proveedores');
+      let n = 0; const t = setInterval(() => {
+        const cuerpo = document.getElementById('acCuerpo'), sel = document.getElementById('acProveedor');
+        if ((sel && (!uid || Array.from(sel.options).some(o => o.value === uid))) || ++n > 25) {
+          clearInterval(t); if (!cuerpo) return;
+          cuerpo.classList.remove('hidden');
+          if (sel && uid && Array.from(sel.options).some(o => o.value === uid)) { sel.value = uid; sel.dispatchEvent(new Event('change')); }
+          const caja = cuerpo.parentElement || cuerpo; caja.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          caja.classList.add('ring-2', 'ring-violet-400'); setTimeout(() => caja.classList.remove('ring-2', 'ring-violet-400'), 2500);
+        }
+      }, 150);
+    }
+
+
+    // Separa las letras con espacios SIN romper emojis ni banderas (que están hechos de varias piezas)
+    function espaciarLetras(t) {
+      t = String(t || '');
+      try { if (window.Intl && Intl.Segmenter) return Array.from(new Intl.Segmenter('es', { granularity: 'grapheme' }).segment(t), g => g.segment).join(' '); } catch (e) { /* sigue */ }
+      const out = []; const re = /(\p{Regional_Indicator}{2}|\p{Extended_Pictographic}(\uFE0F|\u200D\p{Extended_Pictographic})*|[\s\S])/gu; let m; while ((m = re.exec(t))) out.push(m[0]); return out.join(' ');
     }
 
     // ==================== NETFLIX EN LA TIENDA: SIN CONTRASEÑA ====================
