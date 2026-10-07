@@ -8752,8 +8752,10 @@
 
     let textoEntregaActual = '';
 
+    function verEntregaUnaPorUna() { const c = document.getElementById('entregaUnaXuna'); if (!c) return; if (!c.innerHTML && window.__entregaTarjetas) c.innerHTML = window.__entregaTarjetas(); c.classList.toggle('hidden'); }
     function copiarCredencialesEntregadas() {
-      const texto = textoEntregaActual || document.getElementById('txtEntregaCredenciales').innerText;
+      let texto = textoEntregaActual || document.getElementById('txtEntregaCredenciales').innerText;
+      try { const e = window.__entregaCopia; if (e) { const lista = e.cuentas.map(r => { const o = parseCredencialObj(r); if (!o.claveAcceso && e.acceso) o.claveAcceso = e.acceso; return o; }); texto = textoListaCuentasWa(e.nombre, lista, e.prime, e.garantia, Date.now()); } } catch (x) { /* se usa el texto de siempre */ }
       navigator.clipboard.writeText(texto).then(() => mostrarToast('¡Cuentas copiadas!')).catch(() => mostrarTextoCopiable(texto));
     }
 
@@ -8789,17 +8791,34 @@
             </div>
           </div>`;
         const esNf = esProductoNetflix(prodInfo) && !Array.isArray(ex.partes);
-        const acceso = Array.isArray(ex.partes) ? '' : esNf ? '' : resolverClaveAccesoCuentas(cuentas || [], prodInfo);
+        const accesoTodas = Array.isArray(ex.partes) ? '' : esNf ? '' : resolverClaveAccesoCuentas(cuentas || [], prodInfo);
+        // Si las cuentas traen contraseñas de plataforma distintas, arriba va la que comparten la mayoría y las otras al lado de su cuenta
+        const platDe = (raw) => { const o = parseCredencialObj(raw); return String(o.claveAcceso || '').trim(); };
+        const cuentaPlat = {}; (cuentas || []).forEach(r => { const k = platDe(r); if (k) cuentaPlat[k] = (cuentaPlat[k] || 0) + 1; });
+        const distintas = Object.keys(cuentaPlat);
+        const acceso = distintas.length > 1 ? distintas.sort((a, b) => cuentaPlat[b] - cuentaPlat[a])[0] : accesoTodas;
+        const platExtra = (raw) => { const k = platDe(raw); return distintas.length > 1 && k && k !== acceso ? k : ''; };
         if (acceso) {
-          html += `<div class="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/30">${fila(prodInfo.esAmazon ? 'Acceso' : 'Clave', String(acceso))}<p class="text-[10px] text-amber-200 mt-1 ml-14">${prodInfo.esAmazon ? 'Clave de acceso de Amazon para todas tus cuentas' : 'Contraseña de tus cuentas'}</p></div>`;
+          html += `<div class="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/30">${fila(prodInfo.esAmazon ? 'Acceso' : 'Clave', String(acceso))}<p class="text-[10px] text-amber-200 mt-1 ml-14">${distintas.length > 1 ? 'Contraseña de la plataforma para tus cuentas (las que tienen otra, la llevan al lado)' : (prodInfo.esAmazon ? 'Clave de acceso de Amazon para todas tus cuentas' : 'Contraseña de tus cuentas')}</p></div>`;
         }
-        lista.forEach((c, i) => {
+        // Compras de 4 o más cuentas: un solo bloque ordenado (una línea por cuenta), con opción de verlas una por una
+        if (!esNf && lista.length >= 4) {
+          const lineas = (cuentas || []).map((raw, i) => { const c = parseCredencialObj(raw), extra = platExtra(raw); const num = String(i + 1).padStart(String(lista.length).length, ' '); return `${num}. ${c.email}${c.pass ? ' : ' + c.pass : ''}${extra ? '\n' + ' '.repeat(num.length + 2) + '↳ ' + (prodInfo.esAmazon ? 'Prime' : 'Plataforma') + ': ' + extra : ''}`; });
+          html += `<div class="rounded-xl bg-gray-800/70 border border-gray-700 overflow-hidden">
+            <div class="flex items-center justify-between gap-2 px-3 py-2 border-b border-gray-700"><p class="text-[11px] font-black text-emerald-300 uppercase tracking-wider">Tus ${lista.length} cuentas${prodInfo.esAmazon ? ' · correo : códigos' : ''}</p><button type="button" onclick="copiarCredencialesEntregadas()" class="px-2.5 py-1 rounded-lg bg-emerald-500 text-black text-[10px] font-black"><i class="fa-solid fa-copy mr-1"></i>Copiar todas</button></div>
+            <pre id="entregaBloque" class="m-0 px-3 py-2.5 max-h-72 overflow-auto font-mono text-[12px] leading-relaxed text-gray-100 whitespace-pre select-all">${escaparHtml(lineas.join('\n'))}</pre>
+            <button type="button" onclick="verEntregaUnaPorUna()" class="w-full py-2 border-t border-gray-700 text-[11px] font-bold text-gray-300 hover:bg-gray-700/50"><i class="fa-solid fa-list mr-1"></i>Ver una por una</button>
+          </div><div id="entregaUnaXuna" class="hidden space-y-2"></div>`;
+          window.__entregaTarjetas = () => (cuentas || []).map((raw, i) => { const c = parseCredencialObj(raw), extra = platExtra(raw); return `<div class="p-3 rounded-xl bg-gray-800/70 border border-gray-700 space-y-1.5"><p class="text-[10px] font-black text-emerald-400 uppercase tracking-wider">Cuenta ${i + 1}</p>${c.email ? fila('Correo', c.email) : ''}${c.pass ? fila(prodInfo.esAmazon ? 'Códigos' : 'Clave', c.pass) : ''}${extra ? fila(prodInfo.esAmazon ? 'Prime' : 'Plataforma', extra) : ''}</div>`; }).join('');
+        } else lista.forEach((c, i) => {
           html += `<div class="p-3 rounded-xl bg-gray-800/70 border border-gray-700 space-y-1.5">
             <p class="text-[10px] font-black text-emerald-400 uppercase tracking-wider">Cuenta ${i + 1}</p>
             ${c.email ? fila('Correo', c.email) : ''}
             ${esNf ? (/^(Perfil:|Cuenta completa)/i.test(String(c.pass || '')) ? fila('Perfil', c.pass) : '') : (c.pass ? fila(prodInfo.esAmazon ? 'Códigos' : (/^(Perfil:|Cuenta completa)/.test(c.pass) ? 'Perfil' : 'Clave'), c.pass) : '')}
+            ${!esNf && platExtra((cuentas || [])[i]) ? fila(prodInfo.esAmazon ? 'Prime' : 'Plataforma', platExtra((cuentas || [])[i])) : ''}
           </div>`;
         });
+        window.__entregaCopia = (!esNf && !Array.isArray(ex.partes) && lista.length > 1) ? { nombre: prodInfo.nombre, cuentas: cuentas || [], prime: !!acceso, garantia: prodInfo.tipoGarantia, acceso: acceso } : null;
         if (esNf) html += htmlGuiaNetflix(true);
         if (esNf) html += htmlAvisoNetflixDispositivo();
         if (ex.combo && Array.isArray(ex.combo.cuentas) && ex.combo.cuentas.length) html += htmlEntregaCombo(ex.combo.cuentas, ex.combo.info || {}, fila);
@@ -14899,7 +14918,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-08t';
+    const VERSION_PAGINA = '2026-10-08u';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261006b_recarga', fecha: '2026-10-06', titulo: 'Recargas más simples 💳', mensaje: 'Ahora pagas **el valor exacto** que eliges recargar. Tu saldo se acredita solo en 1 o 2 minutos, y si la transacción se demora, igual te llega apenas se confirme.' },
       { id: 'act_20261006b_sinsaldo', fecha: '2026-10-06', titulo: 'Recarga y compra en un solo paso', mensaje: 'Si tocas **Comprar** y te falta saldo, toca **Recargar** ahí mismo. Cuando tu recarga entre, **tu compra se completa sola** y no tienes que volver a buscar el producto.' },
