@@ -309,6 +309,18 @@
     .num-cambio { display: inline-block; animation: numGira .6s ease-out; }
     @keyframes numGira { 0% { transform: rotateX(90deg); opacity: 0; } 100% { transform: rotateX(0); opacity: 1; } }
     @media (prefers-reduced-motion: reduce) { #cintaStock .cinta-mov, .punto-vivo, .num-cambio { animation: none; } }
+  
+    /* ===== Caja "bajo pedido" destacada ===== */
+    .caja-pedido { position: relative; border-radius: 14px; padding: 10px 10px 10px 12px; border: 1.5px solid rgba(56,189,248,.65); background: linear-gradient(135deg, rgba(14,165,233,.22), rgba(34,211,238,.10) 55%, rgba(99,102,241,.14)); box-shadow: 0 8px 24px -14px rgba(56,189,248,.8), inset 0 1px 0 rgba(255,255,255,.06); }
+    .caja-pedido .nuevo { position: absolute; top: -9px; right: 10px; font-size: 9px; font-weight: 900; letter-spacing: .08em; padding: 2px 8px; border-radius: 999px; color: #04232f; background: linear-gradient(90deg, #67e8f9, #38bdf8); }
+    .caja-pedido .ico { width: 34px; height: 34px; flex-shrink: 0; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #04232f; background: linear-gradient(135deg, #67e8f9, #0ea5e9); animation: latidoCeleste 1.8s ease-out infinite; }
+    @keyframes latidoCeleste { 0% { box-shadow: 0 0 0 0 rgba(56,189,248,.55); } 70% { box-shadow: 0 0 0 9px rgba(56,189,248,0); } 100% { box-shadow: 0 0 0 0 rgba(56,189,248,0); } }
+    .caja-pedido select { height: 34px; border-radius: 10px; padding: 0 8px; font-size: 12px; font-weight: 800; color: #e0f2fe; background: rgba(2,6,23,.55); border: 1.5px solid rgba(56,189,248,.7); outline: none; }
+    @media (prefers-reduced-motion: reduce) { .caja-pedido .ico { animation: none; } }
+  
+    .esc-chip { display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px; border-radius: 8px; font-size: 10.5px; font-weight: 800; color: #a7f3d0; background: rgba(16,185,129,.08); border: 1px solid rgba(16,185,129,.25); transition: all .2s; }
+    .esc-chip.esc-on { color: #04120c; background: #34d399; border-color: #34d399; transform: scale(1.04); }
+    .cuenta-regresiva { font-variant-numeric: tabular-nums; }
   </style>
 </head>
 <body class="min-h-screen flex flex-col justify-between">
@@ -576,7 +588,7 @@
       </div>
     </section>
 
-    <section id="vistaMisCuentas" class="hidden pb-28 sm:pb-6 max-w-3xl mx-auto">
+    <section id="vistaMisCuentas" class="hidden pb-28 sm:pb-6 max-w-3xl lg:max-w-6xl mx-auto">
       <!-- Tarjeta de identidad -->
       <div class="relative overflow-hidden rounded-3xl mb-4 border border-gray-800 bg-gradient-to-br from-gray-900 via-gray-900 to-emerald-950/50 shadow-xl shadow-black/30">
         <div class="pointer-events-none absolute -top-20 -right-16 w-56 h-56 rounded-full bg-emerald-500/10 blur-3xl"></div>
@@ -862,6 +874,9 @@
           </button>
           <button onclick="irATabAdmin('actividad')" id="tabBtnActividad" class="solo-admin admin-tab bg-gray-900 border-gray-800 text-gray-400">
             <i class="fa-solid fa-chart-column"></i><span>Actividad</span>
+          </button>
+          <button onclick="irATabAdmin('campanas')" id="tabBtnCampanas" class="solo-admin admin-tab bg-gray-900 border-gray-800 text-gray-400">
+            <i class="fa-solid fa-rocket"></i><span>Campañas</span>
           </button>
           <button onclick="irATabAdmin('categorias')" id="tabBtnCategorias" class="solo-admin admin-tab bg-gray-900 border-gray-800 text-gray-400">
             <i class="fa-solid fa-palette"></i><span>Categorías & Colores</span>
@@ -2176,6 +2191,35 @@
       </div>
 
       <!-- TAB: REPORTE DE VENTAS (DASHBOARD + REPORTE DETALLADO) -->
+      <div id="adminSecCampanas" class="hidden space-y-4 pb-28 sm:pb-0">
+        <div class="p-4 rounded-2xl border border-rose-500/30 bg-gradient-to-br from-rose-500/10 via-gray-900 to-gray-900">
+          <h3 class="text-base font-black text-white flex items-center gap-2"><i class="fa-solid fa-rocket text-rose-300"></i> Campañas para mover tu stock</h3>
+          <p class="text-xs text-gray-400 mt-1">Ventas relámpago, precio por cantidad y clientes que casi compran.</p>
+        </div>
+        <div class="p-4 rounded-2xl bg-gray-900 border border-gray-800 space-y-3">
+          <p class="text-sm font-black text-white">⚡ Venta relámpago</p>
+          <p class="text-[11px] text-gray-400 -mt-2">Un descuento por pocas horas, con cuenta regresiva en la tarjeta. Lánzala a tu hora pico (míralo en Actividad).</p>
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            <select id="flashProducto" class="col-span-2 bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"></select>
+            <label class="text-[10px] text-gray-400">Descuento (%)<input type="number" id="flashPct" min="5" max="70" value="15" class="mt-1 w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"></label>
+            <label class="text-[10px] text-gray-400">Dura<select id="flashHoras" class="mt-1 w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"><option value="1">1 hora</option><option value="2" selected>2 horas</option><option value="4">4 horas</option><option value="hoy">Hasta medianoche</option></select></label>
+          </div>
+          <button type="button" onclick="lanzarVentaRelampago()" class="w-full py-2.5 rounded-xl bg-rose-500 hover:bg-rose-400 text-white font-black text-xs"><i class="fa-solid fa-bolt mr-1"></i>Lanzar venta relámpago</button>
+          <div id="flashActivas" class="space-y-1.5"></div>
+        </div>
+        <div class="p-4 rounded-2xl bg-gray-900 border border-gray-800 space-y-3">
+          <p class="text-sm font-black text-white">💰 Precio por cantidad</p>
+          <p class="text-[11px] text-gray-400 -mt-2">Entre más cuentas lleven, menor el precio de cada una. Se ve en la tarjeta y el servidor lo cobra solo.</p>
+          <select id="escProducto" onchange="pintarEscalasEditor()" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"></select>
+          <div id="escFilas" class="space-y-2"></div>
+          <button type="button" onclick="guardarEscalas()" class="w-full py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-black text-xs">Guardar precios por cantidad</button>
+        </div>
+        <div class="p-4 rounded-2xl bg-gray-900 border border-gray-800 space-y-3">
+          <div class="flex items-center justify-between gap-2"><p class="text-sm font-black text-white">🛒 Casi compraron</p><button type="button" onclick="recordarTodosCasi()" class="px-3 py-1.5 rounded-lg bg-amber-400 text-black text-[11px] font-black">Recordar a todos</button></div>
+          <p class="text-[11px] text-gray-400 -mt-2">Clientes a los que les faltó saldo en los últimos 3 días y no han comprado ese producto. Un recordatorio a tiempo recupera la venta.</p>
+          <div id="casiLista" class="space-y-1.5"></div>
+        </div>
+      </div>
       <div id="adminSecActividad" class="hidden space-y-4 pb-28 sm:pb-0">
         <div class="p-4 rounded-2xl border border-cyan-500/30 bg-gradient-to-br from-cyan-500/10 via-gray-900 to-gray-900">
           <div class="flex flex-wrap items-center justify-between gap-2">
@@ -5233,6 +5277,7 @@
     }
 
     function abrirModalSaldoInsuficiente(mensaje) {
+      try { if (ultimaCompraIntento) registrarIntentoCompra(ultimaCompraIntento.docId, ultimaCompraIntento.cantidad); } catch (e) { /* nada */ }
       document.getElementById('txtMensajeSaldo').innerText = mensaje;
       const modal = document.getElementById('modalSaldoInsuficiente');
       modal.classList.remove('hidden');
@@ -6634,7 +6679,7 @@
 
         if (prodInfo.esCombo) {
           // Combo armado simulado: cuentas de ejemplo de cada producto incluido
-          const totalC = (Number(prodInfo.precio) || 0) * cantidad;
+          const totalC = precioPorCantidad(prodInfo, cantidad) * cantidad;
           if (saldoSimulado < totalC) { abrirModalSaldoInsuficiente(`(Simulación) Saldo insuficiente. Tienes $${saldoSimulado.toLocaleString('es-CO')} y el total es $${totalC.toLocaleString('es-CO')}.`); return; }
           saldoSimulado -= totalC;
           const comps = prodInfo.componentesInfo || [];
@@ -6656,7 +6701,7 @@
           return;
         }
         const conCombo = comboPedidoPara(docId, cantidad);
-        const totalPrincipal = (Number(prodInfo.precio) || 0) * cantidad;
+        const totalPrincipal = precioPorCantidad(prodInfo, cantidad) * cantidad;
         const totalCombo = conCombo ? prodInfo.combo.precio * cantidad : 0;
         const totalPagar = totalPrincipal + totalCombo;
         if (saldoSimulado < totalPagar) {
@@ -7262,7 +7307,7 @@
     // epicchannels.quest/#tienda · #mis-cuentas · #mis-cuentas/datos · #netflix · #admin/tickets ...
     // Funcionan para guardar, compartir y con el botón "atrás". Si la sección no le corresponde a quien abre el enlace, va a la tienda.
     const RUTAS_VISTAS = ['tienda', 'mis-cuentas', 'netflix', 'proveedor', 'admin'];
-    const TABS_ADMIN_RUTA = ['productos', 'reporte', 'actividad', 'categorias', 'usuarios', 'tickets', 'stock', 'apariencia', 'pagos', 'recargas', 'historial', 'netflix', 'ajustes', 'proveedores', 'asistente', 'buscar', 'promociones', 'cortes', 'novedades', 'vista', 'marketing'];
+    const TABS_ADMIN_RUTA = ['productos', 'reporte', 'actividad', 'campanas', 'categorias', 'usuarios', 'tickets', 'stock', 'apariencia', 'pagos', 'recargas', 'historial', 'netflix', 'ajustes', 'proveedores', 'asistente', 'buscar', 'promociones', 'cortes', 'novedades', 'vista', 'marketing'];
     const TABS_PERFIL_RUTA = ['cuentas', 'recargas', 'credito', 'datos', 'seguridad'];
     let aplicandoRuta = false, rutaActual = '', rutaPendienteStaff = '';
 
@@ -7656,7 +7701,7 @@
     function cambiarTabAdmin(tab) {
       if (modoPruebaCliente) return;
       iniciarBadgesAdmin();
-      const tabs = ['productos', 'reporte', 'categorias', 'usuarios', 'tickets', 'stock', 'apariencia', 'pagos', 'recargas', 'historial', 'netflix', 'ajustes', 'proveedores', 'asistente', 'buscar', 'promociones', 'cortes', 'novedades', 'vista', 'marketing', 'actividad'];
+      const tabs = ['productos', 'reporte', 'categorias', 'usuarios', 'tickets', 'stock', 'apariencia', 'pagos', 'recargas', 'historial', 'netflix', 'ajustes', 'proveedores', 'asistente', 'buscar', 'promociones', 'cortes', 'novedades', 'vista', 'marketing', 'actividad', 'campanas'];
       // El moderador no entra a la configuración general ni a los pagos a proveedores
       if (esModeradorSesion() && RESTRINGIDAS_MODERADOR.includes(tab)) tab = 'productos';
       tabs.forEach(t => {
@@ -7690,6 +7735,7 @@
       if (tab === 'promociones') { renderizarPromoProductos(); renderizarPromoActivas(); }
       if (tab === 'vista') { renderizarEditorVistaPanel(); cargarPermisosModerador(); }
       if (tab === 'actividad') { try { cargarActividad(); } catch (e) { console.warn(e); } }
+      if (tab === 'campanas') { try { prepararCampanas(); } catch (e) { console.warn(e); } }
       if (tab === 'usuarios' || tab === 'ajustes') { try { if (esAdminSesionActual()) prepararCfgTiendas(); } catch (e) { /* nada */ } }
       if (tab === 'marketing') { try { if (!cfgDealer) cargarCfgDealer().then(prepararMarketing); } catch (e) { /* nada */ } prepararMarketing(); }
       if (tab === 'novedades') { iniciarNovedadesClientes(); renderizarNovedadesAdmin(); renderizarActualizacionesPagina(); }
@@ -8221,12 +8267,12 @@
         const esVipTienda = esProductoVip(prod);
         const esComboT = prod.esCombo === true;
         const marcaT = (!esNf && !esComboT && tarjetasDeMarcaActivas()) ? marcaDeProducto(prod) : null;
-        const promoBadgeHtml = prod.promoPct ? `<div class="mb-3 mr-1.5 inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider text-white bg-gradient-to-r from-rose-500 to-pink-500 shadow-md shadow-rose-500/30"><i class="fa-solid fa-tags"></i> -${prod.promoPct}%${prod.promoHasta ? ' · ' + escaparHtml(textoTiempoRestante(prod.promoHasta)) : ''}</div>` : '';
+        const promoBadgeHtml = prod.promoPct ? `<div class="mb-3 mr-1.5 inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider text-white bg-gradient-to-r from-rose-500 to-pink-500 shadow-md shadow-rose-500/30"><i class="fa-solid ${(snapshotInventario[prod.docId] || {}).promoRelampago ? 'fa-bolt' : 'fa-tags'}"></i> -${prod.promoPct}%${prod.promoHasta ? ((snapshotInventario[prod.docId] || {}).promoRelampago ? ` · <span class="cuenta-regresiva" data-hasta="${escaparHtml(prod.promoHasta)}"></span>` : ' · ' + escaparHtml(textoTiempoRestante(prod.promoHasta))) : ''}</div>` : '';
         const promoD = promoDealerDe(prod.docId);
         const llevaD = promoD ? ((progresoDealer.hoy || {})[prod.docId] || 0) % (promoD.compra || 10) : 0;
         const regaloD = promoD ? (promoD.regalo || 1) * (((multiplicadoresDealer() || {})[nivelDealerDe(progresoDealer.mes || 0).id]) || 1) : 0;
         const promoCli = !promoD ? promoParaMi(prod.docId) : null;
-        const badgeBajoPedido = (encargoMixtoActivo(prod) || (agotado && puedePedirEncargo(prod))) ? `<div class="mb-3 mr-1.5 inline-flex"><span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black text-sky-100 bg-sky-500/15 border border-sky-400/40"><i class="fa-solid fa-hourglass-half"></i> Disponible bajo pedido</span></div>` : '';
+        const badgeBajoPedido = '';
         const hotBadgeHtml = badgeBajoPedido + (promoD ? `<div class="mb-3 mr-1.5 inline-flex"><span class="dealer-badge !tracking-normal !normal-case !text-[10px]"><i class="fa-solid fa-gift"></i> Por ${promoD.compra || 10} cuentas te llevas ${regaloD} gratis${llevaD ? ' · llevas ' + llevaD : ''}</span></div>` : '')
           + (promoCli ? `<div class="mb-3 mr-1.5 inline-flex"><span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black text-white bg-gradient-to-r from-pink-500 to-fuchsia-500 shadow-lg shadow-pink-500/30"><i class="fa-solid fa-gift"></i> Por ${promoCli.compra || 10} cuentas te llevas ${promoCli.regalo || 1} gratis</span></div>` : '') + (esComboT ? '<div class="mb-3 mr-1.5 inline-flex"><span class="combo-chip"><i class="fa-solid fa-gift"></i> Combo</span></div>' : '') + promoBadgeHtml + (esVipTienda ? `<div class="mb-3 mr-1.5 inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider text-black bg-gradient-to-r from-amber-300 via-yellow-400 to-amber-500 shadow-md shadow-amber-500/30"><i class="fa-solid fa-crown"></i> VIP</div>` : '') + (esHot ? `<div class="mb-3 inline-flex items-center gap-1.5 bg-red-500/10 text-red-400 border border-red-500/30 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider"><i class="fa-solid fa-fire animate-pulse text-red-500"></i> Producto Más Vendido / HOT</div>` : '');
 
@@ -8251,8 +8297,9 @@
               </div>
 
               <div class="${esNf || marcaT ? 'text-lg font-black text-white' : 'text-xs font-bold text-emerald-400'} mb-1.5">
-                ${prod.promoPct ? `<span class="text-[11px] text-gray-500 line-through font-normal mr-1">$${(prod.precioLista || 0).toLocaleString('es-CO')}</span>` : ''}${esNf || marcaT || prod.promoPct ? '' : '<i class="fa-solid fa-tag mr-1"></i> '}<span class="${prod.promoPct && !esNf && !marcaT ? 'text-rose-300 text-sm font-black' : ''}">$${(prod.precio || 0).toLocaleString('es-CO')}</span> <span class="text-[10px] text-gray-400 font-normal">c/u</span>
+                ${prod.promoPct ? `<span class="text-[11px] text-gray-500 line-through font-normal mr-1">$${(prod.precioLista || 0).toLocaleString('es-CO')}</span>` : ''}${esNf || marcaT || prod.promoPct ? '' : '<i class="fa-solid fa-tag mr-1"></i> '}<span id="precioUnit_${prod.docId}" class="${prod.promoPct && !esNf && !marcaT ? 'text-rose-300 text-sm font-black' : ''}">$${(prod.precio || 0).toLocaleString('es-CO')}</span> <span class="text-[10px] text-gray-400 font-normal">c/u</span>
               </div>
+              ${htmlEscalasTarjeta(prod)}
               ${esNf && tt('chipNetflix') !== '-' ? `<div class="mb-2"><span class="nf-chip"><i class="fa-solid fa-key"></i> ${ttH('chipNetflix')}</span></div>` : ''}
               <p class="text-xs text-gray-400 mb-2 leading-relaxed">${prod.descripcion}</p>
               ${esComboT ? '' : htmlGarantiaTarjeta(prod)}
@@ -8282,8 +8329,7 @@
                   <button type="button" onclick="cambiarCantidad('${prod.docId}', 1, ${maxTarjeta(prod, stockDisponible)}, ${limiteInferior})" ${agotado ? 'disabled' : ''} class="w-7 h-7 flex items-center justify-center rounded-lg bg-gray-700/60 hover:bg-gray-700 text-gray-200 font-black text-sm disabled:opacity-40">+</button>
                 </div>
               </div>
-              ${encargoMixtoActivo(prod) && !agotado ? htmlChipsCantidad(prod, stockDisponible) : ''}
-              <p id="mixto_${prod.docId}" class="hidden mb-2 px-2.5 py-1.5 rounded-lg bg-sky-500/10 border border-sky-400/30 text-[11px] text-sky-100 leading-snug"></p>
+              ${encargoMixtoActivo(prod) && !agotado ? htmlCajaPedido(prod, stockDisponible) : '<p id="mixto_' + prod.docId + '" class="hidden"></p>'}
               <button id="btnComprar_${prod.docId}" onclick="comprarProducto('${prod.docId}')" ${agotado ? 'disabled' : ''} class="w-full py-2.5 rounded-xl text-xs font-bold ${agotado ? 'bg-gray-800 text-gray-500 cursor-not-allowed' : (esNf ? 'nf-btn' : (marcaT ? 'brand-btn' : estiloCat.btn))} transition flex items-center justify-center gap-1.5">
                 <i class="fa-solid fa-cart-shopping"></i> ${agotado ? ttH('botonAgotado') : ttH('botonComprar')}
               </button>
@@ -8328,7 +8374,7 @@
       if (obtenerBackendUrl()) {
         // Si ya se sabe que no alcanza (saldo + crédito disponible), se avisa al instante sin esperar al servidor
         try {
-          const totalEsperado = (Number(prodInfo.precio) || 0) * cantidad;
+          const totalEsperado = precioPorCantidad(prodInfo, cantidad) * cantidad;
           const disponible = (Number(userSaldo) || 0) + Math.max(0, (Number(userCupo) || 0) - (Number(userDeuda) || 0));
           if (totalEsperado > 0 && disponible < totalEsperado && !modoPruebaCliente) {
             abrirModalSaldoInsuficiente(`Saldo insuficiente. Tienes ${formatoCOP(userSaldo || 0)} y el total es ${formatoCOP(totalEsperado)}.`);
@@ -8495,7 +8541,7 @@
         // Si ya se sabe que el saldo no alcanza pero el crédito sí, se pregunta antes: así hay un solo viaje al servidor
         let usarCreditoYa = false;
         try {
-          const totalEsp = (Number(prodInfo.precio) || 0) * cantidad, falta = totalEsp - (Number(userSaldo) || 0), libreCred = Math.max(0, (Number(userCupo) || 0) - (Number(userDeuda) || 0));
+          const totalEsp = precioPorCantidad(prodInfo, cantidad) * cantidad, falta = totalEsp - (Number(userSaldo) || 0), libreCred = Math.max(0, (Number(userCupo) || 0) - (Number(userDeuda) || 0));
           if (!conCombo && totalEsp > 0 && falta > 0 && libreCred >= falta) {
             if (btnCompra) btnCompra.innerHTML = htmlBtn;
             if (!await confirmarModal(`Te faltan ${formatoCOP(falta)} COP para esta compra.\n\n¿Completarla con tu crédito? Tienes ${formatoCOP(libreCred)} disponibles. Quedarás debiendo ${formatoCOP(userDeuda + falta)} COP y tu próxima recarga paga primero esa deuda.`, { tipo: 'pregunta', textoAceptar: 'Sí, usar mi crédito' })) return;
@@ -9053,7 +9099,8 @@
                       <div class="rounded-lg bg-gray-800/60 py-1.5"><p class="text-[9px] text-gray-500 uppercase">Último acceso</p><p class="text-[11px] ${enLinea ? 'text-emerald-300' : 'text-gray-200'} font-bold">${enLinea ? 'En línea' : escaparHtml(ultimoAccesoStr)}</p></div>
                       <div class="rounded-lg bg-gray-800/60 py-1.5"><p class="text-[9px] text-gray-500 uppercase">WhatsApp</p>${waU.length >= 10 ? `<a href="https://wa.me/${waU.length === 10 ? '57' + waU : waU}" target="_blank" rel="noopener" class="text-[11px] text-emerald-300 font-bold">${escaparHtml(u.whatsapp)}</a>` : '<p class="text-[11px] text-gray-500">—</p>'}</div>
                     </div>
-                    <div class="grid grid-cols-4 gap-1.5 mt-2.5">
+                    <div class="grid grid-cols-5 gap-1.5 mt-2.5">
+                      <button onclick="abrirRegaloDirecto('${uid}', '${escaparJsAttr(u.email || '')}', '${escaparJsAttr(u.nombre || '')}')" class="py-2 rounded-lg bg-pink-500/15 hover:bg-pink-500/25 border border-pink-400/40 text-pink-200 text-[10px] font-bold flex flex-col items-center gap-0.5"><i class="fa-solid fa-gift"></i>Regalo</button>
                       <button onclick="abrirModalEditarCliente('${uid}', '${escaparJsAttr(u.email)}', '${escaparJsAttr(u.nombre)}')" class="py-2 rounded-lg bg-gray-800 hover:bg-gray-700 border border-gray-700 text-emerald-300 text-[10px] font-bold flex flex-col items-center gap-0.5"><i class="fa-solid fa-pen"></i>Editar</button>
                       <button onclick="abrirSaldoCliente('${uid}', '${escaparJsAttr(u.nombre || u.email || '')}')" class="py-2 rounded-lg bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/40 text-emerald-300 text-[10px] font-bold flex flex-col items-center gap-0.5"><i class="fa-solid fa-plus"></i>Saldo</button>
                       <button onclick="verRecargasCliente('${uid}', '${escaparJsAttr(u.nombre || u.email || '')}')" class="py-2 rounded-lg bg-gray-800 hover:bg-gray-700 border border-gray-700 text-sky-300 text-[10px] font-bold flex flex-col items-center gap-0.5"><i class="fa-solid fa-receipt"></i>Recargas</button>
@@ -10464,7 +10511,7 @@
     let inicioEnPanelPendiente = false;
     let perfilNombreActual = '';
     let escuchasModeradorActivas = false;
-    var RESTRINGIDAS_MODERADOR = ['categorias', 'apariencia', 'pagos', 'ajustes', 'proveedores', 'asistente', 'promociones', 'novedades', 'marketing', 'actividad'];
+    var RESTRINGIDAS_MODERADOR = ['categorias', 'apariencia', 'pagos', 'ajustes', 'proveedores', 'asistente', 'promociones', 'novedades', 'marketing', 'actividad', 'campanas'];
 
     function esModeradorSesion() { return rolActual === 'moderador' && !esAdminSesionActual(); }
     function esProveedorSesion() { return rolActual === 'proveedor' && !esAdminSesionActual(); }
@@ -13221,8 +13268,9 @@
     // ----- Combo en la tarjeta de la tienda -----
     const comboElegido = {};
 
-    function precioUnitarioConCombo(prod) {
-      return (Number(prod.precio) || 0) + ((prod.combo && comboElegido[prod.docId]) ? prod.combo.precio : 0);
+    function precioUnitarioConCombo(prod, n) {
+      if (n === undefined) { const i = document.getElementById('cant_' + prod.docId); n = i ? (parseInt(i.value, 10) || 1) : 1; }
+      return precioPorCantidad(prod, n) + ((prod.combo && comboElegido[prod.docId]) ? prod.combo.precio : 0);
     }
 
     function htmlComboTarjeta(prod, cantidad, agotado) {
@@ -13260,7 +13308,8 @@
         if (chk) { chk.disabled = sinStock; if (sinStock && chk.checked) { chk.checked = false; comboElegido[docId] = false; } }
       }
       const txt = document.getElementById('txtTotal_' + docId);
-      if (txt) txt.innerText = `$${(val * precioUnitarioConCombo(prod)).toLocaleString('es-CO')}`;
+      if (txt) txt.innerText = `$${(val * precioUnitarioConCombo(prod, val)).toLocaleString('es-CO')}`;
+      try { const pu = document.getElementById('precioUnit_' + docId); if (pu) pu.textContent = formatoCOP(precioPorCantidad(prod, val)); document.querySelectorAll(`[data-esc-de="${docId}"]`).forEach(b => { const on = val >= Number(b.dataset.desde) && (!b.dataset.hasta || val < Number(b.dataset.hasta)); b.classList.toggle('esc-on', on); }); } catch (e) { /* nada */ }
       try { pintarMixto(docId); } catch (e) { /* nada */ }
     }
 
@@ -14517,13 +14566,13 @@
 
     // ==================== VISTA DEL PANEL (menú configurable) ====================
     const TABS_MENU_INFO = {
-      netflix: ['Alquileres', '#f87171'], productos: ['Productos', '#34d399'], reporte: ['Reporte de Ventas', '#60a5fa'], actividad: ['Actividad', '#22d3ee'], usuarios: ['Usuarios Registrados', '#a78bfa'],
+      netflix: ['Alquileres', '#f87171'], productos: ['Productos', '#34d399'], reporte: ['Reporte de Ventas', '#60a5fa'], actividad: ['Actividad', '#22d3ee'], campanas: ['Campañas', '#fb7185'], usuarios: ['Usuarios Registrados', '#a78bfa'],
       tickets: ['Tickets', '#fbbf24'], recargas: ['Solicitudes de Saldo', '#34d399'], stock: ['Cargar Cuentas (Stock)', '#facc15'], historial: ['Historial de Ventas', '#94a3b8'],
       cortes: ['Cortes', '#f87171'], buscar: ['Buscar cuenta', '#38bdf8'], proveedores: ['Proveedores', '#fb923c'], promociones: ['Promociones', '#f472b6'],
       novedades: ['Novedades', '#38bdf8'], marketing: ['Marketing', '#e879f9'], categorias: ['Categorías & Colores', '#c084fc'], apariencia: ['Apariencia y Logo', '#f472b6'], pagos: ['Métodos de Pago & QR', '#2dd4bf'],
       asistente: ['Asistente', '#34d399'], vista: ['Vista del panel', '#a3e635'], ajustes: ['Ajustes Generales', '#cbd5e1']
     };
-    const ORDEN_MENU_BASE = ['netflix', 'productos', 'reporte', 'actividad', 'usuarios', 'tickets', 'recargas', 'stock', 'historial', 'cortes', 'buscar', 'proveedores', 'promociones', 'novedades', 'marketing', 'categorias', 'apariencia', 'pagos', 'asistente', 'vista', 'ajustes'];
+    const ORDEN_MENU_BASE = ['netflix', 'productos', 'reporte', 'actividad', 'campanas', 'usuarios', 'tickets', 'recargas', 'stock', 'historial', 'cortes', 'buscar', 'proveedores', 'promociones', 'novedades', 'marketing', 'categorias', 'apariencia', 'pagos', 'asistente', 'vista', 'ajustes'];
     const VISTA_PANEL_BASE = { version: 2, estilo: 'grupos', columnas: 3, destacado: 'netflix', color: 'rojo', iconos: true, inicio: 'productos', orden: ORDEN_MENU_BASE.slice(), ocultos: [] };
     let vistaPanel = null, vistaPanelGuardada = null;
 
@@ -14712,7 +14761,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-07v';
+    const VERSION_PAGINA = '2026-10-07y';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261006b_recarga', fecha: '2026-10-06', titulo: 'Recargas más simples 💳', mensaje: 'Ahora pagas **el valor exacto** que eliges recargar. Tu saldo se acredita solo en 1 o 2 minutos, y si la transacción se demora, igual te llega apenas se confirme.' },
       { id: 'act_20261006b_sinsaldo', fecha: '2026-10-06', titulo: 'Recarga y compra en un solo paso', mensaje: 'Si tocas **Comprar** y te falta saldo, toca **Recargar** ahí mismo. Cuando tu recarga entre, **tu compra se completa sola** y no tienes que volver a buscar el producto.' },
@@ -16034,6 +16083,7 @@
       { id: 'novedades', t: 'Novedades para clientes', tab: 'novedades', docs: ['novedades_clientes'] },
       { id: 'marketing', t: 'Marketing (imágenes y textos)', tab: 'marketing', docs: [] },
       { id: 'actividad', t: 'Actividad de la página', tab: 'actividad', docs: ['visitas'] },
+      { id: 'campanas', t: 'Campañas de venta', tab: 'campanas', docs: ['intentos_compra'] },
       { id: 'combos', t: 'Armar combos', docs: [], sel: ['[onclick="abrirModalCombo()"]'] },
       { id: 'categorias', t: 'Categorías & Colores', tab: 'categorias', docs: ['colores_categorias'] },
       { id: 'apariencia', t: 'Apariencia y Logo', tab: 'apariencia', docs: ['apariencia'] },
@@ -16044,7 +16094,7 @@
       { id: 'referidos', t: 'Referidos y comisiones', docs: ['referidos'], sel: ['#adminReferidosCaja'] },
       { id: 'venta_manual', t: 'Venta manual (WhatsApp)', docs: [], sel: ['#ventaManualCaja'] }
     ];
-    const RESTRINGIDAS_BASE = ['categorias', 'apariencia', 'pagos', 'ajustes', 'proveedores', 'asistente', 'promociones', 'novedades', 'marketing', 'actividad'];
+    const RESTRINGIDAS_BASE = ['categorias', 'apariencia', 'pagos', 'ajustes', 'proveedores', 'asistente', 'promociones', 'novedades', 'marketing', 'actividad', 'campanas'];
     var permisosModerador = [];
     function puedeSeccion(sec) { return esAdminSesionActual() || (esModeradorSesion() && permisosModerador.indexOf(sec) !== -1); }
     function elementosSeccionMod(sm) {
@@ -16605,8 +16655,8 @@
     // ==================== COMPRA SOBRE PEDIDO ====================
     var misPreordenes = [], unsubMisPre = null, preordenesTodas = [], unsubPreAdm = null;
     function puedePedirEncargo(prod) {
-      if (!currentUser || esStaffSesion() || modoPruebaCliente || prod.esCombo) return false;
-      if (esProveedorSesion() && (userTipoCuenta === 'externo' || userTipoCuenta === 'reseller')) return false;
+      if (!currentUser || modoPruebaCliente || prod.esCombo) return false;
+      if (esProveedorSesion() && !esStaffSesion() && (userTipoCuenta === 'externo' || userTipoCuenta === 'reseller')) return false;
       return !esProductoNetflix(prod) && datosEncargo(prod).activo;
     }
     function pedirSobrePedido(docId) {
@@ -16986,7 +17036,7 @@
 
     // ==================== MENÚ DEL PANEL POR GRUPOS (estilo app) ====================
     const GRUPOS_MENU = [
-      ['Ventas', ['reporte', 'actividad', 'historial', 'recargas', 'promociones', 'marketing']],
+      ['Ventas', ['reporte', 'actividad', 'campanas', 'historial', 'recargas', 'promociones', 'marketing']],
       ['Clientes', ['usuarios', 'tickets', 'novedades', 'asistente']],
       ['Inventario', ['productos', 'stock', 'proveedores', 'buscar', 'cortes']],
       ['Configuración', ['categorias', 'apariencia', 'pagos', 'vista', 'ajustes']]
@@ -17020,6 +17070,9 @@
     // ==================== BUSCADOR DEL PANEL (como en los ajustes del celular) ====================
     // [texto, pestaña, palabras clave, elemento al que lleva]
     const BUSQUEDA_PANEL = [
+      ['Venta relámpago', 'campanas', 'flash descuento oferta horas campana', ''],
+      ['Precio por cantidad', 'campanas', 'escalonado volumen mayorista descuento cantidad', ''],
+      ['Casi compraron', 'campanas', 'saldo insuficiente recordatorio abandonado carrito', ''],
       ['Horas de más visitas', 'actividad', 'visitas hora pico estadisticas trafico conectados dispositivos origen', ''],
       ['Promos para dealers', 'usuarios', 'dealer promocion regalo nivel oro plata bronce multiplicador', 'adminRegaloRevendedor'],
       ['Referidos y comisiones', 'usuarios', 'referido comision recomendar bono', 'adminReferidosCaja'],
@@ -17877,14 +17930,15 @@
       if (!prod || !inp || !el) return;
       const val = parseInt(inp.value, 10) || 0, st = Number(prod.stock) || 0, resto = val - st;
       const conEncargo = st > 0 && encargoMixtoActivo(prod), mixto = conEncargo && resto > 0;
-      el.classList.toggle('hidden', !conEncargo);
-      if (mixto) { el.className = 'mb-2 px-2.5 py-1.5 rounded-lg bg-sky-500/10 border border-sky-400/30 text-[11px] text-sky-100 leading-snug'; el.innerHTML = `⚡ <b>${st}</b> se entregan ya · ⏳ <b>${resto}</b> quedan por encargo y te llegan solas cuando entre stock.`; }
-      else if (conEncargo) { el.className = 'mb-2 text-[10.5px] text-sky-200/80 leading-snug'; el.innerHTML = `<i class="fa-solid fa-hourglass-half mr-1"></i>¿Necesitas más de ${st}? Sube la cantidad: lo que falte queda <b>por encargo</b>.`; }
+      el.className = mixto ? 'mt-2 pt-2 border-t border-sky-400/30 text-[11.5px] text-sky-100' : 'hidden';
+      if (mixto) el.innerHTML = `⚡ <b class="text-white">${st}</b> se entregan ya &nbsp;·&nbsp; ⏳ <b class="text-white">${resto}</b> llegan cuando entre stock`;
+      const sel = document.getElementById('selPedido_' + docId);
+      if (sel) { const ex = Array.from(sel.options).some(o => o.value === String(val)); sel.value = mixto && ex ? String(val) : (mixto ? 'otra' : ''); if (mixto && !ex) sel.options[sel.options.length - 1].text = val + ' ✓'; else sel.options[sel.options.length - 1].text = 'Otra…'; }
       if (btn && !btn.disabled && !btn.dataset.ocupado) { if (!btn.dataset.html) btn.dataset.html = btn.innerHTML; btn.innerHTML = mixto ? `<i class="fa-solid fa-cart-shopping"></i> Comprar ${st} + encargar ${resto}` : btn.dataset.html; }
     }
     async function comprarMixto(docId, cantidad) {
       const prod = catalogoUnificado.find(p => p.docId === docId) || {}, st = Number(prod.stock) || 0, resto = cantidad - st;
-      const total = (Number(prod.precio) || 0) * cantidad;
+      const total = precioPorCantidad(prod, cantidad) * cantidad;
       const disponible = (Number(userSaldo) || 0) + Math.max(0, (Number(userCupo) || 0) - (Number(userDeuda) || 0));
       if (disponible < total) { abrirModalSaldoInsuficiente(`Saldo insuficiente. Tienes ${formatoCOP(userSaldo || 0)} y el total (${st} ahora + ${resto} por encargo) es ${formatoCOP(total)}.`); return; }
       if (!await confirmarModal(`Pediste ${cantidad} y hay ${st} disponibles.\n\n⚡ ${st} se compran y se entregan ahora.\n⏳ ${resto} quedan por encargo: se pagan ahora y te llegan solas apenas entre stock (en orden de llegada). Lo pendiente lo puedes cancelar y se te devuelve.\n\nTotal: ${formatoCOP(total)}`, { tipo: 'pregunta', textoAceptar: 'Sí, comprar y encargar' })) return;
@@ -17909,7 +17963,6 @@
     function abrirCompraRapida(id) {
       const p = catalogoUnificado.find(x => x.docId === id); if (!p) return;
       if (!currentUser) { abrirModalAuth('login'); return; }
-      if (esStaffSesion()) { irAProductoTienda(id); return; }   // el equipo solo consulta
       crId = id;
       let m = document.getElementById('modalCompraRapida');
       if (!m) {
@@ -17924,7 +17977,7 @@
         <div class="flex items-start justify-between gap-2"><div class="min-w-0"><p class="text-[10px] font-black tracking-[0.2em] uppercase" style="color:${m2.color}">${escaparHtml(m2.etiqueta)}</p><p class="text-base font-black text-white leading-snug">${escaparHtml(p.nombre)}</p><p class="text-xs text-gray-400 mt-0.5">${formatoCOP(p.precio)} c/u · ${st ? `<span class="${st <= 5 ? 'text-amber-300' : 'text-emerald-300'} font-bold">${st} disponibles</span>` : '<span class="text-red-300 font-bold">agotado</span>'}</p></div><button type="button" onclick="cerrarCompraRapida()" class="w-8 h-8 shrink-0 rounded-full bg-gray-800 text-gray-300"><i class="fa-solid fa-xmark"></i></button></div>
         ${maxC > 0 ? `<div class="flex items-center justify-between gap-3 mt-4"><div><p class="text-[10px] text-gray-400">Total</p><p id="crTotal" class="text-xl font-black text-white">$0</p></div>
           <div class="flex items-center bg-gray-800 border border-gray-700 rounded-xl p-0.5"><button type="button" onclick="crCambiar(-1)" class="w-9 h-9 rounded-lg bg-gray-700/60 text-white font-black">-</button><input id="crCant" type="number" inputmode="numeric" value="${ini}" min="${minC}" max="${maxC}" onfocus="this.select()" oninput="crRecalcular()" onchange="crCambiar(0)" class="w-14 text-center bg-transparent text-white font-bold focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"><button type="button" onclick="crCambiar(1)" class="w-9 h-9 rounded-lg bg-gray-700/60 text-white font-black">+</button></div></div>
-          ${maxC > st && [10, 20, 30, 40, 50].some(n => n >= minC && n <= maxC) ? `<div class="flex items-center gap-1.5 mt-2 flex-wrap"><span class="text-[10px] text-gray-400">Rápido:</span>${[10, 20, 30, 40, 50].filter(n => n >= minC && n <= maxC).map(n => `<button type="button" onclick="document.getElementById('crCant').value=${n};crRecalcular()" class="px-2.5 py-1 rounded-lg text-[11px] font-black border border-sky-400/40 text-sky-200">${n}</button>`).join('')}</div>` : ''}
+          ${maxC > st && st > 0 ? `<div class="caja-pedido mt-3"><div class="flex items-center gap-2.5"><span class="ico"><i class="fa-solid fa-box-open text-sm"></i></span><div class="min-w-0 flex-1"><p class="text-[13px] font-black text-sky-100 leading-tight">¿Lo necesitas en cantidad?</p><p class="text-[10.5px] text-sky-200/80">Lo que falte te llega cuando entre stock</p></div><select onchange="if(this.value==='otra'){const r=prompt('¿Cuántas necesitas? (máximo ${maxC})','${Math.min(maxC, st + 10)}');if(!r){this.value='';return;}document.getElementById('crCant').value=r;}else if(this.value){document.getElementById('crCant').value=this.value;}crRecalcular()"><option value="">Cuántas</option>${opcionesPedido(p, st).map(n => `<option value="${n}">${n}</option>`).join('')}<option value="otra">Otra…</option></select></div></div>` : ''}
           <p id="crMixto" class="hidden mt-2 text-[11px] text-sky-100 px-2.5 py-1.5 rounded-lg bg-sky-500/10 border border-sky-400/30"></p>
           <button type="button" id="btnCompraRapida" onclick="confirmarCompraRapida()" class="mt-3 w-full py-3 rounded-xl text-black font-black text-sm" style="background:${m2.color}"><i class="fa-solid fa-bolt mr-1"></i>Comprar</button>
           ${minC > 1 ? `<p class="text-[10px] text-gray-500 mt-1.5 text-center">Compra mínima: ${minC}</p>` : ''}`
@@ -17939,7 +17992,7 @@
       const p = catalogoUnificado.find(x => x.docId === crId), i = document.getElementById('crCant'); if (!p || !i) return;
       let n = parseInt(i.value, 10) || 0; const st = Number(p.stock) || 0;
       if (n > (Number(i.max) || n)) { n = Number(i.max); i.value = String(n); mostrarToast('El máximo para este producto es ' + n); }
-      const t = document.getElementById('crTotal'); if (t) t.textContent = formatoCOP(n * (Number(p.precio) || 0));
+      const t = document.getElementById('crTotal'); if (t) t.textContent = formatoCOP(n * precioPorCantidad(p, n));
       const mx = document.getElementById('crMixto'), b = document.getElementById('btnCompraRapida');
       const mixto = n > st && st > 0;
       if (mx) { mx.classList.toggle('hidden', !mixto); if (mixto) mx.innerHTML = `⚡ <b>${st}</b> se entregan ya · ⏳ <b>${n - st}</b> quedan por encargo.`; }
@@ -17977,6 +18030,170 @@
       const opciones = [10, 20, 30, 40, 50].filter(n => n >= min && n <= max);
       if (!opciones.length) return '';
       return `<div class="flex items-center gap-1.5 mb-2 flex-wrap"><span class="text-[10px] text-gray-400 mr-0.5">Rápido:</span>${opciones.map(n => `<button type="button" data-chip-de="${prod.docId}" data-n="${n}" onclick="elegirCantidad('${prod.docId}', ${n})" class="px-2.5 py-1 rounded-lg text-[11px] font-black border border-sky-400/40 text-sky-200 hover:bg-sky-500/20 transition">${n}</button>`).join('')}</div>`;
+    }
+
+
+    // ==================== CAJA "¿LO NECESITAS EN CANTIDAD?" (bajo pedido) ====================
+    function opcionesPedido(prod, stock) { const max = maxTarjeta(prod, stock), min = Math.max(1, parseInt(prod.minCompra, 10) || 1); return [10, 20, 30, 40, 50, 75, 100].filter(n => n > stock && n >= min && n <= max); }
+    function htmlCajaPedido(prod, stock) {
+      const ops = opcionesPedido(prod, stock), id = prod.docId;
+      return `<div class="caja-pedido mb-3"><span class="nuevo">NUEVO</span>
+        <div class="flex items-center gap-2.5"><span class="ico"><i class="fa-solid fa-box-open text-sm"></i></span>
+          <div class="min-w-0 flex-1"><p class="text-[13px] font-black text-sky-100 leading-tight">¿Lo necesitas en cantidad?</p><p class="text-[10.5px] text-sky-200/80 leading-snug">Cómpralo bajo pedido: te llega apenas entre stock</p></div>
+          <select id="selPedido_${id}" onchange="elegirBajoPedido('${escaparJsAttr(id)}', this.value)" aria-label="Cuántas necesitas"><option value="">Cuántas</option>${ops.map(n => `<option value="${n}">${n}</option>`).join('')}<option value="otra">Otra…</option></select></div>
+        <p id="mixto_${id}" class="hidden"></p></div>`;
+    }
+    function elegirBajoPedido(id, v) {
+      const L = limitesCantidad(id); if (!L.inp) return;
+      if (v === 'otra') { const r = prompt(`¿Cuántas necesitas? (máximo ${L.max})`, String(Math.min(L.max, (Number((catalogoUnificado.find(p => p.docId === id) || {}).stock) || 0) + 10))); if (!r) { const s2 = document.getElementById('selPedido_' + id); if (s2) s2.value = ''; return; } v = r; }
+      const n = parseInt(v, 10);
+      L.inp.value = String(n > 0 ? n : L.min);
+      cantidadEscrita(id, true);
+    }
+
+
+    // ==================== PERFIL ANCHO EN COMPUTADOR ====================
+    // Dos columnas en pantallas grandes: a la izquierda tu cuenta y avisos; a la derecha las pestañas y tus compras.
+    const CAJAS_LATERALES_PERFIL = ['radarStock', 'misPreordenesCaja', 'perfilNetflixCaja', 'misReportesCaja', 'dealerNegocioCaja', 'btnCreaTiendaPerfil'];
+    function armarPerfilDosColumnas() {
+      const v = document.getElementById('vistaMisCuentas'); if (!v || document.getElementById('perfilColIzq')) return;
+      const hijos = Array.from(v.children);
+      const grid = document.createElement('div'); grid.id = 'perfilGrid'; grid.className = 'lg:grid lg:grid-cols-[minmax(340px,410px)_minmax(0,1fr)] lg:gap-6 lg:items-start';
+      const izq = document.createElement('div'); izq.id = 'perfilColIzq'; izq.className = 'min-w-0';
+      const der = document.createElement('div'); der.id = 'perfilColDer'; der.className = 'min-w-0';
+      hijos.forEach((h, i) => { (i === 0 || h.id === 'perfilAdminPanel' ? izq : der).appendChild(h); });
+      const lat = document.createElement('div'); lat.id = 'perfilLateral'; lat.className = 'hidden lg:block space-y-0'; izq.appendChild(lat);
+      grid.appendChild(izq); grid.appendChild(der); v.appendChild(grid);
+      const lista = document.getElementById('listaMisCuentas'); if (lista) lista.classList.add('lg:grid', 'lg:grid-cols-2', 'lg:gap-3', 'lg:space-y-0');
+      acomodarPerfil(); window.addEventListener('resize', acomodarPerfil);
+    }
+    // En computador las cajas de avisos van a la columna izquierda; en el celular vuelven a su lugar de siempre
+    function acomodarPerfil() {
+      const lat = document.getElementById('perfilLateral'), sec = document.getElementById('perfilSecCuentas'); if (!lat || !sec) return;
+      const ancho = window.innerWidth >= 1024;
+      const ancla = sec.querySelector(':scope > h4');
+      CAJAS_LATERALES_PERFIL.forEach(id => { const e = document.getElementById(id); if (!e) return; if (ancho && e.parentElement !== lat) lat.appendChild(e); else if (!ancho && e.parentElement !== sec) sec.insertBefore(e, ancla || sec.firstChild); });
+    }
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', armarPerfilDosColumnas); else armarPerfilDosColumnas();
+
+
+    // ==================== CAMPAÑAS: PRECIO POR CANTIDAD ====================
+    function escalasDe(prod) { const sn = (snapshotInventario && snapshotInventario[prod.docId]) || {}; const e = Array.isArray(prod.escalas) ? prod.escalas : (Array.isArray(sn.escalas) ? sn.escalas : []); const lista = Number(prod.precioLista || prod.precio) || 0; return e.map(x => ({ desde: parseInt(x.desde, 10) || 0, precio: Math.round(Number(x.precio) || 0) })).filter(x => x.desde > 1 && x.precio > 0 && x.precio < lista).sort((a, b) => a.desde - b.desde); }
+    function precioPorCantidad(prod, n) {
+      const esc = escalasDe(prod); if (!esc.length) return Number(prod.precio) || 0;
+      let base = Number(prod.precioLista || prod.precio) || 0; esc.forEach(e => { if (n >= e.desde) base = e.precio; });
+      const pct = Number(prod.promoPct) || 0;
+      return pct > 0 ? Math.round(base * (100 - pct) / 100) : (base === (Number(prod.precioLista || prod.precio) || 0) ? (Number(prod.precio) || 0) : base);
+    }
+    function htmlEscalasTarjeta(prod) {
+      const esc = escalasDe(prod); if (!esc.length) return '';
+      const lista = Number(prod.precioLista || prod.precio) || 0, minC = Math.max(1, parseInt(prod.minCompra, 10) || 1);
+      const fila = [{ desde: minC, precio: lista }].concat(esc);
+      return `<div class="flex items-center gap-1.5 flex-wrap mb-2"><span class="text-[10px] text-gray-400"><i class="fa-solid fa-layer-group mr-1"></i>Por cantidad:</span>${fila.map((e, k) => `<span class="esc-chip" data-esc-de="${prod.docId}" data-desde="${e.desde}" data-hasta="${fila[k + 1] ? fila[k + 1].desde : ''}">${e.desde}+ ${formatoCOP(e.precio)}</span>`).join('')}</div>`;
+    }
+    function prepararCampanas() {
+      const prods = catalogoUnificado.filter(p => !p.esCombo && Number(p.precio) > 0).sort((a, b) => String(a.nombre).localeCompare(String(b.nombre), 'es'));
+      const opts = prods.map(p => `<option value="${escaparHtml(p.docId)}">${escaparHtml(p.nombre)} · ${formatoCOP(p.precioLista || p.precio)}</option>`).join('');
+      const f = document.getElementById('flashProducto'), e = document.getElementById('escProducto');
+      if (f && !f.dataset.listo) { f.innerHTML = opts; f.dataset.listo = '1'; }
+      if (e && !e.dataset.listo) { e.innerHTML = opts; e.dataset.listo = '1'; }
+      pintarEscalasEditor(); pintarFlashActivas(); cargarCasiCompraron();
+    }
+    function pintarEscalasEditor() {
+      const id = (document.getElementById('escProducto') || {}).value, p = catalogoUnificado.find(x => x.docId === id), c = document.getElementById('escFilas'); if (!p || !c) return;
+      const sn = snapshotInventario[id] || {}, guard = Array.isArray(sn.escalas) ? sn.escalas : [], lista = Number(p.precioLista || p.precio) || 0;
+      const filas = [0, 1, 2].map(k => guard[k] || { desde: '', precio: '' });
+      c.innerHTML = `<p class="text-[11px] text-gray-300">Precio normal: <b class="text-white">${formatoCOP(lista)}</b> c/u · compra mínima ${p.minCompra || 1}</p>` + filas.map((r, k) => `<div class="grid grid-cols-[auto_1fr_auto_1fr] items-center gap-2 text-[11px] text-gray-400"><span>Desde</span><input type="number" min="2" id="escDesde${k}" value="${escaparHtml(r.desde)}" placeholder="${[5, 10, 20][k]}" oninput="previaEscalas()" class="bg-gray-800 border border-gray-700 rounded-lg px-2 py-1.5 text-xs text-white focus:outline-none"><span>a</span><input type="number" min="0" step="100" id="escPrecio${k}" value="${escaparHtml(r.precio)}" placeholder="$ c/u" oninput="previaEscalas()" class="bg-gray-800 border border-gray-700 rounded-lg px-2 py-1.5 text-xs text-white focus:outline-none"></div>`).join('') + '<p id="escPrevia" class="text-[11px] text-emerald-200"></p>';
+      previaEscalas();
+    }
+    function leerEscalasEditor() { return [0, 1, 2].map(k => ({ desde: parseInt((document.getElementById('escDesde' + k) || {}).value, 10) || 0, precio: Math.round(Number((document.getElementById('escPrecio' + k) || {}).value) || 0) })).filter(e => e.desde > 1 && e.precio > 0).sort((a, b) => a.desde - b.desde); }
+    function previaEscalas() {
+      const id = (document.getElementById('escProducto') || {}).value, p = catalogoUnificado.find(x => x.docId === id), el = document.getElementById('escPrevia'); if (!p || !el) return;
+      const lista = Number(p.precioLista || p.precio) || 0, esc = leerEscalasEditor();
+      const malas = esc.filter(e => e.precio >= lista);
+      el.innerHTML = !esc.length ? 'Sin precios por cantidad: se cobra el precio normal.' : (malas.length ? '<span class="text-amber-300">Cada escalón debe ser más barato que el precio normal.</span>' : 'El cliente verá: ' + [`${p.minCompra || 1}+ ${formatoCOP(lista)}`].concat(esc.map(e => `${e.desde}+ ${formatoCOP(e.precio)} (-${Math.round((1 - e.precio / lista) * 100)} %)`)).join(' · '));
+    }
+    async function guardarEscalas() {
+      const id = (document.getElementById('escProducto') || {}).value, p = catalogoUnificado.find(x => x.docId === id); if (!p) return;
+      const lista = Number(p.precioLista || p.precio) || 0, esc = leerEscalasEditor();
+      if (esc.some(e => e.precio >= lista)) { alert('Cada escalón debe tener un precio menor al normal (' + formatoCOP(lista) + ').'); return; }
+      try { await db.collection('inventario').doc(id).set({ escalas: esc }, { merge: true }); mostrarToast(esc.length ? '✓ Precios por cantidad guardados para ' + p.nombre : 'Precios por cantidad quitados de ' + p.nombre); }
+      catch (e) { alert('No se pudo guardar: ' + e.message); }
+    }
+
+    // ==================== CAMPAÑAS: VENTA RELÁMPAGO ====================
+    async function lanzarVentaRelampago() {
+      const id = (document.getElementById('flashProducto') || {}).value, p = catalogoUnificado.find(x => x.docId === id); if (!p) return;
+      const pct = Math.max(5, Math.min(70, parseInt((document.getElementById('flashPct') || {}).value, 10) || 0)), h = (document.getElementById('flashHoras') || {}).value;
+      const fin = h === 'hoy' ? (() => { const d = new Date(); d.setHours(23, 59, 0, 0); return d; })() : new Date(Date.now() + (parseInt(h, 10) || 2) * 3600000);
+      if (!await confirmarModal(`¿Lanzar venta relámpago de ${p.nombre}?\n\n-${pct} % · de ${formatoCOP(p.precioLista || p.precio)} a ${formatoCOP(Math.round((p.precioLista || p.precio) * (100 - pct) / 100))}\nTermina: ${fin.toLocaleString('es-CO', { hour: 'numeric', minute: '2-digit', day: '2-digit', month: '2-digit' })}`, { textoAceptar: 'Sí, lanzar' })) return;
+      try {
+        await db.collection('inventario').doc(id).set({ promoPct: pct, promoDesde: new Date().toISOString(), promoHasta: fin.toISOString(), promoRelampago: true }, { merge: true });
+        lanzarConfeti(['⚡', '🔥', '💥']); mostrarToast(`⚡ ¡Venta relámpago activa! -${pct} % en ${p.nombre}`);
+        setTimeout(pintarFlashActivas, 800);
+      } catch (e) { alert('No se pudo lanzar: ' + e.message); }
+    }
+    function pintarFlashActivas() {
+      const c = document.getElementById('flashActivas'); if (!c) return;
+      const act = catalogoUnificado.filter(p => { const sn = snapshotInventario[p.docId] || {}; return Number(sn.promoPct) > 0 && sn.promoHasta && Date.parse(sn.promoHasta) > Date.now(); });
+      c.innerHTML = act.length ? act.map(p => { const sn = snapshotInventario[p.docId]; return `<div class="flex items-center justify-between gap-2 p-2 rounded-xl bg-rose-500/10 border border-rose-400/30 text-xs"><span class="min-w-0 truncate text-white"><b>-${sn.promoPct} %</b> ${escaparHtml(p.nombre)}</span><span class="shrink-0 text-rose-200 cuenta-regresiva" data-hasta="${escaparHtml(sn.promoHasta)}"></span><button type="button" onclick="terminarVentaRelampago('${escaparJsAttr(p.docId)}')" class="shrink-0 px-2 py-1 rounded-lg bg-gray-800 text-gray-300 text-[10px]">Terminar</button></div>`; }).join('') : '<p class="text-[11px] text-gray-500">No hay ventas relámpago activas.</p>';
+      actualizarCuentasRegresivas();
+    }
+    async function terminarVentaRelampago(id) { try { await db.collection('inventario').doc(id).set({ promoHasta: new Date().toISOString() }, { merge: true }); mostrarToast('Venta relámpago terminada'); setTimeout(pintarFlashActivas, 800); } catch (e) { alert(e.message); } }
+    function actualizarCuentasRegresivas() {
+      document.querySelectorAll('[data-hasta].cuenta-regresiva').forEach(el => {
+        const ms = Date.parse(el.dataset.hasta) - Date.now();
+        if (ms <= 0) { el.textContent = 'terminó'; return; }
+        const h = Math.floor(ms / 3600000), m = Math.floor(ms % 3600000 / 60000), sg = Math.floor(ms % 60000 / 1000);
+        el.textContent = (h ? h + ':' : '') + String(m).padStart(2, '0') + ':' + String(sg).padStart(2, '0');
+      });
+    }
+    setInterval(actualizarCuentasRegresivas, 1000);
+
+    // ==================== CAMPAÑAS: "CASI COMPRARON" ====================
+    // Cuando a un cliente le falta saldo, se anota (una vez por producto cada 6 h)
+    function registrarIntentoCompra(docId, cantidad) {
+      try {
+        if (!currentUser || esStaffSesion() || modoPruebaCliente) return;
+        const p = catalogoUnificado.find(x => x.docId === docId) || {}, idDoc = currentUser.uid + '_' + docId;
+        db.collection('intentos_compra').doc(idDoc).set({ uid: currentUser.uid, email: currentUser.email || '', productoId: docId, productoNombre: p.nombre || docId, cantidad: cantidad || 1, total: precioPorCantidad(p, cantidad || 1) * (cantidad || 1), fecha: new Date().toISOString(), recordado: false }).catch(() => {});
+      } catch (e) { /* nada */ }
+    }
+    var casiCompraron = [];
+    async function cargarCasiCompraron() {
+      const c = document.getElementById('casiLista'); if (!c) return;
+      c.innerHTML = '<p class="text-[11px] text-gray-500"><i class="fa-solid fa-spinner fa-spin mr-1"></i>Buscando…</p>';
+      try {
+        const desde = new Date(Date.now() - 3 * 86400000).toISOString();
+        const [si, sc] = await Promise.all([db.collection('intentos_compra').where('fecha', '>=', desde).get(), db.collection('compras').where('fecha', '>=', desde).get()]);
+        const compras = []; sc.forEach(d => compras.push(d.data() || {}));
+        casiCompraron = []; si.forEach(d => { const x = Object.assign({ id: d.id }, d.data() || {}); if (!compras.some(cp => cp.usuarioId === x.uid && cp.productoId === x.productoId && cp.fecha > x.fecha)) casiCompraron.push(x); });
+        casiCompraron.sort((a, b) => String(b.fecha).localeCompare(String(a.fecha)));
+        c.innerHTML = casiCompraron.length ? casiCompraron.map(x => `<div class="flex items-center justify-between gap-2 p-2 rounded-xl bg-gray-800/60 border border-gray-700/60 text-xs"><div class="min-w-0"><p class="text-white truncate"><b>${escaparHtml(x.email)}</b></p><p class="text-[10px] text-gray-400 truncate">${x.cantidad} × ${escaparHtml(x.productoNombre)} · ${formatoCOP(x.total)} · ${escaparHtml(textoTiempoAtras(x.fecha))}</p></div>${x.recordado ? '<span class="shrink-0 text-[10px] text-emerald-300 font-bold">✓ recordado</span>' : `<button type="button" onclick="recordarCasi('${escaparJsAttr(x.id)}')" class="shrink-0 px-2.5 py-1 rounded-lg bg-amber-400 text-black text-[10px] font-black">Recordar</button>`}</div>`).join('') : '<p class="text-[11px] text-gray-500">Nadie se ha quedado sin comprar en los últimos 3 días. 🎉</p>';
+      } catch (e) { c.innerHTML = `<p class="text-[11px] text-red-300">No se pudo cargar: ${escaparHtml(e.message)}</p>`; }
+    }
+    function textoTiempoAtras(iso) { const m = Math.floor((Date.now() - Date.parse(iso)) / 60000); return m < 60 ? `hace ${Math.max(1, m)} min` : (m < 1440 ? `hace ${Math.floor(m / 60)} h` : `hace ${Math.floor(m / 1440)} d`); }
+    async function recordarCasi(id, silencioso) {
+      const x = casiCompraron.find(y => y.id === id); if (!x) return;
+      try {
+        await avisarClienteTicket(x.uid, '🛒 ¡Tu ' + x.productoNombre + ' te está esperando!', `Ayer te quedaste a un paso: ${x.cantidad} × ${x.productoNombre}. Recarga tu saldo y cómpralo en segundos; todavía hay stock disponible.`);
+        await db.collection('intentos_compra').doc(id).update({ recordado: true, recordadoEl: new Date().toISOString() });
+        x.recordado = true; if (!silencioso) { mostrarToast('Recordatorio enviado a ' + x.email); cargarCasiCompraron(); }
+      } catch (e) { if (!silencioso) alert(e.message); }
+    }
+    async function recordarTodosCasi() {
+      const pend = casiCompraron.filter(x => !x.recordado); if (!pend.length) { mostrarToast('No hay recordatorios pendientes.'); return; }
+      if (!await confirmarModal(`¿Enviar recordatorio a ${pend.length} ${pend.length === 1 ? 'cliente' : 'clientes'}?`, { textoAceptar: 'Sí, recordar' })) return;
+      for (const x of pend) await recordarCasi(x.id, true);
+      mostrarToast(`🛒 Recordatorio enviado a ${pend.length} ${pend.length === 1 ? 'cliente' : 'clientes'}`); cargarCasiCompraron();
+    }
+
+    // ==================== REGALO DESDE LA LISTA DE CLIENTES ====================
+    function abrirRegaloDirecto(uid, email, nombre) {
+      clienteEditarUidActual = uid;
+      const n = document.getElementById('editClienteNombre'); if (n) n.value = nombre || '';
+      const t = document.getElementById('txtEditarClienteEmail'); if (t) t.textContent = email || '';
+      abrirRegaloCliente();
     }
 
     // ==================== NETFLIX EN LA TIENDA: SIN CONTRASEÑA ====================
