@@ -838,6 +838,9 @@
           <button onclick="irATabAdmin('reporte')" id="tabBtnReporte" class="admin-tab bg-gray-900 border-gray-800 text-gray-400">
             <i class="fa-solid fa-chart-line"></i><span>Reporte de Ventas</span>
           </button>
+          <button onclick="irATabAdmin('actividad')" id="tabBtnActividad" class="solo-admin admin-tab bg-gray-900 border-gray-800 text-gray-400">
+            <i class="fa-solid fa-chart-column"></i><span>Actividad</span>
+          </button>
           <button onclick="irATabAdmin('categorias')" id="tabBtnCategorias" class="solo-admin admin-tab bg-gray-900 border-gray-800 text-gray-400">
             <i class="fa-solid fa-palette"></i><span>Categorías & Colores</span>
           </button>
@@ -1352,6 +1355,15 @@
               <p class="text-[10px] text-gray-500 mt-1">Si cambias la llave más adelante, edítala en "Métodos de pago" y se actualiza sola para los clientes.</p>
             </div>
             <label class="flex items-center gap-2 text-xs text-white font-bold cursor-pointer"><input type="checkbox" id="chkRecargaAuto" class="w-4 h-4 accent-emerald-500"> Activar recargas automáticas</label>
+            <div class="p-3 rounded-xl border border-yellow-400/30 bg-yellow-400/5 space-y-2">
+              <label class="flex items-center gap-2 text-xs text-white font-bold cursor-pointer"><input type="checkbox" id="chkBinanceAuto" class="w-4 h-4 accent-yellow-400"> 🟡 Activar recargas con Binance Pay (USDT)</label>
+              <div class="grid grid-cols-2 gap-2">
+                <label class="text-[10px] text-gray-400">Mínimo (USDT)<input type="number" id="binanceMinimo" min="1" step="1" value="5" class="mt-1 w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"></label>
+                <label class="text-[10px] text-gray-400">Ajuste a la tasa (%)<input type="number" id="binanceAjuste" min="-20" max="20" step="0.5" value="0" class="mt-1 w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"></label>
+              </div>
+              <p id="binanceTasaAdmin" class="text-[10px] text-yellow-100/80"></p>
+              <p class="text-[10px] text-gray-500">La tasa se toma del mercado (dólar → peso) y se actualiza sola cada 30 minutos. Con "Ajuste" la subes o bajas, por ejemplo -2 %. Necesitas un método de pago con tu <b>Binance Pay ID</b> y su QR, marcado como "Binance Pay automática".</p>
+            </div>
             <div class="grid grid-cols-2 gap-3">
               <div>
                 <label class="block text-[11px] text-gray-400 mb-1">Minutos para pagar</label>
@@ -1403,6 +1415,7 @@
               <select id="pagoAuto" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none">
                 <option value="">Manual (el cliente solo copia la llave)</option>
                 <option value="breb">Bre-B automática (Nequi): se acredita sola</option>
+                <option value="binance">Binance Pay automática (USDT): se acredita sola</option>
               </select>
               <p class="text-[10px] text-gray-500 mt-1">Si eliges Bre-B automática, esta llave es la que ven los clientes al recargar. Puedes cambiarla cuando quieras.</p>
             </div>
@@ -2140,6 +2153,15 @@
       </div>
 
       <!-- TAB: REPORTE DE VENTAS (DASHBOARD + REPORTE DETALLADO) -->
+      <div id="adminSecActividad" class="hidden space-y-4 pb-28 sm:pb-0">
+        <div class="p-4 rounded-2xl border border-cyan-500/30 bg-gradient-to-br from-cyan-500/10 via-gray-900 to-gray-900">
+          <div class="flex flex-wrap items-center justify-between gap-2">
+            <div><h3 class="text-base font-black text-white flex items-center gap-2"><i class="fa-solid fa-chart-column text-cyan-300"></i> Actividad de tu página</h3><p class="text-xs text-gray-400 mt-0.5">Cuándo entran, desde dónde y cuántos terminan comprando.</p></div>
+            <div id="actRangos" class="flex gap-1 p-1 rounded-xl bg-gray-900/80 border border-gray-700/60"></div>
+          </div>
+        </div>
+        <div id="actCuerpo" class="space-y-4"><p class="text-center text-sm text-gray-500 py-10">Cargando actividad…</p></div>
+      </div>
       <div id="adminSecReporte" class="hidden space-y-4">
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-gray-900 border border-emerald-500/30 p-4 rounded-2xl">
           <div>
@@ -3050,7 +3072,7 @@
 
   <!-- MODAL: RECARGAR SALDO -->
   <div id="modalRecarga" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
-    <div class="bg-gray-900 border border-gray-800 rounded-2xl max-w-md w-full p-6 relative max-h-[90vh] overflow-y-auto">
+    <div id="modalRecargaCaja" class="bg-gray-900 border border-gray-800 rounded-2xl max-w-md w-full p-6 relative max-h-[90vh] overflow-y-auto transition-all">
       <button onclick="cerrarModalRecarga()" class="absolute top-4 right-4 text-gray-400 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
       <h3 class="text-xl font-bold text-white mb-1 flex items-center gap-2"><i class="fa-solid fa-wallet text-emerald-400"></i> Recargar Saldo</h3>
       <p class="text-xs text-gray-400 mb-4">Recarga con Bre-B y tu saldo se acredita solo, o usa otro método con comprobante.</p>
@@ -3060,7 +3082,11 @@
       <!-- RECARGA AUTOMÁTICA -->
       <div id="recargaAutoCaja" class="hidden mb-4">
         <div class="p-3.5 rounded-2xl border border-emerald-500/40 bg-emerald-500/5">
-          <p class="text-[11px] font-bold text-emerald-300 uppercase tracking-wider mb-2"><i class="fa-solid fa-bolt mr-1"></i> Recarga automática con Bre-B</p>
+          <p class="text-[11px] font-bold text-emerald-300 uppercase tracking-wider mb-2"><i class="fa-solid fa-bolt mr-1"></i> Recarga automática</p>
+          <div id="recargaVias" class="hidden grid grid-cols-2 gap-1 p-1 rounded-xl bg-gray-900/80 border border-gray-700/60 mb-2.5">
+            <button type="button" onclick="elegirViaRecarga('breb')" data-via="breb" class="py-2 rounded-lg text-[11px] font-black">🇨🇴 Bre-B (pesos)</button>
+            <button type="button" onclick="elegirViaRecarga('binance')" data-via="binance" class="py-2 rounded-lg text-[11px] font-black">🟡 Binance (USDT)</button>
+          </div>
 
           <p id="avisoCompraTrasRecarga" class="hidden mb-2 px-3 py-2 rounded-xl bg-emerald-500/10 border border-emerald-400/40 text-[11px] text-emerald-100"></p><div id="recargaAutoForm">
             <p class="text-xs text-gray-300 mb-2">Elige cuánto quieres recargar. Te daremos un monto exacto para pagar y tu saldo se acredita solo en 1 o 2 minutos.</p>
@@ -3076,8 +3102,24 @@
             </div>
             <p id="recargaAutoMin" class="text-[10px] text-gray-500 mt-1"></p>
           </div>
+          <div id="recargaBinanceForm" class="hidden">
+            <p class="text-xs text-gray-300 mb-2">Envía USDT por <b>Binance Pay</b> y tu saldo se acredita solo en pesos, con la tasa del mercado.</p>
+            <div class="grid grid-cols-4 gap-1.5 mb-2">
+              <button type="button" onclick="document.getElementById('recargaBinanceUsdt').value=5;cotizarBinance()" class="py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 border border-gray-700 text-[11px] font-bold text-white">5 USDT</button>
+              <button type="button" onclick="document.getElementById('recargaBinanceUsdt').value=10;cotizarBinance()" class="py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 border border-gray-700 text-[11px] font-bold text-white">10 USDT</button>
+              <button type="button" onclick="document.getElementById('recargaBinanceUsdt').value=20;cotizarBinance()" class="py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 border border-gray-700 text-[11px] font-bold text-white">20 USDT</button>
+              <button type="button" onclick="document.getElementById('recargaBinanceUsdt').value=50;cotizarBinance()" class="py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 border border-gray-700 text-[11px] font-bold text-white">50 USDT</button>
+            </div>
+            <div class="flex gap-2">
+              <input type="number" id="recargaBinanceUsdt" min="5" step="1" placeholder="USDT" oninput="cotizarBinance()" class="w-full min-w-0 bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none">
+              <button type="button" id="btnRecargaBinanceCrear" onclick="recargaBinanceCrear()" class="shrink-0 bg-yellow-400 hover:bg-yellow-300 text-black font-bold px-4 rounded-xl text-xs transition">Generar mi pago</button>
+            </div>
+            <p id="recargaBinanceCotiza" class="text-[11px] text-yellow-100/90 mt-1.5"></p>
+          </div>
 
           <div id="recargaAutoPedido" class="hidden">
+          <div id="recAutoDosColumnas" class="lg:grid lg:grid-cols-[minmax(0,1fr)_210px] lg:gap-4 lg:items-center">
+          <div class="min-w-0">
             <p class="text-xs text-gray-400 text-center">Envía exactamente</p>
             <div class="text-center my-1"><span id="recAutoMonto" class="text-3xl font-black text-white">$0</span></div>
             <p id="recAutoExtra" class="text-center text-[11px] text-emerald-200/90 -mt-0.5 mb-1"></p>
@@ -3090,16 +3132,40 @@
               </div>
               <div class="flex flex-col gap-1 shrink-0">
                 <button type="button" onclick="recargaAutoCopiarLlave()" class="px-2.5 py-1 rounded-lg bg-blue-500 hover:bg-blue-400 text-black text-[11px] font-black"><i class="fa-solid fa-copy mr-1"></i>Copiar</button>
-                <button type="button" id="recAutoQr" onclick="recargaAutoVerQr()" class="hidden px-2.5 py-1 rounded-lg bg-gray-700 hover:bg-gray-600 text-white text-[11px] font-bold">Ver QR</button>
+                <button type="button" id="recAutoQr" onclick="recargaAutoVerQr()" class="hidden lg:!hidden px-2.5 py-1 rounded-lg bg-gray-700 hover:bg-gray-600 text-white text-[11px] font-bold">Ver QR</button>
               </div>
             </div>
             <p id="recAutoReloj" class="text-center text-sm font-bold text-amber-300 mt-3"></p>
-            <p class="text-[10px] text-amber-200 bg-amber-500/10 border border-amber-500/30 rounded-lg p-2 mt-2 leading-snug"><i class="fa-solid fa-triangle-exclamation mr-1"></i> El monto debe ser <b>exacto</b>, con los pesos de más. Si envías otro valor, no se acredita solo.</p>
+            <p class="text-[10px] text-amber-200 bg-amber-500/10 border border-amber-500/30 rounded-lg p-2 mt-2 leading-snug"><i class="fa-solid fa-triangle-exclamation mr-1"></i> <span id="recAutoAvisoExacto">El monto debe ser <b>exacto</b>, con los pesos de más. Si envías otro valor, no se acredita solo.</span></p>
             <div class="grid grid-cols-2 gap-2 mt-3">
               <button type="button" id="btnRecargaAutoYaPague" onclick="recargaAutoYaPague()" class="bg-emerald-500 hover:bg-emerald-400 text-black font-bold py-2.5 rounded-xl text-xs transition">Ya pagué</button>
               <button type="button" onclick="recargaAutoCancelar()" class="bg-gray-800 hover:bg-gray-700 text-gray-300 font-bold py-2.5 rounded-xl text-xs transition">Cancelar pedido</button>
             </div>
             <p id="recAutoEstado" class="text-[11px] text-center text-gray-400 mt-2 leading-snug"></p>
+          </div>
+          <!-- En computador: el QR aparece solo, al lado, para escanearlo con el celular -->
+          <div id="recAutoQrLado" class="hidden lg:flex flex-col items-stretch">
+            <div class="rounded-2xl overflow-hidden border border-gray-700/70 bg-gray-950/70 shadow-2xl shadow-black/40">
+              <div class="flex items-center justify-between gap-2 px-3 py-2 border-b border-gray-800">
+                <span class="text-[10px] font-black uppercase tracking-[0.12em] text-gray-300 whitespace-nowrap"><i class="fa-solid fa-qrcode text-emerald-300 mr-1"></i>Paga con QR</span>
+                <span id="recAutoQrMetodo" class="px-1.5 py-0.5 rounded-md bg-emerald-500/15 text-emerald-300 text-[9px] font-black whitespace-nowrap">BRE-B</span>
+              </div>
+              <div class="p-3 flex flex-col items-center">
+                <div class="relative p-2 rounded-xl bg-white">
+                  <img id="recAutoQrLadoImg" alt="Código QR para pagar" class="w-40 h-40 object-contain cursor-zoom-in" onclick="recargaAutoVerQr()">
+                  <span class="absolute -top-1 -left-1 w-4 h-4 border-t-2 border-l-2 border-emerald-400 rounded-tl-md"></span><span class="absolute -top-1 -right-1 w-4 h-4 border-t-2 border-r-2 border-emerald-400 rounded-tr-md"></span><span class="absolute -bottom-1 -left-1 w-4 h-4 border-b-2 border-l-2 border-emerald-400 rounded-bl-md"></span><span class="absolute -bottom-1 -right-1 w-4 h-4 border-b-2 border-r-2 border-emerald-400 rounded-br-md"></span>
+                </div>
+                <p class="mt-2.5 text-[10px] text-gray-400">Valor a enviar</p>
+                <p id="recAutoQrMonto" class="text-lg font-black text-white leading-tight">$0</p>
+              </div>
+              <div class="px-3 py-2 bg-gray-900/80 border-t border-gray-800 space-y-1">
+                <p class="text-[10px] text-gray-300 flex items-center gap-1.5"><span class="w-4 h-4 rounded-full bg-gray-800 text-[9px] font-black flex items-center justify-center text-emerald-300">1</span><span id="recAutoPaso1">Abre tu app bancaria</span></p>
+                <p class="text-[10px] text-gray-300 flex items-center gap-1.5"><span class="w-4 h-4 rounded-full bg-gray-800 text-[9px] font-black flex items-center justify-center text-emerald-300">2</span>Escanea el código</p>
+                <p class="text-[10px] text-gray-300 flex items-center gap-1.5"><span class="w-4 h-4 rounded-full bg-gray-800 text-[9px] font-black flex items-center justify-center text-emerald-300">3</span>Envía el valor exacto</p>
+              </div>
+            </div>
+          </div>
+          </div>
           </div>
         </div>
       </div>
@@ -6253,6 +6319,7 @@
       const btnTelegramBot = document.getElementById('btnFlotanteTelegramBot');
       setTimeout(actualizarVisibilidadAsistente, 0);
       setTimeout(() => { try { if (user) despertarServidor(); } catch (e) { /* nada */ } }, 1200);
+      setTimeout(() => { try { registrarVisita(user); } catch (e) { /* nada */ } }, 2500);
       const navSaldo = document.getElementById('navSaldoDirecto');
       const navLogo = document.getElementById('navLogoContainer');
       const vistaBloqueadaEl = document.getElementById('vistaBloqueada');
@@ -7013,6 +7080,8 @@
             mensaje = `Llegaron ${cant} cuenta${cant === 1 ? '' : 's'} nueva${cant === 1 ? '' : 's'}. ¡Ya están disponibles en la tienda!`;
           }
 
+          // Un anuncio con el mismo título en menos de 24 h no se publica dos veces
+          if (tipo === 'anuncio' && items.some(n => n && n.tipo === 'anuncio' && n.titulo === titulo && (ahora - (new Date(n.fecha).getTime() || 0)) < 24 * 3600000)) return;
           items.unshift({
             id: idNotif(), tipo, titulo, mensaje: mensaje || '',
             productoId: productoId || null, cantidad: cant || null,
@@ -7168,7 +7237,7 @@
     // epicchannels.quest/#tienda · #mis-cuentas · #mis-cuentas/datos · #netflix · #admin/tickets ...
     // Funcionan para guardar, compartir y con el botón "atrás". Si la sección no le corresponde a quien abre el enlace, va a la tienda.
     const RUTAS_VISTAS = ['tienda', 'mis-cuentas', 'netflix', 'proveedor', 'admin'];
-    const TABS_ADMIN_RUTA = ['productos', 'reporte', 'categorias', 'usuarios', 'tickets', 'stock', 'apariencia', 'pagos', 'recargas', 'historial', 'netflix', 'ajustes', 'proveedores', 'asistente', 'buscar', 'promociones', 'cortes', 'novedades', 'vista', 'marketing'];
+    const TABS_ADMIN_RUTA = ['productos', 'reporte', 'actividad', 'categorias', 'usuarios', 'tickets', 'stock', 'apariencia', 'pagos', 'recargas', 'historial', 'netflix', 'ajustes', 'proveedores', 'asistente', 'buscar', 'promociones', 'cortes', 'novedades', 'vista', 'marketing'];
     const TABS_PERFIL_RUTA = ['cuentas', 'recargas', 'credito', 'datos', 'seguridad'];
     let aplicandoRuta = false, rutaActual = '', rutaPendienteStaff = '';
 
@@ -7562,7 +7631,7 @@
     function cambiarTabAdmin(tab) {
       if (modoPruebaCliente) return;
       iniciarBadgesAdmin();
-      const tabs = ['productos', 'reporte', 'categorias', 'usuarios', 'tickets', 'stock', 'apariencia', 'pagos', 'recargas', 'historial', 'netflix', 'ajustes', 'proveedores', 'asistente', 'buscar', 'promociones', 'cortes', 'novedades', 'vista', 'marketing'];
+      const tabs = ['productos', 'reporte', 'categorias', 'usuarios', 'tickets', 'stock', 'apariencia', 'pagos', 'recargas', 'historial', 'netflix', 'ajustes', 'proveedores', 'asistente', 'buscar', 'promociones', 'cortes', 'novedades', 'vista', 'marketing', 'actividad'];
       // El moderador no entra a la configuración general ni a los pagos a proveedores
       if (esModeradorSesion() && RESTRINGIDAS_MODERADOR.includes(tab)) tab = 'productos';
       tabs.forEach(t => {
@@ -7595,6 +7664,7 @@
       if (tab === 'tickets') { renderizarTickets(); limpiarFotosRespuestaVencidas(); }
       if (tab === 'promociones') { renderizarPromoProductos(); renderizarPromoActivas(); }
       if (tab === 'vista') { renderizarEditorVistaPanel(); cargarPermisosModerador(); }
+      if (tab === 'actividad') { try { cargarActividad(); } catch (e) { console.warn(e); } }
       if (tab === 'usuarios' || tab === 'ajustes') { try { if (esAdminSesionActual()) prepararCfgTiendas(); } catch (e) { /* nada */ } }
       if (tab === 'marketing') { try { if (!cfgDealer) cargarCfgDealer().then(prepararMarketing); } catch (e) { /* nada */ } prepararMarketing(); }
       if (tab === 'novedades') { iniciarNovedadesClientes(); renderizarNovedadesAdmin(); renderizarActualizacionesPagina(); }
@@ -7641,6 +7711,22 @@
       }, err => { console.warn('Inventario no disponible:', err); catalogoCargado = true; procesarYRenderizar(); });
       db.collection('configuracion').doc('novedades').onSnapshot(doc => {
         novedadesGlobales = (doc.exists && Array.isArray(doc.data().items)) ? doc.data().items : [];
+        // Corrección única (la hace el administrador): anuncios repetidos y el texto viejo que mencionaba a Nequi
+        try {
+          const crudos = novedadesGlobales.slice(), k2 = n => String(n.titulo || '') + '|' + String(n.mensaje || '');
+          const hayRep = crudos.filter(n => n && n.tipo === 'anuncio').some((n, i, a) => a.findIndex(m => k2(m) === k2(n)) !== i);
+          const hayNequi = crudos.some(n => n && n.tipo === 'anuncio' && /nequi/i.test(String(n.mensaje || '')));
+          if ((hayRep || hayNequi) && currentUser && esAdminSesionActual() && !window.__limpiezaNovedades) {
+            window.__limpiezaNovedades = true;
+            const vistos = new Set();
+            const limpios = crudos.map(n => (n && n.tipo === 'anuncio' && /nequi/i.test(String(n.mensaje || ''))) ? Object.assign({}, n, { mensaje: String(n.mensaje).replace(/si Nequi se demora, igual te llega apenas confirme/i, 'si la transacción se demora, igual te llega apenas se confirme').replace(/Nequi/gi, 'la transacción') }) : n)
+              .filter(n => { if (!n || n.tipo !== 'anuncio') return true; const k = String(n.titulo || ''); if (vistos.has(k)) return false; vistos.add(k); return true; });
+            db.collection('configuracion').doc('novedades').set({ items: limpios }, { merge: true }).catch(e => console.warn(e));
+          }
+        } catch (e) { /* nada */ }
+        // Si un anuncio quedó publicado dos veces, se muestra una sola vez (el más reciente)
+        const vistosAn = new Set();
+        novedadesGlobales = novedadesGlobales.filter(n => { if (!n || n.tipo !== 'anuncio') return true; const k = String(n.titulo || '') + '|' + String(n.mensaje || ''); if (vistosAn.has(k)) return false; vistosAn.add(k); return true; });
         renderizarNotificaciones();
         renderizarNovedadesAdmin();
       }, err => console.warn('Novedades no disponibles:', err));
@@ -8112,7 +8198,10 @@
         const promoBadgeHtml = prod.promoPct ? `<div class="mb-3 mr-1.5 inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider text-white bg-gradient-to-r from-rose-500 to-pink-500 shadow-md shadow-rose-500/30"><i class="fa-solid fa-tags"></i> -${prod.promoPct}%${prod.promoHasta ? ' · ' + escaparHtml(textoTiempoRestante(prod.promoHasta)) : ''}</div>` : '';
         const promoD = promoDealerDe(prod.docId);
         const llevaD = promoD ? ((progresoDealer.hoy || {})[prod.docId] || 0) % (promoD.compra || 10) : 0;
-        const hotBadgeHtml = (promoD ? `<div class="mb-3 mr-1.5 inline-flex"><span class="dealer-badge !tracking-normal !normal-case !text-[10px]"><i class="fa-solid fa-gift"></i> ${promoD.compra || 10}+${promoD.regalo || 1} Dealer${llevaD ? ' · llevas ' + llevaD : ''}</span></div>` : '') + (esComboT ? '<div class="mb-3 mr-1.5 inline-flex"><span class="combo-chip"><i class="fa-solid fa-gift"></i> Combo</span></div>' : '') + promoBadgeHtml + (esVipTienda ? `<div class="mb-3 mr-1.5 inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider text-black bg-gradient-to-r from-amber-300 via-yellow-400 to-amber-500 shadow-md shadow-amber-500/30"><i class="fa-solid fa-crown"></i> VIP</div>` : '') + (esHot ? `<div class="mb-3 inline-flex items-center gap-1.5 bg-red-500/10 text-red-400 border border-red-500/30 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider"><i class="fa-solid fa-fire animate-pulse text-red-500"></i> Producto Más Vendido / HOT</div>` : '');
+        const regaloD = promoD ? (promoD.regalo || 1) * (((multiplicadoresDealer() || {})[nivelDealerDe(progresoDealer.mes || 0).id]) || 1) : 0;
+        const promoCli = !promoD ? promoParaMi(prod.docId) : null;
+        const hotBadgeHtml = (promoD ? `<div class="mb-3 mr-1.5 inline-flex"><span class="dealer-badge !tracking-normal !normal-case !text-[10px]"><i class="fa-solid fa-gift"></i> Por ${promoD.compra || 10} cuentas te llevas ${regaloD} gratis${llevaD ? ' · llevas ' + llevaD : ''}</span></div>` : '')
+          + (promoCli ? `<div class="mb-3 mr-1.5 inline-flex"><span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black text-white bg-gradient-to-r from-pink-500 to-fuchsia-500 shadow-lg shadow-pink-500/30"><i class="fa-solid fa-gift"></i> Por ${promoCli.compra || 10} cuentas te llevas ${promoCli.regalo || 1} gratis</span></div>` : '') + (esComboT ? '<div class="mb-3 mr-1.5 inline-flex"><span class="combo-chip"><i class="fa-solid fa-gift"></i> Combo</span></div>' : '') + promoBadgeHtml + (esVipTienda ? `<div class="mb-3 mr-1.5 inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider text-black bg-gradient-to-r from-amber-300 via-yellow-400 to-amber-500 shadow-md shadow-amber-500/30"><i class="fa-solid fa-crown"></i> VIP</div>` : '') + (esHot ? `<div class="mb-3 inline-flex items-center gap-1.5 bg-red-500/10 text-red-400 border border-red-500/30 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider"><i class="fa-solid fa-fire animate-pulse text-red-500"></i> Producto Más Vendido / HOT</div>` : '');
 
         const imagenProdHtml = prod.imagenUrl 
           ? `<img loading="lazy" decoding="async" src="${prod.imagenUrl}" alt="${prod.nombre}" data-ampliar="${escaparHtml(prod.nombre || 'Producto')}" class="w-10 h-10 rounded-full object-cover border border-gray-700/80 shadow-md shrink-0 cursor-zoom-in">` 
@@ -8142,8 +8231,8 @@
               ${esNf && tt('chipNetflix') !== '-' ? `<div class="mb-2"><span class="nf-chip"><i class="fa-solid fa-key"></i> ${ttH('chipNetflix')}</span></div>` : ''}
               <p class="text-xs text-gray-400 mb-2 leading-relaxed">${prod.descripcion}</p>
               ${esComboT ? '' : htmlGarantiaTarjeta(prod)}
-              ${(!promoD && promoParaMi(prod.docId)) ? (() => { const pc = promoParaMi(prod.docId); return `<div class="mb-2.5 px-3 py-2 rounded-xl border border-pink-400/40 bg-gradient-to-r from-pink-500/15 to-violet-500/10"><p class="text-[11px] font-black text-pink-200">🎁 Promo: compra ${pc.compra || 10}, lleva ${pc.regalo || 1} gratis</p><p class="text-[10px] text-pink-100/70 mt-0.5">Por tiempo limitado · las compras del mismo día se suman.</p></div>`; })() : ''}
-              ${promoD ? `<div class="mb-2.5 px-3 py-2 rounded-xl border border-yellow-400/40" style="background:linear-gradient(135deg,rgba(247,215,116,.12),rgba(184,134,11,.06))"><p class="text-[11px] font-black dealer-texto">🎁 Promo de hoy: compra ${promoD.compra || 10}, lleva ${(promoD.regalo || 1) * ((multiplicadoresDealer()[nivelDealerDe(progresoDealer.mes || 0).id]) || 1)}</p><p class="text-[10px] text-amber-100/70 mt-0.5 leading-snug">Válido mientras veas este mensaje · ¡aprovecha, pocas unidades! <span class="text-amber-200/90">Solo tú lo ves porque eres un partner especial 👑</span></p></div>` : ''}
+              ${(!promoD && promoParaMi(prod.docId)) ? (() => { const pc = promoParaMi(prod.docId); return `<div class="mb-2.5 px-3 py-2 rounded-xl border border-pink-400/40 bg-gradient-to-r from-pink-500/15 to-violet-500/10"><p class="text-[11px] font-black text-pink-200">🎁 Promo: compra ${pc.compra || 10}, lleva ${pc.regalo || 1} gratis</p><p class="text-[10px] text-pink-100/70 mt-0.5">${pc.vence ? 'Válida ' + textoVencePromo(pc) : 'Por tiempo limitado'} · las compras del mismo día se suman.</p></div>`; })() : ''}
+              ${promoD ? `<div class="mb-2.5 px-3 py-2 rounded-xl border border-yellow-400/40" style="background:linear-gradient(135deg,rgba(247,215,116,.12),rgba(184,134,11,.06))"><p class="text-[11px] font-black dealer-texto">🎁 Promo de hoy: compra ${promoD.compra || 10}, lleva ${(promoD.regalo || 1) * ((multiplicadoresDealer()[nivelDealerDe(progresoDealer.mes || 0).id]) || 1)}</p><p class="text-[10px] text-amber-100/70 mt-0.5 leading-snug">${promoD.vence ? 'Válida ' + textoVencePromo(promoD) : 'Válido mientras veas este mensaje'} · ¡aprovecha, pocas unidades! <span class="text-amber-200/90">Solo tú lo ves porque eres un partner especial 👑</span></p></div>` : ''}
               ${esComboT ? htmlIncluyeCombo(prod) : ''}
               
               <div class="mb-4">
@@ -9921,7 +10010,7 @@
       try {
         unsubRecargaCfg = db.collection('configuracion').doc('recarga_auto').onSnapshot(doc => {
           const d = doc.exists ? (doc.data() || {}) : {};
-          recargaAutoCfg = { activa: d.activa === true, minutos: parseInt(d.minutos, 10) || 30, minimo: parseInt(d.minimo, 10) || 5000, importeExtra: parseInt(d.importeExtra, 10) === 1 ? 1 : 0 };
+          recargaAutoCfg = { activa: d.activa === true, minutos: parseInt(d.minutos, 10) || 30, minimo: parseInt(d.minimo, 10) || 5000, importeExtra: parseInt(d.importeExtra, 10) === 1 ? 1 : 0, binanceActiva: d.binanceActiva === true, binanceMinimo: Number(d.binanceMinimo) || 5, binanceAjustePct: Number(d.binanceAjustePct) || 0 };
           renderizarRecargaAuto();
           renderizarMetodosPagoEnClientes();
           renderizarRecargaAutoAdmin();
@@ -9956,7 +10045,12 @@
       const caja = document.getElementById('recargaAutoCaja');
       if (!caja) return;
       const metodo = metodoRecargaAuto();
-      const activa = recargaAutoDisponible();
+      const activa = recargaAutoDisponible() || binanceDisponible();
+      const vias = document.getElementById('recargaVias');
+      const dos = recargaAutoDisponible() && binanceDisponible();
+      if (vias) vias.classList.toggle('hidden', !dos || !!pedidoRecargaActivo);
+      if (!recargaAutoDisponible() && binanceDisponible()) viaRecarga = 'binance';
+      if (!binanceDisponible()) viaRecarga = 'breb';
       caja.classList.toggle('hidden', !activa);
       const det = document.getElementById('recargaManualDetalle');
       const res = document.getElementById('recargaManualResumen');
@@ -9975,21 +10069,35 @@
       const ped = document.getElementById('recargaAutoPedido');
       if (pedidoRecargaActivo) {
         if (form) form.classList.add('hidden');
+        const fbx = document.getElementById('recargaBinanceForm'); if (fbx) fbx.classList.add('hidden');
         if (ped) ped.classList.remove('hidden');
         const set = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v; };
-        set('recAutoMonto', formatoCOP(pedidoRecargaActivo.monto));
+        const esBn = pedidoEsBinance(pedidoRecargaActivo);
+        set('recAutoMonto', esBn ? `${Number(pedidoRecargaActivo.usdt).toFixed(2).replace(/\.00$/, '')} USDT` : formatoCOP(pedidoRecargaActivo.monto));
         const extra = pedidoRecargaActivo.base ? (pedidoRecargaActivo.monto - pedidoRecargaActivo.base) : 0;
-        set('recAutoExtra', extra > 0 ? `Incluye ${formatoCOP(extra)} para identificar tu pago. No es comisión: todo se suma a tu saldo.` : (pedidoRecargaActivo.base ? 'Paga exactamente este valor para que se acredite solo.' : 'Los pesos extra sirven para identificar tu pago. No es comisión: todo se suma a tu saldo.'));
-        set('recAutoNombre', metodo ? metodo.nombre : 'Llave Bre-B');
-        set('recAutoLlave', metodo ? metodo.llave : '—');
-        set('recAutoTitular', metodo && metodo.titular ? 'Titular: ' + metodo.titular : '');
+        if (esBn) set('recAutoExtra', `Recibirás ${formatoCOP(pedidoRecargaActivo.montoCop)} en tu saldo (1 USDT = ${formatoCOP(pedidoRecargaActivo.tasa)}).`); else set('recAutoExtra', extra > 0 ? `Incluye ${formatoCOP(extra)} para identificar tu pago. No es comisión: todo se suma a tu saldo.` : (pedidoRecargaActivo.base ? 'Paga exactamente este valor para que se acredite solo.' : 'Los pesos extra sirven para identificar tu pago. No es comisión: todo se suma a tu saldo.'));
+        const mUsado = esBn ? metodoBinanceAuto() : metodo;
+        set('recAutoNombre', esBn ? (mUsado ? mUsado.nombre : 'Binance Pay ID') : (metodo ? metodo.nombre : 'Llave Bre-B'));
+        set('recAutoLlave', mUsado ? mUsado.llave : '—');
+        set('recAutoTitular', mUsado && mUsado.titular ? 'Titular: ' + mUsado.titular : '');
         const qr = document.getElementById('recAutoQr');
-        if (qr) qr.classList.toggle('hidden', !(metodo && metodo.qrImage));
+        if (qr) qr.classList.toggle('hidden', !((esBn ? metodoBinanceAuto() : metodo) || {}).qrImage);
+        // Computador: QR grande al lado, automático
+        const lado = document.getElementById('recAutoQrLado'), ladoImg = document.getElementById('recAutoQrLadoImg'), caja = document.getElementById('modalRecargaCaja');
+        const mQr = esBn ? metodoBinanceAuto() : metodo;
+        const hayQr = !!(mQr && mQr.qrImage);
+        if (lado) { lado.classList.toggle('lg:flex', hayQr); lado.classList.toggle('hidden', true); if (ladoImg && hayQr) ladoImg.src = mQr.qrImage; } const qm = document.getElementById('recAutoQrMonto'); if (qm) qm.textContent = esBn ? `${Number(pedidoRecargaActivo.usdt).toFixed(2).replace(/\.00$/, '')} USDT` : formatoCOP(pedidoRecargaActivo.monto); const qn = document.getElementById('recAutoQrMetodo'); if (qn) { qn.textContent = esBn ? 'BINANCE' : String((metodo && metodo.nombre) || 'Bre-B').toUpperCase().slice(0, 12); qn.className = 'px-1.5 py-0.5 rounded-md text-[9px] font-black whitespace-nowrap ' + (esBn ? 'bg-yellow-400/20 text-yellow-300' : 'bg-emerald-500/15 text-emerald-300'); }
+        const p1 = document.getElementById('recAutoPaso1'); if (p1) p1.textContent = esBn ? 'Abre Binance → Pay' : 'Abre tu app bancaria';
+        const av = document.getElementById('recAutoAvisoExacto'); if (av) av.innerHTML = esBn ? 'Envía <b>exactamente</b> ese valor en <b>USDT</b>, con los centavos. Si envías otro valor u otra moneda, no se acredita solo.' : 'El monto debe ser <b>exacto</b>, con los pesos de más. Si envías otro valor, no se acredita solo.';
+        if (caja) { caja.classList.toggle('lg:max-w-[44rem]', hayQr); }
         actualizarRelojRecarga();
         if (!relojRecargaTimer) relojRecargaTimer = setInterval(actualizarRelojRecarga, 1000);
       } else {
-        if (form) form.classList.remove('hidden');
+        if (form) form.classList.toggle('hidden', viaRecarga !== 'breb');
+        const fb = document.getElementById('recargaBinanceForm'); if (fb) fb.classList.toggle('hidden', viaRecarga !== 'binance');
+        if (dos || viaRecarga === 'binance') setTimeout(() => elegirViaRecarga(viaRecarga), 0);
         if (ped) ped.classList.add('hidden');
+        const caja = document.getElementById('modalRecargaCaja'); if (caja) caja.classList.remove('lg:max-w-[44rem]');
         if (relojRecargaTimer) { clearInterval(relojRecargaTimer); relojRecargaTimer = null; }
       }
     }
@@ -10100,9 +10208,9 @@
       mostrarToast(abono > 0 ? `¡Recarga acreditada! ${formatoCOP(abono)} pagaron tu crédito y ${formatoCOP((Number(p.monto) || 0) - abono)} van a tu saldo.` : `¡Recarga acreditada! +${formatoCOP(p.monto)} COP`);
     }
 
-    function recargaAutoCopiarMonto() { if (pedidoRecargaActivo) copiarTexto(String(pedidoRecargaActivo.monto), 'Monto copiado: ' + formatoCOP(pedidoRecargaActivo.monto)); }
-    function recargaAutoCopiarLlave() { const m = metodoRecargaAuto(); if (m) copiarTexto(String(m.llave), '¡' + m.nombre + ' copiada!'); }
-    function recargaAutoVerQr() { const m = metodoRecargaAuto(); if (m && m.qrImage) abrirZoomQr(m.qrImage, m.nombre); }
+    function recargaAutoCopiarMonto() { const p = pedidoRecargaActivo; if (!p) return; if (pedidoEsBinance(p)) copiarTexto(String(p.usdt), 'Monto copiado: ' + p.usdt + ' USDT'); else copiarTexto(String(p.monto), 'Monto copiado: ' + formatoCOP(p.monto)); }
+    function recargaAutoCopiarLlave() { const m = pedidoEsBinance(pedidoRecargaActivo) ? metodoBinanceAuto() : metodoRecargaAuto(); if (m) copiarTexto(String(m.llave), '¡' + m.nombre + ' copiada!'); }
+    function recargaAutoVerQr() { const m = pedidoEsBinance(pedidoRecargaActivo) ? metodoBinanceAuto() : metodoRecargaAuto(); if (m && m.qrImage) abrirZoomQr(m.qrImage, m.nombre); }
 
     // ---------- Administración ----------
     function iniciarPagosRecibidosAdmin() {
@@ -10154,6 +10262,10 @@
       const mn = document.getElementById('recargaAutoMinimo');
       if (mn && document.activeElement !== mn) mn.value = recargaAutoCfg.minimo;
       const ex = document.getElementById('selRecargaExtra'); if (ex && document.activeElement !== ex) ex.value = String(recargaAutoCfg.importeExtra || 0);
+      const cb = document.getElementById('chkBinanceAuto'); if (cb && document.activeElement !== cb) cb.checked = recargaAutoCfg.binanceActiva === true;
+      const bm = document.getElementById('binanceMinimo'); if (bm && document.activeElement !== bm) bm.value = recargaAutoCfg.binanceMinimo || 5;
+      const ba = document.getElementById('binanceAjuste'); if (ba && document.activeElement !== ba) ba.value = recargaAutoCfg.binanceAjustePct || 0;
+      const bt = document.getElementById('binanceTasaAdmin'); if (bt) bt.innerHTML = (recargaEstadoSrv && recargaEstadoSrv.tasaUsdt) ? `Tasa de mercado ahora: <b>1 USDT = ${formatoCOP(recargaEstadoSrv.tasaUsdt)}</b>${recargaAutoCfg.binanceAjustePct ? ` · con tu ajuste: <b>${formatoCOP(Math.round(recargaEstadoSrv.tasaUsdt * (1 + recargaAutoCfg.binanceAjustePct / 100)))}</b>` : ''}` : 'La tasa aparece aquí cuando el servidor la consulte por primera vez.';
       renderizarEstadoRecargaAdmin();
     }
 
@@ -10181,8 +10293,11 @@
       const metodoId = (document.getElementById('selRecargaMetodo') || {}).value || '';
       const elegido = metodosPagoList.find(m => m.docId === metodoId) || metodoRecargaAuto();
       if (activa && !elegido) { alert('Primero elige arriba el método de pago (tu llave Bre-B) que verán los clientes.'); return; }
-      const datos = { activa: activa, minutos: minutos, minimo: minimo, importeExtra: (document.getElementById('selRecargaExtra') || {}).value === '1' ? 1 : 0, exactoSiUnico: (document.getElementById('selRecargaExtra') || {}).value !== '1', actualizadoEl: new Date().toISOString() };
+      const binActiva = !!(document.getElementById('chkBinanceAuto') || {}).checked;
+      if (binActiva && !metodoBinanceAuto()) { alert('Para Binance, primero crea un método de pago con tu Binance Pay ID y su QR, y márcalo como "Binance Pay automática".'); return; }
+      const datos = { activa: activa, minutos: minutos, minimo: minimo, binanceActiva: binActiva, binanceMinimo: Math.max(1, Number((document.getElementById('binanceMinimo') || {}).value) || 5), binanceAjustePct: Math.max(-20, Math.min(20, Number((document.getElementById('binanceAjuste') || {}).value) || 0)), importeExtra: (document.getElementById('selRecargaExtra') || {}).value === '1' ? 1 : 0, exactoSiUnico: (document.getElementById('selRecargaExtra') || {}).value !== '1', actualizadoEl: new Date().toISOString() };
       if (activa && !recargaAutoCfg.activa) datos.activadaEl = new Date().toISOString();
+      if (binActiva && !recargaAutoCfg.binanceActiva) datos.binanceActivadaEl = new Date().toISOString();
       try {
         const lote = db.batch();
         // Un solo método queda marcado como automático; el resto vuelve a manual
@@ -10307,7 +10422,7 @@
     let inicioEnPanelPendiente = false;
     let perfilNombreActual = '';
     let escuchasModeradorActivas = false;
-    var RESTRINGIDAS_MODERADOR = ['categorias', 'apariencia', 'pagos', 'ajustes', 'proveedores', 'asistente', 'promociones', 'novedades', 'marketing'];
+    var RESTRINGIDAS_MODERADOR = ['categorias', 'apariencia', 'pagos', 'ajustes', 'proveedores', 'asistente', 'promociones', 'novedades', 'marketing', 'actividad'];
 
     function esModeradorSesion() { return rolActual === 'moderador' && !esAdminSesionActual(); }
     function esProveedorSesion() { return rolActual === 'proveedor' && !esAdminSesionActual(); }
@@ -14358,13 +14473,13 @@
 
     // ==================== VISTA DEL PANEL (menú configurable) ====================
     const TABS_MENU_INFO = {
-      netflix: ['Alquileres', '#f87171'], productos: ['Productos', '#34d399'], reporte: ['Reporte de Ventas', '#60a5fa'], usuarios: ['Usuarios Registrados', '#a78bfa'],
+      netflix: ['Alquileres', '#f87171'], productos: ['Productos', '#34d399'], reporte: ['Reporte de Ventas', '#60a5fa'], actividad: ['Actividad', '#22d3ee'], usuarios: ['Usuarios Registrados', '#a78bfa'],
       tickets: ['Tickets', '#fbbf24'], recargas: ['Solicitudes de Saldo', '#34d399'], stock: ['Cargar Cuentas (Stock)', '#facc15'], historial: ['Historial de Ventas', '#94a3b8'],
       cortes: ['Cortes', '#f87171'], buscar: ['Buscar cuenta', '#38bdf8'], proveedores: ['Proveedores', '#fb923c'], promociones: ['Promociones', '#f472b6'],
       novedades: ['Novedades', '#38bdf8'], marketing: ['Marketing', '#e879f9'], categorias: ['Categorías & Colores', '#c084fc'], apariencia: ['Apariencia y Logo', '#f472b6'], pagos: ['Métodos de Pago & QR', '#2dd4bf'],
       asistente: ['Asistente', '#34d399'], vista: ['Vista del panel', '#a3e635'], ajustes: ['Ajustes Generales', '#cbd5e1']
     };
-    const ORDEN_MENU_BASE = ['netflix', 'productos', 'reporte', 'usuarios', 'tickets', 'recargas', 'stock', 'historial', 'cortes', 'buscar', 'proveedores', 'promociones', 'novedades', 'marketing', 'categorias', 'apariencia', 'pagos', 'asistente', 'vista', 'ajustes'];
+    const ORDEN_MENU_BASE = ['netflix', 'productos', 'reporte', 'actividad', 'usuarios', 'tickets', 'recargas', 'stock', 'historial', 'cortes', 'buscar', 'proveedores', 'promociones', 'novedades', 'marketing', 'categorias', 'apariencia', 'pagos', 'asistente', 'vista', 'ajustes'];
     const VISTA_PANEL_BASE = { version: 2, estilo: 'grupos', columnas: 3, destacado: 'netflix', color: 'rojo', iconos: true, inicio: 'productos', orden: ORDEN_MENU_BASE.slice(), ocultos: [] };
     let vistaPanel = null, vistaPanelGuardada = null;
 
@@ -14553,9 +14668,9 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-07g';
+    const VERSION_PAGINA = '2026-10-07n';
     const ACTUALIZACIONES_PAGINA = [
-      { id: 'act_20261006b_recarga', fecha: '2026-10-06', titulo: 'Recargas más simples 💳', mensaje: 'Ahora pagas **el valor exacto** que eliges recargar. Tu saldo se acredita solo en 1 o 2 minutos, y si Nequi se demora, igual te llega apenas confirme.' },
+      { id: 'act_20261006b_recarga', fecha: '2026-10-06', titulo: 'Recargas más simples 💳', mensaje: 'Ahora pagas **el valor exacto** que eliges recargar. Tu saldo se acredita solo en 1 o 2 minutos, y si la transacción se demora, igual te llega apenas se confirme.' },
       { id: 'act_20261006b_sinsaldo', fecha: '2026-10-06', titulo: 'Recarga y compra en un solo paso', mensaje: 'Si tocas **Comprar** y te falta saldo, toca **Recargar** ahí mismo. Cuando tu recarga entre, **tu compra se completa sola** y no tienes que volver a buscar el producto.' },
       { id: 'act_20261006b_lote', fecha: '2026-10-06', titulo: 'Compras grandes más ordenadas', mensaje: 'Cuando compras varias cuentas las ves en **una lista limpia** con el botón **Copiar todas**. Para reportar una, toca **Reportar una cuenta** y pega su correo.' },
       { id: 'act_20261006b_tickets', fecha: '2026-10-06', titulo: 'Avisos de tus reportes', mensaje: 'Cuando resolvemos un reporte te sale un **aviso pequeño amarillo** una sola vez, y la respuesta queda en **Mis Reportes**.' },
@@ -14606,18 +14721,26 @@
       copiarTexto(t, 'Resumen copiado: pégalo en WhatsApp');
     }
 
+    var difundiendoNovedad = false;
     async function guardarNovedadDePlantilla(a) {
+      if (difundiendoNovedad) return;   // un doble toque no la publica dos veces
+      difundiendoNovedad = true;
+      try {
       const ahora = new Date().toISOString();
       const ref = db.collection('configuracion').doc('novedades_clientes');
+      let yaDifundida = false;
       await db.runTransaction(async (t) => {
         const d = await t.get(ref);
         let l = d.exists && Array.isArray((d.data() || {}).lista) ? d.data().lista.slice() : [];
         const i = l.findIndex(n => n && n.plantillaId === a.id);
+        yaDifundida = i >= 0 && l[i].difundida === true;
         if (i >= 0) l[i] = Object.assign({}, l[i], { difundida: true, difundidaEl: ahora });
         else l = [{ id: 'nov_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), plantillaId: a.id, titulo: a.titulo, mensaje: a.mensaje, fecha: ahora, difundida: true, difundidaEl: ahora, creadaPor: currentUser.email }].concat(l);
         t.set(ref, { lista: l.slice(0, 30) }, { merge: true });
       });
-      await publicarNovedadGlobal({ tipo: 'anuncio', titulo: a.titulo, mensaje: a.mensaje.replace(/\*\*(.+?)\*\*/g, '$1') });
+      // Si ya estaba difundida, no se vuelve a mandar a los clientes
+      if (!yaDifundida) await publicarNovedadGlobal({ tipo: 'anuncio', titulo: a.titulo, mensaje: a.mensaje.replace(/\*\*(.+?)\*\*/g, '$1') });
+      } finally { difundiendoNovedad = false; }
     }
 
     async function difundirActualizacion(id) {
@@ -14705,6 +14828,10 @@
           <button type="button" onclick="delete promosDealerEdit['${escaparJsAttr(id)}'];marcarPromosSucio();renderizarPromosDealerAdmin()" aria-label="Quitar" class="w-7 h-7 rounded-lg bg-red-500/10 border border-red-500/30 text-red-300 text-[10px]"><i class="fa-solid fa-trash"></i></button></div>
         <div class="grid grid-cols-3 gap-1.5 mt-2">${inp(id, 'compra', pr.compra || 10, 1, '')}${inp(id, 'regalo', pr.regalo || 1, 1, '')}${inp(id, 'maxDia', pr.maxDia || 1, 1, '')}</div>
         <div class="mt-1.5 flex flex-wrap items-center gap-2"><span class="text-[9px] text-amber-100/60 uppercase tracking-wider">Aplica a:</span>${[['dealer', '👑 Dealers'], ['cliente', 'Clientes'], ['normal', 'Clientes normales']].map(([k, t]) => `<label class="flex items-center gap-1 text-[11px] text-white"><input type="checkbox" ${(Array.isArray(pr.aplicaA) && pr.aplicaA.length ? pr.aplicaA : ['dealer']).indexOf(k) !== -1 ? 'checked' : ''} onchange="cambiarAplicaPromo('${escaparJsAttr(id)}','${k}',this.checked)" class="accent-yellow-400 w-3.5 h-3.5">${t}</label>`).join('')}</div>
+        <div class="mt-1.5 flex flex-wrap items-center gap-2"><span class="text-[9px] text-amber-100/60 uppercase tracking-wider">Vigencia:</span>
+          <select onchange="cambiarVigenciaPromo('${escaparJsAttr(id)}', this.value)" class="bg-gray-900 border border-gray-700 rounded-lg px-2 py-1 text-[11px] text-white focus:outline-none"><option value="siempre" ${pr.vence ? '' : 'selected'}>Siempre</option><option value="hasta" ${pr.vence ? 'selected' : ''}>Hasta una fecha</option></select>
+          ${pr.vence ? `<input type="datetime-local" value="${escaparHtml(fechaLocalInput(pr.vence))}" onchange="promosDealerEdit['${escaparJsAttr(id)}'].vence=this.value?new Date(this.value).toISOString():'';marcarPromosSucio();renderizarPromosDealerAdmin()" class="bg-gray-900 border border-gray-700 rounded-lg px-2 py-1 text-[11px] text-white focus:outline-none">
+          <span class="px-1.5 py-0.5 rounded-full text-[9px] font-black ${promoVencida(pr) ? 'bg-red-500/20 text-red-300' : 'bg-emerald-500/15 text-emerald-300'}">${promoVencida(pr) ? 'VENCIDA' : textoFaltaPromo(pr.vence)}</span>` : '<span class="text-[10px] text-gray-500">sin fecha de fin</span>'}</div>
         <label class="block mt-1.5 text-[9px] text-amber-100/60 uppercase tracking-wider">Producto de regalo<select onchange="promosDealerEdit['${escaparJsAttr(id)}'].regaloProductoId=this.value;marcarPromosSucio()" class="mt-0.5 w-full bg-gray-900 border border-yellow-400/30 rounded-lg px-2 py-1.5 text-xs text-white focus:outline-none"><option value="">El mismo (${escaparHtml(nombreProd(id))})</option>${prods.filter(p => p.docId !== id).map(p => `<option value="${escaparHtml(p.docId)}" ${pr.regaloProductoId === p.docId ? 'selected' : ''}>${escaparHtml(p.nombre || p.docId)}</option>`).join('')}</select></label>
         <p class="text-[10px] text-yellow-200 mt-1.5 font-bold">🎁 Compra ${pr.compra || 10}, llévate ${pr.regalo || 1}${pr.regaloProductoId ? ' de ' + escaparHtml(nombreProd(pr.regaloProductoId)) : ''} · hasta ${(pr.maxDia || 1) * (pr.regalo || 1)} de regalo al día</p>
       </div>`; }).join('') : '<p class="text-[11px] text-amber-100/60">Todavía no hay promos. Elige un producto abajo y toca Agregar.</p>';
@@ -14721,7 +14848,7 @@
       const btn = document.getElementById('btnGuardarPromosDealer'), est = document.getElementById('promosDealerEstado');
       if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i> Guardando...'; }
       const limpio = {};
-      Object.keys(promosDealerEdit).forEach(id => { const pr = promosDealerEdit[id]; limpio[id] = { activo: pr.activo !== false, compra: Math.max(1, parseInt(pr.compra, 10) || 10), regalo: Math.max(1, parseInt(pr.regalo, 10) || 1), maxDia: Math.max(1, parseInt(pr.maxDia, 10) || 1), regaloProductoId: String(pr.regaloProductoId || ''), aplicaA: Array.isArray(pr.aplicaA) && pr.aplicaA.length ? pr.aplicaA : ['dealer'] }; });
+      Object.keys(promosDealerEdit).forEach(id => { const pr = promosDealerEdit[id]; limpio[id] = { activo: pr.activo !== false, compra: Math.max(1, parseInt(pr.compra, 10) || 10), regalo: Math.max(1, parseInt(pr.regalo, 10) || 1), maxDia: Math.max(1, parseInt(pr.maxDia, 10) || 1), regaloProductoId: String(pr.regaloProductoId || ''), aplicaA: Array.isArray(pr.aplicaA) && pr.aplicaA.length ? pr.aplicaA : ['dealer'], vence: pr.vence && !isNaN(Date.parse(pr.vence)) ? new Date(pr.vence).toISOString() : '' }; });
       const nAct = Object.values(limpio).filter(x => x.activo).length;
       try {
         const niveles = { plata: Math.max(1, parseInt((document.getElementById('nivPlata') || {}).value, 10) || 50), oro: Math.max(2, parseInt((document.getElementById('nivOro') || {}).value, 10) || 150) };
@@ -15862,6 +15989,7 @@
       { id: 'promociones', t: 'Promociones', tab: 'promociones', docs: [] },
       { id: 'novedades', t: 'Novedades para clientes', tab: 'novedades', docs: ['novedades_clientes'] },
       { id: 'marketing', t: 'Marketing (imágenes y textos)', tab: 'marketing', docs: [] },
+      { id: 'actividad', t: 'Actividad de la página', tab: 'actividad', docs: ['visitas'] },
       { id: 'combos', t: 'Armar combos', docs: [], sel: ['[onclick="abrirModalCombo()"]'] },
       { id: 'categorias', t: 'Categorías & Colores', tab: 'categorias', docs: ['colores_categorias'] },
       { id: 'apariencia', t: 'Apariencia y Logo', tab: 'apariencia', docs: ['apariencia'] },
@@ -15872,7 +16000,7 @@
       { id: 'referidos', t: 'Referidos y comisiones', docs: ['referidos'], sel: ['#adminReferidosCaja'] },
       { id: 'venta_manual', t: 'Venta manual (WhatsApp)', docs: [], sel: ['#ventaManualCaja'] }
     ];
-    const RESTRINGIDAS_BASE = ['categorias', 'apariencia', 'pagos', 'ajustes', 'proveedores', 'asistente', 'promociones', 'novedades', 'marketing'];
+    const RESTRINGIDAS_BASE = ['categorias', 'apariencia', 'pagos', 'ajustes', 'proveedores', 'asistente', 'promociones', 'novedades', 'marketing', 'actividad'];
     var permisosModerador = [];
     function puedeSeccion(sec) { return esAdminSesionActual() || (esModeradorSesion() && permisosModerador.indexOf(sec) !== -1); }
     function elementosSeccionMod(sm) {
@@ -16271,7 +16399,9 @@
 
     // ==================== PROMOS POR PERFIL ====================
     function perfilPromoMio() { if (esStaffSesion() || esProveedorSesion()) return ''; return userTipoCuenta === 'revendedor' ? 'dealer' : (userTipoCuenta === 'normal' ? 'normal' : 'cliente'); }
-    function aplicaPromo(pr, perfil) { const a = Array.isArray(pr.aplicaA) && pr.aplicaA.length ? pr.aplicaA : ['dealer']; return a.indexOf(perfil) !== -1; }
+    function promoVencida(pr) { return !!(pr && pr.vence && Date.parse(pr.vence) < Date.now()); }
+    function textoVencePromo(pr) { if (!pr || !pr.vence) return ''; const d = new Date(pr.vence); return `hasta el ${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')} a las ${d.toLocaleTimeString('es-CO', { hour: 'numeric', minute: '2-digit' })}`; }
+    function aplicaPromo(pr, perfil) { if (promoVencida(pr)) return false; const a = Array.isArray(pr.aplicaA) && pr.aplicaA.length ? pr.aplicaA : ['dealer']; return a.indexOf(perfil) !== -1; }
     // Promo que aplica a este cliente en este producto (cualquier perfil)
     function promoParaMi(id) {
       const perfil = perfilPromoMio(); if (!perfil || modoPruebaCliente) return null;
@@ -16806,7 +16936,7 @@
 
     // ==================== MENÚ DEL PANEL POR GRUPOS (estilo app) ====================
     const GRUPOS_MENU = [
-      ['Ventas', ['reporte', 'historial', 'recargas', 'promociones', 'marketing']],
+      ['Ventas', ['reporte', 'actividad', 'historial', 'recargas', 'promociones', 'marketing']],
       ['Clientes', ['usuarios', 'tickets', 'novedades', 'asistente']],
       ['Inventario', ['productos', 'stock', 'proveedores', 'buscar', 'cortes']],
       ['Configuración', ['categorias', 'apariencia', 'pagos', 'vista', 'ajustes']]
@@ -16840,6 +16970,7 @@
     // ==================== BUSCADOR DEL PANEL (como en los ajustes del celular) ====================
     // [texto, pestaña, palabras clave, elemento al que lleva]
     const BUSQUEDA_PANEL = [
+      ['Horas de más visitas', 'actividad', 'visitas hora pico estadisticas trafico conectados dispositivos origen', ''],
       ['Promos para dealers', 'usuarios', 'dealer promocion regalo nivel oro plata bronce multiplicador', 'adminRegaloRevendedor'],
       ['Referidos y comisiones', 'usuarios', 'referido comision recomendar bono', 'adminReferidosCaja'],
       ['Crear cuenta de usuario', 'usuarios', 'crear registrar usuario cliente proveedor nuevo', ''],
@@ -17413,6 +17544,141 @@
       return { unicas: unicas, repetidas: repetidas };
     }
     function textoRepetidas(rep) { return rep.slice(0, 8).map(r => `• ${r.email}: ${r.motivo}`).join('\n') + (rep.length > 8 ? `\n…y ${rep.length - 8} más` : ''); }
+
+
+    // ==================== RECARGA CON BINANCE PAY (USDT) ====================
+    var viaRecarga = 'breb', tasaBinanceCache = { v: 0, t: 0 };
+    function metodoBinanceAuto() { return metodosPagoList.find(m => m.auto === 'binance') || null; }
+    function binanceDisponible() { return !modoPruebaCliente && recargaAutoCfg.binanceActiva === true && !!metodoBinanceAuto(); }
+    function pedidoEsBinance(p) { return !!(p && p.metodo === 'binance'); }
+    function elegirViaRecarga(v) {
+      viaRecarga = v;
+      document.querySelectorAll('#recargaVias [data-via]').forEach(b => { const on = b.dataset.via === v; b.className = 'py-2 rounded-lg text-[11px] font-black ' + (on ? (v === 'binance' ? 'bg-yellow-400 text-black' : 'bg-emerald-500 text-black') : 'text-gray-300 hover:bg-gray-800'); });
+      const f1 = document.getElementById('recargaAutoForm'), f2 = document.getElementById('recargaBinanceForm');
+      if (!pedidoRecargaActivo) { if (f1) f1.classList.toggle('hidden', v !== 'breb'); if (f2) f2.classList.toggle('hidden', v !== 'binance'); }
+      if (v === 'binance') { const i = document.getElementById('recargaBinanceUsdt'); if (i) { i.min = String(recargaAutoCfg.binanceMinimo || 5); if (!i.value) i.value = String(recargaAutoCfg.binanceMinimo || 5); } cotizarBinance(); }
+    }
+    async function obtenerTasaBinance() {
+      if (tasaBinanceCache.v && Date.now() - tasaBinanceCache.t < 10 * 60000) return tasaBinanceCache.v;
+      try { const r = await llamarBackend('binance_tasa', {}); if (r && r.ok && r.tasa > 0) tasaBinanceCache = { v: r.tasa, t: Date.now() }; } catch (e) { /* nada */ }
+      return tasaBinanceCache.v;
+    }
+    async function cotizarBinance() {
+      const el = document.getElementById('recargaBinanceCotiza'); if (!el) return;
+      const u = Number((document.getElementById('recargaBinanceUsdt') || {}).value) || 0, min = recargaAutoCfg.binanceMinimo || 5;
+      if (!tasaBinanceCache.v) el.textContent = 'Consultando la tasa del día…';
+      const tasa = await obtenerTasaBinance();
+      if (!tasa) { el.textContent = 'No pudimos consultar la tasa. Intenta en un momento.'; return; }
+      el.innerHTML = u >= min ? `Recibirás aprox. <b class="text-white">${formatoCOP(Math.round(u * tasa))}</b> · tasa de hoy 1 USDT = ${formatoCOP(tasa)}` : `Mínimo ${min} USDT · tasa de hoy 1 USDT = ${formatoCOP(tasa)}`;
+    }
+    async function recargaBinanceCrear() {
+      const u = Math.round((Number((document.getElementById('recargaBinanceUsdt') || {}).value) || 0) * 100) / 100, min = recargaAutoCfg.binanceMinimo || 5;
+      if (!(u >= min)) { alert(`El mínimo por Binance es ${min} USDT.`); return; }
+      const btn = document.getElementById('btnRecargaBinanceCrear'); if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>'; }
+      try {
+        const r = await llamarBackend('recarga_binance_crear', { usdt: u });
+        if (!r.ok) { alert(r.error || 'No se pudo crear el pedido.'); return; }
+        pedidoRecargaActivo = r.pedido; pedidosRecargaVistos[r.pedido.id] = 'pendiente'; recargaAutoEstadoTxt(''); renderizarRecargaAuto();
+      } catch (e) { alert(e.message); } finally { if (btn) { btn.disabled = false; btn.textContent = 'Generar mi pago'; } }
+    }
+
+
+    // ==================== PROMOS: VIGENCIA (siempre o hasta una fecha) ====================
+    function fechaLocalInput(iso) { const d = new Date(iso); if (isNaN(d)) return ''; const z = n => String(n).padStart(2, '0'); return `${d.getFullYear()}-${z(d.getMonth() + 1)}-${z(d.getDate())}T${z(d.getHours())}:${z(d.getMinutes())}`; }
+    function textoFaltaPromo(iso) { const ms = Date.parse(iso) - Date.now(); if (!(ms > 0)) return 'VENCIDA'; const h = Math.floor(ms / 3600000); return h >= 48 ? `vence en ${Math.floor(h / 24)} días` : (h >= 1 ? `vence en ${h} h` : `vence en ${Math.max(1, Math.floor(ms / 60000))} min`); }
+    function cambiarVigenciaPromo(id, v) {
+      const pr = promosDealerEdit[id]; if (!pr) return;
+      if (v === 'siempre') pr.vence = '';
+      else if (!pr.vence) { const d = new Date(Date.now() + 7 * 86400000); d.setHours(23, 59, 0, 0); pr.vence = d.toISOString(); }
+      marcarPromosSucio(); renderizarPromosDealerAdmin();
+    }
+
+
+    // ==================== ACTIVIDAD DE LA PÁGINA: REGISTRO DE VISITAS ====================
+    // Una visita por sesión del navegador. No se registran el administrador ni el equipo.
+    const FMT_HORA_CO = new Intl.DateTimeFormat('en-US', { timeZone: 'America/Bogota', hour: 'numeric', hour12: false, weekday: 'short', year: 'numeric', month: '2-digit', day: '2-digit' });
+    function partesBogota(d) { const o = {}; FMT_HORA_CO.formatToParts(d || new Date()).forEach(p => { o[p.type] = p.value; }); return { hora: parseInt(o.hour, 10) % 24, dia: `${o.year}-${o.month}-${o.day}`, diaSemana: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].indexOf(o.weekday) }; }
+    function origenVisita() {
+      try { const u = new URLSearchParams(location.search).get('utm_source'); if (u) return String(u).toLowerCase().slice(0, 30); } catch (e) { /* nada */ }
+      const r = String(document.referrer || '');
+      if (!r || r.indexOf(location.host) !== -1) return 'directo';
+      if (/wa\.me|whatsapp/i.test(r)) return 'whatsapp'; if (/facebook|fb\./i.test(r)) return 'facebook'; if (/instagram/i.test(r)) return 'instagram'; if (/tiktok/i.test(r)) return 'tiktok'; if (/google/i.test(r)) return 'google'; if (/t\.me|telegram/i.test(r)) return 'telegram';
+      try { return new URL(r).hostname.replace(/^www\./, '').slice(0, 40); } catch (e) { return 'otro'; }
+    }
+    function registrarVisita(user) {
+      try {
+        if (window.__visitaRegistrada) return;
+        try { if (sessionStorage.getItem('visitaRegistrada')) return; } catch (e) { /* navegador sin almacenamiento: se usa la memoria */ }
+        window.__visitaRegistrada = true;
+        if (user && (esStaffSesion() || esCorreoAdmin(user.email || ''))) return;
+        let vid = '', nuevo = false;
+        try { vid = localStorage.getItem('visitanteId') || ''; if (!vid) { vid = 'v' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8); localStorage.setItem('visitanteId', vid); nuevo = true; } } catch (e) { vid = 'v' + Math.random().toString(36).slice(2, 12); nuevo = true; }
+        const b = partesBogota(new Date()), w = window.innerWidth || 1000;
+        const tipo = !user ? 'anonimo' : (esProveedorSesion() ? 'proveedor' : (userTipoCuenta === 'revendedor' ? 'dealer' : (userTipoCuenta === 'normal' ? 'normal' : 'cliente')));
+        db.collection('visitas').add({ fecha: new Date().toISOString(), dia: b.dia, hora: b.hora, diaSemana: b.diaSemana, uid: user ? user.uid : '', tipo: tipo, disp: /Mobi|Android|iPhone/i.test(navigator.userAgent) ? 'movil' : (w < 1024 ? 'tablet' : 'pc'), origen: origenVisita(), nuevo: nuevo, vid: vid })
+          .then(() => { try { sessionStorage.setItem('visitaRegistrada', '1'); } catch (e) { /* nada */ } }).catch(() => { window.__visitaRegistrada = false; });
+      } catch (e) { /* nunca debe afectar la página */ }
+    }
+
+    // ==================== ACTIVIDAD DE LA PÁGINA: PANEL ====================
+    var actRango = 7, actDatos = { visitas: [], compras: [] };
+    const DIAS_CORTO = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+    function horaBonita(h) { return h === 0 ? '12 a. m.' : (h < 12 ? h + ' a. m.' : (h === 12 ? '12 p. m.' : (h - 12) + ' p. m.')); }
+    async function cargarActividad() {
+      const r = document.getElementById('actRangos');
+      if (r) r.innerHTML = [[1, 'Hoy'], [7, '7 días'], [30, '30 días']].map(([n, t]) => `<button type="button" onclick="actRango=${n};cargarActividad()" class="px-3 py-1.5 rounded-lg text-[11px] font-black ${actRango === n ? 'bg-cyan-400 text-black' : 'text-gray-300 hover:bg-gray-800'}">${t}</button>`).join('');
+      const c = document.getElementById('actCuerpo'); if (!c) return;
+      c.innerHTML = '<p class="text-center text-sm text-gray-500 py-10"><i class="fa-solid fa-spinner fa-spin mr-1"></i>Cargando actividad…</p>';
+      const hoy = partesBogota(new Date()).dia;
+      const desde = actRango === 1 ? new Date(hoy + 'T00:00:00-05:00').toISOString() : new Date(Date.now() - actRango * 86400000).toISOString();
+      try {
+        const [sv, sc] = await Promise.all([db.collection('visitas').where('fecha', '>=', desde).get(), db.collection('compras').where('fecha', '>=', desde).get()]);
+        actDatos.visitas = []; sv.forEach(d => actDatos.visitas.push(d.data() || {}));
+        actDatos.compras = []; sc.forEach(d => actDatos.compras.push(d.data() || {}));
+        await pintarActividad();
+      } catch (e) { c.innerHTML = `<p class="text-center text-sm text-red-300 py-10">No se pudo cargar la actividad: ${escaparHtml(e.message)}</p>`; }
+    }
+    async function pintarActividad() {
+      const c = document.getElementById('actCuerpo'); if (!c) return;
+      const V = actDatos.visitas, C = actDatos.compras.filter(x => !x.ventaManual);
+      if (!V.length) { c.innerHTML = '<div class="p-6 rounded-2xl bg-gray-900 border border-gray-800 text-center"><p class="text-3xl">📊</p><p class="text-sm font-black text-white mt-2">Todavía no hay visitas en este periodo</p><p class="text-xs text-gray-400 mt-1">El registro empezó con esta versión. Vuelve en unas horas y verás tus horas pico, dispositivos y más.</p></div>'; return; }
+      const unicos = new Set(V.map(v => v.vid)).size, ident = new Set(V.filter(v => v.uid).map(v => v.uid));
+      const compradores = new Set(C.map(x => x.usuarioId).filter(Boolean)), compraron = Array.from(ident).filter(u => compradores.has(u)).length;
+      const nuevos = V.filter(v => v.nuevo).length, ventasTot = C.reduce((t, x) => t + (Number(x.total) || 0), 0);
+      const porHora = Array(24).fill(0), comprasHora = Array(24).fill(0), mapa = Array.from({ length: 7 }, () => Array(24).fill(0));
+      V.forEach(v => { if (v.hora >= 0 && v.hora < 24) { porHora[v.hora]++; if (v.diaSemana >= 0) mapa[v.diaSemana][v.hora]++; } });
+      C.forEach(x => { const h = partesBogota(new Date(x.fecha)).hora; comprasHora[h]++; });
+      const pico = porHora.indexOf(Math.max(...porHora)), picoCompra = comprasHora.indexOf(Math.max(...comprasHora));
+      const porDia = Array(7).fill(0); V.forEach(v => { if (v.diaSemana >= 0) porDia[v.diaSemana]++; }); const mejorDia = porDia.indexOf(Math.max(...porDia));
+      const cuenta = (campo) => { const o = {}; V.forEach(v => { const k = v[campo] || 'otro'; o[k] = (o[k] || 0) + 1; }); return Object.entries(o).sort((a, b) => b[1] - a[1]); };
+      const kpi = (t, v, sub, col) => `<div class="p-3 rounded-2xl bg-gray-900 border border-gray-800"><p class="text-[10px] text-gray-400 uppercase tracking-wider font-bold">${t}</p><p class="text-2xl font-black ${col}">${v}</p><p class="text-[10px] text-gray-500">${sub}</p></div>`;
+      const maxH = Math.max(1, ...porHora), maxC = Math.max(1, ...comprasHora), maxM = Math.max(1, ...mapa.flat());
+      const barras = porHora.map((n, h) => `<div class="flex-1 flex flex-col items-center gap-1 min-w-0" title="${horaBonita(h)}: ${n} visitas · ${comprasHora[h]} compras"><div class="w-full h-28 flex items-end gap-px"><div class="flex-1 rounded-t ${h === pico ? 'bg-cyan-300' : 'bg-cyan-500/50'}" style="height:${Math.max(2, n / maxH * 100)}%"></div><div class="flex-1 rounded-t bg-emerald-400/70" style="height:${comprasHora[h] ? Math.max(4, comprasHora[h] / maxC * 100) : 0}%"></div></div><span class="text-[8px] text-gray-500">${h % 3 === 0 ? h : ''}</span></div>`).join('');
+      const calor = '<div class="overflow-x-auto"><table class="text-[9px] text-gray-400 border-separate" style="border-spacing:2px"><tr><td></td>' + Array.from({ length: 24 }, (_, h) => `<td class="text-center w-5">${h % 3 === 0 ? h : ''}</td>`).join('') + '</tr>' + [1, 2, 3, 4, 5, 6, 0].map(d => `<tr><td class="pr-1 font-bold">${DIAS_CORTO[d]}</td>` + mapa[d].map((n, h) => `<td title="${DIAS_CORTO[d]} ${horaBonita(h)}: ${n} visitas" class="w-5 h-5 rounded" style="background:${n ? `rgba(34,211,238,${(0.15 + 0.85 * n / maxM).toFixed(2)})` : 'rgba(55,65,81,.35)'}"></td>`).join('') + '</tr>').join('') + '</table></div>';
+      const lista = (pares, total, color, nombres) => pares.slice(0, 6).map(([k, n]) => `<div><div class="flex justify-between text-[11px]"><span class="text-gray-200">${escaparHtml((nombres && nombres[k]) || k)}</span><span class="text-gray-400">${n} · ${Math.round(n / total * 100)}%</span></div><div class="h-1.5 rounded-full bg-gray-800 overflow-hidden mt-0.5"><div class="h-full rounded-full ${color}" style="width:${Math.round(n / total * 100)}%"></div></div></div>`).join('');
+      // Clientes que más entran
+      const porUid = {}; V.filter(v => v.uid).forEach(v => { porUid[v.uid] = (porUid[v.uid] || 0) + 1; });
+      const top = Object.entries(porUid).sort((a, b) => b[1] - a[1]).slice(0, 8);
+      const nombres = {};
+      await Promise.all(top.map(async ([u]) => { try { const d = await db.collection('usuarios').doc(u).get(); const x = d.data() || {}; nombres[u] = x.nombre || x.email || u; } catch (e) { nombres[u] = u; } }));
+      const antes = (picoCompra > 0 ? picoCompra : pico) - 1;
+      c.innerHTML = `
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-2">
+          ${kpi('Visitas', V.length.toLocaleString('es-CO'), `${unicos} personas distintas`, 'text-white')}
+          ${kpi('Nuevos', Math.round(nuevos / V.length * 100) + '%', `${nuevos} entraron por primera vez`, 'text-cyan-300')}
+          ${kpi('Compraron', ident.size ? Math.round(compraron / ident.size * 100) + '%' : '—', `${compraron} de ${ident.size} clientes con sesión`, 'text-emerald-300')}
+          ${kpi('Ventas', formatoCOP(ventasTot), `${C.length} compras en el periodo`, 'text-amber-300')}
+        </div>
+        <div class="p-4 rounded-2xl border border-cyan-400/40 bg-cyan-500/5 flex items-start gap-3"><span class="text-2xl">💡</span><div class="text-xs text-gray-200 leading-relaxed">Tu hora pico es <b class="text-cyan-300">${horaBonita(pico)}</b>${C.length ? ` y la que más vende es <b class="text-emerald-300">${horaBonita(picoCompra)}</b>` : ''}<br>El día con más visitas es <b class="text-white">${['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'][mejorDia]}</b><br>Publica tus estados y promos hacia las <b class="text-white">${horaBonita((antes + 24) % 24)}</b>, una hora antes del pico, para que te vean cuando más gente entra.</div></div>
+        <div class="p-4 rounded-2xl bg-gray-900 border border-gray-800"><div class="flex items-center justify-between mb-2"><p class="text-sm font-black text-white">Visitas por hora</p><p class="text-[10px] text-gray-400"><span class="inline-block w-2 h-2 rounded-sm bg-cyan-400 mr-1"></span>visitas <span class="inline-block w-2 h-2 rounded-sm bg-emerald-400 ml-2 mr-1"></span>compras</p></div><div class="flex gap-0.5">${barras}</div><p class="text-[10px] text-gray-500 mt-1">Hora de Colombia. Toca una barra para ver el detalle.</p></div>
+        <div class="p-4 rounded-2xl bg-gray-900 border border-gray-800"><p class="text-sm font-black text-white mb-2">Mapa de calor: día y hora</p>${calor}<p class="text-[10px] text-gray-500 mt-1">Más brillante = más visitas.</p></div>
+        <div class="grid lg:grid-cols-3 gap-3">
+          <div class="p-4 rounded-2xl bg-gray-900 border border-gray-800 space-y-2"><p class="text-sm font-black text-white">Dispositivo</p>${lista(cuenta('disp'), V.length, 'bg-violet-400', { movil: '📱 Celular', pc: '💻 Computador', tablet: '📟 Tablet' })}</div>
+          <div class="p-4 rounded-2xl bg-gray-900 border border-gray-800 space-y-2"><p class="text-sm font-black text-white">De dónde llegan</p>${lista(cuenta('origen'), V.length, 'bg-pink-400', { directo: '🔗 Directo / enlace guardado', whatsapp: '💬 WhatsApp', facebook: 'Facebook', instagram: 'Instagram', google: 'Google', tiktok: 'TikTok', telegram: 'Telegram' })}</div>
+          <div class="p-4 rounded-2xl bg-gray-900 border border-gray-800 space-y-2"><p class="text-sm font-black text-white">Quiénes entran</p>${lista(cuenta('tipo'), V.length, 'bg-amber-400', { anonimo: '👀 Sin iniciar sesión', cliente: '🙋 Clientes', dealer: '👑 Dealers', normal: 'Clientes normales', proveedor: '🚚 Proveedores' })}</div>
+        </div>
+        <div class="p-4 rounded-2xl bg-gray-900 border border-gray-800"><p class="text-sm font-black text-white mb-2">Clientes que más entran</p>${top.length ? top.map(([u, n], i) => `<div class="flex items-center justify-between gap-2 py-1.5 ${i ? 'border-t border-gray-800' : ''}"><span class="text-xs text-gray-200 truncate"><b class="text-gray-500 mr-1">${i + 1}.</b>${escaparHtml(nombres[u] || u)}${compradores.has(u) ? ' <span class="text-[9px] px-1.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 font-bold">compró</span>' : ''}</span><span class="text-[11px] text-cyan-300 font-bold shrink-0">${n} ${n === 1 ? 'visita' : 'visitas'}</span></div>`).join('') : '<p class="text-xs text-gray-500">Aún no hay clientes con sesión en este periodo.</p>'}</div>`;
+    }
 
     // ==================== NETFLIX EN LA TIENDA: SIN CONTRASEÑA ====================
     function esNombreNetflix(t) { return /netflix/i.test(String(t || '')); }
