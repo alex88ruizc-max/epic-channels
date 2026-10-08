@@ -6670,6 +6670,7 @@
           if (doc.exists) {
             const dataU = doc.data();
             userSaldo = dataU.saldo || 0;
+            try { if (dataU.debeCambiarClave === true) exigirCambioClave(); } catch (e) { /* nada */ }
             try { perfilWa = { waVinculado: dataU.waVinculado || '', waCompraAutorizada: dataU.waCompraAutorizada === true, waSolicitaEl: dataU.waSolicitaEl || '' }; if (document.getElementById('waClienteCaja')) pintarWaCliente(); } catch (e) { /* nada */ }
             setTimeout(() => { try { revisarCompraTrasRecarga(); } catch (e) { /* nada */ } }, 0);
             if (ticketsAvisadosCuenta === null) { ticketsAvisadosCuenta = Array.isArray(dataU.ticketsAvisados) ? dataU.ticketsAvisados : []; setTimeout(() => { try { revisarTicketsClienteUI(); } catch (e) { /* nada */ } }, 0); }
@@ -11995,7 +11996,7 @@
               ${resuelto && t.respuestaClave ? `<p class="text-[10px] text-sky-300 mt-0.5"><i class="fa-solid fa-key mr-1"></i>Contraseña nueva: <span class="font-mono">${escaparHtml(t.respuestaClave)}</span></p>` : ''}
             </div>
             <div class="shrink-0 flex flex-col gap-1.5">
-              ${t.tieneFoto ? `<button onclick="verFotoTicket('${escaparJsAttr(t.id)}')" class="px-2.5 py-1.5 rounded-lg text-[11px] font-bold bg-sky-500/15 hover:bg-sky-500/25 text-sky-300 border border-sky-500/30"><i class="fa-solid fa-image mr-1"></i>Ver foto</button>` : ''}
+              ${t.tieneFoto ? `<button onclick="verFotoTicket('${escaparJsAttr(t.id)}')" class="px-2.5 py-1.5 rounded-lg text-[11px] font-bold bg-sky-500/15 hover:bg-sky-500/25 text-sky-300 border border-sky-500/30"><i class="fa-solid fa-image mr-1"></i>Ver foto</button>` : (t.origen === 'whatsapp' ? `<span class="px-2.5 py-1.5 rounded-lg text-[11px] font-bold bg-emerald-500/10 text-emerald-300 border border-emerald-500/30">📱 WhatsApp · sin foto</span>` : '')}
               ${t.respuestaFoto ? `<button onclick="verFotoRespuesta('${escaparJsAttr(t.id)}')" class="px-2.5 py-1.5 rounded-lg text-[11px] font-bold bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 border border-emerald-500/30"><i class="fa-solid fa-camera mr-1"></i>Captura</button>` : ''}
               ${htmlRevisionTicket(t)}
               <button onclick="${resuelto ? 'reabrirTicket' : 'resolverTicket'}('${escaparJsAttr(t.id)}')" class="px-2.5 py-1.5 rounded-lg text-[11px] font-bold ${resuelto ? 'bg-gray-800 hover:bg-gray-700 text-gray-300 border border-gray-700' : 'bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 border border-emerald-500/30'}">${resuelto ? 'Reabrir' : 'Resolver'}</button>
@@ -15061,7 +15062,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-10o';
+    const VERSION_PAGINA = '2026-10-10p';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261010_wacompra', fecha: '2026-10-10', titulo: 'Compra por WhatsApp 💬', mensaje: 'Ahora puedes **comprar con tu saldo desde nuestro WhatsApp**. Ve a tu perfil → **Mis datos → Comprar por WhatsApp**, vincula tu chat con el código y pide la autorización.' },
       { id: 'act_20261010_vista2', fecha: '2026-10-10', titulo: 'Nueva vista de la tienda ▦', mensaje: 'Ahora puedes ver los productos **en 2 columnas**: más productos en tu pantalla, con las **promos resaltadas** (🔥 campaña, ⚡ relámpago, 🎁 regalo). Toca uno y se abre su ficha para comprar. Cambia de vista con los íconos ☰ / ▦ arriba de las categorías.' },
@@ -19448,6 +19449,7 @@
 
     // ==================== NOVEDADES INTERNAS DEL PANEL (solo el equipo) ====================
     const ACTUALIZACIONES_INTERNAS = [
+      { fecha: '2026-10-10', titulo: '🤖 Asistente de WhatsApp completo', mensaje: 'Bienvenida comercial con las **promos de hoy** (cambia el orden cada vez), y dos menús: **visitantes** (tengo cuenta · registrarme · comprar sin registro · stock y precios · asesor) y **clientes verificados** (comprar con saldo · mis precios · mi cuenta · reportar garantía · recargar · asesor). Los Dealers ven sus promos y su nivel. **Registro por WhatsApp** con clave temporal que deben cambiar al entrar. Compra sin registro: pago por tu llave Bre-B y te avisa por Telegram para que entregues. Reportes de garantía por el chat (llegan como **📱 WhatsApp · sin foto**) y "estado" para ver cómo van. Protecciones: PARAR/ACTIVAR, pausa si un chat escribe demasiado y nunca en grupos.', ir: 'ajustes' },
       { fecha: '2026-10-10', titulo: '💬 Menú y compras por WhatsApp', mensaje: 'El asistente de WhatsApp ahora saluda con un **menú** (1 Stock · 2 Registro · 3 Garantía · 4 Comprar por WhatsApp · 5 Asesor). Para comprar por ahí, el cliente **vincula su chat** con un código desde *Mis datos* y **tú lo autorizas** (Ajustes → Asistente de WhatsApp, o en su ficha). Compra con su saldo al **precio de WhatsApp** que tú fijas, con confirmación SI. La opción 5 silencia el asistente 2 horas y te avisa por Telegram.', ir: 'ajustes' },
       { fecha: '2026-10-10', titulo: '🤖 Asistente de WhatsApp', mensaje: 'Tu app de respuestas automáticas puede conectarse a tu servidor (**Ajustes → Asistente de WhatsApp → Generar URL**). Responde saludos, precios de hoy por producto, recargas, garantía y revendedores con datos reales. Si no entiende, no responde y te deja la conversación. Nunca responde en grupos.', ir: 'ajustes' },
       { fecha: '2026-10-10', titulo: '🩺 Comprobar todo', mensaje: 'En **Novedades** tienes **Comprobar todo**: en una ventana revisa si la página publicada, el servidor y las reglas de Firebase están en la última versión, y si las tareas automáticas (lector de pagos, tarea de cada hora y diaria) y Telegram funcionan. Si algo falta, te dice qué hacer.', ir: 'novedades' },
@@ -20788,6 +20790,42 @@
         pintarWaAdmin(); } catch (e) { alert(e.message); }
     }
 
+
+    // ==================== CLAVE TEMPORAL (cuentas creadas por WhatsApp): cambio obligatorio ====================
+    var cambioClaveMostrado = false;
+    function exigirCambioClave() {
+      if (cambioClaveMostrado || !currentUser) return; cambioClaveMostrado = true;
+      let m = document.getElementById('modalCambioClave');
+      if (!m) { m = document.createElement('div'); m.id = 'modalCambioClave'; m.className = 'fixed inset-0 z-[140] flex items-center justify-center p-4 bg-black/85 backdrop-blur-sm'; document.body.appendChild(m); }
+      const inp = 'w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500';
+      m.innerHTML = `<div class="w-full max-w-sm rounded-3xl bg-gray-900 border border-emerald-500/40 p-5 space-y-3">
+        <p class="text-3xl text-center">🔒</p><p class="text-lg font-black text-white text-center">Crea tu contraseña</p>
+        <p class="text-[12px] text-gray-400 text-center">Entraste con una clave temporal que te enviamos por WhatsApp. Por tu seguridad, elige una nueva para seguir.</p>
+        <input type="password" id="ccClave1" autocomplete="new-password" placeholder="Nueva contraseña (mínimo 6)" class="${inp}">
+        <input type="password" id="ccClave2" autocomplete="new-password" placeholder="Repite la contraseña" class="${inp}">
+        <p id="ccError" class="hidden text-[12px] text-red-300"></p>
+        <button type="button" id="ccBoton" onclick="guardarCambioClave()" class="w-full py-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-black text-sm">Guardar y continuar</button></div>`;
+      m.style.display = 'flex';
+    }
+    async function guardarCambioClave() {
+      const a = document.getElementById('ccClave1').value, b = document.getElementById('ccClave2').value, err = document.getElementById('ccError'), bt = document.getElementById('ccBoton');
+      const mal = t => { err.textContent = t; err.classList.remove('hidden'); };
+      err.classList.add('hidden');
+      if (a.length < 6) return mal('La contraseña debe tener al menos 6 caracteres.');
+      if (/^epic-/i.test(a)) return mal('Elige una contraseña distinta a la temporal.');
+      if (a !== b) return mal('Las dos contraseñas no coinciden.');
+      bt.disabled = true; bt.textContent = 'Guardando…';
+      try {
+        await currentUser.updatePassword(a);
+        await db.collection('usuarios').doc(currentUser.uid).set({ debeCambiarClave: false, claveCambiadaEl: new Date().toISOString() }, { merge: true });
+        const m = document.getElementById('modalCambioClave'); if (m) m.style.display = 'none'; mostrarToast('🔒 ¡Listo! Tu contraseña quedó guardada.');
+      } catch (e) {
+        bt.disabled = false; bt.textContent = 'Guardar y continuar';
+        if (e && e.code === 'auth/requires-recent-login') { mal('Por seguridad, cierra sesión y vuelve a entrar con la clave temporal; luego cámbiala.'); }
+        else mal('No se pudo guardar: ' + (e && e.message ? e.message : 'intenta de nuevo'));
+      }
+    }
+
     // ==================== NETFLIX EN LA TIENDA: SIN CONTRASEÑA ====================
     function esNombreNetflix(t) { return /netflix/i.test(String(t || '')); }
     function esProductoNetflix(p) {
@@ -21601,7 +21639,7 @@
       return { cuentas: legado, stock: legado.length || stockPublico };
     }
 
-    const VERSION_SERVIDOR_NECESARIA = '2026-10-10d';   // la versión del servidor que necesita esta página
+    const VERSION_SERVIDOR_NECESARIA = '2026-10-10e';   // la versión del servidor que necesita esta página
     async function llamarBackend(accion, datos) {
       if (modoPruebaCliente) { const rs = backendSimulado(accion, datos || {}); if (rs) return rs; }
       const url = obtenerBackendUrl();
