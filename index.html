@@ -15034,7 +15034,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-10a';
+    const VERSION_PAGINA = '2026-10-10c';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261009_telegram', fecha: '2026-10-09', titulo: 'Avisos por Telegram ✈️', mensaje: 'Conecta Telegram en tu perfil → **Mis datos** y recibe al instante tus **compras**, tus **recargas** y el **stock nuevo** de lo que compras. Tú eliges qué recibir, y nunca te enviamos contraseñas por ahí.' },
       { id: 'act_20261009_serdealer', fecha: '2026-10-09', titulo: 'Ahora puedes pedir ser Dealer 👑', mensaje: 'En tu perfil ves cuánto te falta para **pedir ser Dealer**. Cuando cumples, toca **Pedir ser Dealer** y te avisamos en la campana. Los Dealers tienen **promos y regalos por volumen**.' },
@@ -19402,6 +19402,8 @@
 
     // ==================== NOVEDADES INTERNAS DEL PANEL (solo el equipo) ====================
     const ACTUALIZACIONES_INTERNAS = [
+      { fecha: '2026-10-10', titulo: '🛒 "Comprar ahora" en los estados', mensaje: 'Tus clientes ven en cada estado un botón centrado: **Comprar ahora** si el estado es de un producto (abre su compra rápida) o **Ver la tienda** si es general. Los visitantes ven **Regístrate gratis**. Al subir una imagen puedes elegir de qué producto es.', ir: 'marketing' },
+      { fecha: '2026-10-10', titulo: '📝 "Regístrate gratis" en los estados', mensaje: 'Los visitantes sin registro ven abajo de cada estado **"¿Te gusta? Crea tu cuenta y compra al instante · Regístrate gratis"**, que abre el registro. Los clientes con sesión no lo ven.', ir: 'marketing' },
       { fecha: '2026-10-10', titulo: '👑 Tu logo arriba a la izquierda', mensaje: 'Arriba a la izquierda va tu logo con **EPIC STREAMING** (en lugar del rayo), y ahí mismo el círculo de estados con **NUEVO**, también para visitantes sin registro. En el PC el logo ya no se repite en la tarjeta de la tienda; en el celular con sesión los estados siguen en el logo de la tienda.', ir: '' },
       { fecha: '2026-10-09', titulo: '✨ Diseño Epic Premium para estados', mensaje: 'Nuevo diseño para tus estados: tipografías elegantes (serif, pincel y caligrafía), **6 fondos multicolor** (Noche, Esmeralda, Atardecer, Oro, Neón, Océano), el logo del producto casi invisible de fondo y **tu logo de marca opcional**. Cambias las palabras del título y el eslogan. Está en Marketing y en "Crear imagen de esta promo".', ir: 'marketing' },
       { fecha: '2026-10-09', titulo: '🖼 Imagen de promo desde la tarjeta', mensaje: 'En el recuadro "Promos vigentes" de cada tarjeta, **Crear imagen de esta promo** arma un estado con el precio de campaña (normal tachado), el regalo y los precios por cantidad. Versión para clientes o para Dealers (nunca se mezclan); descárgala, compártela o publícala como estado. Además, en la tarjeta el precio normal sale **tachado** cuando hay campaña.', ir: '' },
@@ -19926,8 +19928,9 @@
       v.innerHTML = `<button type="button" class="flecha" style="left:calc(50% - 280px)" onclick="moverEstado(-1)" aria-label="Anterior"><i class="fa-solid fa-chevron-left"></i></button>
         <div class="marco" id="estMarco"><div class="barras">${estadosActivos.map(() => '<span><i></i></span>').join('')}</div>
         <div class="cab">${(document.getElementById('imgLogoMarca') || {}).src ? `<img src="${document.getElementById('imgLogoMarca').src}" alt="" class="w-8 h-8 rounded-full object-cover border border-amber-400/60">` : ''}<div class="min-w-0"><p class="text-[13px] font-black leading-tight">${escaparHtml(nombreTienda())}</p><p id="estHace" class="text-[11px] opacity-75"></p></div><button type="button" class="x" onclick="cerrarEstados()" aria-label="Cerrar">✕</button></div>
-        <img class="est" id="estImg" alt="Estado"><p id="estTexto" class="hidden absolute left-0 right-0 bottom-0 z-[3] p-4 pb-8 text-center text-white text-sm font-bold" style="background:linear-gradient(0deg,rgba(0,0,0,.75),transparent)"></p>
-        <div class="zona" style="left:0" onclick="moverEstado(-1)"></div><div class="zona" style="right:0" onclick="moverEstado(1)"></div></div>
+        <img class="est" id="estImg" alt="Estado"><p id="estTexto" class="hidden absolute left-0 right-0 bottom-0 z-[3] p-4 pb-28 text-center text-white text-sm font-bold" style="background:linear-gradient(0deg,rgba(0,0,0,.75),transparent)"></p>
+        <div class="zona" style="left:0" onclick="moverEstado(-1)"></div><div class="zona" style="right:0" onclick="moverEstado(1)"></div>
+        <div id="estCta" class="absolute left-0 right-0 bottom-5 z-[6] flex flex-col items-center gap-1.5 px-4"></div></div>
         <button type="button" class="flecha" style="right:calc(50% - 280px)" onclick="moverEstado(1)" aria-label="Siguiente"><i class="fa-solid fa-chevron-right"></i></button>`;
       v.classList.add('abierto'); document.body.style.overflow = 'hidden';
       // mantener presionado = pausa; deslizar hacia abajo = cerrar
@@ -19942,6 +19945,7 @@
       document.querySelectorAll('#visorEstados .barras i').forEach((b, k) => { b.style.transition = 'none'; b.style.width = k < estIdx ? '100%' : '0'; });
       const h = document.getElementById('estHace'); if (h) h.textContent = tiempoRelativo(e.creadoEl);
       const tx = document.getElementById('estTexto'); if (tx) { tx.textContent = e.texto || ''; tx.classList.toggle('hidden', !e.texto); }
+      pintarCtaEstado(e);
       const img = document.getElementById('estImg'); if (img) { img.style.opacity = '0.3'; img.src = await imagenEstado(e.id); img.style.opacity = '1'; }
       if (estadosActivos[estIdx + 1]) imagenEstado(estadosActivos[estIdx + 1].id);   // se prepara el siguiente
       marcarEstadoVistoLocal(e.id); registrarVistaEstado(e); pintarAnilloEstados();
@@ -19959,6 +19963,19 @@
       if (on) { clearTimeout(estTimer); estRestante = Math.max(300, estRestante - (Date.now() - estInicio)); const w = getComputedStyle(b).width; b.style.transition = 'none'; b.style.width = w; }
       else arrancarBarraEstado();
     }
+    // Botón centrado abajo: visitante → Regístrate gratis; cliente → Comprar ahora (estado de un producto) o Ver la tienda
+    function pintarCtaEstado(e) {
+      const c = document.getElementById('estCta'); if (!c) return;
+      const pill = 'inline-flex items-center gap-2 px-7 py-3 rounded-full bg-emerald-500 hover:bg-emerald-400 text-black font-black text-sm';
+      const sombra = 'style="box-shadow:0 10px 28px rgba(16,185,129,.45)"';
+      if (!currentUser) { c.innerHTML = `<p class="text-[12px] text-white text-center" style="text-shadow:0 1px 6px rgba(0,0,0,.8)">¿Te gusta? Crea tu cuenta y compra al instante</p><button type="button" onclick="event.stopPropagation();cerrarEstados();abrirModalAuth('register')" class="${pill}" ${sombra}>✍️ Regístrate gratis</button>`; return; }
+      if (esStaffSesion()) { c.innerHTML = ''; return; }
+      const p = e && e.productoId ? catalogoUnificado.find(x => x.docId === e.productoId) : null;
+      const puede = p && p.activo !== false && usuarioTienePermisoProducto(p) && (Number(p.stock) || 0) > 0;
+      c.innerHTML = puede ? `<button type="button" onclick="event.stopPropagation();comprarDesdeEstado('${escaparJsAttr(p.docId)}')" class="${pill}" ${sombra}>🛒 Comprar ahora</button>`
+        : `<button type="button" onclick="event.stopPropagation();cerrarEstados();cambiarVista('tienda')" class="${pill}" ${sombra}>🛍 Ver la tienda</button>`;
+    }
+    function comprarDesdeEstado(id) { cerrarEstados(); cambiarVista('tienda'); setTimeout(() => { try { abrirCompraRapida(id); } catch (e) { /* nada */ } }, 200); }
     function moverEstado(d) { estIdx += d; if (estIdx < 0) estIdx = 0; if (estIdx >= estadosActivos.length) { cerrarEstados(); return; } mostrarEstado(); }
     function cerrarEstados() { clearTimeout(estTimer); const v = document.getElementById('visorEstados'); if (v) { v.classList.remove('abierto'); v.innerHTML = ''; } document.body.style.overflow = ''; pintarAnilloEstados(); }
     function registrarVistaEstado(e) {
@@ -19973,13 +19990,13 @@
       } catch (x) { /* nada */ }
     }
     // ---- Panel: subir, publicar desde Marketing, ver quién lo vio y borrar ----
-    async function publicarEstado(dataUrl, texto) {
+    async function publicarEstado(dataUrl, texto, productoId) {
       if (!esAdminSesionActual()) return;
       if (!dataUrl || dataUrl.length > 900000) { alert('La imagen pesa demasiado. Prueba con otra.'); return; }
       const id = db.collection('estados').doc().id, ahora = new Date();
       const b = db.batch();
       b.set(db.collection('estados_img').doc(id), { imagen: dataUrl });
-      b.set(db.collection('estados').doc(id), { creadoEl: ahora.toISOString(), expiraEl: new Date(ahora.getTime() + 24 * 3600000).toISOString(), texto: String(texto || '').slice(0, 140), por: currentUser.email, vistasAnonimas: 0 });
+      b.set(db.collection('estados').doc(id), { creadoEl: ahora.toISOString(), expiraEl: new Date(ahora.getTime() + 24 * 3600000).toISOString(), texto: String(texto || '').slice(0, 140), por: currentUser.email, vistasAnonimas: 0, productoId: productoId || '' });
       await b.commit(); estadosImg[id] = dataUrl;
       mostrarToast('📲 Estado publicado: se borra solo en 24 horas');
     }
@@ -19989,7 +20006,7 @@
         const img = await comprimirImagenAJpeg(f, 1280, 0.8);
         const texto = await pedirTextoModal('Texto del estado (opcional)', '');
         if (texto === null) return;
-        await publicarEstado(img, texto);
+        await publicarEstado(img, texto, (document.getElementById('estProductoSubir') || {}).value || '');
       } catch (e) { alert(e.message); }
     }
     async function publicarEstadoDesdeMarketing() {
@@ -19997,7 +20014,7 @@
         const o = opcionesMk(), prod = catalogoUnificado.find(p => p.docId === o.id);
         const base = lienzoActualMk(prod, Object.assign({}, o, { fmt: 'estado' })), c = document.createElement('canvas'); c.width = 720; c.height = 1280; c.getContext('2d').drawImage(base, 0, 0, 720, 1280);
         if (!await confirmarModal('¿Publicar esta imagen como estado?\n\nTus clientes la verán al tocar el logo de la tienda durante 24 horas.', { textoAceptar: 'Sí, publicar' })) return;
-        await publicarEstado(c.toDataURL('image/jpeg', 0.82), '');
+        await publicarEstado(c.toDataURL('image/jpeg', 0.82), '', mkTipoImagen === 'producto' ? (o.id || '') : '');
       } catch (e) { alert(e.message); }
     }
     var estVistasAbierto = '';
@@ -20005,6 +20022,7 @@
       const c = document.getElementById('estadosAdmin'); if (!c || !esAdminSesionActual()) return;
       const L = estadosActivos.slice().reverse();
       c.innerHTML = `<div class="flex items-center justify-between gap-2"><p class="text-sm font-black text-white">📲 Estados</p><span class="text-[11px] text-gray-400">${L.length} activo${L.length === 1 ? '' : 's'} · se borran solos a las 24 h</span></div>
+        <select id="estProductoSubir" class="mt-2 w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"><option value="">¿De qué producto es? (opcional: activa "Comprar ahora")</option>${(catalogoUnificado || []).filter(p => p.activo !== false && !p.esCombo).map(p => `<option value="${escaparHtml(p.docId)}">${escaparHtml(p.nombre)}</option>`).join('')}</select>
         <label class="mt-2 block w-full py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-black text-xs text-center cursor-pointer"><i class="fa-solid fa-camera mr-1"></i>Subir imagen<input type="file" accept="image/*" class="hidden" onchange="subirEstadoArchivo(this)"></label>
         <div class="mt-2 space-y-2">${L.map(e => { const resta = Math.max(0, Date.parse(e.expiraEl) - Date.now()), hh = Math.floor(resta / 3600000), mm = Math.floor(resta % 3600000 / 60000);
           return `<div class="p-2 rounded-xl bg-gray-800/60 border border-gray-700/60"><div class="flex gap-2.5"><img id="estMini_${e.id}" alt="" class="w-12 h-20 rounded-lg object-cover bg-gray-900 shrink-0"><div class="flex-1 min-w-0"><p class="text-[12px] font-bold text-white truncate">${escaparHtml(e.texto || 'Estado')}</p><p class="text-[10px] text-gray-400">${tiempoRelativo(e.creadoEl)} · quedan ${hh} h ${mm} min</p>
@@ -20394,7 +20412,7 @@
       if (promoImgPara === 'dealer') { alert('Los estados los ven todos tus clientes: publica la versión "Para clientes". La de Dealers compártela solo con ellos.'); return; }
       const base = lienzoImagenPromoActual(prod, 'cliente'), c = document.createElement('canvas'); c.width = 720; c.height = 1280; c.getContext('2d').drawImage(base, 0, 0, 720, 1280);
       if (!await confirmarModal('¿Publicar esta promo como estado de tu tienda por 24 horas?', { textoAceptar: 'Sí, publicar' })) return;
-      try { await publicarEstado(c.toDataURL('image/jpeg', 0.82), ''); } catch (e) { alert(e.message); }
+      try { await publicarEstado(c.toDataURL('image/jpeg', 0.82), '', promoImgId); } catch (e) { alert(e.message); }
     }
 
 
