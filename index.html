@@ -1379,6 +1379,7 @@
 
       <!-- TAB 4: APARIENCIA Y LOGO DEL CATÁLOGO -->
       <div id="adminSecApariencia" class="hidden space-y-6">
+        <label class="flex items-center justify-between gap-3 p-3 rounded-2xl bg-gray-900 border border-gray-800 max-w-3xl"><span class="text-xs text-white"><b>🗂 Vista de productos predeterminada</b><span class="block text-[11px] text-gray-400">La que ve cada cliente la primera vez. Él puede cambiarla con los íconos ☰ / ▦ y se le recuerda.</span></span><select id="selVistaPredeterminada" onchange="guardarVistaPredeterminada(this.value)" class="shrink-0 bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"><option value="detallada">☰ Detallada</option><option value="compacta">▦ 2 columnas</option></select></label>
         <label class="flex items-center justify-between gap-3 p-3 rounded-2xl bg-gray-900 border border-gray-800 cursor-pointer max-w-3xl"><span class="text-xs text-white"><b><span class="punto-vivo mr-1.5"></span>Cinta de stock en vivo</b><span class="block text-[10px] text-gray-400 mt-0.5">Una línea delgada bajo el encabezado de la tienda con el stock de cada producto en tiempo real.</span></span><input type="checkbox" id="chkCintaStock" checked onchange="guardarCintaStock(this.checked)" class="accent-emerald-500 w-5 h-5 shrink-0"></label>
         <div class="p-5 bg-gray-900 border border-emerald-500/30 rounded-2xl shadow-xl max-w-xl">
           <h3 class="text-sm font-bold text-white mb-2 flex items-center gap-2">
@@ -8399,6 +8400,7 @@
       
       let html = `<button onclick="filtrarCategoria('todas')" class="btn-cat ${categoriaActiva === 'todas' ? 'active bg-emerald-500 text-black font-bold' : 'bg-gray-800 text-gray-300 font-medium'} px-4 py-1.5 rounded-xl whitespace-nowrap flex items-center gap-2"><i class="fa-solid fa-border-all"></i> ${ttH('filtroTodas')}</button>`;
 
+      if (catalogoUnificado.some(p => p.activo !== false && usuarioTienePermisoProducto(p) && promoDeProducto(p).tipo)) html += `<button onclick="filtrarCategoria('promos')" class="btn-cat ${categoriaActiva === 'promos' ? 'active bg-orange-500 text-black font-bold' : 'bg-orange-500/15 text-orange-200 border border-orange-500/40 font-bold'} px-4 py-1.5 rounded-xl whitespace-nowrap transition shrink-0">🔥 Promos</button>`;
       categorias.forEach(cat => {
         const esActiva = categoriaActiva === cat;
         const icono = obtenerIconoCategoria(cat);
@@ -8406,7 +8408,7 @@
       });
 
       if (puedeEditarDesdeTienda()) html += `<button type="button" onclick="irAConfigurarProductos()" class="btn-cat shrink-0 bg-amber-400/15 hover:bg-amber-400/25 border border-amber-400/50 text-amber-200 font-bold px-4 py-2 rounded-xl text-sm flex items-center gap-2" title="Ir a la configuración de productos"><i class="fa-solid fa-gear"></i> Configurar</button>`;
-      contenedor.innerHTML = html;
+      contenedor.innerHTML = htmlSelectorVista() + html;
     }
 
     function usuarioTienePermisoProducto(prod) {
@@ -8449,6 +8451,7 @@
         if (!(Number(p.precio) > 0) && !p.esCombo) return false;   // sin precio puesto: no se vende
         if (!usuarioTienePermisoProducto(p)) return false;
         if (categoriaActiva === 'todas') return true;
+        if (categoriaActiva === 'promos') return !!promoDeProducto(p).tipo;
         return p.categoria === categoriaActiva;
       });
 
@@ -8462,6 +8465,14 @@
         return;
       }
 
+      // Vista en 2 columnas: cuadros compactos; al tocarlos se abre la ficha centrada (compra rápida)
+      if (!grid.dataset.claseOriginal) grid.dataset.claseOriginal = grid.className;
+      if (vistaCatalogoActual() === 'compacta') {
+        grid.className = 'grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2.5 sm:gap-3';
+        grid.innerHTML = (categoriaActiva === 'todas' ? htmlFranjaPromos(filtrados) : '') + (misAlquileres.length && (categoriaActiva === 'todas' || categoriaActiva === 'Streaming') ? `<div class="col-span-full">${htmlTarjetaNetflixTienda()}</div>` : '') + filtrados.map(htmlCuadroCompacto).join('');
+        return;
+      }
+      grid.className = grid.dataset.claseOriginal;
       filtrados.forEach(prod => {
         const esNf = esProductoNetflix(prod) && prod.esCombo !== true;
         const stockDisponible = prod.stock;
@@ -15034,8 +15045,9 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-10c';
+    const VERSION_PAGINA = '2026-10-10d';
     const ACTUALIZACIONES_PAGINA = [
+      { id: 'act_20261010_vista2', fecha: '2026-10-10', titulo: 'Nueva vista de la tienda ▦', mensaje: 'Ahora puedes ver los productos **en 2 columnas**: más productos en tu pantalla, con las **promos resaltadas** (🔥 campaña, ⚡ relámpago, 🎁 regalo). Toca uno y se abre su ficha para comprar. Cambia de vista con los íconos ☰ / ▦ arriba de las categorías.' },
       { id: 'act_20261009_telegram', fecha: '2026-10-09', titulo: 'Avisos por Telegram ✈️', mensaje: 'Conecta Telegram en tu perfil → **Mis datos** y recibe al instante tus **compras**, tus **recargas** y el **stock nuevo** de lo que compras. Tú eliges qué recibir, y nunca te enviamos contraseñas por ahí.' },
       { id: 'act_20261009_serdealer', fecha: '2026-10-09', titulo: 'Ahora puedes pedir ser Dealer 👑', mensaje: 'En tu perfil ves cuánto te falta para **pedir ser Dealer**. Cuando cumples, toca **Pedir ser Dealer** y te avisamos en la campana. Los Dealers tienen **promos y regalos por volumen**.' },
       { id: 'act_20261009_registro', fecha: '2026-10-09', titulo: 'Registro más rápido ⚡', mensaje: 'Crear tu cuenta ahora es más rápido: solo correo, contraseña y WhatsApp, **sin códigos**.' },
@@ -18261,8 +18273,9 @@
     }
     setInterval(() => { try { pintarCintaStock(); } catch (e) { /* nada */ } }, 1500);   // se oculta al salir de la tienda
     function cargarCfgVistaTienda() {
-      try { db.collection('configuracion').doc('vista_tienda').onSnapshot(d => { cfgVistaTienda = Object.assign({ cintaStock: true }, d.exists ? d.data() : {}); const chk = document.getElementById('chkCintaStock'); if (chk) chk.checked = cfgVistaTienda.cintaStock !== false; pintarCintaStock(); }, () => {}); } catch (e) { /* nada */ }
+      try { db.collection('configuracion').doc('vista_tienda').onSnapshot(d => { cfgVistaTienda = Object.assign({ cintaStock: true }, d.exists ? d.data() : {}); try { const sv = document.getElementById('selVistaPredeterminada'); if (sv) sv.value = cfgVistaTienda.vistaPredeterminada === 'compacta' ? 'compacta' : 'detallada'; if (!vistaCatalogo) { renderizarFiltrosCategorias(); renderizarCatalogo(); } } catch (x) { /* nada */ } const chk = document.getElementById('chkCintaStock'); if (chk) chk.checked = cfgVistaTienda.cintaStock !== false; pintarCintaStock(); }, () => {}); } catch (e) { /* nada */ }
     }
+    async function guardarVistaPredeterminada(v) { try { await db.collection('configuracion').doc('vista_tienda').set({ vistaPredeterminada: v === 'compacta' ? 'compacta' : 'detallada' }, { merge: true }); mostrarToast(v === 'compacta' ? 'Vista predeterminada: 2 columnas' : 'Vista predeterminada: detallada'); } catch (e) { alert(e.message); } }
     async function guardarCintaStock(on) { try { await db.collection('configuracion').doc('vista_tienda').set({ cintaStock: !!on }, { merge: true }); mostrarToast(on ? 'Cinta de stock activada' : 'Cinta de stock apagada'); } catch (e) { alert(e.message); } }
 
     // ==================== RADAR DE STOCK EN EL PERFIL + "AVÍSAME" ====================
@@ -18413,7 +18426,8 @@
       const st = Number(p.stock) || 0, minC = Math.max(1, parseInt(p.minCompra, 10) || 1), m2 = marcaDeProducto(p);
       const maxC = maxTarjeta(p, st), ini = Math.min(Math.max(minC, parseInt(cantidadInicial, 10) || 1), Math.max(maxC, 1));
       m.innerHTML = `<div class="w-full max-w-sm rounded-3xl bg-gray-900 border border-gray-700 p-4 shadow-2xl max-h-[85vh] overflow-y-auto" style="animation:credEntrar .25s ease-out;margin-bottom:max(0px, env(safe-area-inset-bottom))">
-        <div class="flex items-start justify-between gap-2"><div class="min-w-0"><p class="text-[10px] font-black tracking-[0.2em] uppercase" style="color:${m2.color}">${escaparHtml(m2.etiqueta)}</p><p class="text-base font-black text-white leading-snug">${escaparHtml(p.nombre)}</p><p class="text-xs text-gray-400 mt-0.5">${formatoCOP(p.precio)} c/u · ${st ? `<span class="${st <= 5 ? 'text-amber-300' : 'text-emerald-300'} font-bold">${st} disponibles</span>` : '<span class="text-red-300 font-bold">agotado</span>'}</p></div><button type="button" onclick="cerrarCompraRapida()" class="w-8 h-8 shrink-0 rounded-full bg-gray-800 text-gray-300"><i class="fa-solid fa-xmark"></i></button></div>
+        <div class="flex items-start justify-between gap-2"><div class="min-w-0"><p class="text-[10px] font-black tracking-[0.2em] uppercase" style="color:${m2.color}">${escaparHtml(m2.etiqueta)}</p><p class="text-base font-black text-white leading-snug">${escaparHtml(p.nombre)}</p><p class="text-xs text-gray-400 mt-0.5">${formatoCOP(promoDeProducto(p).precio)} c/u · ${st ? `<span class="${st <= 5 ? 'text-amber-300' : 'text-emerald-300'} font-bold">${st} disponibles</span>` : '<span class="text-red-300 font-bold">agotado</span>'}</p></div><button type="button" onclick="cerrarCompraRapida()" class="w-8 h-8 shrink-0 rounded-full bg-gray-800 text-gray-300"><i class="fa-solid fa-xmark"></i></button></div>
+        ${htmlInfoFicha(p)}
         ${maxC > 0 ? `<div class="flex items-center justify-between gap-3 mt-4"><div><p class="text-[10px] text-gray-400">Total</p><p id="crTotal" class="text-xl font-black text-white">$0</p></div>
           <div class="flex items-center bg-gray-800 border border-gray-700 rounded-xl p-0.5"><button type="button" onclick="crCambiar(-1)" class="w-9 h-9 rounded-lg bg-gray-700/60 text-white font-black">-</button><input id="crCant" type="number" inputmode="numeric" value="${ini}" min="${minC}" max="${maxC}" onfocus="this.select()" oninput="crRecalcular()" onchange="crCambiar(0)" class="w-14 text-center bg-transparent text-white font-bold focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"><button type="button" onclick="crCambiar(1)" class="w-9 h-9 rounded-lg bg-gray-700/60 text-white font-black">+</button></div></div>
           ${encargoUtil(p, st) ? `<div class="caja-pedido mt-3"><div class="flex items-center gap-2.5"><span class="ico"><i class="fa-solid fa-box-open text-sm"></i></span><div class="min-w-0 flex-1"><p class="text-[13.5px] font-black text-white leading-tight">¿Lo necesitas en cantidad?</p><p class="text-[11px] text-sky-200">Lo que falte te llega cuando entre stock</p></div></div><div class="flex flex-wrap gap-1.5 mt-2.5">${opcionesPedido(p, st).map(n => `<button type="button" data-crop="${n}" onclick="crElegirPedido({value:'${n}'})" class="op-cuantas">${n}</button>`).join('')}<button type="button" data-crop="otra" onclick="crElegirPedido({value:'otra'})" class="op-cuantas">Otra…</button></div></div>` : ''}
@@ -19402,6 +19416,7 @@
 
     // ==================== NOVEDADES INTERNAS DEL PANEL (solo el equipo) ====================
     const ACTUALIZACIONES_INTERNAS = [
+      { fecha: '2026-10-10', titulo: '▦ Vista de tienda en 2 columnas', mensaje: 'La tienda tiene dos vistas: **detallada** (la de siempre) y **2 columnas**, con franja **🔥 Promos de hoy**, categoría **🔥 Promos**, cintas de campaña / relámpago (con cuenta regresiva) / regalo y la ficha centrada para comprar. Eliges la predeterminada en **Vista de tienda**; cada cliente puede cambiarla.', ir: 'vista' },
       { fecha: '2026-10-10', titulo: '🛒 "Comprar ahora" en los estados', mensaje: 'Tus clientes ven en cada estado un botón centrado: **Comprar ahora** si el estado es de un producto (abre su compra rápida) o **Ver la tienda** si es general. Los visitantes ven **Regístrate gratis**. Al subir una imagen puedes elegir de qué producto es.', ir: 'marketing' },
       { fecha: '2026-10-10', titulo: '📝 "Regístrate gratis" en los estados', mensaje: 'Los visitantes sin registro ven abajo de cada estado **"¿Te gusta? Crea tu cuenta y compra al instante · Regístrate gratis"**, que abre el registro. Los clientes con sesión no lo ven.', ir: 'marketing' },
       { fecha: '2026-10-10', titulo: '👑 Tu logo arriba a la izquierda', mensaje: 'Arriba a la izquierda va tu logo con **EPIC STREAMING** (en lugar del rayo), y ahí mismo el círculo de estados con **NUEVO**, también para visitantes sin registro. En el PC el logo ya no se repite en la tarjeta de la tienda; en el celular con sesión los estados siguen en el logo de la tienda.', ir: '' },
@@ -20511,6 +20526,71 @@
         <div class="grid grid-cols-2 gap-1.5"><input class="${inp}" maxlength="18" value="${escaparHtml(premiumCfg.t1)}" placeholder="Palabra 1" oninput="premiumCfg.t1=this.value;guardarPremiumCfg();clearTimeout(window.__pmT);window.__pmT=setTimeout(()=>{${redibujar}},350)"><input class="${inp}" maxlength="16" value="${escaparHtml(premiumCfg.t2)}" placeholder="Palabra central" oninput="premiumCfg.t2=this.value;guardarPremiumCfg();clearTimeout(window.__pmT);window.__pmT=setTimeout(()=>{${redibujar}},350)"></div>
         <input class="${inp}" maxlength="40" value="${escaparHtml(premiumCfg.eslogan)}" placeholder="Eslogan (vacío = sin eslogan)" oninput="premiumCfg.eslogan=this.value;guardarPremiumCfg();clearTimeout(window.__pmT);window.__pmT=setTimeout(()=>{${redibujar}},350)">
       </div>`;
+    }
+
+
+    // ==================== VISTA DE LA TIENDA: DETALLADA O 2 COLUMNAS ====================
+    // El administrador elige la predeterminada (Vista de tienda); cada cliente puede cambiarla y se le recuerda.
+    var vistaCatalogo = (() => { try { return localStorage.getItem('vistaCatalogo') || ''; } catch (e) { return ''; } })();
+    function vistaCatalogoActual() { const v = vistaCatalogo || ((typeof cfgVistaTienda !== 'undefined' && cfgVistaTienda && cfgVistaTienda.vistaPredeterminada) || 'detallada'); return v === 'compacta' ? 'compacta' : 'detallada'; }
+    function cambiarVistaCatalogo(v) { vistaCatalogo = v === 'compacta' ? 'compacta' : 'detallada'; try { localStorage.setItem('vistaCatalogo', vistaCatalogo); } catch (e) { /* nada */ } renderizarFiltrosCategorias(); renderizarCatalogo(); }
+    function htmlSelectorVista() {
+      const v = vistaCatalogoActual(), b = (k, ic, t) => `<button type="button" title="${t}" aria-label="${t}" onclick="cambiarVistaCatalogo('${k}')" class="w-9 h-8 rounded-lg flex items-center justify-center text-base font-black leading-none ${v === k ? 'bg-emerald-500 text-black' : 'text-gray-300 hover:text-white'}">${ic}</button>`;
+      return `<span class="shrink-0 inline-flex gap-0.5 p-0.5 rounded-xl bg-gray-900 border border-gray-700">${b('detallada', '☰', 'Vista detallada')}${b('compacta', '▦', 'Vista en 2 columnas')}</span>`;
+    }
+    // Qué promo tiene un producto para ESTE cliente (campaña, relámpago o regalo) y cómo mostrarla
+    function promoDeProducto(p) {
+      try {
+        const lista = Number(p.precioLista || p.precio) || 0, minC = Math.max(1, parseInt(p.minCompra, 10) || 1);
+        const precio = Number(precioUnitarioConCombo(p, minC)) || Number(p.precio) || lista;
+        const sn = snapshotInventario[p.docId] || {}, hasta = Number(p.promoPct) > 0 && sn.promoHasta && Date.parse(sn.promoHasta) > Date.now() ? sn.promoHasta : (Number(p.promoPct) > 0 ? (sn.promoHasta || '') : '');
+        const flash = Number(p.promoPct) > 0, camp = !flash && escalasDe(p).some(e => e.desde <= minC && e.precio < lista);
+        const pr = promoParaMi(p.docId), esc = escalasDe(p).filter(e => e.desde > minC), desde = esc.length ? esc[esc.length - 1] : null;
+        const regaloTxt = pr ? (pr.regaloProductoId && pr.regaloProductoId !== p.docId ? `Compra ${pr.compra || 10}, lleva ${pr.regalo || 1} ${nombreProd(pr.regaloProductoId)}` : `Compra ${pr.compra || 10}, lleva ${(Number(pr.compra) || 10) + (Number(pr.regalo) || 1)}`) : '';
+        const tipo = flash ? 'flash' : (camp ? 'camp' : (pr ? 'regalo' : ''));
+        const cinta = tipo === 'flash' ? ['⚡ RELÁMPAGO', 'linear-gradient(90deg,#be123c,#e11d48)'] : tipo === 'camp' ? ['🔥 CAMPAÑA', 'linear-gradient(90deg,#ea580c,#f97316)'] : tipo === 'regalo' ? ['🎁 CON REGALO', 'linear-gradient(90deg,#7e22ce,#a855f7)'] : null;
+        return { tipo, cinta, hasta, precio, tachado: precio < lista ? lista : 0, pct: precio < lista && lista ? Math.round((1 - precio / lista) * 100) : 0, regaloTxt, desde, minC };
+      } catch (e) { return { tipo: '', cinta: null, precio: Number(p.precio) || 0, tachado: 0, pct: 0, regaloTxt: '', desde: null, minC: 1 }; }
+    }
+    function htmlBateriaMini(st) { const n = st <= 0 ? 0 : st < 5 ? 1 : st < 15 ? 2 : st < 40 ? 3 : 4; return `<span class="inline-flex gap-[1.5px]">${[0, 1, 2, 3].map(i => `<i class="block w-[3px] h-[9px] rounded-[1px]" style="background:${i < n ? (n === 1 ? '#f59e0b' : '#10b981') : '#374151'}"></i>`).join('')}</span>`; }
+    function htmlLogoProducto(p, tam) {
+      const m = marcaDeProducto(p), t = tam || 52;
+      const txt = (!m.etiqueta || String(m.etiqueta).toLowerCase() === String(p.categoria || '').toLowerCase()) ? String(p.nombre || '').split(/\s+/).slice(0, 2).join(' ') : m.etiqueta;
+      return p.imagenUrl ? `<img src="${escaparHtml(p.imagenUrl)}" alt="" loading="lazy" class="rounded-full object-cover mx-auto" style="width:${t}px;height:${t}px;box-shadow:0 0 0 2px ${hexARgba(m.color, .45)}">`
+        : `<span class="rounded-full mx-auto flex items-center justify-center text-center font-black leading-tight px-1" style="width:${t}px;height:${t}px;font-size:${Math.round(t / 5.5)}px;background:${hexARgba(m.color, .22)};color:${m.color};box-shadow:0 0 0 2px ${hexARgba(m.color, .45)}">${escaparHtml(String(txt || '').slice(0, 16))}</span>`;
+    }
+    function textoCuentaAtras(hasta) { const ms = Date.parse(hasta) - Date.now(); if (!(ms > 0)) return ''; const h = Math.floor(ms / 3600000), mi = Math.floor(ms % 3600000 / 60000), s = Math.floor(ms % 60000 / 1000); return `${h}:${String(mi).padStart(2, '0')}:${String(s).padStart(2, '0')}`; }
+    setInterval(() => { try { document.querySelectorAll('[data-cuenta-atras]').forEach(e => { e.textContent = textoCuentaAtras(e.dataset.cuentaAtras); }); } catch (e) { /* nada */ } }, 1000);
+    function htmlCuadroCompacto(p) {
+      const st = Number(p.stock) || 0, pr = promoDeProducto(p), ag = st <= 0;
+      return `<button type="button" onclick="abrirCompraRapida('${escaparJsAttr(p.docId)}')" class="relative text-left rounded-2xl p-2.5 pt-3 overflow-hidden transition active:scale-[.97] ${ag ? 'opacity-55' : ''}" style="background:linear-gradient(160deg,rgba(15,42,44,.9),rgba(11,17,32,.95));border:1px solid ${pr.cinta ? 'rgba(249,115,22,.75)' : 'rgba(19,78,74,.9)'};${pr.cinta ? 'box-shadow:0 8px 22px -12px rgba(249,115,22,.7)' : ''}">
+        ${pr.cinta ? `<span class="absolute top-0 left-0 right-0 text-center text-[10px] font-black py-1 tracking-wide text-white" style="background:${pr.cinta[1]}">${pr.cinta[0]}${pr.tipo === 'flash' && pr.hasta ? ` <span data-cuenta-atras="${escaparHtml(pr.hasta)}">${textoCuentaAtras(pr.hasta)}</span>` : ''}</span>` : ''}
+        <div class="${pr.cinta ? 'mt-5' : 'mt-1'} mb-1.5">${htmlLogoProducto(p, 52)}</div>
+        <p class="text-[12px] font-bold text-white text-center leading-tight line-clamp-2 min-h-[30px]">${escaparHtml(p.nombre || '')}</p>
+        <p class="text-center mt-1 leading-none">${pr.tachado ? `<s class="text-[10px] text-gray-400 font-semibold mr-1">${formatoCOP(pr.tachado)}</s>` : ''}<span class="text-[17px] font-black text-white">${formatoCOP(pr.precio)}</span>${pr.pct ? `<span class="ml-1 align-middle text-[9px] font-black px-1.5 py-0.5 rounded-md bg-red-600 text-white">-${pr.pct}%</span>` : ''}</p>
+        ${pr.regaloTxt ? `<p class="text-[10px] text-center mt-1 font-bold text-purple-300 leading-tight">🎁 ${escaparHtml(pr.regaloTxt)}</p>` : (pr.desde ? `<p class="text-[10px] text-center mt-1 font-bold text-emerald-300">💰 Desde ${formatoCOP(pr.desde.precio)}</p>` : '')}
+        <p class="flex items-center justify-center gap-1 text-[10px] text-gray-400 mt-1">${htmlBateriaMini(st)} ${ag ? '<span class="text-red-400 font-bold">Agotado</span>' : 'Stock ' + st}</p>
+      </button>`;
+    }
+    function htmlFranjaPromos(lista) {
+      const L = lista.filter(p => promoDeProducto(p).tipo && (Number(p.stock) || 0) > 0).slice(0, 10); if (!L.length) return '';
+      return `<div class="col-span-full -mb-1"><p class="text-[11px] font-black tracking-[0.12em] text-orange-300 mb-2">🔥 PROMOS DE HOY</p><div class="flex gap-2 overflow-x-auto no-scrollbar pb-1">${L.map(p => { const pr = promoDeProducto(p); return `<button type="button" onclick="abrirCompraRapida('${escaparJsAttr(p.docId)}')" class="shrink-0 w-[150px] text-left rounded-2xl p-2.5" style="background:linear-gradient(150deg,rgba(249,115,22,.25),rgba(17,24,39,.95) 70%);border:1px solid rgba(249,115,22,.55)"><p class="text-[10px] font-black text-orange-300">${pr.cinta[0]}${pr.tipo === 'flash' && pr.hasta ? ` <span data-cuenta-atras="${escaparHtml(pr.hasta)}">${textoCuentaAtras(pr.hasta)}</span>` : ''}</p><p class="text-[12px] font-extrabold text-white leading-tight mt-0.5 line-clamp-2">${escaparHtml(p.nombre)}</p><p class="mt-1 leading-none">${pr.tachado ? `<s class="text-[10px] text-gray-400 mr-1">${formatoCOP(pr.tachado)}</s>` : ''}<span class="text-[15px] font-black text-white">${formatoCOP(pr.precio)}</span></p>${pr.regaloTxt ? `<p class="text-[10px] text-purple-300 font-bold mt-0.5">🎁 ${escaparHtml(pr.regaloTxt)}</p>` : ''}</button>`; }).join('')}</div></div>`;
+    }
+    // Información y promos del producto dentro de la ficha (compra rápida), arriba de la cantidad
+    function htmlInfoFicha(p) {
+      try {
+        const pr = promoDeProducto(p), st = Number(p.stock) || 0, esc = escalasDe(p).filter(e => e.desde >= pr.minC);
+        const chips = [`🛡 Garantía ${escaparHtml(textoGarantia(p.tipoGarantia) || '')}`, `📦 Mínimo ${pr.minC}`].concat(esc.map(e => `💰 ${e.desde}+ ${formatoCOP(e.precio)}`));
+        return `<div class="mt-3 space-y-2">
+          ${pr.cinta ? `<span class="inline-block text-[10px] font-black px-2.5 py-1 rounded-full text-white" style="background:${pr.cinta[1]}">${pr.cinta[0]}${pr.tipo === 'flash' && pr.hasta ? ` · termina en <span data-cuenta-atras="${escaparHtml(pr.hasta)}">${textoCuentaAtras(pr.hasta)}</span>` : ''}</span>` : ''}
+          ${pr.tachado ? `<p class="text-[12px] text-gray-300"><s class="text-gray-500">${formatoCOP(pr.tachado)}</s> → <b class="text-white">${formatoCOP(pr.precio)}</b> c/u <span class="text-[10px] font-black px-1.5 py-0.5 rounded-md bg-red-600 text-white">-${pr.pct}%</span></p>` : ''}
+          ${pr.regaloTxt ? `<div class="px-3 py-2 rounded-xl text-[13px] font-extrabold text-white" style="border:1px solid #a855f7;background:rgba(168,85,247,.14)">🎁 ${escaparHtml(pr.regaloTxt)}</div>` : ''}
+          ${p.descripcion ? `<p class="text-[12px] text-gray-300 leading-relaxed">${escaparHtml(p.descripcion)}</p>` : ''}
+          <div class="flex flex-wrap gap-1.5">${chips.map(c => `<span class="text-[11px] font-bold px-2.5 py-1 rounded-full text-emerald-200" style="border:1px solid #134e4a;background:#0f2a2c">${c}</span>`).join('')}</div>
+          ${st <= 0 && !esStaffSesion() ? `<button type="button" onclick="alternarAvisoStock('${escaparJsAttr(p.docId)}')" class="w-full py-2.5 rounded-xl bg-gray-800 border border-gray-700 text-gray-100 font-bold text-xs">🔔 Avísame cuando llegue</button>` : ''}
+          ${esStaffSesion() && !modoPruebaCliente ? htmlPromosVistaEquipo(p) : ''}
+        </div>`;
+      } catch (e) { return ''; }
     }
 
     // ==================== NETFLIX EN LA TIENDA: SIN CONTRASEÑA ====================
