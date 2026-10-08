@@ -1763,6 +1763,7 @@
       </div>
 
       <div id="adminSecNovedades" class="hidden space-y-4 pb-28 sm:pb-0">
+        <button type="button" onclick="abrirComprobarTodo()" class="solo-admin w-full flex items-center gap-3 p-3 rounded-2xl bg-gray-900 border border-emerald-500/40 hover:border-emerald-400 text-left"><span class="text-xl">🩺</span><span class="flex-1 min-w-0"><span class="block text-sm font-black text-white">Comprobar todo</span><span class="block text-[11px] text-gray-400">Página, servidor, reglas y tareas automáticas: ¿todo al día?</span></span><i class="fa-solid fa-chevron-right text-gray-500 text-xs"></i></button>
         <div class="p-4 rounded-2xl border border-sky-500/30 bg-gradient-to-br from-sky-500/10 via-gray-900 to-gray-900">
           <h3 class="text-base font-black text-white flex items-center gap-2"><i class="fa-solid fa-bullhorn text-sky-400"></i> Novedades para clientes</h3>
           <p class="text-xs text-gray-400 mt-1 leading-relaxed">Escribe un aviso y decide cómo llega: <b class="text-gray-200">Copiar</b> para pegarlo en WhatsApp, o <b class="text-gray-200">Difundir</b> para que les llegue a todos como notificación y aparezca de primero en el asistente con un <span class="inline-flex items-center justify-center w-4 h-4 rounded-full bg-red-500 text-white text-[9px] font-black align-middle">1</span>.</p>
@@ -15047,7 +15048,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-10k';
+    const VERSION_PAGINA = '2026-10-10m';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261010_vista2', fecha: '2026-10-10', titulo: 'Nueva vista de la tienda ▦', mensaje: 'Ahora puedes ver los productos **en 2 columnas**: más productos en tu pantalla, con las **promos resaltadas** (🔥 campaña, ⚡ relámpago, 🎁 regalo). Toca uno y se abre su ficha para comprar. Cambia de vista con los íconos ☰ / ▦ arriba de las categorías.' },
       { id: 'act_20261009_telegram', fecha: '2026-10-09', titulo: 'Avisos por Telegram ✈️', mensaje: 'Conecta Telegram en tu perfil → **Mis datos** y recibe al instante tus **compras**, tus **recargas** y el **stock nuevo** de lo que compras. Tú eliges qué recibir, y nunca te enviamos contraseñas por ahí.' },
@@ -17258,19 +17259,16 @@
       const cta = `👉 Compra en *${enl}*`;
       let out = '';
       if (mkTipoTexto === 'bienvenida') {
-        // Mensaje de bienvenida de WhatsApp Business (máx. 1.024 caracteres) con los precios reales de hoy
+        // Bienvenida CORTA de WhatsApp Business: un precio de Prime como referencia y la invitación a la web (donde sale más barato)
         const web = /^https?:\/\//i.test(enl) ? enl : 'https://' + enl;
-        const disp = L.filter(p => (Number(p.stock) || 0) > 0 && p.activo !== false);
-        const emo = p => /correo|mail/i.test(p.categoria || '') ? '📧' : (/m[uú]sica|music/i.test(p.categoria || '') ? '🎵' : '🍿');
-        const linea = p => { const pr = promoDeProducto(p); return `${emo(p)} ${p.nombre}: ${pr.tachado ? `~${formatoCOP(pr.tachado)}~ ` : ''}*${formatoCOP(pr.precio)}*`; };
-        const mins = Array.from(new Set(disp.map(p => Math.max(1, parseInt(p.minCompra, 10) || 1))));
-        const armar = n => `👋 ¡Hola! Bienvenido a *${T}* 👑\n\n` +
-          (disp.length ? `🔥 *Precios de hoy:*\n${disp.slice(0, n).map(linea).join('\n')}${disp.length > n ? '\n➕ Y más en la web' : ''}\n\n` : '') +
-          `✨ *Compra tú mismo, 24/7 y al instante:*\n1️⃣ Regístrate gratis\n2️⃣ Recarga con *Bre-B*: se acredita sola, *sin comisión*\n3️⃣ Elige tu producto y recibe tus cuentas al instante\n\n` +
-          `✅ Stock en tiempo real\n✅ Garantía en cada cuenta${mins.length === 1 && mins[0] > 1 ? `\n✅ Compra mínima: ${mins[0]} cuentas` : ''}\n\n` +
-          `📲 Toca el logo de la tienda para ver las ofertas del día\n🛟 ¿Dudas? En la web, botón *"¿Necesitas ayuda?"*\n\n👉 ${web}`;
-        let n = Math.min(8, disp.length); out = armar(n);
-        while (out.length > 1000 && n > 1) { n--; out = armar(n); }
+        const primes = L.filter(p => /prime/i.test(p.nombre || '') && (Number(p.stock) || 0) > 0 && p.activo !== false);
+        const ref = primes.length ? primes.slice().sort((a, b) => (Number(a.precioLista || a.precio) || 0) - (Number(b.precioLista || b.precio) || 0))[0] : null;
+        const refPrecio = ref ? Number(ref.precioLista || ref.precio) || 0 : 0;
+        const minWeb = primes.reduce((m, p) => { const pr = promoDeProducto(p); const esc = escalasDe(p).map(e => Number(e.precio) || 0); return Math.min(m, pr.precio || Infinity, ...(esc.length ? esc : [Infinity])); }, Infinity);
+        out = `👋 ¡Hola! Bienvenido a *${T}* 👑\n\n` +
+          (ref ? `🍿 Prime Video: *${formatoCOP(refPrecio)}* c/u\n💸 *En la web te sale más barato*${isFinite(minWeb) && minWeb < refPrecio ? `: desde *${formatoCOP(minWeb)}*` : ''} con promos y precios por cantidad.\n\n` : `💸 *En la web te sale más barato*, con promos y precios por cantidad.\n\n`) +
+          `🛒 Compra tú mismo, 24/7 y al instante:\n👉 ${web}\n\n` +
+          `✅ Recarga Bre-B sin comisión · entrega inmediata · garantía`;
       } else if (mkTipoTexto === 'tienda') {
         const cats = Array.from(new Set(L.map(p => p.categoria).filter(Boolean))).slice(0, 5);
         out = `*${T}*\n_Tu proveedor de cuentas digitales, 24/7_\n${LINEA_MK}\n\n` +
@@ -19436,7 +19434,8 @@
 
     // ==================== NOVEDADES INTERNAS DEL PANEL (solo el equipo) ====================
     const ACTUALIZACIONES_INTERNAS = [
-      { fecha: '2026-10-10', titulo: '👋 Mensaje de bienvenida de WhatsApp', mensaje: 'En **Marketing → Mensajes → 👋 Bienvenida WhatsApp** se arma tu mensaje de bienvenida con los **precios reales de hoy** (campañas incluidas, sin VIP ni agotados) y el enlace a la web. Cabe en el límite de WhatsApp Business: cópialo y pégalo en Herramientas para la empresa → Mensaje de bienvenida.', ir: 'marketing' },
+      { fecha: '2026-10-10', titulo: '🩺 Comprobar todo', mensaje: 'En **Novedades** tienes **Comprobar todo**: en una ventana revisa si la página publicada, el servidor y las reglas de Firebase están en la última versión, y si las tareas automáticas (lector de pagos, tarea de cada hora y diaria) y Telegram funcionan. Si algo falta, te dice qué hacer.', ir: 'novedades' },
+      { fecha: '2026-10-10', titulo: '👋 Mensaje de bienvenida de WhatsApp', mensaje: 'En **Marketing → Mensajes → 👋 Bienvenida WhatsApp** se arma un mensaje de bienvenida **corto**: el precio de Prime como referencia y que **en la web sale más barato** (desde el precio más bajo por cantidad o promo), con el enlace. Cópialo en WhatsApp Business → Herramientas para la empresa → Mensaje de bienvenida.', ir: 'marketing' },
       { fecha: '2026-10-10', titulo: '💵 Recarga exacta para completar la compra', mensaje: 'Cuando un cliente sin saldo va a recargar para completar una compra, la recarga sugerida es **exactamente lo que le falta** (antes se redondeaba al siguiente mil) y usa el precio real: por cantidad, campaña, relámpago o cupón.', ir: '' },
       { fecha: '2026-10-10', titulo: '📱💻 Vista por tipo de pantalla', mensaje: 'En **Apariencia y Logo** eliges la vista predeterminada **en celular** (recomendado: 2 columnas) y **en computador** (recomendado: detallada). Cada cliente puede cambiar la suya con ☰ / ▦.', ir: 'apariencia' },
       { fecha: '2026-10-10', titulo: '🔥 Franja de promos uniforme', mensaje: 'La franja **Promos de hoy** se adapta sola: 1 promo ocupa todo el ancho, 2 van mitad y mitad, 3 o más se deslizan en el celular y en el PC se acomodan en la cuadrícula. Cada tarjeta lleva el logo del producto.', ir: '' },
@@ -20635,6 +20634,65 @@
       } catch (e) { return ''; }
     }
 
+
+    // ==================== COMPROBAR TODO (estado de la página, servidor, reglas y tareas) ====================
+    const VERSION_REGLAS_ESPERADA = '2026-10-10b';
+    async function abrirComprobarTodo() {
+      let m = document.getElementById('modalComprobarTodo');
+      if (!m) { m = document.createElement('div'); m.id = 'modalComprobarTodo'; m.className = 'fixed inset-0 z-[96] hidden items-center justify-center p-4 bg-black/75 backdrop-blur-sm'; m.onclick = ev => { if (ev.target === m) cerrarComprobarTodo(); }; document.body.appendChild(m); }
+      m.innerHTML = `<div class="w-full max-w-md rounded-3xl bg-gray-900 border border-emerald-500/40 p-5 max-h-[90vh] overflow-y-auto">
+        <div class="flex items-center justify-between gap-2"><p class="text-base font-black text-white">🩺 Comprobar todo</p><button type="button" onclick="cerrarComprobarTodo()" aria-label="Cerrar" class="w-8 h-8 rounded-full bg-gray-800 text-gray-300"><i class="fa-solid fa-xmark"></i></button></div>
+        <p class="text-[11px] text-gray-400 mt-0.5">Versión de esta página: <b class="text-gray-200">${VERSION_PAGINA}</b></p>
+        <div id="ctResultado" class="mt-3 space-y-2"><p class="text-[12px] text-gray-400 py-6 text-center"><i class="fa-solid fa-spinner fa-spin mr-1"></i>Revisando todo…</p></div>
+        <button type="button" onclick="correrComprobarTodo()" class="mt-3 w-full py-2.5 rounded-xl bg-gray-800 border border-gray-700 text-gray-100 font-bold text-xs"><i class="fa-solid fa-rotate mr-1"></i>Comprobar de nuevo</button>
+      </div>`;
+      m.classList.remove('hidden'); m.style.display = 'flex';
+      correrComprobarTodo();
+    }
+    function cerrarComprobarTodo() { const m = document.getElementById('modalComprobarTodo'); if (m) { m.classList.add('hidden'); m.style.display = 'none'; } }
+    async function correrComprobarTodo() {
+      const c = document.getElementById('ctResultado'); if (!c) return;
+      c.innerHTML = '<p class="text-[12px] text-gray-400 py-6 text-center"><i class="fa-solid fa-spinner fa-spin mr-1"></i>Revisando todo…</p>';
+      const items = [], fila = (ok, titulo, detalle, aviso) => ({ ok, titulo, detalle, aviso });
+      // 1) Página publicada
+      try {
+        const html = await fetch(location.origin + location.pathname + '?comprobar=' + Date.now(), { cache: 'no-store' }).then(r => r.text());
+        const pub = (html.match(/const VERSION_PAGINA = '([^']+)'/) || [])[1] || '';
+        if (!pub) items.push(fila(null, 'Página (GitHub)', `Esta: ${VERSION_PAGINA} · no pude leer la publicada`));
+        else if (pub === VERSION_PAGINA) items.push(fila(true, 'Página (GitHub)', `Esta: ${VERSION_PAGINA} · publicada: ${pub}`));
+        else if (pub > VERSION_PAGINA) items.push(fila(false, 'Página (GitHub)', `Esta: ${VERSION_PAGINA} · publicada: ${pub}`, 'Hay una versión más nueva publicada: recarga la página.'));
+        else items.push(fila(false, 'Página (GitHub)', `Esta: ${VERSION_PAGINA} · publicada: ${pub}`, 'La publicada es más vieja: sube el index.html nuevo a GitHub.'));
+      } catch (e) { items.push(fila(null, 'Página (GitHub)', `Esta: ${VERSION_PAGINA} · no pude revisar la publicada`)); }
+      // 2) Servidor
+      let ping = null;
+      try { ping = await llamarBackend('ping', {}); } catch (e) { ping = { ok: false, error: e.message }; }
+      if (!ping || !ping.ok) items.push(fila(false, 'Servidor (Apps Script)', 'No responde', (ping && ping.error) || 'Revisa la URL del servidor en Ajustes.'));
+      else {
+        const viejo = !ping.version || String(ping.version) < VERSION_SERVIDOR_NECESARIA;
+        items.push(fila(!viejo, 'Servidor (Apps Script)', `Versión del servidor: ${ping.version || 'antigua'}`, viejo ? `Esta página necesita la ${VERSION_SERVIDOR_NECESARIA}: publica el servidor nuevo (Implementar → Gestionar implementaciones → lápiz → Nueva versión).` : ''));
+      }
+      // 3) Reglas de Firebase (marca de versión)
+      try { await db.collection('reglas_version').doc(VERSION_REGLAS_ESPERADA).get(); items.push(fila(true, 'Reglas de Firebase', `Publicadas (${VERSION_REGLAS_ESPERADA})`)); }
+      catch (e) { items.push(fila(false, 'Reglas de Firebase', 'Las publicadas son de una versión anterior', 'Publica las reglas nuevas en Firebase → Firestore → Reglas.')); }
+      // 4) Revisión del servidor
+      const sub = [];
+      if (ping && ping.ok) {
+        sub.push(fila(!!ping.firestore, 'Conexión con Firebase', ping.firestore ? 'Lee y escribe sin problema' : 'El servidor no puede leer Firebase', ping.firestore ? '' : 'Revisa la cuenta de servicio del servidor.'));
+        if (Array.isArray(ping.tareas)) {
+          const t = ping.tareas, tiene = n => t.indexOf(n) !== -1, falta = 'Falta: en Apps Script ejecuta crearActivadores una vez.';
+          sub.push(fila(tiene('procesarPagosGmail'), 'Lector de pagos Bre-B y Binance (cada minuto)', tiene('procesarPagosGmail') ? 'Activo' : 'No está activo', tiene('procesarPagosGmail') ? '' : falta));
+          sub.push(fila(tiene('revisarVencimientos'), 'Tarea cada hora (estados, comprobantes, vencimientos)', tiene('revisarVencimientos') ? 'Activa' : 'No está activa', tiene('revisarVencimientos') ? '' : falta));
+          sub.push(fila(tiene('resumenDiario'), 'Tarea diaria (resumen, avisos y plan de marketing)', tiene('resumenDiario') ? 'Activa' : 'No está activa', tiene('resumenDiario') ? '' : falta));
+        } else sub.push(fila(null, 'Tareas automáticas', 'Actualiza el servidor para ver este dato'));
+        sub.push(fila(!!ping.telegram, 'Telegram (tus avisos)', ping.telegram ? 'Configurado' : 'Sin configurar', ping.telegram ? '' : 'Pon tu token y chat en Ajustes → Telegram.'));
+        if (ping.tgClientes) sub.push(fila(ping.tgClientes.token && ping.tgClientes.bot ? true : null, 'Bot de avisos para clientes', ping.tgClientes.token && ping.tgClientes.bot ? '@' + ping.tgClientes.bot : (ping.tgClientes.token ? 'Token guardado: toca "Guardar y probar" en Ajustes' : 'Opcional: sin configurar')));
+      }
+      const todos = items.concat(sub), malos = todos.filter(x => x.ok === false).length;
+      const pinta = x => `<div class="flex items-start gap-3 p-3 rounded-2xl border ${x.ok === true ? 'bg-emerald-500/10 border-emerald-500/30' : x.ok === false ? 'bg-red-500/10 border-red-500/40' : 'bg-gray-800/60 border-gray-700'}"><span class="text-lg leading-none">${x.ok === true ? '✅' : x.ok === false ? '⚠️' : 'ℹ️'}</span><span class="min-w-0"><span class="block text-[13px] font-black text-white">${escaparHtml(x.titulo)}</span><span class="block text-[11px] text-gray-300">${escaparHtml(x.detalle)}</span>${x.aviso ? `<span class="block text-[11px] text-amber-200 mt-0.5">${escaparHtml(x.aviso)}</span>` : ''}</span></div>`;
+      c.innerHTML = `<div class="p-3 rounded-2xl text-center font-black text-sm ${malos ? 'bg-amber-500/15 text-amber-200 border border-amber-500/40' : 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/40'}">${malos ? `⚠️ Hay ${malos} cosa${malos === 1 ? '' : 's'} por revisar` : '🎉 Todo está al día y funcionando'}</div>` +
+        items.map(pinta).join('') + (sub.length ? `<p class="text-[12px] font-black text-white pt-2">Revisión del servidor</p>` + sub.map(pinta).join('') : '');
+    }
+
     // ==================== NETFLIX EN LA TIENDA: SIN CONTRASEÑA ====================
     function esNombreNetflix(t) { return /netflix/i.test(String(t || '')); }
     function esProductoNetflix(p) {
@@ -21448,7 +21506,7 @@
       return { cuentas: legado, stock: legado.length || stockPublico };
     }
 
-    const VERSION_SERVIDOR_NECESARIA = '2026-10-09h';   // la versión del servidor que necesita esta página
+    const VERSION_SERVIDOR_NECESARIA = '2026-10-10b';   // la versión del servidor que necesita esta página
     async function llamarBackend(accion, datos) {
       if (modoPruebaCliente) { const rs = backendSimulado(accion, datos || {}); if (rs) return rs; }
       const url = obtenerBackendUrl();
