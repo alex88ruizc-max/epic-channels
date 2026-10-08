@@ -15047,7 +15047,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-10h';
+    const VERSION_PAGINA = '2026-10-10k';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261010_vista2', fecha: '2026-10-10', titulo: 'Nueva vista de la tienda ▦', mensaje: 'Ahora puedes ver los productos **en 2 columnas**: más productos en tu pantalla, con las **promos resaltadas** (🔥 campaña, ⚡ relámpago, 🎁 regalo). Toca uno y se abre su ficha para comprar. Cambia de vista con los íconos ☰ / ▦ arriba de las categorías.' },
       { id: 'act_20261009_telegram', fecha: '2026-10-09', titulo: 'Avisos por Telegram ✈️', mensaje: 'Conecta Telegram en tu perfil → **Mis datos** y recibe al instante tus **compras**, tus **recargas** y el **stock nuevo** de lo que compras. Tú eliges qué recibir, y nunca te enviamos contraseñas por ahí.' },
@@ -17240,7 +17240,7 @@
 
     function pintarTiposTexto() {
       const c = document.getElementById('mkTiposTexto'); if (!c) return;
-      const grupos = [['Promociona tu tienda', [['tienda', '🏪 Conoce la tienda'], ['confianza', '🛡 Garantía y confianza'], ['recarga', '💳 Cómo comprar'], ['revende', '💼 Gana revendiendo']]],
+      const grupos = [['Promociona tu tienda', [['bienvenida', '👋 Bienvenida WhatsApp'], ['tienda', '🏪 Conoce la tienda'], ['confianza', '🛡 Garantía y confianza'], ['recarga', '💳 Cómo comprar'], ['revende', '💼 Gana revendiendo']]],
         ['Promociona tus productos', [['promos', '🔥 Promociones'], ['catalogo', '📋 Catálogo'], ['producto', '✨ Producto elegido'], ['nuevo', '🚨 ¡Llegó stock!'], ['urgencia', '⏰ Últimas unidades'], ['combos', '🎁 Combos'], ['dealers', '👑 Para Dealers']]]];
       c.innerHTML = grupos.map(([g, l]) => `<p class="w-full text-[10px] font-black uppercase tracking-wider text-gray-500 mt-1">${g}</p>` + l.map(([k, t]) => `<button type="button" onclick="mkTipoTexto='${k}';pintarTiposTexto();generarTextoMarketing()" class="px-3 py-1.5 rounded-full text-[11px] font-bold border ${mkTipoTexto === k ? 'bg-emerald-500 text-black border-emerald-400' : 'bg-gray-800 text-gray-300 border-gray-700'}">${t}</button>`).join('')).join('');
     }
@@ -17257,7 +17257,21 @@
       const L = productosMarketing(), enl = enlaceMk(), tienda = nombreTienda(), T = tienda.toUpperCase();
       const cta = `👉 Compra en *${enl}*`;
       let out = '';
-      if (mkTipoTexto === 'tienda') {
+      if (mkTipoTexto === 'bienvenida') {
+        // Mensaje de bienvenida de WhatsApp Business (máx. 1.024 caracteres) con los precios reales de hoy
+        const web = /^https?:\/\//i.test(enl) ? enl : 'https://' + enl;
+        const disp = L.filter(p => (Number(p.stock) || 0) > 0 && p.activo !== false);
+        const emo = p => /correo|mail/i.test(p.categoria || '') ? '📧' : (/m[uú]sica|music/i.test(p.categoria || '') ? '🎵' : '🍿');
+        const linea = p => { const pr = promoDeProducto(p); return `${emo(p)} ${p.nombre}: ${pr.tachado ? `~${formatoCOP(pr.tachado)}~ ` : ''}*${formatoCOP(pr.precio)}*`; };
+        const mins = Array.from(new Set(disp.map(p => Math.max(1, parseInt(p.minCompra, 10) || 1))));
+        const armar = n => `👋 ¡Hola! Bienvenido a *${T}* 👑\n\n` +
+          (disp.length ? `🔥 *Precios de hoy:*\n${disp.slice(0, n).map(linea).join('\n')}${disp.length > n ? '\n➕ Y más en la web' : ''}\n\n` : '') +
+          `✨ *Compra tú mismo, 24/7 y al instante:*\n1️⃣ Regístrate gratis\n2️⃣ Recarga con *Bre-B*: se acredita sola, *sin comisión*\n3️⃣ Elige tu producto y recibe tus cuentas al instante\n\n` +
+          `✅ Stock en tiempo real\n✅ Garantía en cada cuenta${mins.length === 1 && mins[0] > 1 ? `\n✅ Compra mínima: ${mins[0]} cuentas` : ''}\n\n` +
+          `📲 Toca el logo de la tienda para ver las ofertas del día\n🛟 ¿Dudas? En la web, botón *"¿Necesitas ayuda?"*\n\n👉 ${web}`;
+        let n = Math.min(8, disp.length); out = armar(n);
+        while (out.length > 1000 && n > 1) { n--; out = armar(n); }
+      } else if (mkTipoTexto === 'tienda') {
         const cats = Array.from(new Set(L.map(p => p.categoria).filter(Boolean))).slice(0, 5);
         out = `*${T}*\n_Tu proveedor de cuentas digitales, 24/7_\n${LINEA_MK}\n\n` +
           `${cats.length ? '🎬 ' + cats.join(' · ') + '\n' : ''}⚡ Entrega *al instante*, de día y de noche\n🛡 Todas con *garantía*\n💳 Recargas que se acreditan solas\n📦 Precios especiales por cantidad para revendedores\n\n` +
@@ -19422,6 +19436,7 @@
 
     // ==================== NOVEDADES INTERNAS DEL PANEL (solo el equipo) ====================
     const ACTUALIZACIONES_INTERNAS = [
+      { fecha: '2026-10-10', titulo: '👋 Mensaje de bienvenida de WhatsApp', mensaje: 'En **Marketing → Mensajes → 👋 Bienvenida WhatsApp** se arma tu mensaje de bienvenida con los **precios reales de hoy** (campañas incluidas, sin VIP ni agotados) y el enlace a la web. Cabe en el límite de WhatsApp Business: cópialo y pégalo en Herramientas para la empresa → Mensaje de bienvenida.', ir: 'marketing' },
       { fecha: '2026-10-10', titulo: '💵 Recarga exacta para completar la compra', mensaje: 'Cuando un cliente sin saldo va a recargar para completar una compra, la recarga sugerida es **exactamente lo que le falta** (antes se redondeaba al siguiente mil) y usa el precio real: por cantidad, campaña, relámpago o cupón.', ir: '' },
       { fecha: '2026-10-10', titulo: '📱💻 Vista por tipo de pantalla', mensaje: 'En **Apariencia y Logo** eliges la vista predeterminada **en celular** (recomendado: 2 columnas) y **en computador** (recomendado: detallada). Cada cliente puede cambiar la suya con ☰ / ▦.', ir: 'apariencia' },
       { fecha: '2026-10-10', titulo: '🔥 Franja de promos uniforme', mensaje: 'La franja **Promos de hoy** se adapta sola: 1 promo ocupa todo el ancho, 2 van mitad y mitad, 3 o más se deslizan en el celular y en el PC se acomodan en la cuadrícula. Cada tarjeta lleva el logo del producto.', ir: '' },
