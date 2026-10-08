@@ -15063,7 +15063,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-10x';
+    const VERSION_PAGINA = '2026-10-10y';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261010_wacompra', fecha: '2026-10-10', titulo: 'Compra por WhatsApp 💬', mensaje: 'Ahora puedes **comprar con tu saldo desde nuestro WhatsApp**. Ve a tu perfil → **Mis datos → Comprar por WhatsApp**, vincula tu chat con el código y pide la autorización.' },
       { id: 'act_20261010_vista2', fecha: '2026-10-10', titulo: 'Nueva vista de la tienda ▦', mensaje: 'Ahora puedes ver los productos **en 2 columnas**: más productos en tu pantalla, con las **promos resaltadas** (🔥 campaña, ⚡ relámpago, 🎁 regalo). Toca uno y se abre su ficha para comprar. Cambia de vista con los íconos ☰ / ▦ arriba de las categorías.' },
@@ -19458,6 +19458,7 @@
 
     // ==================== NOVEDADES INTERNAS DEL PANEL (solo el equipo) ====================
     const ACTUALIZACIONES_INTERNAS = [
+      { fecha: '2026-10-10', titulo: '🩺 Vigilancia automática con aviso por Telegram', mensaje: 'Cada 15 minutos el servidor revisa solo: base de datos, página publicada vs. servidor, tareas programadas, lectura de pagos, tus bots de Telegram, errores del servidor y del asistente de WhatsApp, y productos con stock pero sin precio. **Si algo falla te avisa por Telegram**, te avisa cuando se normaliza y te lo recuerda cada 6 horas si sigue igual. Además, **Comprobar todo** ahora hace una **prueba de compra simulada** (cada producto desde cada categoría, sin cobrar) — esa prueba también corre sola cada 6 horas mientras tienes el panel abierto.', ir: 'novedades' },
       { fecha: '2026-10-10', titulo: '📋 Menú de WhatsApp editable y lo más vendido primero', mensaje: 'En **Panel → 💬 WhatsApp → Menú del asistente** cambias el nombre de cada opción, su orden (↑ ↓) y cuáles se muestran, por separado para visitantes y clientes, con vista previa. El menú ahora empieza por **Comprar** y debajo **Recargar saldo en la plataforma**. Al comprar, los productos salen **ordenados por lo más vendido** (últimos 30 días) con 🔥. Recargar pregunta *"¿Ya estás registrado?"* y el registro por WhatsApp pide nombre, **WhatsApp** y correo.', ir: 'whatsapp' },
       { fecha: '2026-10-10', titulo: '🤖 WhatsApp vende como un pro', mensaje: 'El asistente entiende pedidos escritos (**"dame 5 amazon"**, "necesito 10 prime local", "3 netflix"): muestra las opciones con su total, al elegir ofrece más (siguiente precio por cantidad y todo el stock) y si cambian la cantidad recalcula el precio. **Recargar saldo es la opción 1** del menú: valores rápidos, valor exacto por Bre-B y "listo" para confirmar. Si al comprar no alcanza el saldo, genera el pago exacto de lo que falta y al escribir "listo" entrega las cuentas al instante. Stock en una línea por producto y, si algo está agotado, ofrece una alternativa.', ir: 'whatsapp' },
       { fecha: '2026-10-10', titulo: '📦 Sobre pedido: nueva regla y fila de espera', mensaje: 'Sobre pedido ahora se puede pedir **hasta el stock que haya** (o **50** si está agotado), en la web y en WhatsApp (ya no se pone a mano por producto; el cupo total es opcional). Cada pedido tiene su **puesto en la fila** (se entrega en orden de llegada) y el cliente lo ve en "Pedidos en espera". Por WhatsApp: al elegir un producto ve *entrega inmediata* y *sobre pedido*; si pide más de lo que hay elige "todas (ya + sobre pedido)" o "solo las de stock"; los agotados se ofrecen sobre pedido; escribiendo **pedidos** ve su puesto y las cuentas que ya le llegaron.', ir: 'productos' },
@@ -20720,10 +20721,19 @@
         sub.push(fila(!!ping.telegram, 'Telegram (tus avisos)', ping.telegram ? 'Configurado' : 'Sin configurar', ping.telegram ? '' : 'Pon tu token y chat en Ajustes → Telegram.'));
         if (ping.tgClientes) sub.push(fila(ping.tgClientes.token && ping.tgClientes.bot ? true : null, 'Bot de avisos para clientes', ping.tgClientes.token && ping.tgClientes.bot ? '@' + ping.tgClientes.bot : (ping.tgClientes.token ? 'Token guardado: toca "Guardar y probar" en Ajustes' : 'Opcional: sin configurar')));
       }
-      const todos = items.concat(sub), malos = todos.filter(x => x.ok === false).length;
+      // 5) Prueba de compra simulada (no cobra) y vigilancia automática del servidor
+      const sim = await probarCompraSimulada();
+      items.push(fila(sim.ok, '🛒 Prueba de compra simulada', sim.detalle, sim.ok ? '' : 'Mándame captura de esto: hay un producto que no se puede comprar desde la página.'));
+      const vig = [];
+      try { const rs = await llamarBackend('salud', { paginaCompra: { ok: sim.ok, detalle: sim.detalle } });
+        if (rs && rs.ok && rs.salud) rs.salud.checks.filter(x => ['pagos', 'errores', 'whatsapp', 'catalogo', 'pagina'].indexOf(x.id) !== -1).forEach(x => vig.push(fila(x.ok, x.nombre, x.detalle)));
+        else vig.push(fila(null, 'Vigilancia automática', 'Publica el servidor nuevo para activarla')); } catch (e) { vig.push(fila(null, 'Vigilancia automática', 'Publica el servidor nuevo para activarla')); }
+      try { localStorage.setItem('pruebaCompraEl', String(Date.now())); } catch (e) { /* nada */ }
+      const todos = items.concat(sub, vig), malos = todos.filter(x => x.ok === false).length;
       const pinta = x => `<div class="flex items-start gap-3 p-3 rounded-2xl border ${x.ok === true ? 'bg-emerald-500/10 border-emerald-500/30' : x.ok === false ? 'bg-red-500/10 border-red-500/40' : 'bg-gray-800/60 border-gray-700'}"><span class="text-lg leading-none">${x.ok === true ? '✅' : x.ok === false ? '⚠️' : 'ℹ️'}</span><span class="min-w-0"><span class="block text-[13px] font-black text-white">${escaparHtml(x.titulo)}</span><span class="block text-[11px] text-gray-300">${escaparHtml(x.detalle)}</span>${x.aviso ? `<span class="block text-[11px] text-amber-200 mt-0.5">${escaparHtml(x.aviso)}</span>` : ''}</span></div>`;
       c.innerHTML = `<div class="p-3 rounded-2xl text-center font-black text-sm ${malos ? 'bg-amber-500/15 text-amber-200 border border-amber-500/40' : 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/40'}">${malos ? `⚠️ Hay ${malos} cosa${malos === 1 ? '' : 's'} por revisar` : '🎉 Todo está al día y funcionando'}</div>` +
-        items.map(pinta).join('') + (sub.length ? `<p class="text-[12px] font-black text-white pt-2">Revisión del servidor</p>` + sub.map(pinta).join('') : '');
+        items.map(pinta).join('') + (sub.length ? `<p class="text-[12px] font-black text-white pt-2">Revisión del servidor</p>` + sub.map(pinta).join('') : '') +
+        (vig.length ? `<p class="text-[12px] font-black text-white pt-2">Vigilancia automática <span class="text-[10px] text-gray-400 font-normal">· cada 15 min · si algo falla te avisa por Telegram</span></p>` + vig.map(pinta).join('') : '');
     }
 
 
@@ -20948,6 +20958,56 @@
     }
     function moverMenuWa(i, d) { const L = menuWaEdit[menuWaTab], j = i + d; if (j < 0 || j >= L.length) return; const x = L[i]; L[i] = L[j]; L[j] = x; pintarMenuWa(); }
     function restablecerMenuWa() { menuWaEdit[menuWaTab] = MENU_WA_BASE_PAG[menuWaTab].map(b => ({ id: b[0], label: b[1], oculto: false })); pintarMenuWa(); }
+
+
+    // ==================== PRUEBA DE COMPRA SIMULADA (no cobra nada) ====================
+    // Recorre cada producto vendible en cada categoría (Todas, Promos y cada categoría) como lo haría un cliente:
+    // abre la ficha y confirma la compra. La llamada al servidor se intercepta: nunca se compra ni se cobra.
+    var pruebaCompraCorriendo = false;
+    async function probarCompraSimulada() {
+      if (pruebaCompraCorriendo) return { ok: true, detalle: 'ya está corriendo' };
+      pruebaCompraCorriendo = true;
+      const prev = { cat: categoriaActiva, saldo: userSaldo, llamar: window.llamarBackend, alerta: window.alert, conf: window.confirmarModal, curso: compraEnCurso };
+      const st = document.createElement('style'); st.id = 'estiloPruebaCompra'; st.textContent = '#modalCompraRapida,.modal-exito-compra{visibility:hidden!important}'; document.head.appendChild(st);
+      const fallas = []; let llamado = null, probadas = 0;
+      try {
+        userSaldo = 999999999;
+        window.alert = () => {}; window.confirmarModal = async () => true;
+        window.llamarBackend = async (accion, body) => { if (accion === 'comprar' || accion === 'preorden_crear') { llamado = body && body.productoId; return { ok: false, error: '__prueba__' }; } return prev.llamar(accion, body); };
+        const prods = (catalogoUnificado || []).filter(p => p.activo !== false && !p.esCombo && Number(p.precio) > 0 && Number(p.stock) >= Math.max(1, Number(p.minCompra) || 1) && usuarioTienePermisoProducto(p));
+        const cats = ['todas', 'promos'].concat(Array.from(new Set(prods.map(p => p.categoria).filter(Boolean))));
+        for (const c of cats) {
+          for (const p of prods) {
+            categoriaActiva = c; try { renderizarCatalogo(); } catch (e) { /* sigue */ }
+            llamado = null; compraEnCurso = false;
+            try { abrirCompraRapida(p.docId); await new Promise(r => setTimeout(r, 30)); await confirmarCompraRapida(); } catch (e) { fallas.push(p.nombre + ' (' + c + '): ' + e.message); continue; }
+            await new Promise(r => setTimeout(r, 30));
+            probadas++;
+            if (llamado !== p.docId) fallas.push(p.nombre + ' desde la categoría "' + (c === 'todas' ? 'Todas' : c === 'promos' ? 'Promos' : c) + '"');
+            try { const m = document.getElementById('modalCompraRapida'); if (m) m.style.display = 'none'; } catch (e) { /* nada */ }
+          }
+        }
+        const unicas = Array.from(new Set(fallas));
+        return { ok: !unicas.length, probadas, detalle: unicas.length ? 'la compra no llega al servidor: ' + unicas.slice(0, 4).join(' · ') + (unicas.length > 4 ? ' y ' + (unicas.length - 4) + ' más' : '') : probadas + ' compras simuladas bien (' + prods.length + ' productos × ' + cats.length + ' vistas)' };
+      } catch (e) { return { ok: false, detalle: 'la prueba no pudo correr: ' + e.message }; }
+      finally {
+        window.llamarBackend = prev.llamar; window.alert = prev.alerta; window.confirmarModal = prev.conf; userSaldo = prev.saldo; compraEnCurso = prev.curso; categoriaActiva = prev.cat;
+        try { renderizarCatalogo(); } catch (e) { /* nada */ }
+        try { const m = document.getElementById('modalCompraRapida'); if (m) m.style.display = 'none'; } catch (e) { /* nada */ }
+        try { st.remove(); } catch (e) { /* nada */ }
+        pruebaCompraCorriendo = false;
+      }
+    }
+    // Se corre sola cada 6 horas mientras el administrador tiene el panel abierto; si falla, el servidor te avisa por Telegram
+    async function pruebaCompraAutomatica() {
+      if (!esAdminSesionActual() || !obtenerBackendUrl()) return;
+      let ult = 0; try { ult = parseInt(localStorage.getItem('pruebaCompraEl') || '0', 10); } catch (e) { /* nada */ }
+      if (Date.now() - ult < 6 * 3600000) return;
+      try { localStorage.setItem('pruebaCompraEl', String(Date.now())); } catch (e) { /* nada */ }
+      const r = await probarCompraSimulada();
+      try { await llamarBackend('salud', { paginaCompra: { ok: r.ok, detalle: r.detalle } }); } catch (e) { /* nada */ }
+    }
+    setInterval(() => { try { if (catalogoCargado) pruebaCompraAutomatica(); } catch (e) { /* nada */ } }, 5 * 60000);
 
     // ==================== NETFLIX EN LA TIENDA: SIN CONTRASEÑA ====================
     function esNombreNetflix(t) { return /netflix/i.test(String(t || '')); }
@@ -21762,7 +21822,7 @@
       return { cuentas: legado, stock: legado.length || stockPublico };
     }
 
-    const VERSION_SERVIDOR_NECESARIA = '2026-10-10m';   // la versión del servidor que necesita esta página
+    const VERSION_SERVIDOR_NECESARIA = '2026-10-10n';   // la versión del servidor que necesita esta página
     async function llamarBackend(accion, datos) {
       if (modoPruebaCliente) { const rs = backendSimulado(accion, datos || {}); if (rs) return rs; }
       const url = obtenerBackendUrl();
