@@ -2197,6 +2197,14 @@
                 <i class="fa-brands fa-telegram"></i> Integración de Telegram
               </h4>
               <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div class="sm:col-span-2 p-3 rounded-xl bg-emerald-500/5 border border-emerald-500/30 space-y-2">
+                  <p class="text-[12px] font-black text-emerald-200">🤖 Asistente de WhatsApp (app de respuestas automáticas)</p>
+                  <p class="text-[11px] text-gray-400">Tu app de respuestas automáticas le pregunta a tu servidor qué contestar: saludos, precios de hoy, recargas, garantía y revendedores, siempre con los datos reales de la tienda. Si no entiende un mensaje, no responde y te lo deja a ti.</p>
+                  <div id="waAsistenteEstado" class="text-[11px] text-gray-300"></div>
+                  <div class="grid grid-cols-2 gap-2"><button type="button" onclick="generarClaveAsistenteWa()" class="py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-black text-xs">Generar URL</button><button type="button" onclick="copiarUrlAsistenteWa()" class="py-2 rounded-xl bg-gray-800 border border-gray-700 text-gray-100 font-bold text-xs">Copiar URL</button></div>
+                  <p class="text-[10px] text-gray-500">En la app: regla con <b class="text-gray-300">Todo</b> → <b class="text-gray-300">Conectarse a un servidor propio</b> → pega la URL. Key y Value se quedan vacíos.</p>
+                  <div id="waAdminCaja"></div>
+                </div>
                 <div class="sm:col-span-2 p-3 rounded-xl bg-sky-500/5 border border-sky-500/30 space-y-2">
                   <p class="text-[12px] font-black text-sky-200">✈️ Bot de avisos para clientes</p>
                   <p class="text-[11px] text-gray-400">Un bot APARTE del tuyo (créalo en @BotFather). Tus clientes lo conectan en su perfil → Mis datos y reciben sus compras, recargas y stock nuevo. Nunca se envían contraseñas.</p>
@@ -3038,6 +3046,7 @@
             <p class="text-[10px] text-gray-500 mt-1">Si lo dejas vacío, el saldo queda en $0.</p>
           </div>
         </div>
+        <label class="flex items-center justify-between gap-3 p-3 rounded-xl bg-gray-800/60 border border-emerald-500/30 cursor-pointer"><span class="text-xs text-white"><b>💬 Puede comprar por WhatsApp</b><span id="editClienteWaInfo" class="block text-[10px] text-gray-400">Con su saldo, desde el menú del asistente.</span></span><input type="checkbox" id="editClienteWaCompra" class="accent-emerald-500 w-5 h-5"></label>
         <div id="editClienteCreditoCaja" class="solo-admin p-3 rounded-xl border border-violet-500/40 bg-violet-500/5 space-y-2.5">
           <div class="flex items-center justify-between gap-2">
             <p class="text-xs font-black text-white"><i class="fa-solid fa-hand-holding-dollar text-violet-300 mr-1"></i> Crédito</p>
@@ -6661,6 +6670,7 @@
           if (doc.exists) {
             const dataU = doc.data();
             userSaldo = dataU.saldo || 0;
+            try { perfilWa = { waVinculado: dataU.waVinculado || '', waCompraAutorizada: dataU.waCompraAutorizada === true, waSolicitaEl: dataU.waSolicitaEl || '' }; if (document.getElementById('waClienteCaja')) pintarWaCliente(); } catch (e) { /* nada */ }
             setTimeout(() => { try { revisarCompraTrasRecarga(); } catch (e) { /* nada */ } }, 0);
             if (ticketsAvisadosCuenta === null) { ticketsAvisadosCuenta = Array.isArray(dataU.ticketsAvisados) ? dataU.ticketsAvisados : []; setTimeout(() => { try { revisarTicketsClienteUI(); } catch (e) { /* nada */ } }, 0); }
             try { const antes = JSON.stringify(miCupon || null); miCupon = dataU.cupon || null; if (antes !== JSON.stringify(miCupon)) { setTimeout(() => { try { pintarBannerCupon(); renderizarCatalogo(); } catch (e) { /* nada */ } }, 0); } } catch (e) { /* nada */ }
@@ -7957,6 +7967,7 @@
       if (tab === 'actividad') { try { cargarActividad(); } catch (e) { console.warn(e); } }
       if (tab === 'campanas') { try { prepararCampanas(); } catch (e) { console.warn(e); } }
       if (tab === 'dealers') { try { prepararDealers(); } catch (e) { console.warn(e); } }
+      if (tab === 'ajustes') { try { pintarAsistenteWa(); pintarWaAdmin(); } catch (e) { /* nada */ } }
       if (tab === 'marketing') { try { iniciarEstados(); pintarEstadosAdmin(); } catch (e) { /* nada */ } }
       if (tab === 'usuarios' || tab === 'ajustes') { try { if (esAdminSesionActual()) prepararCfgTiendas(); } catch (e) { /* nada */ } }
       if (tab === 'marketing') { try { if (!cfgDealer) cargarCfgDealer().then(prepararMarketing); } catch (e) { /* nada */ } prepararMarketing(); }
@@ -9469,9 +9480,10 @@
         editClienteOriginal = {
           email: d.email || '', nombre: d.nombre || '',
           whatsapp: whatsappEsVacio(d.whatsapp) ? '' : String(d.whatsapp),
-          saldo: Number(d.saldo) || 0, perfilCompleto: !!d.email, cargado: true, rol: d.rol || 'cliente',
+          saldo: Number(d.saldo) || 0, perfilCompleto: !!d.email, cargado: true, rol: d.rol || 'cliente', waCompra: d.waCompraAutorizada === true, waVinculado: d.waVinculado || '',
           permisos: Array.isArray(d.permisos_subir_stock) ? d.permisos_subir_stock : []
         };
+        try { const cw = document.getElementById('editClienteWaCompra'); if (cw) cw.checked = d.waCompraAutorizada === true; const iw = document.getElementById('editClienteWaInfo'); if (iw) iw.textContent = d.waVinculado ? 'WhatsApp vinculado: ' + d.waVinculado : 'Aún no ha vinculado su WhatsApp.'; } catch (x) { /* nada */ }
         const selRolEd = document.getElementById('editClienteRol');
         editClienteOriginal.tipoCuenta = String(d.tipoCuenta || '');
         editClienteOriginal.categoriasPermitidas = Array.isArray(d.categoriasPermitidas) ? d.categoriasPermitidas : [];
@@ -9606,7 +9618,8 @@
             // Deja de ser proveedor: ya no puede subir nada
             cambios.permisos_subir_stock = []; cambios.puede_subir_stock = false;
           }
-          if (Object.keys(cambios).length) await db.collection('usuarios').doc(uid).set(cambios, { merge: true });
+          try { const cw = document.getElementById('editClienteWaCompra'); if (cw && orig.cargado && cw.checked !== (orig.waCompra === true)) { cambios.waCompraAutorizada = cw.checked; if (cw.checked) { try { await notificarUsuarioPanel(uid, 'anuncio', '💬 Ya puedes comprar por WhatsApp', 'Escribe a nuestro WhatsApp, elige la opción 4 y compra con tu saldo.'); } catch (x) { /* opcional */ } } } } catch (x) { /* nada */ }
+      if (Object.keys(cambios).length) await db.collection('usuarios').doc(uid).set(cambios, { merge: true });
         }
         usuariosNetflixCache = null;
         mostrarToast(password ? '¡Cliente actualizado! Recuerda pasarle la contraseña nueva.' : '¡Cliente actualizado con éxito!');
@@ -15048,8 +15061,9 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-10m';
+    const VERSION_PAGINA = '2026-10-10o';
     const ACTUALIZACIONES_PAGINA = [
+      { id: 'act_20261010_wacompra', fecha: '2026-10-10', titulo: 'Compra por WhatsApp 💬', mensaje: 'Ahora puedes **comprar con tu saldo desde nuestro WhatsApp**. Ve a tu perfil → **Mis datos → Comprar por WhatsApp**, vincula tu chat con el código y pide la autorización.' },
       { id: 'act_20261010_vista2', fecha: '2026-10-10', titulo: 'Nueva vista de la tienda ▦', mensaje: 'Ahora puedes ver los productos **en 2 columnas**: más productos en tu pantalla, con las **promos resaltadas** (🔥 campaña, ⚡ relámpago, 🎁 regalo). Toca uno y se abre su ficha para comprar. Cambia de vista con los íconos ☰ / ▦ arriba de las categorías.' },
       { id: 'act_20261009_telegram', fecha: '2026-10-09', titulo: 'Avisos por Telegram ✈️', mensaje: 'Conecta Telegram en tu perfil → **Mis datos** y recibe al instante tus **compras**, tus **recargas** y el **stock nuevo** de lo que compras. Tú eliges qué recibir, y nunca te enviamos contraseñas por ahí.' },
       { id: 'act_20261009_serdealer', fecha: '2026-10-09', titulo: 'Ahora puedes pedir ser Dealer 👑', mensaje: 'En tu perfil ves cuánto te falta para **pedir ser Dealer**. Cuando cumples, toca **Pedir ser Dealer** y te avisamos en la campana. Los Dealers tienen **promos y regalos por volumen**.' },
@@ -19434,6 +19448,8 @@
 
     // ==================== NOVEDADES INTERNAS DEL PANEL (solo el equipo) ====================
     const ACTUALIZACIONES_INTERNAS = [
+      { fecha: '2026-10-10', titulo: '💬 Menú y compras por WhatsApp', mensaje: 'El asistente de WhatsApp ahora saluda con un **menú** (1 Stock · 2 Registro · 3 Garantía · 4 Comprar por WhatsApp · 5 Asesor). Para comprar por ahí, el cliente **vincula su chat** con un código desde *Mis datos* y **tú lo autorizas** (Ajustes → Asistente de WhatsApp, o en su ficha). Compra con su saldo al **precio de WhatsApp** que tú fijas, con confirmación SI. La opción 5 silencia el asistente 2 horas y te avisa por Telegram.', ir: 'ajustes' },
+      { fecha: '2026-10-10', titulo: '🤖 Asistente de WhatsApp', mensaje: 'Tu app de respuestas automáticas puede conectarse a tu servidor (**Ajustes → Asistente de WhatsApp → Generar URL**). Responde saludos, precios de hoy por producto, recargas, garantía y revendedores con datos reales. Si no entiende, no responde y te deja la conversación. Nunca responde en grupos.', ir: 'ajustes' },
       { fecha: '2026-10-10', titulo: '🩺 Comprobar todo', mensaje: 'En **Novedades** tienes **Comprobar todo**: en una ventana revisa si la página publicada, el servidor y las reglas de Firebase están en la última versión, y si las tareas automáticas (lector de pagos, tarea de cada hora y diaria) y Telegram funcionan. Si algo falta, te dice qué hacer.', ir: 'novedades' },
       { fecha: '2026-10-10', titulo: '👋 Mensaje de bienvenida de WhatsApp', mensaje: 'En **Marketing → Mensajes → 👋 Bienvenida WhatsApp** se arma un mensaje de bienvenida **corto**: el precio de Prime como referencia y que **en la web sale más barato** (desde el precio más bajo por cantidad o promo), con el enlace. Cópialo en WhatsApp Business → Herramientas para la empresa → Mensaje de bienvenida.', ir: 'marketing' },
       { fecha: '2026-10-10', titulo: '💵 Recarga exacta para completar la compra', mensaje: 'Cuando un cliente sin saldo va a recargar para completar una compra, la recarga sugerida es **exactamente lo que le falta** (antes se redondeaba al siguiente mil) y usa el precio real: por cantidad, campaña, relámpago o cupón.', ir: '' },
@@ -20636,7 +20652,7 @@
 
 
     // ==================== COMPROBAR TODO (estado de la página, servidor, reglas y tareas) ====================
-    const VERSION_REGLAS_ESPERADA = '2026-10-10b';
+    const VERSION_REGLAS_ESPERADA = '2026-10-10d';
     async function abrirComprobarTodo() {
       let m = document.getElementById('modalComprobarTodo');
       if (!m) { m = document.createElement('div'); m.id = 'modalComprobarTodo'; m.className = 'fixed inset-0 z-[96] hidden items-center justify-center p-4 bg-black/75 backdrop-blur-sm'; m.onclick = ev => { if (ev.target === m) cerrarComprobarTodo(); }; document.body.appendChild(m); }
@@ -20691,6 +20707,85 @@
       const pinta = x => `<div class="flex items-start gap-3 p-3 rounded-2xl border ${x.ok === true ? 'bg-emerald-500/10 border-emerald-500/30' : x.ok === false ? 'bg-red-500/10 border-red-500/40' : 'bg-gray-800/60 border-gray-700'}"><span class="text-lg leading-none">${x.ok === true ? '✅' : x.ok === false ? '⚠️' : 'ℹ️'}</span><span class="min-w-0"><span class="block text-[13px] font-black text-white">${escaparHtml(x.titulo)}</span><span class="block text-[11px] text-gray-300">${escaparHtml(x.detalle)}</span>${x.aviso ? `<span class="block text-[11px] text-amber-200 mt-0.5">${escaparHtml(x.aviso)}</span>` : ''}</span></div>`;
       c.innerHTML = `<div class="p-3 rounded-2xl text-center font-black text-sm ${malos ? 'bg-amber-500/15 text-amber-200 border border-amber-500/40' : 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/40'}">${malos ? `⚠️ Hay ${malos} cosa${malos === 1 ? '' : 's'} por revisar` : '🎉 Todo está al día y funcionando'}</div>` +
         items.map(pinta).join('') + (sub.length ? `<p class="text-[12px] font-black text-white pt-2">Revisión del servidor</p>` + sub.map(pinta).join('') : '');
+    }
+
+
+    // ==================== ASISTENTE DE WHATSAPP: URL CON CLAVE SECRETA ====================
+    var waClaveActual = '';
+    async function pintarAsistenteWa() {
+      const e = document.getElementById('waAsistenteEstado'); if (!e || !esAdminSesionActual()) return;
+      try { const d = await db.collection('secretos').doc('ajustes').get(); waClaveActual = d.exists ? String((d.data() || {}).waSecreto || '') : ''; } catch (x) { waClaveActual = ''; }
+      e.innerHTML = waClaveActual ? `<span class="text-emerald-300">✓ URL generada.</span> <span class="font-mono break-all text-gray-400">${escaparHtml(urlAsistenteWa().replace(waClaveActual, waClaveActual.slice(0, 4) + '••••'))}</span>` : 'Aún no has generado la URL.';
+    }
+    function urlAsistenteWa() { const b = obtenerBackendUrl() || ''; return b ? b + (b.indexOf('?') === -1 ? '?' : '&') + 'wa=' + waClaveActual : ''; }
+    async function generarClaveAsistenteWa() {
+      if (!obtenerBackendUrl()) { alert('Primero configura la URL del servidor en Ajustes.'); return; }
+      if (waClaveActual && !await confirmarModal('¿Generar una URL nueva? La anterior dejará de funcionar y tendrás que pegar la nueva en la app.', { textoAceptar: 'Sí, generar' })) return;
+      const abc = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789'; let k = ''; const r = new Uint32Array(24); crypto.getRandomValues(r); r.forEach(n => k += abc[n % abc.length]);
+      try { await db.collection('secretos').doc('ajustes').set({ waSecreto: k }, { merge: true }); waClaveActual = k; await pintarAsistenteWa(); copiarTexto(urlAsistenteWa(), 'URL copiada: pégala en la app'); } catch (e) { alert('No se pudo guardar: ' + e.message); }
+    }
+    function copiarUrlAsistenteWa() { if (!waClaveActual) { alert('Primero toca "Generar URL".'); return; } copiarTexto(urlAsistenteWa(), 'URL copiada: pégala en la app'); }
+
+
+    // ==================== COMPRAR POR WHATSAPP (cliente: vincular / pedir autorización · admin: autorizar y precios) ====================
+    var perfilWa = {}, waCodigoActual = '', waCodigoExpira = 0;
+    function numeroWhatsappTienda() { return String((ajustesGeneralesConfig && ajustesGeneralesConfig.whatsappNumero) || '573043956726').replace(/\D/g, ''); }
+    function pintarWaCliente() {
+      const sec = document.getElementById('perfilSecDatos'); if (!sec || !currentUser || esStaffSesion()) return;
+      let c = document.getElementById('waClienteCaja');
+      if (!c) { c = document.createElement('div'); c.id = 'waClienteCaja'; c.className = 'mb-3'; const tg = document.getElementById('tgClienteCaja'); sec.insertBefore(c, tg ? tg.nextSibling : sec.firstChild); }
+      const vinc = perfilWa.waVinculado, aut = perfilWa.waCompraAutorizada === true, sol = !!perfilWa.waSolicitaEl;
+      let cuerpo = '';
+      if (!vinc) {
+        const vigente = waCodigoActual && waCodigoExpira > Date.now();
+        cuerpo = vigente ? `<div class="mt-2 p-3 rounded-xl bg-gray-800 text-center"><p class="text-[11px] text-gray-400">Envía este código a nuestro WhatsApp (vence en 15 min):</p><p class="text-2xl font-black tracking-[0.2em] text-emerald-300 my-1">${escaparHtml(waCodigoActual)}</p><a href="https://wa.me/${numeroWhatsappTienda()}?text=${encodeURIComponent('Mi código es ' + waCodigoActual)}" target="_blank" rel="noopener" class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-500 text-black font-black text-xs"><i class="fa-brands fa-whatsapp"></i>Enviar por WhatsApp</a></div>`
+          : `<button type="button" onclick="vincularWaCliente()" class="mt-2 w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs"><i class="fa-brands fa-whatsapp mr-1"></i>Vincular mi WhatsApp</button>`;
+      } else {
+        cuerpo = `<p class="text-[11px] text-gray-300 mt-1.5">✅ Vinculado como <b class="text-white">${escaparHtml(vinc)}</b></p>` +
+          (aut ? `<p class="text-[12px] text-emerald-300 font-bold mt-1">🛒 Autorizado: escribe al WhatsApp y elige la opción 4.</p>`
+            : (sol ? `<p class="text-[12px] text-amber-300 font-bold mt-1">⏳ Solicitud enviada: te avisaremos cuando te autoricen.</p>` : `<button type="button" onclick="pedirAutorizacionWa()" class="mt-2 w-full py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-black text-xs">Pedir autorización para comprar</button>`)) +
+          `<button type="button" onclick="desvincularWaCliente()" class="mt-2 text-[11px] text-gray-400 underline">Desvincular</button>`;
+      }
+      c.innerHTML = `<div class="p-3 rounded-2xl bg-gray-900 border border-emerald-500/30"><p class="text-xs font-black text-white">💬 Comprar por WhatsApp</p><p class="text-[11px] text-gray-400">Compra con tu saldo directo desde el chat. Es solo para clientes autorizados.</p>${cuerpo}</div>`;
+    }
+    async function vincularWaCliente() {
+      try { const r = await llamarBackend('wa_codigo', {}); if (!r.ok) { alert(r.error || 'No se pudo.'); return; } waCodigoActual = r.codigo; waCodigoExpira = Date.now() + 15 * 60000; pintarWaCliente(); }
+      catch (e) { alert(e.message); }
+    }
+    async function pedirAutorizacionWa() {
+      try { await db.collection('usuarios').doc(currentUser.uid).set({ waSolicitaEl: new Date().toISOString() }, { merge: true }); perfilWa.waSolicitaEl = 'si'; pintarWaCliente(); mostrarToast('Solicitud enviada ✓');
+        try { llamarBackend('notificar', { tipo: 'wa_autorizacion' }).catch(() => {}); } catch (x) { /* opcional */ } } catch (e) { alert(e.message); }
+    }
+    async function desvincularWaCliente() {
+      if (!await confirmarModal('¿Desvincular tu WhatsApp? Para volver a comprar por ahí tendrás que vincularlo de nuevo.', { textoAceptar: 'Sí, desvincular' })) return;
+      try { const r = await llamarBackend('wa_desvincular', {}); if (r.ok) { perfilWa.waVinculado = ''; pintarWaCliente(); mostrarToast('WhatsApp desvinculado'); } } catch (e) { alert(e.message); }
+    }
+    // ---- Panel: precios de WhatsApp y solicitudes ----
+    async function pintarWaAdmin() {
+      const c = document.getElementById('waAdminCaja'); if (!c || !esAdminSesionActual()) return;
+      let precios = {}, solicitudes = [], autorizados = 0;
+      try { const d = await db.collection('configuracion').doc('whatsapp').get(); precios = (d.exists && (d.data() || {}).precios) || {}; } catch (e) { /* nada */ }
+      try { const q = await db.collection('usuarios').where('waSolicitaEl', '>', '').get(); q.forEach(x => { const u = x.data() || {}; if (u.waCompraAutorizada !== true) solicitudes.push({ uid: x.id, nombre: u.nombre || '', email: u.email || '', vinc: u.waVinculado || '' }); }); } catch (e) { /* nada */ }
+      try { const q2 = await db.collection('usuarios').where('waCompraAutorizada', '==', true).get(); autorizados = q2.size; } catch (e) { /* nada */ }
+      const vacio = !Object.keys(precios).length;
+      const prods = (catalogoUnificado || []).filter(p => !p.esCombo && !p.esVip && p.activo !== false);
+      const sugerido = p => vacio ? (/prime video local/i.test(p.nombre) ? 3500 : (/^prime video( con pago)?$/i.test(String(p.nombre).trim()) ? 3000 : '')) : '';
+      const inp = 'w-24 bg-gray-800 border border-gray-700 rounded-lg px-2 py-1.5 text-xs text-white text-right focus:outline-none';
+      c.innerHTML = `<p class="text-[12px] font-black text-white mt-2">💲 Precios de WhatsApp</p><p class="text-[10px] text-gray-500">Solo los productos con precio se venden por WhatsApp. Vacío = no se vende por ahí.</p>
+        <div class="space-y-1.5 mt-1.5">${prods.map(p => `<label class="flex items-center justify-between gap-2"><span class="text-[11px] text-gray-200 truncate">${escaparHtml(p.nombre)} <span class="text-gray-500">(web ${formatoCOP(p.precio)})</span></span><input type="number" min="0" step="100" data-wa-precio="${escaparHtml(p.docId)}" value="${precios[p.docId] || sugerido(p) || ''}" placeholder="—" class="${inp}"></label>`).join('')}</div>
+        <button type="button" onclick="guardarPreciosWa()" class="mt-2 w-full py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-black text-xs">Guardar precios de WhatsApp</button>
+        <p class="text-[12px] font-black text-white mt-3">🙋 Solicitudes para comprar por WhatsApp (${solicitudes.length}) <span class="text-[10px] text-gray-500 font-normal">· ${autorizados} autorizado${autorizados === 1 ? '' : 's'}</span></p>
+        <div class="space-y-1.5 mt-1">${solicitudes.map(s => `<div class="flex items-center gap-2 p-2 rounded-xl bg-gray-800/70"><span class="flex-1 min-w-0"><span class="block text-[12px] text-white truncate">${escaparHtml(s.nombre || s.email)}</span><span class="block text-[10px] text-gray-400 truncate">${escaparHtml(s.email)}${s.vinc ? ' · chat: ' + escaparHtml(s.vinc) : ' · sin vincular'}</span></span><button type="button" onclick="autorizarWa('${escaparJsAttr(s.uid)}', true)" class="px-3 py-1.5 rounded-lg bg-emerald-500 text-black font-black text-[11px]">Autorizar</button></div>`).join('') || '<p class="text-[11px] text-gray-500">No hay solicitudes pendientes.</p>'}</div>
+        <p class="text-[10px] text-gray-500 mt-1">También puedes autorizar o quitar el permiso desde la ficha de cada cliente (Usuarios → Editar).</p>`;
+    }
+    async function guardarPreciosWa() {
+      const precios = {}; document.querySelectorAll('[data-wa-precio]').forEach(i => { const v = Math.round(Number(i.value) || 0); if (v > 0) precios[i.dataset.waPrecio] = v; });
+      try { await db.collection('configuracion').doc('whatsapp').set({ precios, actualizadoEl: new Date().toISOString() }); mostrarToast(`Precios de WhatsApp guardados (${Object.keys(precios).length})`); } catch (e) { alert(e.message); }
+    }
+    async function autorizarWa(uid, si) {
+      try { await db.collection('usuarios').doc(uid).set({ waCompraAutorizada: !!si }, { merge: true }); mostrarToast(si ? 'Autorizado para comprar por WhatsApp ✓' : 'Permiso quitado');
+        try { if (si) await notificarUsuarioPanel(uid, 'anuncio', '💬 Ya puedes comprar por WhatsApp', 'Escribe a nuestro WhatsApp, elige la opción 4 y compra con tu saldo.'); } catch (x) { /* opcional */ }
+        pintarWaAdmin(); } catch (e) { alert(e.message); }
     }
 
     // ==================== NETFLIX EN LA TIENDA: SIN CONTRASEÑA ====================
@@ -20759,7 +20854,7 @@
     }
 
     function cambiarTabPerfil(tab) {
-      setTimeout(() => { try { renderizarCreditoCliente(); } catch (e) { /* nada */ } try { if (tab === 'datos') { iniciarTgCliente(); pintarTgCliente(); } } catch (e) { /* nada */ } }, 0);
+      setTimeout(() => { try { renderizarCreditoCliente(); } catch (e) { /* nada */ } try { if (tab === 'datos') { iniciarTgCliente(); pintarTgCliente(); pintarWaCliente(); } } catch (e) { /* nada */ } }, 0);
       try {
         ['cuentas', 'recargas', 'credito', 'datos', 'seguridad'].forEach(t => {
           const nombre = t.charAt(0).toUpperCase() + t.slice(1);
@@ -21506,7 +21601,7 @@
       return { cuentas: legado, stock: legado.length || stockPublico };
     }
 
-    const VERSION_SERVIDOR_NECESARIA = '2026-10-10b';   // la versión del servidor que necesita esta página
+    const VERSION_SERVIDOR_NECESARIA = '2026-10-10d';   // la versión del servidor que necesita esta página
     async function llamarBackend(accion, datos) {
       if (modoPruebaCliente) { const rs = backendSimulado(accion, datos || {}); if (rs) return rs; }
       const url = obtenerBackendUrl();
