@@ -15047,7 +15047,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-10g';
+    const VERSION_PAGINA = '2026-10-10h';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261010_vista2', fecha: '2026-10-10', titulo: 'Nueva vista de la tienda ▦', mensaje: 'Ahora puedes ver los productos **en 2 columnas**: más productos en tu pantalla, con las **promos resaltadas** (🔥 campaña, ⚡ relámpago, 🎁 regalo). Toca uno y se abre su ficha para comprar. Cambia de vista con los íconos ☰ / ▦ arriba de las categorías.' },
       { id: 'act_20261009_telegram', fecha: '2026-10-09', titulo: 'Avisos por Telegram ✈️', mensaje: 'Conecta Telegram en tu perfil → **Mis datos** y recibe al instante tus **compras**, tus **recargas** y el **stock nuevo** de lo que compras. Tú eliges qué recibir, y nunca te enviamos contraseñas por ahí.' },
@@ -16950,12 +16950,13 @@
     function prepararCompraTrasRecarga() {
       const it = ultimaCompraIntento; if (!it) return;
       const prod = catalogoUnificado.find(p => p.docId === it.docId); if (!prod) return;
-      const total = (Number(prod.precio) || 0) * it.cantidad;
+      // Total real: con precios por cantidad, campaña, venta relámpago, cupón y combo (lo mismo que cobra la compra)
+      const total = Math.round((Number(precioUnitarioConCombo(prod, it.cantidad)) || Number(prod.precio) || 0) * it.cantidad);
       compraTrasRecarga = { docId: it.docId, cantidad: it.cantidad, total: total, nombre: prod.nombre, expira: Date.now() + 40 * 60000 };
       const falta = Math.max(0, total - (Number(userSaldo) || 0));
       setTimeout(() => {
         const inp = document.getElementById('recargaAutoMonto');
-        if (inp && falta > 0) { const minimo = (recargaAutoCfg && recargaAutoCfg.minimo) || 0; inp.value = String(Math.max(minimo, Math.ceil(falta / 1000) * 1000)); }
+        if (inp && falta > 0) { const minimo = (recargaAutoCfg && recargaAutoCfg.minimo) || 0; inp.value = String(Math.max(minimo, Math.ceil(falta))); }   // exactamente lo que falta (sin redondear al mil)
         const aviso = document.getElementById('avisoCompraTrasRecarga');
         if (aviso) { aviso.classList.remove('hidden'); aviso.innerHTML = `<i class="fa-solid fa-cart-shopping mr-1"></i>Al recargar se completa sola tu compra: <b>${it.cantidad} × ${escaparHtml(prod.nombre)}</b> (${formatoCOP(total)}).`; }
       }, 50);
@@ -19421,6 +19422,7 @@
 
     // ==================== NOVEDADES INTERNAS DEL PANEL (solo el equipo) ====================
     const ACTUALIZACIONES_INTERNAS = [
+      { fecha: '2026-10-10', titulo: '💵 Recarga exacta para completar la compra', mensaje: 'Cuando un cliente sin saldo va a recargar para completar una compra, la recarga sugerida es **exactamente lo que le falta** (antes se redondeaba al siguiente mil) y usa el precio real: por cantidad, campaña, relámpago o cupón.', ir: '' },
       { fecha: '2026-10-10', titulo: '📱💻 Vista por tipo de pantalla', mensaje: 'En **Apariencia y Logo** eliges la vista predeterminada **en celular** (recomendado: 2 columnas) y **en computador** (recomendado: detallada). Cada cliente puede cambiar la suya con ☰ / ▦.', ir: 'apariencia' },
       { fecha: '2026-10-10', titulo: '🔥 Franja de promos uniforme', mensaje: 'La franja **Promos de hoy** se adapta sola: 1 promo ocupa todo el ancho, 2 van mitad y mitad, 3 o más se deslizan en el celular y en el PC se acomodan en la cuadrícula. Cada tarjeta lleva el logo del producto.', ir: '' },
       { fecha: '2026-10-10', titulo: '▦ Vista de tienda en 2 columnas', mensaje: 'La tienda tiene dos vistas: **detallada** (la de siempre) y **2 columnas**, con franja **🔥 Promos de hoy**, categoría **🔥 Promos**, cintas de campaña / relámpago (con cuenta regresiva) / regalo y la ficha centrada para comprar. Eliges la predeterminada en **Apariencia y Logo**; cada cliente puede cambiarla.', ir: 'apariencia' },
