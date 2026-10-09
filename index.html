@@ -1242,6 +1242,7 @@
           <button type="button" onclick="revisarSaldosTodos()" class="mt-3 w-full py-2.5 rounded-xl bg-rose-500 hover:bg-rose-400 text-white font-black text-sm">🔍 Revisar saldos de todos</button>
           <div id="vigResultado" class="mt-2 space-y-1.5"></div>
           <div id="vigAlertas" class="mt-2 space-y-1.5"></div>
+          <div id="vigIdPendientes" class="mt-2 space-y-1.5"></div>
         </div>
         <div id="adminReferidosCaja" class="solo-admin bg-gray-900 border border-sky-500/30 rounded-2xl overflow-hidden">
           <button type="button" onclick="document.getElementById('refCuerpo').classList.toggle('hidden')" class="w-full text-left p-4 flex items-center gap-3">
@@ -3115,6 +3116,8 @@
             <label class="block text-xs text-gray-400 mb-1">Saldo (COP)</label>
             <input type="number" id="editClienteSaldo" min="0" step="500" placeholder="Vacío = $0" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none">
             <p class="text-[10px] text-gray-500 mt-1">Si lo dejas vacío, el saldo queda en $0.</p>
+            <div id="editClienteIdEpic" class="hidden mt-2 p-2.5 rounded-xl bg-violet-500/10 border border-violet-500/30 flex flex-wrap items-center justify-between gap-2"></div>
+            <button type="button" id="editClienteProvSaldo" onclick="pasarSaldoProveedorADeuda()" class="hidden mt-1.5 w-full py-2 rounded-lg bg-violet-500 hover:bg-violet-400 text-white text-[11px] font-black"></button>
           </div>
         </div>
         <label class="flex items-center justify-between gap-3 p-3 rounded-xl bg-gray-800/60 border border-emerald-500/30 cursor-pointer"><span class="text-xs text-white"><b>💬 Puede comprar por WhatsApp</b><span id="editClienteWaInfo" class="block text-[10px] text-gray-400">Con su saldo, desde el menú del asistente.</span></span><input type="checkbox" id="editClienteWaCompra" class="accent-emerald-500 w-5 h-5"></label>
@@ -6331,7 +6334,7 @@
         const infoMaster = document.getElementById('txtStockClaveMasterInfo');
         if (infoMaster) infoMaster.innerHTML = `Si lo dejas vacío, al cliente le llega la contraseña máster: <b class="font-mono text-gray-300">${escaparHtml(obtenerClaveMaster() || '(sin definir)')}</b>`;
         const txt = document.getElementById('txtStockLineas');
-        const cantidad = txt ? txt.value.split('\n').map(l => l.trim()).filter(l => l).length : 0;
+        const cantidad = txt ? extraerCuentasDeTexto(txt.value).cuentas.length : 0;   // cuentas reales (líneas con correo), no líneas de texto
         const costo = leerCostoUnitarioStock();
         const sel = document.getElementById('selectStockProducto');
         const prod = (sel && sel.value) ? catalogoUnificado.find(p => p.docId === sel.value) : null;
@@ -8818,7 +8821,7 @@
             tipoGarantia: prodInfo.tipoGarantia || '', // GUARDADO DE GARANTÍA
             fecha: new Date().toISOString(),
             correos: cuentasEntregadas.map(c => String(parseCredencialObj(c).email || '').trim().toLowerCase()).filter((v, i, a) => v && a.indexOf(v) === i),
-            cuentasInfo: cuentasEntregadas.filter(c => c && typeof c === 'object' && c.subidoEl).map(c => ({ e: String(parseCredencialObj(c).email || '').trim().toLowerCase(), s: String(c.subidoEl) }))
+            cuentasInfo: cuentasEntregadas.filter(c => c && typeof c === 'object' && (c.subidoEl || c.aportadoNombre || c.subidoPor)).map(infoCuentaVentaPag)
           });
 
           // TEXTO DE GARANTÍA DINÁMICO PARA TELEGRAM
@@ -9408,6 +9411,22 @@
 
     let unsubUsuariosAdmin = null;
 
+    // 🔑 ID de cliente (6 caracteres: mayúsculas, minúsculas y números). Se asigna solo a quien no lo tenga.
+    const ABC_ID_EPIC = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789';
+    const esIdEpic = k => /^(?=[A-Za-z0-9]*\d)(?=[A-Za-z0-9]*[a-z])(?=[A-Za-z0-9]*[A-Z])[A-Za-z0-9]{6}$/.test(String(k || ''));
+    function generarIdEpic(usados) {
+      for (let i = 0; i < 200; i++) { const r = new Uint32Array(6); crypto.getRandomValues(r); let k = ''; r.forEach(n => k += ABC_ID_EPIC[n % ABC_ID_EPIC.length]); if (esIdEpic(k) && !usados.has(k)) { usados.add(k); return k; } }
+      return '';
+    }
+    var asignandoIds = false;
+    async function asegurarIdsClientes(us) {
+      if (asignandoIds || !esAdminSesionActual()) return; const faltan = us.filter(u => !esIdEpic(u.idEpic)); if (!faltan.length) return;
+      asignandoIds = true;
+      try { const usados = new Set(us.map(u => u.idEpic).filter(Boolean));
+        for (let i = 0; i < faltan.length; i += 400) { const b = db.batch(); faltan.slice(i, i + 400).forEach(u => { const k = generarIdEpic(usados); if (k) b.set(db.collection('usuarios').doc(u.uid), { idEpic: k }, { merge: true }); }); await b.commit(); }
+      } catch (e) { console.warn('IDs de clientes:', e); } finally { asignandoIds = false; }
+    }
+    function copiarIdContacto(id, nombre) { copiarTexto(((nombre || '').trim().split(/\s+/)[0] || 'Cliente') + ' ' + id, 'Nombre para el contacto copiado: guárdalo así en el WhatsApp del bot'); }
     function cargarUsuariosAdmin() {
       const tbody = document.getElementById('tablaAdminUsuarios');
       if (!tbody) return;
@@ -9429,7 +9448,7 @@
 
           const ahora = new Date().getTime();
           let html = '';
-          try { const us = []; snap.forEach(dd => us.push(Object.assign({ uid: dd.id }, dd.data() || {}))); renderizarCreditosPendientes(us); } catch (e) { console.warn(e); }
+          try { const us = []; snap.forEach(dd => us.push(Object.assign({ uid: dd.id }, dd.data() || {}))); renderizarCreditosPendientes(us); setTimeout(() => asegurarIdsClientes(us), 1500); escucharIdPendientes(); } catch (e) { console.warn(e); }
 
           snap.forEach(doc => {
             const u = doc.data();
@@ -9437,6 +9456,7 @@
             const permitidos = u.productos_permitidos || [];
             const bloqueados = u.productos_bloqueados || [];
             const nombreCliente = u.nombre ? `<span class="font-bold text-white block">${u.nombre}</span><span class="text-[11px] text-gray-400 font-mono">${u.email || ''}</span>` : (u.email ? `<span class="font-bold text-white block">${u.email}</span>` : `<span class="font-bold text-amber-300 block"><i class="fa-solid fa-triangle-exclamation mr-1"></i>Ficha incompleta (sin correo)</span><span class="text-[10px] text-gray-500 font-mono block">${uid}</span>`);
+            const chipId = esIdEpic(u.idEpic) ? `<button type="button" onclick="event.stopPropagation();copiarIdContacto('${escaparJsAttr(u.idEpic)}','${escaparJsAttr(u.nombre || '')}')" title="Copiar nombre para el contacto de WhatsApp" class="mt-0.5 inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-violet-500/15 border border-violet-500/30 text-violet-200 text-[10px] font-mono">🔑 ${escaparHtml(u.idEpic)}</button>` : '';
 
             let fechaRegStr = 'N/A';
             if (u.fechaRegistro) {
@@ -9463,7 +9483,7 @@
               }
             }
 
-            const textoBusqueda = construirAtributoBusqueda(u.email, u.nombre, u.whatsapp, enLinea ? 'en linea' : 'inactivo');
+            const textoBusqueda = construirAtributoBusqueda(u.email, u.nombre, u.whatsapp, enLinea ? 'en linea' : 'inactivo', u.idEpic || '');
 
             const iniciales = String(u.nombre || u.email || '?').trim().split(/\s+/).slice(0, 2).map(x => x.charAt(0).toUpperCase()).join('') || '?';
             const deudaU = Number(u.deuda) || 0;
@@ -9477,7 +9497,7 @@
                       <div class="min-w-0 flex-grow">
                         <p class="text-sm font-black text-white truncate">${escaparHtml(u.nombre || u.email || 'Ficha incompleta')}</p>
                         <p class="text-[11px] text-gray-400 font-mono truncate">${escaparHtml(u.email || uid)}</p>
-                        <div class="flex flex-wrap items-center gap-1.5 mt-1">${(() => { const et = etiquetaTipoCuenta(u.rol, u.tipoCuenta); return et ? `<span class="px-1.5 py-0.5 rounded ${et[1]} text-[9px] font-black">${et[0]}</span>` : ''; })()}<span data-nivel-uid="${uid}"></span>${deudaU > 0 ? `<span class="px-1.5 py-0.5 rounded bg-violet-500/20 text-violet-200 text-[9px] font-black">DEBE ${formatoCOP(deudaU)}</span>` : ''}</div>
+                        <div class="flex flex-wrap items-center gap-1.5 mt-1">${(() => { const et = etiquetaTipoCuenta(u.rol, u.tipoCuenta); return et ? `<span class="px-1.5 py-0.5 rounded ${et[1]} text-[9px] font-black">${et[0]}</span>` : ''; })()}${chipId}<span data-nivel-uid="${uid}"></span>${deudaU > 0 ? `<span class="px-1.5 py-0.5 rounded bg-violet-500/20 text-violet-200 text-[9px] font-black">DEBE ${formatoCOP(deudaU)}</span>` : ''}</div>
                       </div>
                       <div class="shrink-0 text-right"><p class="text-[10px] text-gray-500">Saldo</p><p class="text-base font-black text-emerald-400">${formatoCOP(u.saldo || 0)}</p></div>
                     </div>
@@ -9497,7 +9517,7 @@
                   </div>
                 </td>
                 <td class="hidden md:table-cell px-4 py-3">
-                  ${nombreCliente}
+                  ${nombreCliente}${chipId}
                   ${(() => { const et = etiquetaTipoCuenta(u.rol, u.tipoCuenta); return et ? `<span class="inline-block mt-1 px-1.5 py-0.5 rounded ${et[1]} text-[9px] font-black">${et[0]}</span>` : ''; })()}
                   <span data-nivel-uid="${uid}" class="block mt-1"></span>
                   <button onclick="abrirModalEditarCliente('${uid}', '${escaparJsAttr(u.email)}', '${escaparJsAttr(u.nombre)}')" class="mt-1 text-[10px] bg-gray-800 hover:bg-gray-700 text-emerald-400 px-2 py-0.5 rounded"><i class="fa-solid fa-pen mr-1"></i> Editar perfil</button>
@@ -9610,6 +9630,9 @@
         editClienteOriginal.categoriasPermitidas = Array.isArray(d.categoriasPermitidas) ? d.categoriasPermitidas : [];
         if (selRolEd) selRolEd.value = valorSelectTipoCuenta(editClienteOriginal.rol, editClienteOriginal.tipoCuenta);
         if (esAdminSesionActual()) cargarCreditoEditar(uid, d);
+        { const cId = document.getElementById('editClienteIdEpic'); if (cId) { const ok = esIdEpic(d.idEpic) && esAdminSesionActual(); cId.classList.toggle('hidden', !ok);
+            if (ok) cId.innerHTML = `<span class="text-[11px] text-gray-300">🔑 ID del cliente: <b class="font-mono text-violet-200 text-sm">${escaparHtml(d.idEpic)}</b></span><span class="flex gap-1.5"><button type="button" onclick="copiarTexto('${escaparJsAttr(d.idEpic)}','ID copiado')" class="px-2 py-1 rounded-lg bg-gray-800 border border-gray-700 text-[10px] text-gray-200">Copiar ID</button><button type="button" onclick="copiarIdContacto('${escaparJsAttr(d.idEpic)}','${escaparJsAttr(d.nombre || '')}')" class="px-2 py-1 rounded-lg bg-violet-500 text-white text-[10px] font-black">Copiar para el contacto</button></span><span class="text-[10px] text-gray-500 w-full">Guarda su contacto en el WhatsApp del bot como <b class="text-gray-300">${escaparHtml(((d.nombre || 'Cliente').trim().split(/\s+/)[0]) + ' ' + d.idEpic)}</b>: el bot te pide autorización por Telegram la primera vez y, si aceptas, queda identificado. Solo tú ves este ID.</span>`; } }
+        { const bP = document.getElementById('editClienteProvSaldo'); if (bP) { const ok = esAdminSesionActual() && (d.rol === 'proveedor' || esProveedorUid(uid)) && Number(d.saldo) > 0; bP.classList.toggle('hidden', !ok); if (ok) bP.textContent = `↪ Pasar ${formatoCOP(Number(d.saldo))} de saldo a cuentas por pagar (es proveedor)`; } }
         if (esAdminSesionActual()) cargarReferidosEditar(uid, d);
         renderizarListaStockEditar(editClienteOriginal.permisos);
         editClienteCambioRol();
@@ -10182,7 +10205,7 @@
         let email = l, pass = '';
         if (l.includes(':')) { const p = l.split(':'); email = p[0].trim(); pass = p.slice(1).join(':').trim(); }
         else if (/\s/.test(l)) { const p = l.split(/\s+/); email = p[0].trim(); pass = p.slice(1).join(' ').trim(); }
-        const cuenta = { email, pass, costo: costoUnitario, subidoEl: ahoraSubida };
+        const cuenta = { email, pass, costo: costoUnitario, subidoEl: ahoraSubida, subidoPor: (currentUser && currentUser.email) || '' };
         if (platDe[String(email).toLowerCase()]) cuenta.claveAcceso = platDe[String(email).toLowerCase()];   // 3 datos: correo · clave del correo · clave de la plataforma
         if (aporteCarga) { cuenta.aportadoPor = aporteCarga.uid; cuenta.aportadoNombre = aporteCarga.nombre; }
         if (claveAccesoLote && !cuenta.claveAcceso) cuenta.claveAcceso = claveAccesoLote;
@@ -11044,16 +11067,15 @@
     }
 
     function parsearCuentasProveedor(texto) {
+      // Solo líneas con correo (el texto que acompaña, como indicaciones, se ignora). 3 datos: correo:clave del correo:clave de la plataforma
       const vistos = new Set(), lista = [];
-      String(texto || '').split('\n').map(l => l.trim()).filter(Boolean).forEach(l => {
-        let email = l, pass = '';
-        if (l.includes(':')) { const p = l.split(':'); email = p[0].trim(); pass = p.slice(1).join(':').trim(); }
-        else if (/\s/.test(l)) { const p = l.split(/\s+/); email = p[0].trim(); pass = p.slice(1).join(' ').trim(); }
-        const norm = pass ? email + ':' + pass : email;
-        if (email && !vistos.has(norm)) { vistos.add(norm); lista.push(norm); }
+      extraerCuentasDeTexto(texto).cuentas.forEach(c => {
+        const norm = c.email + (c.pass ? ':' + c.pass : '') + (c.plat ? ':' + c.plat : '');
+        const k = c.email.toLowerCase(); if (vistos.has(k)) return; vistos.add(k); lista.push(norm);
       });
       return lista;
     }
+
 
     function actualizarContadorProveedor() {
       const el = document.getElementById('provContador');
@@ -11318,10 +11340,12 @@
     }
 
     function credencialDesdeLinea(linea, costo, subidoEl) {
-      let email = linea, pass = '';
-      if (linea.includes(':')) { const p = linea.split(':'); email = p[0].trim(); pass = p.slice(1).join(':').trim(); }
+      let email = linea, pass = '', plat = '';
+      if (linea.includes(':')) { const p = linea.split(':'); email = p[0].trim(); pass = p.slice(1).join(':').trim();
+        if (p.length >= 3 && /@/.test(email)) { pass = p[1].trim(); plat = p.slice(2).join(':').trim(); } }   // correo:clave del correo:clave de la plataforma
       else if (/\s/.test(linea)) { const p = linea.split(/\s+/); email = p[0].trim(); pass = p.slice(1).join(' ').trim(); }
       const o = { email: email, pass: pass, costo: costo };
+      if (plat) o.claveAcceso = plat;
       if (subidoEl) o.subidoEl = subidoEl;
       return o;
     }
@@ -13252,7 +13276,7 @@
       catalogoUnificado.forEach(p => {
         (p.cuentas || []).forEach(raw => {
           const c = parseCredencialObj(raw), e = String(c.email || '').trim().toLowerCase();
-          if (e && coincide(e)) r.stock.push({ producto: p.nombre, productoId: p.docId, email: e, subidoEl: (raw && typeof raw === 'object') ? (raw.subidoEl || '') : '', costo: c.costo || 0 });
+          if (e && coincide(e)) r.stock.push({ producto: p.nombre, productoId: p.docId, email: e, subidoEl: (raw && typeof raw === 'object') ? (raw.subidoEl || '') : '', costo: c.costo || 0, aportadoNombre: (raw && typeof raw === 'object') ? (raw.aportadoNombre || '') : '', subidoPor: (raw && typeof raw === 'object') ? (raw.subidoPor || '') : '' });
         });
       });
       lotesProveedores.forEach(l => {
@@ -13336,6 +13360,19 @@
       return false;
     }
 
+    function infoCuentaVentaPag(c) {
+      const o = { e: String(parseCredencialObj(c).email || '').trim().toLowerCase(), s: String(c.subidoEl || '') };
+      if (c.aportadoNombre || c.aportadoPor) { o.a = String(c.aportadoNombre || '').slice(0, 60); o.u = String(c.aportadoPor || ''); }
+      if (c.subidoPor) o.p = String(c.subidoPor).slice(0, 80);
+      return o;
+    }
+    // Quién subió la cuenta: proveedor (o "a nombre de"), el lote del proveedor, o quien la cargó en el panel
+    function bcQuienSubio(info, lote) {
+      if (info && info.a) return info.a + ' (proveedor)';
+      if (lote && (lote.lote.proveedorNombre || lote.lote.proveedorEmail)) return (lote.lote.proveedorNombre || lote.lote.proveedorEmail) + ' (proveedor, según su lote)';
+      if (info && info.p) return esCorreoAdmin(info.p) ? 'Tú (' + info.p + ')' : info.p + ' (equipo)';
+      return '';
+    }
     function bcHtmlResultado(q, local, compras, completo) {
       const tarjeta = (titulo, icono, color, cuerpo) => `<div class="p-4 bg-gray-900 border border-gray-800 rounded-2xl"><p class="text-[11px] font-black uppercase tracking-wide ${color} mb-2"><i class="fa-solid ${icono} mr-1.5"></i>${titulo}</p>${cuerpo}</div>`;
       const fila = (k, v) => `<p class="text-xs text-gray-300 mt-0.5"><span class="text-gray-500">${k}:</span> ${v}</p>`;
@@ -13352,7 +13389,8 @@
       local.stock.slice(0, 25).forEach(x => {
         const lote = local.lotes.filter(l => l.lote.estado === 'aprobado' && l.email === x.email)[0];
         const subida = bcFecha(x.subidoEl) || (lote ? bcFecha(lote.lote.aprobadoEl || lote.lote.creadoEl) + ' (según el lote del proveedor)' : '');
-        html += tarjeta('En stock', 'fa-box', 'text-emerald-400', fila('Producto', escaparHtml(x.producto)) + fila('Subida', subida ? escaparHtml(subida) : '<span class="text-gray-500">sin fecha registrada</span>') + (x.costo > 0 ? fila('Costo', escaparHtml(formatoCOP(x.costo))) : '') + fila('Estado', 'disponible para vender'));
+        const quienS = bcQuienSubio({ a: x.aportadoNombre, p: x.subidoPor }, lote);
+        html += tarjeta('En stock', 'fa-box', 'text-emerald-400', fila('Producto', escaparHtml(x.producto)) + fila('Subida', subida ? escaparHtml(subida) : '<span class="text-gray-500">sin fecha registrada</span>') + fila('Subida por', quienS ? escaparHtml(quienS) : '<span class="text-gray-500">sin registro (cuenta antigua)</span>') + (x.costo > 0 ? fila('Costo', escaparHtml(formatoCOP(x.costo))) : '') + fila('Estado', 'disponible para vender'));
       });
 
       compras.slice(0, 25).forEach(c => {
@@ -13366,7 +13404,8 @@
         html += tarjeta('Vendida', 'fa-cart-shopping', 'text-amber-400',
           fila('Producto', escaparHtml(c.productoNombre || '')) + fila('Cliente', escaparHtml(c.usuarioEmail || c.usuarioId || '')) + fila('Comprada', escaparHtml(bcFecha(c.fecha))) +
           `<p class="text-xs mt-0.5 ${gar.color}"><i class="fa-solid fa-shield-halved mr-1"></i>${escaparHtml(gar.txt)}</p>` +
-          fila('Subida', subida ? escaparHtml(subida) : '<span class="text-gray-500">sin fecha registrada</span>') + enlace + btnTicket);
+          fila('Subida', subida ? escaparHtml(subida) : '<span class="text-gray-500">sin fecha registrada</span>') +
+          fila('Subida por', (q2 => q2 ? escaparHtml(q2) : '<span class="text-gray-500">sin registro (cuenta antigua)</span>')(bcQuienSubio(info, lote))) + enlace + btnTicket);
       });
 
       if (completo && !compras.length && !local.stock.length && local.lotes.length) {
@@ -15323,7 +15362,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-13d';
+    const VERSION_PAGINA = '2026-10-13i';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261010_wacompra', fecha: '2026-10-10', titulo: 'Compra por WhatsApp 💬', mensaje: 'Ahora puedes **comprar con tu saldo desde nuestro WhatsApp**. Ve a tu perfil → **Mis datos → Comprar por WhatsApp**, vincula tu chat con el código y pide la autorización.' },
       { id: 'act_20261010_vista2', fecha: '2026-10-10', titulo: 'Nueva vista de la tienda ▦', mensaje: 'Ahora puedes ver los productos **en 2 columnas**: más productos en tu pantalla, con las **promos resaltadas** (🔥 campaña, ⚡ relámpago, 🎁 regalo). Toca uno y se abre su ficha para comprar. Cambia de vista con los íconos ☰ / ▦ arriba de las categorías.' },
@@ -15957,6 +15996,27 @@
       } catch (err) { alert(err.message); }
     }
 
+    // Proveedor con saldo en la tienda: todo ese saldo pasa a lo que se le debe (cuentas por pagar)
+    async function pasarSaldoProveedorADeuda() {
+      const uid = clienteEditarUidActual; if (!uid || !esAdminSesionActual()) return;
+      try {
+        const uRef = db.collection('usuarios').doc(uid), d0 = (await uRef.get()).data() || {}, monto = Math.round(Number(d0.saldo) || 0);
+        if (!(monto > 0)) { alert('No tiene saldo en la tienda.'); return; }
+        if (!await confirmarModal(`¿Pasar ${formatoCOP(monto)} de su saldo de la tienda a lo que le debes como proveedor?\n\nSu saldo queda en $0 y se suma a sus cuentas por pagar. Queda registrado.`, { textoAceptar: 'Sí, pasar' })) return;
+        await db.runTransaction(async t => {
+          const u = await t.get(uRef), du = u.exists ? (u.data() || {}) : {}, saldo = Math.round(Number(du.saldo) || 0);
+          if (saldo !== monto) throw new Error('Su saldo cambió mientras tanto. Vuelve a intentarlo.');
+          t.update(uRef, { saldo: 0, notificaciones: agregarNotifALista(du.notificaciones, crearNotificacionPersonal('saldo', `Tu saldo de ${formatoCOP(saldo)} pasó a lo que te debemos`, 'Te lo pagamos junto con tus cuentas.')) });
+          const ab = abonoProveedorDoc({ beneficiarioUid: uid, beneficiarioEmail: du.email || '', monto: saldo, detalle: 'Saldo de la tienda pasado a cuentas por pagar' }, du, 'saldo_' + Date.now().toString(36));
+          ab.productoNombre = '↪ Saldo pasado a cuentas por pagar';
+          t.set(db.collection('stock_pendiente').doc('abono_saldo_' + uid + '_' + Date.now().toString(36)), ab);
+          t.set(db.collection('ajustes_saldo').doc(), { uid, email: du.email || '', antes: saldo, despues: 0, diferencia: -saldo, motivo: '↪ Saldo pasado a cuentas por pagar (proveedor)', por: currentUser.email, fecha: new Date().toISOString() });
+        });
+        mostrarToast(`↪ Listo: ${formatoCOP(monto)} pasaron a lo que le debes`);
+        const inp = document.getElementById('editClienteSaldo'); if (inp) inp.value = ''; if (editClienteOriginal) editClienteOriginal.saldo = 0;
+        const bP = document.getElementById('editClienteProvSaldo'); if (bP) bP.classList.add('hidden');
+      } catch (e) { alert(e.message); }
+    }
     async function pasarComisionADeuda(id) {
       if (!puedeSeccion('referidos')) return;
       const c = comisionesRef.find(x => x.id === id); if (!c || c.estado !== 'acreditada') return;
@@ -18700,7 +18760,7 @@
             cantidad: n, precioUnitario: 0, total: 0, costoTotal: costo, gananciaNeta: -costo, tipoGarantia: prod.tipoGarantia || '', garantiaInicio: prod.garantiaInicio === 'subida' ? 'subida' : 'compra',
             credenciales: res.sacadas.map(x => { const c = parseCredencialObj(x); return c.email + ':' + c.pass; }).join('\n'),
             correos: res.sacadas.map(x => String(parseCredencialObj(x).email || '').toLowerCase()),
-            cuentasInfo: res.sacadas.map(x => { const c = parseCredencialObj(x); return { e: String(c.email || '').toLowerCase(), s: (x && x.subidoEl) || '' }; }),
+            cuentasInfo: res.sacadas.map(x => (x && typeof x === 'object') ? infoCuentaVentaPag(x) : { e: String(parseCredencialObj(x).email || '').toLowerCase(), s: '' }),
             fecha: new Date().toISOString(), procesadoPor: 'regalo', regalo: true, regaladoPor: currentUser.email, mensajeRegalo: msg
           });
         });
@@ -19663,6 +19723,20 @@
       } catch (e) { out.innerHTML = '<p class="text-[11px] text-rose-300">No se pudo revisar: ' + escaparHtml(e.message) + '</p>'; }
       finally { revisandoTodos = false; }
     }
+    // 🔑 Chats que el bot reconoció por su ID y esperan tu autorización (también llegan a Telegram con botones)
+    var unsubIdPend = null;
+    function escucharIdPendientes() {
+      if (unsubIdPend || !esAdminSesionActual()) return;
+      try { unsubIdPend = db.collection('wa_id_pendientes').where('estado', '==', 'pendiente').onSnapshot(sn => {
+        const L = []; sn.forEach(d => L.push(Object.assign({ id: d.id }, d.data()))); const out = document.getElementById('vigIdPendientes'); if (!out) return;
+        out.innerHTML = L.length ? '<p class="text-[11px] font-bold text-violet-200">🔑 Esperan tu autorización para identificarse</p>' + L.map(x => `<div class="p-2 rounded-lg bg-violet-500/10 border border-violet-500/30 flex items-center justify-between gap-2"><span class="min-w-0"><span class="block text-[11px] text-white truncate">📱 ${escaparHtml(x.nombreChat || '')}</span><span class="block text-[10px] text-gray-400 truncate">👤 ${escaparHtml(x.nombre || '')} · ${escaparHtml(x.email || '')}</span></span><span class="flex gap-1 shrink-0"><button type="button" onclick="resolverIdPendiente('${escaparJsAttr(x.id)}',true)" class="px-2 py-1 rounded-lg bg-emerald-500 text-black text-[10px] font-black">Aceptar</button><button type="button" onclick="resolverIdPendiente('${escaparJsAttr(x.id)}',false)" class="px-2 py-1 rounded-lg bg-gray-800 border border-gray-700 text-gray-200 text-[10px] font-bold">Rechazar</button></span></div>`).join('') : '';
+      }, () => {}); } catch (e) { /* sin permiso aún */ }
+    }
+    async function resolverIdPendiente(id, aceptar) {
+      if ((await servidorTiene('wa_id_resolver')) !== true) { alert(textoServidorAntiguo('wa_id_resolver')); return; }
+      try { const r = await llamarBackend('wa_id_resolver', { id, aceptar }); if (!r || !r.ok) { alert((r && r.error) || 'No se pudo.'); return; }
+        mostrarToast(r.ya ? 'Ya estaba ' + r.ya : (aceptar ? '✅ Chat identificado' : '❌ Rechazado')); } catch (e) { alert(e.message); }
+    }
     async function cargarAlertasVigilancia() {
       const out = document.getElementById('vigAlertas'); if (!out) return; out.innerHTML = '<p class="text-[11px] text-gray-400">Cargando…</p>';
       try { const sn = await db.collection('vigilancia_alertas').orderBy('fecha', 'desc').limit(25).get(), L = []; sn.forEach(d => L.push(Object.assign({ id: d.id }, d.data())));
@@ -19792,6 +19866,11 @@
 
     // ==================== NOVEDADES INTERNAS DEL PANEL (solo el equipo) ====================
     const ACTUALIZACIONES_INTERNAS = [
+      { fecha: '2026-10-13', titulo: '🔑 Tú autorizas cada identificación', mensaje: 'Cuando un chat guardado con el ID de un cliente ("Juan B2BY5d") escribe al bot, **ya no se vincula solo**: te llega a Telegram "🔑 ¿Identificar este chat?" con **✅ Aceptar** / **❌ Rechazar**. Si aceptas, queda identificado; si rechazas, no se vincula y no te vuelve a preguntar por ese chat. Las solicitudes también aparecen en **Usuarios → 🚨 Vigilancia**, por si Telegram falla.', ir: 'usuarios' },
+      { fecha: '2026-10-13', titulo: '🔑 ID de cliente para WhatsApp', mensaje: 'Cada cliente tiene un **ID único** de 6 caracteres con mayúsculas, minúsculas y números (por ejemplo **Kq7Rm2**): los actuales lo reciben solos al abrir la lista de usuarios, y los nuevos al registrarse. Lo ves en la lista de usuarios (🔑, tócalo para copiar) y en **Editar cliente**. Guarda el contacto en el WhatsApp del bot como **"Juan Kq7Rm2"** y el bot lo reconoce y lo vincula solo (te avisa por Telegram). Solo tú ves el ID; la compra con saldo sigue con tu autorización de cada cliente.', ir: 'usuarios' },
+      { fecha: '2026-10-13', titulo: '🔎 Buscador: quién subió la cuenta', mensaje: 'El **buscador de cuentas** ahora dice **Subida por**: el proveedor (o a nombre de quién la cargaste), o quién la subió desde el panel (tú o un moderador), también después de venderse. Las cuentas antiguas, que no guardaban ese dato, dicen "sin registro (cuenta antigua)"; si vinieron de un lote de proveedor, sale el proveedor.', ir: 'usuarios' },
+      { fecha: '2026-10-13', titulo: '🔢 Conteo de cuentas exacto', mensaje: 'El resumen de inversión de Cargar stock ahora cuenta solo las cuentas reales (líneas con correo), igual que el detector: si pegas 5 cuentas con su texto, dice 5, no las líneas del texto. Lo mismo para los envíos de tus proveedores: si pegan el mensaje completo, se envían solo las cuentas, no las líneas de indicaciones. Y al aprobar un lote, las cuentas con 3 datos guardan la tercera como clave de la plataforma.', ir: 'inventario' },
+      { fecha: '2026-10-13', titulo: '↪ Saldo de proveedores a cuentas por pagar', mensaje: 'Si un proveedor tiene saldo en la tienda, en **Editar cliente** aparece **↪ Pasar $X de saldo a cuentas por pagar**: su saldo queda en $0, se suma a lo que le debes (línea "↪ Saldo pasado a cuentas por pagar") y queda registrado como ajuste, así que su auditoría cuadra.', ir: 'proveedores' },
       { fecha: '2026-10-13', titulo: '🔐 Acceso de proveedores', mensaje: 'Tus proveedores tienen su propio enlace para iniciar sesión: **epicstreaming.vip/proveedores**. Muestra una pantalla blanca y limpia, solo con correo y contraseña (sin logo, productos ni registro). Después de entrar, todo es normal: el proveedor llega a su panel. Si ya tenía la sesión iniciada, entra directo. El enlace no aparece en ninguna parte de la tienda: compártelo solo con tus proveedores.', ir: 'proveedores' },
       { fecha: '2026-10-13', titulo: '🔍 Reportes "En revisión"', mensaje: 'Cada reporte abierto tiene el botón **🔍 En revisión**: eliges una nota rápida ("Estamos verificando con el proveedor", "Te damos respuesta en máximo 2 horas"…) o escribes la tuya, y **al cliente le llega el aviso** en su campana y su Telegram. En **Mis reportes** el cliente ve si su reporte está **📩 Recibido** o **🔍 En revisión** (con tu nota). Los proveedores también pueden marcar sus reportes.', ir: 'tickets' },
       { fecha: '2026-10-13', titulo: '📦 Cargar stock como te lo manda el proveedor', mensaje: 'En **Cargar stock** pega las cuentas tal como te llegan: toma solo las líneas con correo y sus claves (1 clave = contraseña; 2 claves = clave del correo + clave de la plataforma) e **ignora el texto extra**. Debajo te dice cuántas cuentas detectó. Si el proveedor manda indicaciones ("No cambies la contraseña…"), te pregunta si guardarlas en el producto: desde ahí **salen junto a la cuenta al vender**, en la tienda, en el texto para copiar y por WhatsApp. Las editas en la ficha del producto → **📋 Indicaciones al entregar**.', ir: 'inventario' },
@@ -21081,7 +21160,7 @@
 
 
     // ==================== COMPROBAR TODO (estado de la página, servidor, reglas y tareas) ====================
-    const VERSION_REGLAS_ESPERADA = '2026-10-12g';
+    const VERSION_REGLAS_ESPERADA = '2026-10-13b';
     async function abrirComprobarTodo() {
       let m = document.getElementById('modalComprobarTodo');
       if (!m) { m = document.createElement('div'); m.id = 'modalComprobarTodo'; m.className = 'fixed inset-0 z-[96] hidden items-center justify-center p-4 bg-black/75 backdrop-blur-sm'; m.onclick = ev => { if (ev.target === m) cerrarComprobarTodo(); }; document.body.appendChild(m); }
@@ -22778,7 +22857,7 @@
       return { cuentas: legado, stock: legado.length || stockPublico };
     }
 
-    const VERSION_SERVIDOR_NECESARIA = '2026-10-13b';   // la versión del servidor que necesita esta página
+    const VERSION_SERVIDOR_NECESARIA = '2026-10-13e';   // la versión del servidor que necesita esta página
     async function llamarBackend(accion, datos) {
       if (modoPruebaCliente) { const rs = backendSimulado(accion, datos || {}); if (rs) return rs; }
       const url = obtenerBackendUrl();
