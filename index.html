@@ -15063,7 +15063,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-10y';
+    const VERSION_PAGINA = '2026-10-10z';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261010_wacompra', fecha: '2026-10-10', titulo: 'Compra por WhatsApp 💬', mensaje: 'Ahora puedes **comprar con tu saldo desde nuestro WhatsApp**. Ve a tu perfil → **Mis datos → Comprar por WhatsApp**, vincula tu chat con el código y pide la autorización.' },
       { id: 'act_20261010_vista2', fecha: '2026-10-10', titulo: 'Nueva vista de la tienda ▦', mensaje: 'Ahora puedes ver los productos **en 2 columnas**: más productos en tu pantalla, con las **promos resaltadas** (🔥 campaña, ⚡ relámpago, 🎁 regalo). Toca uno y se abre su ficha para comprar. Cambia de vista con los íconos ☰ / ▦ arriba de las categorías.' },
@@ -16852,14 +16852,12 @@
       if (compraEnCurso) return;
       const html = boton ? boton.innerHTML : '';
       if (boton) { boton.disabled = true; boton.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Comprando…'; }
+      let limpiar = null;
       try {
-        if (!document.getElementById('cant_' + id)) { try { categoriaActiva = 'todas'; renderizarCatalogo(); } catch (e) { /* nada */ } }
-        const inp = document.getElementById('cant_' + id);
-        if (!inp) { alert('Este producto no está disponible ahora.'); return; }
-        inp.value = String(cantidad);
-        try { actualizarTotalTarjeta(id); } catch (e) { /* nada */ }
+        limpiar = asegurarCampoCantidad(id, cantidad);
+        if (!limpiar) { alert('Este producto no está disponible ahora.'); return; }
         await comprarProducto(id);
-      } finally { if (boton && document.body.contains(boton)) { boton.disabled = false; boton.innerHTML = html; } }
+      } finally { if (limpiar) limpiar(); if (boton && document.body.contains(boton)) { boton.disabled = false; boton.innerHTML = html; } }
     }
 
 
@@ -18497,13 +18495,11 @@
     async function confirmarCompraRapida() {
       const id = crId, i = document.getElementById('crCant'); if (!id || !i) return;
       const n = parseInt(i.value, 10) || 1;
-      if (!document.getElementById('cant_' + id)) { try { categoriaActiva = 'todas'; renderizarCatalogo(); } catch (e) { /* nada */ } }
-      const inp = document.getElementById('cant_' + id); if (!inp) { alert('Este producto no está disponible ahora.'); return; }
-      inp.value = String(n);
-      try { actualizarTotalTarjeta(id); } catch (e) { /* nada */ }
+      const limpiarCant = asegurarCampoCantidad(id, n);
+      if (!limpiarCant) { alert('Este producto no está disponible ahora.'); return; }
       const b = document.getElementById('btnCompraRapida'); if (b) { b.disabled = true; b.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Comprando…'; }
       cerrarCompraRapida();
-      await comprarProducto(id);
+      try { await comprarProducto(id); } finally { limpiarCant(); }
     }
 
 
@@ -21008,6 +21004,19 @@
       try { await llamarBackend('salud', { paginaCompra: { ok: r.ok, detalle: r.detalle } }); } catch (e) { /* nada */ }
     }
     setInterval(() => { try { if (catalogoCargado) pruebaCompraAutomatica(); } catch (e) { /* nada */ } }, 5 * 60000);
+
+
+    // La compra solo necesita la cantidad. Si la tarjeta del producto no está dibujada (por la categoría, un filtro o la vista),
+    // se crea un campo temporal con la cantidad elegida y se borra al terminar: la compra nunca depende del catálogo.
+    function asegurarCampoCantidad(id, n) {
+      let inp = document.getElementById('cant_' + id);
+      if (!inp) { try { categoriaActiva = 'todas'; renderizarCatalogo(); } catch (e) { /* nada */ } inp = document.getElementById('cant_' + id); }
+      if (inp) { inp.value = String(n); try { actualizarTotalTarjeta(id); } catch (e) { /* nada */ } return () => {}; }
+      if (!catalogoUnificado.some(p => p.docId === id)) return null;
+      const t = document.createElement('input'); t.type = 'hidden'; t.id = 'cant_' + id; t.value = String(n); t.dataset.temporal = '1';
+      document.body.appendChild(t);
+      return () => { try { t.remove(); } catch (e) { /* nada */ } };
+    }
 
     // ==================== NETFLIX EN LA TIENDA: SIN CONTRASEÑA ====================
     function esNombreNetflix(t) { return /netflix/i.test(String(t || '')); }
