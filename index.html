@@ -15071,7 +15071,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-11e';
+    const VERSION_PAGINA = '2026-10-11f';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261010_wacompra', fecha: '2026-10-10', titulo: 'Compra por WhatsApp 💬', mensaje: 'Ahora puedes **comprar con tu saldo desde nuestro WhatsApp**. Ve a tu perfil → **Mis datos → Comprar por WhatsApp**, vincula tu chat con el código y pide la autorización.' },
       { id: 'act_20261010_vista2', fecha: '2026-10-10', titulo: 'Nueva vista de la tienda ▦', mensaje: 'Ahora puedes ver los productos **en 2 columnas**: más productos en tu pantalla, con las **promos resaltadas** (🔥 campaña, ⚡ relámpago, 🎁 regalo). Toca uno y se abre su ficha para comprar. Cambia de vista con los íconos ☰ / ▦ arriba de las categorías.' },
@@ -18298,14 +18298,15 @@
       const visible = id => { const e = document.getElementById(id); return !!e && !e.classList.contains('hidden'); };
       const staff = esStaffSesion() && !modoPruebaCliente;
       // Clientes y Dealers: en la tienda. Tú y tu equipo: en la tienda y en el panel. Proveedores: nunca.
-      const enLugar = visible('vistaTienda') || visible('vistaMisCuentas') || (staff && visible('vistaAdmin'));
-      const L = (staff ? catalogoUnificado.filter(p => p.activo !== false && !p.esCombo) : productosVisiblesStock())
+      const visitante = !currentUser && visible('vistaBloqueada') && cfgVistaTienda.cintaVisitantes !== false;
+      const enLugar = visible('vistaTienda') || visible('vistaMisCuentas') || (staff && visible('vistaAdmin')) || visitante;
+      const L = (staff ? catalogoUnificado.filter(p => p.activo !== false && !p.esCombo) : (visitante ? catalogoUnificado.filter(p => p.activo !== false && !p.esCombo && Number(p.precio) > 0 && Number(p.stock) > 0) : productosVisiblesStock()))
         .filter(p => !esProductoVip(p))
         .sort((a, b) => (Number(b.stock) || 0) - (Number(a.stock) || 0) || String(a.nombre).localeCompare(String(b.nombre), 'es'));
       const mostrar = cfgVistaTienda.cintaStock !== false && enLugar && L.length > 0 && !(esProveedorSesion() && !staff) && !modoPruebaCliente;   // en el simulador no se muestra
       c.classList.toggle('hidden', !mostrar);
       if (!mostrar) return;
-      const item = p => { const n = Number(p.stock) || 0, d = cambioReciente(p.docId); return `<a href="#" onclick="abrirCompraRapida('${escaparJsAttr(p.docId)}');return false" class="hover:text-white">${escaparHtml(p.nombre)} <b class="${n ? (n <= 5 ? 'text-amber-300' : 'text-gray-200') : 'text-red-400'}">${n ? n : 'agotado'}</b>${d === 'sube' ? ' <span class="text-emerald-300">↑</span>' : (d === 'baja' ? ' <span class="text-red-300">↓</span>' : '')}</a>`; };
+      const item = p => { const n = Number(p.stock) || 0, d = cambioReciente(p.docId); return `<a href="#" onclick="${visitante ? "abrirModalAuth('registro');try{mostrarToast('Crea tu cuenta gratis para ver precios y comprar')}catch(e){}" : "abrirCompraRapida('" + escaparJsAttr(p.docId) + "')"};return false" class="hover:text-white">${escaparHtml(p.nombre)} <b class="${n ? (n <= 5 ? 'text-amber-300' : 'text-gray-200') : 'text-red-400'}">${n ? n : 'agotado'}</b>${d === 'sube' ? ' <span class="text-emerald-300">↑</span>' : (d === 'baja' ? ' <span class="text-red-300">↓</span>' : '')}</a>`; };
       const una = L.map(item).join('<span class="mx-2 text-gray-600">·</span>') + '<span class="mx-4"></span>';
       const html = una + una;   // repetida para que el movimiento sea continuo
       if (mov.dataset.html !== html) { mov.innerHTML = html; mov.dataset.html = html; mov.style.setProperty('--cinta-dur', Math.max(18, L.length * 5) + 's'); }
@@ -19462,6 +19463,7 @@
 
     // ==================== NOVEDADES INTERNAS DEL PANEL (solo el equipo) ====================
     const ACTUALIZACIONES_INTERNAS = [
+      { fecha: '2026-10-11', titulo: '🟢 Cinta "En vivo" también para visitantes', mensaje: 'Quien entra sin sesión ahora ve la cinta con los productos y su stock en vivo (sin precios: siguen siendo solo para clientes). Al tocar un producto se abre "Crear cuenta". Revisión en PC: la cinta se ve en todos los tamaños con sesión, las 24 secciones del panel, las direcciones (#tienda, #admin/…), el perfil y los enlaces funcionan bien.', ir: 'novedades' },
       { fecha: '2026-10-11', titulo: '⚡ Compra automática por WhatsApp más fácil', mensaje: '**Autorizar de forma automática:** en Panel → 💬 WhatsApp → Funciones; encendido, todo cliente que conecte su WhatsApp queda autorizado (si a alguno le quitas el permiso, se respeta). **Enlace mágico:** el cliente escribe "vincular" (o elige "Ya estoy registrado") y el bot le manda un enlace: lo toca, entra a la tienda y queda conectado. **"autorizar"** en el chat pide la autorización por él. En la **ficha del cliente**: "📲 Enviarle enlace por WhatsApp" (le abre tu WhatsApp con el mensaje listo; dura 7 días) y "Nombre con que lo tienes guardado" para que el asistente lo reconozca sin que haga nada. El bot invita a comprar automático a quien aún no lo hace.', ir: 'whatsapp' },
       { fecha: '2026-10-11', titulo: '🛒 Ventas a medias y 🔄 renovaciones por WhatsApp', mensaje: '**Ventas a medias:** si alguien recibe una oferta por WhatsApp y no termina, la próxima vez que escriba (48 h) el bot le recuerda *"Te quedó pendiente: 10 Prime · $29.000 · 1 Terminar mi compra"*; si está registrado, a la hora le llega también a su campana y a su Telegram. **Renovaciones:** el aviso de "por vencer" ahora también llega por Telegram, y el bot muestra *"🔄 Por vencer"* en el saludo: escribiendo **renovar** la renueva ahí mismo con su saldo (o con el pago exacto por Bre-B + "listo").', ir: 'whatsapp' },
       { fecha: '2026-10-11', titulo: '🤖 El bot atiende el 100%', mensaje: '"Hablar con un asesor" ya no sale en el menú (puedes mostrarlo en Panel → 💬 WhatsApp → Menú). El bot nunca se queda callado: si no entiende, da ejemplos ("dame 5 prime", "precios", "recargar"); si no entiende **2 veces seguidas**, recién ahí ofrece el asesor. Si el cliente escribe "asesor", siempre se le pasa.', ir: 'whatsapp' },
