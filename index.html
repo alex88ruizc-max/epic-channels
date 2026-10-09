@@ -15084,7 +15084,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-12n';
+    const VERSION_PAGINA = '2026-10-12o';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261010_wacompra', fecha: '2026-10-10', titulo: 'Compra por WhatsApp 💬', mensaje: 'Ahora puedes **comprar con tu saldo desde nuestro WhatsApp**. Ve a tu perfil → **Mis datos → Comprar por WhatsApp**, vincula tu chat con el código y pide la autorización.' },
       { id: 'act_20261010_vista2', fecha: '2026-10-10', titulo: 'Nueva vista de la tienda ▦', mensaje: 'Ahora puedes ver los productos **en 2 columnas**: más productos en tu pantalla, con las **promos resaltadas** (🔥 campaña, ⚡ relámpago, 🎁 regalo). Toca uno y se abre su ficha para comprar. Cambia de vista con los íconos ☰ / ▦ arriba de las categorías.' },
@@ -19476,6 +19476,7 @@
 
     // ==================== NOVEDADES INTERNAS DEL PANEL (solo el equipo) ====================
     const ACTUALIZACIONES_INTERNAS = [
+      { fecha: '2026-10-12', titulo: '🛒 Prueba de compra sin falsas alarmas', mensaje: 'La prueba de compra simulada (no cobra) ahora solo corre con la pestaña visible y, si falla, se repite una vez antes de avisarte. Así no llegan alertas falsas por tener el panel en segundo plano.', ir: 'novedades' },
       { fecha: '2026-10-12', titulo: '👋 Saludo corto más ordenado', mensaje: 'El saludo corto (cuando el cliente vuelve) ahora es una lista vertical con números seguidos: 1 Comprar · 2 Ver stock y precios · 3 Registrarme (o Recargar saldo si ya tiene cuenta) · 0 Menú completo, con "¿Lo de siempre?" arriba si aplica.', ir: 'whatsapp' },
       { fecha: '2026-10-12', titulo: '✂️ Bienvenida corta en WhatsApp', mensaje: 'La bienvenida de primera vez pasó de 22 a 8 líneas: saludo, tus marcas con entrega al instante y garantía, y 3 opciones (1 Ver precios · 2 Registrarme gratis · 3 Ya tengo cuenta). Los beneficios del registro se muestran al elegir "Registrarme", y el enlace de la comunidad después de la primera compra o con "novedades".', ir: 'whatsapp' },
       { fecha: '2026-10-12', titulo: '⏳ Freno anti-spam más amable y nombres mejor leídos', mensaje: 'El freno anti-spam del bot ahora se activa con más de 40 mensajes en 10 minutos (antes 25), pausa solo 10 minutos (antes 30) y ya no es en silencio: avisa una vez "Recibí muchos mensajes seguidos, dame unos minutos" y te llega aviso por Telegram. Además el nombre se lee mejor: "@el_cabo_carteles" → Cabo, "La Mona Ventas" → Mona.', ir: 'whatsapp' },
@@ -20780,7 +20781,7 @@
         if (ping.tgClientes) sub.push(fila(ping.tgClientes.token && ping.tgClientes.bot ? true : null, 'Bot de avisos para clientes', ping.tgClientes.token && ping.tgClientes.bot ? '@' + ping.tgClientes.bot : (ping.tgClientes.token ? 'Token guardado: toca "Guardar y probar" en Ajustes' : 'Opcional: sin configurar')));
       }
       // 5) Prueba de compra simulada (no cobra) y vigilancia automática del servidor
-      const sim = await probarCompraSimulada();
+      const sim = await probarCompraConReintento();
       items.push(fila(sim.ok, '🛒 Prueba de compra simulada', sim.detalle, sim.ok ? '' : 'Mándame captura de esto: hay un producto que no se puede comprar desde la página.'));
       const vig = [];
       try { const rs = await llamarBackend('salud', { paginaCompra: { ok: sim.ok, detalle: sim.detalle } });
@@ -21173,12 +21174,20 @@
       }
     }
     // Se corre sola cada 6 horas mientras el administrador tiene el panel abierto; si falla, el servidor te avisa por Telegram
+    // Prueba con la pestaña visible y, si falla, se repite una vez antes de avisar (evita falsas alarmas)
+    async function probarCompraConReintento() {
+      let r = await probarCompraSimulada();
+      if (!r.ok && !/ya está corriendo/.test(r.detalle || '')) { await new Promise(x => setTimeout(x, 8000)); if (document.visibilityState === 'visible') r = await probarCompraSimulada(); }
+      return r;
+    }
     async function pruebaCompraAutomatica() {
       if (!esAdminSesionActual() || !obtenerBackendUrl()) return;
+      if (document.visibilityState !== 'visible') return;   // en segundo plano el navegador frena la página: la prueba daría una falsa alarma
       let ult = 0; try { ult = parseInt(localStorage.getItem('pruebaCompraEl') || '0', 10); } catch (e) { /* nada */ }
       if (Date.now() - ult < 6 * 3600000) return;
       try { localStorage.setItem('pruebaCompraEl', String(Date.now())); } catch (e) { /* nada */ }
-      const r = await probarCompraSimulada();
+      const r = await probarCompraConReintento();
+      if (document.visibilityState !== 'visible') return;   // si quedó en segundo plano a mitad de la prueba, no se reporta
       try { await llamarBackend('salud', { paginaCompra: { ok: r.ok, detalle: r.detalle } }); } catch (e) { /* nada */ }
     }
     setInterval(() => { try { if (catalogoCargado) pruebaCompraAutomatica(); } catch (e) { /* nada */ } }, 5 * 60000);
