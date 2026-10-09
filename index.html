@@ -15373,7 +15373,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-13k';
+    const VERSION_PAGINA = '2026-10-13l';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261010_wacompra', fecha: '2026-10-10', titulo: 'Compra por WhatsApp 💬', mensaje: 'Ahora puedes **comprar con tu saldo desde nuestro WhatsApp**. Ve a tu perfil → **Mis datos → Comprar por WhatsApp**, vincula tu chat con el código y pide la autorización.' },
       { id: 'act_20261010_vista2', fecha: '2026-10-10', titulo: 'Nueva vista de la tienda ▦', mensaje: 'Ahora puedes ver los productos **en 2 columnas**: más productos en tu pantalla, con las **promos resaltadas** (🔥 campaña, ⚡ relámpago, 🎁 regalo). Toca uno y se abre su ficha para comprar. Cambia de vista con los íconos ☰ / ▦ arriba de las categorías.' },
@@ -19877,6 +19877,7 @@
 
     // ==================== NOVEDADES INTERNAS DEL PANEL (solo el equipo) ====================
     const ACTUALIZACIONES_INTERNAS = [
+      { fecha: '2026-10-13', titulo: '👥 Grupos en el informe del bot', mensaje: 'El **📊 Informe del bot** ahora incluye **👥 Grupos**: cuántos mensajes vio el bot en tus grupos, cuántas veces respondió o publicó (menciones y publicaciones por horario) y el detalle por grupo, por día, semana o mes.', ir: 'whatsapp' },
       { fecha: '2026-10-13', titulo: '⏱ El bot responde cuánto tarda la entrega', mensaje: 'Si preguntan "¿tarda mucho la entrega?", "¿es inmediata?" o "¿cuándo me llegan?", el bot revisa el stock real de lo que el cliente está mirando: lo que hay se entrega **al instante**; si es **sobre pedido**, explica que llegan solas en orden y cuántas cuentas hay pedidas antes. Después sigue en el mismo paso de la compra.', ir: 'whatsapp' },
       { fecha: '2026-10-13', titulo: '📊 Informe del bot de WhatsApp', mensaje: 'En **💬 WhatsApp → 📊 Informe del bot** ves por **día, semana o mes** (con flechas para periodos anteriores): mensajes recibidos y **respondidos**, **a quién** le respondió (con su cuenta si está vinculado), **ventas generadas por el bot** (pedidos, cuentas y valor), pedidos con comprobante, recargas pedidas, **errores** y el **entrenamiento**: consultas a Gemini, lo que aprendió solo, lo que le enseñaste y las frases que no entendió. Cuenta desde que subes esta versión.', ir: 'whatsapp' },
       { fecha: '2026-10-13', titulo: '🔑 Tú autorizas cada identificación', mensaje: 'Cuando un chat guardado con el ID de un cliente ("Juan B2BY5d") escribe al bot, **ya no se vincula solo**: te llega a Telegram "🔑 ¿Identificar este chat?" con **✅ Aceptar** / **❌ Rechazar**. Si aceptas, queda identificado; si rechazas, no se vincula y no te vuelve a preguntar por ese chat. Las solicitudes también aparecen en **Usuarios → 🚨 Vigilancia**, por si Telegram falla.', ir: 'usuarios' },
@@ -22049,8 +22050,9 @@
       try {
         const sn = await db.collection('wa_stats').where('dia', '>=', rg.desde).get(), dias = [];
         sn.forEach(d => { const x = d.data() || {}; if (String(x.dia || '') <= rg.hasta) dias.push(x); });
-        const T = { recibidos: 0, respondidos: 0, ventas: 0, cuentas: 0, monto: 0, pedidosManuales: 0, recargasPedidas: 0, errores: 0, iaConsultas: 0, iaAprendio: 0, enseñadas: 0, noEntendidos: 0 }, chats = {};
+        const T = { recibidos: 0, respondidos: 0, ventas: 0, cuentas: 0, monto: 0, pedidosManuales: 0, recargasPedidas: 0, errores: 0, iaConsultas: 0, iaAprendio: 0, enseñadas: 0, noEntendidos: 0, gVistos: 0, gRespondidos: 0 }, chats = {}, grupos = {};
         dias.forEach(d => { Object.keys(T).forEach(k => T[k] += Number(d[k]) || 0);
+          Object.keys(d.grupos || {}).forEach(k => { const c = d.grupos[k] || {}, o = grupos[k] || (grupos[k] = { n: '', m: 0, r: 0 }); o.n = c.n || o.n; o.m += Number(c.m) || 0; o.r += Number(c.r) || 0; });
           Object.keys(d.chats || {}).forEach(k => { const c = d.chats[k] || {}, o = chats[k] || (chats[k] = { n: '', e: '', m: 0, r: 0, v: 0 }); o.n = c.n || o.n; o.e = c.e || o.e; o.m += Number(c.m) || 0; o.r += Number(c.r) || 0; o.v += Number(c.v) || 0; }); });
         const L = Object.values(chats).sort((a, b) => b.v - a.v || b.m - a.m), pct = T.recibidos ? Math.round(T.respondidos / T.recibidos * 100) : 0;
         const tj = (et, v, sub, col) => `<div class="p-2.5 rounded-xl bg-gray-800/70"><p class="text-[10px] text-gray-400">${et}</p><p class="text-base font-black ${col || 'text-white'}">${v}</p>${sub ? `<p class="text-[10px] text-gray-500">${sub}</p>` : ''}</div>`;
@@ -22061,6 +22063,8 @@
         out.innerHTML = (!dias.length ? '<p class="text-[11px] text-gray-500 text-center py-2">Sin actividad registrada en este periodo. (El informe cuenta desde que se subió la versión del servidor 2026-10-13f.)</p>' : '') +
           `<div class="grid grid-cols-2 gap-1.5">${tj('💬 Respondidos', T.respondidos, 'de ' + T.recibidos + ' recibidos (' + pct + '%)')}${tj('👥 Conversaciones', L.length, L.filter(c => c.e).length + ' con cuenta vinculada')}${tj('🛒 Ventas del bot', T.ventas, T.cuentas + ' cuentas · ' + formatoCOP(T.monto), 'text-amber-300')}${tj('⚠️ Errores', T.errores, T.errores ? 'revisa Comprobar todo' : 'sin errores', T.errores ? 'text-rose-300' : 'text-emerald-300')}${tj('📝 Pedidos con comprobante', T.pedidosManuales, 'te llegan a Telegram')}${tj('💳 Recargas pedidas', T.recargasPedidas, 'por Bre-B, valor exacto')}</div>` +
           `<p class="text-[11px] font-bold text-white mt-3 mb-1">🧠 Entrenamiento</p><div class="grid grid-cols-2 gap-1.5">${tj('🤖 Consultas a Gemini', T.iaConsultas)}${tj('✨ Aprendió solo', T.iaAprendio, 'con Gemini', 'text-violet-300')}${tj('👨‍🏫 Le enseñaste', T.enseñadas, 'desde No entendidos', 'text-sky-300')}${tj('❓ No entendió', T.noEntendidos, 'frases para enseñarle')}</div>` + barras +
+          (() => { const G = Object.values(grupos).sort((a, b) => b.r - a.r || b.m - a.m); return `<p class="text-[11px] font-bold text-white mt-3 mb-1">👥 Grupos</p><div class="grid grid-cols-2 gap-1.5">${tj('👀 Mensajes vistos', T.gVistos, G.length + (G.length === 1 ? ' grupo' : ' grupos'))}${tj('📣 Respuestas del bot', T.gRespondidos, 'menciones y publicaciones', 'text-emerald-300')}</div>` +
+            (G.length ? `<div class="space-y-1 mt-1.5">${G.slice(0, 30).map(x => `<div class="flex items-center justify-between gap-2 p-2 rounded-lg bg-gray-800/50"><span class="text-[11px] text-white truncate">👥 ${escaparHtml(x.n || 'Grupo')}</span><span class="shrink-0 text-[11px] text-gray-300">${x.r} ${x.r === 1 ? 'respuesta' : 'respuestas'} · ${x.m} vistos</span></div>`).join('')}</div>` : ''); })() +
           (L.length ? `<p class="text-[11px] font-bold text-white mt-3 mb-1">¿A quién le respondió? (${L.length})</p><div class="space-y-1 max-h-72 overflow-y-auto">${L.slice(0, 100).map(c => `<div class="flex items-center justify-between gap-2 p-2 rounded-lg bg-gray-800/50"><span class="min-w-0"><span class="block text-[11px] text-white truncate">${escaparHtml(c.n || '(sin nombre)')}</span>${c.e ? `<span class="block text-[10px] text-gray-400 truncate">👤 ${escaparHtml(c.e)}</span>` : '<span class="block text-[10px] text-gray-500">sin cuenta vinculada</span>'}</span><span class="shrink-0 text-right"><span class="block text-[11px] text-gray-200">${c.r} de ${c.m} resp.</span>${c.v ? `<span class="block text-[10px] font-black text-amber-300">🛒 ${c.v} ${c.v === 1 ? 'venta' : 'ventas'}</span>` : ''}</span></div>`).join('')}</div>` : '');
       } catch (e) { out.innerHTML = '<p class="text-[11px] text-gray-500 text-center py-2">Publica las reglas nuevas para ver el informe.</p>'; }
     }
@@ -22908,7 +22912,7 @@
       return { cuentas: legado, stock: legado.length || stockPublico };
     }
 
-    const VERSION_SERVIDOR_NECESARIA = '2026-10-13g';   // la versión del servidor que necesita esta página
+    const VERSION_SERVIDOR_NECESARIA = '2026-10-13h';   // la versión del servidor que necesita esta página
     async function llamarBackend(accion, datos) {
       if (modoPruebaCliente) { const rs = backendSimulado(accion, datos || {}); if (rs) return rs; }
       const url = obtenerBackendUrl();
