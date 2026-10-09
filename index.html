@@ -392,6 +392,47 @@
   </style>
 </head>
 <body class="min-h-screen flex flex-col justify-between">
+  <script>
+  // ===== Acceso de proveedores (epicstreaming.vip/proveedores): solo cambia la pantalla de inicio de sesión =====
+  // Pantalla blanca y limpia (correo y contraseña). Con la sesión iniciada se quita sola y todo sigue normal.
+  (function () {
+    if (!/^#proveedores$/i.test(location.hash || '')) return;
+    window.__accesoProv = true;
+    try { history.replaceState(null, '', location.pathname + location.search); } catch (e) { /* nada */ }
+    var st = document.createElement('style'); st.id = 'accesoProvEstilo';
+    st.textContent = 'html,body{background:#fff!important}body>*:not(#accesoProv){visibility:hidden!important}#accesoProv{position:fixed;inset:0;z-index:2147483000;background:#fff;display:flex;align-items:center;justify-content:center;padding:24px;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;color:#1f2937}#accesoProv form{width:100%;max-width:340px}#accesoProv h1{font-size:20px;font-weight:600;margin:0 0 20px}#accesoProv input{width:100%;box-sizing:border-box;height:44px;border:1px solid #d1d5db;border-radius:8px;padding:0 12px;font-size:15px;margin:0 0 10px;color:#111827;background:#fff;outline:none}#accesoProv input:focus{border-color:#6b7280}#accesoProv button{width:100%;height:44px;border:0;border-radius:8px;background:#111827;color:#fff;font-size:15px;font-weight:600;cursor:pointer}#accesoProv button:disabled{opacity:.6}#accesoProv .err{color:#b91c1c;font-size:13px;min-height:18px;margin:8px 0 0}';
+    document.head.appendChild(st);
+    var ov = document.createElement('div'); ov.id = 'accesoProv';
+    ov.innerHTML = '<form id="accesoProvForm" style="display:none" autocomplete="on"><h1>Iniciar sesión</h1><input id="apCorreo" type="email" placeholder="Correo" autocomplete="username" required><input id="apClave" type="password" placeholder="Contraseña" autocomplete="current-password" required><button id="apBtn" type="submit">Entrar</button><p class="err" id="apErr"></p></form>';
+    document.body.appendChild(ov);
+    document.title = 'Iniciar sesión';
+    window.quitarAccesoProv = function () { window.__accesoProv = false; var o = document.getElementById('accesoProv'), e = document.getElementById('accesoProvEstilo'); if (o) o.remove(); if (e) e.remove(); };
+    var mostrarForm = function () { var f = document.getElementById('accesoProvForm'); if (f) { f.style.display = 'block'; var c = document.getElementById('apCorreo'); if (c) c.focus(); } };
+    document.getElementById('accesoProvForm').addEventListener('submit', function (ev) {
+      ev.preventDefault();
+      var correo = document.getElementById('apCorreo').value.trim(), clave = document.getElementById('apClave').value, btn = document.getElementById('apBtn'), err = document.getElementById('apErr');
+      err.textContent = ''; btn.disabled = true; btn.textContent = 'Entrando…';
+      try {
+        firebase.auth().signInWithEmailAndPassword(correo, clave).then(function () { window.quitarAccesoProv(); })
+          .catch(function (e) { var c = String(e && e.code || '');
+            err.textContent = /too-many/.test(c) ? 'Demasiados intentos. Espera un momento.' : (/network/.test(c) ? 'Sin conexión. Revisa tu internet.' : 'Correo o contraseña incorrectos.');
+            btn.disabled = false; btn.textContent = 'Entrar'; });
+      } catch (e) { err.textContent = 'Intenta de nuevo en un momento.'; btn.disabled = false; btn.textContent = 'Entrar'; }
+    });
+    // Cuando se sepa si hay sesión: con sesión se quita sola (todo normal); sin sesión, se muestra el formulario
+    var intentos = 0, t = setInterval(function () {
+      intentos++;
+      try {
+        if (window.firebase && firebase.apps && firebase.apps.length) {
+          clearInterval(t);
+          firebase.auth().onAuthStateChanged(function (u) { if (!window.__accesoProv) return; if (u) window.quitarAccesoProv(); else mostrarForm(); });
+          return;
+        }
+      } catch (e) { /* sigue intentando */ }
+      if (intentos > 100) { clearInterval(t); mostrarForm(); }
+    }, 100);
+  })();
+  </script>
 
   <!-- ==================== NOTIFICACIÓN TOAST ELEGANTE ==================== -->
   <div id="toastNotif" class="fixed top-5 right-5 z-[9999] hidden items-center gap-3 bg-gray-900 border border-emerald-500/60 text-white px-4 py-3 rounded-2xl shadow-2xl transition-all duration-300">
@@ -1364,7 +1405,8 @@
             </div>
             <div>
               <label class="block text-xs text-gray-400 mb-1">Cuentas por agregar</label>
-              <textarea id="txtStockLineas" rows="6" required oninput="actualizarResumenInversionStock()" placeholder="correo1@ejemplo.com:clave123" class="w-full bg-gray-800 border border-gray-700 rounded-xl p-3 text-xs font-mono text-white focus:outline-none"></textarea>
+              <textarea id="txtStockLineas" rows="6" required oninput="actualizarResumenInversionStock();resumenTextoStock()" placeholder="Pega las cuentas como te las mandan. Ejemplos:&#10;correo@ejemplo.com:clave123&#10;correo@ejemplo.com clave123&#10;correo@ejemplo.com | clave del correo | clave de la plataforma&#10;(el texto extra se ignora)" class="w-full bg-gray-800 border border-gray-700 rounded-xl p-3 text-xs font-mono text-white focus:outline-none"></textarea>
+              <p id="stockLectura" class="text-[11px] text-emerald-300 mt-1"></p>
             </div>
             <div>
               <label for="txtStockCostoUnitario" class="block text-xs text-gray-400 mb-1">Costo unitario de compra (lo que te costó cada cuenta)</label>
@@ -2872,6 +2914,10 @@
             <span class="min-w-0"><span class="block text-xs font-bold text-white">📧 Solo correo y clave de la plataforma</span><span class="block text-[10px] text-gray-400">Para cuentas que no llevan clave del correo (por ejemplo, Prime Video con garantía). Se entregan con su correo y su contraseña, sin "clave del correo" ni clave master. Carga el stock como correo:clave.</span></span>
             <input type="checkbox" id="editProdSinClaveCorreo" class="accent-sky-500 w-5 h-5 shrink-0">
           </label>
+          <div class="p-3 rounded-xl bg-gray-800/60 border border-gray-700/60">
+            <span class="block text-xs font-bold text-white">📋 Indicaciones al entregar</span><span class="block text-[10px] text-gray-400 mb-1.5">Salen junto a la cuenta al vender (tienda, texto para copiar y WhatsApp). Por ejemplo: "No cambies la contraseña o pierdes la garantía".</span>
+            <textarea id="editProdIndicaciones" rows="4" maxlength="1500" class="w-full bg-gray-900 border border-gray-700 rounded-lg px-2 py-1.5 text-xs text-white"></textarea>
+          </div>
           <label id="editProdFilaVip" class="flex items-center justify-between gap-3 p-3 rounded-xl bg-gray-800/60 border border-gray-700/60 cursor-pointer">
             <span class="min-w-0"><span class="block text-xs font-bold text-white">Producto VIP</span><span class="block text-[10px] text-gray-400">Solo lo ven los clientes a los que se lo autorizas.</span></span>
             <input type="checkbox" id="editProdVip" class="accent-yellow-500 w-5 h-5 shrink-0">
@@ -6431,6 +6477,11 @@
 
     // extras (opcional): { total, saldo, cliente } · overrides (opcional): { plantilla, plantillaCuenta } para la vista previa
     function construirFormatoEntrega(cuentas, prodInfo, extras, overrides) {
+      const base = construirFormatoEntregaBase(cuentas, prodInfo, extras, overrides);
+      const ind = String((prodInfo && (prodInfo.indicacionesEntrega || (((catalogoUnificado || []).find(p => p.docId === (prodInfo.docId || prodInfo.productoId)) || {}).indicacionesEntrega))) || '').trim();
+      return ind && base.indexOf(ind.slice(0, 40)) === -1 ? base + '\n\n' + ind : base;
+    }
+    function construirFormatoEntregaBase(cuentas, prodInfo, extras, overrides) {
       // Netflix se entrega sin contraseña y con el paso a paso para entrar por código
       if (prodInfo && esProductoNetflix(prodInfo)) {
         try { return construirEntregaNetflix(cuentas, prodInfo, extras); } catch (e) { console.warn('Entrega de Netflix:', e); }
@@ -8437,7 +8488,7 @@
             imagenUrl: data.imagenUrl || '',
             esVip: data.esVip === true,
             tipoGarantia: data.tipoGarantia || '',
-            esAmazon: data.nombre.toLowerCase().includes('amazon') && data.sinClaveCorreo !== true, sinClaveCorreo: data.sinClaveCorreo === true,
+            esAmazon: data.nombre.toLowerCase().includes('amazon') && data.sinClaveCorreo !== true, sinClaveCorreo: data.sinClaveCorreo === true, indicacionesEntrega: String(data.indicacionesEntrega || ''),
             activo: data.activo !== false
           });
         }
@@ -8998,6 +9049,8 @@
         if (ex.combo && Array.isArray(ex.combo.cuentas) && ex.combo.cuentas.length) html += htmlEntregaCombo(ex.combo.cuentas, ex.combo.info || {}, fila);
         if (Array.isArray(ex.partes)) ex.partes.forEach(pt => { html += htmlEntregaCombo(pt.cuentas, pt.info || {}, fila, 'Incluido en tu combo'); });
         if (ex.bono && Array.isArray(ex.bono.cuentas) && ex.bono.cuentas.length) html += htmlEntregaCombo(ex.bono.cuentas, ex.bono.info || {}, fila, '👑 Regalo Dealer');
+        { const ind = String(prodInfo.indicacionesEntrega || (((catalogoUnificado || []).find(p => p.docId === (prodInfo.docId || prodInfo.productoId)) || {}).indicacionesEntrega) || '').trim();
+          if (ind) html += `<div class="p-3 rounded-xl bg-amber-500/10 border border-amber-500/40"><p class="text-[11px] font-black text-amber-200 mb-1">📋 Importante</p><p class="text-[11px] text-amber-100 whitespace-pre-line">${escaparHtml(ind.replace(/\*/g, ''))}</p></div>`; }
         cont.innerHTML = html;
       } catch (e) {
         console.warn('No se pudo dibujar la entrega visual:', e);
@@ -9154,6 +9207,7 @@
       const chkAct = document.getElementById('editProdActivo'); if (chkAct) chkAct.checked = prod.activo !== false;
       const chkVip = document.getElementById('editProdVip'); if (chkVip) chkVip.checked = prod.esVip === true;
       { const e = document.getElementById('editProdSinClaveCorreo'); if (e) e.checked = productoSinClaveCorreo(prod); }
+      { const e = document.getElementById('editProdIndicaciones'); if (e) e.value = String(prod.indicacionesEntrega || (snapshotInventario[prod.docId] || {}).indicacionesEntrega || ''); }
       const filaVip = document.getElementById('editProdFilaVip'); if (filaVip) filaVip.classList.toggle('hidden', !personalizado);
       const bElim = document.getElementById('btnEditProdEliminar'); if (bElim) bElim.classList.toggle('hidden', !personalizado);
       const esComboE = prod.esCombo === true;
@@ -9232,6 +9286,7 @@
         const chkAct = document.getElementById('editProdActivo');
         if (chkAct) updateData.activo = chkAct.checked;
         { const e = document.getElementById('editProdSinClaveCorreo'); if (e) updateData.sinClaveCorreo = e.checked; }
+        { const e = document.getElementById('editProdIndicaciones'); if (e) updateData.indicacionesEntrega = String(e.value || '').trim().slice(0, 1500); }
         if (esProductoPersonalizado(docId)) { const chkVip = document.getElementById('editProdVip'); if (chkVip) updateData.esVip = chkVip.checked; }
 
         // Stock compartido: necesita el servidor actualizado (es quien entrega las cuentas)
@@ -10072,14 +10127,43 @@
       }
     }
 
+    // Lee lo que pegas tal como te lo manda el proveedor: toma solo las líneas con correo y sus claves
+    // (1 clave = contraseña; 2 claves = clave del correo + clave de la plataforma). El resto se ignora,
+    // y el bloque de texto que se repite (indicaciones del proveedor) se devuelve aparte, una sola vez.
+    function extraerCuentasDeTexto(texto) {
+      const RE = /[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}/, L = String(texto || '').split(/\r?\n/), cuentas = [], primerBloque = [];
+      let vistas = 0;
+      L.forEach(l0 => { const l = l0.trim(); if (!l) return; const m = l.match(RE);
+        if (m) { vistas++; const resto = (l.slice(0, m.index) + ' ' + l.slice(m.index + m[0].length)).replace(/^[\s:|;,\t]+|[\s:|;,\t]+$/g, '');
+          const tok = resto.split(/[\s:|;\t]+/).map(x => x.trim()).filter(Boolean);
+          cuentas.push({ email: m[0], pass: tok[0] || '', plat: tok.length > 1 ? tok.slice(1).join(' ') : '' }); }
+        else if (vistas === 1) primerBloque.push(l); });   // las indicaciones: solo el bloque de la primera cuenta (los demás son copias)
+      return { cuentas, indicaciones: primerBloque.join('\n').trim(), hayTextoExtra: L.some(l => l.trim() && !RE.test(l.trim())) };
+    }
+    function resumenTextoStock() {
+      const el = document.getElementById('stockLectura'), t = (document.getElementById('txtStockLineas') || {}).value || ''; if (!el) return;
+      if (!t.trim()) { el.textContent = ''; return; }
+      const r = extraerCuentasDeTexto(t), dos = r.cuentas.filter(c => c.plat).length;
+      el.innerHTML = r.cuentas.length ? `✓ <b>${r.cuentas.length}</b> ${r.cuentas.length === 1 ? 'cuenta detectada' : 'cuentas detectadas'}${dos ? ' (con clave del correo y de la plataforma)' : ''}${r.hayTextoExtra ? ' · el texto extra se ignora' : ''}${r.indicaciones ? ' · 📋 trae indicaciones del proveedor' : ''}` : '⚠️ No encuentro ningún correo en lo que pegaste.';
+    }
     async function cargarStockMasivo(e) {
       e.preventDefault();
       const btn = document.getElementById('btnCargarStock');
       const docId = document.getElementById('selectStockProducto').value;
       if (!docId) { alert("No tienes productos seleccionables."); return; }
 
-      let lineas = document.getElementById('txtStockLineas').value.split('\n').map(l => l.trim()).filter(l => l);
-      if (lineas.length === 0) return;
+      // Se leen solo las líneas con correo (el texto que manda el proveedor alrededor se ignora)
+      const lectura = extraerCuentasDeTexto(document.getElementById('txtStockLineas').value);
+      if (!lectura.cuentas.length) { alert('No encuentro ningún correo en lo que pegaste.'); return; }
+      const platDe = {}; lectura.cuentas.forEach(c => { if (c.plat) platDe[c.email.toLowerCase()] = c.plat; });
+      let lineas = lectura.cuentas.map(c => c.email + (c.pass ? ':' + c.pass : ''));
+      // Indicaciones del proveedor: se ofrecen para mostrarlas al vender este producto
+      if (lectura.indicaciones && esAdminSesionActual()) {
+        const actual = String(((catalogoUnificado || []).find(p => p.docId === docId) || {}).indicacionesEntrega || '').trim();
+        if (actual !== lectura.indicaciones && await confirmarModal(`📋 Detecté estas indicaciones del proveedor:\n\n${lectura.indicaciones.slice(0, 700)}\n\n¿Las guardo para que salgan junto a la cuenta al vender este producto?`, { textoAceptar: 'Sí, guardarlas' })) {
+          try { await db.collection('inventario').doc(docId).set({ indicacionesEntrega: lectura.indicaciones.slice(0, 1500) }, { merge: true }); mostrarToast('📋 Indicaciones guardadas en el producto'); } catch (ei) { console.warn(ei); }
+        }
+      }
       // Repetidas: dentro de la carga, ya en stock o ya vendidas
       try {
         const rev = await revisarRepetidasCuentas(lineas);
@@ -10099,8 +10183,9 @@
         if (l.includes(':')) { const p = l.split(':'); email = p[0].trim(); pass = p.slice(1).join(':').trim(); }
         else if (/\s/.test(l)) { const p = l.split(/\s+/); email = p[0].trim(); pass = p.slice(1).join(' ').trim(); }
         const cuenta = { email, pass, costo: costoUnitario, subidoEl: ahoraSubida };
+        if (platDe[String(email).toLowerCase()]) cuenta.claveAcceso = platDe[String(email).toLowerCase()];   // 3 datos: correo · clave del correo · clave de la plataforma
         if (aporteCarga) { cuenta.aportadoPor = aporteCarga.uid; cuenta.aportadoNombre = aporteCarga.nombre; }
-        if (claveAccesoLote) cuenta.claveAcceso = claveAccesoLote;
+        if (claveAccesoLote && !cuenta.claveAcceso) cuenta.claveAcceso = claveAccesoLote;
         return cuenta;
       }).filter((c, i, arr) => arr.findIndex(o => JSON.stringify(o) === JSON.stringify(c)) === i);
 
@@ -11916,18 +12001,19 @@
       if (res) {
         const partes = [];
         if (nuevas.length) partes.push(nuevas.length === 1 ? '1 respuesta nueva' : nuevas.length + ' respuestas nuevas');
-        if (abiertos.length) partes.push(abiertos.length + ' en revisión');
+        if (abiertos.length) partes.push(abiertos.length + ' en curso');
         res.textContent = partes.length ? partes.join(' · ') : 'Todo resuelto · toca para ver el historial';
       }
       const idsNuevas = nuevas.map(t => t.id);
       const fechaDe = t => new Date(t.creadoEl).toLocaleDateString('es-CO', { day: '2-digit', month: '2-digit', year: 'numeric' });
       const cabeza = (t, chip) => `<div class="flex items-center justify-between gap-2"><p class="text-[12px] font-bold text-white break-all">${escaparHtml(t.cuenta || '')}</p>${chip}</div><p class="text-[10px] text-gray-400">${escaparHtml(t.motivo || '')}${t.productoNombre ? ' · ' + escaparHtml(t.productoNombre) : ''} · ${fechaDe(t)}</p>`;
       const nuevasHtml = nuevas.map(t => `<div class="p-3 rounded-2xl bg-emerald-500/10 border border-emerald-400/50">${cabeza(t, '<span class="shrink-0 text-[10px] font-black px-2 py-0.5 rounded-full bg-red-500 text-white">Nueva respuesta</span>')}${htmlRespuestaTicket(t)}</div>`);
-      const abiertosHtml = abiertos.map(t => `<div class="p-3 rounded-2xl bg-gray-800/50 border border-amber-500/30">${cabeza(t, '<span class="shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-full border bg-amber-500/15 text-amber-300 border-amber-500/30">En revisión</span>')}<p class="text-[10px] text-gray-500 mt-1">Te avisamos aquí y en tu campana cuando haya respuesta.</p></div>`);
+      const abiertosHtml = abiertos.map(t => { const rev = t.estado === 'en_revision';
+        return `<div class="p-3 rounded-2xl bg-gray-800/50 border ${rev ? 'border-sky-500/40' : 'border-amber-500/30'}">${cabeza(t, rev ? '<span class="shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-full border bg-sky-500/15 text-sky-300 border-sky-500/40">🔍 En revisión</span>' : '<span class="shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-full border bg-amber-500/15 text-amber-300 border-amber-500/30">📩 Recibido</span>')}${rev && t.revisionNota ? `<p class="text-[11px] text-sky-200 mt-1">💬 ${escaparHtml(t.revisionNota)}</p>` : ''}<p class="text-[10px] text-gray-500 mt-1">${rev ? 'Lo estamos investigando. ' : 'Ya lo recibimos. '}Te avisamos aquí y en tu campana cuando haya respuesta.</p></div>`; });
       const viejos = misReportes.filter(t => t.estado === 'resuelto' && idsNuevas.indexOf(t.id) === -1);
       const viejosHtml = viejos.slice(0, 20).map(t => `<details class="rounded-2xl bg-gray-800/40 border border-gray-700/60"><summary class="cursor-pointer select-none p-3 list-none">${cabeza(t, '<span class="shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-full border bg-emerald-500/15 text-emerald-300 border-emerald-500/30">Resuelto</span>')}<p class="text-[10px] text-sky-300 mt-1">Toca para ver la respuesta</p></summary><div class="px-3 pb-3">${htmlRespuestaTicket(t)}</div></details>`);
       const sec = (t, items) => items.length ? `<p class="text-[10px] font-black text-gray-400 uppercase tracking-wider pt-1">${t}</p>` + items.join('') : '';
-      cont.innerHTML = (sec('Respuestas nuevas', nuevasHtml) + sec('En revisión', abiertosHtml) + sec('Anteriores', viejosHtml)) || '<p class="text-center text-gray-500 text-sm py-6">No tienes reportes.</p>';
+      cont.innerHTML = (sec('Respuestas nuevas', nuevasHtml) + sec('En curso', abiertosHtml) + sec('Anteriores', viejosHtml)) || '<p class="text-center text-gray-500 text-sm py-6">No tienes reportes.</p>';
     }
 
     // Lo que soporte le responde al cliente dentro de su ticket: mensaje, cuenta nueva o contraseña nueva y captura
@@ -12142,6 +12228,7 @@
               <p class="text-[11px] text-gray-300">${escaparHtml(t.motivo || '')}${t.detalle ? ' · ' + escaparHtml(t.detalle) : ''}</p>
               <p class="text-[10px] text-gray-400">${t.origen === 'cliente' ? '<span class="px-1.5 py-0.5 rounded bg-sky-500/20 text-sky-300 text-[9px] font-black mr-1">CLIENTE</span>' : ''}${escaparHtml(t.productoNombre || 'Producto no identificado')} · ${asignado} · ${fecha}${t.clienteEmail ? ' · cliente ' + escaparHtml(t.clienteEmail) : ''}</p>
               ${textoGarantiaTicket(t)}
+              ${t.estado === 'en_revision' ? `<p class="text-[10px] text-sky-300 mt-0.5">🔍 En revisión${t.revisionNota ? ': ' + escaparHtml(t.revisionNota) : ''} · ${new Date(t.revisionEl).toLocaleString('es-CO', { day: '2-digit', month: '2-digit', hour: 'numeric', minute: '2-digit' })}</p>` : ''}
               ${resuelto ? `<p class="text-[10px] text-emerald-300 mt-0.5"><i class="fa-solid fa-circle-check mr-1"></i>Resuelto${ETIQUETA_RESULTADO_TICKET[tipoRes] ? ' · ' + ETIQUETA_RESULTADO_TICKET[tipoRes] : ''}${t.resolucion ? ': ' + escaparHtml(t.resolucion) : ''}${t.garantiaReiniciada ? ' · garantía reiniciada' : ''}</p>` : ''}
               ${resuelto && t.respuestaCuenta ? `<p class="text-[10px] text-sky-300 mt-0.5 break-all"><i class="fa-solid fa-link mr-1"></i>Cuenta entregada: <span class="font-mono">${escaparHtml(t.respuestaCuenta)}</span></p>` : (t.cuentaNueva ? `<p class="text-[10px] text-sky-300 mt-0.5"><i class="fa-solid fa-link mr-1"></i>Reemplazada por <span class="font-mono break-all">${escaparHtml(t.cuentaNueva)}</span> (enlazada a ${escaparHtml(t.cuenta || '')})</p>` : '')}
               ${resuelto && t.respuestaClave ? `<p class="text-[10px] text-sky-300 mt-0.5"><i class="fa-solid fa-key mr-1"></i>Contraseña nueva: <span class="font-mono">${escaparHtml(t.respuestaClave)}</span></p>` : ''}
@@ -12150,6 +12237,7 @@
               ${t.tieneFoto ? `<button onclick="verFotoTicket('${escaparJsAttr(t.id)}')" class="px-2.5 py-1.5 rounded-lg text-[11px] font-bold bg-sky-500/15 hover:bg-sky-500/25 text-sky-300 border border-sky-500/30"><i class="fa-solid fa-image mr-1"></i>Ver foto</button>` : (t.origen === 'whatsapp' ? `<span class="px-2.5 py-1.5 rounded-lg text-[11px] font-bold bg-emerald-500/10 text-emerald-300 border border-emerald-500/30">📱 WhatsApp · sin foto</span>` : '')}
               ${t.respuestaFoto ? `<button onclick="verFotoRespuesta('${escaparJsAttr(t.id)}')" class="px-2.5 py-1.5 rounded-lg text-[11px] font-bold bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 border border-emerald-500/30"><i class="fa-solid fa-camera mr-1"></i>Captura</button>` : ''}
               ${htmlRevisionTicket(t)}
+              ${!resuelto ? `<button onclick="marcarTicketEnRevision('${escaparJsAttr(t.id)}')" class="px-2.5 py-1.5 rounded-lg text-[11px] font-bold ${t.estado === 'en_revision' ? 'bg-sky-500/25 text-sky-200 border border-sky-400/60' : 'bg-sky-500/10 hover:bg-sky-500/20 text-sky-300 border border-sky-500/30'}">🔍 ${t.estado === 'en_revision' ? 'En revisión ✓' : 'En revisión'}</button>` : ''}
               <button onclick="${resuelto ? 'reabrirTicket' : 'resolverTicket'}('${escaparJsAttr(t.id)}')" class="px-2.5 py-1.5 rounded-lg text-[11px] font-bold ${resuelto ? 'bg-gray-800 hover:bg-gray-700 text-gray-300 border border-gray-700' : 'bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 border border-emerald-500/30'}">${resuelto ? 'Reabrir' : 'Resolver'}</button>
             </div>
           </div>`;
@@ -12571,6 +12659,7 @@
           ${resuelto && t.enNombreProveedor ? '<p class="text-[10px] text-sky-300 mt-0.5">✓ Resuelto por el equipo en tu nombre (sin descuento)</p>' : ''}
           ${resuelto && t.resueltoPorProveedor ? `<p class="text-[10px] mt-0.5 ${t.revisado === 'aprobado' ? 'text-emerald-300' : 'text-amber-200'}">${t.revisado === 'aprobado' ? '✓ El administrador aprobó tu resolución' : '⏳ Tu resolución está en revisión'}</p>` : ''}
           ${!resuelto && t.revisado === 'rechazado' && t.motivoRechazo ? `<p class="text-[10px] text-red-300 mt-0.5">✗ Rechazada: ${escaparHtml(t.motivoRechazo)}</p>` : ''}
+          ${!resuelto ? `<button type="button" onclick="marcarTicketEnRevision('${escaparJsAttr(t.id)}')" class="mt-1.5 mr-1 px-2.5 py-1 rounded-lg text-[10px] font-black ${t.estado === 'en_revision' ? 'bg-sky-500/25 text-sky-200 border border-sky-400/60' : 'bg-sky-500/10 text-sky-300 border border-sky-500/30'}">🔍 ${t.estado === 'en_revision' ? 'En revisión ✓' : 'En revisión'}</button>` : ''}
           ${!resuelto ? `<button type="button" onclick="abrirResolverProveedor('${escaparJsAttr(t.id)}')" class="mt-1.5 mr-1 px-2.5 py-1 rounded-lg text-[10px] font-black bg-emerald-500 hover:bg-emerald-400 text-black"><i class="fa-solid fa-circle-check mr-1"></i>Resolver</button>` : ''}
           ${t.tieneFoto ? `<button onclick="verFotoTicket('${escaparJsAttr(t.id)}')" class="mt-1.5 px-2.5 py-1 rounded-lg text-[10px] font-bold bg-sky-500/15 hover:bg-sky-500/25 text-sky-300 border border-sky-500/30"><i class="fa-solid fa-image mr-1"></i>Ver foto del error</button>` : ''}
         </div>`;
@@ -14239,6 +14328,27 @@
       }
     }
 
+    // 🔍 Marcar un reporte "En revisión" (le avisa al cliente en su campana y su Telegram)
+    async function marcarTicketEnRevision(id) {
+      const t = (ticketsCuentas || []).find(x => x.id === id) || (typeof proveedorTickets !== 'undefined' && (proveedorTickets || []).find(x => x.id === id)); if (!t) return;
+      if ((await servidorTiene('ticket_revision')) !== true) { alert(textoServidorAntiguo('ticket_revision')); return; }
+      const NOTAS = ['Estamos verificando la cuenta con el proveedor.', 'Te damos respuesta en máximo 2 horas.', 'Estamos revisando: no cambies nada de la cuenta mientras tanto.', 'Necesitamos un poco más de tiempo; hoy mismo te respondemos.'];
+      const nota = await new Promise(res => {
+        let m = document.getElementById('modalRevisionTk');
+        if (!m) { m = document.createElement('div'); m.id = 'modalRevisionTk'; m.className = 'fixed inset-0 z-[97] flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm'; document.body.appendChild(m); }
+        m.innerHTML = `<div class="w-full max-w-md rounded-3xl bg-gray-900 border border-sky-500/40 p-5"><p class="text-base font-black text-white">🔍 Poner en revisión</p><p class="text-[11px] text-gray-400 mb-3">${escaparHtml(t.cuenta || '')} · al cliente le llega el aviso en su campana y su Telegram.</p>
+          ${NOTAS.map((n, k) => `<button type="button" data-k="${k}" class="w-full text-left mb-1.5 px-3 py-2 rounded-xl bg-gray-800 hover:bg-gray-700 text-[12px] text-gray-100">${escaparHtml(n)}</button>`).join('')}
+          <textarea id="rtkNota" rows="2" maxlength="200" placeholder="O escribe tu propia nota (opcional)" class="w-full mt-1 bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-sm text-white">${escaparHtml(t.revisionNota || '')}</textarea>
+          <div class="grid grid-cols-2 gap-2 mt-3"><button type="button" id="rtkCancel" class="py-2.5 rounded-xl bg-gray-800 text-gray-200 font-bold text-sm">Cancelar</button><button type="button" id="rtkOk" class="py-2.5 rounded-xl bg-sky-500 text-black font-black text-sm">Avisar al cliente</button></div></div>`;
+        m.style.display = 'flex';
+        m.querySelectorAll('button[data-k]').forEach(b => b.onclick = () => { document.getElementById('rtkNota').value = NOTAS[+b.dataset.k]; });
+        document.getElementById('rtkCancel').onclick = () => { m.style.display = 'none'; res(null); };
+        document.getElementById('rtkOk').onclick = () => { const v = document.getElementById('rtkNota').value.trim(); m.style.display = 'none'; res(v); };
+      });
+      if (nota === null) return;
+      try { const r = await llamarBackend('ticket_revision', { ticketId: id, nota }); if (!r || !r.ok) { alert((r && r.error) || 'No se pudo.'); return; }
+        mostrarToast('🔍 En revisión: el cliente ya recibió el aviso'); } catch (e) { alert(e.message); }
+    }
     async function avisarClienteTicket(uid, titulo, mensaje) {
       if (!uid) return;
       try {
@@ -15213,7 +15323,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-12y';
+    const VERSION_PAGINA = '2026-10-13d';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261010_wacompra', fecha: '2026-10-10', titulo: 'Compra por WhatsApp 💬', mensaje: 'Ahora puedes **comprar con tu saldo desde nuestro WhatsApp**. Ve a tu perfil → **Mis datos → Comprar por WhatsApp**, vincula tu chat con el código y pide la autorización.' },
       { id: 'act_20261010_vista2', fecha: '2026-10-10', titulo: 'Nueva vista de la tienda ▦', mensaje: 'Ahora puedes ver los productos **en 2 columnas**: más productos en tu pantalla, con las **promos resaltadas** (🔥 campaña, ⚡ relámpago, 🎁 regalo). Toca uno y se abre su ficha para comprar. Cambia de vista con los íconos ☰ / ▦ arriba de las categorías.' },
@@ -19682,6 +19792,11 @@
 
     // ==================== NOVEDADES INTERNAS DEL PANEL (solo el equipo) ====================
     const ACTUALIZACIONES_INTERNAS = [
+      { fecha: '2026-10-13', titulo: '🔐 Acceso de proveedores', mensaje: 'Tus proveedores tienen su propio enlace para iniciar sesión: **epicstreaming.vip/proveedores**. Muestra una pantalla blanca y limpia, solo con correo y contraseña (sin logo, productos ni registro). Después de entrar, todo es normal: el proveedor llega a su panel. Si ya tenía la sesión iniciada, entra directo. El enlace no aparece en ninguna parte de la tienda: compártelo solo con tus proveedores.', ir: 'proveedores' },
+      { fecha: '2026-10-13', titulo: '🔍 Reportes "En revisión"', mensaje: 'Cada reporte abierto tiene el botón **🔍 En revisión**: eliges una nota rápida ("Estamos verificando con el proveedor", "Te damos respuesta en máximo 2 horas"…) o escribes la tuya, y **al cliente le llega el aviso** en su campana y su Telegram. En **Mis reportes** el cliente ve si su reporte está **📩 Recibido** o **🔍 En revisión** (con tu nota). Los proveedores también pueden marcar sus reportes.', ir: 'tickets' },
+      { fecha: '2026-10-13', titulo: '📦 Cargar stock como te lo manda el proveedor', mensaje: 'En **Cargar stock** pega las cuentas tal como te llegan: toma solo las líneas con correo y sus claves (1 clave = contraseña; 2 claves = clave del correo + clave de la plataforma) e **ignora el texto extra**. Debajo te dice cuántas cuentas detectó. Si el proveedor manda indicaciones ("No cambies la contraseña…"), te pregunta si guardarlas en el producto: desde ahí **salen junto a la cuenta al vender**, en la tienda, en el texto para copiar y por WhatsApp. Las editas en la ficha del producto → **📋 Indicaciones al entregar**.', ir: 'inventario' },
+      { fecha: '2026-10-12', titulo: '🛒 El bot vende mejor', mensaje: '**🔥 Promos:** si preguntan por promociones u ofertas, el bot responde con las promos del día, tus **combos** (con lo que ahorran) y los precios por cantidad ("llevando 10+ ahorras $X"), en vez de la lista de stock. **🛒 Carrito:** "5 prime, 2 netflix y 1 youtube" (o uno por línea) arma un solo pedido con el total; ajusta el mínimo y el stock avisando, y se paga todo junto (con saldo, con el valor exacto por Bre-B, o con comprobante si no tiene cuenta). **💲 Precio:** "¿cada pantalla vale 10 o 20?" responde el precio y el total. **⏳ Garantía:** "¿dura 24 horas?" explica la garantía del producto. Y "24 horas", "3 meses" o "$10.000" ya no se toman como cantidades.', ir: 'whatsapp' },
+      { fecha: '2026-10-12', titulo: '🧪 Diagnóstico del bot de WhatsApp', mensaje: 'Si el bot no responde: en **💬 WhatsApp** toca **🧪 Probar la URL del bot**, o pega en el navegador la URL que tiene la app con **&prueba=hola** al final: te dice si la clave es la buena y qué respondería el bot. Además, **Comprobar todo** ahora avisa si la app sí está llamando pero con una URL de clave vieja (pasa si tocaste "Generar URL" y no pegaste la nueva en la app).', ir: 'whatsapp' },
       { fecha: '2026-10-12', titulo: '🚨 Vigilancia y 🎁 regalos como pasivo', mensaje: 'En **Usuarios → 🚨 Vigilancia**: **🔍 Revisar saldos de todos** te lista los clientes cuyo saldo no cuadra con sus registros (tócalo para ver la auditoría). Además el servidor vigila solo: **cada hora**, si a alguien le sube o baja el saldo sin un movimiento que lo explique, y **cada día**, reclamos excesivos (5+ y 30 %+ de lo comprado), el mismo WhatsApp en varias cuentas y 3+ recargas rechazadas en una semana. Te avisa por Telegram y lo ves en **Ver alertas**. **🎁 Regalos:** en **Cargar saldo** marca 🎁 si es un regalo: suma al saldo, pero no cuenta como dinero recibido; en el reporte financiero aparece como **Saldo regalado (pasivo)** y se resta de la ganancia.', ir: 'usuarios' },
       { fecha: '2026-10-12', titulo: '🔍 Cargas manuales de saldo con registro', mensaje: 'El botón **Cargar saldo** de la lista de usuarios ahora deja registro ("Recarga · Carga manual del administrador", con fecha y quién la hizo): la auditoría de saldo y tus reportes la cuentan. Para las cargas viejas que no quedaron registradas, la auditoría de saldo trae el botón **✓ Fue una carga manual mía**: deja la diferencia como ajuste justificado y el saldo cuadra, sin cambiar el saldo del cliente.', ir: 'usuarios' },
       { fecha: '2026-10-12', titulo: '📧 Productos sin clave del correo', mensaje: 'En la ficha de cada producto hay una opción nueva: **📧 Solo correo y clave de la plataforma**. Actívala en los productos cuyas cuentas no llevan clave del correo (por ejemplo, **Prime Video con garantía**): se entregan con su correo y su contraseña, sin "clave del correo" ni clave master, en la tienda, en Mis cuentas, a los dealers y por WhatsApp. Además, el bot ya no agrega la clave master a productos que no son de Prime.', ir: 'productos' },
@@ -21047,6 +21162,7 @@
       const abc = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789'; let k = ''; const r = new Uint32Array(24); crypto.getRandomValues(r); r.forEach(n => k += abc[n % abc.length]);
       try { await db.collection('secretos').doc('ajustes').set({ waSecreto: k }, { merge: true }); waClaveActual = k; await pintarAsistenteWa(); copiarTexto(urlAsistenteWa(), 'URL copiada: pégala en la app'); } catch (e) { alert('No se pudo guardar: ' + e.message); }
     }
+    function probarUrlAsistenteWa() { if (!waClaveActual) { alert('Primero toca "Generar URL".'); return; } window.open(urlAsistenteWa() + '&prueba=hola', '_blank'); }
     function copiarUrlAsistenteWa() { if (!waClaveActual) { alert('Primero toca "Generar URL".'); return; } copiarTexto(urlAsistenteWa(), 'URL copiada: pégala en la app'); }
 
 
@@ -21190,6 +21306,8 @@
           <div class="flex items-center justify-between gap-3"><span><span class="block text-sm font-black text-white">🤖 Asistente de WhatsApp</span><span class="block text-[11px] text-gray-400">Responde con los datos reales de tu tienda. Si no entiende, te deja la conversación.</span></span><input type="checkbox" id="waActivo" ${on(k.activo) ? 'checked' : ''} onchange="guardarCfgWa(true)" class="accent-emerald-500 w-6 h-6 shrink-0"></div>
           <div id="waAsistenteEstado" class="text-[11px] text-gray-300 mt-2"></div>
           <div class="grid grid-cols-2 gap-2 mt-2"><button type="button" onclick="generarClaveAsistenteWa()" class="py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-black text-xs">Generar URL</button><button type="button" onclick="copiarUrlAsistenteWa()" class="py-2 rounded-xl bg-gray-800 border border-gray-700 text-gray-100 font-bold text-xs">Copiar URL</button></div>
+          <button type="button" onclick="probarUrlAsistenteWa()" class="mt-2 w-full py-2 rounded-xl bg-gray-800 border border-sky-500/50 text-sky-200 font-bold text-xs">🧪 Probar la URL del bot (abre lo que respondería a "hola")</button>
+          <p class="text-[10px] text-gray-500 mt-1">Para revisar la URL que tiene la app: cópiala de la regla, pégala en el navegador y agrégale <b class="text-gray-300">&amp;prueba=hola</b> al final. Te dice si la clave es la buena y qué respondería el bot.</p>
           <p class="text-[10px] text-gray-500 mt-1.5">En la app: regla con <b class="text-gray-300">Todo</b> → <b class="text-gray-300">Conectarse a un servidor propio</b> → pega la URL. Key y Value vacíos.</p>
         </div>
         <div class="${caja}">
@@ -22660,7 +22778,7 @@
       return { cuentas: legado, stock: legado.length || stockPublico };
     }
 
-    const VERSION_SERVIDOR_NECESARIA = '2026-10-12g';   // la versión del servidor que necesita esta página
+    const VERSION_SERVIDOR_NECESARIA = '2026-10-13b';   // la versión del servidor que necesita esta página
     async function llamarBackend(accion, datos) {
       if (modoPruebaCliente) { const rs = backendSimulado(accion, datos || {}); if (rs) return rs; }
       const url = obtenerBackendUrl();
