@@ -15094,7 +15094,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-12p';
+    const VERSION_PAGINA = '2026-10-12q';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261010_wacompra', fecha: '2026-10-10', titulo: 'Compra por WhatsApp 💬', mensaje: 'Ahora puedes **comprar con tu saldo desde nuestro WhatsApp**. Ve a tu perfil → **Mis datos → Comprar por WhatsApp**, vincula tu chat con el código y pide la autorización.' },
       { id: 'act_20261010_vista2', fecha: '2026-10-10', titulo: 'Nueva vista de la tienda ▦', mensaje: 'Ahora puedes ver los productos **en 2 columnas**: más productos en tu pantalla, con las **promos resaltadas** (🔥 campaña, ⚡ relámpago, 🎁 regalo). Toca uno y se abre su ficha para comprar. Cambia de vista con los íconos ☰ / ▦ arriba de las categorías.' },
@@ -19486,6 +19486,7 @@
 
     // ==================== NOVEDADES INTERNAS DEL PANEL (solo el equipo) ====================
     const ACTUALIZACIONES_INTERNAS = [
+      { fecha: '2026-10-12', titulo: '🧠 El bot aprende más: preguntas frecuentes, apodos e informe semanal', mensaje: '**📚 Preguntas frecuentes:** si un cliente pregunta algo que está en tus preguntas frecuentes publicadas ("¿cómo recargo?", "¿sirve en Smart TV?"), el bot responde con tu texto exacto; con Gemini la reconoce aunque la escriban distinto. **🏷️ Apodos:** "las free" → Amazon Free; Gemini los aprende solo. **🧠 Enséñale al bot:** al lado de cada frase eliges si es una intención, un producto o una pregunta frecuente, y la sugerencia de Gemini ya viene marcada (🤖). **📊 Informe de los lunes** por Telegram: conversaciones, lo que aprendió, lo que no entendió, lo que pidieron agotado y las preguntas más hechas.', ir: 'whatsapp' },
       { fecha: '2026-10-12', titulo: '🌐 Dominio configurable (epicstreaming.vip)', mensaje: 'El dominio de la tienda ahora está en **Ajustes Generales → 🌐 Dominio de la tienda** y lo usan el bot, los enlaces cortos, los estados, las plantillas y los avisos de cortes. Cuando abras tu panel desde el dominio nuevo, se actualiza solo en todo el sistema. Mientras tanto todo sigue funcionando con el dominio actual.', ir: 'ajustes' },
       { fecha: '2026-10-12', titulo: '🛒 Prueba de compra sin falsas alarmas', mensaje: 'La prueba de compra simulada (no cobra) ahora solo corre con la pestaña visible y, si falla, se repite una vez antes de avisarte. Así no llegan alertas falsas por tener el panel en segundo plano.', ir: 'novedades' },
       { fecha: '2026-10-12', titulo: '👋 Saludo corto más ordenado', mensaje: 'El saludo corto (cuando el cliente vuelve) ahora es una lista vertical con números seguidos: 1 Comprar · 2 Ver stock y precios · 3 Registrarme (o Recargar saldo si ya tiene cuenta) · 0 Menú completo, con "¿Lo de siempre?" arriba si aplica.', ir: 'whatsapp' },
@@ -21029,7 +21030,7 @@
         </div>
         <div class="${caja}">
           <div class="flex items-center justify-between"><p class="text-[12px] font-black text-white">🧠 Enséñale al bot</p><button type="button" onclick="cargarNoEntendidosWa()" class="text-[11px] text-emerald-300 underline">Cargar</button></div>
-          <p class="text-[10px] text-gray-500">Lo que la gente escribió y el bot no entendió. Elige qué significa y toca <b class="text-gray-300">Enseñar</b>: desde ahí lo entiende siempre.</p>
+          <p class="text-[10px] text-gray-500">Lo que la gente escribió y el bot no entendió. Al lado eliges qué significa (una intención, un producto o una de tus preguntas frecuentes) y tocas <b class="text-gray-300">Enseñar</b>: desde ahí lo entiende siempre. Con Gemini activo, la sugerencia ya viene marcada (🤖).</p>
           <div class="mt-2 p-2.5 rounded-xl bg-violet-500/5 border border-violet-500/30">
             <div class="flex items-center justify-between gap-3"><span><span class="block text-[12px] font-black text-white">🤖 Aprender solo con IA (Gemini)</span><span class="block text-[10px] text-gray-400">Si el bot no entiende algo, la IA solo elige qué quiso decir (saludo, precios, reclamo…). <b class="text-gray-300">Nunca escribe respuestas ni conoce tus precios</b>: responde el bot con sus textos. Si está segura, la frase queda aprendida (🤖). Máximo 300 consultas al día.</span></span><input type="checkbox" id="waIa" ${k.iaAprender === true ? 'checked' : ''} class="accent-violet-500 w-6 h-6 shrink-0"></div>
             <div class="flex gap-1.5 mt-2"><input type="password" id="waGeminiKey" autocomplete="off" placeholder="Clave de Gemini (AQ.… o AIza…)" class="${inp}"><button type="button" onclick="guardarClaveGemini()" class="px-3 rounded-lg bg-violet-600 text-white font-bold text-[11px]">Guardar</button></div>
@@ -21497,21 +21498,38 @@
     }
     async function cargarNoEntendidosWa() {
       const c = document.getElementById('waNoEnt'), a = document.getElementById('waAprendidas'); if (!c) return; c.innerHTML = '<p class="text-[11px] text-gray-500">Cargando…</p>';
-      let L = [], ap = {};
-      try { const sn = await db.collection('wa_no_entendidos').orderBy('veces', 'desc').limit(40).get(); sn.forEach(d => L.push(Object.assign({ id: d.id }, d.data()))); } catch (e) { c.innerHTML = '<p class="text-[11px] text-gray-500">Publica el servidor y las reglas nuevas para ver esta lista.</p>'; return; }
-      let auto = {}; try { const d = await db.collection('configuracion').doc('wa_aprendido').get(); ap = (d.exists && d.data().frases) || {}; auto = (d.exists && d.data().auto) || {}; } catch (e) { /* nada */ }
-      const sel = i => `<select id="waIntNE_${i}" class="min-w-0 flex-1 bg-gray-900 border border-gray-700 rounded-lg px-2 py-1.5 text-[11px] text-white"><option value="">¿Qué significa?</option>${INTENCIONES_WA.map(o => `<option value="${o[0]}">${o[1]}</option>`).join('')}</select>`;
+      let L = [], ap = { frases: {}, productos: {}, faq: {}, auto: {} };
+      try { const sn = await db.collection('wa_no_entendidos').orderBy('ultimoEl', 'desc').limit(60).get(); sn.forEach(d => L.push(Object.assign({ id: d.id }, d.data()))); } catch (e) { c.innerHTML = '<p class="text-[11px] text-gray-500">Publica el servidor y las reglas nuevas para ver esta lista.</p>'; return; }
+      L.sort((x, y) => (y.veces || 0) - (x.veces || 0));
+      try { const d = await db.collection('configuracion').doc('wa_aprendido').get(); if (d.exists) ap = Object.assign(ap, d.data()); } catch (e) { /* nada */ }
+      try { if ((!Array.isArray(faqPublicada) || !faqPublicada.length) && typeof cargarFaqPublicada === 'function') await cargarFaqPublicada(); } catch (e) { /* nada */ }
+      const faqs = Array.isArray(faqPublicada) ? faqPublicada.filter(f => f && f.id && f.pregunta) : [];
+      const prods = (catalogoUnificado || []).filter(p => !p.esCombo && p.activo !== false);
+      window.__waEnse = { faqs, prods };
+      const opciones = sug => `<option value="">¿Qué significa?</option>
+        <optgroup label="Intención">${INTENCIONES_WA.map(o => `<option value="i:${o[0]}" ${sug && sug.tipo === 'intencion' && sug.valor === o[0] ? 'selected' : ''}>${o[1]}${sug && sug.tipo === 'intencion' && sug.valor === o[0] ? ' 🤖' : ''}</option>`).join('')}</optgroup>
+        ${prods.length ? `<optgroup label="Es un producto (apodo)">${prods.map(p => `<option value="p:${escaparHtml(p.docId)}" ${sug && sug.tipo === 'producto' && sug.valor === p.docId ? 'selected' : ''}>📦 ${escaparHtml(p.nombre)}${sug && sug.tipo === 'producto' && sug.valor === p.docId ? ' 🤖' : ''}</option>`).join('')}</optgroup>` : ''}
+        ${faqs.length ? `<optgroup label="Es una pregunta frecuente">${faqs.map(f => `<option value="f:${escaparHtml(f.id)}" ${sug && sug.tipo === 'faq' && sug.valor === f.id ? 'selected' : ''}>📚 ${escaparHtml(String(f.pregunta).slice(0, 60))}${sug && sug.tipo === 'faq' && sug.valor === f.id ? ' 🤖' : ''}</option>`).join('')}</optgroup>` : ''}`;
       c.innerHTML = L.map((x, i) => `<div class="p-2 rounded-xl bg-gray-800/60 border border-gray-700/60"><div class="flex items-center justify-between gap-2"><span class="text-[12px] text-white">"${escaparHtml(x.ejemplo || x.frase)}"</span><span class="text-[10px] text-amber-300 shrink-0">${x.veces || 1}×</span></div>
-        <div class="flex gap-1.5 mt-1.5">${sel(i)}<button type="button" onclick="ensenarFraseWa(${i})" class="px-3 rounded-lg bg-emerald-500 text-black font-black text-[11px]">Enseñar</button><button type="button" onclick="descartarNoEntendidoWa('${escaparJsAttr(x.id)}')" aria-label="Descartar" class="px-2 rounded-lg bg-gray-700 text-gray-200 text-[11px]">✕</button></div></div>`).join('') || '<p class="text-[11px] text-gray-500">🎉 No hay frases sin entender.</p>';
+        ${x.sugerencia ? `<p class="text-[10px] text-violet-300 mt-0.5">🤖 Gemini sugiere (${x.sugerencia.confianza || '?'}% segura): revisa y toca Enseñar</p>` : ''}
+        <div class="flex gap-1.5 mt-1.5"><select id="waIntNE_${i}" class="min-w-0 flex-1 bg-gray-900 border ${x.sugerencia ? 'border-violet-500/60' : 'border-gray-700'} rounded-lg px-2 py-1.5 text-[11px] text-white">${opciones(x.sugerencia)}</select><button type="button" onclick="ensenarFraseWa(${i})" class="px-3 rounded-lg bg-emerald-500 text-black font-black text-[11px]">Enseñar</button><button type="button" onclick="descartarNoEntendidoWa('${escaparJsAttr(x.id)}')" aria-label="Descartar" class="px-2 rounded-lg bg-gray-700 text-gray-200 text-[11px]">✕</button></div></div>`).join('') || '<p class="text-[11px] text-gray-500">🎉 No hay frases sin entender.</p>';
       window.__noEntWa = L;
-      const fr = Object.keys(ap);
-      if (a) a.innerHTML = fr.length ? fr.map(f => `<span class="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-gray-800 border border-gray-700 text-[10px] text-gray-200 mr-1 mb-1">${auto[f] ? '🤖 ' : ''}"${escaparHtml(f)}" → ${escaparHtml((INTENCIONES_WA.find(o => o[0] === ap[f]) || [0, ap[f]])[1])}<button type="button" onclick="olvidarFraseWa('${escaparJsAttr(f)}')" aria-label="Olvidar" class="text-gray-400">✕</button></span>`).join('') : '<span class="text-[10px] text-gray-500">Aún no le has enseñado frases.</span>';
+      const etiqueta = (tipo, v) => tipo === 'productos' ? '📦 ' + ((prods.find(p => p.docId === v) || {}).nombre || 'producto') : tipo === 'faq' ? '📚 ' + String((faqs.find(f => f.id === v) || {}).pregunta || 'pregunta').slice(0, 40) : ((INTENCIONES_WA.find(o => o[0] === v) || [0, v])[1]);
+      const chips = [];
+      ['frases', 'productos', 'faq'].forEach(tipo => Object.keys(ap[tipo] || {}).forEach(f => { const auto = (ap.auto || {})[(tipo === 'frases' ? '' : tipo + ':') + f];
+        chips.push(`<span class="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-gray-800 border border-gray-700 text-[10px] text-gray-200 mr-1 mb-1">${auto ? '🤖 ' : ''}"${escaparHtml(f)}" → ${escaparHtml(etiqueta(tipo, ap[tipo][f]))}<button type="button" onclick="olvidarFraseWa('${escaparJsAttr(f)}','${tipo}')" aria-label="Olvidar" class="text-gray-400">✕</button></span>`); }));
+      if (a) a.innerHTML = chips.join('') || '<span class="text-[10px] text-gray-500">Aún no le has enseñado frases.</span>';
     }
     async function ensenarFraseWa(i) {
       const x = (window.__noEntWa || [])[i], s = document.getElementById('waIntNE_' + i); if (!x || !s) return;
       if (!s.value) { alert('Elige qué significa esa frase.'); return; }
-      try { const fr = await frasesAprendidasWa(); fr[x.frase] = s.value;
-        const b = db.batch(); b.set(db.collection('configuracion').doc('wa_aprendido'), { frases: fr }, { mergeFields: ['frases'] }); b.delete(db.collection('wa_no_entendidos').doc(x.id)); await b.commit(); mostrarToast('🧠 Aprendido: el bot ya entiende esa frase'); cargarNoEntendidosWa(); }
+      const tipo = s.value.slice(0, 2) === 'p:' ? 'productos' : s.value.slice(0, 2) === 'f:' ? 'faq' : 'frases', valor = s.value.slice(2);
+      try { const d = await db.collection('configuracion').doc('wa_aprendido').get(), act = Object.assign({}, (d.exists && d.data()[tipo]) || {});
+        act[x.frase] = valor;
+        const ref = db.collection('configuracion').doc('wa_aprendido'), b = db.batch();
+        if (d.exists) b.update(ref, { [tipo]: act }); else b.set(ref, { [tipo]: act });   // solo cambia esa lista; las demás quedan intactas
+        b.delete(db.collection('wa_no_entendidos').doc(x.id)); await b.commit();
+        mostrarToast('🧠 Aprendido: el bot ya entiende esa frase'); cargarNoEntendidosWa(); }
       catch (e) { alert(e.message); }
     }
     async function descartarNoEntendidoWa(id) { try { await db.collection('wa_no_entendidos').doc(id).delete(); cargarNoEntendidosWa(); } catch (e) { alert(e.message); } }
@@ -21529,7 +21547,7 @@
       } catch (e) { out.className = 'text-[11px] mt-1.5 text-red-300'; out.textContent = '❌ ' + e.message; }
     }
     async function frasesAprendidasWa() { const d = await db.collection('configuracion').doc('wa_aprendido').get(); return Object.assign({}, (d.exists && d.data().frases) || {}); }
-    async function olvidarFraseWa(f) { try { const fr = await frasesAprendidasWa(); delete fr[f]; await db.collection('configuracion').doc('wa_aprendido').set({ frases: fr }, { mergeFields: ['frases'] }); mostrarToast('Frase olvidada'); cargarNoEntendidosWa(); } catch (e) { alert(e.message); } }
+    async function olvidarFraseWa(f, tipo) { tipo = tipo || 'frases'; try { const d = await db.collection('configuracion').doc('wa_aprendido').get(), act = Object.assign({}, (d.exists && d.data()[tipo]) || {}); delete act[f]; if (d.exists) await db.collection('configuracion').doc('wa_aprendido').update({ [tipo]: act }); mostrarToast('Frase olvidada'); cargarNoEntendidosWa(); } catch (e) { alert(e.message); } }
 
     // ==================== NETFLIX EN LA TIENDA: SIN CONTRASEÑA ====================
     function esNombreNetflix(t) { return /netflix/i.test(String(t || '')); }
@@ -22344,7 +22362,7 @@
       return { cuentas: legado, stock: legado.length || stockPublico };
     }
 
-    const VERSION_SERVIDOR_NECESARIA = '2026-10-12b';   // la versión del servidor que necesita esta página
+    const VERSION_SERVIDOR_NECESARIA = '2026-10-12c';   // la versión del servidor que necesita esta página
     async function llamarBackend(accion, datos) {
       if (modoPruebaCliente) { const rs = backendSimulado(accion, datos || {}); if (rs) return rs; }
       const url = obtenerBackendUrl();
