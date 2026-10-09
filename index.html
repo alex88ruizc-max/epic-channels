@@ -3046,6 +3046,12 @@
           </div>
         </div>
         <label class="flex items-center justify-between gap-3 p-3 rounded-xl bg-gray-800/60 border border-emerald-500/30 cursor-pointer"><span class="text-xs text-white"><b>💬 Puede comprar por WhatsApp</b><span id="editClienteWaInfo" class="block text-[10px] text-gray-400">Con su saldo, desde el menú del asistente.</span></span><input type="checkbox" id="editClienteWaCompra" class="accent-emerald-500 w-5 h-5"></label>
+        <div class="p-3 rounded-xl bg-gray-800/60 border border-gray-700 space-y-2">
+          <label class="block text-[11px] text-gray-300">📱 Nombre con que lo tienes guardado en tu WhatsApp <span class="text-gray-500">(opcional)</span>
+            <input type="text" id="editClienteWaNombre" maxlength="60" autocomplete="off" placeholder="Ej: Laura Gómez Prime" class="mt-1 w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500"></label>
+          <p class="text-[10px] text-gray-500">Si lo pones, el asistente lo reconoce apenas escriba, sin que él haga nada. Debe ser único: dos contactos con el mismo nombre se confundirían.</p>
+          <button type="button" onclick="enviarEnlaceWaCliente()" class="w-full py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs"><i class="fa-brands fa-whatsapp mr-1"></i>📲 Enviarle enlace por WhatsApp</button>
+        </div>
         <div id="editClienteCreditoCaja" class="solo-admin p-3 rounded-xl border border-violet-500/40 bg-violet-500/5 space-y-2.5">
           <div class="flex items-center justify-between gap-2">
             <p class="text-xs font-black text-white"><i class="fa-solid fa-hand-holding-dollar text-violet-300 mr-1"></i> Crédito</p>
@@ -9485,6 +9491,7 @@
           saldo: Number(d.saldo) || 0, perfilCompleto: !!d.email, cargado: true, rol: d.rol || 'cliente', waCompra: d.waCompraAutorizada === true, waVinculado: d.waVinculado || '',
           permisos: Array.isArray(d.permisos_subir_stock) ? d.permisos_subir_stock : []
         };
+        try { const wn = document.getElementById('editClienteWaNombre'); if (wn) wn.value = d.waNombreChat || ''; editClienteOriginal.waNombreChat = d.waNombreChat || ''; } catch (x) { /* nada */ }
         try { const cw = document.getElementById('editClienteWaCompra'); if (cw) cw.checked = d.waCompraAutorizada === true; const iw = document.getElementById('editClienteWaInfo'); if (iw) iw.textContent = d.waVinculado ? 'WhatsApp vinculado: ' + d.waVinculado : 'Aún no ha vinculado su WhatsApp.'; } catch (x) { /* nada */ }
         const selRolEd = document.getElementById('editClienteRol');
         editClienteOriginal.tipoCuenta = String(d.tipoCuenta || '');
@@ -9621,6 +9628,7 @@
             cambios.permisos_subir_stock = []; cambios.puede_subir_stock = false;
           }
           try { const cw = document.getElementById('editClienteWaCompra'); if (cw && orig.cargado && cw.checked !== (orig.waCompra === true)) { cambios.waCompraAutorizada = cw.checked; if (cw.checked) { try { await notificarUsuarioPanel(uid, 'anuncio', '💬 Ya puedes comprar por WhatsApp', 'Escribe a nuestro WhatsApp, elige la opción 4 y compra con tu saldo.'); } catch (x) { /* opcional */ } } } } catch (x) { /* nada */ }
+      try { const wn = document.getElementById('editClienteWaNombre'); if (wn && orig.cargado) { const v = String(wn.value || '').trim().slice(0, 60); if (v !== (orig.waNombreChat || '')) { cambios.waNombreChat = v; cambios.waNombreChatN = normalizarNombreWa(v); } } } catch (x) { /* nada */ }
       if (Object.keys(cambios).length) await db.collection('usuarios').doc(uid).set(cambios, { merge: true });
         }
         usuariosNetflixCache = null;
@@ -15063,7 +15071,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-10z';
+    const VERSION_PAGINA = '2026-10-11e';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261010_wacompra', fecha: '2026-10-10', titulo: 'Compra por WhatsApp 💬', mensaje: 'Ahora puedes **comprar con tu saldo desde nuestro WhatsApp**. Ve a tu perfil → **Mis datos → Comprar por WhatsApp**, vincula tu chat con el código y pide la autorización.' },
       { id: 'act_20261010_vista2', fecha: '2026-10-10', titulo: 'Nueva vista de la tienda ▦', mensaje: 'Ahora puedes ver los productos **en 2 columnas**: más productos en tu pantalla, con las **promos resaltadas** (🔥 campaña, ⚡ relámpago, 🎁 regalo). Toca uno y se abre su ficha para comprar. Cambia de vista con los íconos ☰ / ▦ arriba de las categorías.' },
@@ -19454,6 +19462,10 @@
 
     // ==================== NOVEDADES INTERNAS DEL PANEL (solo el equipo) ====================
     const ACTUALIZACIONES_INTERNAS = [
+      { fecha: '2026-10-11', titulo: '⚡ Compra automática por WhatsApp más fácil', mensaje: '**Autorizar de forma automática:** en Panel → 💬 WhatsApp → Funciones; encendido, todo cliente que conecte su WhatsApp queda autorizado (si a alguno le quitas el permiso, se respeta). **Enlace mágico:** el cliente escribe "vincular" (o elige "Ya estoy registrado") y el bot le manda un enlace: lo toca, entra a la tienda y queda conectado. **"autorizar"** en el chat pide la autorización por él. En la **ficha del cliente**: "📲 Enviarle enlace por WhatsApp" (le abre tu WhatsApp con el mensaje listo; dura 7 días) y "Nombre con que lo tienes guardado" para que el asistente lo reconozca sin que haga nada. El bot invita a comprar automático a quien aún no lo hace.', ir: 'whatsapp' },
+      { fecha: '2026-10-11', titulo: '🛒 Ventas a medias y 🔄 renovaciones por WhatsApp', mensaje: '**Ventas a medias:** si alguien recibe una oferta por WhatsApp y no termina, la próxima vez que escriba (48 h) el bot le recuerda *"Te quedó pendiente: 10 Prime · $29.000 · 1 Terminar mi compra"*; si está registrado, a la hora le llega también a su campana y a su Telegram. **Renovaciones:** el aviso de "por vencer" ahora también llega por Telegram, y el bot muestra *"🔄 Por vencer"* en el saludo: escribiendo **renovar** la renueva ahí mismo con su saldo (o con el pago exacto por Bre-B + "listo").', ir: 'whatsapp' },
+      { fecha: '2026-10-11', titulo: '🤖 El bot atiende el 100%', mensaje: '"Hablar con un asesor" ya no sale en el menú (puedes mostrarlo en Panel → 💬 WhatsApp → Menú). El bot nunca se queda callado: si no entiende, da ejemplos ("dame 5 prime", "precios", "recargar"); si no entiende **2 veces seguidas**, recién ahí ofrece el asesor. Si el cliente escribe "asesor", siempre se le pasa.', ir: 'whatsapp' },
+      { fecha: '2026-10-11', titulo: '👋 Bienvenida profesional y asesores por WhatsApp', mensaje: 'La **primera vez** que alguien escribe recibe una bienvenida con tus marcas y una invitación a **registrarse gratis** (1 No, quiero registrarme · 2 Ya estoy registrado · 3 Ver precios); quien vuelve recibe "¡Hola de nuevo!". En **Panel → 💬 WhatsApp → 🙋 Asesores** registras los números de tus asesores: cuando eligen "Hablar con un asesor" les llega un **enlace directo** a su WhatsApp con su nombre ya escrito (si hay varios, se turnan) y te avisa por Telegram. También se corrigió la recarga pendiente que no cuadraba con el pedido, la hora en "p. m." y ya puedes ocultar cualquier opción del menú, incluido Asesor.', ir: 'whatsapp' },
       { fecha: '2026-10-10', titulo: '🩺 Vigilancia automática con aviso por Telegram', mensaje: 'Cada 15 minutos el servidor revisa solo: base de datos, página publicada vs. servidor, tareas programadas, lectura de pagos, tus bots de Telegram, errores del servidor y del asistente de WhatsApp, y productos con stock pero sin precio. **Si algo falla te avisa por Telegram**, te avisa cuando se normaliza y te lo recuerda cada 6 horas si sigue igual. Además, **Comprobar todo** ahora hace una **prueba de compra simulada** (cada producto desde cada categoría, sin cobrar) — esa prueba también corre sola cada 6 horas mientras tienes el panel abierto.', ir: 'novedades' },
       { fecha: '2026-10-10', titulo: '📋 Menú de WhatsApp editable y lo más vendido primero', mensaje: 'En **Panel → 💬 WhatsApp → Menú del asistente** cambias el nombre de cada opción, su orden (↑ ↓) y cuáles se muestran, por separado para visitantes y clientes, con vista previa. El menú ahora empieza por **Comprar** y debajo **Recargar saldo en la plataforma**. Al comprar, los productos salen **ordenados por lo más vendido** (últimos 30 días) con 🔥. Recargar pregunta *"¿Ya estás registrado?"* y el registro por WhatsApp pide nombre, **WhatsApp** y correo.', ir: 'whatsapp' },
       { fecha: '2026-10-10', titulo: '🤖 WhatsApp vende como un pro', mensaje: 'El asistente entiende pedidos escritos (**"dame 5 amazon"**, "necesito 10 prime local", "3 netflix"): muestra las opciones con su total, al elegir ofrece más (siguiente precio por cantidad y todo el stock) y si cambian la cantidad recalcula el precio. **Recargar saldo es la opción 1** del menú: valores rápidos, valor exacto por Bre-B y "listo" para confirmar. Si al comprar no alcanza el saldo, genera el pago exacto de lo que falta y al escribir "listo" entrega las cuentas al instante. Stock en una línea por producto y, si algo está agotado, ofrece una alternativa.', ir: 'whatsapp' },
@@ -20666,7 +20678,7 @@
 
 
     // ==================== COMPROBAR TODO (estado de la página, servidor, reglas y tareas) ====================
-    const VERSION_REGLAS_ESPERADA = '2026-10-10d';
+    const VERSION_REGLAS_ESPERADA = '2026-10-11a';
     async function abrirComprobarTodo() {
       let m = document.getElementById('modalComprobarTodo');
       if (!m) { m = document.createElement('div'); m.id = 'modalComprobarTodo'; m.className = 'fixed inset-0 z-[96] hidden items-center justify-center p-4 bg-black/75 backdrop-blur-sm'; m.onclick = ev => { if (ev.target === m) cerrarComprobarTodo(); }; document.body.appendChild(m); }
@@ -20875,6 +20887,7 @@
           <div class="divide-y divide-gray-800">
             ${tg('waRegistro', '📝 Registro por WhatsApp', 'Crea la cuenta con nombre y correo, con clave temporal.', k.registro)}
             ${tg('waSinRegistro', '🛒 Comprar sin registrarse', 'Precio de WhatsApp, pago por Bre-B y entregas tú.', k.sinRegistro)}
+            ${tg('waAuto', '⚡ Autorizar de forma automática', 'Todo cliente que conecte su WhatsApp queda autorizado para comprar con su saldo. Si a alguno le quitas el permiso, se respeta.', k.autoAutorizar === true ? true : false)}
             ${tg('waSaldo', '💳 Comprar con saldo', 'Solo clientes que tú autorices. Entrega al instante.', k.saldo)}
           </div>
           <div class="grid grid-cols-2 gap-2 mt-2">
@@ -20883,11 +20896,21 @@
           </div>
         </div>
         <div class="${caja}">
-          <p class="text-[12px] font-black text-white">✍️ Texto de bienvenida</p>
-          <p class="text-[10px] text-gray-500">Va debajo de "Soy el asistente de…". Las promos del día se agregan solas.</p>
-          <textarea id="waIntro" rows="2" maxlength="200" placeholder="Cuentas de streaming con *entrega inmediata y garantía*, 24/7." class="${inp} mt-1.5">${escaparHtml(k.intro || '')}</textarea>
+          <p class="text-[12px] font-black text-white">👋 Bienvenida (primera vez que escriben)</p>
+          <p class="text-[10px] text-gray-500">Se envía solo la primera vez y los invita a registrarse. <b class="text-gray-300">{marcas}</b> se cambia solo por tus marcas (Prime Video, Netflix…).</p>
+          <textarea id="waPresentacion" rows="3" maxlength="300" placeholder="Somos tu tienda de cuentas premium: *{marcas}* y más, con *entrega al instante* y *garantía*." class="${inp} mt-1.5">${escaparHtml(k.presentacion || '')}</textarea>
+          <p class="text-[10px] text-gray-500 mt-2">Beneficios de registrarse (uno por línea, máximo 5):</p>
+          <textarea id="waBeneficios" rows="3" maxlength="400" placeholder="Compras automáticas 24/7&#10;Recargas Bre-B que se acreditan solas&#10;Tus cuentas guardadas con garantía" class="${inp} mt-1">${escaparHtml(k.beneficios || '')}</textarea>
+          <p class="text-[12px] font-black text-white mt-4">✍️ Frase del menú</p>
+          <p class="text-[10px] text-gray-500">Va debajo del saludo en el menú. Las promos del día se agregan solas.</p>
+          <textarea id="waIntro" rows="2" maxlength="200" placeholder="Cuentas premium con entrega al instante y garantía." class="${inp} mt-1.5">${escaparHtml(k.intro || '')}</textarea>
           <p class="text-[10px] text-gray-500 mt-1">Tip: *texto* sale en negrita en WhatsApp.</p>
         </div>
+        <div class="${caja}">
+          <p class="text-[12px] font-black text-white">🙋 Asesores</p>
+          <p class="text-[10px] text-gray-500">Cuando eligen "Hablar con un asesor", les llega un enlace directo al WhatsApp del asesor con su nombre ya escrito. Si hay varios, se turnan. Sin asesores: el asistente se calla y respondes tú en el mismo chat.</p>
+          <div id="waAsesores" class="space-y-1.5 mt-2"></div>
+          <button type="button" onclick="agregarAsesorWa()" class="mt-2 px-3 py-1.5 rounded-lg bg-gray-800 border border-gray-700 text-gray-100 font-bold text-[11px]">＋ Agregar asesor</button></div>
         <div class="${caja}">
           <p class="text-[12px] font-black text-white">📋 Menú del asistente</p>
           <p class="text-[10px] text-gray-500 mb-2">Cambia el nombre, el orden (↑ ↓) o muestra y oculta cada opción. Tip: *texto* sale en negrita.</p>
@@ -20896,17 +20919,23 @@
         <div class="${caja}"><div id="waAdminCaja"></div></div>
         <button type="button" onclick="guardarCfgWa()" class="w-full py-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-black text-sm">Guardar cambios</button>`;
       menuWaDesdeCfg(k); pintarMenuWa();
+      asesoresWaEdit = (Array.isArray(k.asesores) ? k.asesores : []).map(a => ({ nombre: a.nombre || '', numero: String(a.numero || '').replace(/^57(?=3\d{9}$)/, '') })); pintarAsesoresWa();
       pintarAsistenteWa(); pintarWaAdmin();
     }
     async function guardarCfgWa(soloActivo) {
       const v = id => document.getElementById(id), datos = { activo: v('waActivo').checked, actualizadoEl: new Date().toISOString() };
       if (!soloActivo) {
-        Object.assign(datos, { registro: v('waRegistro').checked, sinRegistro: v('waSinRegistro').checked, saldo: v('waSaldo').checked,
+        Object.assign(datos, { autoAutorizar: !!(v('waAuto') && v('waAuto').checked), registro: v('waRegistro').checked, sinRegistro: v('waSinRegistro').checked, saldo: v('waSaldo').checked,
           horasAsesor: Math.max(1, Math.min(24, parseInt(v('waHoras').value, 10) || 2)), llave: String(v('waLlave').value || '').trim().slice(0, 60), intro: String(v('waIntro').value || '').trim().slice(0, 200) });
         const noWa = {}; document.querySelectorAll('[data-wa-vende]').forEach(i => { if (!i.checked) noWa[i.dataset.waVende] = true; }); datos.noWa = noWa;
         datos.recargo = 0;   // mismo precio que la web
-        datos.menuV = menuWaEdit.v.map(x => ({ id: x.id, label: String(x.label || '').trim().slice(0, 60), oculto: !!x.oculto && x.id !== 'asesor' }));
-        datos.menuC = menuWaEdit.c.map(x => ({ id: x.id, label: String(x.label || '').trim().slice(0, 60), oculto: !!x.oculto && x.id !== 'asesor' }));
+        datos.presentacion = String((v('waPresentacion') || {}).value || '').trim().slice(0, 300);
+        datos.beneficios = String((v('waBeneficios') || {}).value || '').trim().slice(0, 400);
+        const malos = asesoresWaEdit.filter(a => a.numero && !/^3\d{9}$/.test(String(a.numero).replace(/\D/g, '')));
+        if (malos.length) { alert('Revisa el número de ' + (malos[0].nombre || 'un asesor') + ': deben ser 10 dígitos, por ejemplo 3001234567.'); return; }
+        datos.asesores = asesoresWaEdit.filter(a => String(a.numero).replace(/\D/g, '')).map(a => ({ nombre: String(a.nombre || '').trim().slice(0, 30), numero: '57' + String(a.numero).replace(/\D/g, '') }));
+        datos.menuV = menuWaEdit.v.map(x => ({ id: x.id, label: String(x.label || '').trim().slice(0, 60), oculto: !!x.oculto }));
+        datos.menuC = menuWaEdit.c.map(x => ({ id: x.id, label: String(x.label || '').trim().slice(0, 60), oculto: !!x.oculto }));
       }
       try { await db.collection('configuracion').doc('whatsapp').set(datos, { merge: true }); Object.assign(cfgWaPanel, datos); mostrarToast(soloActivo ? (datos.activo ? '🤖 Asistente encendido' : '🤖 Asistente apagado') : 'Cambios de WhatsApp guardados ✓'); } catch (e) { alert(e.message); }
     }
@@ -20925,8 +20954,8 @@
     function menuWaDesdeCfg(k) {
       ['v', 'c'].forEach(t => {
         const base = MENU_WA_BASE_PAG[t], conf = Array.isArray(k[t === 'v' ? 'menuV' : 'menuC']) ? k[t === 'v' ? 'menuV' : 'menuC'] : [], L = [];
-        conf.forEach(x => { const b = base.find(z => z[0] === (x && x.id)); if (b && !L.some(y => y.id === x.id)) L.push({ id: x.id, label: String(x.label || '').trim() || b[1], oculto: x.oculto === true && x.id !== 'asesor' }); });
-        base.forEach(b => { if (!L.some(y => y.id === b[0])) L.push({ id: b[0], label: b[1], oculto: false }); });
+        conf.forEach(x => { const b = base.find(z => z[0] === (x && x.id)); if (b && !L.some(y => y.id === x.id)) L.push({ id: x.id, label: String(x.label || '').trim() || b[1], oculto: x.oculto === true }); });
+        base.forEach(b => { if (!L.some(y => y.id === b[0])) L.push({ id: b[0], label: b[1], oculto: b[0] === 'asesor' }); });
         menuWaEdit[t] = L;
       });
     }
@@ -20941,8 +20970,8 @@
           <span class="flex-1 min-w-0"><input type="text" maxlength="60" value="${escaparHtml(x.label)}" oninput="menuWaEdit[menuWaTab][${i}].label=this.value;pintarVistaMenuWa()" class="w-full bg-gray-900 border border-gray-700 rounded-lg px-2 py-1.5 text-xs text-white focus:outline-none focus:border-emerald-500"><span class="block text-[9px] text-gray-500 mt-0.5 px-1">${escaparHtml(MENU_WA_QUE[x.id] || '')}</span></span>
           <button type="button" onclick="moverMenuWa(${i},-1)" ${i === 0 ? 'disabled' : ''} class="w-7 h-7 rounded-lg bg-gray-700 text-gray-200 text-xs disabled:opacity-30">↑</button>
           <button type="button" onclick="moverMenuWa(${i},1)" ${i === L.length - 1 ? 'disabled' : ''} class="w-7 h-7 rounded-lg bg-gray-700 text-gray-200 text-xs disabled:opacity-30">↓</button>
-          ${x.id === 'asesor' ? '<span class="w-7 text-center text-[10px] text-gray-500" title="Siempre visible">🔒</span>' : `<input type="checkbox" ${x.oculto ? '' : 'checked'} onchange="menuWaEdit[menuWaTab][${i}].oculto=!this.checked;pintarMenuWa()" title="Mostrar" class="accent-emerald-500 w-5 h-5 shrink-0">`}</div>`; }).join('')}</div>
-        <div class="flex items-center justify-between mt-2"><p class="text-[10px] text-gray-500">Cada opción sigue haciendo lo mismo aunque la muevas. "Asesor" siempre se muestra.</p><button type="button" onclick="restablecerMenuWa()" class="text-[10px] text-gray-400 underline shrink-0 ml-2">Restablecer</button></div>
+          <input type="checkbox" ${x.oculto ? '' : 'checked'} onchange="menuWaEdit[menuWaTab][${i}].oculto=!this.checked;pintarMenuWa()" title="Mostrar" class="accent-emerald-500 w-5 h-5 shrink-0"></div>`; }).join('')}</div>
+        <div class="flex items-center justify-between mt-2"><p class="text-[10px] text-gray-500">Cada opción sigue haciendo lo mismo aunque la muevas. Si ocultas una, el asistente igual entiende su palabra. "Asesor" viene oculto: el bot atiende todo y solo ofrece el asesor si no entiende 2 veces o si el cliente lo pide.</p><button type="button" onclick="restablecerMenuWa()" class="text-[10px] text-gray-400 underline shrink-0 ml-2">Restablecer</button></div>
         <p class="text-[11px] font-bold text-gray-300 mt-3 mb-1">Vista previa</p><div id="waMenuVista" class="p-3 rounded-xl bg-[#202c33] text-[12px] text-gray-100 leading-relaxed whitespace-pre-line"></div>`;
       pintarVistaMenuWa();
     }
@@ -20953,7 +20982,7 @@
       v.innerHTML = (menuWaTab === 'v' ? '👑 <b>EPIC STREAMING</b>\n…\n\n' : '👑 <b>¡Hola, Laura!</b>\nSaldo: <b>$20.000</b>\n…\n\n') + menuWaEdit[menuWaTab].filter(x => !x.oculto).map((x, i) => num[i + 1] + ' ' + fmt(x.label || '')).join('\n');
     }
     function moverMenuWa(i, d) { const L = menuWaEdit[menuWaTab], j = i + d; if (j < 0 || j >= L.length) return; const x = L[i]; L[i] = L[j]; L[j] = x; pintarMenuWa(); }
-    function restablecerMenuWa() { menuWaEdit[menuWaTab] = MENU_WA_BASE_PAG[menuWaTab].map(b => ({ id: b[0], label: b[1], oculto: false })); pintarMenuWa(); }
+    function restablecerMenuWa() { menuWaEdit[menuWaTab] = MENU_WA_BASE_PAG[menuWaTab].map(b => ({ id: b[0], label: b[1], oculto: b[0] === 'asesor' })); pintarMenuWa(); }
 
 
     // ==================== PRUEBA DE COMPRA SIMULADA (no cobra nada) ====================
@@ -21016,6 +21045,60 @@
       const t = document.createElement('input'); t.type = 'hidden'; t.id = 'cant_' + id; t.value = String(n); t.dataset.temporal = '1';
       document.body.appendChild(t);
       return () => { try { t.remove(); } catch (e) { /* nada */ } };
+    }
+
+
+    // ---- Asesores del WhatsApp ----
+    var asesoresWaEdit = [];
+    function pintarAsesoresWa() {
+      const c = document.getElementById('waAsesores'); if (!c) return;
+      const inp = 'bg-gray-900 border border-gray-700 rounded-lg px-2 py-1.5 text-xs text-white focus:outline-none focus:border-emerald-500';
+      c.innerHTML = asesoresWaEdit.map((a, i) => `<div class="flex items-center gap-1.5"><input type="text" maxlength="30" value="${escaparHtml(a.nombre)}" placeholder="Nombre" oninput="asesoresWaEdit[${i}].nombre=this.value" class="${inp} w-28"><input type="tel" inputmode="numeric" maxlength="13" value="${escaparHtml(a.numero)}" placeholder="3001234567" oninput="asesoresWaEdit[${i}].numero=this.value" class="${inp} flex-1 min-w-0"><button type="button" onclick="asesoresWaEdit.splice(${i},1);pintarAsesoresWa()" class="w-7 h-7 rounded-lg bg-gray-700 text-gray-200 text-xs">✕</button></div>`).join('') || '<p class="text-[11px] text-gray-500">Sin asesores: respondes tú en el mismo chat.</p>';
+    }
+    function agregarAsesorWa() { asesoresWaEdit.push({ nombre: '', numero: '' }); pintarAsesoresWa(); }
+
+
+    // ==================== WHATSAPP: ENLACE MÁGICO, NOMBRE DEL CHAT Y ENLACE DESDE LA FICHA ====================
+    function normalizarNombreWa(t) { return String(t || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9ñ\s+]/g, ' ').replace(/\s+/g, ' ').trim(); }
+    // El enlace distingue mayúsculas: se toma de la dirección antes de que la lea el enrutador
+    var tokenVincularWa = (function () {
+      try { const m = String(location.hash || '').match(/^#\/?vincular\/([A-Za-z0-9]{16,40})/);
+        if (m) { sessionStorage.setItem('tokenVincWa', m[1]); history.replaceState(null, '', location.pathname + location.search + '#tienda'); return m[1]; }
+        return sessionStorage.getItem('tokenVincWa') || ''; } catch (e) { return ''; }
+    })();
+    var vincWaPidioLogin = false, vincWaIntentos = 0;
+    async function procesarVinculoWa() {
+      if (!tokenVincularWa) return true;
+      if (!currentUser) { if (!vincWaPidioLogin && vincWaIntentos > 2) { vincWaPidioLogin = true; try { abrirModalAuth('login'); mostrarToast('Inicia sesión para conectar tu WhatsApp'); } catch (e) { /* nada */ } } return false; }
+      if (!obtenerBackendUrl()) return false;
+      const tk = tokenVincularWa; tokenVincularWa = ''; try { sessionStorage.removeItem('tokenVincWa'); } catch (e) { /* nada */ }
+      let r = null; try { r = await llamarBackend('wa_vincular_link', { token: tk }); } catch (e) { r = { ok: false, error: e.message }; }
+      mostrarResultadoVinculoWa(r || { ok: false, error: 'No se pudo conectar.' });
+      return true;
+    }
+    function mostrarResultadoVinculoWa(r) {
+      let m = document.getElementById('modalVinculoWa');
+      if (!m) { m = document.createElement('div'); m.id = 'modalVinculoWa'; m.className = 'fixed inset-0 z-[140] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm'; document.body.appendChild(m); }
+      const num = numeroWhatsappTienda(), volver = `<a href="https://wa.me/${num}" target="_blank" rel="noopener" class="block w-full py-3 rounded-xl bg-gray-800 border border-gray-700 text-gray-100 font-bold text-sm text-center"><i class="fa-brands fa-whatsapp mr-1"></i>Volver a WhatsApp</a>`;
+      const cerrar = `<button type="button" onclick="document.getElementById('modalVinculoWa').style.display='none'" class="w-full py-2 text-[12px] text-gray-400 underline">Cerrar</button>`;
+      m.innerHTML = `<div class="w-full max-w-sm rounded-3xl bg-gray-900 border ${r.ok ? 'border-emerald-500/40' : 'border-red-500/40'} p-5 space-y-3 text-center">` + (r.ok
+        ? `<p class="text-4xl">✅</p><p class="text-lg font-black text-white">¡Tu WhatsApp quedó conectado!</p><p class="text-[12px] text-gray-400">${escaparHtml(r.nombreChat || '')}</p>` +
+          (r.autorizado ? `<p class="text-[13px] text-emerald-300 font-bold">⚡ Ya puedes comprar por WhatsApp con tu saldo y recibir tus cuentas al instante.</p>${volver}`
+            : (r.solicitado ? `<p class="text-[13px] text-amber-300">⏳ Tu solicitud para comprar automático ya está enviada.</p>${volver}`
+              : `<p class="text-[13px] text-gray-300">¿Quieres que tus compras por WhatsApp sean <b>automáticas</b> y con entrega al instante?</p><button type="button" onclick="pedirAutorizacionWa();document.getElementById('modalVinculoWa').style.display='none'" class="w-full py-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-black text-sm">⚡ Pedir autorización</button>${volver}`))
+        : `<p class="text-4xl">⚠️</p><p class="text-base font-black text-white">No se pudo conectar</p><p class="text-[12px] text-gray-300">${escaparHtml(r.error || '')}</p>${volver}`) + cerrar + `</div>`;
+      m.style.display = 'flex';
+    }
+    (function () { if (!tokenVincularWa) return; const t = setInterval(async () => { vincWaIntentos++; let listo = false; try { listo = await procesarVinculoWa(); } catch (e) { listo = true; } if (listo || vincWaIntentos > 120) clearInterval(t); }, 1500); })();
+    async function enviarEnlaceWaCliente() {
+      const orig = editClienteOriginal || {}, uid = (typeof clienteEditarUidActual !== 'undefined' && clienteEditarUidActual) || ''; if (!uid) { alert('Abre la ficha de un cliente.'); return; }
+      let r = null; try { r = await llamarBackend('wa_codigo_admin', { uid }); } catch (e) { r = { ok: false, error: e.message }; }
+      if (!r || !r.ok) { alert((r && r.error) || 'No se pudo crear el enlace.'); return; }
+      const nombre = String(orig.nombre || '').split(/\s+/)[0], tienda = numeroWhatsappTienda();
+      const msg = `Hola${nombre ? ' ' + nombre : ''} 👋 Ya puedes comprar por WhatsApp con tu saldo y recibir tus cuentas al instante.\n\nToca aquí y envía el mensaje para conectar tu WhatsApp 👉 https://wa.me/${tienda}?text=${encodeURIComponent('Mi código es ' + r.codigo)}\n\n_El enlace sirve por 7 días._`;
+      let wa = String(orig.whatsapp || '').replace(/\D/g, ''); if (wa.length === 10) wa = '57' + wa;
+      if (/^\d{11,13}$/.test(wa)) window.open(`https://wa.me/${wa}?text=${encodeURIComponent(msg)}`, '_blank');
+      else { copiarTexto(msg, 'Mensaje copiado: pégalo en el chat del cliente'); }
     }
 
     // ==================== NETFLIX EN LA TIENDA: SIN CONTRASEÑA ====================
@@ -21831,7 +21914,7 @@
       return { cuentas: legado, stock: legado.length || stockPublico };
     }
 
-    const VERSION_SERVIDOR_NECESARIA = '2026-10-10n';   // la versión del servidor que necesita esta página
+    const VERSION_SERVIDOR_NECESARIA = '2026-10-10s';   // la versión del servidor que necesita esta página
     async function llamarBackend(accion, datos) {
       if (modoPruebaCliente) { const rs = backendSimulado(accion, datos || {}); if (rs) return rs; }
       const url = obtenerBackendUrl();
