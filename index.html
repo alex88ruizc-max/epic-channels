@@ -2165,7 +2165,7 @@
 
               <div>
                 <label for="ajusteStockUrlTienda" class="block text-[11px] text-gray-400 mb-1">Enlace de la tienda (variable <span class="font-mono text-gray-300">{tienda}</span>)</label>
-                <input type="url" id="ajusteStockUrlTienda" oninput="previsualizarPlantillaStock()" placeholder="https://epicchannels.quest/" class="w-full bg-gray-900 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white font-mono focus:outline-none">
+                <input type="url" id="ajusteStockUrlTienda" oninput="previsualizarPlantillaStock()" placeholder="https://epicstreaming.vip/" class="w-full bg-gray-900 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white font-mono focus:outline-none">
               </div>
 
               <div id="chipsVariablesStock" class="flex flex-wrap gap-1.5"></div>
@@ -2232,6 +2232,11 @@
                 <i class="fa-brands fa-whatsapp"></i> Contacto y Parámetros Operativos
               </h4>
               <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div class="mb-3">
+                  <label class="block text-xs font-bold text-gray-300 mb-1">🌐 Dominio de la tienda</label>
+                  <input type="text" id="ajusteDominioTienda" placeholder="epicstreaming.vip" class="w-full bg-gray-900 border border-gray-700 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500">
+                  <p class="text-[10px] text-gray-500 mt-1">Lo usan el bot de WhatsApp, los enlaces cortos, los estados y los avisos. Se actualiza solo cuando abres el panel desde el dominio nuevo.</p>
+                </div>
                 <div>
                   <label class="block text-[11px] text-gray-400 mb-1">WhatsApp Soporte (con código país)</label>
                   <input type="text" id="ajusteWhatsappNumero" placeholder="Ej: 573043956726" class="w-full bg-gray-900 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white font-mono focus:outline-none">
@@ -5219,7 +5224,7 @@
         total_productos: lista.length,
         total_cuentas: lista.reduce((s, p) => s + (p.stock || 0), 0),
         fecha: new Date().toLocaleString('es-CO'),
-        tienda: cfg.stockUrlTienda || 'https://epicchannels.quest/'
+        tienda: cfg.stockUrlTienda || ('https://' + dominioActual() + '/')
       }).replace(/\n{3,}/g, '\n\n').trim();
 
       return { texto, cantidad: lista.length, vipExcluidos };
@@ -5298,7 +5303,7 @@
         plantillaLineaStockTelegram: v('ajustePlantillaLineaStock').value || '',
         stockExcluirVip: v('ajusteStockExcluirVip').checked !== false,
         stockExcluirAgotados: v('ajusteStockExcluirAgotados').checked === true,
-        stockUrlTienda: (v('ajusteStockUrlTienda').value || '').trim() || 'https://epicchannels.quest/'
+        stockUrlTienda: (v('ajusteStockUrlTienda').value || '').trim() || ('https://' + dominioActual() + '/')
       };
     }
 
@@ -5321,7 +5326,7 @@
       const set = (id, val) => { const el = document.getElementById(id); if (el) el.value = val; };
       set('ajustePlantillaStock', c.plantillaStockTelegram || '');
       set('ajustePlantillaLineaStock', c.plantillaLineaStockTelegram || '');
-      set('ajusteStockUrlTienda', c.stockUrlTienda || 'https://epicchannels.quest/');
+      set('ajusteStockUrlTienda', c.stockUrlTienda || ('https://' + dominioActual() + '/'));
       const chkVip = document.getElementById('ajusteStockExcluirVip');
       if (chkVip) chkVip.checked = c.stockExcluirVip !== false;
       const chkAg = document.getElementById('ajusteStockExcluirAgotados');
@@ -5968,6 +5973,7 @@
       document.getElementById('ajusteTelegramChatId').value = ajustesGeneralesConfig.telegramChatId || '';
       document.getElementById('ajusteTelegramBotUrl').value = ajustesGeneralesConfig.telegramBotUrl || '';
       document.getElementById('ajusteWhatsappNumero').value = ajustesGeneralesConfig.whatsappNumero || '';
+      { const e = document.getElementById('ajusteDominioTienda'); if (e) e.value = dominioActual(); }
       document.getElementById('ajusteClaveAmazon').value = ajustesGeneralesConfig.claveAmazon || '';
       document.getElementById('ajusteMinRecarga').value = ajustesGeneralesConfig.minRecarga || 5000;
       const inpPuntos = document.getElementById('ajustePuntosPorCuenta');
@@ -6000,6 +6006,7 @@
       const dataGuardar = {
         telegramBotUrl: nuevoBotUrl,
         whatsappNumero: nuevoWa,
+        dominioTienda: String((document.getElementById('ajusteDominioTienda') || {}).value || '').replace(/^https?:\/\//, '').replace(/\/.*$/, '').trim().toLowerCase() || dominioActual(),
         minRecarga: nuevoMinRec,
         adminEmailsStr: nuevoAdminEmails,
         excluidosReporteStr: nuevoExcluidos,
@@ -6043,6 +6050,9 @@
     function aplicarAjustesGeneralesEnMemoria(data) {
       ajustesPublicosRaw = data || {};
       ajustesGeneralesConfig = { ...ajustesGeneralesConfig, ...data };
+      try { const h = String(location.hostname || '').replace(/^www\./, '');
+        if (h && !/localhost|^127\.|\.local$|github\.io$|^$/.test(h) && typeof esAdminSesionActual === 'function' && esAdminSesionActual() && data.dominioTienda !== h)
+          db.collection('configuracion').doc('ajustes').set({ dominioTienda: h }, { merge: true }).catch(() => {}); } catch (e) { /* nada */ }
       if (secretosAdmin) ajustesGeneralesConfig = { ...ajustesGeneralesConfig, ...secretosAdmin };
 
       if (data.adminEmailsStr) {
@@ -11642,7 +11652,7 @@
       if (est.dias < 0) cuerpo = `tu cuenta de ${cuenta} venció el ${fecha}.`;
       else if (est.dias === 0) cuerpo = `tu cuenta de ${cuenta} vence hoy (${fecha}).`;
       else cuerpo = `tu cuenta de ${cuenta} vence el ${fecha} (en ${est.dias} ${est.dias === 1 ? 'día' : 'días'}).`;
-      return `Hola${primerNombre ? ' ' + primerNombre : ''}, te escribimos de Epic Channels: ${cuerpo}${precio} ¿Quieres renovarla? Puedes hacerlo desde epicchannels.quest o respondiendo este mensaje.`;
+      return `Hola${primerNombre ? ' ' + primerNombre : ''}, te escribimos de Epic Channels: ${cuerpo}${precio} ¿Quieres renovarla? Puedes hacerlo desde ${dominioActual()} o respondiendo este mensaje.`;
     }
 
     function puedeEscribirWhatsappNf(a) {
@@ -14383,7 +14393,7 @@
 
     let incognitoCortesMemoria = false;
     function copiarEnlaceCortes() {
-      const base = /^https?:/.test(location.origin || '') ? location.origin + location.pathname : 'https://epicchannels.quest/';
+      const base = /^https?:/.test(location.origin || '') ? location.origin + location.pathname : 'https://' + dominioActual() + '/';
       const url = base + '#admin/cortes';
       copiarTexto(url, 'Enlace copiado: pégalo en una pestaña de incógnito');
     }
@@ -14569,7 +14579,7 @@
     // ----- Ventana para obtener/compartir el enlace (cliente y equipo) -----
     let ecActual = null;
     function urlEnlaceCodigo(token) {
-      const base = /^https?:/.test(location.origin || '') ? location.origin + location.pathname : 'https://epicchannels.quest/';
+      const base = /^https?:/.test(location.origin || '') ? location.origin + location.pathname : 'https://' + dominioActual() + '/';
       return base + '#codigo/' + token;
     }
 
@@ -14578,7 +14588,7 @@
       const a = (lista || []).find(x => x.id === id) || (netflixCuentasAdmin || []).find(x => x.id === id);
       if (!a) return;
       if (modoPruebaCliente || String(id).indexOf('sim_') === 0) {
-        alert('(Simulación) Aquí el cliente obtiene su enlace propio, por ejemplo:\n\nepicchannels.quest/#codigo/a1b2c3…\n\nQuien lo abra puede ver el código sin iniciar sesión mientras el mes esté pagado. Al renovar, el enlace cambia solo.');
+        alert('(Simulación) Aquí el cliente obtiene su enlace propio, por ejemplo:\n\n' + dominioActual() + '/#codigo/a1b2c3…\n\nQuien lo abra puede ver el código sin iniciar sesión mientras el mes esté pagado. Al renovar, el enlace cambia solo.');
         return;
       }
       const tiene = await servidorTiene('enlace_codigo');
@@ -14747,7 +14757,7 @@
     }
 
     function textoNovedadWhatsapp(n) {
-      return (n.titulo ? '📢 *' + n.titulo + '*\n\n' : '📢 ') + String(n.mensaje || '').replace(/\*\*(.+?)\*\*/g, '*$1*') + '\n\n👉 epicchannels.quest';
+      return (n.titulo ? '📢 *' + n.titulo + '*\n\n' : '📢 ') + String(n.mensaje || '').replace(/\*\*(.+?)\*\*/g, '*$1*') + '\n\n👉 ' + dominioActual();
     }
 
     // ----- Panel del administrador -----
@@ -15084,7 +15094,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-12o';
+    const VERSION_PAGINA = '2026-10-12p';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261010_wacompra', fecha: '2026-10-10', titulo: 'Compra por WhatsApp 💬', mensaje: 'Ahora puedes **comprar con tu saldo desde nuestro WhatsApp**. Ve a tu perfil → **Mis datos → Comprar por WhatsApp**, vincula tu chat con el código y pide la autorización.' },
       { id: 'act_20261010_vista2', fecha: '2026-10-10', titulo: 'Nueva vista de la tienda ▦', mensaje: 'Ahora puedes ver los productos **en 2 columnas**: más productos en tu pantalla, con las **promos resaltadas** (🔥 campaña, ⚡ relámpago, 🎁 regalo). Toca uno y se abre su ficha para comprar. Cambia de vista con los íconos ☰ / ▦ arriba de las categorías.' },
@@ -15154,7 +15164,7 @@
       if (a) copiarTexto(textoNovedadWhatsapp(a), 'Mensaje copiado: pégalo en WhatsApp');
     }
     function copiarTodasActualizaciones() {
-      const t = '📢 *Novedades de Epic Channels*\n\n' + ACTUALIZACIONES_PAGINA.map(a => '✅ *' + a.titulo + '*\n' + a.mensaje.replace(/\*\*(.+?)\*\*/g, '*$1*')).join('\n\n') + '\n\n👉 epicchannels.quest';
+      const t = '📢 *Novedades de Epic Channels*\n\n' + ACTUALIZACIONES_PAGINA.map(a => '✅ *' + a.titulo + '*\n' + a.mensaje.replace(/\*\*(.+?)\*\*/g, '*$1*')).join('\n\n') + '\n\n👉 ' + dominioActual();
       copiarTexto(t, 'Resumen copiado: pégalo en WhatsApp');
     }
 
@@ -15816,7 +15826,7 @@
       if (prime || comun) t += `\n✉️ La clave al lado de cada correo es la del correo (para los códigos).`;
       const g = parseGarantia(tipoGarantia);
       if (g) { const v = new Date(venceGarantia(desdeMs || Date.now(), g)); t += `\n🛡 Garantía: ${textoGarantia(tipoGarantia)} (hasta el ${String(v.getDate()).padStart(2, '0')}/${String(v.getMonth() + 1).padStart(2, '0')}/${v.getFullYear()})`; }
-      t += `\n🌐 ${typeof enlaceMk === 'function' ? enlaceMk() : (location.host || 'epicchannels.quest')}`;
+      t += `\n🌐 ${typeof enlaceMk === 'function' ? enlaceMk() : dominioActual()}`;
       return t;
     }
     function textoVentaManual(prod, cuentas) {
@@ -17171,7 +17181,7 @@
     // ==================== MARKETING: IMÁGENES Y MENSAJES ====================
     var mkTipoTexto = 'promos', mkLogoImg = null, mkLogoListo = false;
     function productosMarketing() { return catalogoUnificado.filter(p => p.activo !== false && !p.esCombo && Number(p.precio) > 0 && !esProductoVip(p)).sort((a, b) => String(a.nombre).localeCompare(String(b.nombre), 'es')); }
-    function dominioTienda() { if (typeof mkEnlaceCfg !== 'undefined' && mkEnlaceCfg) return mkEnlaceCfg; return (location.host && !/localhost|127\.0|\.local$/.test(location.host)) ? location.host : 'epicchannels.quest'; }
+    function dominioTienda() { if (typeof mkEnlaceCfg !== 'undefined' && mkEnlaceCfg) return mkEnlaceCfg; return dominioActual(); }
     function nombreTienda() { const t = aparienciaConfig && aparienciaConfig.titulo; return t && !/^cat[aá]logo oficial$/i.test(t) ? t : 'EPIC CHANNELS'; }
     function promoPerfilCliente(id) { const pr = ((cfgDealer && cfgDealer.promos) || {})[id]; return pr && pr.activo !== false && aplicaPromo(pr, 'cliente') ? pr : null; }
     function prepararMarketing() {
@@ -19476,6 +19486,7 @@
 
     // ==================== NOVEDADES INTERNAS DEL PANEL (solo el equipo) ====================
     const ACTUALIZACIONES_INTERNAS = [
+      { fecha: '2026-10-12', titulo: '🌐 Dominio configurable (epicstreaming.vip)', mensaje: 'El dominio de la tienda ahora está en **Ajustes Generales → 🌐 Dominio de la tienda** y lo usan el bot, los enlaces cortos, los estados, las plantillas y los avisos de cortes. Cuando abras tu panel desde el dominio nuevo, se actualiza solo en todo el sistema. Mientras tanto todo sigue funcionando con el dominio actual.', ir: 'ajustes' },
       { fecha: '2026-10-12', titulo: '🛒 Prueba de compra sin falsas alarmas', mensaje: 'La prueba de compra simulada (no cobra) ahora solo corre con la pestaña visible y, si falla, se repite una vez antes de avisarte. Así no llegan alertas falsas por tener el panel en segundo plano.', ir: 'novedades' },
       { fecha: '2026-10-12', titulo: '👋 Saludo corto más ordenado', mensaje: 'El saludo corto (cuando el cliente vuelve) ahora es una lista vertical con números seguidos: 1 Comprar · 2 Ver stock y precios · 3 Registrarme (o Recargar saldo si ya tiene cuenta) · 0 Menú completo, con "¿Lo de siempre?" arriba si aplica.', ir: 'whatsapp' },
       { fecha: '2026-10-12', titulo: '✂️ Bienvenida corta en WhatsApp', mensaje: 'La bienvenida de primera vez pasó de 22 a 8 líneas: saludo, tus marcas con entrega al instante y garantía, y 3 opciones (1 Ver precios · 2 Registrarme gratis · 3 Ya tengo cuenta). Los beneficios del registro se muestran al elegir "Registrarme", y el enlace de la comunidad después de la primera compra o con "novedades".', ir: 'whatsapp' },
@@ -20815,6 +20826,13 @@
 
     // ==================== COMPRAR POR WHATSAPP (cliente: vincular / pedir autorización · admin: autorizar y precios) ====================
     var perfilWa = {}, waCodigoActual = '', waCodigoExpira = 0;
+    // Dominio de la tienda: el de Ajustes Generales; si no hay, el de esta página; si es local, el de respaldo
+    function dominioActual() {
+      const d = String((ajustesGeneralesConfig && ajustesGeneralesConfig.dominioTienda) || '').replace(/^https?:\/\//, '').replace(/\/.*$/, '').trim();
+      if (d) return d;
+      const h = String(location.hostname || '').replace(/^www\./, '');
+      return h && !/localhost|^127\.|^$|\.local$/.test(h) ? h : 'epicstreaming.vip';
+    }
     function numeroWhatsappTienda() { return String((ajustesGeneralesConfig && ajustesGeneralesConfig.whatsappNumero) || '573043956726').replace(/\D/g, ''); }
     function pintarWaCliente() {
       const sec = document.getElementById('perfilSecDatos'); if (!sec || !currentUser || esStaffSesion()) return;
@@ -21313,7 +21331,7 @@
       const v = promoComunidadVersion++ % 3, num = numeroWhatsappTienda();
       t.value = titulos[v] + '\n\n' + (promos.length ? promos.slice(0, 5).join('\n') + '\n\n' : '') +
         '📦 *Disponible ahora:*\n' + top.map(p => '• ' + nom(p) + (Number(p.stock) <= 5 ? ' (¡últimas ' + p.stock + '!)' : '')).join('\n') +
-        '\n\n' + cierres[v] + ' 👉 https://' + (location.hostname && !/localhost|^$/.test(location.hostname) ? location.hostname : 'epicchannels.quest') + '\n💬 O escríbeme 👉 https://wa.me/' + num;
+        '\n\n' + cierres[v] + ' 👉 https://' + dominioActual() + '\n💬 O escríbeme 👉 https://wa.me/' + num;
     }
     async function publicarPromoComunidad() {
       const txt = String((document.getElementById('waPromoTexto') || {}).value || '').trim(); if (!txt) { armarPromoComunidad(); return; }
@@ -21343,7 +21361,7 @@
       const lineas = (t, max, font) => { x.font = font; const ws = String(t).split(/\s+/), L = []; let l = ''; ws.forEach(w => { const p = l ? l + ' ' + w : w; if (x.measureText(p).width > max && l) { L.push(l); l = w; } else l = p; }); if (l) L.push(l); return L; };
       x.fillStyle = '#ffffff'; let y = 760; lineas(titulo, W - 160, `900 78px ${SERIF}`).slice(0, 4).forEach(l => { x.font = `900 78px ${SERIF}`; x.fillText(l, W / 2, y); y += 96; });
       y += 40; x.fillStyle = 'rgba(255,255,255,.88)'; lineas(texto, W - 200, `600 44px ${SANS}`).slice(0, 9).forEach(l => { x.font = `600 44px ${SANS}`; x.fillText(l, W / 2, y); y += 62; });
-      x.fillStyle = 'rgba(255,255,255,.7)'; x.font = `800 38px ${SANS}`; x.fillText((location.hostname && !/localhost|^$/.test(location.hostname) ? location.hostname : 'epicchannels.quest'), W / 2, H - 230);
+      x.fillStyle = 'rgba(255,255,255,.7)'; x.font = `800 38px ${SANS}`; x.fillText(dominioActual(), W / 2, H - 230);
       return c;
     }
     function textoPlanoNovedad(s) { return String(s || '').replace(/\*\*/g, '').replace(/[*_]/g, '').replace(/\s+/g, ' ').trim(); }
@@ -21417,7 +21435,7 @@
       const fmt = s => escaparHtml(s).replace(/\*([^*\n]+)\*/g, '<b>$1</b>').replace(/_([^_\n]+)_/g, '<i>$1</i>');
       const prods = Array.from(document.querySelectorAll('[data-wa-grupo]')).filter(i => i.checked).map(i => { const p = (catalogoUnificado || []).find(x => x.docId === i.dataset.waGrupo); return p ? (/amazon free/i.test(p.nombre) ? '🎁' : '🍿') + ' *' + String(p.nombre).replace(/^Prime Video\s+/i, 'Prime ') + '*' : ''; }).filter(Boolean).join('\n');
       const val = id => String((document.getElementById(id) || {}).value || '');
-      const num = numeroWhatsappTienda(), web = 'https://' + (location.hostname && !/localhost|^$/.test(location.hostname) ? location.hostname : 'epicchannels.quest');
+      const num = numeroWhatsappTienda(), web = 'https://' + dominioActual();
       const tpl = val('waGruposMensaje').trim() || '👋 ¡Hola! Te habla *{tienda}* 👑\n\nTenemos disponible ahora:\n{productos}\n\n✅ Entrega al instante y garantía\n{referencias}\n🌐 Página con descuentos para vendedores 👉 {pagina}\n📲 Escríbeme al privado y te paso precios 👉 {whatsapp}' + (val('waComunidad') ? '\n📢 Novedades y promos 👉 {comunidad}' : '');
       const varia = t => { let x = t, n = 0; while (/\{[^{}]*\|[^{}]*\}/.test(x) && n++ < 50) x = x.replace(/\{([^{}]*\|[^{}]*)\}/, (m, a) => { const o = a.split('|'); return o[Math.floor(Math.random() * o.length)]; }); return x; };
       v.innerHTML = fmt(varia(tpl).replace(/\{numero\}/g, num.replace(/^57(?=3\d{9}$)/, '')).replace(/\{productos\}/g, prods || '🍿 *Prime con Pago*').replace(/\{whatsapp\}/g, 'https://wa.me/' + num).replace(/\{comunidad\}/g, val('waComunidad')).replace(/\{pagina\}/g, web).replace(/\{referencias\}/g, val('waRefFrase')).replace(/\{tienda\}/g, 'EPIC STREAMING').replace(/\n{3,}/g, '\n\n'));
@@ -22326,7 +22344,7 @@
       return { cuentas: legado, stock: legado.length || stockPublico };
     }
 
-    const VERSION_SERVIDOR_NECESARIA = '2026-10-12a';   // la versión del servidor que necesita esta página
+    const VERSION_SERVIDOR_NECESARIA = '2026-10-12b';   // la versión del servidor que necesita esta página
     async function llamarBackend(accion, datos) {
       if (modoPruebaCliente) { const rs = backendSimulado(accion, datos || {}); if (rs) return rs; }
       const url = obtenerBackendUrl();
