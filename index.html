@@ -15084,7 +15084,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-11q';
+    const VERSION_PAGINA = '2026-10-11s';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261010_wacompra', fecha: '2026-10-10', titulo: 'Compra por WhatsApp 💬', mensaje: 'Ahora puedes **comprar con tu saldo desde nuestro WhatsApp**. Ve a tu perfil → **Mis datos → Comprar por WhatsApp**, vincula tu chat con el código y pide la autorización.' },
       { id: 'act_20261010_vista2', fecha: '2026-10-10', titulo: 'Nueva vista de la tienda ▦', mensaje: 'Ahora puedes ver los productos **en 2 columnas**: más productos en tu pantalla, con las **promos resaltadas** (🔥 campaña, ⚡ relámpago, 🎁 regalo). Toca uno y se abre su ficha para comprar. Cambia de vista con los íconos ☰ / ▦ arriba de las categorías.' },
@@ -19476,6 +19476,8 @@
 
     // ==================== NOVEDADES INTERNAS DEL PANEL (solo el equipo) ====================
     const ACTUALIZACIONES_INTERNAS = [
+      { fecha: '2026-10-11', titulo: '⚠️ El bot reconoce reclamos', mensaje: 'Si un cliente escribe un problema con sus palabras ("las cambiaron", "cambiaron el dominio", "se cayeron", "no funcionan", "me sacó", "pide código"…), el bot ya no responde "no te entendí". Si su chat está vinculado, le pide el correo de la cuenta que falla y crea el reporte. Si no, le dice "Lamento eso 🙏 Ya le avisé al administrador", te llega **⚠️ Posible reclamo** a Telegram y el bot se calla 3 horas en ese chat para que lo atiendas tú.', ir: 'tickets' },
+      { fecha: '2026-10-11', titulo: '🚫 El bot ya no se mete en tus conversaciones', mensaje: 'En **💬 WhatsApp → 🚫 Chats que el bot no atiende** escribes tus proveedores, familia o amigos (como los tienes guardados) y el bot nunca les responde. Además, si alguien escribe **3 veces seguidas** algo que el bot no entiende, se calla **3 horas** en ese chat y te avisa una vez por Telegram; vuelve a atender si piden algo claro (menú, comprar, precios, recargar…).', ir: 'whatsapp' },
       { fecha: '2026-10-11', titulo: '📧 Reportes con el correo y 📷 fotos en WhatsApp', mensaje: 'Si el cliente escribe el **correo de una cuenta** (por ejemplo "amz.carla02@mail.com no funciona"), el bot la busca en sus compras, revisa la garantía y **crea el reporte directo** (o le pregunta qué pasa). Antes lo confundía con una compra de Amazon. Si manda una **foto** sin pedido pendiente, el bot le explica qué escribir (comprobante, error de cuenta o asesor) y **te avisa por Telegram** para que la mires en el chat.', ir: 'tickets' },
       { fecha: '2026-10-11', titulo: '👥 Grupos por franjas, sin límites', mensaje: 'En **💬 WhatsApp → 👥 Grupos → Por horario** armas tus **franjas** (por ejemplo 7–10, 10–14, 18–22), cada una con **cuántos grupos** (vacío o 0 = sin límite). En cada franja el bot publica una vez por grupo apenas alguien escriba ahí; fuera de las franjas no publica. Con **Rotar** encendido, el grupo que recibió descansa la franja siguiente. Cada grupo recibe un mensaje **distinto**, armado al azar a partir de tu mensaje y con el stock real.', ir: 'whatsapp' },
       { fecha: '2026-10-11', titulo: '🤖 Estados automáticos, referencias y mensaje de grupos', mensaje: '**Estados automáticos** (Marketing → Estados): lo positivo se publica solo con imagen Premium —oferta relámpago, campaña, llegó stock, producto nuevo, promo de regalo y novedades para clientes—, nunca VIP ni cosas de configuración, máximo 4 al día (ajustable). Necesita el panel abierto en algún dispositivo para dibujar la imagen. **Referencias** (💬 WhatsApp): la frase "✅ Contamos con las mejores referencias" sale en la bienvenida, el menú y los grupos; cuando preguntan por referencias o hay desconfianza, el bot comparte el contacto de Cristhian Betancurt. **Grupos:** el mensaje ya incluye la página con descuentos para vendedores y es editable con vista previa.', ir: 'marketing' },
@@ -20978,6 +20980,11 @@
           <input type="text" id="waRefDetalle" maxlength="80" value="${escaparHtml(k.refDetalle !== undefined ? k.refDetalle : 'administrador de varios grupos')}" placeholder="administrador de varios grupos" class="${inp} mt-1.5">
         </div>
         <div class="${caja}">
+          <p class="text-[12px] font-black text-white">🚫 Chats que el bot no atiende</p>
+          <p class="text-[10px] text-gray-500">Proveedores, familia o amigos: escribe cómo los tienes guardados en tu WhatsApp, separados por coma. El bot nunca les responde. Además, si alguien escribe 3 veces seguidas algo que no entiende, el bot se calla 3 horas en ese chat y te avisa por Telegram.</p>
+          <textarea id="waIgnorar" rows="2" maxlength="2000" placeholder="Andres Amazon, Proveedor Netflix, Mamá" class="${inp} mt-1.5">${escaparHtml(k.ignorarChats || '')}</textarea>
+        </div>
+        <div class="${caja}">
           <p class="text-[12px] font-black text-white">🙋 Asesores</p>
           <p class="text-[10px] text-gray-500">Cuando eligen "Hablar con un asesor", les llega un enlace directo al WhatsApp del asesor con su nombre ya escrito. Si hay varios, se turnan. Sin asesores: el asistente se calla y respondes tú en el mismo chat.</p>
           <div id="waAsesores" class="space-y-1.5 mt-2"></div>
@@ -21010,6 +21017,7 @@
         datos.gruposMensaje = String((v('waGruposMensaje') || {}).value || '').trim().slice(0, 1500);
         datos.gruposModo = (document.querySelector('input[name="waGruposModo"]:checked') || {}).value === 'horario' ? 'horario' : 'mencion';
         datos.gruposRotar = !!(v('waGruposRotar') && v('waGruposRotar').checked);
+        datos.ignorarChats = String((v('waIgnorar') || {}).value || '').trim().slice(0, 2000);
         { const F = franjasWaEdit.map(x => ({ d: parseInt(x.d, 10), h: parseInt(x.h, 10), max: Math.max(0, parseInt(x.max, 10) || 0) })).sort((a, b) => a.d - b.d);
           const mala = F.find(x => isNaN(x.d) || isNaN(x.h) || x.d < 0 || x.h > 24 || x.h <= x.d);
           if (mala) { alert('Revisa las franjas: cada una debe empezar antes de terminar (horas de 0 a 24).'); return; }
@@ -22190,7 +22198,7 @@
       return { cuentas: legado, stock: legado.length || stockPublico };
     }
 
-    const VERSION_SERVIDOR_NECESARIA = '2026-10-11e';   // la versión del servidor que necesita esta página
+    const VERSION_SERVIDOR_NECESARIA = '2026-10-11g';   // la versión del servidor que necesita esta página
     async function llamarBackend(accion, datos) {
       if (modoPruebaCliente) { const rs = backendSimulado(accion, datos || {}); if (rs) return rs; }
       const url = obtenerBackendUrl();
