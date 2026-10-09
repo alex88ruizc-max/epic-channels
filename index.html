@@ -15084,7 +15084,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-11t';
+    const VERSION_PAGINA = '2026-10-11u';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261010_wacompra', fecha: '2026-10-10', titulo: 'Compra por WhatsApp 💬', mensaje: 'Ahora puedes **comprar con tu saldo desde nuestro WhatsApp**. Ve a tu perfil → **Mis datos → Comprar por WhatsApp**, vincula tu chat con el código y pide la autorización.' },
       { id: 'act_20261010_vista2', fecha: '2026-10-10', titulo: 'Nueva vista de la tienda ▦', mensaje: 'Ahora puedes ver los productos **en 2 columnas**: más productos en tu pantalla, con las **promos resaltadas** (🔥 campaña, ⚡ relámpago, 🎁 regalo). Toca uno y se abre su ficha para comprar. Cambia de vista con los íconos ☰ / ▦ arriba de las categorías.' },
@@ -19476,6 +19476,7 @@
 
     // ==================== NOVEDADES INTERNAS DEL PANEL (solo el equipo) ====================
     const ACTUALIZACIONES_INTERNAS = [
+      { fecha: '2026-10-11', titulo: '🔧 Arreglado: Acreditar en "Pagos reportados"', mensaje: 'Al tocar **Acreditar** o **Rechazar** en Pagos reportados salía "servidor desactualizado". No era tu servidor: el botón mandaba un dato con el mismo nombre que la función del servidor y la pisaba. Ya está corregido, y la página ahora protege ese campo en todas las llamadas para que no vuelva a pasar.', ir: 'pagos' },
       { fecha: '2026-10-11', titulo: '🛡 Reportes sin garantía: el bot ofrece la reposición', mensaje: 'Si un cliente reporta una cuenta **sin garantía** (vencida o un producto que no la tiene), el bot le dice el motivo correcto ("venció el 05/10" o "no tiene garantía") y le ofrece **comprar una nueva al instante** con el precio de hoy (o hablar con un asesor). Te llega un aviso a Telegram por si quieres tener un gesto con ese cliente.', ir: 'tickets' },
       { fecha: '2026-10-11', titulo: '⚠️ El bot reconoce reclamos', mensaje: 'Si un cliente escribe un problema con sus palabras ("las cambiaron", "cambiaron el dominio", "se cayeron", "no funcionan", "me sacó", "pide código"…), el bot ya no responde "no te entendí". Si su chat está vinculado, le pide el correo de la cuenta que falla y crea el reporte. Si no, le dice "Lamento eso 🙏 Ya le avisé al administrador", te llega **⚠️ Posible reclamo** a Telegram y el bot se calla 3 horas en ese chat para que lo atiendas tú.', ir: 'tickets' },
       { fecha: '2026-10-11', titulo: '🚫 El bot ya no se mete en tus conversaciones', mensaje: 'En **💬 WhatsApp → 🚫 Chats que el bot no atiende** escribes tus proveedores, familia o amigos (como los tienes guardados) y el bot nunca les responde. Además, si alguien escribe **3 veces seguidas** algo que el bot no entiende, se calla **3 horas** en ese chat y te avisa una vez por Telegram; vuelve a atender si piden algo claro (menú, comprar, precios, recargar…).', ir: 'whatsapp' },
@@ -19685,7 +19686,7 @@
     }
     async function resolverPagoReportado(id, accion, txn) {
       const t = pagosReportados.find(x => x.id === id); if (!t) return;
-      const datos = { id, accion };
+      const datos = { id, decision: accion };   // 'decision', no 'accion': 'accion' es el nombre de la función del servidor
       if (accion === 'acreditar') {
         if (!await confirmarModal(`¿Acreditar ${formatoCOP(t.monto)} a ${t.clienteEmail}?\n\n⚠️ Confirma en tu banco que el dinero llegó antes de acreditar. ${txn ? 'Se usará el pago sin identificar elegido (no se puede usar dos veces).' : 'Quedará registrado como verificado por ti.'}`, { textoAceptar: 'Sí, ya lo verifiqué' })) return;
         if (txn) datos.txn = txn; else datos.monto = t.monto;
@@ -22199,7 +22200,7 @@
       return { cuentas: legado, stock: legado.length || stockPublico };
     }
 
-    const VERSION_SERVIDOR_NECESARIA = '2026-10-11h';   // la versión del servidor que necesita esta página
+    const VERSION_SERVIDOR_NECESARIA = '2026-10-11i';   // la versión del servidor que necesita esta página
     async function llamarBackend(accion, datos) {
       if (modoPruebaCliente) { const rs = backendSimulado(accion, datos || {}); if (rs) return rs; }
       const url = obtenerBackendUrl();
@@ -22222,7 +22223,7 @@
         resp = await fetch(url, {
           method: 'POST',
           headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-          body: JSON.stringify(Object.assign({ accion: accion, idToken: idToken }, datos || {})),
+          body: JSON.stringify(Object.assign({}, datos || {}, { accion: accion, idToken: idToken })),   // el nombre de la función siempre gana
           signal: ctrl ? ctrl.signal : undefined
         });
       } catch (e) {
