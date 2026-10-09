@@ -1019,6 +1019,7 @@
         <div id="resumenNetflixAdmin" class="grid grid-cols-2 sm:grid-cols-4 gap-2"></div>
 
         <div class="p-4 bg-gray-900 border border-gray-800 rounded-2xl space-y-3">
+          <div id="alqAutoCaja" class="mb-3"></div>
           <div class="flex flex-col sm:flex-row gap-2">
             <div class="relative flex-grow">
               <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-xs"></i>
@@ -2236,6 +2237,11 @@
                   <label class="block text-xs font-bold text-gray-300 mb-1">🌐 Dominio de la tienda</label>
                   <input type="text" id="ajusteDominioTienda" placeholder="epicstreaming.vip" class="w-full bg-gray-900 border border-gray-700 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500">
                   <p class="text-[10px] text-gray-500 mt-1">Lo usan el bot de WhatsApp, los enlaces cortos, los estados y los avisos. Se actualiza solo cuando abres el panel desde el dominio nuevo.</p>
+                </div>
+                <div class="mb-3">
+                  <label class="block text-xs font-bold text-gray-300 mb-1">📦 Máximo sobre pedido por cliente</label>
+                  <input type="number" id="ajusteMaxSobrePedido" min="1" max="1000" placeholder="50" class="w-full bg-gray-900 border border-gray-700 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500">
+                  <p class="text-[10px] text-gray-500 mt-1">Por producto. Cuenta lo que el cliente ya tiene en fila: si ya pidió 30, solo puede encargar 20 más. Aplica en la tienda y en WhatsApp.</p>
                 </div>
                 <div>
                   <label class="block text-[11px] text-gray-400 mb-1">WhatsApp Soporte (con código país)</label>
@@ -5974,6 +5980,7 @@
       document.getElementById('ajusteTelegramBotUrl').value = ajustesGeneralesConfig.telegramBotUrl || '';
       document.getElementById('ajusteWhatsappNumero').value = ajustesGeneralesConfig.whatsappNumero || '';
       { const e = document.getElementById('ajusteDominioTienda'); if (e) e.value = dominioActual(); }
+      { const e = document.getElementById('ajusteMaxSobrePedido'); if (e) e.value = maxSobrePedidoCliente(); }
       document.getElementById('ajusteClaveAmazon').value = ajustesGeneralesConfig.claveAmazon || '';
       document.getElementById('ajusteMinRecarga').value = ajustesGeneralesConfig.minRecarga || 5000;
       const inpPuntos = document.getElementById('ajustePuntosPorCuenta');
@@ -6006,6 +6013,7 @@
       const dataGuardar = {
         telegramBotUrl: nuevoBotUrl,
         whatsappNumero: nuevoWa,
+        maxSobrePedido: Math.max(1, Math.min(1000, parseInt((document.getElementById('ajusteMaxSobrePedido') || {}).value, 10) || 50)),
         dominioTienda: String((document.getElementById('ajusteDominioTienda') || {}).value || '').replace(/^https?:\/\//, '').replace(/\/.*$/, '').trim().toLowerCase() || dominioActual(),
         minRecarga: nuevoMinRec,
         adminEmailsStr: nuevoAdminEmails,
@@ -15094,7 +15102,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-12q';
+    const VERSION_PAGINA = '2026-10-12s';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261010_wacompra', fecha: '2026-10-10', titulo: 'Compra por WhatsApp 💬', mensaje: 'Ahora puedes **comprar con tu saldo desde nuestro WhatsApp**. Ve a tu perfil → **Mis datos → Comprar por WhatsApp**, vincula tu chat con el código y pide la autorización.' },
       { id: 'act_20261010_vista2', fecha: '2026-10-10', titulo: 'Nueva vista de la tienda ▦', mensaje: 'Ahora puedes ver los productos **en 2 columnas**: más productos en tu pantalla, con las **promos resaltadas** (🔥 campaña, ⚡ relámpago, 🎁 regalo). Toca uno y se abre su ficha para comprar. Cambia de vista con los íconos ☰ / ▦ arriba de las categorías.' },
@@ -17175,7 +17183,10 @@
       return { encargoActivo: on, encargoMax: mx, encargoCupo: cu };
     }
     // Sobre pedido: se puede pedir hasta el stock que hay (o 50 si está agotado). El servidor aplica la misma regla.
-    function datosEncargo(prod) { const sn = (snapshotInventario && snapshotInventario[prod.docId]) || {}, st = Math.max(0, Number(prod.stock) || 0); return { activo: (prod.encargoActivo !== undefined ? prod.encargoActivo : sn.encargoActivo) === true, max: st > 0 ? Math.min(1000, st) : 50 }; }
+    function datosEncargo(prod) { const sn = (snapshotInventario && snapshotInventario[prod.docId]) || {}, st = Math.max(0, Number(prod.stock) || 0); return { activo: (prod.encargoActivo !== undefined ? prod.encargoActivo : sn.encargoActivo) === true, max: Math.max(0, Math.min(maxSobrePedidoCliente(), st > 0 ? st : maxSobrePedidoCliente()) - sobrePedidoMioEnFila(prod.docId)) }; }
+    // Máximo sobre pedido por cliente y por producto (Ajustes Generales; 50 por defecto) y lo que ya tengo en fila
+    function maxSobrePedidoCliente() { const n = parseInt(ajustesGeneralesConfig && ajustesGeneralesConfig.maxSobrePedido, 10); return n > 0 ? Math.min(1000, n) : 50; }
+    function sobrePedidoMioEnFila(id) { try { const L = (typeof misPreordenes !== 'undefined' && Array.isArray(misPreordenes)) ? misPreordenes : []; return L.filter(x => x && x.productoId === id && (x.estado === 'pendiente' || x.estado === 'parcial')).reduce((t, x) => t + Math.max(0, (parseInt(x.cantidad, 10) || 0) - (parseInt(x.entregadas, 10) || 0)), 0); } catch (e) { return 0; } }
 
 
     // ==================== MARKETING: IMÁGENES Y MENSAJES ====================
@@ -19486,6 +19497,8 @@
 
     // ==================== NOVEDADES INTERNAS DEL PANEL (solo el equipo) ====================
     const ACTUALIZACIONES_INTERNAS = [
+      { fecha: '2026-10-12', titulo: '🔗 Alquileres conectados con la tienda', mensaje: 'En **Alquileres → 🔗 Venta automática** eliges el producto de cada plataforma (por ejemplo, Netflix → Pantalla de Netflix). Desde ahí los perfiles libres (sin cliente, con el PIN y la clave listos) quedan a la venta solos en la tienda y en WhatsApp, y al comprarlos se asignan solos al cliente con su fecha y su enlace de código. Arriba ves el resumen: a la venta, asignados, libres y por cambiar PIN. Además, en Android los botones de WhatsApp del panel abren **WhatsApp Business** (se cambia en 💬 WhatsApp).', ir: 'netflix' },
+      { fecha: '2026-10-12', titulo: '📦 Máximo 50 sobre pedido por cliente', mensaje: 'Sobre pedido ahora tiene un máximo **por cliente y por producto** (50 por defecto, ajustable en **Ajustes Generales → Máximo sobre pedido por cliente**). Cuenta lo que el cliente ya tiene en fila: si ya pidió 30, solo puede encargar 20 más. Antes el máximo era igual al stock disponible. Aplica en la tienda y en WhatsApp.', ir: 'ajustes' },
       { fecha: '2026-10-12', titulo: '🧠 El bot aprende más: preguntas frecuentes, apodos e informe semanal', mensaje: '**📚 Preguntas frecuentes:** si un cliente pregunta algo que está en tus preguntas frecuentes publicadas ("¿cómo recargo?", "¿sirve en Smart TV?"), el bot responde con tu texto exacto; con Gemini la reconoce aunque la escriban distinto. **🏷️ Apodos:** "las free" → Amazon Free; Gemini los aprende solo. **🧠 Enséñale al bot:** al lado de cada frase eliges si es una intención, un producto o una pregunta frecuente, y la sugerencia de Gemini ya viene marcada (🤖). **📊 Informe de los lunes** por Telegram: conversaciones, lo que aprendió, lo que no entendió, lo que pidieron agotado y las preguntas más hechas.', ir: 'whatsapp' },
       { fecha: '2026-10-12', titulo: '🌐 Dominio configurable (epicstreaming.vip)', mensaje: 'El dominio de la tienda ahora está en **Ajustes Generales → 🌐 Dominio de la tienda** y lo usan el bot, los enlaces cortos, los estados, las plantillas y los avisos de cortes. Cuando abras tu panel desde el dominio nuevo, se actualiza solo en todo el sistema. Mientras tanto todo sigue funcionando con el dominio actual.', ir: 'ajustes' },
       { fecha: '2026-10-12', titulo: '🛒 Prueba de compra sin falsas alarmas', mensaje: 'La prueba de compra simulada (no cobra) ahora solo corre con la pestaña visible y, si falla, se repite una vez antes de avisarte. Así no llegan alertas falsas por tener el panel en segundo plano.', ir: 'novedades' },
@@ -20834,6 +20847,21 @@
       const h = String(location.hostname || '').replace(/^www\./, '');
       return h && !/localhost|^127\.|^$|\.local$/.test(h) ? h : 'epicstreaming.vip';
     }
+    // En Android, los botones de WhatsApp del panel abren WhatsApp Business (o el normal, si lo eliges)
+    function waAppPreferida() { try { return localStorage.getItem('waAppPreferida') || 'business'; } catch (e) { return 'business'; } }
+    function intentWhatsApp(url) {
+      try { const u = new URL(url); let phone = '', text = '';
+        if (/wa\.me$/.test(u.hostname)) { phone = u.pathname.replace(/\D/g, ''); text = u.searchParams.get('text') || ''; }
+        else { phone = (u.searchParams.get('phone') || '').replace(/\D/g, ''); text = u.searchParams.get('text') || ''; }
+        return 'intent://send/?' + (phone ? 'phone=' + phone + '&' : '') + 'text=' + encodeURIComponent(text) + '#Intent;scheme=whatsapp;package=com.whatsapp.w4b;S.browser_fallback_url=' + encodeURIComponent(url) + ';end';
+      } catch (e) { return url; }
+    }
+    function usarWaBusiness() { return /Android/i.test(navigator.userAgent || '') && typeof esAdminSesionActual === 'function' && esAdminSesionActual() && waAppPreferida() === 'business'; }
+    (function () {
+      const abrirOriginal = window.open.bind(window), esWa = u => typeof u === 'string' && /^https:\/\/(wa\.me|api\.whatsapp\.com)\//.test(u);
+      window.open = function (u) { if (esWa(u) && usarWaBusiness()) { location.href = intentWhatsApp(u); return null; } return abrirOriginal.apply(window, arguments); };
+      document.addEventListener('click', ev => { const a = ev.target && ev.target.closest ? ev.target.closest('a[href]') : null; if (a && esWa(a.href) && usarWaBusiness()) { ev.preventDefault(); location.href = intentWhatsApp(a.href); } }, true);
+    })();
     function numeroWhatsappTienda() { return String((ajustesGeneralesConfig && ajustesGeneralesConfig.whatsappNumero) || '573043956726').replace(/\D/g, ''); }
     function pintarWaCliente() {
       const sec = document.getElementById('perfilSecDatos'); if (!sec || !currentUser || esStaffSesion()) return;
@@ -20971,6 +20999,8 @@
           <textarea id="waPresentacion" rows="3" maxlength="300" placeholder="Somos tu tienda de cuentas premium: *{marcas}* y más, con *entrega al instante* y *garantía*." class="${inp} mt-1.5">${escaparHtml(k.presentacion || '')}</textarea>
           <p class="text-[10px] text-gray-500 mt-2">Beneficios de registrarse (uno por línea, máximo 5):</p>
           <textarea id="waBeneficios" rows="3" maxlength="400" placeholder="Compras automáticas 24/7&#10;Recargas Bre-B que se acreditan solas&#10;Tus cuentas guardadas con garantía" class="${inp} mt-1">${escaparHtml(k.beneficios || '')}</textarea>
+          <div class="mt-4 p-2.5 rounded-xl bg-gray-800/60 border border-gray-700/60"><p class="text-[12px] font-black text-white">📲 Los botones de WhatsApp abren…</p><p class="text-[10px] text-gray-400">En este celular (Android). Para tus clientes no cambia nada.</p>
+            <div class="flex gap-1.5 mt-1.5"><button type="button" onclick="try{localStorage.setItem('waAppPreferida','business')}catch(e){};mostrarToast('📲 Abrirá WhatsApp Business');this.parentNode.querySelectorAll('button').forEach(b=>b.classList.remove('bg-emerald-500','text-black'));this.classList.add('bg-emerald-500','text-black')" class="flex-1 py-1.5 rounded-lg border border-gray-600 text-[11px] font-bold ${waAppPreferida() === 'business' ? 'bg-emerald-500 text-black' : 'text-gray-200'}">WhatsApp Business</button><button type="button" onclick="try{localStorage.setItem('waAppPreferida','normal')}catch(e){};mostrarToast('📲 Abrirá WhatsApp normal');this.parentNode.querySelectorAll('button').forEach(b=>b.classList.remove('bg-emerald-500','text-black'));this.classList.add('bg-emerald-500','text-black')" class="flex-1 py-1.5 rounded-lg border border-gray-600 text-[11px] font-bold ${waAppPreferida() === 'normal' ? 'bg-emerald-500 text-black' : 'text-gray-200'}">WhatsApp normal</button></div></div>
           <p class="text-[12px] font-black text-white mt-4">🎁 Beneficios de vincular el WhatsApp</p>
           <p class="text-[10px] text-gray-500">Se muestran cuando alguien sin vincular pregunta por su cuenta de la tienda y en el enlace para vincular. Uno por línea. El bot solo los anuncia: si agregas un descuento, aplícalo tú.</p>
           <textarea id="waBenefVinc" rows="5" maxlength="600" placeholder="⚡ Compras automáticas con tu saldo, 24/7&#10;📦 Tus cuentas al instante, aquí mismo&#10;🛡 Reportes de garantía en segundos&#10;🔔 Avisos de renovación y promos exclusivas&#10;🔁 &quot;Lo de siempre&quot;: repites tu pedido con una palabra" class="${inp} mt-1.5">${escaparHtml(k.benefVincular || '')}</textarea>
@@ -22362,7 +22392,7 @@
       return { cuentas: legado, stock: legado.length || stockPublico };
     }
 
-    const VERSION_SERVIDOR_NECESARIA = '2026-10-12c';   // la versión del servidor que necesita esta página
+    const VERSION_SERVIDOR_NECESARIA = '2026-10-12d';   // la versión del servidor que necesita esta página
     async function llamarBackend(accion, datos) {
       if (modoPruebaCliente) { const rs = backendSimulado(accion, datos || {}); if (rs) return rs; }
       const url = obtenerBackendUrl();
@@ -22709,6 +22739,64 @@
     let nfProximoManual = false;
     let netflixVincularId = null;
     let usuariosNetflixCache = null;
+
+    // ---------- Venta automática: los perfiles libres pasan solos al producto conectado ----------
+    var alqAutoCfg = { conexiones: {} }, unsubAlqAuto = null, alqSyncTimer = null, alqSyncando = false;
+    function perfilLibreParaVenta(a) { return a && a.estado !== 'asignado' && !a.enTienda && a.pinPendiente !== true && a.limpiezaPendiente !== true && !a.clienteUid; }
+    function escucharAlqAuto() {
+      if (unsubAlqAuto || !esAdminSesionActual()) return;
+      try { unsubAlqAuto = db.collection('configuracion').doc('alquiler_auto').onSnapshot(d => { alqAutoCfg = Object.assign({ conexiones: {} }, d.exists ? d.data() : {}); renderAlqAuto(); programarSyncAlqTienda(); }, () => {}); } catch (e) { /* nada */ }
+    }
+    function programarSyncAlqTienda() { clearTimeout(alqSyncTimer); alqSyncTimer = setTimeout(sincronizarAlqTienda, 1500); }
+    async function sincronizarAlqTienda() {
+      if (alqSyncando || !esAdminSesionActual()) return;
+      const con = (alqAutoCfg && alqAutoCfg.conexiones) || {}; if (!Object.keys(con).some(k => con[k] && con[k].productoId)) return;
+      alqSyncando = true;
+      try {
+        if ((await servidorTiene('alquiler_tienda')) !== true) return;   // con un servidor viejo no se asignaría al comprar
+        for (const plat of Object.keys(con)) {
+          const c = con[plat] || {}; if (!c.productoId || !catalogoUnificado.some(p => p.docId === c.productoId)) continue;
+          const lista = netflixCuentasAdmin.filter(a => plataformaNf(a).toLowerCase() === plat.toLowerCase() && perfilLibreParaVenta(a)).slice(0, 50);
+          if (!lista.length) continue;
+          const ahora = new Date().toISOString(), plan = [1, 2, 3].indexOf(parseInt(c.plan, 10)) !== -1 ? parseInt(c.plan, 10) : 1;
+          const lote = db.batch(); lista.forEach(a => lote.update(db.collection('alquileres').doc(a.id), { enTienda: true, productoTiendaId: c.productoId, planTienda: plan, enTiendaDesde: ahora, enTiendaAuto: true, actualizadoEl: ahora }));
+          await lote.commit();
+          lista.forEach(a => { a.enTienda = true; a.productoTiendaId = c.productoId; });   // en memoria también, para no repetirlos
+          // nunca dos veces el mismo perfil en el stock
+          try { await modificarCuentasProducto(c.productoId, l => { const ya = new Set(l.filter(x => x && typeof x === 'object' && x.alquilerId).map(x => x.alquilerId)); return l.concat(lista.filter(a => !ya.has(a.id)).map(a => ({ email: a.correo, pass: textoPerfilAlquiler(a), alquilerId: a.id, costo: 0 }))); }); }
+          catch (e) { const rev = db.batch(); lista.forEach(a => rev.update(db.collection('alquileres').doc(a.id), { enTienda: false, productoTiendaId: '', enTiendaAuto: false })); await rev.commit().catch(() => {}); throw e; }
+          console.info('Venta automática: ' + lista.length + ' perfiles de ' + plat + ' a la venta');
+        }
+      } catch (e) { console.warn('Venta automática de alquileres:', e); }
+      finally { alqSyncando = false; }
+    }
+    function renderAlqAuto() {
+      const c = document.getElementById('alqAutoCaja'); if (!c || !esAdminSesionActual()) return;
+      const plats = Array.from(new Set(netflixCuentasAdmin.map(a => plataformaNf(a)))).sort();
+      if (!plats.length) { c.innerHTML = ''; return; }
+      const prods = catalogoUnificado.filter(p => !p.esCombo).sort((x, y) => String(x.nombre).localeCompare(String(y.nombre), 'es'));
+      c.innerHTML = '<div class="p-3 rounded-2xl bg-gray-900/70 border border-emerald-500/30"><p class="text-[12px] font-black text-white">🔗 Venta automática</p><p class="text-[10px] text-gray-400 mb-2">Elige el producto de cada plataforma: los perfiles libres (sin cliente, con el PIN y la clave listos) quedan a la venta solos en la tienda y en WhatsApp. Al comprarlos, se asignan solos al cliente.</p>' +
+        plats.map(pl => {
+          const L = netflixCuentasAdmin.filter(a => plataformaNf(a) === pl), cfg = (alqAutoCfg.conexiones || {})[pl] || {};
+          const asig = L.filter(a => a.estado === 'asignado').length, venta = L.filter(a => a.enTienda).length, pin = L.filter(a => a.estado !== 'asignado' && !a.enTienda && (a.pinPendiente || a.limpiezaPendiente)).length, libres = L.filter(perfilLibreParaVenta).length;
+          const prod = prods.find(p => p.docId === cfg.productoId);
+          return `<div class="mt-2 p-2 rounded-xl bg-gray-800/60"><div class="flex items-center justify-between gap-2"><span class="text-[12px] font-bold text-white">${escaparHtml(pl)} <span class="text-[10px] font-normal text-gray-400">· ${L.length} perfiles</span></span>${prod ? '<span class="text-[10px] text-emerald-300 font-bold">✓ Automática</span>' : ''}</div>
+            <p class="text-[11px] text-gray-300 mt-0.5">🛒 <b class="text-emerald-300">${venta}</b> a la venta · 👤 <b>${asig}</b> asignados${libres ? ' · 🟢 <b>' + libres + '</b> libres' : ''}${pin ? ' · 🔑 <b class="text-amber-300">' + pin + '</b> por cambiar PIN/clave' : ''}</p>
+            <div class="flex gap-1.5 mt-1.5"><select id="alqAutoProd_${escaparHtml(pl).replace(/[^a-zA-Z0-9]/g, '_')}" data-plat="${escaparHtml(pl)}" class="min-w-0 flex-1 bg-gray-900 border border-gray-700 rounded-lg px-2 py-1.5 text-[11px] text-white"><option value="">No vender automáticamente</option>${prods.map(p => `<option value="${escaparHtml(p.docId)}" ${cfg.productoId === p.docId ? 'selected' : ''}>${escaparHtml(p.nombre)}</option>`).join('')}</select>
+            <select data-plan="${escaparHtml(pl)}" class="bg-gray-900 border border-gray-700 rounded-lg px-2 py-1.5 text-[11px] text-white">${[1, 2, 3].map(n => `<option value="${n}" ${parseInt(cfg.plan || 1, 10) === n ? 'selected' : ''}>${n === 1 ? '1 mes' : n + ' meses'}</option>`).join('')}</select>
+            <button type="button" onclick="guardarAlqAuto('${escaparJsAttr(pl)}')" class="px-3 rounded-lg bg-emerald-500 text-black font-black text-[11px]">Guardar</button></div></div>`;
+        }).join('') + '</div>';
+    }
+    async function guardarAlqAuto(pl) {
+      const sel = Array.from(document.querySelectorAll('#alqAutoCaja select[data-plat]')).find(x => x.dataset.plat === pl), pla = Array.from(document.querySelectorAll('#alqAutoCaja select[data-plan]')).find(x => x.dataset.plan === pl);
+      const productoId = sel ? sel.value : '', plan = pla ? parseInt(pla.value, 10) || 1 : 1;
+      if (productoId && (await servidorTiene('alquiler_tienda')) !== true) { alert(textoServidorAntiguo('alquiler_tienda')); return; }
+      try { const con = Object.assign({}, alqAutoCfg.conexiones || {}); con[pl] = { productoId, plan, actualizadoEl: new Date().toISOString() };
+        await db.collection('configuracion').doc('alquiler_auto').set({ conexiones: con }, { merge: true });
+        alqAutoCfg = Object.assign({}, alqAutoCfg, { conexiones: con }); renderAlqAuto(); sincronizarAlqTienda();
+        mostrarToast(productoId ? '🔗 Listo: los perfiles libres de ' + pl + ' quedan a la venta solos' : 'Venta automática apagada para ' + pl);
+      } catch (e) { alert(e.message); }
+    }
 
     // ---------- Plataformas ----------
     const PLATAFORMAS_ALQ = ['Netflix', 'Disney+', 'Max', 'Prime Video', 'Spotify', 'YouTube Premium', 'Crunchyroll'];
@@ -23272,6 +23360,7 @@
           snap.forEach(d => netflixCuentasAdmin.push(Object.assign({ id: d.id }, d.data())));
           actualizarBadgeNetflixAdmin();
           renderizarGestionNetflix();
+          try { escucharAlqAuto(); renderAlqAuto(); programarSyncAlqTienda(); } catch (e) { /* nada */ }
           try { const sc = document.getElementById('adminSecCortes'); if (sc && !sc.classList.contains('hidden')) renderizarCortes(); else actualizarBadgeCortes(); } catch (e) { /* nada */ }
           const sec = document.getElementById('adminSecNetflix');
           if (sec && !sec.classList.contains('hidden')) renderizarNetflixAdmin();
