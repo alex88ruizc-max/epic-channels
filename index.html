@@ -3071,6 +3071,11 @@
             <div class="flex gap-2"><input type="number" id="editCreditoPago" min="0" step="1000" placeholder="Monto" class="min-w-0 flex-grow bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"><button type="button" onclick="creditoRegistrarPago()" class="shrink-0 px-3 py-2 rounded-xl bg-gray-800 hover:bg-gray-700 border border-gray-700 text-gray-200 font-bold text-[11px]">Registrar</button></div>
           </div>
           <input type="text" id="editCreditoNota" maxlength="120" placeholder="Nota (opcional): ej. pagó en efectivo" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-[11px] text-white focus:outline-none">
+          <div class="p-2.5 rounded-xl bg-gray-900/70 border border-emerald-500/40 space-y-2">
+            <label class="flex items-center justify-between gap-3 cursor-pointer"><span class="min-w-0"><span class="block text-[12px] font-black text-white">📲 Post-pago por WhatsApp</span><span class="block text-[10px] text-gray-400">Pide por WhatsApp (ve sus productos VIP), recibe al instante y paga después con su cupo. Para volver a pedir debe pagar lo anterior: el bot se lo cobra con el valor exacto por Bre-B.</span></span><input type="checkbox" id="editClientePostpago" class="accent-emerald-500 w-5 h-5 shrink-0"></label>
+            <label class="flex items-center justify-between gap-2 text-[11px] text-gray-300">Máximo de cuentas por pedido<input type="number" id="editClientePostpagoMax" min="1" max="100" placeholder="5" class="w-20 bg-gray-800 border border-gray-700 rounded-lg px-2 py-1.5 text-xs text-white text-right focus:outline-none"></label>
+            <p id="editClientePostpagoAviso" class="hidden text-[10px] text-amber-300">⚠️ Ponle un cupo de crédito arriba: sin cupo no puede comprar a crédito.</p>
+          </div>
           <details class="rounded-xl bg-gray-900/60 border border-gray-800"><summary class="cursor-pointer px-3 py-2 text-[11px] font-bold text-gray-300">Historial del crédito</summary><div id="editCreditoHistorial" class="px-3 pb-3 space-y-1.5 text-[11px]"></div></details>
         </div>
         <div class="solo-admin">
@@ -9492,6 +9497,8 @@
           permisos: Array.isArray(d.permisos_subir_stock) ? d.permisos_subir_stock : []
         };
         try { const wn = document.getElementById('editClienteWaNombre'); if (wn) wn.value = d.waNombreChat || ''; editClienteOriginal.waNombreChat = d.waNombreChat || ''; } catch (x) { /* nada */ }
+        try { const pp = document.getElementById('editClientePostpago'), pm = document.getElementById('editClientePostpagoMax'); if (pp) pp.checked = d.waPostpago === true; if (pm) pm.value = d.waPostpagoMax ? String(d.waPostpagoMax) : ''; editClienteOriginal.waPostpago = d.waPostpago === true; editClienteOriginal.waPostpagoMax = d.waPostpagoMax || 0;
+          const av = document.getElementById('editClientePostpagoAviso'); if (av) av.classList.toggle('hidden', !(d.waPostpago === true && !(Number(d.cupoCredito) > 0))); } catch (x) { /* nada */ }
         try { const cw = document.getElementById('editClienteWaCompra'); if (cw) cw.checked = d.waCompraAutorizada === true; const iw = document.getElementById('editClienteWaInfo'); if (iw) iw.textContent = d.waVinculado ? 'WhatsApp vinculado: ' + d.waVinculado : 'Aún no ha vinculado su WhatsApp.'; } catch (x) { /* nada */ }
         const selRolEd = document.getElementById('editClienteRol');
         editClienteOriginal.tipoCuenta = String(d.tipoCuenta || '');
@@ -9628,6 +9635,12 @@
             cambios.permisos_subir_stock = []; cambios.puede_subir_stock = false;
           }
           try { const cw = document.getElementById('editClienteWaCompra'); if (cw && orig.cargado && cw.checked !== (orig.waCompra === true)) { cambios.waCompraAutorizada = cw.checked; if (cw.checked) { try { await notificarUsuarioPanel(uid, 'anuncio', '💬 Ya puedes comprar por WhatsApp', 'Escribe a nuestro WhatsApp, elige la opción 4 y compra con tu saldo.'); } catch (x) { /* opcional */ } } } } catch (x) { /* nada */ }
+      try { const pp = document.getElementById('editClientePostpago'), pm = document.getElementById('editClientePostpagoMax'); if (pp && orig.cargado) {
+          const on = pp.checked, mx = Math.max(1, Math.min(100, parseInt(pm && pm.value, 10) || 5));
+          if (on !== (orig.waPostpago === true)) { cambios.waPostpago = on; if (on) { try { await notificarUsuarioPanel(uid, 'anuncio', '📲 Ya puedes pedir por WhatsApp y pagar después', 'Escribe a nuestro WhatsApp, elige tus cuentas y págalas después con tu crédito.'); } catch (x) { /* opcional */ } } }
+          if (on && mx !== (Number(orig.waPostpagoMax) || 0)) cambios.waPostpagoMax = mx;
+          if (on && !(Number((document.getElementById('editClienteCupo') || {}).value) > 0) && !(Number(creditoEditando && creditoEditando.cupo) > 0)) alert('Ojo: activaste el post-pago pero el cliente no tiene cupo de crédito. Ponle un cupo en la caja de Crédito.');
+        } } catch (x) { /* nada */ }
       try { const wn = document.getElementById('editClienteWaNombre'); if (wn && orig.cargado) { const v = String(wn.value || '').trim().slice(0, 60); if (v !== (orig.waNombreChat || '')) { cambios.waNombreChat = v; cambios.waNombreChatN = normalizarNombreWa(v); } } } catch (x) { /* nada */ }
       if (Object.keys(cambios).length) await db.collection('usuarios').doc(uid).set(cambios, { merge: true });
         }
@@ -15071,7 +15084,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-11f';
+    const VERSION_PAGINA = '2026-10-11h';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261010_wacompra', fecha: '2026-10-10', titulo: 'Compra por WhatsApp 💬', mensaje: 'Ahora puedes **comprar con tu saldo desde nuestro WhatsApp**. Ve a tu perfil → **Mis datos → Comprar por WhatsApp**, vincula tu chat con el código y pide la autorización.' },
       { id: 'act_20261010_vista2', fecha: '2026-10-10', titulo: 'Nueva vista de la tienda ▦', mensaje: 'Ahora puedes ver los productos **en 2 columnas**: más productos en tu pantalla, con las **promos resaltadas** (🔥 campaña, ⚡ relámpago, 🎁 regalo). Toca uno y se abre su ficha para comprar. Cambia de vista con los íconos ☰ / ▦ arriba de las categorías.' },
@@ -19463,6 +19476,8 @@
 
     // ==================== NOVEDADES INTERNAS DEL PANEL (solo el equipo) ====================
     const ACTUALIZACIONES_INTERNAS = [
+      { fecha: '2026-10-11', titulo: '📲 Post-pago por WhatsApp', mensaje: 'En la **ficha del cliente → caja de Crédito → "📲 Post-pago por WhatsApp"** lo activas con su máximo de cuentas por pedido (por defecto 5) y su cupo. El cliente pide por WhatsApp (ve sus productos VIP habilitados), confirma con SI y recibe al instante; queda como deuda. **Para volver a pedir debe pagar lo anterior:** el bot le genera el valor exacto por Bre-B y, al escribir "listo", se abona la deuda y se le entrega el pedido nuevo. "pagar" le da el valor de su deuda en cualquier momento. Recordatorio diario en su campana y Telegram.', ir: 'usuarios' },
+      { fecha: '2026-10-11', titulo: '💬 El bot retoma la venta', mensaje: 'Si el cliente dice **"está caro"**, "¿hay descuento?" o "más barato", el bot responde con empatía y opciones reales para pagar menos (la alternativa más económica con cuánto ahorra, el precio por cantidad y las promos de hoy) y retoma el producto que estaba mirando; te avisa por Telegram (una vez al día por cliente). Si pregunta **"¿quién hizo esta página?"** o "¿es confiable?", responde con confianza y retoma. Si no entiende pero estaba mirando algo: *"¿Seguimos con tus 5 Prime Local?"*. Después de un pedido manual el bot **sigue atendiendo**; la foto del comprobante o "ya pagué" recibe "✅ ¡Recibido!" y te llega aviso a Telegram. Las promos de regalo solo se anuncian si hay stock para entregarlas.', ir: 'whatsapp' },
       { fecha: '2026-10-11', titulo: '🟢 Cinta "En vivo" también para visitantes', mensaje: 'Quien entra sin sesión ahora ve la cinta con los productos y su stock en vivo (sin precios: siguen siendo solo para clientes). Al tocar un producto se abre "Crear cuenta". Revisión en PC: la cinta se ve en todos los tamaños con sesión, las 24 secciones del panel, las direcciones (#tienda, #admin/…), el perfil y los enlaces funcionan bien.', ir: 'novedades' },
       { fecha: '2026-10-11', titulo: '⚡ Compra automática por WhatsApp más fácil', mensaje: '**Autorizar de forma automática:** en Panel → 💬 WhatsApp → Funciones; encendido, todo cliente que conecte su WhatsApp queda autorizado (si a alguno le quitas el permiso, se respeta). **Enlace mágico:** el cliente escribe "vincular" (o elige "Ya estoy registrado") y el bot le manda un enlace: lo toca, entra a la tienda y queda conectado. **"autorizar"** en el chat pide la autorización por él. En la **ficha del cliente**: "📲 Enviarle enlace por WhatsApp" (le abre tu WhatsApp con el mensaje listo; dura 7 días) y "Nombre con que lo tienes guardado" para que el asistente lo reconozca sin que haga nada. El bot invita a comprar automático a quien aún no lo hace.', ir: 'whatsapp' },
       { fecha: '2026-10-11', titulo: '🛒 Ventas a medias y 🔄 renovaciones por WhatsApp', mensaje: '**Ventas a medias:** si alguien recibe una oferta por WhatsApp y no termina, la próxima vez que escriba (48 h) el bot le recuerda *"Te quedó pendiente: 10 Prime · $29.000 · 1 Terminar mi compra"*; si está registrado, a la hora le llega también a su campana y a su Telegram. **Renovaciones:** el aviso de "por vencer" ahora también llega por Telegram, y el bot muestra *"🔄 Por vencer"* en el saludo: escribiendo **renovar** la renueva ahí mismo con su saldo (o con el pago exacto por Bre-B + "listo").', ir: 'whatsapp' },
@@ -20680,7 +20695,7 @@
 
 
     // ==================== COMPROBAR TODO (estado de la página, servidor, reglas y tareas) ====================
-    const VERSION_REGLAS_ESPERADA = '2026-10-11a';
+    const VERSION_REGLAS_ESPERADA = '2026-10-11b';
     async function abrirComprobarTodo() {
       let m = document.getElementById('modalComprobarTodo');
       if (!m) { m = document.createElement('div'); m.id = 'modalComprobarTodo'; m.className = 'fixed inset-0 z-[96] hidden items-center justify-center p-4 bg-black/75 backdrop-blur-sm'; m.onclick = ev => { if (ev.target === m) cerrarComprobarTodo(); }; document.body.appendChild(m); }
@@ -21916,7 +21931,7 @@
       return { cuentas: legado, stock: legado.length || stockPublico };
     }
 
-    const VERSION_SERVIDOR_NECESARIA = '2026-10-10s';   // la versión del servidor que necesita esta página
+    const VERSION_SERVIDOR_NECESARIA = '2026-10-10v';   // la versión del servidor que necesita esta página
     async function llamarBackend(accion, datos) {
       if (modoPruebaCliente) { const rs = backendSimulado(accion, datos || {}); if (rs) return rs; }
       const url = obtenerBackendUrl();
