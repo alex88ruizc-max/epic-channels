@@ -1196,6 +1196,12 @@
 
       <!-- TAB 2: USUARIOS REGISTRADOS Y PERMISOS -->
       <div id="adminSecUsuarios" class="hidden space-y-6">
+        <div id="vigilanciaCaja" class="solo-admin p-4 bg-gray-900 border border-rose-500/40 rounded-2xl">
+          <div class="flex items-center justify-between gap-3"><span><span class="block text-sm font-black text-white">🚨 Vigilancia</span><span class="block text-[11px] text-gray-400">Cada hora el servidor revisa si a alguien le subió o bajó el saldo sin un movimiento que lo explique, y cada día: reclamos excesivos, el mismo WhatsApp en varias cuentas y recargas rechazadas seguidas. Te avisa por Telegram.</span></span><button type="button" onclick="cargarAlertasVigilancia()" class="text-[11px] text-rose-300 underline shrink-0">Ver alertas</button></div>
+          <button type="button" onclick="revisarSaldosTodos()" class="mt-3 w-full py-2.5 rounded-xl bg-rose-500 hover:bg-rose-400 text-white font-black text-sm">🔍 Revisar saldos de todos</button>
+          <div id="vigResultado" class="mt-2 space-y-1.5"></div>
+          <div id="vigAlertas" class="mt-2 space-y-1.5"></div>
+        </div>
         <div id="adminReferidosCaja" class="solo-admin bg-gray-900 border border-sky-500/30 rounded-2xl overflow-hidden">
           <button type="button" onclick="document.getElementById('refCuerpo').classList.toggle('hidden')" class="w-full text-left p-4 flex items-center gap-3">
             <span class="w-9 h-9 shrink-0 rounded-xl bg-sky-500/15 text-sky-300 flex items-center justify-center"><i class="fa-solid fa-user-group"></i></span>
@@ -1918,6 +1924,7 @@
           <p class="text-xs text-gray-400">Aprueba lo que suben, ponles el costo por cuenta y márcalos como saldados cuando les pagues (el pago lo haces por aparte).</p>
           <p class="text-[11px] text-gray-500 mt-2">Para crear un proveedor: <b class="text-gray-300">Usuarios Registrados → Crear usuario</b> con el rol "Proveedor", y luego, con su botón <b class="text-gray-300">Editar</b>, marca qué productos puede subir.</p>
         </div>
+        <div id="provAutoCaja" class="solo-admin p-4 bg-gray-900 border border-emerald-500/40 rounded-2xl"></div>
         <div class="solo-admin bg-gray-900 border border-yellow-400/40 rounded-2xl overflow-hidden">
           <button type="button" onclick="document.getElementById('prCuerpo').classList.toggle('hidden')" class="w-full text-left p-4 flex items-center gap-3">
             <span class="w-9 h-9 shrink-0 rounded-xl bg-yellow-400/15 text-yellow-300 flex items-center justify-center"><i class="fa-solid fa-crown"></i></span>
@@ -2525,6 +2532,10 @@
               </div>
             </div>
 
+            <div class="bg-pink-500/5 border border-pink-500/30 p-3 sm:p-4 rounded-xl mb-6 flex items-center justify-between gap-3">
+              <div class="min-w-0"><span class="text-[11px] text-gray-400 block mb-1">🎁 Saldo regalado (pasivo)</span><span class="text-[10px] text-gray-500 block">Saldo que regalaste: no entró dinero. Se resta de tu ganancia, porque lo pagas con cuentas.</span></div>
+              <span id="repRegalado" class="text-base sm:text-xl font-black text-pink-300 shrink-0">$0 COP</span>
+            </div>
             <!-- Desglose por Producto con Ranking y Insignia HOT -->
             <div class="bg-gray-800/50 border border-gray-700/50 rounded-xl p-4 mb-6">
               <h4 class="text-xs font-bold text-gray-300 uppercase tracking-wider mb-3">Ranking y Desglose por Producto</h4>
@@ -2856,6 +2867,10 @@
           <label class="flex items-center justify-between gap-3 p-3 rounded-xl bg-gray-800/60 border border-gray-700/60 cursor-pointer">
             <span class="min-w-0"><span class="block text-xs font-bold text-white">Visible en la tienda</span><span class="block text-[10px] text-gray-400">Si lo apagas, los clientes no lo ven ni lo pueden comprar.</span></span>
             <input type="checkbox" id="editProdActivo" class="accent-emerald-500 w-5 h-5 shrink-0">
+          </label>
+          <label class="flex items-center justify-between gap-3 p-3 rounded-xl bg-gray-800/60 border border-gray-700/60 cursor-pointer">
+            <span class="min-w-0"><span class="block text-xs font-bold text-white">📧 Solo correo y clave de la plataforma</span><span class="block text-[10px] text-gray-400">Para cuentas que no llevan clave del correo (por ejemplo, Prime Video con garantía). Se entregan con su correo y su contraseña, sin "clave del correo" ni clave master. Carga el stock como correo:clave.</span></span>
+            <input type="checkbox" id="editProdSinClaveCorreo" class="accent-sky-500 w-5 h-5 shrink-0">
           </label>
           <label id="editProdFilaVip" class="flex items-center justify-between gap-3 p-3 rounded-xl bg-gray-800/60 border border-gray-700/60 cursor-pointer">
             <span class="min-w-0"><span class="block text-xs font-bold text-white">Producto VIP</span><span class="block text-[10px] text-gray-400">Solo lo ven los clientes a los que se lo autorizas.</span></span>
@@ -5726,7 +5741,13 @@
         });
 
         historialCompras.sort((a, b) => b.ts - a.ts);
-        const gananciaNeta = totalDinero - totalGastos;
+        // Regalos de saldo del período: pasivo (no entró dinero) que se resta de la ganancia
+        let regalado = 0;
+        try { const sr = await db.collection('ajustes_saldo').where('tipo', '==', 'regalo').get();
+          sr.forEach(d => { const x = d.data() || {}, f = new Date(x.fecha); if (isNaN(f)) return; const fs = obtenerFechaLocalStr(f);
+            const ok = tipo === 'hoy' ? fs === hoyStr : tipo === 'dia' ? fs === filtroValor : tipo === 'mes' ? fs.slice(0, 7) === filtroValor : true; if (ok) regalado += Number(x.diferencia) || 0; }); } catch (e) { /* sin permiso o sin datos */ }
+        { const er = document.getElementById('repRegalado'); if (er) er.innerText = `${formatoCOP(regalado)} COP`; }
+        const gananciaNeta = totalDinero - totalGastos - regalado;
         const margen = totalDinero > 0 ? Math.round((gananciaNeta / totalDinero) * 1000) / 10 : 0;
 
         document.getElementById('repTotalRecaudado').innerText = `${formatoCOP(totalDinero)} COP`;
@@ -6158,8 +6179,16 @@
     function obtenerClaveMaster() { return claveMasterRuntime || ajustesGeneralesConfig.claveAmazon || ''; }
 
     // La contraseña máster solo aplica a Prime Video / Amazon; los demás productos usan la contraseña de cada cuenta
+    // Productos marcados "solo correo y clave de la plataforma": se entregan como una cuenta normal (sin clave del correo ni clave master)
+    function productoSinClaveCorreo(prod) {
+      if (!prod) return false; if (prod.sinClaveCorreo === true) return true;
+      const pid = prod.docId || prod.productoId || prod.id; if (!pid) return false;
+      const p = (typeof catalogoUnificado !== 'undefined' && catalogoUnificado || []).find(x => x.docId === pid);
+      return !!((p && p.sinClaveCorreo === true) || (typeof snapshotInventario !== 'undefined' && snapshotInventario && snapshotInventario[pid] && snapshotInventario[pid].sinClaveCorreo === true));
+    }
     function esProductoPrime(prod) {
       if (!prod) return false;
+      if (productoSinClaveCorreo(prod)) return false;
       return prod.esAmazon === true || /prime\s*video|amazon/i.test(String(prod.nombre || prod.productoNombre || ''));
     }
     function resolverClaveAccesoCuentas(cuentas, prodInfo) {
@@ -8408,7 +8437,7 @@
             imagenUrl: data.imagenUrl || '',
             esVip: data.esVip === true,
             tipoGarantia: data.tipoGarantia || '',
-            esAmazon: data.nombre.toLowerCase().includes('amazon'),
+            esAmazon: data.nombre.toLowerCase().includes('amazon') && data.sinClaveCorreo !== true, sinClaveCorreo: data.sinClaveCorreo === true,
             activo: data.activo !== false
           });
         }
@@ -9124,6 +9153,7 @@
       const personalizado = esProductoPersonalizado(prod.docId);
       const chkAct = document.getElementById('editProdActivo'); if (chkAct) chkAct.checked = prod.activo !== false;
       const chkVip = document.getElementById('editProdVip'); if (chkVip) chkVip.checked = prod.esVip === true;
+      { const e = document.getElementById('editProdSinClaveCorreo'); if (e) e.checked = productoSinClaveCorreo(prod); }
       const filaVip = document.getElementById('editProdFilaVip'); if (filaVip) filaVip.classList.toggle('hidden', !personalizado);
       const bElim = document.getElementById('btnEditProdEliminar'); if (bElim) bElim.classList.toggle('hidden', !personalizado);
       const esComboE = prod.esCombo === true;
@@ -9201,6 +9231,7 @@
 
         const chkAct = document.getElementById('editProdActivo');
         if (chkAct) updateData.activo = chkAct.checked;
+        { const e = document.getElementById('editProdSinClaveCorreo'); if (e) updateData.sinClaveCorreo = e.checked; }
         if (esProductoPersonalizado(docId)) { const chkVip = document.getElementById('editProdVip'); if (chkVip) updateData.esVip = chkVip.checked; }
 
         // Stock compartido: necesita el servidor actualizado (es quien entrega las cuentas)
@@ -9424,6 +9455,7 @@
                     <div class="flex items-center gap-1">
                       <input type="number" id="inputSaldo_${uid}" placeholder="$ Monto" class="w-20 bg-gray-800 border border-gray-700 rounded px-1.5 py-1 text-xs text-white">
                       <button onclick="adminCargarSaldo('${uid}')" class="px-2 py-1 bg-emerald-500 hover:bg-emerald-400 text-black font-bold rounded text-xs" title="Sumar Saldo">+</button>
+                      <label class="flex items-center gap-0.5 text-[10px] text-pink-300 cursor-pointer" title="Es un regalo: no cuenta como dinero recibido (queda como pasivo)"><input type="checkbox" id="chkRegalo_${uid}" class="accent-pink-500">🎁</label>
                     </div>
                   </div>
                 </td>
@@ -9972,6 +10004,17 @@
       if (!monto || monto <= 0) { alert("Monto inválido"); return; }
       const userRef = db.collection('usuarios').doc(uid);
       let abonoCarga = 0;
+      const esRegalo = !!(document.getElementById(`chkRegalo_${uid}`) || {}).checked;
+      if (esRegalo) {   // regalo: suma al saldo, pero no es dinero recibido (queda como pasivo en el reporte)
+        if (!await confirmarModal(`¿Regalarle ${formatoCOP(monto)} de saldo?\n\nNo cuenta como dinero recibido: queda como pasivo en tu reporte financiero.`, { textoAceptar: 'Sí, regalar' })) return;
+        try { await db.runTransaction(async (t) => { const uDoc = await t.get(userRef), du = uDoc.exists ? (uDoc.data() || {}) : {}, antes = Number(du.saldo) || 0, despues = antes + Number(monto);
+            t.update(userRef, { saldo: despues, notificaciones: agregarNotifALista(du.notificaciones, crearNotificacionPersonal('saldo', `🎁 Te regalamos ${formatoCOP(monto)}`, `Tu nuevo saldo es ${formatoCOP(despues)} COP. ¡Disfrútalo!`)) });
+            t.set(db.collection('ajustes_saldo').doc(), { uid, email: du.email || '', antes, despues, diferencia: Number(monto), motivo: '🎁 Regalo de saldo', tipo: 'regalo', por: currentUser.email, fecha: new Date().toISOString() }); });
+          const i0 = document.getElementById(`inputSaldo_${uid}`); if (i0) i0.value = ''; const c0 = document.getElementById(`chkRegalo_${uid}`); if (c0) c0.checked = false;
+          mostrarToast(`🎁 Regalo de ${formatoCOP(monto)} acreditado (queda como pasivo)`);
+        } catch (e) { alert(e.message); }
+        return;
+      }
       await db.runTransaction(async (t) => {
         const uDoc = await t.get(userRef);
         const datosU = uDoc.exists ? (uDoc.data() || {}) : {};
@@ -9989,6 +10032,9 @@
           t.set(db.collection('creditos_movimientos').doc(), datosMovimientoCredito(uid, datosU.email, 'abono', rep.abono, rep.abono + rep.deudaNueva, rep.deudaNueva, 'saldo cargado por el administrador'));
         }
         t.update(userRef, cambios);
+        // queda registrada como recarga: la auditoría de saldo y tus reportes la cuentan
+        t.set(db.collection('recargas').doc(), { usuarioId: uid, usuarioEmail: datosU.email || '', monto: Number(monto) || 0, bono: bonoRec || 0, abonoCredito: rep.abono || 0, estado: 'aprobado',
+          metodo: 'Carga manual del administrador', fecha: new Date().toISOString(), aprobadoPor: currentUser.email, cargaManual: true });
         abonoCarga = rep.abono;
       });
       const inpMonto = document.getElementById(`inputSaldo_${uid}`);
@@ -11030,8 +11076,66 @@
           lotesProveedores = [];
           snap.forEach(d => lotesProveedores.push(Object.assign({ id: d.id }, d.data())));
           renderizarAdminProveedores();
+          try { escucharProvAuto(); renderProvAuto(); programarProvAuto(); } catch (e) { /* nada */ }
         }, err => console.warn('Lotes de proveedores no disponibles:', err));
       } catch (e) { console.warn(e); }
+    }
+
+    // ===== ⚡ Autorización automática de stock: tú eliges de quién, qué productos y hasta cuántas por lote =====
+    var provAutoCfg = { activo: false, proveedores: {}, productos: {}, todosProv: false, todosProd: false, maxLote: 50 }, unsubProvAuto = null, provAutoTimer = null, provAutoCorriendo = false;
+    function escucharProvAuto() {
+      if (unsubProvAuto || !esAdminSesionActual()) return;
+      try { unsubProvAuto = db.collection('configuracion').doc('proveedores_auto').onSnapshot(d => { provAutoCfg = Object.assign({ activo: false, proveedores: {}, productos: {}, maxLote: 50 }, d.exists ? d.data() : {}); renderProvAuto(); programarProvAuto(); }, () => {}); } catch (e) { /* nada */ }
+    }
+    function costoAutoLote(l) {
+      if (l.pedidoId) { const pd = (pedidosReseller || []).find(x => x.id === l.pedidoId); return pd ? Number(pd.precioUnitario || 0) : null; }
+      const previos = lotesProveedores.filter(x => x.proveedorUid === l.proveedorUid && x.productoId === l.productoId && x.estado === 'aprobado' && x.costoUnitario !== undefined).sort((a, b) => String(b.aprobadoEl).localeCompare(String(a.aprobadoEl)));
+      return previos.length ? Number(previos[0].costoUnitario) : null;
+    }
+    // Por qué un lote pendiente se autoriza solo o queda para ti
+    function motivoAutoLote(l) {
+      const c = provAutoCfg || {};
+      if (!c.activo) return { ok: false, motivo: '' };
+      if (!c.todosProv && !(c.proveedores || {})[l.proveedorUid]) return { ok: false, motivo: 'proveedor no marcado' };
+      if (!c.todosProd && !(c.productos || {})[l.productoId]) return { ok: false, motivo: 'producto no marcado' };
+      const mx = parseInt(c.maxLote, 10) || 0; if (mx > 0 && (parseInt(l.cantidad, 10) || 0) > mx) return { ok: false, motivo: 'lote de más de ' + mx };
+      const costo = costoAutoLote(l); if (costo === null || !isFinite(costo)) return { ok: false, motivo: 'nunca le aprobaste este producto (sin costo)' };
+      return { ok: true, costo };
+    }
+    function programarProvAuto() { clearTimeout(provAutoTimer); provAutoTimer = setTimeout(procesarProvAuto, 2000); }
+    async function procesarProvAuto() {
+      if (provAutoCorriendo || !esAdminSesionActual() || !(provAutoCfg && provAutoCfg.activo)) return;
+      provAutoCorriendo = true;
+      try {
+        const pend = lotesProveedores.filter(l => l.estado === 'pendiente').sort((a, b) => String(a.creadoEl).localeCompare(String(b.creadoEl)));
+        for (const l of pend) { const m = motivoAutoLote(l); if (!m.ok) continue; l.estado = 'procesando'; await aprobarLoteProveedor({ auto: true, lote: Object.assign({}, l, { estado: 'pendiente' }), costo: m.costo }); }
+      } catch (e) { console.warn('Autorización automática:', e); }
+      finally { provAutoCorriendo = false; }
+    }
+    function renderProvAuto() {
+      const c = document.getElementById('provAutoCaja'); if (!c || !esAdminSesionActual()) return;
+      const cfg = provAutoCfg || {}, provs = {}; lotesProveedores.forEach(l => { if (l.proveedorUid) provs[l.proveedorUid] = l.proveedorNombre || l.proveedorEmail || l.proveedorUid; });
+      const prods = catalogoUnificado.filter(p => !p.esCombo).sort((x, y) => String(x.nombre).localeCompare(String(y.nombre), 'es'));
+      const chip = (grupo, id, nombre, on) => `<label class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-full border ${on ? 'border-emerald-400 bg-emerald-500/15 text-emerald-200' : 'border-gray-700 bg-gray-800 text-gray-300'} text-[11px] mr-1.5 mb-1.5 cursor-pointer"><input type="checkbox" data-pa="${grupo}" value="${escaparHtml(id)}" ${on ? 'checked' : ''} class="accent-emerald-500">${escaparHtml(nombre)}</label>`;
+      const pend = lotesProveedores.filter(l => l.estado === 'pendiente'), quedan = pend.map(l => ({ l, m: motivoAutoLote(l) })).filter(x => !x.m.ok && x.m.motivo);
+      c.innerHTML = `<div class="flex items-center justify-between gap-3"><span><span class="block text-sm font-black text-white">⚡ Autorización automática de stock</span><span class="block text-[11px] text-gray-400">Lo que elijas se aprueba solo apenas el proveedor lo suba, con el mismo proceso que tu botón: las cuentas repetidas no entran ni se pagan y la deuda queda anotada.</span></span><input type="checkbox" id="paActivo" ${cfg.activo ? 'checked' : ''} class="accent-emerald-500 w-6 h-6 shrink-0"></div>
+        <p class="text-[12px] font-bold text-white mt-3">¿De quién?</p>
+        <label class="inline-flex items-center gap-1.5 text-[11px] text-gray-200 mb-1.5"><input type="checkbox" id="paTodosProv" ${cfg.todosProv ? 'checked' : ''} class="accent-emerald-500"> Todos los proveedores</label>
+        <div>${Object.keys(provs).length ? Object.keys(provs).map(u => chip('prov', u, provs[u], !!(cfg.proveedores || {})[u])).join('') : '<span class="text-[11px] text-gray-500">Aparecen cuando te envían su primer lote.</span>'}</div>
+        <p class="text-[12px] font-bold text-white mt-2">¿Qué productos?</p>
+        <label class="inline-flex items-center gap-1.5 text-[11px] text-gray-200 mb-1.5"><input type="checkbox" id="paTodosProd" ${cfg.todosProd ? 'checked' : ''} class="accent-emerald-500"> Todos los productos</label>
+        <div class="max-h-40 overflow-y-auto">${prods.map(p => chip('prod', p.docId, p.nombre, !!(cfg.productos || {})[p.docId])).join('')}</div>
+        <label class="flex items-center justify-between gap-3 mt-2 text-[12px] text-white font-bold">Máximo por lote <span class="flex items-center gap-1.5"><input type="number" id="paMax" min="0" value="${parseInt(cfg.maxLote, 10) >= 0 ? parseInt(cfg.maxLote, 10) : 50}" class="w-20 bg-gray-800 border border-gray-700 rounded-lg px-2 py-1.5 text-sm text-white text-right"><span class="text-[10px] text-gray-400 font-normal">0 = sin límite</span></span></label>
+        <p class="text-[10px] text-gray-500 mt-1.5">💰 Costo: el último que le aprobaste a ese proveedor en ese producto. Si nunca le has aprobado ese producto, el lote queda para ti. Los lotes de pedidos ya pagados usan el precio del pedido.</p>
+        <button type="button" onclick="guardarProvAuto()" class="mt-2.5 w-full py-2.5 rounded-xl bg-emerald-500 text-black font-black text-sm">Guardar</button>
+        ${cfg.activo && quedan.length ? `<div class="mt-2.5 p-2 rounded-xl bg-amber-500/10 border border-amber-500/30"><p class="text-[11px] font-bold text-amber-200">Quedan para ti (${quedan.length}):</p>${quedan.slice(0, 6).map(x => `<p class="text-[10px] text-amber-100/80">• ${escaparHtml(x.l.proveedorNombre || '')} · ${x.l.cantidad} ${escaparHtml(x.l.productoNombre || '')} → ${escaparHtml(x.m.motivo)}</p>`).join('')}</div>` : ''}`;
+    }
+    async function guardarProvAuto() {
+      const sel = g => { const o = {}; document.querySelectorAll('#provAutoCaja input[data-pa="' + g + '"]').forEach(i => { if (i.checked) o[i.value] = true; }); return o; };
+      const datos = { activo: !!(document.getElementById('paActivo') || {}).checked, todosProv: !!(document.getElementById('paTodosProv') || {}).checked, todosProd: !!(document.getElementById('paTodosProd') || {}).checked,
+        proveedores: sel('prov'), productos: sel('prod'), maxLote: Math.max(0, parseInt((document.getElementById('paMax') || {}).value, 10) || 0), actualizadoEl: new Date().toISOString() };
+      try { await db.collection('configuracion').doc('proveedores_auto').set(datos); provAutoCfg = datos; renderProvAuto(); procesarProvAuto();
+        mostrarToast(datos.activo ? '⚡ Autorización automática activada' : 'Autorización automática apagada'); } catch (e) { alert(e.message); }
     }
 
     function detenerLotesProveedoresAdmin() {
@@ -11137,14 +11241,15 @@
       return o;
     }
 
-    async function aprobarLoteProveedor() {
+    async function aprobarLoteProveedor(opts) {
       if (!puedeSeccion('proveedores')) return;
-      const l = lotesProveedores.find(x => x.id === loteAprobandoId);
-      if (!l || l.estado !== 'pendiente') { alert('Este lote ya no está pendiente.'); return; }
-      const costoTxt = (document.getElementById('aprobarLoteCosto') || {}).value;
+      const auto = !!(opts && opts.auto);   // autorización automática: mismo proceso, sin ventanas
+      const l = auto ? opts.lote : lotesProveedores.find(x => x.id === loteAprobandoId);
+      if (!l || l.estado !== 'pendiente') { if (!auto) alert('Este lote ya no está pendiente.'); return false; }
+      const costoTxt = auto ? String(opts.costo) : (document.getElementById('aprobarLoteCosto') || {}).value;
       const costo = Math.round(Number(costoTxt));
-      if (costoTxt === '' || !isFinite(costo) || costo < 0) { alert('Escribe el costo por cuenta (puede ser 0).'); return; }
-      const precioTxt = (document.getElementById('aprobarLotePrecio') || {}).value;
+      if (costoTxt === '' || !isFinite(costo) || costo < 0) { if (!auto) alert('Escribe el costo por cuenta (puede ser 0).'); return false; }
+      const precioTxt = auto ? '' : (document.getElementById('aprobarLotePrecio') || {}).value;
       let precio = null;
       if (precioTxt !== '') {
         precio = Math.round(Number(precioTxt));
@@ -11154,13 +11259,17 @@
       const revision = await revisarRepetidasCuentas((l.cuentas || []).map(String));
       const nOk = revision.unicas.length, nRep = revision.repetidas.length, enviadas = (l.cuentas || []).length;
       const monto = costo * nOk;
+      if (!nOk && auto) {
+        try { await db.collection('stock_pendiente').doc(l.id).update({ estado: 'rechazado', motivoRechazo: 'Todas las cuentas estaban repetidas o ya existían (rechazo automático)', repetidas: revision.repetidas.slice(0, 300), revisadoPor: 'automático', revisadoEl: new Date().toISOString() }); } catch (e) { console.warn(e); }
+        return false;
+      }
       if (!nOk) {
         if (await confirmarModal(`Las ${enviadas} cuentas de este lote están repetidas o ya existen:\n\n${textoRepetidas(revision.repetidas)}\n\nNo hay nada nuevo para cargar ni pagar. ¿Rechazar el lote?`, { textoAceptar: 'Sí, rechazar' })) {
           try { await db.collection('stock_pendiente').doc(l.id).update({ estado: 'rechazado', motivoRechazo: 'Todas las cuentas estaban repetidas o ya existían', repetidas: revision.repetidas.slice(0, 300), revisadoPor: currentUser.email, revisadoEl: new Date().toISOString() }); cerrarAprobarLote(); } catch (e) { alert(e.message); }
         }
         return;
       }
-      if (!await confirmarModal(`¿Aprobar ${nOk} ${nOk === 1 ? 'cuenta' : 'cuentas'} de ${l.productoNombre || l.productoId}?${nRep ? `\n\n⚠ De ${enviadas} enviadas, ${nRep} ${nRep === 1 ? 'está repetida' : 'están repetidas'} y NO se cargan ni se pagan:\n${textoRepetidas(revision.repetidas)}` : ''}\n\nSe cargan ${nOk} al stock y se le deben ${formatoCOP(monto)} a ${l.proveedorNombre || l.proveedorEmail}.`, { textoAceptar: 'Sí, aprobar' })) return;
+      if (!auto && !await confirmarModal(`¿Aprobar ${nOk} ${nOk === 1 ? 'cuenta' : 'cuentas'} de ${l.productoNombre || l.productoId}?${nRep ? `\n\n⚠ De ${enviadas} enviadas, ${nRep} ${nRep === 1 ? 'está repetida' : 'están repetidas'} y NO se cargan ni se pagan:\n${textoRepetidas(revision.repetidas)}` : ''}\n\nSe cargan ${nOk} al stock y se le deben ${formatoCOP(monto)} a ${l.proveedorNombre || l.proveedorEmail}.`, { textoAceptar: 'Sí, aprobar' })) return;
 
       const btn = document.getElementById('btnAprobarLote');
       if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Cargando...'; }
@@ -11192,7 +11301,7 @@
             t.set(invRef, { cuentas: todas, stock: todas.length }, { merge: true });
           }
           aprobadasFinal = nuevas.length;
-          t.update(loteRef, Object.assign({ estado: 'aprobado', costoUnitario: costo, monto: costo * nuevas.length, cantidad: nuevas.length, cantidadEnviada: enviadas, repetidas: revision.repetidas.slice(0, 300).concat(revision.unicas.filter(x => lineasOk.indexOf(x) === -1).map(x => ({ linea: x, email: correoDeCuenta(x), motivo: 'ya estaba en el stock al aprobar' }))), aprobadoPor: currentUser.email, aprobadoEl: new Date().toISOString(), pagado: !!datos.pedidoId }, datos.pedidoId ? { pagadoEl: new Date().toISOString(), pagadoPor: 'pedido pagado por adelantado' } : {}));
+          t.update(loteRef, Object.assign({ estado: 'aprobado', costoUnitario: costo, monto: costo * nuevas.length, cantidad: nuevas.length, cantidadEnviada: enviadas, repetidas: revision.repetidas.slice(0, 300).concat(revision.unicas.filter(x => lineasOk.indexOf(x) === -1).map(x => ({ linea: x, email: correoDeCuenta(x), motivo: 'ya estaba en el stock al aprobar' }))), aprobadoPor: auto ? 'automático' : currentUser.email, aprobadoAuto: auto, aprobadoEl: new Date().toISOString(), pagado: !!datos.pedidoId }, datos.pedidoId ? { pagadoEl: new Date().toISOString(), pagadoPor: 'pedido pagado por adelantado' } : {}));
         });
         if (precio !== null) {
           try { await db.collection('configuracion').doc('precios').set({ [l.productoId]: precio }, { merge: true }); } catch (ep) { console.warn('No se pudo actualizar el precio:', ep); }
@@ -11201,15 +11310,17 @@
         if (prod && prod.activo !== false && !esProductoVip(prod)) {
           try { publicarNovedadGlobal({ tipo: 'stock', productoId: l.productoId, cantidad: aprobadasFinal, titulo: `Nuevo stock: ${prod.nombre}` }); } catch (en) { console.warn(en); }
         }
-        cerrarAprobarLote();
+        if (!auto) cerrarAprobarLote();
         try { actualizarComisionesPorStock(l.proveedorUid); } catch (e) { console.warn(e); }
         if (l.pedidoId) { try { await avanzarPedidoReseller(l.pedidoId, aprobadasFinal); } catch (e) { console.warn(e); } }
         setTimeout(() => { try { despacharPreordenesProducto(l.productoId); } catch (e) { console.warn(e); } }, 1200);
         setTimeout(() => { try { avisarEsperandoStock(l.productoId); } catch (e) { console.warn(e); } }, 2500);
         cacheVendidas.t = 0;
-        mostrarToast(`Lote aprobado: ${aprobadasFinal} cuentas cargadas${enviadas > aprobadasFinal ? ` (${enviadas - aprobadasFinal} repetidas no entraron)` : ''}. Se le deben ${formatoCOP(costo * aprobadasFinal)} a ${l.proveedorNombre || 'el proveedor'}.`);
+        mostrarToast(`${auto ? '⚡ Autorizado solo' : 'Lote aprobado'}: ${aprobadasFinal} cuentas de ${l.productoNombre || 'el producto'} cargadas${enviadas > aprobadasFinal ? ` (${enviadas - aprobadasFinal} repetidas no entraron)` : ''}. Se le deben ${formatoCOP(costo * aprobadasFinal)} a ${l.proveedorNombre || 'el proveedor'}.`);
+        return true;
       } catch (err) {
-        alert('No se pudo aprobar: ' + err.message);
+        if (auto) console.warn('Autorización automática:', err.message); else alert('No se pudo aprobar: ' + err.message);
+        return false;
       } finally {
         if (btn) { btn.disabled = false; btn.innerHTML = 'Aprobar y cargar'; }
       }
@@ -15102,7 +15213,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-12s';
+    const VERSION_PAGINA = '2026-10-12y';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261010_wacompra', fecha: '2026-10-10', titulo: 'Compra por WhatsApp 💬', mensaje: 'Ahora puedes **comprar con tu saldo desde nuestro WhatsApp**. Ve a tu perfil → **Mis datos → Comprar por WhatsApp**, vincula tu chat con el código y pide la autorización.' },
       { id: 'act_20261010_vista2', fecha: '2026-10-10', titulo: 'Nueva vista de la tienda ▦', mensaje: 'Ahora puedes ver los productos **en 2 columnas**: más productos en tu pantalla, con las **promos resaltadas** (🔥 campaña, ⚡ relámpago, 🎁 regalo). Toca uno y se abre su ficha para comprar. Cambia de vista con los íconos ☰ / ▦ arriba de las categorías.' },
@@ -15507,6 +15618,15 @@
       return cfgReferidos;
     }
 
+    // ----- Premio de un proveedor: va a su favor en lo que se le debe (no a su saldo de la tienda) -----
+    function abonoProveedorDoc(c, du, comisionId) {
+      const ahora = new Date().toISOString();
+      return { proveedorUid: c.beneficiarioUid, proveedorNombre: (du && du.nombre) || c.beneficiarioEmail || '', proveedorEmail: c.beneficiarioEmail || (du && du.email) || '', productoId: '', productoNombre: '🎁 Premio por referido',
+        cuentas: [], cantidad: 0, estado: 'aprobado', costoUnitario: 0, monto: Number(c.monto) || 0, esAbono: true, comisionId: comisionId, detalle: String(c.detalle || '').slice(0, 200),
+        creadoEl: ahora, aprobadoEl: ahora, aprobadoPor: (currentUser && currentUser.email) || '', pagado: false };
+    }
+    function esProveedorUid(uid) { return (lotesProveedores || []).some(l => l.proveedorUid === uid); }
+
     // ----- Crear una comisión (una sola vez por origen) -----
     async function crearComisionReferido(datos) {
       const cfg = cfgReferidos || await leerCfgReferidos();
@@ -15524,6 +15644,11 @@
             const uRef = db.collection('usuarios').doc(datos.beneficiarioUid);
             const u = await t.get(uRef);
             const du = u.exists ? (u.data() || {}) : {};
+            if (du.rol === 'proveedor') {   // proveedor: el premio va a su favor en lo que se le debe
+              t.set(db.collection('stock_pendiente').doc('abono_' + datos.id), abonoProveedorDoc(datos, du, datos.id));
+              t.update(uRef, { notificaciones: agregarNotifALista(du.notificaciones, crearNotificacionPersonal('saldo', `Ganaste ${formatoCOP(datos.monto)} por referidos`, 'Se suma a lo que te debemos por tus cuentas.')) });
+              doc.estado = 'a_deuda'; doc.resueltoEl = ahora; t.set(ref, doc); return true;
+            }
             t.update(uRef, { saldo: (Number(du.saldo) || 0) + datos.monto, notificaciones: agregarNotifALista(du.notificaciones, crearNotificacionPersonal('saldo', `Ganaste ${formatoCOP(datos.monto)} por referidos`, datos.detalle || 'Comisión por recomendar a alguien.')) });
             doc.resueltoEl = ahora;
           }
@@ -15687,23 +15812,30 @@
       const fl = document.getElementById('refFiltros');
       if (fl) fl.innerHTML = [['pendiente', 'Pendientes'], ['todas', 'Todas']].map(([k, t]) => `<button type="button" onclick="filtrarComisiones('${k}')" class="px-2 py-1 rounded-lg border ${filtroRef === k ? 'bg-sky-500/20 text-sky-300 border-sky-500/40' : 'bg-gray-800 text-gray-400 border-gray-700'}">${t}</button>`).join('');
       const lista = filtroRef === 'todas' ? comisionesRef : pend;
-      const EST = { pendiente: 'bg-amber-500/15 text-amber-300 border-amber-500/30', acreditada: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30', pagada: 'bg-sky-500/15 text-sky-300 border-sky-500/30', anulada: 'bg-gray-800 text-gray-500 border-gray-700' };
+      const EST = { a_deuda: 'bg-violet-500/15 text-violet-300 border-violet-500/30', pendiente: 'bg-amber-500/15 text-amber-300 border-amber-500/30', acreditada: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30', pagada: 'bg-sky-500/15 text-sky-300 border-sky-500/30', anulada: 'bg-gray-800 text-gray-500 border-gray-700' };
       cont.innerHTML = lista.length ? lista.slice(0, 60).map(c => `<div class="p-2.5 rounded-xl bg-gray-800/50 border border-gray-700/60">
         <div class="flex items-start justify-between gap-2"><div class="min-w-0"><p class="text-xs font-black text-white truncate">${escaparHtml(c.beneficiarioEmail || c.beneficiarioUid)}</p><p class="text-[10px] text-gray-400">${c.tipo === 'stock' ? 'Stock de ' : 'Registro de '}${escaparHtml(c.referidoEmail || '')} · ${escaparHtml(bcFecha(c.fecha))}</p><p class="text-[10px] text-gray-500">${escaparHtml(c.detalle || '')}</p></div>
         <div class="shrink-0 text-right"><p class="text-sm font-black text-sky-300">${formatoCOP(c.monto || 0)}</p><span class="inline-block mt-0.5 px-1.5 py-0.5 rounded-full text-[9px] font-bold border ${EST[c.estado] || EST.anulada}">${escaparHtml(c.estado)}</span></div></div>
+        ${c.estado === 'pendiente' && esProveedorUid(c.beneficiarioUid) ? `<button type="button" onclick="resolverComision('${escaparJsAttr(c.id)}','a_deuda')" class="w-full mt-2 py-1.5 rounded-lg bg-violet-500 hover:bg-violet-400 text-white text-[10px] font-black">🎁 A lo que le debo (es proveedor)</button>` : ''}
+        ${c.estado === 'acreditada' && esProveedorUid(c.beneficiarioUid) ? `<button type="button" onclick="pasarComisionADeuda('${escaparJsAttr(c.id)}')" class="w-full mt-2 py-1.5 rounded-lg bg-gray-700 hover:bg-gray-600 text-violet-200 text-[10px] font-black">↪ Pasar a lo que le debo (es proveedor)</button>` : ''}
         ${c.estado === 'pendiente' ? `<div class="flex gap-1.5 mt-2"><button type="button" onclick="resolverComision('${escaparJsAttr(c.id)}','acreditada')" class="flex-1 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-black text-[10px] font-black">Acreditar al saldo</button><button type="button" onclick="resolverComision('${escaparJsAttr(c.id)}','pagada')" class="flex-1 py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 border border-gray-700 text-gray-200 text-[10px] font-bold">Pagada por fuera</button><button type="button" onclick="resolverComision('${escaparJsAttr(c.id)}','anulada')" class="px-2.5 py-1.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 text-red-300 text-[10px] font-bold">Anular</button></div>` : ''}
       </div>`).join('') : `<p class="text-[11px] text-gray-500 text-center py-3">${filtroRef === 'pendiente' ? 'No hay comisiones pendientes.' : 'Todavía no hay comisiones.'}</p>`;
     }
     async function resolverComision(id, estado) {
       if (!puedeSeccion('referidos')) return;
       const c = comisionesRef.find(x => x.id === id); if (!c || c.estado !== 'pendiente') return;
-      const preg = { acreditada: `¿Sumar ${formatoCOP(c.monto)} al saldo de ${c.beneficiarioEmail}?`, pagada: `¿Marcar como pagada por fuera (${formatoCOP(c.monto)})? No cambia su saldo.`, anulada: '¿Anular esta comisión?' };
+      const preg = { a_deuda: `¿Sumar ${formatoCOP(c.monto)} a lo que le debes a ${c.beneficiarioEmail} como proveedor? No cambia su saldo de la tienda.`, acreditada: `¿Sumar ${formatoCOP(c.monto)} al saldo de ${c.beneficiarioEmail}?`, pagada: `¿Marcar como pagada por fuera (${formatoCOP(c.monto)})? No cambia su saldo.`, anulada: '¿Anular esta comisión?' };
       if (!await confirmarModal(preg[estado], { textoAceptar: 'Sí' })) return;
       try {
         const ref = db.collection('comisiones_referidos').doc(id);
         await db.runTransaction(async (t) => {
           const d = await t.get(ref);
           if (!d.exists || (d.data() || {}).estado !== 'pendiente') throw new Error('Esta comisión ya fue resuelta.');
+          if (estado === 'a_deuda') {
+            const uRef = db.collection('usuarios').doc(c.beneficiarioUid), u = await t.get(uRef), du = u.exists ? (u.data() || {}) : {};
+            t.set(db.collection('stock_pendiente').doc('abono_' + id), abonoProveedorDoc(c, du, id));
+            t.update(uRef, { notificaciones: agregarNotifALista(du.notificaciones, crearNotificacionPersonal('saldo', `Ganaste ${formatoCOP(c.monto)} por referidos`, 'Se suma a lo que te debemos por tus cuentas.')) });
+          }
           if (estado === 'acreditada') {
             const uRef = db.collection('usuarios').doc(c.beneficiarioUid);
             const u = await t.get(uRef); const du = u.exists ? (u.data() || {}) : {};
@@ -15711,7 +15843,25 @@
           }
           t.update(ref, { estado: estado, resueltoEl: new Date().toISOString(), resueltoPor: currentUser.email });
         });
-        mostrarToast(estado === 'acreditada' ? 'Comisión acreditada al saldo.' : (estado === 'pagada' ? 'Comisión marcada como pagada.' : 'Comisión anulada.'));
+        mostrarToast(estado === 'a_deuda' ? '🎁 Sumado a lo que le debes como proveedor.' : estado === 'acreditada' ? 'Comisión acreditada al saldo.' : (estado === 'pagada' ? 'Comisión marcada como pagada.' : 'Comisión anulada.'));
+      } catch (err) { alert(err.message); }
+    }
+
+    async function pasarComisionADeuda(id) {
+      if (!puedeSeccion('referidos')) return;
+      const c = comisionesRef.find(x => x.id === id); if (!c || c.estado !== 'acreditada') return;
+      if (!await confirmarModal(`¿Pasar ${formatoCOP(c.monto)} de su saldo de la tienda a lo que le debes como proveedor?\n\nSe le descuentan ${formatoCOP(c.monto)} del saldo y se suman a lo que le debes por sus cuentas.`, { textoAceptar: 'Sí, pasar' })) return;
+      try {
+        const ref = db.collection('comisiones_referidos').doc(id), uRef = db.collection('usuarios').doc(c.beneficiarioUid);
+        await db.runTransaction(async (t) => {
+          const d = await t.get(ref), u = await t.get(uRef); if (!d.exists || (d.data() || {}).estado !== 'acreditada') throw new Error('Esta comisión ya no está acreditada al saldo.');
+          const du = u.exists ? (u.data() || {}) : {}, saldo = Number(du.saldo) || 0, m = Number(c.monto) || 0;
+          if (saldo < m) throw new Error(`Ya no tiene ese saldo (tiene ${formatoCOP(saldo)}): lo gastó en compras. No se puede pasar.`);
+          t.update(uRef, { saldo: saldo - m, notificaciones: agregarNotifALista(du.notificaciones, crearNotificacionPersonal('saldo', `Tu premio de ${formatoCOP(m)} pasó a lo que te debemos`, 'Te lo pagamos junto con tus cuentas.')) });
+          t.set(db.collection('stock_pendiente').doc('abono_' + id), abonoProveedorDoc(c, du, id));
+          t.update(ref, { estado: 'a_deuda', movidoDeSaldoEl: new Date().toISOString(), resueltoPor: currentUser.email });
+        });
+        mostrarToast('↪ Listo: se descontó del saldo y se sumó a lo que le debes.');
       } catch (err) { alert(err.message); }
     }
 
@@ -15739,7 +15889,7 @@
     }
     function detenerMisComisiones() { if (unsubMisComisiones) { try { unsubMisComisiones(); } catch (e) { /* nada */ } unsubMisComisiones = null; } misComisiones = []; }
     function renderizarMisReferidos() {
-      const acred = misComisiones.filter(c => c.estado === 'acreditada' || c.estado === 'pagada').reduce((t, c) => t + (Number(c.monto) || 0), 0);
+      const acred = misComisiones.filter(c => c.estado === 'acreditada' || c.estado === 'pagada' || c.estado === 'a_deuda').reduce((t, c) => t + (Number(c.monto) || 0), 0);
       const pend = misComisiones.filter(c => c.estado === 'pendiente').reduce((t, c) => t + (Number(c.monto) || 0), 0);
       const personas = new Set(misComisiones.map(c => c.referidoUid)).size;
       const correo = (currentUser && currentUser.email) || '';
@@ -17193,7 +17343,7 @@
     var mkTipoTexto = 'promos', mkLogoImg = null, mkLogoListo = false;
     function productosMarketing() { return catalogoUnificado.filter(p => p.activo !== false && !p.esCombo && Number(p.precio) > 0 && !esProductoVip(p)).sort((a, b) => String(a.nombre).localeCompare(String(b.nombre), 'es')); }
     function dominioTienda() { if (typeof mkEnlaceCfg !== 'undefined' && mkEnlaceCfg) return mkEnlaceCfg; return dominioActual(); }
-    function nombreTienda() { const t = aparienciaConfig && aparienciaConfig.titulo; return t && !/^cat[aá]logo oficial$/i.test(t) ? t : 'EPIC CHANNELS'; }
+    function nombreTienda() { const t = aparienciaConfig && aparienciaConfig.titulo; return t && !/^cat[aá]logo oficial$/i.test(t) ? t : 'EPIC STREAMING'; }
     function promoPerfilCliente(id) { const pr = ((cfgDealer && cfgDealer.promos) || {})[id]; return pr && pr.activo !== false && aplicaPromo(pr, 'cliente') ? pr : null; }
     function prepararMarketing() {
       try { if (mkPendiente) setTimeout(aplicarMkPendiente, 300); } catch (e) { /* nada */ }
@@ -19361,9 +19511,54 @@
       try { await db.collection('ajustes_saldo').add({ uid, email: email || '', antes: Number(antes) || 0, despues: Number(despues) || 0, diferencia: (Number(despues) || 0) - (Number(antes) || 0), motivo: motivo || 'Edición manual', por: currentUser.email, fecha: new Date().toISOString() }); } catch (e) { console.warn('Registro de ajuste:', e); }
     }
 
+    async function justificarCargaManualAuditada() {
+      const a = auditoriaActual; if (!a || !esAdminSesionActual()) return;
+      const dif = Math.round((Number(a.real) || 0) - (Number(a.esperado) || 0)); if (!(dif > 0)) return;
+      if (!await confirmarModal(`¿Confirmas que esos ${formatoCOP(dif)} fueron una carga manual tuya (por ejemplo, un pago que recibiste por fuera)?\n\nQueda registrada como ajuste justificado. Su saldo no cambia.`, { textoAceptar: 'Sí, fue mía' })) return;
+      await registrarAjusteSaldo(a.uid, a.email, 0, dif, 'Carga manual anterior (sin registro), confirmada en la auditoría');
+      mostrarToast('✓ Registrada: el saldo ya cuadra'); try { auditarSaldo(a.uid, a.email); } catch (e) { /* nada */ }
+    }
     // ==================== AUDITAR SALDO ====================
     // Reconstruye el saldo de un cliente con todo lo registrado y lo compara con el saldo actual.
     var auditoriaActual = null;
+    // Reconstruye el saldo con todo lo registrado (lo usan la auditoría de un cliente y la de todos)
+    async function calcularAuditoria(uid) {
+      const q = (col, campo) => db.collection(col).where(campo, '==', uid).get().then(sn => { const a = []; sn.forEach(d => a.push(Object.assign({ id: d.id }, d.data() || {}))); return a; }).catch(() => []);
+      const [ud, rec, comp, pre, cred, com, aj] = await Promise.all([db.collection('usuarios').doc(uid).get(), q('recargas', 'usuarioId'), q('compras', 'usuarioId'), q('preordenes', 'usuarioId'), q('creditos_movimientos', 'usuarioId'), q('comisiones_referidos', 'beneficiarioUid'), q('ajustes_saldo', 'uid')]);
+      const u = ud.data() || {}, mov = [];
+      rec.filter(r => r.estado === 'aprobado').forEach(r => { const v = (Number(r.monto) || 0) - (Number(r.abonoCredito) || 0) + (Number(r.bono) || 0); mov.push({ f: r.fecha, t: 'Recarga ' + (r.metodo || ''), v, extra: r.abonoCredito ? `(${formatoCOP(r.abonoCredito)} pagaron deuda de crédito)` : '' }); });
+      comp.filter(c => !c.regalo && !c.ventaManual).forEach(c => mov.push({ f: c.fecha, t: (c.esRenovacion ? 'Renovación ' : 'Compra ') + (c.productoNombre || '') + ' × ' + (c.cantidad || 1), v: -(Number(c.total) || 0) }));
+      pre.forEach(x => { mov.push({ f: x.creadoEl || x.fecha, t: 'Encargo ' + (x.productoNombre || '') + ' × ' + (x.cantidad || ''), v: -(Number(x.total) || 0) }); if (Number(x.devuelto) > 0) mov.push({ f: x.canceladoEl || x.actualizadoEl, t: 'Devolución de encargo cancelado', v: Number(x.devuelto) }); });
+      cred.filter(x => x.tipo === 'cupo' || x.tipo === 'prestamo').forEach(x => mov.push({ f: x.fecha, t: x.tipo === 'cupo' ? 'Crédito usado en ' + (x.origen || 'compra') : 'Préstamo de crédito', v: Number(x.monto) || 0 }));
+      com.filter(x => x.estado === 'acreditada').forEach(x => mov.push({ f: x.resueltoEl || x.fecha, t: 'Premio por referido', v: Number(x.monto) || 0 }));   // "pagada por fuera" no toca el saldo
+      aj.forEach(x => mov.push({ f: x.fecha, t: x.tipo === 'regalo' ? '🎁 Regalo de saldo (por ' + (x.por || '') + ')' : 'Ajuste manual (' + (x.motivo || '') + ') por ' + (x.por || ''), v: Number(x.diferencia) || 0 }));
+      mov.sort((a, b) => String(a.f).localeCompare(String(b.f)));
+      let acum = 0; mov.forEach(x => { acum += x.v; x.acum = acum; });
+      const real = Number(u.saldo) || 0;
+      return { u, mov, esperado: acum, real, dif: Math.round(real - acum) };
+    }
+    var revisandoTodos = false;
+    async function revisarSaldosTodos() {
+      if (revisandoTodos || !esAdminSesionActual()) return; revisandoTodos = true;
+      const out = document.getElementById('vigResultado'); if (!out) { revisandoTodos = false; return; }
+      try {
+        const sn = await db.collection('usuarios').get(), L = []; sn.forEach(d => { const x = d.data() || {}; if (!esCorreoAdmin(x.email || '')) L.push({ uid: d.id, email: x.email || d.id }); });
+        const malos = []; let k = 0;
+        const una = async () => { while (k < L.length) { const u = L[k++]; try { const A = await calcularAuditoria(u.uid); if (Math.abs(A.dif) >= 1) malos.push({ uid: u.uid, email: u.email, dif: A.dif, real: A.real }); } catch (e) { /* sigue */ }
+          out.innerHTML = `<p class="text-[11px] text-gray-400"><i class="fa-solid fa-spinner fa-spin mr-1"></i>Revisando ${Math.min(k, L.length)} de ${L.length} clientes…</p>`; } };
+        await Promise.all([una(), una(), una(), una()]);
+        malos.sort((a, b) => Math.abs(b.dif) - Math.abs(a.dif));
+        out.innerHTML = `<p class="text-[11px] font-bold ${malos.length ? 'text-rose-200' : 'text-emerald-300'}">${malos.length ? '⚠️ ' + malos.length + ' de ' + L.length + ' clientes no cuadran:' : '✅ Los ' + L.length + ' clientes cuadran.'}</p>` +
+          malos.slice(0, 40).map(m => `<button type="button" onclick="auditarSaldo('${escaparJsAttr(m.uid)}','${escaparJsAttr(m.email)}')" class="w-full flex items-center justify-between gap-2 p-2 rounded-lg bg-gray-800/70 hover:bg-gray-800 text-left"><span class="text-[11px] text-white truncate">${escaparHtml(m.email)}</span><span class="text-[11px] font-black shrink-0 ${m.dif > 0 ? 'text-amber-300' : 'text-rose-300'}">${m.dif > 0 ? 'tiene +' : 'le faltan '}${formatoCOP(Math.abs(m.dif))}</span></button>`).join('');
+      } catch (e) { out.innerHTML = '<p class="text-[11px] text-rose-300">No se pudo revisar: ' + escaparHtml(e.message) + '</p>'; }
+      finally { revisandoTodos = false; }
+    }
+    async function cargarAlertasVigilancia() {
+      const out = document.getElementById('vigAlertas'); if (!out) return; out.innerHTML = '<p class="text-[11px] text-gray-400">Cargando…</p>';
+      try { const sn = await db.collection('vigilancia_alertas').orderBy('fecha', 'desc').limit(25).get(), L = []; sn.forEach(d => L.push(Object.assign({ id: d.id }, d.data())));
+        out.innerHTML = L.length ? '<p class="text-[11px] font-bold text-white">Alertas recientes</p>' + L.map(a => `<div class="p-2 rounded-lg bg-rose-500/10 border border-rose-500/20"><p class="text-[11px] text-rose-100">${escaparHtml(String(a.texto || '').replace(/\*/g, ''))}</p><p class="text-[10px] text-gray-400 mt-0.5">${a.email ? escaparHtml(a.email) + ' · ' : ''}${new Date(a.fecha).toLocaleString('es-CO')}${a.uid ? ` · <button type="button" onclick="auditarSaldo('${escaparJsAttr(a.uid)}','${escaparJsAttr(a.email || '')}')" class="underline text-rose-300">Auditar</button>` : ''}</p></div>`).join('') : '<p class="text-[11px] text-emerald-300">✅ Sin alertas.</p>';
+      } catch (e) { out.innerHTML = '<p class="text-[11px] text-gray-500">Publica las reglas nuevas para ver las alertas.</p>'; }
+    }
     async function auditarSaldo(uid, email) {
       if (!(esAdminSesionActual() || puedeSeccion('usuarios'))) return;
       let m = document.getElementById('modalAuditoria');
@@ -19371,18 +19566,7 @@
       m.innerHTML = '<div class="w-full max-w-lg rounded-3xl bg-gray-900 border border-gray-700 p-6 text-center text-sm text-gray-300"><i class="fa-solid fa-spinner fa-spin mr-1"></i>Reconstruyendo el saldo…</div>';
       m.classList.remove('hidden'); m.style.display = 'flex';
       try {
-        const q = (col, campo) => db.collection(col).where(campo, '==', uid).get().then(sn => { const a = []; sn.forEach(d => a.push(Object.assign({ id: d.id }, d.data() || {}))); return a; }).catch(() => []);
-        const [ud, rec, comp, pre, cred, com, aj] = await Promise.all([db.collection('usuarios').doc(uid).get(), q('recargas', 'usuarioId'), q('compras', 'usuarioId'), q('preordenes', 'usuarioId'), q('creditos_movimientos', 'usuarioId'), q('comisiones_referidos', 'beneficiarioUid'), q('ajustes_saldo', 'uid')]);
-        const u = ud.data() || {}, mov = [];
-        rec.filter(r => r.estado === 'aprobado').forEach(r => { const v = (Number(r.monto) || 0) - (Number(r.abonoCredito) || 0) + (Number(r.bono) || 0); mov.push({ f: r.fecha, t: 'Recarga ' + (r.metodo || ''), v, extra: r.abonoCredito ? `(${formatoCOP(r.abonoCredito)} pagaron deuda de crédito)` : '' }); });
-        comp.filter(c => !c.regalo && !c.ventaManual).forEach(c => mov.push({ f: c.fecha, t: (c.esRenovacion ? 'Renovación ' : 'Compra ') + (c.productoNombre || '') + ' × ' + (c.cantidad || 1), v: -(Number(c.total) || 0) }));
-        pre.forEach(x => { mov.push({ f: x.creadoEl || x.fecha, t: 'Encargo ' + (x.productoNombre || '') + ' × ' + (x.cantidad || ''), v: -(Number(x.total) || 0) }); if (Number(x.devuelto) > 0) mov.push({ f: x.canceladoEl || x.actualizadoEl, t: 'Devolución de encargo cancelado', v: Number(x.devuelto) }); });
-        cred.filter(x => x.tipo === 'cupo' || x.tipo === 'prestamo').forEach(x => mov.push({ f: x.fecha, t: x.tipo === 'cupo' ? 'Crédito usado en ' + (x.origen || 'compra') : 'Préstamo de crédito', v: Number(x.monto) || 0 }));
-        com.filter(x => /acredit|pagad/i.test(String(x.estado || ''))).forEach(x => mov.push({ f: x.resueltoEl || x.fecha, t: 'Premio por referido', v: Number(x.monto) || 0 }));
-        aj.forEach(x => mov.push({ f: x.fecha, t: 'Ajuste manual (' + (x.motivo || '') + ') por ' + (x.por || ''), v: Number(x.diferencia) || 0 }));
-        mov.sort((a, b) => String(a.f).localeCompare(String(b.f)));
-        let acum = 0; mov.forEach(x => { acum += x.v; x.acum = acum; });
-        const real = Number(u.saldo) || 0, dif = real - acum;
+        const A = await calcularAuditoria(uid), u = A.u, mov = A.mov, acum = A.esperado, real = A.real, dif = A.dif;
         auditoriaActual = { uid, email: email || u.email, real, esperado: acum };
         const fila = x => `<div class="flex items-center justify-between gap-2 py-1.5 border-t border-gray-800 text-[11px]"><div class="min-w-0"><p class="text-gray-200 truncate">${escaparHtml(x.t)}</p><p class="text-[10px] text-gray-500">${x.f ? new Date(x.f).toLocaleString('es-CO', { day: '2-digit', month: '2-digit', year: '2-digit', hour: 'numeric', minute: '2-digit' }) : '—'} ${escaparHtml(x.extra || '')}</p></div><div class="shrink-0 text-right"><p class="font-black ${x.v >= 0 ? 'text-emerald-300' : 'text-rose-300'}">${x.v >= 0 ? '+' : '−'}${formatoCOP(Math.abs(x.v))}</p><p class="text-[10px] text-gray-500">${formatoCOP(x.acum)}</p></div></div>`;
         m.innerHTML = `<div class="w-full max-w-lg rounded-3xl bg-gray-900 border border-gray-700 p-5 max-h-[88vh] flex flex-col">
@@ -19391,6 +19575,7 @@
           <div class="grid grid-cols-3 gap-2 mt-3 text-center"><div class="p-2 rounded-xl bg-gray-800"><p class="text-[10px] text-gray-400">Debería tener</p><p class="text-sm font-black text-white">${formatoCOP(acum)}</p></div><div class="p-2 rounded-xl bg-gray-800"><p class="text-[10px] text-gray-400">Tiene</p><p class="text-sm font-black text-white">${formatoCOP(real)}</p></div><div class="p-2 rounded-xl ${dif === 0 ? 'bg-emerald-500/15' : 'bg-rose-500/15'}"><p class="text-[10px] text-gray-400">Diferencia</p><p class="text-sm font-black ${dif === 0 ? 'text-emerald-300' : 'text-rose-300'}">${dif === 0 ? 'Cuadra ✓' : (dif > 0 ? '+' : '−') + formatoCOP(Math.abs(dif))}</p></div></div>
           ${dif !== 0 ? `<p class="mt-2 text-[11px] ${dif < 0 ? 'text-rose-200' : 'text-amber-200'}">${dif < 0 ? 'Tiene menos de lo que debería. Puede deberse a la falla que ponía el saldo en $0 (ya corregida) o a un ajuste manual hecho antes de que existiera el registro.' : 'Tiene más de lo que muestran los registros: puede ser un ajuste manual anterior al registro de ajustes.'}</p>` : ''}
           <div class="mt-3 overflow-y-auto flex-1 min-h-0">${mov.length ? mov.slice().reverse().map(fila).join('') : '<p class="text-[11px] text-gray-500 text-center py-4">Sin movimientos registrados.</p>'}</div>
+          ${dif > 0 && esAdminSesionActual() ? `<button type="button" onclick="justificarCargaManualAuditada()" class="mt-3 w-full py-3 rounded-xl bg-amber-400 hover:bg-amber-300 text-black font-black text-sm">✓ Fue una carga manual mía (${formatoCOP(dif)})</button><p class="text-[10px] text-gray-500 mt-1 text-center">Queda registrada como ajuste justificado y el saldo cuadra. No cambia su saldo.</p>` : ''}
           ${dif < 0 && esAdminSesionActual() ? `<button type="button" onclick="restaurarSaldoAuditado()" class="mt-3 w-full py-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-black text-sm">Devolver ${formatoCOP(-dif)} (dejar en ${formatoCOP(acum)})</button>` : ''}
         </div>`;
       } catch (e) { m.innerHTML = `<div class="w-full max-w-lg rounded-3xl bg-gray-900 border border-gray-700 p-6 text-sm text-red-300">No se pudo auditar: ${escaparHtml(e.message)} <button type="button" onclick="cerrarAuditoria()" class="block mt-3 text-gray-300 underline">Cerrar</button></div>`; }
@@ -19497,6 +19682,12 @@
 
     // ==================== NOVEDADES INTERNAS DEL PANEL (solo el equipo) ====================
     const ACTUALIZACIONES_INTERNAS = [
+      { fecha: '2026-10-12', titulo: '🚨 Vigilancia y 🎁 regalos como pasivo', mensaje: 'En **Usuarios → 🚨 Vigilancia**: **🔍 Revisar saldos de todos** te lista los clientes cuyo saldo no cuadra con sus registros (tócalo para ver la auditoría). Además el servidor vigila solo: **cada hora**, si a alguien le sube o baja el saldo sin un movimiento que lo explique, y **cada día**, reclamos excesivos (5+ y 30 %+ de lo comprado), el mismo WhatsApp en varias cuentas y 3+ recargas rechazadas en una semana. Te avisa por Telegram y lo ves en **Ver alertas**. **🎁 Regalos:** en **Cargar saldo** marca 🎁 si es un regalo: suma al saldo, pero no cuenta como dinero recibido; en el reporte financiero aparece como **Saldo regalado (pasivo)** y se resta de la ganancia.', ir: 'usuarios' },
+      { fecha: '2026-10-12', titulo: '🔍 Cargas manuales de saldo con registro', mensaje: 'El botón **Cargar saldo** de la lista de usuarios ahora deja registro ("Recarga · Carga manual del administrador", con fecha y quién la hizo): la auditoría de saldo y tus reportes la cuentan. Para las cargas viejas que no quedaron registradas, la auditoría de saldo trae el botón **✓ Fue una carga manual mía**: deja la diferencia como ajuste justificado y el saldo cuadra, sin cambiar el saldo del cliente.', ir: 'usuarios' },
+      { fecha: '2026-10-12', titulo: '📧 Productos sin clave del correo', mensaje: 'En la ficha de cada producto hay una opción nueva: **📧 Solo correo y clave de la plataforma**. Actívala en los productos cuyas cuentas no llevan clave del correo (por ejemplo, **Prime Video con garantía**): se entregan con su correo y su contraseña, sin "clave del correo" ni clave master, en la tienda, en Mis cuentas, a los dealers y por WhatsApp. Además, el bot ya no agrega la clave master a productos que no son de Prime.', ir: 'productos' },
+      { fecha: '2026-10-12', titulo: '🎁 Premios de proveedores a lo que se les debe', mensaje: 'Cuando un **proveedor** gana un premio por referido, ya no va a su saldo de la tienda: se anota **a su favor en lo que le debes** ("🎁 Premio por referido") y se salda cuando le pagas. En Referidos, las comisiones de proveedores tienen el botón **🎁 A lo que le debo**, y las que ya se sumaron al saldo, **↪ Pasar a lo que le debo** (le descuenta del saldo y se lo suma a la deuda).', ir: 'referidos' },
+      { fecha: '2026-10-12', titulo: '⚡ Autorización automática de stock', mensaje: 'En **Proveedores → ⚡ Autorización automática de stock** eliges de qué proveedores, qué productos y hasta cuántas cuentas por lote se aprueban solas. El costo es el último que le aprobaste a ese proveedor en ese producto (si nunca le has aprobado ese producto, queda para ti). Mismo proceso que tu botón: las repetidas no entran ni se pagan, la deuda queda anotada y se despachan los pedidos sobre pedido. Abajo ves qué lotes quedaron para ti y por qué.', ir: 'proveedores' },
+      { fecha: '2026-10-12', titulo: '📦 Estados de "¡Llegó stock!" con la foto del producto', mensaje: 'Cada vez que subes stock de un producto (al pasar de 0, o cuando suben al menos 5), se publica solo un estado con el diseño Premium **"¡Llegó stock!"**: la foto del producto grande, el sello ¡NUEVO STOCK!, el precio, los precios por cantidad que de verdad bajan, EPIC STREAMING y tu dominio. El color cambia en cada estado (6 paletas, sin repetir). Máximo uno cada 12 horas por producto. Los productos **VIP** también, pero solo los ven los clientes que tienen ese VIP permitido (lo garantizan las reglas de Firebase) y no gastan tu cupo de estados del día.', ir: 'marketing' },
       { fecha: '2026-10-12', titulo: '🔗 Alquileres conectados con la tienda', mensaje: 'En **Alquileres → 🔗 Venta automática** eliges el producto de cada plataforma (por ejemplo, Netflix → Pantalla de Netflix). Desde ahí los perfiles libres (sin cliente, con el PIN y la clave listos) quedan a la venta solos en la tienda y en WhatsApp, y al comprarlos se asignan solos al cliente con su fecha y su enlace de código. Arriba ves el resumen: a la venta, asignados, libres y por cambiar PIN. Además, en Android los botones de WhatsApp del panel abren **WhatsApp Business** (se cambia en 💬 WhatsApp).', ir: 'netflix' },
       { fecha: '2026-10-12', titulo: '📦 Máximo 50 sobre pedido por cliente', mensaje: 'Sobre pedido ahora tiene un máximo **por cliente y por producto** (50 por defecto, ajustable en **Ajustes Generales → Máximo sobre pedido por cliente**). Cuenta lo que el cliente ya tiene en fila: si ya pidió 30, solo puede encargar 20 más. Antes el máximo era igual al stock disponible. Aplica en la tienda y en WhatsApp.', ir: 'ajustes' },
       { fecha: '2026-10-12', titulo: '🧠 El bot aprende más: preguntas frecuentes, apodos e informe semanal', mensaje: '**📚 Preguntas frecuentes:** si un cliente pregunta algo que está en tus preguntas frecuentes publicadas ("¿cómo recargo?", "¿sirve en Smart TV?"), el bot responde con tu texto exacto; con Gemini la reconoce aunque la escriban distinto. **🏷️ Apodos:** "las free" → Amazon Free; Gemini los aprende solo. **🧠 Enséñale al bot:** al lado de cada frase eliges si es una intención, un producto o una pregunta frecuente, y la sugerencia de Gemini ya viene marcada (🤖). **📊 Informe de los lunes** por Telegram: conversaciones, lo que aprendió, lo que no entendió, lo que pidieron agotado y las preguntas más hechas.', ir: 'whatsapp' },
@@ -20034,13 +20225,33 @@
     var estVistosMem = new Set();   // respaldo si el navegador no deja guardar (modo privado)
     function estadosVistosLocal() { let v = []; try { v = JSON.parse(localStorage.getItem('estadosVistos') || '[]'); } catch (e) { v = []; } return v.concat(Array.from(estVistosMem)); }
     function marcarEstadoVistoLocal(id) { estVistosMem.add(id); try { const v = JSON.parse(localStorage.getItem('estadosVistos') || '[]'); if (!v.includes(id)) { v.push(id); localStorage.setItem('estadosVistos', JSON.stringify(v.slice(-60))); } } catch (e) { /* nada */ } }
+    // Estados de productos VIP (protegidos): cada cliente escucha solo los de sus VIP permitidos
+    var estadosPublicos = [], estadosVipMap = {}, unsubsEstVip = {};
+    function recomponerEstados() {
+      estadosActivos = estadosPublicos.concat(Object.values(estadosVipMap).filter(Boolean)).filter(e => Date.parse(e.expiraEl) > Date.now()).sort((a, b) => String(a.creadoEl).localeCompare(String(b.creadoEl)));
+      pintarAnilloEstados(); try { pintarEstadosAdmin(); } catch (e) { /* nada */ }
+    }
+    function iniciarEstadosVip() {
+      try {
+        if (!currentUser || typeof catalogoUnificado === 'undefined') return;
+        const ids = catalogoUnificado.filter(p => esProductoVip(p) && usuarioTienePermisoProducto(p)).map(p => p.docId);
+        ids.forEach(pid => { if (unsubsEstVip[pid]) return;
+          unsubsEstVip[pid] = db.collection('estados_vip').doc('vip_' + pid).onSnapshot(d => { estadosVipMap[pid] = d.exists ? Object.assign({ id: d.id, vip: true }, d.data()) : null; recomponerEstados(); }, () => { estadosVipMap[pid] = null; }); });
+      } catch (e) { /* nada */ }
+    }
+    setInterval(iniciarEstadosVip, 60000); setTimeout(iniciarEstadosVip, 4000);
+    async function publicarEstadoVip(dataUrl, texto, productoId) {
+      const id = 'vip_' + productoId, ahora = new Date(), b = db.batch();
+      b.set(db.collection('estados_vip').doc(id), { productoId, creadoEl: ahora.toISOString(), expiraEl: new Date(ahora.getTime() + 24 * 3600000).toISOString(), texto: String(texto || ''), vip: true });
+      b.set(db.collection('estados_vip_img').doc(id), { productoId, imagen: dataUrl });
+      await b.commit(); delete estadosImg[id];
+    }
     function iniciarEstados() {
       if (unsubEstados) return;
       try {
         unsubEstados = db.collection('estados').where('expiraEl', '>', new Date().toISOString()).orderBy('expiraEl').onSnapshot(sn => {
-          estadosActivos = []; sn.forEach(d => estadosActivos.push(Object.assign({ id: d.id }, d.data())));
-          estadosActivos = estadosActivos.filter(e => Date.parse(e.expiraEl) > Date.now()).sort((a, b) => String(a.creadoEl).localeCompare(String(b.creadoEl)));
-          pintarAnilloEstados(); try { pintarEstadosAdmin(); } catch (e) { /* nada */ }
+          estadosPublicos = []; sn.forEach(d => estadosPublicos.push(Object.assign({ id: d.id }, d.data())));
+          recomponerEstados();
         }, () => {});
       } catch (e) { /* nada */ }
     }
@@ -20065,7 +20276,7 @@
     }
     async function imagenEstado(id) {
       if (estadosImg[id]) return estadosImg[id];
-      try { const d = await db.collection('estados_img').doc(id).get(); estadosImg[id] = d.exists ? (d.data() || {}).imagen || '' : ''; } catch (e) { estadosImg[id] = ''; }
+      try { const d = await db.collection(/^vip_/.test(id) ? 'estados_vip_img' : 'estados_img').doc(id).get(); estadosImg[id] = d.exists ? (d.data() || {}).imagen || '' : ''; } catch (e) { estadosImg[id] = ''; }
       return estadosImg[id];
     }
     function abrirEstados() {
@@ -20137,7 +20348,7 @@
           db.collection('estados_vistas').doc(e.id + '_' + currentUser.uid).set({ estadoId: e.id, uid: currentUser.uid, email: currentUser.email || '', nombre: (datosUsuarioNotif && datosUsuarioNotif.nombre) || '', dealer: userTipoCuenta === 'revendedor', fecha: new Date().toISOString() }).catch(() => {});
         } else if (!currentUser) {
           const k = 'estAnon_' + e.id; let ya = estVistosMem.has(k); try { ya = ya || !!localStorage.getItem(k); localStorage.setItem(k, '1'); } catch (x) { /* nada */ } if (ya) return; estVistosMem.add(k);
-          db.collection('estados').doc(e.id).update({ vistasAnonimas: firebase.firestore.FieldValue.increment(1) }).catch(() => {});
+          if (!e.vip) db.collection('estados').doc(e.id).update({ vistasAnonimas: firebase.firestore.FieldValue.increment(1) }).catch(() => {});
         }
       } catch (x) { /* nada */ }
     }
@@ -20202,7 +20413,8 @@
     }
     async function borrarEstado(id) {
       if (!await confirmarModal('¿Borrar este estado? Tus clientes dejarán de verlo.', { textoAceptar: 'Sí, borrar' })) return;
-      try { const b = db.batch(); b.delete(db.collection('estados').doc(id)); b.delete(db.collection('estados_img').doc(id)); await b.commit(); mostrarToast('Estado borrado'); } catch (e) { alert(e.message); }
+      const vip = /^vip_/.test(id);
+      try { const b = db.batch(); b.delete(db.collection(vip ? 'estados_vip' : 'estados').doc(id)); b.delete(db.collection(vip ? 'estados_vip_img' : 'estados_img').doc(id)); await b.commit(); if (vip) { const pid = id.slice(4); estadosVipMap[pid] = null; recomponerEstados(); } mostrarToast('Estado borrado'); } catch (e) { alert(e.message); }
     }
     setTimeout(() => { try { iniciarEstados(); } catch (e) { /* nada */ } }, 1200);
     window.addEventListener('resize', () => { try { pintarAnilloEstados(); } catch (e) { /* nada */ } });
@@ -20490,7 +20702,7 @@
       const pr = ((cfgDealer && cfgDealer.promos) || {})[prod.docId]; let regalo = null;
       if (pr && pr.activo !== false && aplicaPromo(pr, para)) { const compra = Number(pr.compra) || 10, lleva = Number(pr.regalo) || 1, otro = pr.regaloProductoId && pr.regaloProductoId !== prod.docId ? nombreProd(pr.regaloProductoId) : ''; regalo = { compra, lleva, otro, vence: pr.vence || '' }; }
       const mu = multiplicadoresDealer() || {};
-      const escImg = esc.filter(e => e.desde > minC).map(e => ({ desde: e.desde, precio: flash ? Math.round(e.precio * (100 - flash.pct) / 100) : e.precio })).filter(e => e.precio < precio).slice(0, 4);   // mismo precio por cantidad que la tienda
+      const escImg = esc.filter(e => e.desde > minC).map(e => ({ desde: e.desde, precio: flash ? Math.round(e.precio * (100 - flash.pct) / 100) : e.precio })).filter(e => e.precio < precio).sort((a, b) => a.desde - b.desde).filter(function (e) { if (e.precio < this.ult) { this.ult = e.precio; return true; } return false; }, { ult: precio }).slice(0, 4);   // mismo precio por cantidad que la tienda, y solo escalones que de verdad bajan
       return { lista, minC, precio, tachado: precio < lista ? lista : 0, escalones: escImg, flash, regalo, mult: para === 'dealer' ? { plata: Number(mu.plata) || 1, oro: Number(mu.oro) || 1 } : null };
     }
     function lienzoPromoProducto(prod, para) {
@@ -20754,7 +20966,7 @@
 
 
     // ==================== COMPROBAR TODO (estado de la página, servidor, reglas y tareas) ====================
-    const VERSION_REGLAS_ESPERADA = '2026-10-11d';
+    const VERSION_REGLAS_ESPERADA = '2026-10-12g';
     async function abrirComprobarTodo() {
       let m = document.getElementById('modalComprobarTodo');
       if (!m) { m = document.createElement('div'); m.id = 'modalComprobarTodo'; m.className = 'fixed inset-0 z-[96] hidden items-center justify-center p-4 bg-black/75 backdrop-blur-sm'; m.onclick = ev => { if (ev.target === m) cerrarComprobarTodo(); }; document.body.appendChild(m); }
@@ -21374,6 +21586,12 @@
     // ==================== ESTADOS AUTOMÁTICOS (promos y novedades positivas) ====================
     // El servidor deja en "estados_cola" lo positivo; este panel (en cualquier dispositivo abierto) dibuja la imagen Premium y la publica.
     var cfgEstadosAuto = { activo: true, maxDia: 4 }, colaEstadosCorriendo = false;
+    // Colores que rotan en "llegó stock": nunca el mismo dos veces seguidas
+    function siguientePaletaStock() {
+      const todas = Object.keys(PALETAS_PREMIUM); let ult = ''; try { ult = localStorage.getItem('ultPaletaStock') || ''; } catch (e) { /* nada */ }
+      const ops = todas.filter(k => k !== ult), pal = ops[Math.floor(Math.random() * ops.length)] || 'esmeralda';
+      try { localStorage.setItem('ultPaletaStock', pal); } catch (e) { /* nada */ } return pal;
+    }
     const DISENO_AUTO = { flash: 'neon', campana: 'atardecer', stock: 'esmeralda', nuevo: 'oceano', regalo: 'oro', novedad: 'noche' };
     function renderPremiumAuto(prod, t1, t2, paleta) {
       return new Promise(res => {
@@ -21381,6 +21599,52 @@
         let hecho = false; const fin = () => { if (hecho) return; hecho = true; let c = null; try { c = lienzoPremium(prod, 'cliente'); } catch (e) { c = null; } Object.assign(premiumCfg, antes); res(c); };
         try { lienzoPremium(prod, 'cliente', fin); } catch (e) { /* sigue */ } setTimeout(fin, 2500);
       });
+    }
+    // "¡Llegó stock!": foto del producto grande, colores que varían, marca y dominio actuales
+    function lienzoStockPremium(prod, paleta, img) {
+      const W = 1080, H = 1920, c = document.createElement('canvas'); c.width = W; c.height = H; const x = c.getContext('2d');
+      const P = PALETAS_PREMIUM[paleta] || PALETAS_PREMIUM.esmeralda, d = datosPromoProducto(prod, 'cliente');
+      const SANS = "'Montserrat', 'Segoe UI', Arial, sans-serif", SERIF = "'Playfair Display', Georgia, serif", BRUSH = "'Kaushan Script', 'Brush Script MT', cursive", SCRIPT = "'Great Vibes', 'Brush Script MT', cursive", REDON = "'Nunito', 'Segoe UI', Arial, sans-serif";
+      const lg = x.createLinearGradient(0, 0, 0, H); lg.addColorStop(0, P.arriba); lg.addColorStop(.55, P.medio); lg.addColorStop(1, P.abajo); x.fillStyle = lg; x.fillRect(0, 0, W, H);
+      let rg = x.createRadialGradient(0, 0, 10, 0, 0, W * 1.15); rg.addColorStop(0, `rgba(${P.esqI},.62)`); rg.addColorStop(.4, `rgba(${P.esqI},.18)`); rg.addColorStop(.7, `rgba(${P.esqI},0)`); x.fillStyle = rg; x.fillRect(0, 0, W, H);
+      rg = x.createRadialGradient(W, 0, 10, W, 0, W * .8); rg.addColorStop(0, `rgba(${P.esqD},.38)`); rg.addColorStop(.65, `rgba(${P.esqD},0)`); x.fillStyle = rg; x.fillRect(0, 0, W, H);
+      const onda = (y0, amp, col) => { x.beginPath(); x.moveTo(0, y0); x.bezierCurveTo(W * .2, y0 - amp, W * .35, y0 + amp, W * .55, y0); x.bezierCurveTo(W * .75, y0 - amp, W * .9, y0 + amp * .6, W, y0 - amp * .3); x.lineTo(W, H); x.lineTo(0, H); x.closePath(); x.fillStyle = col; x.fill(); };
+      onda(H * .70, 90, `rgba(${P.ondas[0]},.16)`); onda(H * .79, 80, `rgba(${P.ondas[1]},.18)`); onda(H * .88, 70, `rgba(${P.ondas[2]},.16)`);
+      x.textAlign = 'center';
+      // marca
+      x.font = `700 28px ${SANS}`; const marca = espaciarLetras(nombreTienda().toUpperCase()), mw = x.measureText(marca).width, pw = mw + 150, px = (W - pw) / 2;
+      x.save(); textoRedondeado(x, px, 90, pw, 96, 48); x.fillStyle = 'rgba(255,255,255,.07)'; x.fill(); x.lineWidth = 3; x.strokeStyle = 'rgba(212,160,23,.45)'; x.stroke(); x.restore();
+      if (mkLogoImg && mkLogoListo) { x.save(); x.beginPath(); x.arc(px + 50, 138, 36, 0, Math.PI * 2); x.clip(); x.drawImage(mkLogoImg, px + 14, 102, 72, 72); x.restore(); }
+      x.fillStyle = '#f3d27a'; x.fillText(marca, px + 100 + mw / 2, 148);
+      // foto del producto grande, con brillo del color del tema
+      const S = 600, fx = (W - S) / 2, fy = 250;
+      x.save(); x.shadowColor = hexARgba(P.acento, .75); x.shadowBlur = 80; textoRedondeado(x, fx, fy, S, S, 64); x.fillStyle = 'rgba(0,0,0,.35)'; x.fill(); x.restore();
+      x.save(); textoRedondeado(x, fx, fy, S, S, 64); x.clip();
+      if (img) { const k = Math.max(S / img.width, S / img.height), iw = img.width * k, ih = img.height * k; x.drawImage(img, fx + (S - iw) / 2, fy + (S - ih) / 2, iw, ih); }
+      else { const g = x.createLinearGradient(fx, fy, fx + S, fy + S); g.addColorStop(0, `rgba(${P.esqI},.9)`); g.addColorStop(1, `rgba(${P.ondas[2]},.95)`); x.fillStyle = g; x.fillRect(fx, fy, S, S);
+        x.fillStyle = 'rgba(255,255,255,.95)'; const pal = String(prod.nombre || '').split(/\s+/).slice(0, 3); let fz = 120; x.font = `900 ${fz}px ${REDON}`; while (pal.some(w => x.measureText(w).width > S - 80) && fz > 60) { fz -= 8; x.font = `900 ${fz}px ${REDON}`; }
+        pal.forEach((w, k) => x.fillText(w, W / 2, fy + S / 2 - (pal.length - 1) * fz * .55 + k * fz * 1.1 + fz * .35)); }
+      x.restore();
+      x.save(); textoRedondeado(x, fx, fy, S, S, 64); x.lineWidth = 8; x.strokeStyle = hexARgba(P.acento, .95); x.stroke(); x.restore();
+      // sello
+      x.save(); x.translate(fx + S - 40, fy + 30); x.rotate(.16); x.font = `900 38px ${SANS}`; const sw = x.measureText('¡NUEVO STOCK!').width + 70; textoRedondeado(x, -sw / 2, -42, sw, 84, 42); x.fillStyle = P.acento; x.fill(); x.fillStyle = '#0b0b0f'; x.fillText('¡NUEVO STOCK!', 0, 13); x.restore();
+      // títulos
+      let y = fy + S + 140; x.font = `900 96px ${SERIF}`; const w1 = x.measureText('¡Llegó').width; x.font = `150px ${BRUSH}`; const w2 = x.measureText('stock!').width, sep = 36, ini = (W - (w1 + sep + w2)) / 2;
+      x.textAlign = 'left'; x.fillStyle = '#fff'; x.font = `900 96px ${SERIF}`; x.fillText('¡Llegó', ini, y);
+      x.save(); x.translate(ini + w1 + sep, y + 8); x.rotate(-0.07); x.font = `150px ${BRUSH}`; x.shadowColor = hexARgba(P.acento, .55); x.shadowBlur = 40; x.fillStyle = P.acento; x.fillText('stock!', 0, 0); x.restore(); x.textAlign = 'center';
+      y += 110; x.font = `900 60px ${REDON}`; const nom = String(prod.nombre || '').toUpperCase(); let fn = 60; while (x.measureText(nom).width > W - 140 && fn > 34) { fn -= 4; x.font = `900 ${fn}px ${REDON}`; } x.fillStyle = '#fff'; x.fillText(nom, W / 2, y);
+      // precio
+      y += 40; if (d.tachado) { x.fillStyle = 'rgba(255,255,255,.55)'; x.font = `600 46px ${SANS}`; const t = formatoCOP(d.tachado), tw = x.measureText(t).width; x.fillText(t, W / 2, y + 40); x.strokeStyle = 'rgba(248,113,113,.95)'; x.lineWidth = 5; x.beginPath(); x.moveTo(W / 2 - tw / 2 - 6, y + 24); x.lineTo(W / 2 + tw / 2 + 6, y + 24); x.stroke(); y += 50; }
+      x.fillStyle = '#fff'; x.font = `900 150px ${SERIF}`; x.fillText(formatoCOP(d.precio), W / 2, y + 150); y += 195;
+      x.fillStyle = 'rgba(255,255,255,.85)'; x.font = `500 32px ${SANS}`; x.fillText(`c/u · compra mínima ${d.minC}`, W / 2, y); y += 40;
+      const esc = (d.escalones || []).slice(0, 3);
+      if (esc.length) { y += 20; x.font = `800 36px ${SANS}`; const chips = esc.map(e => `${e.desde}+ ${formatoCOP(e.precio)}`), ws = chips.map(t => x.measureText(t).width + 60), tot = ws.reduce((a, b) => a + b, 0) + (chips.length - 1) * 20; let cx = (W - tot) / 2;
+        chips.forEach((t, k) => { x.save(); textoRedondeado(x, cx, y, ws[k], 70, 35); x.fillStyle = 'rgba(255,255,255,.08)'; x.fill(); x.lineWidth = 3; x.strokeStyle = hexARgba(P.acento, .7); x.stroke(); x.restore(); x.fillStyle = '#fff'; x.fillText(t, cx + ws[k] / 2, y + 48); cx += ws[k] + 20; }); y += 100; }
+      // pie
+      x.fillStyle = hexARgba(P.acento, 1); x.font = `800 38px ${SANS}`; x.fillText('⚡ Entrega al instante · con garantía', W / 2, Math.max(y + 30, H - 230));
+      const dom = dominioActual(); x.font = `800 40px ${SANS}`; const dw = x.measureText(dom).width + 90; x.save(); textoRedondeado(x, (W - dw) / 2, H - 190, dw, 84, 42); x.fillStyle = P.acento; x.fill(); x.restore(); x.fillStyle = '#0b0b0f'; x.fillText(dom, W / 2, H - 134);
+      x.fillStyle = 'rgba(255,255,255,.75)'; x.font = `64px ${SCRIPT}`; x.fillText(premiumCfg.eslogan || 'Tu entretenimiento, al instante', W / 2, H - 40);
+      return c;
     }
     function lienzoNovedadPremium(titulo, texto, paleta) {
       const W = 1080, H = 1920, c = document.createElement('canvas'); c.width = W; c.height = H; const x = c.getContext('2d'), P = PALETAS_PREMIUM[paleta] || PALETAS_PREMIUM.noche;
@@ -21422,23 +21686,27 @@
           const doc = { ref: db.collection('estados_cola').doc(d0.id) }, q = d0.data() || {}, hoy = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Bogota' });
           if (Date.parse(q.venceEl) < Date.now()) { await doc.ref.update({ estado: 'vencido' }).catch(() => {}); continue; }
           const prodQ = q.tipo === 'novedad' ? null : catalogoUnificado.find(x => x.docId === q.productoId);
-          if (q.tipo !== 'novedad' && (!prodQ || esProductoVip(prodQ) || !(Number(prodQ.stock) > 0))) { await doc.ref.update({ estado: 'omitido', motivo: 'producto no disponible' }).catch(() => {}); continue; }   // no gasta cupo del día
+          const esVipQ = !!(prodQ && esProductoVip(prodQ));
+          if (q.tipo !== 'novedad' && (!prodQ || (esVipQ && !(q.vip === true && q.tipo === 'stock')) || !(Number(prodQ.stock) > 0))) { await doc.ref.update({ estado: 'omitido', motivo: 'producto no disponible' }).catch(() => {}); continue; }   // no gasta cupo del día
           if (q.tipo === 'flash') { const sn = snapshotInventario[q.productoId] || {}, fin = Date.parse(sn.promoHasta || ''), pct = Number(sn.promoPct) || 0;
             if (!(pct > 0) || (fin && fin - Date.now() < 30 * 60000)) { await doc.ref.update({ estado: 'omitido', motivo: 'oferta terminada o por terminar' }).catch(() => {}); continue; } }
           // reserva el estado (para que dos dispositivos abiertos no publiquen el mismo) y respeta el máximo por día
           let ok = false;
           try { ok = await db.runTransaction(async t => { const a = await t.get(doc.ref), c = await t.get(cfgRef); if (!a.exists || a.data().estado !== 'pendiente') return false;
             const cd = c.exists ? c.data() : {}, n = cd.dia === hoy ? (Number(cd.publicadosHoy) || 0) : 0;
-            if (n >= Math.max(1, Number(cfgEstadosAuto.maxDia) || 4)) { t.update(doc.ref, { estado: 'omitido', motivo: 'máximo del día' }); return false; }
-            t.update(doc.ref, { estado: 'publicando', por: currentUser.email }); t.set(cfgRef, { dia: hoy, publicadosHoy: n + 1 }, { merge: true }); return true; }); } catch (e) { ok = false; }
+            if (!esVipQ && n >= Math.max(1, Number(cfgEstadosAuto.maxDia) || 4)) { t.update(doc.ref, { estado: 'omitido', motivo: 'máximo del día' }); return false; }
+            t.update(doc.ref, { estado: 'publicando', por: currentUser.email }); if (!esVipQ) t.set(cfgRef, { dia: hoy, publicadosHoy: n + 1 }, { merge: true }); return true; }); } catch (e) { ok = false; }
           if (!ok) continue;
           try {
             let lienzo = null, prodId = '';
             if (q.tipo === 'novedad') lienzo = lienzoNovedadPremium(q.titulo || 'Novedad', q.texto || '', DISENO_AUTO.novedad);
+            else if (q.tipo === 'stock') { prodId = prodQ.docId; const pal = siguientePaletaStock(); const img = await new Promise(r => { const i0 = imagenProductoMk(prodQ, () => r(imagenProductoMk(prodQ))); if (i0) r(i0); setTimeout(() => r(imagenProductoMk(prodQ)), 3000); }); lienzo = lienzoStockPremium(prodQ, pal, img); }
             else { prodId = prodQ.docId; lienzo = await renderPremiumAuto(prodQ, q.t1, q.t2, DISENO_AUTO[q.tipo]); }
             if (!lienzo) throw new Error('No se pudo dibujar la imagen');
             const c = document.createElement('canvas'); c.width = 720; c.height = 1280; c.getContext('2d').drawImage(lienzo, 0, 0, 720, 1280);
-            const id = await publicarEstado(c.toDataURL('image/jpeg', 0.82), String(q.texto || q.titulo || '').slice(0, 140), prodId, { auto: true, tipoAuto: q.tipo || '' });
+            let id = '';
+            if (esVipQ) { await publicarEstadoVip(c.toDataURL('image/jpeg', 0.82), String(q.texto || '').slice(0, 140), prodId); id = 'vip_' + prodId; }
+            else id = await publicarEstado(c.toDataURL('image/jpeg', 0.82), String(q.texto || q.titulo || '').slice(0, 140), prodId, { auto: true, tipoAuto: q.tipo || '' });
             await doc.ref.update({ estado: 'publicado', estadoId: id || '', publicadoEl: new Date().toISOString() });
           } catch (e) { await doc.ref.update({ estado: 'error', motivo: String(e.message || e).slice(0, 120) }).catch(() => {}); }
         }
@@ -22392,7 +22660,7 @@
       return { cuentas: legado, stock: legado.length || stockPublico };
     }
 
-    const VERSION_SERVIDOR_NECESARIA = '2026-10-12d';   // la versión del servidor que necesita esta página
+    const VERSION_SERVIDOR_NECESARIA = '2026-10-12g';   // la versión del servidor que necesita esta página
     async function llamarBackend(accion, datos) {
       if (modoPruebaCliente) { const rs = backendSimulado(accion, datos || {}); if (rs) return rs; }
       const url = obtenerBackendUrl();
