@@ -15084,7 +15084,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-12h';
+    const VERSION_PAGINA = '2026-10-12j';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261010_wacompra', fecha: '2026-10-10', titulo: 'Compra por WhatsApp 💬', mensaje: 'Ahora puedes **comprar con tu saldo desde nuestro WhatsApp**. Ve a tu perfil → **Mis datos → Comprar por WhatsApp**, vincula tu chat con el código y pide la autorización.' },
       { id: 'act_20261010_vista2', fecha: '2026-10-10', titulo: 'Nueva vista de la tienda ▦', mensaje: 'Ahora puedes ver los productos **en 2 columnas**: más productos en tu pantalla, con las **promos resaltadas** (🔥 campaña, ⚡ relámpago, 🎁 regalo). Toca uno y se abre su ficha para comprar. Cambia de vista con los íconos ☰ / ▦ arriba de las categorías.' },
@@ -19476,6 +19476,8 @@
 
     // ==================== NOVEDADES INTERNAS DEL PANEL (solo el equipo) ====================
     const ACTUALIZACIONES_INTERNAS = [
+      { fecha: '2026-10-12', titulo: '⏳ No se anuncian ofertas por terminar', mensaje: 'El bot de WhatsApp ya no anuncia una oferta relámpago a la que le queden menos de 15 minutos, y los estados automáticos no publican una a la que le queden menos de 30 (o que ya terminó).', ir: 'marketing' },
+      { fecha: '2026-10-12', titulo: '🤖 Gemini: si un modelo está saturado, usa otro', mensaje: 'Cuando Google responde "mucha demanda" (503) o "sin cupo" (429), el bot ya no se rinde: prueba automáticamente con otro modelo de Gemini, empezando por el más liviano (gemini-2.5-flash-lite). Si todos están ocupados, el bot sigue funcionando normal sin la IA.', ir: 'whatsapp' },
       { fecha: '2026-10-12', titulo: '👋 Saludo corto cuando el cliente vuelve', mensaje: 'Si el cliente ya vio el menú completo en las últimas 6 horas y vuelve a saludar, el bot ya no le repite todo el menú: le responde "👋 ¡Hola de nuevo! ¿Qué necesitas hoy?" con los atajos (Comprar · Recargar · Stock · Menú) y "¿Lo de siempre?" si aplica. Con "menú" o "0" ve el menú completo.', ir: 'whatsapp' },
       { fecha: '2026-10-12', titulo: '🤖 Gemini: arreglada la respuesta cortada', mensaje: 'Con la clave nueva, Gemini respondía pero la respuesta llegaba cortada (el modelo 2.5 gastaba el espacio "pensando"). Ahora se le pide sin pensar y con más espacio, y el servidor lee su respuesta de forma más tolerante. Usa 🧪 Probar IA para confirmarlo.', ir: 'whatsapp' },
       { fecha: '2026-10-12', titulo: '🔒 Cuentas: solo con el WhatsApp vinculado', mensaje: 'Si alguien con el chat sin vincular manda el correo de una cuenta o reclama, el bot **no da información de la cuenta ni crea reportes** (no sabe si es el dueño): le ofrece 🔗 vincular su WhatsApp en un toque o 📝 reportarla en la página (Mis cuentas). A ti sí te llega por Telegram lo que encontró (si es de tus ventas y de quién). Con el WhatsApp vinculado, el reporte se crea al instante como siempre.', ir: 'tickets' },
@@ -21359,6 +21361,8 @@
           if (Date.parse(q.venceEl) < Date.now()) { await doc.ref.update({ estado: 'vencido' }).catch(() => {}); continue; }
           const prodQ = q.tipo === 'novedad' ? null : catalogoUnificado.find(x => x.docId === q.productoId);
           if (q.tipo !== 'novedad' && (!prodQ || esProductoVip(prodQ) || !(Number(prodQ.stock) > 0))) { await doc.ref.update({ estado: 'omitido', motivo: 'producto no disponible' }).catch(() => {}); continue; }   // no gasta cupo del día
+          if (q.tipo === 'flash') { const sn = snapshotInventario[q.productoId] || {}, fin = Date.parse(sn.promoHasta || ''), pct = Number(sn.promoPct) || 0;
+            if (!(pct > 0) || (fin && fin - Date.now() < 30 * 60000)) { await doc.ref.update({ estado: 'omitido', motivo: 'oferta terminada o por terminar' }).catch(() => {}); continue; } }
           // reserva el estado (para que dos dispositivos abiertos no publiquen el mismo) y respeta el máximo por día
           let ok = false;
           try { ok = await db.runTransaction(async t => { const a = await t.get(doc.ref), c = await t.get(cfgRef); if (!a.exists || a.data().estado !== 'pendiente') return false;
@@ -22309,7 +22313,7 @@
       return { cuentas: legado, stock: legado.length || stockPublico };
     }
 
-    const VERSION_SERVIDOR_NECESARIA = '2026-10-11u';   // la versión del servidor que necesita esta página
+    const VERSION_SERVIDOR_NECESARIA = '2026-10-11w';   // la versión del servidor que necesita esta página
     async function llamarBackend(accion, datos) {
       if (modoPruebaCliente) { const rs = backendSimulado(accion, datos || {}); if (rs) return rs; }
       const url = obtenerBackendUrl();
