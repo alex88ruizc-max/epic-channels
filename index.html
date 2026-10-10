@@ -499,6 +499,7 @@
         </div>
 
         <!-- Mi Netflix (visible solo si el cliente tiene cuentas asignadas) -->
+        <button id="btnNavSubirStock" onclick="cambiarVista(document.getElementById('vistaProveedor') && !document.getElementById('vistaProveedor').classList.contains('hidden') ? 'tienda' : 'proveedor')" title="Subir stock" class="hidden p-2 sm:px-3 sm:py-1.5 rounded-xl sm:rounded-lg text-xs bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 font-semibold border border-emerald-500/30 items-center gap-1.5 shrink-0 transition"><i class="fa-solid fa-box-open text-xs sm:text-sm"></i><span class="hidden sm:inline">Subir stock</span></button>
         <button id="btnNavNetflix" onclick="abrirModalNetflixCliente()" title="Mis cuentas" class="hidden relative p-2 sm:px-3 sm:py-1.5 rounded-xl sm:rounded-lg text-xs bg-red-500/10 hover:bg-red-500/20 text-red-400 font-semibold border border-red-500/30 items-center gap-1.5 shrink-0 transition">
           <i class="fa-solid fa-tv text-xs sm:text-sm"></i>
           <span class="hidden sm:inline">Mis cuentas</span>
@@ -3237,6 +3238,7 @@
             <option value="moderador">Moderador (casi todo, sin configuración)</option>
           </select>
           <p id="editClienteRolInfo" class="hidden mt-1.5 text-[10px] text-gray-400 leading-snug"></p>
+          <label id="editClienteProvVendeCaja" class="hidden mt-2 flex items-start gap-2 p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 cursor-pointer"><input type="checkbox" id="editClienteProvVende" onchange="editClienteCambioRol()" class="mt-0.5 accent-emerald-500"><span class="text-[11px] text-gray-200 leading-snug"><b class="text-white">🧰 También es proveedor (Proveedor y ventas)</b><br>Sube cuentas desde su panel <b>y sigue comprando en la tienda</b> con su perfil (Cliente, Dealer…). Elige abajo qué productos puede subir.</span></label>
         </div>
         <div id="editClienteReferidoCaja" class="solo-admin p-3 rounded-xl border border-sky-500/30 bg-sky-500/5 space-y-2">
           <p class="text-xs font-black text-white"><i class="fa-solid fa-user-group text-sky-300 mr-1"></i> Referidos</p>
@@ -6929,6 +6931,8 @@
             userTipoCuenta = String(dataU.tipoCuenta || '');
             userCategoriasPermitidas = Array.isArray(dataU.categoriasPermitidas) ? dataU.categoriasPermitidas : [];
             if (tipoAntes !== userTipoCuenta) { try { renderizarCatalogo(); renderizarFiltrosCategorias(); pintarBannerDealer(); if (userTipoCuenta === 'revendedor') { (cfgDealer ? Promise.resolve() : cargarCfgDealer()).then(cargarProgresoDealer); } } catch (e) { /* nada */ } }
+            userProveedorVende = dataU.proveedorVende === true && dataU.rol === 'proveedor';
+            try { document.body.classList.toggle('modo-proveedor', rolActual === 'proveedor' && !userProveedorVende); const bPS = document.getElementById('btnNavSubirStock'); if (bPS) { bPS.classList.toggle('hidden', !userProveedorVende); bPS.classList.toggle('flex', userProveedorVende); } } catch (e) { /* nada */ }
             if ((userTipoCuenta === 'externo' || userTipoCuenta === 'reseller') && dataU.rol === 'proveedor') { try { const vP = document.getElementById('vistaProveedor'); if (vP && vP.classList.contains('hidden')) cambiarVista('proveedor'); } catch (e) { /* nada */ } }
             userProductosBloqueados = dataU.productos_bloqueados || [];
             userPermisosSubirStock = dataU.permisos_subir_stock || [];
@@ -7732,7 +7736,7 @@
         vista = 'tienda';
       }
       // El proveedor solo tiene su propio panel
-      if (esProveedorSesion()) vista = 'proveedor';
+      if (esProveedorSesion() && !userProveedorVende) vista = 'proveedor';   // proveedor y ventas sí navega la tienda
 
       cerrarModalAuth();
       const vb = document.getElementById('vistaBloqueada');
@@ -9756,7 +9760,8 @@
           email: d.email || '', nombre: d.nombre || '',
           whatsapp: whatsappEsVacio(d.whatsapp) ? '' : String(d.whatsapp),
           saldo: Number(d.saldo) || 0, perfilCompleto: !!d.email, cargado: true, rol: d.rol || 'cliente', waCompra: d.waCompraAutorizada === true, waVinculado: d.waVinculado || '',
-          permisos: Array.isArray(d.permisos_subir_stock) ? d.permisos_subir_stock : []
+          permisos: Array.isArray(d.permisos_subir_stock) ? d.permisos_subir_stock : [],
+          proveedorVende: d.proveedorVende === true && d.rol === 'proveedor'
         };
         try { const wn = document.getElementById('editClienteWaNombre'); if (wn) wn.value = d.waNombreChat || ''; editClienteOriginal.waNombreChat = d.waNombreChat || ''; } catch (x) { /* nada */ }
         try { const pp = document.getElementById('editClientePostpago'), pm = document.getElementById('editClientePostpagoMax'); if (pp) pp.checked = d.waPostpago === true; if (pm) pm.value = d.waPostpagoMax ? String(d.waPostpagoMax) : ''; editClienteOriginal.waPostpago = d.waPostpago === true; editClienteOriginal.waPostpagoMax = d.waPostpagoMax || 0;
@@ -9765,7 +9770,8 @@
         const selRolEd = document.getElementById('editClienteRol');
         editClienteOriginal.tipoCuenta = String(d.tipoCuenta || '');
         editClienteOriginal.categoriasPermitidas = Array.isArray(d.categoriasPermitidas) ? d.categoriasPermitidas : [];
-        if (selRolEd) selRolEd.value = valorSelectTipoCuenta(editClienteOriginal.rol, editClienteOriginal.tipoCuenta);
+        if (selRolEd) selRolEd.value = valorSelectTipoCuenta(editClienteOriginal.proveedorVende ? 'cliente' : editClienteOriginal.rol, editClienteOriginal.tipoCuenta);
+        try { const chkPV0 = document.getElementById('editClienteProvVende'); if (chkPV0) chkPV0.checked = editClienteOriginal.proveedorVende; editClienteCambioRol(); } catch (e) { /* nada */ }
         if (esAdminSesionActual()) cargarCreditoEditar(uid, d);
         { const cId = document.getElementById('editClienteIdEpic'); if (cId) { const ok = esIdEpic(d.idEpic) && esAdminSesionActual(); cId.classList.toggle('hidden', !ok);
             if (ok) cId.innerHTML = `<span class="text-[11px] text-gray-300">🔑 ID del cliente: <b class="font-mono text-violet-200 text-sm">${escaparHtml(d.idEpic)}</b></span><span class="flex gap-1.5"><button type="button" onclick="copiarTexto('${escaparJsAttr(d.idEpic)}','ID copiado')" class="px-2 py-1 rounded-lg bg-gray-800 border border-gray-700 text-[10px] text-gray-200">Copiar ID</button><button type="button" onclick="copiarIdContacto('${escaparJsAttr(d.idEpic)}','${escaparJsAttr(d.nombre || '')}')" class="px-2 py-1 rounded-lg bg-violet-500 text-white text-[10px] font-black">Copiar para el contacto</button></span><span class="text-[10px] text-gray-500 w-full">Guarda su contacto en el WhatsApp del bot como <b class="text-gray-300">${escaparHtml(((d.nombre || 'Cliente').trim().split(/\s+/)[0]) + ' ' + d.idEpic)}</b>: el bot te pide autorización por Telegram la primera vez y, si aceptas, queda identificado. Solo tú ves este ID.</span>`; } }
@@ -9870,8 +9876,12 @@
           const selRol = document.getElementById('editClienteRol');
           const rolAntes = orig.rol || 'cliente';
           const par = TIPOS_CUENTA_SELECT[selRol ? selRol.value : ''] || [rolAntes, orig.tipoCuenta || ''];
-          const rolNuevo = par[0], tipoNuevo = par[1];
+          let rolNuevo = par[0]; const tipoNuevo = par[1];
+          const selV = selRol ? selRol.value : '', chkPV = document.getElementById('editClienteProvVende');
+          const provVende = (selV === 'cliente' || selV === 'cliente_normal' || selV === 'revendedor') && !!(chkPV && chkPV.checked);   // 🧰 Proveedor y ventas
+          if (provVende) rolNuevo = 'proveedor';
           const cambios = {};
+          if (provVende !== (orig.proveedorVende === true)) cambios.proveedorVende = provVende;
           if (rolNuevo !== rolAntes) cambios.rol = rolNuevo;
           if (tipoNuevo !== (orig.tipoCuenta || '')) cambios.tipoCuenta = tipoNuevo;
           // Quién lo recomendó
@@ -10024,8 +10034,12 @@
     function editClienteCambioRol() {
       const sel = document.getElementById('editClienteRol');
       const v = sel ? sel.value : 'cliente';
+      const caja = document.getElementById('editClienteProvVendeCaja'), chkPV = document.getElementById('editClienteProvVende');
+      const esClienteTipo = (v === 'cliente' || v === 'cliente_normal' || v === 'revendedor');
+      if (caja) caja.classList.toggle('hidden', !esClienteTipo);
+      const provVende = esClienteTipo && chkPV && chkPV.checked;
       const bloque = document.getElementById('editClienteBloqueStock');
-      if (bloque) bloque.classList.toggle('hidden', !(v === 'proveedor' || v === 'proveedor_externo' || v === 'reseller'));
+      if (bloque) bloque.classList.toggle('hidden', !(v === 'proveedor' || v === 'proveedor_externo' || v === 'reseller' || provVende));
       const bc = document.getElementById('editClienteBloqueCategorias');
       if (bc) {
         bc.classList.toggle('hidden', v !== 'cliente_normal');
@@ -11130,6 +11144,7 @@
 
     // ==================== ROLES: ADMINISTRADOR, MODERADOR Y PROVEEDOR ====================
     let rolActual = 'cliente';
+    let userProveedorVende = false;   // 🧰 Proveedor y ventas: sube stock y además compra en la tienda
     let inicioEnPanelPendiente = false;
     let perfilNombreActual = '';
     let escuchasModeradorActivas = false;
@@ -11149,7 +11164,7 @@
       rolActual = rol;
       if (user && !desdeCache) guardarRolCache(user.uid, rol);
       document.body.classList.toggle('modo-moderador', rol === 'moderador');
-      document.body.classList.toggle('modo-proveedor', rol === 'proveedor');
+      document.body.classList.toggle('modo-proveedor', rol === 'proveedor' && !userProveedorVende);
       const btnAdmin = document.getElementById('btnAdminTab');
 
       if (rol === 'moderador') {
@@ -11178,7 +11193,7 @@
         if (btnAdmin) btnAdmin.classList.add('hidden');
         iniciarProveedor();
         const v = document.getElementById('vistaProveedor');
-        if (v && v.classList.contains('hidden')) cambiarVista('proveedor');
+        if (v && v.classList.contains('hidden') && !userProveedorVende) cambiarVista('proveedor');   // proveedor y ventas entra a la tienda
       } else if (anterior === 'proveedor') {
         detenerProveedor();
         cambiarVista('tienda');
@@ -15600,7 +15615,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-16m';
+    const VERSION_PAGINA = '2026-10-16p';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261010_wacompra', fecha: '2026-10-10', titulo: 'Compra por WhatsApp 💬', mensaje: 'Ahora puedes **comprar con tu saldo desde nuestro WhatsApp**. Ve a tu perfil → **Mis datos → Comprar por WhatsApp**, vincula tu chat con el código y pide la autorización.' },
       { id: 'act_20261010_vista2', fecha: '2026-10-10', titulo: 'Nueva vista de la tienda ▦', mensaje: 'Ahora puedes ver los productos **en 2 columnas**: más productos en tu pantalla, con las **promos resaltadas** (🔥 campaña, ⚡ relámpago, 🎁 regalo). Toca uno y se abre su ficha para comprar. Cambia de vista con los íconos ☰ / ▦ arriba de las categorías.' },
@@ -17482,7 +17497,7 @@
 
 
     // ==================== PROMOS POR PERFIL ====================
-    function perfilPromoMio() { if (esStaffSesion() || esProveedorSesion()) return ''; return userTipoCuenta === 'revendedor' ? 'dealer' : (userTipoCuenta === 'normal' ? 'normal' : 'cliente'); }
+    function perfilPromoMio() { if (esStaffSesion() || (esProveedorSesion() && !userProveedorVende)) return ''; return userTipoCuenta === 'revendedor' ? 'dealer' : (userTipoCuenta === 'normal' ? 'normal' : 'cliente'); }
     function promoVencida(pr) { return !!(pr && pr.vence && Date.parse(pr.vence) < Date.now()); }
     function textoVencePromo(pr) { if (!pr || !pr.vence) return ''; const d = new Date(pr.vence); return `hasta el ${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')} a las ${d.toLocaleTimeString('es-CO', { hour: 'numeric', minute: '2-digit' })}`; }
     function aplicaPromo(pr, perfil) { if (promoVencida(pr)) return false; const a = Array.isArray(pr.aplicaA) && pr.aplicaA.length ? pr.aplicaA : ['dealer']; return a.indexOf(perfil) !== -1; }
@@ -20257,6 +20272,9 @@
 
     // ==================== NOVEDADES INTERNAS DEL PANEL (solo el equipo) ====================
     const ACTUALIZACIONES_INTERNAS = [
+      { fecha: '2026-10-16', titulo: '🧰 Nuevo perfil: Proveedor y ventas', mensaje: 'En Editar cliente, con el tipo Cliente, Cliente normal o Dealer, marca la casilla "🧰 También es proveedor" y elige qué productos puede subir. Ese usuario sube cuentas desde su panel (botón verde "Subir stock" en la barra) y sigue comprando en la tienda con su perfil (precios y regalos de Dealer incluidos). Es distinto de "Proveedor externo", que solo sube y no compra.', ir: 'usuarios' },
+      { fecha: '2026-10-16', titulo: '🔄 Renovar por el chat (pantalla o cuenta completa)', mensaje: 'Al escribir "renovar", el bot renueva primero SU alquiler (la misma pantalla o cuenta completa): le da el valor exacto para pagar por Bre-B aunque no esté autorizado para comprar con saldo (pagar entra plata, no la gasta). Si la cuenta completa ya se le quitó, no le ofrece una pantalla: te avisa por Telegram marcado como cuenta completa para que se la consigas. Las pantallas sí se venden solas del stock de Venta automática.', ir: 'alquileres' },
+      { fecha: '2026-10-16', titulo: '🔄 Renovar un alquiler que ya se le quitó', mensaje: 'Si a un cliente se le venció y se le quitó su Netflix y escribe "renovar", "volver a tener", "me la quitaron"…, el bot lo reconoce: con stock le ofrece una pantalla al instante ("¿Te la separo?"); sin stock le dice que ya avisó al equipo y a ti te llega el aviso a Telegram. Además, la alternativa "Mejor N" solo aparece cuando ahorra algo.', ir: 'alquileres' },
       { fecha: '2026-10-16', titulo: '⚡ Pago directo, registro después', mensaje: 'Un visitante que confirma su pedido ya no tiene que elegir entre "sin registro" y "cliente VIP": pasa directo al pago por Bre-B y recibe las cuentas en el chat. La invitación a hacerse cliente VIP (escribe registrarme) llega después de entregarle, y sus compras pasan a su cuenta nueva.', ir: 'whatsapp' },
       { fecha: '2026-10-16', titulo: '🔢 Íconos solo para decisiones reales', mensaje: 'Cuando el cliente pide una cantidad y hay una mejor ("Dame 6" → "1️⃣ Sí, las 6 · $17.400 / 2️⃣ Mejor 15 · $42.000"), el bot usa los íconos numerados para que escoja. "Solo 6" o "dame 6" (la misma cantidad) cuenta como sí. Las opciones de entrega (sin registro / cliente VIP) también van numeradas. Lo que sigue sin aparecer es el "0️⃣ Menú" y los atajos sin sentido.', ir: 'whatsapp' },
       { fecha: '2026-10-16', titulo: '💰 Sugerir recarga con poco saldo', mensaje: 'En el saludo, si el cliente registrado tiene el saldo en $0 o por debajo de $4.000, el bot se lo dice en una frase ("Tu saldo está en $0: cuando quieras recargar, escríbeme recargar y te doy el dato"). Con $4.000 o más no menciona el saldo.', ir: 'whatsapp' },
@@ -23416,7 +23434,7 @@
       return { cuentas: legado, stock: legado.length || stockPublico };
     }
 
-    const VERSION_SERVIDOR_NECESARIA = '2026-10-16i';   // la versión del servidor que necesita esta página
+    const VERSION_SERVIDOR_NECESARIA = '2026-10-16k';   // la versión del servidor que necesita esta página
     async function llamarBackend(accion, datos) {
       if (mantenimientoActivo() && /^(comprar|recarga|renovar|carrito|preorden|combo)/.test(String(accion || ''))) { avisoMantenimiento(''); throw new Error('Estamos en mantenimiento. Compra por WhatsApp mientras tanto.'); }
       if (modoPruebaCliente) { const rs = backendSimulado(accion, datos || {}); if (rs) return rs; }
