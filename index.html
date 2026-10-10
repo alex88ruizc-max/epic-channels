@@ -2116,6 +2116,16 @@
       </div>
 
       <div id="adminSecAjustes" class="hidden space-y-6 pb-28 sm:pb-0">
+        <details id="mantCaja" class="rounded-2xl bg-gray-900 border border-amber-500/50 overflow-hidden max-w-3xl" open>
+          <summary class="p-4 cursor-pointer select-none flex items-center gap-3 list-none"><span class="w-9 h-9 shrink-0 rounded-xl bg-amber-500/15 text-amber-300 flex items-center justify-center">🛠</span><span class="min-w-0 flex-grow"><span class="block font-bold text-white text-sm">Modo mantenimiento</span><span id="mantResumen" class="block text-[11px] text-gray-400">Apagado</span></span><i class="fa-solid fa-chevron-down text-gray-500 text-xs"></i></summary>
+          <div class="px-4 pb-4 pt-3 space-y-3 border-t border-gray-800">
+            <p class="text-[11px] text-gray-400">Tus clientes pueden <b class="text-white">ver la tienda</b>, pero no comprar ni recargar: arriba les sale el aviso, y al tocar Comprar o Recargar les abre tu WhatsApp con el pedido escrito. Tú sigues usando el panel normal. <b class="text-white">No usa el servidor</b>: funciona aunque esté caído.</p>
+            <label class="flex items-center justify-between gap-3 p-2.5 rounded-xl bg-gray-800/60 border border-gray-700/60 cursor-pointer"><span class="text-xs font-bold text-white">Activar mantenimiento</span><input type="checkbox" id="mantActivo" class="w-5 h-5 accent-amber-500"></label>
+            <label class="block text-[10px] text-gray-400">WhatsApp para comprar mientras tanto<input id="mantWa" maxlength="15" value="3043956726" class="mt-1 w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"></label>
+            <label class="block text-[10px] text-gray-400">Mensaje<textarea id="mantMsg" rows="2" maxlength="200" class="mt-1 w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none">Estamos en mantenimiento para darte un mejor servicio. Mientras tanto, compra por WhatsApp. ¡Volvemos en un rato!</textarea></label>
+            <button type="button" onclick="guardarMantenimiento()" class="w-full py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-black text-xs">Guardar</button>
+          </div>
+        </details>
         <div class="p-4 rounded-2xl bg-gray-900 border border-gray-800 flex flex-col sm:flex-row sm:items-center gap-3 max-w-3xl">
           <div class="flex-1 min-w-0"><p class="text-sm font-black text-white"><i class="fa-solid fa-flask text-amber-300 mr-1.5"></i>Simulador de cliente</p>
             <p class="text-[11px] text-gray-400 mt-0.5">Se actualiza solo: usa exactamente la misma tienda que tus clientes (versión <b id="simVersionTxt" class="text-gray-200"></b>). Las compras de prueba no tocan saldo, stock ni ventas reales.</p></div>
@@ -6200,9 +6210,38 @@
     let ajustesPublicosRaw = {};
     let unsubSecretosAdmin = null;
 
+    // ==================== 🛠 MODO MANTENIMIENTO ====================
+    function datosMant() { const m = (ajustesGeneralesConfig && ajustesGeneralesConfig.mantenimiento) || {}; return { activo: m.activo === true, wa: String(m.wa || '3043956726').replace(/\D/g, ''), msg: String(m.mensaje || 'Estamos en mantenimiento para darte un mejor servicio. Mientras tanto, compra por WhatsApp. ¡Volvemos en un rato!') }; }
+    function mantenimientoActivo() { try { return datosMant().activo && !(typeof esAdminSesionActual === 'function' && esAdminSesionActual()); } catch (e) { return false; } }
+    function waMant(texto) { const d = datosMant(), n = d.wa.length === 10 ? '57' + d.wa : d.wa; return 'https://wa.me/' + n + (texto ? '?text=' + encodeURIComponent(texto) : ''); }
+    function avisoMantenimiento(producto) {
+      const d = datosMant(), txt = producto ? 'Hola 👋 quiero comprar ' + producto : 'Hola 👋 quiero hacer un pedido';
+      let m = document.getElementById('modalMant');
+      if (!m) { m = document.createElement('div'); m.id = 'modalMant'; m.className = 'fixed inset-0 z-[90] flex items-center justify-center p-4'; m.style.background = 'rgba(0,0,0,.75)'; m.onclick = e => { if (e.target === m) m.remove(); }; document.body.appendChild(m); }
+      const numV = d.wa.replace(/^(\d{3})(\d{3})(\d{4})$/, '$1 $2 $3');
+      m.innerHTML = `<div style="max-width:380px;width:100%;background:#111827;border:1px solid rgba(245,158,11,.5);border-radius:22px;padding:22px;text-align:center"><div style="font-size:42px">🛠</div><h3 style="color:#fff;font-weight:900;font-size:18px;margin:6px 0">Estamos en mantenimiento</h3><p style="color:#d1d5db;font-size:13px;line-height:1.5;margin:0 0 14px">${escaparHtml(d.msg)}</p><a href="${waMant(txt)}" target="_blank" rel="noopener" style="display:flex;align-items:center;justify-content:center;gap:8px;background:#22c55e;color:#04120c;font-weight:900;padding:12px;border-radius:14px;text-decoration:none"><i class="fa-brands fa-whatsapp"></i> Comprar por WhatsApp · ${numV}</a><button onclick="document.getElementById('modalMant').remove()" style="margin-top:10px;background:none;border:0;color:#9ca3af;font-size:12px">Cerrar</button></div>`;
+    }
+    function pintarBannerMant() {
+      const d = datosMant(), adm = typeof esAdminSesionActual === 'function' && esAdminSesionActual();
+      let b = document.getElementById('bannerMant');
+      const r = document.getElementById('mantResumen'); if (r) r.textContent = d.activo ? '🟠 ACTIVO: tus clientes ven el aviso y compran por WhatsApp' : 'Apagado';
+      if (!d.activo) { if (b) b.remove(); return; }
+      if (!b) { b = document.createElement('div'); b.id = 'bannerMant'; b.style.cssText = 'position:sticky;top:0;z-index:60;padding:9px 12px;text-align:center;font-size:12.5px;font-weight:800;color:#1c1300;background:linear-gradient(90deg,#f59e0b,#fbbf24)'; document.body.insertBefore(b, document.body.firstChild); }
+      const numV = d.wa.replace(/^(\d{3})(\d{3})(\d{4})$/, '$1 $2 $3');
+      b.innerHTML = adm ? '🛠 Modo mantenimiento ACTIVO · tus clientes compran por WhatsApp · <a href="#" onclick="event.preventDefault();irATabAdmin(\'ajustes\')" style="color:#1c1300;text-decoration:underline">apagarlo</a>'
+        : `🛠 Estamos en mantenimiento · Compra por WhatsApp 👉 <a href="${waMant('Hola 👋 quiero hacer un pedido')}" target="_blank" rel="noopener" style="color:#1c1300;text-decoration:underline">${numV}</a> · ¡Volvemos en un rato!`;
+    }
+    function pintarCajaMant() { const d = datosMant(), m = (ajustesGeneralesConfig && ajustesGeneralesConfig.mantenimiento) || {}; const a = document.getElementById('mantActivo'); if (!a || document.activeElement && /^mant/.test(document.activeElement.id || '')) return; a.checked = d.activo; document.getElementById('mantWa').value = d.wa; if (m.mensaje) document.getElementById('mantMsg').value = m.mensaje; }
+    async function guardarMantenimiento() {
+      if (!esAdminSesionActual()) return;
+      const datos = { activo: document.getElementById('mantActivo').checked, wa: String(document.getElementById('mantWa').value || '').replace(/\D/g, '').slice(0, 13) || '3043956726', mensaje: String(document.getElementById('mantMsg').value || '').trim().slice(0, 200), desde: new Date().toISOString() };
+      try { await db.collection('configuracion').doc('ajustes').set({ mantenimiento: datos }, { merge: true }); ajustesGeneralesConfig.mantenimiento = datos; pintarBannerMant(); mostrarToast(datos.activo ? '🛠 Mantenimiento activado' : '✅ Tienda funcionando normal'); }
+      catch (e) { alert('No se pudo guardar: ' + e.message); }
+    }
     function aplicarAjustesGeneralesEnMemoria(data) {
       ajustesPublicosRaw = data || {};
       ajustesGeneralesConfig = { ...ajustesGeneralesConfig, ...data };
+      try { pintarBannerMant(); pintarCajaMant(); } catch (e) { /* nada */ }
       try { const h = String(location.hostname || '').replace(/^www\./, '');
         if (h && !/localhost|^127\.|\.local$|github\.io$|^$/.test(h) && typeof esAdminSesionActual === 'function' && esAdminSesionActual() && data.dominioTienda !== h)
           db.collection('configuracion').doc('ajustes').set({ dominioTienda: h }, { merge: true }).catch(() => {}); } catch (e) { /* nada */ }
@@ -8798,6 +8837,7 @@
     }
 
     async function comprarProducto(docId, desdeMixto) {
+      if (mantenimientoActivo()) { avisoMantenimiento(((catalogoUnificado || []).find(p => p.docId === docId) || {}).nombre); return; }
       if (!currentUser) { abrirModalAuth('login'); return; }
       if (modoPruebaCliente && ((catalogoUnificado.find(p => p.docId === docId) || {}).esCombo || !obtenerBackendUrl())) { comprarProductoSimulado(docId); return; }
 
@@ -15270,7 +15310,8 @@
       b.iconos = b.iconos !== false;
       b.inicio = TABS_MENU_INFO[b.inicio] ? b.inicio : 'productos';
       const orden = (Array.isArray(b.orden) ? b.orden : []).filter((t, i, a) => TABS_MENU_INFO[t] && a.indexOf(t) === i && t !== 'ajustes');
-      ORDEN_MENU_BASE.forEach(t => { if (t !== 'ajustes' && orden.indexOf(t) === -1) orden.push(t); });
+      // Las tarjetas nuevas entran en su lugar natural (junto a la que las precede en el orden base), no al final
+      ORDEN_MENU_BASE.forEach((t, k) => { if (t === 'ajustes' || orden.indexOf(t) !== -1) return; let pos = -1; for (let j = k - 1; j >= 0 && pos === -1; j--) pos = orden.indexOf(ORDEN_MENU_BASE[j]); orden.splice(pos + 1, 0, t); });
       orden.push('ajustes');
       b.orden = orden;
       b.ocultos = (Array.isArray(b.ocultos) ? b.ocultos : []).filter(t => TABS_MENU_INFO[t] && t !== 'vista' && t !== 'ajustes');
@@ -15445,7 +15486,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-15a';
+    const VERSION_PAGINA = '2026-10-15e';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261010_wacompra', fecha: '2026-10-10', titulo: 'Compra por WhatsApp 💬', mensaje: 'Ahora puedes **comprar con tu saldo desde nuestro WhatsApp**. Ve a tu perfil → **Mis datos → Comprar por WhatsApp**, vincula tu chat con el código y pide la autorización.' },
       { id: 'act_20261010_vista2', fecha: '2026-10-10', titulo: 'Nueva vista de la tienda ▦', mensaje: 'Ahora puedes ver los productos **en 2 columnas**: más productos en tu pantalla, con las **promos resaltadas** (🔥 campaña, ⚡ relámpago, 🎁 regalo). Toca uno y se abre su ficha para comprar. Cambia de vista con los íconos ☰ / ▦ arriba de las categorías.' },
@@ -17976,7 +18017,8 @@
       ['Pagos a proveedores', 'proveedores', 'pagar proveedor deuda nequi daviplata lote aprobar', ''],
       ['Informe de tickets', 'tickets', 'informe estadistica reportes proveedor falla', ''],
       ['Permisos del moderador', 'vista', 'moderador permisos acceso', ''],
-      ['Tiendas para clientes', 'usuarios', 'tienda crear demo suscripcion revender', ''],
+      ['Tiendas para clientes', 'tiendas', 'tienda tiendas crear demo suscripcion revender negocio franquicia', ''],
+      ['Crear tienda', 'tiendas', 'tienda crear nueva prueba cliente enlace', ''],
       ['Niveles de clientes', 'usuarios', 'nivel puntos cliente', ''],
       ['Mensaje de entrega al cliente', 'productos', 'plantilla entrega mensaje compra', ''],
       ['Mensaje de stock para Telegram', 'stock', 'plantilla stock telegram difundir', ''],
@@ -19018,6 +19060,7 @@
     var crId = '';
     function abrirCompraRapida(id, cantidadInicial) {
       const p = catalogoUnificado.find(x => x.docId === id); if (!p) return;
+      if (mantenimientoActivo()) { avisoMantenimiento((cantidadInicial ? cantidadInicial + ' ' : '') + p.nombre); return; }
       if (!currentUser) { abrirModalAuth('login'); return; }
       crId = id;
       let m = document.getElementById('modalCompraRapida');
@@ -20097,6 +20140,10 @@
 
     // ==================== NOVEDADES INTERNAS DEL PANEL (solo el equipo) ====================
     const ACTUALIZACIONES_INTERNAS = [
+      { fecha: '2026-10-15', titulo: '🛠 Modo mantenimiento', mensaje: 'En **Ajustes Generales → 🛠 Modo mantenimiento**: tus clientes ven la tienda pero no compran ni recargan. Arriba les sale "Estamos en mantenimiento · Compra por WhatsApp 👉 304 395 6726 · ¡Volvemos en un rato!", y al tocar Comprar o Recargar les abre tu WhatsApp con el pedido escrito. Tú sigues usando el panel normal. No usa el servidor: sirve aunque esté caído.', ir: 'ajustes' },
+      { fecha: '2026-10-15', titulo: '📶 El bot gasta mucho menos cupo de Google', mensaje: 'El bot se cayó por el **límite diario de Google** (~20.000 llamadas a internet al día). Ahora gasta mucho menos: la configuración se guarda en memoria 60 s, los mensajes de grupos que no le tocan al bot no gastan, las estadísticas se guardan cada 5 minutos y la revisión de Telegram y Binance va cada 2 minutos. En **Comprobar todo** ves **cuántas llamadas van hoy**; al 75% te avisa por Telegram, y si pasa de 17.000 apaga lo no esencial (grupos y estilo) para que el bot **siga atendiendo en privado**.', ir: 'ajustes' },
+      { fecha: '2026-10-15', titulo: '🏪 Tiendas: Fase 1 lista', mensaje: 'Las tiendas de tus clientes ahora tienen un panel como el tuyo (sin tus funciones de dueño): **🏠 Inicio** con la guía **"Mis primeros pasos"** (8 pasos con barra de progreso) y la tarjeta **💬 Venta por WhatsApp**; **📦 Productos** con categorías; **🔑 Stock** con el cargador inteligente de cuentas (sin repetidas); **🧾 Ventas**; **🎨 Diseño** con **12 estilos** (Esmeralda, Océano, Atardecer, Neón, Oro VIP, Rosa, Galaxia, Rojo, Grafito, Menta, Claro, Aurora) y **efecto glass**; **⚙️ Ajustes** con sus pagos y **su propio bot de Telegram**; y **🔗 Compartir**. Publica las reglas nuevas.', ir: 'tiendas' },
+      { fecha: '2026-10-15', titulo: '🏪 La tarjeta Tiendas, en su lugar', mensaje: 'Con un orden de menú guardado, las tarjetas nuevas quedaban al final (Tiendas quedó al fondo de Ventas). Ahora entran en su lugar natural: **Tiendas aparece arriba en Ventas**. Y en el buscador del panel, "tiendas" o "crear tienda" te lleva directo a la sección.', ir: 'tiendas' },
       { fecha: '2026-10-15', titulo: '🧾 Ver las ventas de hoy', mensaje: 'Junto a **Recaudado hoy** hay un botón **Ver**: muestra cada venta del día con la hora, el producto y la cantidad, el valor, el cliente y los correos de las cuentas entregadas. **Recaudado hoy ya no cuenta los regalos** (ni suma ni cuenta cuentas): salen aparte, abajo, como 🎁 Regalos.', ir: 'reporte' },
       { fecha: '2026-10-14', titulo: '🌙 Grupos solo en tu horario', mensaje: 'Antes, el **modo cazador** y las respuestas **por mención** (@todos) escribían en los grupos a cualquier hora. Ahora todo lo de grupos respeta tu horario: desde el inicio de tu primera franja hasta el final de la última (sin franjas: de 7:00 a. m. a 11:00 p. m.). Fuera de ese horario el bot no escribe en ningún grupo.', ir: 'whatsapp' },
       { fecha: '2026-10-14', titulo: '👥 Vista previa de grupos corregida', mensaje: 'Con el cuadro del mensaje de grupos vacío, la vista previa mostraba un texto viejo ("Te habla EPIC STREAMING… Página con descuentos para vendedores"), aunque a los grupos ya llegaba el mensaje nuevo con variaciones. Ahora la vista previa muestra exactamente lo que se envía. Lo gris dentro del cuadro es solo un ejemplo: si quieres tu propio texto, escríbelo y guarda.', ir: 'whatsapp' },
@@ -21435,7 +21482,7 @@
 
 
     // ==================== COMPROBAR TODO (estado de la página, servidor, reglas y tareas) ====================
-    const VERSION_REGLAS_ESPERADA = '2026-10-13e';
+    const VERSION_REGLAS_ESPERADA = '2026-10-15a';
     async function abrirComprobarTodo() {
       let m = document.getElementById('modalComprobarTodo');
       if (!m) { m = document.createElement('div'); m.id = 'modalComprobarTodo'; m.className = 'fixed inset-0 z-[96] hidden items-center justify-center p-4 bg-black/75 backdrop-blur-sm'; m.onclick = ev => { if (ev.target === m) cerrarComprobarTodo(); }; document.body.appendChild(m); }
@@ -23167,7 +23214,7 @@
     }
 
     function cerrarSesion() { auth.signOut().then(() => bloquearAccesoVisitante()); }
-    function abrirModalRecarga() { if (!currentUser) { abrirModalAuth('login'); return; } document.getElementById('modalRecarga').classList.remove('hidden'); document.getElementById('modalRecarga').style.display = 'flex'; renderizarRecargaAuto(); if (recargaAutoDisponible()) { const dm = document.getElementById('recargaManualDetalle'); if (dm) dm.open = false; } }
+    function abrirModalRecarga() { if (mantenimientoActivo()) { avisoMantenimiento('saldo (recarga)'); return; } if (!currentUser) { abrirModalAuth('login'); return; } document.getElementById('modalRecarga').classList.remove('hidden'); document.getElementById('modalRecarga').style.display = 'flex'; renderizarRecargaAuto(); if (recargaAutoDisponible()) { const dm = document.getElementById('recargaManualDetalle'); if (dm) dm.open = false; } }
     function cerrarModalRecarga() { document.getElementById('modalRecarga').classList.add('hidden'); document.getElementById('modalRecarga').style.display = 'none'; }
     function cerrarModalEntrega() {
       document.getElementById('modalEntrega').classList.add('hidden');
@@ -23203,8 +23250,9 @@
       return { cuentas: legado, stock: legado.length || stockPublico };
     }
 
-    const VERSION_SERVIDOR_NECESARIA = '2026-10-14u';   // la versión del servidor que necesita esta página
+    const VERSION_SERVIDOR_NECESARIA = '2026-10-15a';   // la versión del servidor que necesita esta página
     async function llamarBackend(accion, datos) {
+      if (mantenimientoActivo() && /^(comprar|recarga|renovar|carrito|preorden|combo)/.test(String(accion || ''))) { avisoMantenimiento(''); throw new Error('Estamos en mantenimiento. Compra por WhatsApp mientras tanto.'); }
       if (modoPruebaCliente) { const rs = backendSimulado(accion, datos || {}); if (rs) return rs; }
       const url = obtenerBackendUrl();
       if (!url) throw new Error('El servidor seguro no está configurado.');

@@ -7,63 +7,110 @@
 <link rel="preconnect" href="https://www.gstatic.com" crossorigin>
 <link rel="preconnect" href="https://firestore.googleapis.com" crossorigin>
 <style>
-  :root { --c: #10b981; --c2: #06b6d4; --bg: #0b0f17; --card: #111827; --line: #1f2937; --txt: #e5e7eb; --sub: #9ca3af; }
+  :root { --c: #10b981; --c2: #06b6d4; --bg: #0b0f17; --card: #111827; --card2: #0f1320; --line: #1f2937; --line2: #374151; --txt: #e5e7eb; --sub: #9ca3af; --inp: #1f2937; --on: #04120c; }
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   html, body { margin: 0; background: var(--bg); color: var(--txt); font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
-  body { padding-bottom: env(safe-area-inset-bottom, 0px); }
+  body { padding-bottom: env(safe-area-inset-bottom, 0px); min-height: 100vh; transition: background .4s; }
+  body::before { content: ''; position: fixed; inset: 0; z-index: -1; pointer-events: none; background: radial-gradient(60% 45% at 0% 0%, color-mix(in srgb, var(--c) 16%, transparent), transparent 70%), radial-gradient(55% 40% at 100% 100%, color-mix(in srgb, var(--c2) 14%, transparent), transparent 70%); }
   button, input, select, textarea { font: inherit; color: inherit; }
   button { cursor: pointer; }
   .oculto { display: none !important; }
   .wrap { max-width: 980px; margin: 0 auto; padding: 0 14px; }
-  header { position: sticky; top: 0; z-index: 20; background: rgba(11,15,23,.92); backdrop-filter: blur(10px); border-bottom: 1px solid var(--line); padding-top: env(safe-area-inset-top, 0px); }
+  header { position: sticky; top: 0; z-index: 20; background: color-mix(in srgb, var(--bg) 88%, transparent); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border-bottom: 1px solid var(--line); padding-top: env(safe-area-inset-top, 0px); }
   .top { display: flex; align-items: center; gap: 10px; height: 62px; }
-  .logo { width: 40px; height: 40px; border-radius: 12px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-weight: 900; color: #0b0f17; background: linear-gradient(135deg, var(--c), var(--c2)); overflow: hidden; }
+  .logo { width: 40px; height: 40px; border-radius: 12px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-weight: 900; color: var(--on); background: linear-gradient(135deg, var(--c), var(--c2)); overflow: hidden; }
   .logo img { width: 100%; height: 100%; object-fit: cover; }
   .nombre { font-weight: 900; font-size: 17px; line-height: 1.1; }
   .sub { color: var(--sub); font-size: 12px; }
   .btn { border: 0; border-radius: 12px; padding: 10px 14px; font-weight: 800; font-size: 13px; }
-  .btn-p { background: linear-gradient(135deg, var(--c), var(--c2)); color: #04120c; }
-  .btn-g { background: #1f2937; color: var(--txt); border: 1px solid #374151; }
+  .btn-p { background: linear-gradient(135deg, var(--c), var(--c2)); color: var(--on); box-shadow: 0 6px 18px color-mix(in srgb, var(--c) 30%, transparent); }
+  .btn-g { background: var(--inp); color: var(--txt); border: 1px solid var(--line2); }
   .btn-r { background: rgba(239,68,68,.12); color: #fca5a5; border: 1px solid rgba(239,68,68,.35); }
-  .chip { display: inline-flex; align-items: center; gap: 6px; padding: 7px 12px; border-radius: 999px; font-size: 12px; font-weight: 700; background: #111827; border: 1px solid #374151; color: var(--sub); white-space: nowrap; }
-  .chip.on { background: var(--c); color: #04120c; border-color: transparent; }
+  .btn[disabled] { opacity: .5; }
+  .chip { display: inline-flex; align-items: center; gap: 6px; padding: 7px 12px; border-radius: 999px; font-size: 12px; font-weight: 700; background: var(--card); border: 1px solid var(--line2); color: var(--sub); white-space: nowrap; }
+  .chip.on { background: var(--c); color: var(--on); border-color: transparent; }
   .chips { display: flex; gap: 8px; overflow-x: auto; padding: 12px 0 4px; scrollbar-width: none; }
-  .buscar { width: 100%; margin-top: 14px; background: #111827; border: 1px solid #374151; border-radius: 999px; padding: 11px 16px; font-size: 14px; outline: none; }
+  .buscar { width: 100%; margin-top: 14px; background: var(--card); border: 1px solid var(--line2); border-radius: 999px; padding: 11px 16px; font-size: 14px; outline: none; }
   .buscar:focus, .inp:focus { border-color: var(--c); }
   .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 14px; padding: 16px 0 40px; }
-  .card { position: relative; overflow: hidden; border-radius: 18px; padding: 16px; background: radial-gradient(110% 80% at 0% 0%, color-mix(in srgb, var(--pc) 18%, transparent), transparent 60%), #0f1320; border: 1px solid color-mix(in srgb, var(--pc) 45%, #1f2937); display: flex; flex-direction: column; gap: 8px; }
+  .card { position: relative; overflow: hidden; border-radius: 18px; padding: 16px; background: radial-gradient(110% 80% at 0% 0%, color-mix(in srgb, var(--pc) 18%, transparent), transparent 60%), var(--card2); border: 1px solid color-mix(in srgb, var(--pc) 45%, var(--line)); display: flex; flex-direction: column; gap: 8px; transition: transform .2s; }
+  .card:hover { transform: translateY(-2px); }
   .card::before { content: ''; position: absolute; inset: 0 0 auto 0; height: 3px; background: var(--pc); }
   .marca { font-weight: 900; letter-spacing: .28em; font-size: 12px; color: var(--pc); text-transform: uppercase; }
   .pnombre { font-size: 16px; font-weight: 800; }
   .precio { font-size: 22px; font-weight: 900; }
   .desc { color: var(--sub); font-size: 12.5px; line-height: 1.4; }
-  .tag { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; padding: 4px 9px; border-radius: 8px; background: rgba(0,0,0,.25); border: 1px solid rgba(255,255,255,.12); width: fit-content; }
-  .agotado { color: #fca5a5; }
+  .tag { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; padding: 4px 9px; border-radius: 8px; background: color-mix(in srgb, var(--txt) 6%, transparent); border: 1px solid var(--line2); width: fit-content; }
+  .agotado { color: #f87171; }
   .wa { margin-top: auto; display: flex; align-items: center; justify-content: center; gap: 8px; border-radius: 12px; padding: 11px; font-weight: 800; font-size: 13px; background: var(--pc); color: #06140f; border: 0; }
-  .wa[disabled] { background: #1f2937; color: #6b7280; }
-  .vacio { text-align: center; color: var(--sub); padding: 50px 10px; }
-  .aviso { margin: 30px auto; max-width: 440px; text-align: center; padding: 26px 18px; border-radius: 20px; background: #111827; border: 1px solid #374151; }
-  .modal { position: fixed; inset: 0; z-index: 50; background: rgba(0,0,0,.78); display: flex; align-items: flex-end; justify-content: center; }
+  .wa[disabled] { background: var(--line); color: #6b7280; }
+  .vacio { text-align: center; color: var(--sub); padding: 40px 10px; }
+  .aviso { margin: 30px auto; max-width: 440px; text-align: center; padding: 26px 18px; border-radius: 20px; background: var(--card); border: 1px solid var(--line2); }
+  .modal { position: fixed; inset: 0; z-index: 50; background: rgba(0,0,0,.7); display: flex; align-items: flex-end; justify-content: center; backdrop-filter: blur(3px); }
   @media (min-width: 640px) { .modal { align-items: center; padding: 16px; } }
-  .hoja { width: 100%; max-width: 520px; max-height: 92vh; overflow-y: auto; background: #0f1320; border: 1px solid #374151; border-radius: 22px 22px 0 0; padding: 18px; }
+  .hoja { width: 100%; max-width: 540px; max-height: 92vh; overflow-y: auto; background: var(--card2); border: 1px solid var(--line2); border-radius: 22px 22px 0 0; padding: 18px; }
   @media (min-width: 640px) { .hoja { border-radius: 22px; } }
-  .inp { width: 100%; background: #1f2937; border: 1px solid #374151; border-radius: 12px; padding: 11px 12px; font-size: 14px; outline: none; }
+  .inp { width: 100%; background: var(--inp); border: 1px solid var(--line2); border-radius: 12px; padding: 11px 12px; font-size: 14px; outline: none; }
+  textarea.inp { resize: vertical; }
   label.l { display: block; font-size: 12px; color: var(--sub); margin: 10px 0 5px; }
-  .tabs { display: flex; gap: 6px; overflow-x: auto; padding: 12px 0; }
-  .tab { padding: 9px 14px; border-radius: 12px; background: #111827; border: 1px solid #374151; color: var(--sub); font-weight: 800; font-size: 13px; white-space: nowrap; }
-  .tab.on { background: var(--c); color: #04120c; border-color: transparent; }
-  .fila { display: flex; align-items: center; gap: 12px; padding: 12px; border-radius: 14px; background: #111827; border: 1px solid #1f2937; margin-bottom: 8px; }
+  .tabs { display: flex; gap: 6px; overflow-x: auto; padding: 12px 0; scrollbar-width: none; }
+  .tab { padding: 9px 14px; border-radius: 12px; background: var(--card); border: 1px solid var(--line2); color: var(--sub); font-weight: 800; font-size: 13px; white-space: nowrap; }
+  .tab.on { background: var(--c); color: var(--on); border-color: transparent; }
+  .fila { display: flex; align-items: center; gap: 12px; padding: 12px; border-radius: 14px; background: var(--card); border: 1px solid var(--line); margin-bottom: 8px; }
   .fila .t { flex: 1; min-width: 0; }
   .fila .t b { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .pill { font-size: 10px; font-weight: 900; padding: 3px 8px; border-radius: 999px; }
-  .ok { background: rgba(16,185,129,.15); color: #6ee7b7; }
+  .pill { font-size: 10px; font-weight: 900; padding: 3px 8px; border-radius: 999px; white-space: nowrap; }
+  .ok { background: rgba(16,185,129,.15); color: #34d399; }
   .off { background: rgba(107,114,128,.2); color: #9ca3af; }
-  .colores { display: flex; gap: 8px; flex-wrap: wrap; }
-  .col { width: 34px; height: 34px; border-radius: 10px; border: 2px solid transparent; }
-  .col.on { border-color: #fff; }
-  .toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); z-index: 80; background: #111827; border: 1px solid var(--c); color: #fff; padding: 11px 16px; border-radius: 14px; font-size: 13px; font-weight: 700; box-shadow: 0 10px 30px rgba(0,0,0,.5); }
+  .warn { background: rgba(245,158,11,.15); color: #fbbf24; }
+  .toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); z-index: 90; background: var(--card); border: 1px solid var(--c); color: var(--txt); padding: 11px 16px; border-radius: 14px; font-size: 13px; font-weight: 700; box-shadow: 0 10px 30px rgba(0,0,0,.4); max-width: 92vw; text-align: center; }
   .cargando { display: flex; align-items: center; justify-content: center; min-height: 60vh; color: var(--sub); }
-  .plan { padding: 14px; border-radius: 16px; background: linear-gradient(135deg, color-mix(in srgb, var(--c) 18%, transparent), transparent); border: 1px solid color-mix(in srgb, var(--c) 40%, #374151); }
+  .caja { padding: 14px; border-radius: 16px; background: var(--card); border: 1px solid var(--line); margin-bottom: 12px; }
+  .caja h3 { margin: 0 0 4px; font-size: 15px; }
+  .plan { padding: 14px; border-radius: 16px; background: linear-gradient(135deg, color-mix(in srgb, var(--c) 18%, transparent), transparent); border: 1px solid color-mix(in srgb, var(--c) 40%, var(--line2)); margin-bottom: 12px; }
+  details.pleg { border-radius: 16px; background: var(--card); border: 1px solid var(--line); margin-bottom: 12px; overflow: hidden; }
+  details.pleg > summary { list-style: none; cursor: pointer; padding: 14px; display: flex; align-items: center; gap: 10px; font-weight: 900; }
+  details.pleg > summary::-webkit-details-marker { display: none; }
+  details.pleg > summary::after { content: '▾'; margin-left: auto; color: var(--sub); transition: transform .2s; }
+  details.pleg[open] > summary::after { transform: rotate(180deg); }
+  details.pleg > .cuerpo { padding: 0 14px 14px; }
+  .barra { height: 8px; border-radius: 99px; background: var(--line); overflow: hidden; }
+  .barra > i { display: block; height: 100%; background: linear-gradient(90deg, var(--c), var(--c2)); border-radius: 99px; transition: width .6s; }
+  .paso { display: flex; align-items: flex-start; gap: 10px; padding: 10px; border-radius: 12px; border: 1px solid var(--line); margin-top: 8px; background: color-mix(in srgb, var(--txt) 3%, transparent); }
+  .paso .n { width: 26px; height: 26px; border-radius: 50%; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 900; background: var(--line2); color: var(--txt); }
+  .paso.hecho .n { background: var(--c); color: var(--on); }
+  .paso.hecho b { text-decoration: line-through; opacity: .7; }
+  .paso .tx { flex: 1; min-width: 0; font-size: 13px; }
+  .paso .tx span { display: block; color: var(--sub); font-size: 11.5px; margin-top: 2px; line-height: 1.35; }
+  .skins { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 10px; }
+  .skin { border-radius: 14px; padding: 8px; border: 2px solid transparent; text-align: left; background: var(--inp); }
+  .skin.on { border-color: var(--c); box-shadow: 0 0 0 3px color-mix(in srgb, var(--c) 30%, transparent); }
+  .skin .mini { height: 54px; border-radius: 10px; position: relative; overflow: hidden; }
+  .skin .mini i { position: absolute; left: 8px; right: 8px; bottom: 8px; height: 12px; border-radius: 6px; }
+  .skin .mini b { position: absolute; left: 8px; top: 8px; width: 22px; height: 22px; border-radius: 7px; }
+  .skin span { display: block; font-size: 11px; font-weight: 800; margin-top: 6px; }
+  .resumen { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 12px; }
+  .resumen div { padding: 12px 10px; border-radius: 14px; background: var(--card); border: 1px solid var(--line); text-align: center; }
+  .resumen b { display: block; font-size: 18px; }
+  .resumen span { font-size: 10.5px; color: var(--sub); }
+  pre.txt { white-space: pre-wrap; word-break: break-word; background: var(--inp); border: 1px solid var(--line2); border-radius: 12px; padding: 12px; font-size: 13px; font-family: inherit; max-height: 46vh; overflow: auto; }
+  .tgpaso { font-size: 12.5px; line-height: 1.5; color: var(--sub); }
+  .tgpaso b { color: var(--txt); }
+  /* ===== efecto glass (vidrio esmerilado) ===== */
+  body.glass { --card: color-mix(in srgb, var(--txt) 7%, transparent); --card2: color-mix(in srgb, var(--txt) 6%, transparent); --line: color-mix(in srgb, var(--txt) 14%, transparent); --line2: color-mix(in srgb, var(--txt) 20%, transparent); --inp: color-mix(in srgb, var(--txt) 8%, transparent); }
+  body.glass .card, body.glass .fila, body.glass .caja, body.glass details.pleg, body.glass .resumen div, body.glass .aviso, body.glass .tab, body.glass .chip, body.glass .plan { backdrop-filter: blur(16px) saturate(150%); -webkit-backdrop-filter: blur(16px) saturate(150%); box-shadow: inset 0 1px 0 color-mix(in srgb, #fff 14%, transparent), 0 8px 24px rgba(0,0,0,.18); }
+  body.glass .hoja { background: color-mix(in srgb, var(--bg) 78%, transparent); backdrop-filter: blur(22px); -webkit-backdrop-filter: blur(22px); }
+  body.glass::before { background: radial-gradient(55% 45% at 10% 5%, color-mix(in srgb, var(--c) 38%, transparent), transparent 70%), radial-gradient(50% 45% at 95% 30%, color-mix(in srgb, var(--c2) 32%, transparent), transparent 70%), radial-gradient(60% 45% at 40% 100%, color-mix(in srgb, var(--c) 22%, transparent), transparent 70%); }
+  /* ===== skins con efectos ===== */
+  body.fx-neon .card, body.fx-neon .btn-p { box-shadow: 0 0 18px color-mix(in srgb, var(--c) 45%, transparent), 0 0 2px var(--c2); }
+  body.fx-neon .nombre, body.fx-neon .precio { text-shadow: 0 0 12px color-mix(in srgb, var(--c) 60%, transparent); }
+  body.fx-oro .card::before, body.fx-oro .btn-p { background: linear-gradient(90deg, #b8860b, #f5c542, #fff1b8, #f5c542, #b8860b); background-size: 200% 100%; animation: brillo 4s linear infinite; }
+  body.fx-aurora::before { background: radial-gradient(50% 40% at 20% 10%, color-mix(in srgb, var(--c) 40%, transparent), transparent 70%), radial-gradient(45% 40% at 80% 30%, color-mix(in srgb, var(--c2) 40%, transparent), transparent 70%), radial-gradient(55% 40% at 50% 100%, rgba(52,211,153,.28), transparent 70%); background-size: 160% 160%; animation: aurora 14s ease-in-out infinite alternate; }
+  @keyframes aurora { 0% { background-position: 0% 0%; } 50% { background-position: 100% 50%; } 100% { background-position: 30% 100%; } }
+  @keyframes brillo { to { background-position: 200% 0; } }
+  .pulso { animation: pulso 1.8s ease-in-out infinite; }
+  @keyframes pulso { 0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--c) 50%, transparent); } 50% { box-shadow: 0 0 0 8px transparent; } }
+  @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
 </style>
 </head>
 <body>
@@ -77,32 +124,143 @@
   <div id="vCargando" class="cargando">Cargando la tienda…</div>
   <div id="vAviso" class="aviso oculto"></div>
 
+  <!-- ===================== VITRINA ===================== -->
   <section id="vTienda" class="oculto">
     <input class="buscar" id="qBuscar" placeholder="Buscar producto…" oninput="pintarCatalogo()">
     <div class="chips" id="tChips"></div>
     <div class="grid" id="tGrid"></div>
+    <p class="sub" style="text-align:center;font-size:10px;padding:0 10px 30px">Las marcas mencionadas pertenecen a sus respectivos dueños. Esta tienda no está afiliada a ellas.</p>
   </section>
 
+  <!-- ===================== PANEL DEL DUEÑO ===================== -->
   <section id="vPanel" class="oculto">
     <div class="tabs">
-      <button class="tab on" data-t="productos" onclick="tabPanel('productos')">Productos</button>
-      <button class="tab" data-t="tienda" onclick="tabPanel('tienda')">Mi tienda</button>
-      <button class="tab" data-t="compartir" onclick="tabPanel('compartir')">Compartir</button>
+      <button class="tab on" data-t="inicio" onclick="tabPanel('inicio')">🏠 Inicio</button>
+      <button class="tab" data-t="productos" onclick="tabPanel('productos')">📦 Productos</button>
+      <button class="tab" data-t="stock" onclick="tabPanel('stock')">🔑 Stock</button>
+      <button class="tab" data-t="ventas" onclick="tabPanel('ventas')">🧾 Ventas</button>
+      <button class="tab" data-t="diseno" onclick="tabPanel('diseno')">🎨 Diseño</button>
+      <button class="tab" data-t="ajustes" onclick="tabPanel('ajustes')">⚙️ Ajustes</button>
+      <button class="tab" data-t="compartir" onclick="tabPanel('compartir')">🔗 Compartir</button>
       <button class="tab" onclick="verTienda()">Ver tienda ›</button>
     </div>
-    <div id="pProductos">
+
+    <!-- INICIO -->
+    <div id="pInicio">
+      <div class="plan" id="pPlan"></div>
+      <details class="pleg" id="guiaCaja" open>
+        <summary>🚀 Mis primeros pasos <span class="pill ok" id="guiaCuenta" style="margin-left:6px">0/8</span></summary>
+        <div class="cuerpo">
+          <div class="barra"><i id="guiaBarra" style="width:0%"></i></div>
+          <p class="sub" id="guiaFrase" style="margin:8px 0 2px"></p>
+          <div id="guiaPasos"></div>
+        </div>
+      </details>
+      <details class="pleg" open>
+        <summary>💬 Venta por WhatsApp</summary>
+        <div class="cuerpo">
+          <p class="sub" style="margin:0 0 6px">Vendiste por chat: elige el producto y la cantidad. Las cuentas salen de tu stock (nunca se repiten) y te armo el texto para pegarle a tu cliente.</p>
+          <label class="l">Producto</label><select class="inp" id="vwProd" onchange="vwPrevia()"></select>
+          <div style="display:flex;gap:8px">
+            <div style="flex:1"><label class="l">Cantidad</label><input class="inp" id="vwCant" type="number" min="1" value="1" oninput="vwPrevia()"></div>
+            <div style="flex:1"><label class="l">Precio total (COP)</label><input class="inp" id="vwTotal" type="number" min="0" step="100"></div>
+          </div>
+          <label class="l">Cliente (opcional: nombre o WhatsApp)</label><input class="inp" id="vwCliente" maxlength="60" placeholder="Ej: Juan 3001234567">
+          <p class="sub" id="vwInfo" style="min-height:16px;margin:8px 0 0"></p>
+          <button class="btn btn-p" style="width:100%;margin-top:10px" id="vwBtn" onclick="ventaWhatsApp()">Sacar cuentas y armar el mensaje</button>
+        </div>
+      </details>
+      <div class="resumen" id="resHoy"></div>
+    </div>
+
+    <!-- PRODUCTOS -->
+    <div id="pProductos" class="oculto">
+      <div class="caja">
+        <h3>🏷️ Categorías</h3>
+        <p class="sub" style="margin:0 0 8px">Agrupan tus productos en la tienda (Streaming, Música, Herramientas…).</p>
+        <div style="display:flex;gap:8px"><input class="inp" id="catNueva" maxlength="24" placeholder="Nueva categoría"><button class="btn btn-p" onclick="agregarCategoria()">Agregar</button></div>
+        <div class="chips" id="catLista" style="flex-wrap:wrap"></div>
+      </div>
       <button class="btn btn-p" style="width:100%" onclick="editarProducto('')">+ Agregar producto</button>
       <div id="pLista" style="margin-top:12px"></div>
     </div>
-    <div id="pTienda" class="oculto">
-      <div class="plan" id="pPlan"></div>
-      <label class="l">Nombre de la tienda</label><input class="inp" id="cfNombre" maxlength="40">
-      <label class="l">Frase corta (aparece arriba)</label><input class="inp" id="cfFrase" maxlength="60" placeholder="Ej: Streaming 24/7 al mejor precio">
-      <label class="l">WhatsApp donde te llegan los pedidos</label><input class="inp" id="cfWa" type="tel" maxlength="15" placeholder="3001234567">
-      <label class="l">Logo (enlace de una imagen, opcional)</label><input class="inp" id="cfLogo" placeholder="https://…">
-      <label class="l">Color de tu tienda</label><div class="colores" id="cfColores"></div>
-      <button class="btn btn-p" style="width:100%;margin-top:16px" onclick="guardarTienda()">Guardar</button>
+
+    <!-- STOCK -->
+    <div id="pStock" class="oculto">
+      <div class="caja">
+        <h3>🔑 Cargar cuentas</h3>
+        <p class="sub" style="margin:0 0 6px">Pega tus cuentas, una por línea. Funciona con lo que te manda tu proveedor: <b>correo clave</b>, <b>correo:clave</b> o <b>correo | clave del correo | clave de la plataforma</b>. El texto extra se ignora.</p>
+        <label class="l">Producto</label><select class="inp" id="stProd" onchange="pintarStock()"></select>
+        <label class="l">Cuentas</label><textarea class="inp" id="stTexto" rows="6" placeholder="cuenta1@gmail.com clave123&#10;cuenta2@gmail.com:clave456" oninput="stPrevia()"></textarea>
+        <p class="sub" id="stInfo" style="min-height:16px;margin:6px 0 0"></p>
+        <button class="btn btn-p" style="width:100%;margin-top:10px" onclick="cargarStock()">Cargar al stock</button>
+      </div>
+      <div id="stLista"></div>
     </div>
+
+    <!-- VENTAS -->
+    <div id="pVentas" class="oculto">
+      <div class="resumen" id="resVentas"></div>
+      <div id="vtLista"></div>
+    </div>
+
+    <!-- DISEÑO -->
+    <div id="pDiseno" class="oculto">
+      <div class="caja">
+        <h3>🎨 Elige el estilo de tu tienda</h3>
+        <p class="sub" style="margin:0 0 10px">Toca uno y lo ves al instante. Se guarda cuando tocas <b>Guardar estilo</b>.</p>
+        <div class="skins" id="skinLista"></div>
+        <label class="l" style="display:flex;align-items:center;justify-content:space-between;margin-top:14px"><span><b style="color:var(--txt)">✨ Efecto glass</b><br><span class="sub">Tarjetas de vidrio esmerilado sobre un fondo con luces de tu color.</span></span><input type="checkbox" id="skinGlass" style="width:22px;height:22px" onchange="previaSkin()"></label>
+        <button class="btn btn-p" style="width:100%;margin-top:14px" onclick="guardarSkin()">Guardar estilo</button>
+      </div>
+      <div class="caja"><h3>👀 Así se ve una tarjeta</h3><div class="grid" style="padding:8px 0 0" id="skinMuestra"></div></div>
+    </div>
+
+    <!-- AJUSTES -->
+    <div id="pAjustes" class="oculto">
+      <details class="pleg" id="ajDatos" open>
+        <summary>🏪 Datos de la tienda</summary>
+        <div class="cuerpo">
+          <label class="l">Nombre de la tienda</label><input class="inp" id="cfNombre" maxlength="40">
+          <label class="l">Frase corta (aparece arriba)</label><input class="inp" id="cfFrase" maxlength="60" placeholder="Ej: Streaming 24/7 al mejor precio">
+          <label class="l">Tu WhatsApp (donde te llegan los pedidos)</label><input class="inp" id="cfWa" type="tel" maxlength="15" placeholder="3001234567">
+          <label class="l">Logo (enlace de una imagen, opcional)</label><input class="inp" id="cfLogo" placeholder="https://…">
+          <button class="btn btn-p" style="width:100%;margin-top:14px" onclick="guardarTienda()">Guardar datos</button>
+        </div>
+      </details>
+      <details class="pleg" id="ajPagos">
+        <summary>💳 Cómo te pagan</summary>
+        <div class="cuerpo">
+          <p class="sub" style="margin:0 0 6px">Tú eliges cómo cobras. Puedes usar las dos.</p>
+          <label class="l" style="display:flex;align-items:center;justify-content:space-between"><span><b style="color:var(--txt)">💬 Pedido por WhatsApp</b><br><span class="sub">El cliente toca "Pedir" y te llega su pedido a tu WhatsApp para cobrar y entregar.</span></span><input type="checkbox" id="pgWa" style="width:22px;height:22px"></label>
+          <label class="l" style="display:flex;align-items:center;justify-content:space-between;opacity:.6"><span><b style="color:var(--txt)">🧾 Saldo con comprobante</b> <span class="pill warn">Próximamente</span><br><span class="sub">Tus clientes recargan saldo, suben el comprobante y tú lo apruebas (también desde Telegram).</span></span><input type="checkbox" id="pgComp" disabled style="width:22px;height:22px"></label>
+          <label class="l">Tus medios de pago (los ve el cliente al pedir)</label><textarea class="inp" id="pgMedios" rows="3" maxlength="300" placeholder="Nequi: 3001234567&#10;Llave Bre-B: @mitienda&#10;Binance: …"></textarea>
+          <button class="btn btn-p" style="width:100%;margin-top:14px" onclick="guardarPagos()">Guardar pagos</button>
+        </div>
+      </details>
+      <details class="pleg" id="ajTelegram">
+        <summary>🤖 Tu bot de Telegram <span class="pill off" id="tgEstado" style="margin-left:6px">Sin conectar</span></summary>
+        <div class="cuerpo">
+          <div class="tgpaso">
+            <p style="margin:0 0 6px"><b>1.</b> En Telegram abre <b>@BotFather</b> 👉 <a href="https://t.me/BotFather" target="_blank" rel="noopener" style="color:var(--c)">t.me/BotFather</a></p>
+            <p style="margin:0 0 6px"><b>2.</b> Escríbele <b>/newbot</b>, ponle un nombre (ej. <i>Avisos Mi Tienda</i>) y un usuario terminado en <b>bot</b>.</p>
+            <p style="margin:0 0 6px"><b>3.</b> Te da un código largo (token). Cópialo y pégalo aquí:</p>
+          </div>
+          <input class="inp" id="tgToken" placeholder="123456789:AAH…" autocomplete="off">
+          <button class="btn btn-p" style="width:100%;margin-top:10px" id="tgBtn1" onclick="tgPaso1()">Verificar mi bot</button>
+          <div id="tgPaso2" class="oculto" style="margin-top:12px">
+            <p class="tgpaso"><b>4.</b> Abre tu bot <a id="tgLink" href="#" target="_blank" rel="noopener" style="color:var(--c);font-weight:800"></a>, toca <b>Iniciar</b> y escríbele <b>hola</b>. Luego toca el botón:</p>
+            <button class="btn btn-p" style="width:100%" onclick="tgPaso2()">Ya le escribí: conectar</button>
+          </div>
+          <div id="tgListo" class="oculto" style="margin-top:12px">
+            <p class="tgpaso">✅ <b>Conectado.</b> Tu bot te avisa: las ventas por WhatsApp que registras, cuando un producto queda con poco stock y un resumen al cargar cuentas. <i>(Los avisos de comprobantes y clientes nuevos llegan en la siguiente fase.)</i></p>
+            <div style="display:flex;gap:8px"><button class="btn btn-g" style="flex:1" onclick="tgEnviar('🔔 Prueba: tu bot de ' + (tienda.nombre || 'tu tienda') + ' funciona 🙌').then(ok => toast(ok ? 'Mensaje de prueba enviado' : 'No se pudo enviar'))">Enviar prueba</button><button class="btn btn-r" onclick="tgDesconectar()">Desconectar</button></div>
+          </div>
+        </div>
+      </details>
+    </div>
+
+    <!-- COMPARTIR -->
     <div id="pCompartir" class="oculto">
       <div class="aviso" style="margin:10px 0">
         <div style="font-size:34px">🔗</div>
@@ -110,14 +268,16 @@
         <p id="pEnlace" style="word-break:break-all;color:var(--c);font-weight:800"></p>
         <button class="btn btn-p" style="width:100%;margin-top:10px" onclick="copiarEnlace()">Copiar enlace</button>
         <button class="btn btn-g" style="width:100%;margin-top:8px" onclick="compartirWa()">Compartir por WhatsApp</button>
+        <p class="sub" style="margin-top:10px">Ponlo en tu estado, en tus grupos y en tu perfil de WhatsApp.</p>
       </div>
     </div>
   </section>
 </main>
 
+<!-- ===================== VENTANAS ===================== -->
 <div id="mLogin" class="modal oculto" onclick="if(event.target===this)cerrar('mLogin')"><div class="hoja">
   <h3 style="margin:0 0 4px">Entrar a mi panel</h3>
-  <p class="sub" style="margin:0 0 6px">Usa la misma cuenta de Epic Channels.</p>
+  <p class="sub" style="margin:0 0 6px">Usa la misma cuenta con la que te registraste.</p>
   <label class="l">Correo</label><input class="inp" id="lgEmail" type="email" autocomplete="email">
   <label class="l">Contraseña</label><input class="inp" id="lgPass" type="password" autocomplete="current-password">
   <p id="lgError" class="agotado" style="font-size:12px;min-height:16px"></p>
@@ -127,19 +287,39 @@
 <div id="mProducto" class="modal oculto" onclick="if(event.target===this)cerrar('mProducto')"><div class="hoja">
   <h3 style="margin:0" id="mpTitulo">Producto</h3>
   <label class="l">Nombre</label><input class="inp" id="mpNombre" maxlength="60" placeholder="Ej: Netflix 1 pantalla">
-  <label class="l">Precio (COP)</label><input class="inp" id="mpPrecio" type="number" min="0" step="100">
-  <label class="l">Categoría</label><input class="inp" id="mpCategoria" maxlength="30" placeholder="Ej: Streaming">
+  <label class="l">Precio por cuenta (COP)</label><input class="inp" id="mpPrecio" type="number" min="0" step="100">
+  <label class="l">Categoría</label><select class="inp" id="mpCategoria"></select>
   <label class="l">Descripción (opcional)</label><textarea class="inp" id="mpDesc" rows="2" maxlength="200"></textarea>
-  <label class="l">Garantía (opcional)</label><input class="inp" id="mpGarantia" maxlength="30" placeholder="Ej: 30 días">
-  <label class="l" style="display:flex;align-items:center;justify-content:space-between">Disponible para pedir <input type="checkbox" id="mpDisponible" style="width:20px;height:20px"></label>
+  <label class="l">Garantía (opcional)</label><input class="inp" id="mpGarantia" maxlength="30" placeholder="Ej: de acceso o 24 horas">
+  <label class="l" style="display:flex;align-items:center;justify-content:space-between"><span>Usa mi stock de cuentas<br><span class="sub">Muestra cuántas quedan y se agota solo.</span></span><input type="checkbox" id="mpUsaStock" style="width:20px;height:20px"></label>
+  <label class="l" style="display:flex;align-items:center;justify-content:space-between">Disponible (si no usa stock) <input type="checkbox" id="mpDisponible" style="width:20px;height:20px"></label>
   <label class="l" style="display:flex;align-items:center;justify-content:space-between">Mostrar en la tienda <input type="checkbox" id="mpActivo" style="width:20px;height:20px"></label>
   <div style="display:flex;gap:8px;margin-top:16px"><button class="btn btn-r" id="mpBorrar" onclick="borrarProducto()">Borrar</button><button class="btn btn-p" style="flex:1" onclick="guardarProducto()">Guardar</button></div>
 </div></div>
 
+<div id="mTexto" class="modal oculto" onclick="if(event.target===this)cerrar('mTexto')"><div class="hoja">
+  <h3 style="margin:0 0 8px" id="mtTitulo">Listo</h3>
+  <pre class="txt" id="mtTexto"></pre>
+  <div style="display:flex;gap:8px;margin-top:12px"><button class="btn btn-p" style="flex:1" onclick="copiarTexto($('mtTexto').textContent)">Copiar todo</button><button class="btn btn-g" id="mtWa" onclick="">Enviar por WhatsApp</button></div>
+</div></div>
+
+<div id="mBienvenida" class="modal oculto"><div class="hoja" style="text-align:center">
+  <div style="font-size:46px">👋</div>
+  <h2 style="margin:6px 0 4px">¡Bienvenido a tu panel!</h2>
+  <p class="sub" style="margin:0 0 12px">Aquí manejas tu tienda como un profesional. Te acompaño paso a paso:</p>
+  <div style="text-align:left">
+    <div class="paso"><div class="n">🎨</div><div class="tx"><b>Ponle tu estilo</b><span>12 diseños, con efecto glass.</span></div></div>
+    <div class="paso"><div class="n">📦</div><div class="tx"><b>Sube tus productos y cuentas</b><span>Pegas lo que te manda tu proveedor y listo.</span></div></div>
+    <div class="paso"><div class="n">🤖</div><div class="tx"><b>Conecta tu Telegram</b><span>Tu propio bot te avisa lo importante.</span></div></div>
+    <div class="paso"><div class="n">🚀</div><div class="tx"><b>Comparte tu enlace</b><span>Y empieza a vender.</span></div></div>
+  </div>
+  <button class="btn btn-p pulso" style="width:100%;margin-top:14px" onclick="cerrar('mBienvenida');tabPanel('inicio');$('guiaCaja').open=true">Empezar mis primeros pasos</button>
+</div></div>
 <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
 <script>
+  const VERSION_TIENDA = '2026-10-15a';
   const firebaseConfig = {
     apiKey: "AIza" + "SyDlRYxGu56PeBiGjuh9kk0jxoElZ_PwtsE",
     authDomain: "epic-channels.firebaseapp.com",
@@ -151,19 +331,65 @@
   firebase.initializeApp(firebaseConfig);
   const auth = firebase.auth(), db = firebase.firestore();
   const ADMIN = ['alex88ruizc@gmail.com'];
-  const COLORES = ['#10b981', '#06b6d4', '#3b82f6', '#8b5cf6', '#ec4899', '#ef4444', '#f59e0b', '#eab308', '#14b8a6', '#f97316'];
-  const MARCAS = [[/netflix/i, 'Netflix', '#e50914'], [/prime|amazon/i, 'Prime Video', '#1ea7e1'], [/disney/i, 'Disney+', '#2f6bff'], [/\bmax\b|hbo/i, 'Max', '#6d3ff0'], [/youtube/i, 'YouTube', '#ff1f3d'], [/spotify/i, 'Spotify', '#1db954'], [/crunchyroll/i, 'Crunchyroll', '#f47521'], [/paramount/i, 'Paramount+', '#1f6dff'], [/canva/i, 'Canva', '#00c4cc'], [/chat\s*gpt/i, 'ChatGPT', '#10a37f'], [/vix/i, 'ViX', '#ff6a13'], [/apple/i, 'Apple TV+', '#b7bcc6'], [/iptv/i, 'IPTV', '#f59e0b']];
-  let tienda = null, tiendaId = '', productos = [], catActiva = 'Todas', usuario = null, editando = '', colorElegido = '';
+  // 12 estilos: [id, nombre, color, color2, fondo, texto, sub, efecto, claro]
+  const SKINS = [
+    ['esmeralda', 'Esmeralda', '#10b981', '#06b6d4', '#0b0f17'],
+    ['oceano', 'Océano', '#0ea5e9', '#6366f1', '#06101e'],
+    ['atardecer', 'Atardecer', '#f97316', '#ec4899', '#140b0c'],
+    ['neon', 'Neón', '#22d3ee', '#d946ef', '#05020f', 'neon'],
+    ['oro', 'Oro VIP', '#f5c542', '#d4a017', '#0d0b05', 'oro'],
+    ['rosa', 'Rosa', '#ec4899', '#f9a8d4', '#14070f'],
+    ['galaxia', 'Galaxia', '#8b5cf6', '#3b82f6', '#0a0718'],
+    ['rojo', 'Rojo pasión', '#ef4444', '#f97316', '#130707'],
+    ['grafito', 'Grafito', '#d1d5db', '#9ca3af', '#0b0b0d'],
+    ['menta', 'Menta', '#34d399', '#a3e635', '#06110c'],
+    ['claro', 'Claro', '#059669', '#0891b2', '#f4f6fb', '', true],
+    ['aurora', 'Aurora', '#22d3ee', '#a78bfa', '#050a14', 'aurora']
+  ];
+  const MARCAS = [[/netflix/i, 'Netflix', '#e50914'], [/prime|amazon/i, 'Prime Video', '#12b5b0'], [/disney/i, 'Disney+', '#4f7dff'], [/\bmax\b|hbo/i, 'Max', '#8466ff'], [/youtube/i, 'YouTube', '#ff5a5f'], [/spotify/i, 'Spotify', '#2ecc71'], [/crunchyroll/i, 'Crunchyroll', '#fb923c'], [/paramount/i, 'Paramount+', '#4a8bff'], [/canva/i, 'Canva', '#2bc7d4'], [/chat\s*gpt/i, 'ChatGPT', '#22b893'], [/vix/i, 'ViX', '#ff8640'], [/apple/i, 'Apple TV+', '#c4c9d4'], [/iptv/i, 'IPTV', '#f5a524'], [/gemini/i, 'Gemini', '#8ab4f8']];
+  let tienda = null, tiendaId = '', productos = [], catActiva = 'Todas', usuario = null, editando = '';
+  let stockDocs = {}, ventas = [], privado = {}, skinPrevio = '', escuchasDueno = [], tgBotTmp = null;
 
   const $ = id => document.getElementById(id);
   const esc = t => String(t == null ? '' : t).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const cop = n => '$' + Math.round(Number(n) || 0).toLocaleString('es-CO');
   const cerrar = id => $(id).classList.add('oculto');
-  function toast(t) { const d = document.createElement('div'); d.className = 'toast'; d.textContent = t; document.body.appendChild(d); setTimeout(() => d.remove(), 2600); }
+  function toast(t) { const d = document.createElement('div'); d.className = 'toast'; d.textContent = t; document.body.appendChild(d); setTimeout(() => d.remove(), 2800); }
   function slugActual() { const h = decodeURIComponent((location.hash || '').replace(/^#\/?/, '')).split(/[/?]/)[0]; const q = new URLSearchParams(location.search).get('t') || ''; return String(h || q).toLowerCase().replace(/[^a-z0-9]/g, ''); }
   function esDueno() { return !!(usuario && tienda && (usuario.uid === tienda.ownerUid || ADMIN.indexOf(String(usuario.email || '').toLowerCase()) !== -1)); }
   function marcaDe(nombre) { const m = MARCAS.find(x => x[0].test(nombre || '')); return m ? { t: m[1], c: m[2] } : null; }
+  function copiarTexto(t) { (navigator.clipboard ? navigator.clipboard.writeText(t) : Promise.reject()).then(() => toast('Copiado ✓')).catch(() => prompt('Copia el texto:', t)); }
+  function waNumero(n) { const d = String(n || '').replace(/\D/g, ''); return d.length === 10 ? '57' + d : d; }
 
+  // ==================== ESTILOS (skins + glass) ====================
+  function skinPorId(id) { return SKINS.find(s => s[0] === id) || SKINS[0]; }
+  function aplicarSkin(id, glass) {
+    const s = skinPorId(id), r = document.documentElement.style, claro = !!s[6];
+    r.setProperty('--c', s[2]); r.setProperty('--c2', s[3]); r.setProperty('--bg', s[4]);
+    r.setProperty('--txt', claro ? '#0f172a' : '#e5e7eb'); r.setProperty('--sub', claro ? '#475569' : '#9ca3af');
+    r.setProperty('--card', claro ? '#ffffff' : '#111827'); r.setProperty('--card2', claro ? '#ffffff' : '#0f1320');
+    r.setProperty('--line', claro ? '#e2e8f0' : '#1f2937'); r.setProperty('--line2', claro ? '#cbd5e1' : '#374151');
+    r.setProperty('--inp', claro ? '#f1f5f9' : '#1f2937'); r.setProperty('--on', s[0] === 'grafito' ? '#0b0b0d' : (claro ? '#ffffff' : '#04120c'));
+    document.body.className = (glass ? 'glass ' : '') + (s[5] ? 'fx-' + s[5] : '');
+    const meta = document.querySelector('meta[name=theme-color]') || Object.assign(document.head.appendChild(document.createElement('meta')), { name: 'theme-color' });
+    meta.content = s[4];
+  }
+  function skinDeTienda() { if (!tienda) return 'esmeralda'; if (tienda.skin) return tienda.skin; const porColor = SKINS.find(s => s[2] === tienda.color); return porColor ? porColor[0] : 'esmeralda'; }
+  function pintarSkins() {
+    const actual = skinPrevio || skinDeTienda();
+    $('skinLista').innerHTML = SKINS.map(s => `<button class="skin ${s[0] === actual ? 'on' : ''}" onclick="skinPrevio='${s[0]}';previaSkin()"><div class="mini" style="background:${s[6] ? '#f4f6fb' : s[4]}"><b style="background:linear-gradient(135deg,${s[2]},${s[3]})"></b><i style="background:linear-gradient(90deg,${s[2]},${s[3]})"></i></div><span>${esc(s[1])}${s[5] === 'oro' ? ' 👑' : (s[5] === 'aurora' ? ' ✨' : (s[5] === 'neon' ? ' ⚡' : ''))}</span></button>`).join('');
+    $('skinGlass').checked = skinPrevio ? $('skinGlass').checked : !!(tienda && tienda.glass);
+    const ej = productos[0] || { nombre: 'Prime Video', precio: 3000 };
+    const m = marcaDe(ej.nombre); $('skinMuestra').innerHTML = `<div class="card" style="--pc:${m ? m.c : 'var(--c)'}"><div class="marca">${esc(m ? m.t : 'Producto')}</div><div class="pnombre">${esc(ej.nombre)}</div><div class="precio">${cop(ej.precio)}</div><span class="tag">✅ Disponible</span><button class="wa">💬 Pedir por WhatsApp</button></div>`;
+  }
+  function previaSkin() { aplicarSkin(skinPrevio || skinDeTienda(), $('skinGlass').checked); pintarSkins(); }
+  async function guardarSkin() {
+    const id = skinPrevio || skinDeTienda(), s = skinPorId(id);
+    try { await db.collection('tiendas').doc(tiendaId).update({ skin: id, glass: $('skinGlass').checked, color: s[2] }); skinPrevio = ''; toast('🎨 Estilo guardado: ' + s[1]); }
+    catch (e) { toast('No se pudo guardar: ' + e.message); }
+  }
+
+  // ==================== CARGA ====================
   async function cargar() {
     const slug = slugActual();
     if (!slug) return mostrarAviso('🏪', 'Tienda no encontrada', 'Revisa el enlace que te compartieron.');
@@ -171,9 +397,17 @@
       const s = await db.collection('slugs').doc(slug).get();
       if (!s.exists) return mostrarAviso('🔎', 'Tienda no encontrada', 'Esa tienda no existe o cambió de nombre.');
       tiendaId = s.data().tiendaId;
-      db.collection('tiendas').doc(tiendaId).onSnapshot(d => { tienda = d.exists ? d.data() : null; pintarCabecera(); decidirVista(); });
-      db.collection('tiendas_productos').where('tiendaId', '==', tiendaId).onSnapshot(sn => { productos = []; sn.forEach(x => productos.push(Object.assign({ id: x.id }, x.data()))); productos.sort((a, b) => String(a.nombre).localeCompare(String(b.nombre), 'es')); pintarCatalogo(); pintarListaPanel(); });
+      db.collection('tiendas').doc(tiendaId).onSnapshot(d => { tienda = d.exists ? d.data() : null; if (!skinPrevio) aplicarSkin(skinDeTienda(), !!(tienda && tienda.glass)); pintarCabecera(); decidirVista(); if (esDueno()) { escucharDueno(); pintarTodoPanel(); } });
+      db.collection('tiendas_productos').where('tiendaId', '==', tiendaId).onSnapshot(sn => { productos = []; sn.forEach(x => productos.push(Object.assign({ id: x.id }, x.data()))); productos.sort((a, b) => String(a.nombre).localeCompare(String(b.nombre), 'es')); pintarCatalogo(); pintarTodoPanel(); });
     } catch (e) { mostrarAviso('⚠️', 'No se pudo cargar', 'Revisa tu conexión e intenta de nuevo.'); }
+  }
+  // Datos privados del dueño: su stock, sus ventas y su Telegram
+  function escucharDueno() {
+    if (escuchasDueno.length || !tienda) return;
+    const owner = tienda.ownerUid;
+    try { escuchasDueno.push(db.collection('tiendas_stock').where('ownerUid', '==', owner).where('tiendaId', '==', tiendaId).onSnapshot(sn => { stockDocs = {}; sn.forEach(x => { stockDocs[x.id] = x.data(); }); pintarTodoPanel(); }, () => {})); } catch (e) { /* nada */ }
+    try { escuchasDueno.push(db.collection('tiendas_ventas').where('ownerUid', '==', owner).where('tiendaId', '==', tiendaId).onSnapshot(sn => { ventas = []; sn.forEach(x => ventas.push(Object.assign({ id: x.id }, x.data()))); ventas.sort((a, b) => String(b.fecha).localeCompare(String(a.fecha))); pintarTodoPanel(); }, () => {})); } catch (e) { /* nada */ }
+    try { escuchasDueno.push(db.collection('tiendas_privado').doc(tiendaId).onSnapshot(d => { privado = d.exists ? d.data() : {}; pintarTelegram(); pintarGuia(); }, () => {})); } catch (e) { /* nada */ }
   }
   function mostrarAviso(ic, t, s) { $('vCargando').classList.add('oculto'); $('vTienda').classList.add('oculto'); $('vPanel').classList.add('oculto'); const a = $('vAviso'); a.classList.remove('oculto'); a.innerHTML = `<div style="font-size:40px">${ic}</div><h2 style="margin:8px 0 4px">${esc(t)}</h2><p class="sub">${esc(s)}</p>`; }
   function tiendaVencida() { return tienda && tienda.venceEl && Date.parse(tienda.venceEl) < Date.now(); }
@@ -188,83 +422,308 @@
   }
   function pintarCabecera() {
     if (!tienda) return;
-    document.documentElement.style.setProperty('--c', tienda.color || '#10b981');
     document.title = tienda.nombre || 'Tienda';
     $('tNombre').textContent = tienda.nombre || 'Tienda';
     $('tSub').textContent = tienda.frase || 'Pide por WhatsApp · entrega rápida';
     const l = $('tLogo');
     if (/^https:\/\//.test(tienda.logo || '')) l.innerHTML = `<img src="${esc(tienda.logo)}" alt="">`; else l.textContent = String(tienda.nombre || 'T').charAt(0).toUpperCase();
   }
+  function stockDe(p) { return p && p.usaStock ? Math.max(0, parseInt(p.stock, 10) || 0) : null; }
+  function disponibleDe(p) { const s = stockDe(p); return s === null ? p.disponible !== false : s > 0; }
   function pintarCatalogo() {
     const act = productos.filter(p => p.activo !== false);
     const cats = ['Todas'].concat(Array.from(new Set(act.map(p => p.categoria || 'Otros'))));
     if (cats.indexOf(catActiva) === -1) catActiva = 'Todas';
     $('tChips').innerHTML = cats.length > 2 ? cats.map(c => `<button class="chip ${c === catActiva ? 'on' : ''}" onclick="catActiva='${esc(c).replace(/'/g, '')}';pintarCatalogo()">${esc(c)}</button>`).join('') : '';
     const q = ($('qBuscar').value || '').toLowerCase().trim();
-    const lista = act.filter(p => (catActiva === 'Todas' || (p.categoria || 'Otros') === catActiva) && (!q || String(p.nombre + ' ' + (p.categoria || '')).toLowerCase().indexOf(q) !== -1)).sort((x, y) => (y.disponible !== false) - (x.disponible !== false));
+    const lista = act.filter(p => (catActiva === 'Todas' || (p.categoria || 'Otros') === catActiva) && (!q || String(p.nombre + ' ' + (p.categoria || '')).toLowerCase().indexOf(q) !== -1)).sort((x, y) => disponibleDe(y) - disponibleDe(x));
+    const pideWa = !(tienda && tienda.pagos && tienda.pagos.whatsapp === false);
     $('tGrid').innerHTML = lista.length ? lista.map(p => {
-      const m = marcaDe(p.nombre), col = m ? m.c : (tienda && tienda.color) || '#10b981', disp = p.disponible !== false;
-      return `<div class="card" style="--pc:${col}"><div class="marca">${esc(m ? m.t : (p.categoria || 'Producto'))}</div><div class="pnombre">${esc(p.nombre)}</div><div class="precio">${cop(p.precio)}</div>${p.descripcion ? `<div class="desc">${esc(p.descripcion)}</div>` : ''}${p.garantia ? `<span class="tag">🛡 Garantía ${esc(p.garantia)}</span>` : ''}<span class="tag ${disp ? '' : 'agotado'}">${disp ? '✅ Disponible' : '⏳ Agotado por ahora'}</span><button class="wa" ${disp && tienda && tienda.whatsapp ? '' : 'disabled'} onclick="pedir('${p.id}')">${disp ? '💬 Pedir por WhatsApp' : 'Agotado'}</button></div>`;
+      const m = marcaDe(p.nombre), col = m ? m.c : 'var(--c)', disp = disponibleDe(p), st = stockDe(p);
+      return `<div class="card" style="--pc:${col}"><div class="marca">${esc(m ? m.t : (p.categoria || 'Producto'))}</div><div class="pnombre">${esc(p.nombre)}</div><div class="precio">${cop(p.precio)}</div>${p.descripcion ? `<div class="desc">${esc(p.descripcion)}</div>` : ''}${p.garantia ? `<span class="tag">🛡 Garantía ${esc(p.garantia)}</span>` : ''}<span class="tag ${disp ? '' : 'agotado'}">${disp ? (st !== null ? `✅ ${st} disponibles` : '✅ Disponible') : '⏳ Agotado por ahora'}</span>${pideWa ? `<button class="wa" ${disp && tienda && tienda.whatsapp ? '' : 'disabled'} onclick="pedir('${p.id}')">${disp ? '💬 Pedir por WhatsApp' : 'Agotado'}</button>` : ''}</div>`;
     }).join('') : `<div class="vacio" style="grid-column:1/-1">${act.length ? 'No encontré productos con esa búsqueda.' : 'Esta tienda todavía no tiene productos.'}</div>`;
   }
   function pedir(id) {
     const p = productos.find(x => x.id === id); if (!p || !tienda || !tienda.whatsapp) return;
-    const wa = String(tienda.whatsapp).replace(/\D/g, ''), num = wa.length === 10 ? '57' + wa : wa;
-    const txt = `Hola 👋, quiero pedir en *${tienda.nombre}*:\n\n• ${p.nombre} — ${cop(p.precio)}\n\n¿Cómo pago?`;
-    window.open('https://wa.me/' + num + '?text=' + encodeURIComponent(txt), '_blank', 'noopener');
+    const txt = `Hola 👋, quiero pedir en *${tienda.nombre}*:\n\n• ${p.nombre} — ${cop(p.precio)} c/u\n\n¿Cómo pago?`;
+    window.open('https://wa.me/' + waNumero(tienda.whatsapp) + '?text=' + encodeURIComponent(txt), '_blank', 'noopener');
   }
 
-  // ---------- Panel del dueño ----------
-  function abrirPanel() { if (esDueno()) return mostrarPanel(); if (usuario) { toast('Esta cuenta no es la dueña de la tienda.'); } $('mLogin').classList.remove('oculto'); }
+  // ==================== PANEL ====================
+  function abrirPanel() { if (esDueno()) return mostrarPanel(); if (usuario) toast('Esta cuenta no es la dueña de la tienda.'); $('mLogin').classList.remove('oculto'); }
   async function entrar() {
     $('lgError').textContent = '';
-    try { await auth.signInWithEmailAndPassword($('lgEmail').value.trim(), $('lgPass').value); cerrar('mLogin'); setTimeout(() => { if (esDueno()) mostrarPanel(); else toast('Esta cuenta no es la dueña de esta tienda.'); }, 400); }
+    try { await auth.signInWithEmailAndPassword($('lgEmail').value.trim(), $('lgPass').value); cerrar('mLogin'); setTimeout(() => { if (esDueno()) mostrarPanel(); else toast('Esta cuenta no es la dueña de esta tienda.'); }, 500); }
     catch (e) { $('lgError').textContent = 'Correo o contraseña incorrectos.'; }
   }
-  function mostrarPanel() { $('vTienda').classList.add('oculto'); $('vAviso').classList.add('oculto'); $('vPanel').classList.remove('oculto'); $('btnPanel').textContent = 'Salir'; $('btnPanel').onclick = salirPanel; tabPanel('productos'); pintarConfig(); }
-  function salirPanel() { auth.signOut(); verTienda(); $('btnPanel').textContent = 'Mi panel'; $('btnPanel').onclick = abrirPanel; }
+  function mostrarPanel() {
+    $('vTienda').classList.add('oculto'); $('vAviso').classList.add('oculto'); $('vPanel').classList.remove('oculto');
+    $('btnPanel').textContent = 'Salir'; $('btnPanel').onclick = salirPanel;
+    escucharDueno(); tabPanel('inicio'); pintarTodoPanel(); pintarConfig();
+    try { if (!localStorage.getItem('bienvenida_' + tiendaId)) { localStorage.setItem('bienvenida_' + tiendaId, '1'); $('mBienvenida').classList.remove('oculto'); } } catch (e) { /* nada */ }
+  }
+  function salirPanel() { auth.signOut(); escuchasDueno.forEach(f => { try { f(); } catch (e) { /* nada */ } }); escuchasDueno = []; verTienda(); $('btnPanel').textContent = 'Mi panel'; $('btnPanel').onclick = abrirPanel; }
   function verTienda() { $('vPanel').classList.add('oculto'); decidirVista(); }
-  function tabPanel(t) { document.querySelectorAll('.tab[data-t]').forEach(b => b.classList.toggle('on', b.dataset.t === t)); ['productos', 'tienda', 'compartir'].forEach(x => $('p' + x.charAt(0).toUpperCase() + x.slice(1)).classList.toggle('oculto', x !== t)); }
+  const TABS = ['inicio', 'productos', 'stock', 'ventas', 'diseno', 'ajustes', 'compartir'];
+  function tabPanel(t) {
+    document.querySelectorAll('.tab[data-t]').forEach(b => b.classList.toggle('on', b.dataset.t === t));
+    TABS.forEach(x => $('p' + x.charAt(0).toUpperCase() + x.slice(1)).classList.toggle('oculto', x !== t));
+    if (t === 'diseno') { skinPrevio = ''; pintarSkins(); }
+    if (t === 'stock') pintarStock();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+  function pintarTodoPanel() { if ($('vPanel').classList.contains('oculto') || !esDueno()) return; pintarListaPanel(); pintarGuia(); pintarSelects(); pintarResumen(); pintarVentas(); pintarStock(); pintarCategorias(); }
+
+  // ---------- 🚀 Mis primeros pasos ----------
+  function pasosGuia() {
+    const t = tienda || {}, hayStock = productos.some(p => (parseInt(p.stock, 10) || 0) > 0) || ventas.length > 0;
+    return [
+      ['🎨', 'Elige el estilo de tu tienda', '12 diseños con efecto glass. Tócalos y los ves al instante.', !!t.skin, () => tabPanel('diseno')],
+      ['🏪', 'Pon tu logo y tu frase', 'Así te reconocen tus clientes. También tu WhatsApp para los pedidos.', !!(t.frase || t.logo), () => { tabPanel('ajustes'); $('ajDatos').open = true; }],
+      ['🏷️', 'Crea una categoría', 'Ej: Streaming, Música, Herramientas.', (t.categorias || []).length > 0, () => { tabPanel('productos'); setTimeout(() => $('catNueva').focus(), 300); }],
+      ['📦', 'Agrega tu primer producto', 'Nombre, precio y garantía.', productos.length > 0, () => { tabPanel('productos'); editarProducto(''); }],
+      ['🔑', 'Carga tus cuentas', 'Pegas lo que te manda tu proveedor: el sistema separa correo y clave solo.', hayStock, () => tabPanel('stock')],
+      ['💳', 'Configura cómo te pagan', 'Pedido por WhatsApp y tus medios de pago (Nequi, Bre-B…).', !!(t.pagos && String(t.pagos.medios || '').trim()), () => { tabPanel('ajustes'); $('ajPagos').open = true; }],
+      ['🤖', 'Conecta tu bot de Telegram', 'Tu propio bot te avisa ventas y stock bajo. Toma 2 minutos.', !!privado.tgChatId, () => { tabPanel('ajustes'); $('ajTelegram').open = true; }],
+      ['🚀', 'Comparte tu enlace', 'En tus estados, grupos y perfil. ¡A vender!', !!t.compartido, () => tabPanel('compartir')]
+    ];
+  }
+  var accionesGuia = [];
+  function pintarGuia() {
+    if (!$('guiaPasos') || !tienda) return;
+    const P = pasosGuia(), hechos = P.filter(x => x[3]).length, sig = P.findIndex(x => !x[3]);
+    accionesGuia = P.map(x => x[4]);
+    $('guiaCuenta').textContent = hechos + '/' + P.length;
+    $('guiaBarra').style.width = Math.round(hechos * 100 / P.length) + '%';
+    $('guiaFrase').textContent = hechos === P.length ? '🎉 ¡Tu tienda está lista! Ya puedes vender como un profesional.' : (hechos === 0 ? 'Sigue estos pasos y en minutos tienes tu tienda lista para vender.' : `¡Vas muy bien! Te ${P.length - hechos === 1 ? 'falta 1 paso' : 'faltan ' + (P.length - hechos) + ' pasos'}.`);
+    $('guiaPasos').innerHTML = P.map((x, k) => `<div class="paso ${x[3] ? 'hecho' : ''}"><div class="n">${x[3] ? '✓' : k + 1}</div><div class="tx"><b>${x[0]} ${esc(x[1])}</b><span>${esc(x[2])}</span></div>${x[3] ? '' : `<button class="btn ${k === sig ? 'btn-p pulso' : 'btn-g'}" style="padding:7px 12px" onclick="accionesGuia[${k}]()">Ir</button>`}</div>`).join('');
+    if (hechos === P.length) $('guiaCaja').open = false;
+  }
+
+  // ---------- Resumen ----------
+  function esHoy(iso) { const d = new Date(iso), h = new Date(); return d.getFullYear() === h.getFullYear() && d.getMonth() === h.getMonth() && d.getDate() === h.getDate(); }
+  function pintarResumen() {
+    const hoy = ventas.filter(v => esHoy(v.fecha)), tot = hoy.reduce((a, v) => a + (Number(v.total) || 0), 0), cu = hoy.reduce((a, v) => a + (parseInt(v.cantidad, 10) || 0), 0);
+    const stockTotal = productos.reduce((a, p) => a + (parseInt(p.stock, 10) || 0), 0);
+    const html = `<div><b>${cop(tot)}</b><span>Vendido hoy</span></div><div><b>${cu}</b><span>Cuentas hoy</span></div><div><b>${stockTotal}</b><span>En stock</span></div>`;
+    $('resHoy').innerHTML = html;
+  }
+
+  // ---------- Categorías ----------
+  function pintarCategorias() {
+    const L = (tienda && tienda.categorias) || [];
+    $('catLista').innerHTML = L.length ? L.map((c, k) => `<span class="chip">${esc(c)} <button style="background:none;border:0;color:var(--sub);padding:0 0 0 4px" onclick="quitarCategoria(${k})">✕</button></span>`).join('') : '<span class="sub">Todavía no tienes categorías.</span>';
+  }
+  async function agregarCategoria() {
+    const c = $('catNueva').value.trim().slice(0, 24); if (c.length < 2) return toast('Escribe el nombre de la categoría.');
+    const L = ((tienda && tienda.categorias) || []).slice(); if (L.some(x => x.toLowerCase() === c.toLowerCase())) return toast('Esa categoría ya existe.');
+    L.push(c); try { await db.collection('tiendas').doc(tiendaId).update({ categorias: L.slice(0, 20) }); $('catNueva').value = ''; toast('✓ Categoría creada'); } catch (e) { toast('No se pudo: ' + e.message); }
+  }
+  async function quitarCategoria(k) { const L = ((tienda && tienda.categorias) || []).slice(); L.splice(k, 1); try { await db.collection('tiendas').doc(tiendaId).update({ categorias: L }); } catch (e) { toast(e.message); } }
+
+  // ---------- Productos ----------
   function pintarListaPanel() {
     if (!$('pLista')) return;
-    $('pLista').innerHTML = productos.length ? productos.map(p => `<div class="fila"><div class="t"><b>${esc(p.nombre)}</b><span class="sub">${cop(p.precio)} · ${esc(p.categoria || 'Sin categoría')}</span></div><span class="pill ${p.activo !== false ? 'ok' : 'off'}">${p.activo !== false ? (p.disponible !== false ? 'VISIBLE' : 'AGOTADO') : 'OCULTO'}</span><button class="btn btn-g" onclick="editarProducto('${p.id}')">Editar</button></div>`).join('') : '<p class="vacio">Agrega tu primer producto.</p>';
+    $('pLista').innerHTML = productos.length ? productos.map(p => { const st = stockDe(p), disp = disponibleDe(p); return `<div class="fila"><div class="t"><b>${esc(p.nombre)}</b><span class="sub">${cop(p.precio)} · ${esc(p.categoria || 'Sin categoría')}${st !== null ? ' · stock ' + st : ''}</span></div><span class="pill ${p.activo === false ? 'off' : (disp ? (st !== null && st <= 2 ? 'warn' : 'ok') : 'off')}">${p.activo === false ? 'OCULTO' : (disp ? (st !== null && st <= 2 ? 'POCO STOCK' : 'VISIBLE') : 'AGOTADO')}</span><button class="btn btn-g" onclick="editarProducto('${p.id}')">Editar</button></div>`; }).join('') : '<p class="vacio">Agrega tu primer producto.</p>';
   }
   function editarProducto(id) {
     editando = id; const p = productos.find(x => x.id === id) || {};
     $('mpTitulo').textContent = id ? 'Editar producto' : 'Nuevo producto';
-    $('mpNombre').value = p.nombre || ''; $('mpPrecio').value = p.precio || ''; $('mpCategoria').value = p.categoria || 'Streaming'; $('mpDesc').value = p.descripcion || ''; $('mpGarantia').value = p.garantia || '';
-    $('mpDisponible').checked = p.disponible !== false; $('mpActivo').checked = p.activo !== false; $('mpBorrar').classList.toggle('oculto', !id);
+    const cats = ((tienda && tienda.categorias) || []).slice(); if (p.categoria && cats.indexOf(p.categoria) === -1) cats.push(p.categoria); if (!cats.length) cats.push('Streaming');
+    $('mpCategoria').innerHTML = cats.map(c => `<option ${c === p.categoria ? 'selected' : ''}>${esc(c)}</option>`).join('');
+    $('mpNombre').value = p.nombre || ''; $('mpPrecio').value = p.precio || ''; $('mpDesc').value = p.descripcion || ''; $('mpGarantia').value = p.garantia || '';
+    $('mpUsaStock').checked = id ? p.usaStock === true : true; $('mpDisponible').checked = p.disponible !== false; $('mpActivo').checked = p.activo !== false; $('mpBorrar').classList.toggle('oculto', !id);
     $('mProducto').classList.remove('oculto');
   }
   async function guardarProducto() {
-    const d = { nombre: $('mpNombre').value.trim().slice(0, 60), precio: Math.max(0, Math.round(Number($('mpPrecio').value) || 0)), categoria: $('mpCategoria').value.trim().slice(0, 30) || 'Otros', descripcion: $('mpDesc').value.trim().slice(0, 200), garantia: $('mpGarantia').value.trim().slice(0, 30), disponible: $('mpDisponible').checked, activo: $('mpActivo').checked, actualizadoEl: new Date().toISOString() };
+    const d = { nombre: $('mpNombre').value.trim().slice(0, 60), precio: Math.max(0, Math.round(Number($('mpPrecio').value) || 0)), categoria: $('mpCategoria').value.trim().slice(0, 30) || 'Otros', descripcion: $('mpDesc').value.trim().slice(0, 200), garantia: $('mpGarantia').value.trim().slice(0, 30), usaStock: $('mpUsaStock').checked, disponible: $('mpDisponible').checked, activo: $('mpActivo').checked, actualizadoEl: new Date().toISOString() };
     if (d.nombre.length < 2) return toast('Escribe el nombre del producto.');
     if (!(d.precio > 0)) return toast('Escribe el precio.');
     const col = db.collection('tiendas_productos');
-    try { if (editando) await col.doc(editando).set(d, { merge: true }); else await col.add(Object.assign({ tiendaId: tiendaId, creadoEl: new Date().toISOString() }, d)); cerrar('mProducto'); toast('✓ Guardado'); }
+    try { if (editando) await col.doc(editando).set(d, { merge: true }); else await col.add(Object.assign({ tiendaId: tiendaId, stock: 0, creadoEl: new Date().toISOString() }, d)); cerrar('mProducto'); toast('✓ Guardado'); }
     catch (e) { toast('No se pudo guardar: ' + e.message); }
   }
   async function borrarProducto() { if (!editando || !confirm('¿Borrar este producto?')) return; try { await db.collection('tiendas_productos').doc(editando).delete(); cerrar('mProducto'); toast('Borrado'); } catch (e) { toast(e.message); } }
+  function pintarSelects() {
+    const conStock = productos.filter(p => p.usaStock);
+    const op = L => L.map(p => `<option value="${p.id}">${esc(p.nombre)} · ${stockDe(p) || 0} en stock</option>`).join('');
+    const a = $('vwProd').value, b = $('stProd').value;
+    $('vwProd').innerHTML = conStock.length ? op(conStock) : '<option value="">Primero crea un producto con stock</option>';
+    $('stProd').innerHTML = conStock.length ? op(conStock) : '<option value="">Primero crea un producto con stock</option>';
+    if (a && conStock.some(p => p.id === a)) $('vwProd').value = a; if (b && conStock.some(p => p.id === b)) $('stProd').value = b;
+    vwPrevia();
+  }
+
+  // ---------- 🔑 Stock ----------
+  const PALABRAS = /^(correo|email|e-mail|mail|usuario|user|clave|contrasena|contraseña|pass|password|cuenta|plataforma|perfil|pin)[:=]?$/i;
+  function extraerCuentas(texto) {
+    const out = [], vistos = new Set();
+    String(texto || '').split(/\r?\n/).forEach(l => {
+      const m = l.match(/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/); if (!m) return;
+      const e = m[0].toLowerCase(); if (vistos.has(e)) return; vistos.add(e);
+      const resto = l.replace(m[0], ' ').split(/[\s|:;,]+/).map(x => x.trim()).filter(x => x && !PALABRAS.test(x) && !/^[-–—•*]+$/.test(x));
+      out.push({ e: e, p: resto[0] || '', x: resto[1] || '' });
+    });
+    return out;
+  }
+  function correosUsados() { const s = new Set(); Object.values(stockDocs).forEach(d => (d.cuentas || []).forEach(c => s.add(String(c.e || '').toLowerCase()))); ventas.forEach(v => (v.cuentas || []).forEach(c => s.add(String(c.e || '').toLowerCase()))); return s; }
+  function stPrevia() {
+    const L = extraerCuentas($('stTexto').value), usados = correosUsados(), rep = L.filter(c => usados.has(c.e)).length;
+    $('stInfo').innerHTML = L.length ? `✓ <b>${L.length - rep}</b> ${L.length - rep === 1 ? 'cuenta nueva' : 'cuentas nuevas'} detectada${L.length - rep === 1 ? '' : 's'}${rep ? ` · <span class="agotado">${rep} ya estaban en tu stock o se vendieron (no se cargan)</span>` : ''} · el texto extra se ignora` : '';
+  }
+  async function cargarStock() {
+    const pid = $('stProd').value, p = productos.find(x => x.id === pid); if (!p) return toast('Elige un producto (con "Usa mi stock" activado).');
+    const usados = correosUsados(), L = extraerCuentas($('stTexto').value).filter(c => !usados.has(c.e));
+    if (!L.length) return toast('No encontré cuentas nuevas para cargar.');
+    try {
+      const ref = db.collection('tiendas_stock').doc(pid);
+      let total = 0;
+      await db.runTransaction(async t => {
+        const d = await t.get(ref), act = d.exists ? (d.data().cuentas || []) : [];
+        const nuevas = act.concat(L.map(c => Object.assign({ en: new Date().toISOString() }, c))); total = nuevas.length;
+        t.set(ref, { tiendaId: tiendaId, ownerUid: tienda.ownerUid, productoId: pid, cuentas: nuevas, actualizadoEl: new Date().toISOString() });
+        t.update(db.collection('tiendas_productos').doc(pid), { stock: nuevas.length, usaStock: true });
+      });
+      $('stTexto').value = ''; stPrevia(); toast(`✓ ${L.length} ${L.length === 1 ? 'cuenta cargada' : 'cuentas cargadas'} · ${total} en stock`);
+      tgEnviar(`📦 Cargaste ${L.length} ${L.length === 1 ? 'cuenta' : 'cuentas'} de ${p.nombre}. Stock: ${total}.`);
+    } catch (e) { toast('No se pudo cargar: ' + e.message); }
+  }
+  function pintarStock() {
+    if (!$('stLista')) return;
+    const pid = $('stProd').value, p = productos.find(x => x.id === pid), L = (stockDocs[pid] && stockDocs[pid].cuentas) || [];
+    $('stLista').innerHTML = !p ? '' : `<details class="pleg"><summary>🔑 ${esc(p.nombre)} · ${L.length} en stock</summary><div class="cuerpo">${L.length ? L.map((c, k) => `<div class="fila" style="padding:8px 10px"><div class="t"><b style="font-size:12.5px">${esc(c.e)}</b><span class="sub">clave: ${esc(c.p || '—')}${c.x ? ' · plataforma: ' + esc(c.x) : ''}</span></div><button class="btn btn-r" style="padding:6px 10px" onclick="quitarCuenta('${pid}',${k})">✕</button></div>`).join('') : '<p class="sub">Sin cuentas. Pégalas arriba.</p>'}</div></details>`;
+    stPrevia();
+  }
+  async function quitarCuenta(pid, k) {
+    if (!confirm('¿Sacar esta cuenta del stock?')) return;
+    const ref = db.collection('tiendas_stock').doc(pid);
+    try { await db.runTransaction(async t => { const d = await t.get(ref); const L = (d.data().cuentas || []).slice(); L.splice(k, 1); t.update(ref, { cuentas: L }); t.update(db.collection('tiendas_productos').doc(pid), { stock: L.length }); }); toast('Cuenta sacada del stock'); } catch (e) { toast(e.message); }
+  }
+
+  // ---------- 💬 Venta por WhatsApp ----------
+  function vwPrevia() {
+    const p = productos.find(x => x.id === $('vwProd').value), n = Math.max(1, parseInt($('vwCant').value, 10) || 1);
+    if (!p) { $('vwInfo').textContent = ''; return; }
+    if (document.activeElement !== $('vwTotal')) $('vwTotal').value = (Number(p.precio) || 0) * n;
+    const st = stockDe(p) || 0;
+    $('vwInfo').innerHTML = st >= n ? `✓ Tienes ${st} en stock` : `<span class="agotado">Solo tienes ${st} en stock</span>`;
+  }
+  function textoEntrega(p, cuentas) {
+    let t = `✨ *${p.nombre}*${cuentas.length > 1 ? ' · ' + cuentas.length + ' cuentas' : ''}\n`;
+    if (cuentas.length === 1) { const c = cuentas[0]; t += `📧 ${c.e}\n🔑 Clave: ${c.p || '—'}` + (c.x ? `\n🎬 Clave de la plataforma: ${c.x}` : ''); }
+    else t += cuentas.map((c, k) => `${k + 1}. ${c.e} · ${c.p || '—'}${c.x ? ' · ' + c.x : ''}`).join('\n');
+    if (p.garantia) t += `\n🛡 Garantía: ${p.garantia}`;
+    t += `\n\n🙌 Gracias por tu compra en *${tienda.nombre}*`;
+    return t;
+  }
+  async function ventaWhatsApp() {
+    const pid = $('vwProd').value, p = productos.find(x => x.id === pid), n = Math.max(1, Math.min(100, parseInt($('vwCant').value, 10) || 1)), total = Math.max(0, Math.round(Number($('vwTotal').value) || 0)), cliente = $('vwCliente').value.trim().slice(0, 60);
+    if (!p) return toast('Elige un producto.');
+    $('vwBtn').disabled = true;
+    try {
+      const ref = db.collection('tiendas_stock').doc(pid), vref = db.collection('tiendas_ventas').doc();
+      let sacadas = [], quedan = 0;
+      await db.runTransaction(async t => {
+        const d = await t.get(ref), L = d.exists ? (d.data().cuentas || []).slice() : [];
+        if (L.length < n) throw new Error(`Solo tienes ${L.length} en stock de ${p.nombre}.`);
+        sacadas = L.splice(0, n); quedan = L.length;   // salen del stock en la misma operación: nunca se venden dos veces
+        t.update(ref, { cuentas: L, actualizadoEl: new Date().toISOString() });
+        t.update(db.collection('tiendas_productos').doc(pid), { stock: L.length });
+        t.set(vref, { tiendaId: tiendaId, ownerUid: tienda.ownerUid, productoId: pid, productoNombre: p.nombre, cantidad: n, total: total, cuentas: sacadas.map(c => ({ e: c.e, p: c.p || '', x: c.x || '' })), cliente: cliente, origen: 'whatsapp', fecha: new Date().toISOString() });
+      });
+      const txt = textoEntrega(p, sacadas), wa = (cliente.match(/\d[\d\s]{8,}/) || [''])[0].replace(/\D/g, '');
+      $('mtTitulo').textContent = '✅ Venta registrada'; $('mtTexto').textContent = txt;
+      $('mtWa').onclick = () => window.open('https://wa.me/' + (wa ? waNumero(wa) : '') + '?text=' + encodeURIComponent(txt), '_blank', 'noopener');
+      $('mTexto').classList.remove('oculto'); $('vwCliente').value = '';
+      tgEnviar(`🛒 Venta por WhatsApp\n${n} × ${p.nombre} · ${cop(total)}${cliente ? '\n👤 ' + cliente : ''}\n📦 Quedan ${quedan}`);
+      if (quedan <= 2) tgEnviar(`⚠️ Poco stock: ${p.nombre} quedó con ${quedan}.`);
+    } catch (e) { toast(e.message); }
+    finally { $('vwBtn').disabled = false; }
+  }
+
+  // ---------- 🧾 Ventas ----------
+  function pintarVentas() {
+    if (!$('vtLista')) return;
+    const hoy = ventas.filter(v => esHoy(v.fecha)), tot = hoy.reduce((a, v) => a + (Number(v.total) || 0), 0), totMes = ventas.filter(v => new Date(v.fecha).getMonth() === new Date().getMonth()).reduce((a, v) => a + (Number(v.total) || 0), 0);
+    $('resVentas').innerHTML = `<div><b>${cop(tot)}</b><span>Hoy</span></div><div><b>${cop(totMes)}</b><span>Este mes</span></div><div><b>${ventas.length}</b><span>Ventas</span></div>`;
+    $('vtLista').innerHTML = ventas.length ? ventas.slice(0, 60).map(v => `<details class="pleg"><summary style="font-weight:700;font-size:13px">${new Date(v.fecha).toLocaleString('es-CO', { day: '2-digit', month: '2-digit', hour: 'numeric', minute: '2-digit' })} · ${esc(v.productoNombre)} ×${v.cantidad} · <b style="margin-left:4px">${cop(v.total)}</b></summary><div class="cuerpo"><p class="sub" style="margin:0 0 6px">${v.cliente ? '👤 ' + esc(v.cliente) + ' · ' : ''}${v.origen === 'whatsapp' ? '💬 Venta por WhatsApp' : '🛒 Tienda'}</p>${(v.cuentas || []).map(c => `<div class="sub">📧 ${esc(c.e)}</div>`).join('')}<button class="btn btn-g" style="margin-top:8px" onclick="reenviarVenta('${v.id}')">Ver mensaje</button></div></details>`).join('') : '<p class="vacio">Aquí verás tus ventas. Registra la primera desde 🏠 Inicio → Venta por WhatsApp.</p>';
+  }
+  function reenviarVenta(id) { const v = ventas.find(x => x.id === id); if (!v) return; const p = productos.find(x => x.id === v.productoId) || { nombre: v.productoNombre }; const txt = textoEntrega(p, v.cuentas || []); $('mtTitulo').textContent = '🧾 Venta'; $('mtTexto').textContent = txt; $('mtWa').onclick = () => window.open('https://wa.me/?text=' + encodeURIComponent(txt), '_blank', 'noopener'); $('mTexto').classList.remove('oculto'); }
+
+  // ---------- Ajustes: datos y pagos ----------
   function pintarConfig() {
     if (!tienda) return;
     $('cfNombre').value = tienda.nombre || ''; $('cfFrase').value = tienda.frase || ''; $('cfWa').value = tienda.whatsapp || ''; $('cfLogo').value = tienda.logo || '';
-    colorElegido = tienda.color || COLORES[0];
-    $('cfColores').innerHTML = COLORES.map(c => `<button class="col ${c === colorElegido ? 'on' : ''}" style="background:${c}" onclick="colorElegido='${c}';pintarColores()"></button>`).join('');
+    const pg = tienda.pagos || {}; $('pgWa').checked = pg.whatsapp !== false; $('pgMedios').value = pg.medios || '';
     const dias = tienda.venceEl ? Math.ceil((Date.parse(tienda.venceEl) - Date.now()) / 86400000) : null;
-    $('pPlan').innerHTML = `<b>${tienda.plan === 'gratis' ? 'Plan gratis' : (tienda.plan === 'demo' ? 'Demo gratis' : 'Suscripción')}</b><div class="sub" style="margin-top:3px">${dias === null ? 'Sin fecha de vencimiento.' : (dias > 0 ? `Te quedan <b style="color:#fff">${dias} ${dias === 1 ? 'día' : 'días'}</b>.` : '<b class="agotado">Tu plan venció: tus clientes ven la tienda en mantenimiento.</b>')} Para renovar escríbele a Epic Channels.</div>`;
+    $('pPlan').innerHTML = `<b>${tienda.plan === 'gratis' ? 'Plan gratis' : (tienda.plan === 'demo' ? 'Demo gratis' : 'Suscripción')}</b><div class="sub" style="margin-top:3px">${dias === null ? 'Sin fecha de vencimiento.' : (dias > 0 ? `Te quedan <b style="color:var(--txt)">${dias} ${dias === 1 ? 'día' : 'días'}</b>.` : '<b class="agotado">Tu plan venció: tus clientes ven la tienda en mantenimiento.</b>')} Para renovar escríbele a Epic Streaming.</div>`;
     $('pEnlace').textContent = enlaceTienda();
+    pintarTelegram();
   }
-  function pintarColores() { document.querySelectorAll('#cfColores .col').forEach(b => b.classList.toggle('on', b.style.background && b.getAttribute('onclick').indexOf(colorElegido) !== -1)); }
   async function guardarTienda() {
-    const d = { nombre: $('cfNombre').value.trim().slice(0, 40) || tienda.nombre, frase: $('cfFrase').value.trim().slice(0, 60), whatsapp: $('cfWa').value.replace(/\D/g, '').slice(0, 15), logo: /^https:\/\//.test($('cfLogo').value.trim()) ? $('cfLogo').value.trim().slice(0, 400) : '', color: colorElegido };
-    try { await db.collection('tiendas').doc(tiendaId).update(d); toast('✓ Tu tienda quedó guardada'); } catch (e) { toast('No se pudo guardar: ' + e.message); }
+    const d = { nombre: $('cfNombre').value.trim().slice(0, 40) || tienda.nombre, frase: $('cfFrase').value.trim().slice(0, 60), whatsapp: $('cfWa').value.replace(/\D/g, '').slice(0, 15), logo: /^https:\/\//.test($('cfLogo').value.trim()) ? $('cfLogo').value.trim().slice(0, 400) : '' };
+    try { await db.collection('tiendas').doc(tiendaId).update(d); toast('✓ Datos guardados'); } catch (e) { toast('No se pudo guardar: ' + e.message); }
   }
-  function enlaceTienda() { return location.origin + location.pathname.replace(/index\.html$/, '') + '#' + slugActual(); }
-  function copiarEnlace() { (navigator.clipboard ? navigator.clipboard.writeText(enlaceTienda()) : Promise.reject()).then(() => toast('Enlace copiado')).catch(() => prompt('Copia tu enlace:', enlaceTienda())); }
-  function compartirWa() { window.open('https://wa.me/?text=' + encodeURIComponent(`🛒 Mira mi tienda *${tienda.nombre}*: ${enlaceTienda()}`), '_blank', 'noopener'); }
+  async function guardarPagos() {
+    const d = { pagos: { whatsapp: $('pgWa').checked, comprobante: false, medios: $('pgMedios').value.trim().slice(0, 300) } };
+    try { await db.collection('tiendas').doc(tiendaId).update(d); toast('✓ Pagos guardados'); } catch (e) { toast('No se pudo guardar: ' + e.message); }
+  }
 
-  auth.onAuthStateChanged(u => { usuario = u; if (u && esDueno()) { $('btnPanel').textContent = 'Mi panel'; } decidirVista(); });
+  // ---------- 🤖 Telegram (su propio bot) ----------
+  async function tgApi(token, metodo, datos) {
+    const r = await fetch('https://api.telegram.org/bot' + token + '/' + metodo, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(datos || {}) });
+    return r.json();
+  }
+  async function tgEnviar(texto) {
+    if (!privado.tgToken || !privado.tgChatId) return false;
+    try { const r = await tgApi(privado.tgToken, 'sendMessage', { chat_id: privado.tgChatId, text: texto, disable_web_page_preview: true }); return !!(r && r.ok); } catch (e) { return false; }
+  }
+  function pintarTelegram() {
+    if (!$('tgEstado')) return;
+    const ok = !!privado.tgChatId;
+    $('tgEstado').textContent = ok ? 'Conectado' + (privado.tgBot ? ' · @' + privado.tgBot : '') : 'Sin conectar';
+    $('tgEstado').className = 'pill ' + (ok ? 'ok' : 'off');
+    $('tgListo').classList.toggle('oculto', !ok);
+    if (ok) $('tgPaso2').classList.add('oculto');
+  }
+  async function tgPaso1() {
+    const tok = $('tgToken').value.trim();
+    if (!/^\d{6,}:[A-Za-z0-9_-]{30,}$/.test(tok)) return toast('Ese código no parece un token de bot. Cópialo completo desde @BotFather.');
+    $('tgBtn1').disabled = true;
+    try {
+      const r = await tgApi(tok, 'getMe');
+      if (!r.ok) throw new Error('Telegram no reconoce ese token.');
+      try { await tgApi(tok, 'deleteWebhook'); } catch (e) { /* opcional */ }
+      tgBotTmp = { token: tok, user: r.result.username };
+      $('tgLink').textContent = '@' + r.result.username; $('tgLink').href = 'https://t.me/' + r.result.username;
+      $('tgPaso2').classList.remove('oculto'); toast('✓ Bot encontrado: @' + r.result.username);
+    } catch (e) { toast(e.message || 'No se pudo verificar el bot.'); }
+    finally { $('tgBtn1').disabled = false; }
+  }
+  async function tgPaso2() {
+    if (!tgBotTmp) return;
+    try {
+      const r = await tgApi(tgBotTmp.token, 'getUpdates', { limit: 50 });
+      const msgs = (r.result || []).map(u => u.message || u.edited_message).filter(Boolean);
+      const m = msgs.filter(x => x.chat && x.chat.type === 'private').pop();
+      if (!m) return toast('Aún no veo tu mensaje. Abre el bot, toca Iniciar y escríbele "hola".');
+      await db.collection('tiendas_privado').doc(tiendaId).set({ tgToken: tgBotTmp.token, tgChatId: String(m.chat.id), tgBot: tgBotTmp.user, ownerUid: tienda.ownerUid, actualizadoEl: new Date().toISOString() });
+      privado = { tgToken: tgBotTmp.token, tgChatId: String(m.chat.id), tgBot: tgBotTmp.user };
+      await tgEnviar(`🎉 ¡Listo, ${m.chat.first_name || ''}! Tu bot de ${tienda.nombre} quedó conectado.\nTe avisaré tus ventas por WhatsApp, el stock bajo y cuando cargues cuentas.`);
+      $('tgToken').value = ''; tgBotTmp = null; pintarTelegram(); pintarGuia(); toast('🤖 Telegram conectado');
+    } catch (e) { toast('No se pudo conectar: ' + e.message); }
+  }
+  async function tgDesconectar() { if (!confirm('¿Desconectar tu bot de Telegram?')) return; try { await db.collection('tiendas_privado').doc(tiendaId).set({ tgToken: '', tgChatId: '', tgBot: '', ownerUid: tienda.ownerUid }); privado = {}; pintarTelegram(); pintarGuia(); toast('Telegram desconectado'); } catch (e) { toast(e.message); } }
+
+  // ---------- Compartir ----------
+  function enlaceTienda() { return location.origin + '/t/' + slugActual(); }
+  async function marcarCompartido() { if (tienda && !tienda.compartido) { try { await db.collection('tiendas').doc(tiendaId).update({ compartido: true }); } catch (e) { /* opcional */ } } }
+  function copiarEnlace() { copiarTexto(enlaceTienda()); marcarCompartido(); }
+  function compartirWa() { window.open('https://wa.me/?text=' + encodeURIComponent(`🛒 Mira mi tienda *${tienda.nombre}*: ${enlaceTienda()}`), '_blank', 'noopener'); marcarCompartido(); }
+
+  auth.onAuthStateChanged(u => { usuario = u; if (u && esDueno()) { $('btnPanel').textContent = 'Mi panel'; escucharDueno(); } decidirVista(); });
   window.addEventListener('hashchange', () => location.reload());
+  aplicarSkin('esmeralda', false);
   cargar();
 </script>
 </body>
