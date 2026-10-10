@@ -927,6 +927,7 @@
               <span class="text-[9px] text-gray-400 block font-semibold leading-none uppercase">Recaudado Hoy</span>
               <span id="txtAdminRecaudadoHoyEnVivo" class="text-sm font-black text-emerald-400 leading-tight">$0 COP <span class="text-xs text-gray-400 font-semibold">(0 cuentas)</span></span>
             </div>
+            <button type="button" onclick="verVentasHoy()" class="ml-1 px-2.5 py-1 rounded-lg bg-emerald-500/20 border border-emerald-500/40 text-emerald-200 text-[11px] font-black hover:bg-emerald-500/30">Ver</button>
           </div>
         </div>
 
@@ -5578,6 +5579,19 @@
       return `${año}-${mes}-${dia}`;
     }
 
+    // 🧾 Ventas de hoy (botón "Ver" junto a Recaudado hoy). Los regalos van aparte y no suman.
+    var ventasHoyCache = [];
+    function esRegaloCompra(c) { return c.esBonificacion === true || c.esRegalo === true || c.regalo === true || /regalo|bonific|cortes[ií]a|premio/i.test(String(c.origen || '') + ' ' + String(c.metodo || '') + ' ' + String(c.tipo || '')) || (!(parseFloat(c.total) > 0) && c.esRenovacion !== true); }
+    function verVentasHoy() {
+      const L = ventasHoyCache || [], ventas = L.filter(x => !x.regalo), regalos = L.filter(x => x.regalo);
+      const hora = d => d.toLocaleTimeString('es-CO', { hour: 'numeric', minute: '2-digit' });
+      const correos = c => { const lista = Array.isArray(c.correos) && c.correos.length ? c.correos : String(c.credenciales || '').split('\n').map(l => (l.match(/[^\s:|,]+@[^\s:|,]+/) || [''])[0]).filter(Boolean); return lista.slice(0, 12).join('\n      ') + (lista.length > 12 ? '\n      …y ' + (lista.length - 12) + ' más' : ''); };
+      const linea = x => { const c = x.c, n = parseInt(c.cantidad, 10) || 1, cli = (c.usuarioEmail || '').replace(/^WhatsApp · /, '📲 '); return `🕒 ${hora(x.fecha)} · ${c.productoNombre || 'Producto'} ×${n}${x.regalo ? '' : ' · $' + (parseFloat(c.total) || 0).toLocaleString('es-CO')}\n   👤 ${cli || '—'}\n   📧 ${correos(c) || '(sin correo)'}`; };
+      const tot = ventas.reduce((a, x) => a + (parseFloat(x.c.total) || 0), 0), nCu = ventas.reduce((a, x) => a + (parseInt(x.c.cantidad, 10) || 0), 0);
+      let msg = ventas.length ? `💰 ${ventas.length} ${ventas.length === 1 ? 'venta' : 'ventas'} · ${nCu} cuentas · $${tot.toLocaleString('es-CO')}\n\n` + ventas.map(linea).join('\n\n') : 'Todavía no hay ventas hoy.';
+      if (regalos.length) msg += `\n\n————————\n🎁 REGALOS (no cuentan en lo recaudado)\n\n` + regalos.map(linea).join('\n\n');
+      abrirDialogo({ tipo: 'info', titulo: '🧾 Ventas de hoy', mensaje: msg, textoAceptar: 'Cerrar' });
+    }
     function escucharTotalRecaudadoHoyEnVivo() {
       // Solo las compras de hoy (antes se leía todo el historial en cada ingreso del administrador)
       const inicioHoy = new Date(); inicioHoy.setHours(0, 0, 0, 0);
@@ -5585,6 +5599,7 @@
         const hoyStr = obtenerFechaLocalStr();
         let acumuladoHoy = 0;
         let cuentasHoy = 0;
+        const listaHoy = [];
 
         snap.forEach(doc => {
           const c = doc.data();
@@ -5602,11 +5617,16 @@
           }
 
           if (obtenerFechaLocalStr(fechaCompra) === hoyStr) {
-            acumuladoHoy += (parseFloat(c.total) || 0);
-            cuentasHoy += (parseInt(c.cantidad) || 0);
+            const regalo = esRegaloCompra(c);
+            listaHoy.push({ id: doc.id, c: c, fecha: fechaCompra, regalo: regalo });
+            if (!regalo) {   // "Recaudado hoy" es solo para ventas: los regalos no suman ni cuentan
+              acumuladoHoy += (parseFloat(c.total) || 0);
+              cuentasHoy += (parseInt(c.cantidad) || 0);
+            }
           }
         });
 
+        ventasHoyCache = listaHoy.sort((a, b) => b.fecha - a.fecha);
         const badgeEl = document.getElementById('txtAdminRecaudadoHoyEnVivo');
         if (badgeEl) {
           badgeEl.innerHTML = `$${acumuladoHoy.toLocaleString('es-CO')} COP <span class="text-xs text-gray-400 font-semibold">(${cuentasHoy} cuentas)</span>`;
@@ -15425,7 +15445,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-14z';
+    const VERSION_PAGINA = '2026-10-15a';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261010_wacompra', fecha: '2026-10-10', titulo: 'Compra por WhatsApp 💬', mensaje: 'Ahora puedes **comprar con tu saldo desde nuestro WhatsApp**. Ve a tu perfil → **Mis datos → Comprar por WhatsApp**, vincula tu chat con el código y pide la autorización.' },
       { id: 'act_20261010_vista2', fecha: '2026-10-10', titulo: 'Nueva vista de la tienda ▦', mensaje: 'Ahora puedes ver los productos **en 2 columnas**: más productos en tu pantalla, con las **promos resaltadas** (🔥 campaña, ⚡ relámpago, 🎁 regalo). Toca uno y se abre su ficha para comprar. Cambia de vista con los íconos ☰ / ▦ arriba de las categorías.' },
@@ -20077,6 +20097,7 @@
 
     // ==================== NOVEDADES INTERNAS DEL PANEL (solo el equipo) ====================
     const ACTUALIZACIONES_INTERNAS = [
+      { fecha: '2026-10-15', titulo: '🧾 Ver las ventas de hoy', mensaje: 'Junto a **Recaudado hoy** hay un botón **Ver**: muestra cada venta del día con la hora, el producto y la cantidad, el valor, el cliente y los correos de las cuentas entregadas. **Recaudado hoy ya no cuenta los regalos** (ni suma ni cuenta cuentas): salen aparte, abajo, como 🎁 Regalos.', ir: 'reporte' },
       { fecha: '2026-10-14', titulo: '🌙 Grupos solo en tu horario', mensaje: 'Antes, el **modo cazador** y las respuestas **por mención** (@todos) escribían en los grupos a cualquier hora. Ahora todo lo de grupos respeta tu horario: desde el inicio de tu primera franja hasta el final de la última (sin franjas: de 7:00 a. m. a 11:00 p. m.). Fuera de ese horario el bot no escribe en ningún grupo.', ir: 'whatsapp' },
       { fecha: '2026-10-14', titulo: '👥 Vista previa de grupos corregida', mensaje: 'Con el cuadro del mensaje de grupos vacío, la vista previa mostraba un texto viejo ("Te habla EPIC STREAMING… Página con descuentos para vendedores"), aunque a los grupos ya llegaba el mensaje nuevo con variaciones. Ahora la vista previa muestra exactamente lo que se envía. Lo gris dentro del cuadro es solo un ejemplo: si quieres tu propio texto, escríbelo y guarda.', ir: 'whatsapp' },
       { fecha: '2026-10-14', titulo: '🎉 "Ya me registré" ya no es un reporte', mensaje: 'Si un cliente sin conectar dice "ya me registré", "con este Gmail" o manda el correo de su cuenta recién creada, el bot lo felicita ("¡Genial! Ya eres cliente VIP 👑"), le manda su **enlace para conectar el WhatsApp** y le recuerda su pedido pendiente. No repite la felicitación: si ya le mandó el enlace, le recuerda corto. Si habla de un pago o recarga, sigue el flujo de recargas; si es el correo de una cuenta vendida con falla, va al reporte. Te avisa por Telegram.', ir: 'whatsapp' },
