@@ -1332,6 +1332,14 @@
 
       <!-- TAB 3: CARGA DE STOCK -->
       <div id="adminSecStock" class="hidden">
+        <details id="dobleVentaCaja" class="solo-admin rounded-2xl bg-gray-900 border border-rose-500/40 overflow-hidden">
+          <summary class="p-4 cursor-pointer select-none flex items-center gap-3 list-none"><span class="w-9 h-9 shrink-0 rounded-xl bg-rose-500/15 text-rose-300 flex items-center justify-center">🛡</span><span class="min-w-0 flex-grow"><span class="block font-bold text-white text-sm">Cuentas vendidas dos veces</span><span id="dvResumen" class="block text-[11px] text-gray-400 truncate">Revisa, limpia el stock y activa el candado con tu historial</span></span><i class="fa-solid fa-chevron-down text-gray-500 text-xs"></i></summary>
+          <div class="px-4 pb-4 pt-3 space-y-3 border-t border-gray-800">
+            <p class="text-[11px] text-gray-400">Desde ahora el servidor <b class="text-white">nunca vende un correo dos veces</b>: si una cuenta ya vendida aparece en algún stock, la saca sola, entrega otra y te avisa. Aquí revisas lo de antes. <span class="text-gray-500">Las pantallas y perfiles (un correo, varios perfiles) no cuentan.</span></p>
+            <button type="button" onclick="revisarDobleVenta()" class="w-full py-2.5 rounded-xl bg-rose-500 hover:bg-rose-400 text-white font-black text-sm">🔍 Revisar ahora</button>
+            <div id="dvResultado" class="space-y-2"></div>
+          </div>
+        </details>
         <div id="preordenesAdminCaja" class="hidden mb-4 bg-gray-900 border border-sky-500/40 rounded-2xl overflow-hidden">
           <div class="px-4 py-3 border-b border-gray-800 flex items-center gap-2"><i class="fa-solid fa-hourglass-half text-sky-300"></i><p class="text-sm font-bold text-white">Pedidos en espera</p><span id="preordenesAdminBadge" class="ml-auto px-2 py-0.5 rounded-full bg-sky-500 text-black text-[10px] font-black"></span></div>
           <p class="px-4 pt-2 text-[11px] text-gray-400">Clientes que pagaron sin stock. Al subir o aprobar stock de ese producto se entregan solos, en orden de llegada.</p>
@@ -15390,7 +15398,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-13w';
+    const VERSION_PAGINA = '2026-10-13x';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261010_wacompra', fecha: '2026-10-10', titulo: 'Compra por WhatsApp 💬', mensaje: 'Ahora puedes **comprar con tu saldo desde nuestro WhatsApp**. Ve a tu perfil → **Mis datos → Comprar por WhatsApp**, vincula tu chat con el código y pide la autorización.' },
       { id: 'act_20261010_vista2', fecha: '2026-10-10', titulo: 'Nueva vista de la tienda ▦', mensaje: 'Ahora puedes ver los productos **en 2 columnas**: más productos en tu pantalla, con las **promos resaltadas** (🔥 campaña, ⚡ relámpago, 🎁 regalo). Toca uno y se abre su ficha para comprar. Cambia de vista con los íconos ☰ / ▦ arriba de las categorías.' },
@@ -18503,6 +18511,53 @@
       cacheVendidas.mapa.forEach((motivo, e) => { if (!mapa.has(e)) mapa.set(e, motivo); });
       return mapa;
     }
+    // ==================== 🛡 CUENTAS VENDIDAS DOS VECES ====================
+    const idVendida = e => String(e || '').trim().toLowerCase().replace(/[\/\s]/g, '_').slice(0, 300);
+    const exentaUnica = (linea, nombreProd) => /pantalla|perfil/i.test(String(nombreProd || '')) || /\bperfil\b|\bpin\b/i.test(typeof linea === 'string' ? linea : String((linea && linea.pass) || '')) || !!(linea && typeof linea === 'object' && linea.alquilerId);
+    var dvDatos = null;
+    async function revisarDobleVenta() {
+      if (!esAdminSesionActual()) return; const out = document.getElementById('dvResultado'); if (!out) return;
+      out.innerHTML = '<p class="text-[11px] text-gray-400"><i class="fa-solid fa-spinner fa-spin mr-1"></i>Revisando todas las ventas y el stock…</p>';
+      try {
+        const vendidas = new Map();   // correo → [{id, fecha, producto, cliente}]
+        (await db.collection('compras').get()).forEach(d => { const c = d.data() || {}; if (c.esRenovacion === true) return;
+          const lineas = String(c.credenciales || '').split('\n').filter(Boolean), lista = Array.isArray(c.correos) && c.correos.length ? c.correos : lineas;
+          const vistos = new Set();
+          lista.forEach((l, i) => { const e = correoDeCuenta(l); if (!e || vistos.has(e) || exentaUnica(lineas[i] || l, c.productoNombre)) return; vistos.add(e);
+            if (!vendidas.has(e)) vendidas.set(e, []); vendidas.get(e).push({ id: d.id, fecha: c.fecha || '', producto: c.productoNombre || c.productoId || '', cliente: c.usuarioEmail || c.usuarioId || '' }); }); });
+        const dobles = [...vendidas.entries()].filter(([e, L]) => L.length > 1).sort((a, b) => String(b[1][b[1].length - 1].fecha).localeCompare(String(a[1][a[1].length - 1].fecha)));
+        const enStock = [];
+        const revisarLista = (id, lista) => (Array.isArray(lista) ? lista : []).forEach(c => { const e = correoDeCuenta(c), nom = ((catalogoUnificado || []).find(p => p.docId === id) || snapshotInventario[id] || {}).nombre || id; if (e && !exentaUnica(c, nom) && vendidas.has(e)) enStock.push({ id, nombre: nom, email: e }); });
+        Object.keys(snapshotInventarioPrivado || {}).forEach(id => revisarLista(id, (snapshotInventarioPrivado[id] || {}).cuentas));
+        Object.keys(snapshotInventario || {}).forEach(id => revisarLista(id, (snapshotInventario[id] || {}).cuentas));
+        let registradas = new Set(); try { (await db.collection('cuentas_vendidas').get()).forEach(d => registradas.add(d.id)); } catch (e) { registradas = null; }
+        const sinRegistro = registradas ? [...vendidas.keys()].filter(e => !registradas.has(idVendida(e))) : [];
+        dvDatos = { enStock, sinRegistro };
+        const fecha = f => f ? new Date(f).toLocaleDateString('es-CO', { day: '2-digit', month: '2-digit', year: '2-digit' }) : '—';
+        out.innerHTML =
+          `<div class="p-3 rounded-xl ${dobles.length ? 'bg-rose-500/10 border border-rose-500/40' : 'bg-emerald-500/10 border border-emerald-500/30'}"><p class="text-xs font-black ${dobles.length ? 'text-rose-200' : 'text-emerald-300'}">${dobles.length ? '⚠️ ' + dobles.length + (dobles.length === 1 ? ' cuenta vendida' : ' cuentas vendidas') + ' dos o más veces' : '✅ Ninguna cuenta vendida dos veces'}</p>` +
+          (dobles.length ? `<p class="text-[10px] text-gray-400 mt-0.5">El último comprador de cada una recibió una cuenta que ya era de otro: repónsela (ábrela en el buscador y crea el ticket).</p><div class="mt-2 space-y-1.5 max-h-80 overflow-y-auto">${dobles.slice(0, 100).map(([e, L]) => `<div class="p-2 rounded-lg bg-gray-900/70"><div class="flex items-center justify-between gap-2"><span class="text-[11px] font-mono text-white break-all">${escaparHtml(e)}</span><button type="button" onclick="abrirCuentaEnBuscador('${escaparJsAttr(e)}')" class="shrink-0 px-2 py-1 rounded-lg bg-sky-500/20 text-sky-200 text-[10px] font-bold">Ver</button></div>${L.map((v, k) => `<p class="text-[10px] ${k === L.length - 1 ? 'text-rose-200' : 'text-gray-400'}">${k + 1}ª venta: ${fecha(v.fecha)} · ${escaparHtml(v.producto)} · ${escaparHtml(v.cliente)}${k === L.length - 1 ? ' ← reponer' : ''}</p>`).join('')}</div>`).join('')}</div>` : '') + '</div>' +
+          `<div class="p-3 rounded-xl ${enStock.length ? 'bg-amber-500/10 border border-amber-500/40' : 'bg-gray-800/60 border border-gray-700/60'}"><p class="text-xs font-black ${enStock.length ? 'text-amber-200' : 'text-gray-300'}">${enStock.length ? '🧹 ' + enStock.length + (enStock.length === 1 ? ' cuenta sigue' : ' cuentas siguen') + ' en el stock aunque ya se vendieron' : '🧹 El stock está limpio: ninguna cuenta ya vendida'}</p>` +
+          (enStock.length ? `<p class="text-[10px] text-gray-400 mt-0.5">${[...new Set(enStock.map(x => x.nombre))].map(n => escaparHtml(n) + ': ' + enStock.filter(x => x.nombre === n).length).join(' · ')}</p><button type="button" onclick="limpiarStockVendidas()" class="mt-2 w-full py-2 rounded-lg bg-amber-500 text-black text-xs font-black">Sacarlas del stock</button>` : '') + '</div>' +
+          `<div class="p-3 rounded-xl ${sinRegistro.length ? 'bg-violet-500/10 border border-violet-500/40' : 'bg-gray-800/60 border border-gray-700/60'}"><p class="text-xs font-black ${sinRegistro.length ? 'text-violet-200' : 'text-gray-300'}">${registradas === null ? '🔒 Publica las reglas nuevas para activar el candado con tu historial' : (sinRegistro.length ? '🔒 ' + sinRegistro.length + ' ventas pasadas sin candado' : '🔒 Candado activo con todo tu historial')}</p>` +
+          (sinRegistro.length ? `<p class="text-[10px] text-gray-400 mt-0.5">Registra las cuentas que ya vendiste, para que el servidor nunca las vuelva a vender aunque reaparezcan en un stock.</p><button type="button" onclick="activarCandadoHistorial()" class="mt-2 w-full py-2 rounded-lg bg-violet-500 text-white text-xs font-black">Activar el candado con el historial</button>` : '') + '</div>';
+        const r = document.getElementById('dvResumen'); if (r) r.textContent = dobles.length ? '⚠️ ' + dobles.length + ' vendidas dos veces · ' + enStock.length + ' en stock ya vendidas' : (enStock.length ? '🧹 ' + enStock.length + ' en stock ya vendidas' : '✅ Todo en orden');
+      } catch (e) { out.innerHTML = '<p class="text-[11px] text-rose-300">No se pudo revisar: ' + escaparHtml(e.message) + '</p>'; }
+    }
+    function abrirCuentaEnBuscador(email) { try { const i = document.getElementById('txtBuscarCuenta'); if (i) { i.value = email; i.scrollIntoView({ behavior: 'smooth', block: 'center' }); buscarCuentaAdmin(); } } catch (e) { /* nada */ } }
+    async function limpiarStockVendidas() {
+      const L = (dvDatos && dvDatos.enStock) || []; if (!L.length) return;
+      if (!await confirmarModal(`¿Sacar ${L.length} ${L.length === 1 ? 'cuenta' : 'cuentas'} del stock? Ya se vendieron antes, así que no se pueden volver a vender.`, { textoAceptar: 'Sí, sacarlas' })) return;
+      try { const porProd = {}; L.forEach(x => { (porProd[x.id] = porProd[x.id] || new Set()).add(x.email); });
+        for (const id of Object.keys(porProd)) { const nom = ((catalogoUnificado || []).find(p => p.docId === id) || {}).nombre || id; await modificarCuentasProducto(id, l => l.filter(c => { const e = correoDeCuenta(c); return !e || exentaUnica(c, nom) || !porProd[id].has(e); })); }
+        mostrarToast('🧹 Listo: ' + L.length + ' cuentas fuera del stock'); revisarDobleVenta(); } catch (e) { alert(e.message); }
+    }
+    async function activarCandadoHistorial() {
+      const L = (dvDatos && dvDatos.sinRegistro) || []; if (!L.length) return;
+      try { const ahora = new Date().toISOString();
+        for (let i = 0; i < L.length; i += 400) { const b = db.batch(); L.slice(i, i + 400).forEach(e => b.set(db.collection('cuentas_vendidas').doc(idVendida(e)), { email: e, fecha: ahora, historial: true })); await b.commit(); }
+        mostrarToast('🔒 Candado activo con ' + L.length + ' ventas pasadas'); revisarDobleVenta(); } catch (e) { alert('No se pudo: ' + e.message + '\n(Publica primero las reglas nuevas.)'); }
+    }
     async function revisarRepetidasCuentas(lineas) {
       const enUso = await correosEnUso(), vistos = new Set(), unicas = [], repetidas = [];
       lineas.forEach(l => {
@@ -19924,6 +19979,7 @@
 
     // ==================== NOVEDADES INTERNAS DEL PANEL (solo el equipo) ====================
     const ACTUALIZACIONES_INTERNAS = [
+      { fecha: '2026-10-13', titulo: '🛡 Una cuenta jamás se vende dos veces', mensaje: 'El servidor ahora tiene un **candado**: cada correo vendido queda registrado y la base de datos **rechaza** venderlo otra vez, por cualquier camino (venta normal, stock compartido, combos, sobre pedido, regalos de dealer y reemplazos de tickets). Si una cuenta ya vendida aparece en algún stock, el servidor la **saca sola**, entrega otra y te avisa por Telegram. Las pantallas y perfiles (un correo, varios perfiles) no cuentan. En **Cargar stock → 🛡 Cuentas vendidas dos veces** revisas lo de antes: las vendidas dos veces (para reponer al último comprador), las que siguen en stock aunque ya se vendieron (y las sacas con un toque), y activas el candado con todo tu historial.', ir: 'stock' },
       { fecha: '2026-10-13', titulo: '🎁 Bono Bre-B y promo de proveedores separada', mensaje: '**Marketing → 🎁 Bono por recargar con Bre-B automático:** todos los clientes que recarguen por Bre-B automático reciben un % extra (5% por defecto), solo este mes, siempre o hasta una fecha. No aplica a Binance, comprobantes ni cargas manuales. Al acreditarse les llega en la campana y por Telegram: "🎁 +5% extra… Este mes tienes 5% en todas tus recargas automáticas (no aplica otra forma)". Se anuncia también en el modal de recarga y en el bot al darles el valor exacto. **El bono por cliente referido se reemplazó por este bono.** La **🏭 Promo para proveedores** (bloques, meta propia, tope) ahora está en **Proveedores**, con su propio interruptor.', ir: 'marketing' },
       { fecha: '2026-10-13', titulo: '👋 Saludo de cliente favorito', mensaje: 'Cuando un cliente con cuenta vuelve a saludar, el bot ya no dice "¿Lo de siempre?": lo saluda por su nombre ("Eres uno de nuestros clientes favoritos 🙌 ¿Cómo puedo ayudarte hoy?"), le propone una oferta real distinta a lo que ya compra (a los **dealers**: "¿Qué tal si sorprendes a tus clientes con esta promo? 5 Prime Video por solo $15.000"), le dice **cuánto saldo tiene y para qué le alcanza**, y le ofrece **recargar por ahí mismo**. Opciones: repetir su última compra, llevar la oferta, recargar o ver precios.', ir: 'whatsapp' },
       { fecha: '2026-10-13', titulo: '🎯 El bot vende como una persona', mensaje: '**Modo vendedor con Gemini:** cuando dicen "está caro", "no confío", "lo pienso" o algo que el bot no entiende en medio de una venta, Gemini argumenta en 1 a 3 frases y el bot arma la oferta con tus precios, stock, sobre pedido y garantía reales (si Gemini escribe un precio o una garantía, esa frase se borra). Si dicen que no dos veces, se despide y deja de insistir 24 h. Escribe **tus argumentos** en 💬 WhatsApp → 🎯 Modo vendedor. **Siempre en positivo:** "¡Sí, claro! Te las tengo sobre pedido", "te doy 7 ya y 3 sobre pedido". **Registro:** "Relájate, yo mismo lo hago por ti", y al terminar le da su usuario, contraseña temporal y el enlace de Telegram ya conectado ("jamás quedarás solo"). **Pago:** sin opción de comprobante; si el cliente insiste dos veces, lo guía y te avisa por Telegram. **"¿Cómo va mi pedido?"** ahora se entiende con frases naturales. Enlaces con **www**. En el **📊 Informe** ves las objeciones y cuántas terminaron en venta.', ir: 'whatsapp' },
@@ -21232,7 +21288,7 @@
 
 
     // ==================== COMPROBAR TODO (estado de la página, servidor, reglas y tareas) ====================
-    const VERSION_REGLAS_ESPERADA = '2026-10-13c';
+    const VERSION_REGLAS_ESPERADA = '2026-10-13d';
     async function abrirComprobarTodo() {
       let m = document.getElementById('modalComprobarTodo');
       if (!m) { m = document.createElement('div'); m.id = 'modalComprobarTodo'; m.className = 'fixed inset-0 z-[96] hidden items-center justify-center p-4 bg-black/75 backdrop-blur-sm'; m.onclick = ev => { if (ev.target === m) cerrarComprobarTodo(); }; document.body.appendChild(m); }
