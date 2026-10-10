@@ -15373,7 +15373,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-13l';
+    const VERSION_PAGINA = '2026-10-13p';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261010_wacompra', fecha: '2026-10-10', titulo: 'Compra por WhatsApp 💬', mensaje: 'Ahora puedes **comprar con tu saldo desde nuestro WhatsApp**. Ve a tu perfil → **Mis datos → Comprar por WhatsApp**, vincula tu chat con el código y pide la autorización.' },
       { id: 'act_20261010_vista2', fecha: '2026-10-10', titulo: 'Nueva vista de la tienda ▦', mensaje: 'Ahora puedes ver los productos **en 2 columnas**: más productos en tu pantalla, con las **promos resaltadas** (🔥 campaña, ⚡ relámpago, 🎁 regalo). Toca uno y se abre su ficha para comprar. Cambia de vista con los íconos ☰ / ▦ arriba de las categorías.' },
@@ -19740,6 +19740,7 @@
       if (unsubIdPend || !esAdminSesionActual()) return;
       try { unsubIdPend = db.collection('wa_id_pendientes').where('estado', '==', 'pendiente').onSnapshot(sn => {
         const L = []; sn.forEach(d => L.push(Object.assign({ id: d.id }, d.data()))); const out = document.getElementById('vigIdPendientes'); if (!out) return;
+        try { clearInterval(window.__tgRapidoT); if (L.length) { let k = 0; window.__tgRapidoT = setInterval(() => { if (++k > 40 || document.hidden) { if (k > 40) clearInterval(window.__tgRapidoT); return; } llamarBackend('tg_revisar', {}).catch(() => {}); }, 15000); } } catch (e) { /* nada */ }
         out.innerHTML = L.length ? '<p class="text-[11px] font-bold text-violet-200">🔑 Esperan tu autorización para identificarse</p>' + L.map(x => `<div class="p-2 rounded-lg bg-violet-500/10 border border-violet-500/30 flex items-center justify-between gap-2"><span class="min-w-0"><span class="block text-[11px] text-white truncate">📱 ${escaparHtml(x.nombreChat || '')}</span><span class="block text-[10px] text-gray-400 truncate">👤 ${escaparHtml(x.nombre || '')} · ${escaparHtml(x.email || '')}</span></span><span class="flex gap-1 shrink-0"><button type="button" onclick="resolverIdPendiente('${escaparJsAttr(x.id)}',true)" class="px-2 py-1 rounded-lg bg-emerald-500 text-black text-[10px] font-black">Aceptar</button><button type="button" onclick="resolverIdPendiente('${escaparJsAttr(x.id)}',false)" class="px-2 py-1 rounded-lg bg-gray-800 border border-gray-700 text-gray-200 text-[10px] font-bold">Rechazar</button></span></div>`).join('') : '';
       }, () => {}); } catch (e) { /* sin permiso aún */ }
     }
@@ -19877,6 +19878,9 @@
 
     // ==================== NOVEDADES INTERNAS DEL PANEL (solo el equipo) ====================
     const ACTUALIZACIONES_INTERNAS = [
+      { fecha: '2026-10-13', titulo: '🔥 Las promociones avisan solas', mensaje: 'Cuando activas una **oferta relámpago**, una **promoción** (precio rebajado) o un **lleva más**, además del estado de WhatsApp ahora se avisa solo **en la campana de la tienda** (a todos) y **por el bot de Telegram** de clientes, con el enlace directo al producto. Una vez por producto cada 12 h, nunca de productos VIP. Cada cliente puede apagar "Promociones" en sus avisos de Telegram.', ir: 'productos' },
+      { fecha: '2026-10-13', titulo: '⚡ Botones de Telegram más rápidos', mensaje: '**Telegram:** tus toques en ✅ Aceptar / ❌ Rechazar ahora se aplican en segundos (el servidor los revisa con cada mensaje de WhatsApp y cada 15 s mientras tengas el panel abierto con solicitudes pendientes). **Bot:** si un cliente escribe el correo de su cuenta de la tienda junto a su pago, el bot ya no lo toma como una cuenta para reclamar: le dice que la recarga se acredita sola (o que ya quedó) y te avisa por Telegram.', ir: 'usuarios' },
+      { fecha: '2026-10-13', titulo: '🔧 Botones de Telegram arreglados', mensaje: 'Los botones **✅ Aceptar / ❌ Rechazar** de "¿Identificar este chat?" no respondían cuando tu bot de avisos es el mismo bot de los clientes: la revisión de clientes descartaba tus toques. Ahora cada bot se revisa una sola vez y atiende ambos. Al tocar, el mensaje cambia en máximo 1 minuto. Si tocaste antes y no pasó nada, vuelve a tocar (las solicitudes siguen pendientes) o usa **Usuarios → 🚨 Vigilancia**.', ir: 'usuarios' },
       { fecha: '2026-10-13', titulo: '👥 Grupos en el informe del bot', mensaje: 'El **📊 Informe del bot** ahora incluye **👥 Grupos**: cuántos mensajes vio el bot en tus grupos, cuántas veces respondió o publicó (menciones y publicaciones por horario) y el detalle por grupo, por día, semana o mes.', ir: 'whatsapp' },
       { fecha: '2026-10-13', titulo: '⏱ El bot responde cuánto tarda la entrega', mensaje: 'Si preguntan "¿tarda mucho la entrega?", "¿es inmediata?" o "¿cuándo me llegan?", el bot revisa el stock real de lo que el cliente está mirando: lo que hay se entrega **al instante**; si es **sobre pedido**, explica que llegan solas en orden y cuántas cuentas hay pedidas antes. Después sigue en el mismo paso de la compra.', ir: 'whatsapp' },
       { fecha: '2026-10-13', titulo: '📊 Informe del bot de WhatsApp', mensaje: 'En **💬 WhatsApp → 📊 Informe del bot** ves por **día, semana o mes** (con flechas para periodos anteriores): mensajes recibidos y **respondidos**, **a quién** le respondió (con su cuenta si está vinculado), **ventas generadas por el bot** (pedidos, cuentas y valor), pedidos con comprobante, recargas pedidas, **errores** y el **entrenamiento**: consultas a Gemini, lo que aprendió solo, lo que le enseñaste y las frases que no entendió. Cuenta desde que subes esta versión.', ir: 'whatsapp' },
@@ -20866,7 +20870,7 @@
       }
       const p = miTg.prefs || {}, fila = (k, t, sub) => `<label class="flex items-center gap-3 py-1.5 cursor-pointer"><span class="flex-1 text-[12px] text-gray-200">${t}${sub ? ` <span class="text-[10px] text-gray-500">· ${sub}</span>` : ''}</span><input type="checkbox" ${p[k] !== false ? 'checked' : ''} onchange="cambiarPrefTg('${k}', this.checked)" class="accent-sky-400 w-4 h-4"></label>`;
       c.innerHTML = `<div class="p-3 rounded-2xl bg-gray-900 border border-sky-500/30"><div class="flex items-center justify-between gap-2"><p class="text-xs font-black text-white">✈️ Telegram conectado</p><button type="button" onclick="desconectarTgCliente()" class="text-[11px] text-gray-400 underline">Desconectar</button></div>
-        <div class="mt-1.5 divide-y divide-gray-800">${fila('compras', 'Mis compras')}${fila('recargas', 'Mis recargas acreditadas')}${fila('stock', 'Stock nuevo', 'solo de lo que compro')}</div>
+        <div class="mt-1.5 divide-y divide-gray-800">${fila('compras', 'Mis compras')}${fila('recargas', 'Mis recargas acreditadas')}${fila('stock', 'Stock nuevo', 'solo de lo que compro')}${fila('promos', 'Promociones', 'ofertas relámpago y promos')}</div>
         <p class="text-[10px] text-gray-500 mt-1">Nunca te enviamos contraseñas por Telegram.</p></div>`;
     }
     async function conectarTgCliente() {
@@ -20878,7 +20882,7 @@
       } catch (e) { alert(e.message); }
       finally { const b2 = document.getElementById('btnTgConectar'); if (b2) b2.disabled = false; }
     }
-    async function cambiarPrefTg(k, v) { try { const prefs = Object.assign({ compras: true, recargas: true, stock: true }, (miTg || {}).prefs || {}); prefs[k] = !!v; await db.collection('usuarios_tg').doc(currentUser.uid).update({ prefs }); } catch (e) { alert('No se pudo guardar: ' + e.message); } }
+    async function cambiarPrefTg(k, v) { try { const prefs = Object.assign({ compras: true, recargas: true, stock: true, promos: true }, (miTg || {}).prefs || {}); prefs[k] = !!v; await db.collection('usuarios_tg').doc(currentUser.uid).update({ prefs }); } catch (e) { alert('No se pudo guardar: ' + e.message); } }
     async function desconectarTgCliente() { if (!await confirmarModal('¿Dejar de recibir avisos por Telegram?', { textoAceptar: 'Sí, desconectar' })) return; try { await db.collection('usuarios_tg').doc(currentUser.uid).delete(); mostrarToast('Telegram desconectado'); } catch (e) { alert(e.message); } }
     // Recordatorio único después de la primera compra
     function sugerirTelegramTrasCompra() {
@@ -22912,7 +22916,7 @@
       return { cuentas: legado, stock: legado.length || stockPublico };
     }
 
-    const VERSION_SERVIDOR_NECESARIA = '2026-10-13h';   // la versión del servidor que necesita esta página
+    const VERSION_SERVIDOR_NECESARIA = '2026-10-13l';   // la versión del servidor que necesita esta página
     async function llamarBackend(accion, datos) {
       if (modoPruebaCliente) { const rs = backendSimulado(accion, datos || {}); if (rs) return rs; }
       const url = obtenerBackendUrl();
