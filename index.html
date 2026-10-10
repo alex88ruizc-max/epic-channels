@@ -1031,6 +1031,9 @@
           <button onclick="irATabAdmin('marketing')" id="tabBtnMarketing" class="solo-admin admin-tab bg-gray-900 border-gray-800 text-gray-400">
             <i class="fa-solid fa-wand-magic-sparkles"></i><span>Marketing</span>
           </button>
+          <button onclick="irATabAdmin('tiendas')" id="tabBtnTiendas" class="admin-tab solo-admin bg-gray-900 border-gray-800 text-gray-400">
+            <i class="fa-solid fa-store"></i><span>Tiendas</span>
+          </button>
           <button onclick="irATabAdmin('cortes')" id="tabBtnCortes" class="admin-tab bg-gray-900 border-gray-800 text-gray-400">
             <i class="fa-solid fa-scissors"></i><span>Cortes</span><span id="badgeTabCortes" class="hidden absolute top-1.5 right-1.5 lg:static lg:ml-auto min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-[10px] font-black flex items-center justify-center"></span>
           </button>
@@ -1848,6 +1851,38 @@
       </div>
 
       <!-- ==================== ADMIN: CORTES ==================== -->
+      <div id="adminSecTiendas" class="hidden space-y-4 pb-28 sm:pb-0">
+        <div class="p-5 bg-gray-900 border border-cyan-500/30 rounded-2xl shadow-xl max-w-3xl space-y-3">
+          <div class="flex items-center justify-between gap-2"><h3 class="text-base font-black text-white flex items-center gap-2">🏪 Tiendas para clientes <span class="px-2 py-0.5 rounded-full bg-cyan-500/15 text-cyan-300 text-[10px] font-black">BETA</span></h3><span id="ctSolBadge" class="hidden px-2 py-0.5 rounded-full bg-cyan-500 text-black text-[10px] font-black"></span></div>
+          <p class="text-xs text-gray-400">Mientras esté apagado, nadie ve "Crea tu tienda", salvo los correos de prueba que pongas abajo.</p>
+          <details id="ctCrearCaja" class="rounded-xl bg-gray-800/50 border border-cyan-500/40 overflow-hidden" open>
+            <summary class="p-3 cursor-pointer select-none flex items-center gap-2 list-none"><span class="text-sm font-black text-cyan-200">➕ Crear tienda</span><span class="text-[10px] text-gray-400">para probar o para un cliente, sin esperar una solicitud</span><i class="fa-solid fa-chevron-down text-gray-500 text-xs ml-auto"></i></summary>
+            <div class="px-3 pb-3 pt-1 space-y-2 border-t border-gray-700/60">
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <label class="text-[10px] text-gray-400">Nombre de la tienda<input type="text" id="ctAdmNombre" maxlength="40" oninput="ctAdmSugerir()" placeholder="Ej: Tienda de prueba" class="mt-1 w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"></label>
+                <label class="text-[10px] text-gray-400">Enlace (solo letras y números)<input type="text" id="ctAdmEnlace" maxlength="30" oninput="this.dataset.tocado='1';ctAdmPrevia()" placeholder="tiendaprueba" class="mt-1 w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white font-mono focus:outline-none"></label>
+                <label class="text-[10px] text-gray-400">Dueño (correo de su cuenta; vacío = tú)<input type="email" id="ctAdmDueno" placeholder="cliente@correo.com" class="mt-1 w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"></label>
+                <label class="text-[10px] text-gray-400">WhatsApp de la tienda<input type="tel" id="ctAdmWa" maxlength="15" placeholder="3001234567" class="mt-1 w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"></label>
+              </div>
+              <label class="flex items-center gap-2 text-[11px] text-gray-300"><input type="checkbox" id="ctAdmPrueba" checked class="w-4 h-4 accent-cyan-500"> Es de prueba <span class="text-gray-500">(se marca 🧪 y no le avisa al dueño)</span></label>
+              <p id="ctAdmPrevia" class="text-[10px] text-cyan-200"></p>
+              <button type="button" id="btnCtAdmCrear" onclick="crearTiendaDesdePanel()" class="w-full py-2.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-black font-black text-xs">➕ Crear tienda</button>
+            </div>
+          </details>
+          <label class="flex items-center justify-between gap-3 p-2.5 rounded-xl bg-gray-800/60 border border-gray-700/60"><span class="text-xs font-bold text-white">Mostrar "Crea tu tienda" a todos los clientes</span><input type="checkbox" id="ctVisible" class="accent-cyan-500 w-5 h-5"></label>
+          <label class="block text-[11px] text-gray-400">Correos de prueba (uno por línea; solo ellos lo ven mientras esté apagado)<textarea id="ctBeta" rows="2" class="mt-1 w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white font-mono focus:outline-none"></textarea></label>
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+            <label class="text-[11px] text-gray-400 sm:col-span-3">Modelo<select id="ctModo" onchange="pintarCfgTiendasUI()" class="mt-1 w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"><option value="gratis">Gratis</option><option value="demo">Demo gratis por unos días y luego suscripción</option><option value="suscripcion">Suscripción desde el inicio</option></select></label>
+            <label id="ctDiasCaja" class="text-[11px] text-gray-400">Días de demo<input type="number" id="ctDias" min="1" max="90" class="mt-1 w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"></label>
+            <label id="ctPrecioCaja" class="text-[11px] text-gray-400">Precio mensual ($)<input type="number" id="ctPrecio" min="0" step="1000" class="mt-1 w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"></label>
+          </div>
+          <p id="ctVistaPrevia" class="text-[11px] text-cyan-200 p-2.5 rounded-xl bg-cyan-500/10 border border-cyan-500/30"></p>
+          <button type="button" id="btnGuardarCfgTiendas" onclick="guardarCfgTiendas()" class="w-full py-2.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-black font-black text-xs">Guardar</button>
+          <div class="pt-2 border-t border-gray-800"><p class="text-xs font-black text-white mb-2">Solicitudes</p><div id="ctSolicitudes" class="space-y-2"></div></div>
+          <div class="pt-2 border-t border-gray-800"><p class="text-xs font-black text-white mb-2">Tiendas creadas</p><div id="ctTiendas" class="space-y-2"></div></div>
+        </div>
+      </div>
+
       <div id="adminSecCortes" class="hidden space-y-4 pb-28 sm:pb-0">
         <div class="p-4 rounded-2xl border border-red-500/30 bg-gradient-to-br from-red-500/10 via-gray-900 to-gray-900">
           <h3 class="text-base font-black text-white flex items-center gap-2"><i class="fa-solid fa-scissors text-red-400"></i> Cortes del día</h3>
@@ -2084,21 +2119,6 @@
           <div class="flex-1 min-w-0"><p class="text-sm font-black text-white"><i class="fa-solid fa-flask text-amber-300 mr-1.5"></i>Simulador de cliente</p>
             <p class="text-[11px] text-gray-400 mt-0.5">Se actualiza solo: usa exactamente la misma tienda que tus clientes (versión <b id="simVersionTxt" class="text-gray-200"></b>). Las compras de prueba no tocan saldo, stock ni ventas reales.</p></div>
           <button type="button" onclick="reiniciarDatosSimulador()" class="shrink-0 px-4 py-2.5 rounded-xl bg-amber-400/15 hover:bg-amber-400/25 border border-amber-400/50 text-amber-200 text-xs font-black"><i class="fa-solid fa-rotate mr-1"></i>Reiniciar datos de prueba</button>
-        </div>
-        <div class="p-5 bg-gray-900 border border-cyan-500/30 rounded-2xl shadow-xl max-w-3xl space-y-3">
-          <div class="flex items-center justify-between gap-2"><h3 class="text-base font-black text-white flex items-center gap-2">🏪 Tiendas para clientes <span class="px-2 py-0.5 rounded-full bg-cyan-500/15 text-cyan-300 text-[10px] font-black">BETA</span></h3><span id="ctSolBadge" class="hidden px-2 py-0.5 rounded-full bg-cyan-500 text-black text-[10px] font-black"></span></div>
-          <p class="text-xs text-gray-400">Mientras esté apagado, nadie ve "Crea tu tienda", salvo los correos de prueba que pongas abajo.</p>
-          <label class="flex items-center justify-between gap-3 p-2.5 rounded-xl bg-gray-800/60 border border-gray-700/60"><span class="text-xs font-bold text-white">Mostrar "Crea tu tienda" a todos los clientes</span><input type="checkbox" id="ctVisible" class="accent-cyan-500 w-5 h-5"></label>
-          <label class="block text-[11px] text-gray-400">Correos de prueba (uno por línea; solo ellos lo ven mientras esté apagado)<textarea id="ctBeta" rows="2" class="mt-1 w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white font-mono focus:outline-none"></textarea></label>
-          <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
-            <label class="text-[11px] text-gray-400 sm:col-span-3">Modelo<select id="ctModo" onchange="pintarCfgTiendasUI()" class="mt-1 w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"><option value="gratis">Gratis</option><option value="demo">Demo gratis por unos días y luego suscripción</option><option value="suscripcion">Suscripción desde el inicio</option></select></label>
-            <label id="ctDiasCaja" class="text-[11px] text-gray-400">Días de demo<input type="number" id="ctDias" min="1" max="90" class="mt-1 w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"></label>
-            <label id="ctPrecioCaja" class="text-[11px] text-gray-400">Precio mensual ($)<input type="number" id="ctPrecio" min="0" step="1000" class="mt-1 w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"></label>
-          </div>
-          <p id="ctVistaPrevia" class="text-[11px] text-cyan-200 p-2.5 rounded-xl bg-cyan-500/10 border border-cyan-500/30"></p>
-          <button type="button" id="btnGuardarCfgTiendas" onclick="guardarCfgTiendas()" class="w-full py-2.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-black font-black text-xs">Guardar</button>
-          <div class="pt-2 border-t border-gray-800"><p class="text-xs font-black text-white mb-2">Solicitudes</p><div id="ctSolicitudes" class="space-y-2"></div></div>
-          <div class="pt-2 border-t border-gray-800"><p class="text-xs font-black text-white mb-2">Tiendas creadas</p><div id="ctTiendas" class="space-y-2"></div></div>
         </div>
         <div class="p-5 bg-gray-900 border border-emerald-500/30 rounded-2xl shadow-xl max-w-3xl">
           <h3 class="text-base font-black text-white mb-1 flex items-center gap-2">
@@ -7682,7 +7702,7 @@
     // epicchannels.quest/#tienda · #mis-cuentas · #mis-cuentas/datos · #netflix · #admin/tickets ...
     // Funcionan para guardar, compartir y con el botón "atrás". Si la sección no le corresponde a quien abre el enlace, va a la tienda.
     const RUTAS_VISTAS = ['tienda', 'mis-cuentas', 'netflix', 'proveedor', 'admin'];
-    const TABS_ADMIN_RUTA = ['productos', 'reporte', 'actividad', 'campanas', 'dealers', 'categorias', 'usuarios', 'tickets', 'stock', 'apariencia', 'pagos', 'recargas', 'historial', 'netflix', 'ajustes', 'proveedores', 'asistente', 'whatsapp', 'buscar', 'promociones', 'cortes', 'novedades', 'vista', 'marketing'];
+    const TABS_ADMIN_RUTA = ['tiendas', 'productos', 'reporte', 'actividad', 'campanas', 'dealers', 'categorias', 'usuarios', 'tickets', 'stock', 'apariencia', 'pagos', 'recargas', 'historial', 'netflix', 'ajustes', 'proveedores', 'asistente', 'whatsapp', 'buscar', 'promociones', 'cortes', 'novedades', 'vista', 'marketing'];
     const TABS_PERFIL_RUTA = ['cuentas', 'recargas', 'credito', 'datos', 'seguridad'];
     let aplicandoRuta = false, rutaActual = '', rutaPendienteStaff = '';
 
@@ -8077,7 +8097,7 @@
     function cambiarTabAdmin(tab) {
       if (modoPruebaCliente) return;
       iniciarBadgesAdmin();
-      const tabs = ['productos', 'reporte', 'categorias', 'usuarios', 'tickets', 'stock', 'apariencia', 'pagos', 'recargas', 'historial', 'netflix', 'ajustes', 'proveedores', 'asistente', 'whatsapp', 'buscar', 'promociones', 'cortes', 'novedades', 'vista', 'marketing', 'actividad', 'campanas', 'dealers'];
+      const tabs = ['productos', 'reporte', 'categorias', 'usuarios', 'tickets', 'stock', 'apariencia', 'pagos', 'recargas', 'historial', 'netflix', 'ajustes', 'tiendas', 'proveedores', 'asistente', 'whatsapp', 'buscar', 'promociones', 'cortes', 'novedades', 'vista', 'marketing', 'actividad', 'campanas', 'dealers'];
       // El moderador no entra a la configuración general ni a los pagos a proveedores
       if (esModeradorSesion() && RESTRINGIDAS_MODERADOR.includes(tab)) tab = 'productos';
       tabs.forEach(t => {
@@ -8119,7 +8139,8 @@
       if (tab === 'dealers') { try { prepararDealers(); } catch (e) { console.warn(e); } }
 
       if (tab === 'marketing') { try { iniciarEstados(); pintarEstadosAdmin(); } catch (e) { /* nada */ } }
-      if (tab === 'usuarios' || tab === 'ajustes') { try { if (esAdminSesionActual()) prepararCfgTiendas(); } catch (e) { /* nada */ } }
+      if (tab === 'usuarios' || tab === 'ajustes' || tab === 'tiendas') { try { if (esAdminSesionActual()) prepararCfgTiendas(); } catch (e) { /* nada */ } }
+      if (tab === 'tiendas') { try { ctAdmPrevia(); } catch (e) { /* nada */ } }
       if (tab === 'marketing') { try { if (!cfgDealer) cargarCfgDealer().then(prepararMarketing); } catch (e) { /* nada */ } prepararMarketing(); }
       if (tab === 'novedades') { iniciarNovedadesClientes(); renderizarNovedadesAdmin(); renderizarActualizacionesPagina(); }
       if (tab === 'cortes') { try { iniciarNetflixAdmin(); } catch (e) { /* nada */ } renderizarCortes(); }
@@ -11024,7 +11045,7 @@
     let inicioEnPanelPendiente = false;
     let perfilNombreActual = '';
     let escuchasModeradorActivas = false;
-    var RESTRINGIDAS_MODERADOR = ['categorias', 'apariencia', 'pagos', 'ajustes', 'proveedores', 'asistente', 'whatsapp', 'promociones', 'novedades', 'marketing', 'actividad', 'campanas', 'dealers'];
+    var RESTRINGIDAS_MODERADOR = ['categorias', 'apariencia', 'pagos', 'ajustes', 'tiendas', 'proveedores', 'asistente', 'whatsapp', 'promociones', 'novedades', 'marketing', 'actividad', 'campanas', 'dealers'];
 
     function esModeradorSesion() { return rolActual === 'moderador' && !esAdminSesionActual(); }
     function esProveedorSesion() { return rolActual === 'proveedor' && !esAdminSesionActual(); }
@@ -15209,13 +15230,13 @@
 
     // ==================== VISTA DEL PANEL (menú configurable) ====================
     const TABS_MENU_INFO = {
-      netflix: ['Alquileres', '#f87171'], productos: ['Productos', '#34d399'], reporte: ['Reporte de Ventas', '#60a5fa'], actividad: ['Actividad', '#22d3ee'], campanas: ['Campañas', '#fb7185'], dealers: ['Dealers', '#f7d774'], usuarios: ['Usuarios Registrados', '#a78bfa'],
+      netflix: ['Alquileres', '#f87171'], tiendas: ['Tiendas', '#22d3ee'], productos: ['Productos', '#34d399'], reporte: ['Reporte de Ventas', '#60a5fa'], actividad: ['Actividad', '#22d3ee'], campanas: ['Campañas', '#fb7185'], dealers: ['Dealers', '#f7d774'], usuarios: ['Usuarios Registrados', '#a78bfa'],
       tickets: ['Tickets', '#fbbf24'], recargas: ['Solicitudes de Saldo', '#34d399'], stock: ['Cargar Cuentas (Stock)', '#facc15'], historial: ['Historial de Ventas', '#94a3b8'],
       cortes: ['Cortes', '#f87171'], buscar: ['Buscar cuenta', '#38bdf8'], proveedores: ['Proveedores', '#fb923c'], promociones: ['Promociones', '#f472b6'],
       novedades: ['Novedades', '#38bdf8'], marketing: ['Marketing', '#e879f9'], categorias: ['Categorías & Colores', '#c084fc'], apariencia: ['Apariencia y Logo', '#f472b6'], pagos: ['Métodos de Pago & QR', '#2dd4bf'],
       asistente: ['Asistente', '#34d399'], whatsapp: ['WhatsApp', '#22c55e'], vista: ['Vista del panel', '#a3e635'], ajustes: ['Ajustes Generales', '#cbd5e1']
     };
-    const ORDEN_MENU_BASE = ['netflix', 'productos', 'reporte', 'actividad', 'campanas', 'dealers', 'usuarios', 'tickets', 'recargas', 'stock', 'historial', 'cortes', 'buscar', 'proveedores', 'promociones', 'novedades', 'marketing', 'categorias', 'apariencia', 'pagos', 'asistente', 'whatsapp', 'vista', 'ajustes'];
+    const ORDEN_MENU_BASE = ['netflix', 'tiendas', 'productos', 'reporte', 'actividad', 'campanas', 'dealers', 'usuarios', 'tickets', 'recargas', 'stock', 'historial', 'cortes', 'buscar', 'proveedores', 'promociones', 'novedades', 'marketing', 'categorias', 'apariencia', 'pagos', 'asistente', 'whatsapp', 'vista', 'ajustes'];
     const VISTA_PANEL_BASE = { version: 2, estilo: 'grupos', columnas: 3, destacado: 'netflix', color: 'rojo', iconos: true, inicio: 'productos', orden: ORDEN_MENU_BASE.slice(), ocultos: [] };
     let vistaPanel = null, vistaPanelGuardada = null;
 
@@ -15404,7 +15425,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-14i';
+    const VERSION_PAGINA = '2026-10-14k';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261010_wacompra', fecha: '2026-10-10', titulo: 'Compra por WhatsApp 💬', mensaje: 'Ahora puedes **comprar con tu saldo desde nuestro WhatsApp**. Ve a tu perfil → **Mis datos → Comprar por WhatsApp**, vincula tu chat con el código y pide la autorización.' },
       { id: 'act_20261010_vista2', fecha: '2026-10-10', titulo: 'Nueva vista de la tienda ▦', mensaje: 'Ahora puedes ver los productos **en 2 columnas**: más productos en tu pantalla, con las **promos resaltadas** (🔥 campaña, ⚡ relámpago, 🎁 regalo). Toca uno y se abre su ficha para comprar. Cambia de vista con los íconos ☰ / ▦ arriba de las categorías.' },
@@ -16876,7 +16897,7 @@
       { id: 'referidos', t: 'Referidos y comisiones', docs: ['referidos'], sel: ['#adminReferidosCaja'] },
       { id: 'venta_manual', t: 'Venta manual (WhatsApp)', docs: [], sel: ['#ventaManualCaja'] }
     ];
-    const RESTRINGIDAS_BASE = ['categorias', 'apariencia', 'pagos', 'ajustes', 'proveedores', 'asistente', 'whatsapp', 'promociones', 'novedades', 'marketing', 'actividad', 'campanas', 'dealers'];
+    const RESTRINGIDAS_BASE = ['categorias', 'apariencia', 'pagos', 'ajustes', 'tiendas', 'proveedores', 'asistente', 'whatsapp', 'promociones', 'novedades', 'marketing', 'actividad', 'campanas', 'dealers'];
     var permisosModerador = [];
     function puedeSeccion(sec) { return esAdminSesionActual() || (esModeradorSesion() && permisosModerador.indexOf(sec) !== -1); }
     function elementosSeccionMod(sm) {
@@ -17809,7 +17830,7 @@
           ${s0 ? `<div class="rounded-2xl p-3 text-center border ${s0.estado === 'aprobada' ? 'bg-emerald-500/10 border-emerald-400/40' : (s0.estado === 'rechazada' ? 'bg-red-500/10 border-red-400/40' : 'bg-amber-500/10 border-amber-400/40')}"><p class="text-sm font-black text-white">${{ pendiente: '⏳ Tu solicitud está en revisión', aprobada: '🎉 ¡Tu tienda fue aprobada!', rechazada: 'Tu solicitud no fue aprobada' }[s0.estado] || 'Solicitud enviada'}</p><p class="text-[11px] text-gray-300 mt-1">Tienda: <b>${escaparHtml(s0.nombreTienda || '')}</b>${s0.estado === 'aprobada' ? ' · te escribiremos para activarla.' : ''}</p></div>`
           : `<div class="space-y-2"><p class="text-xs font-black text-white">¿Te interesa? Déjanos tus datos:</p>
             <input id="ctNombre" maxlength="40" oninput="ctSugerirEnlace()" placeholder="Nombre de tu tienda" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none">
-            <div class="flex items-center gap-1 bg-gray-800 border border-gray-700 rounded-xl px-3 py-2.5"><span class="text-[11px] text-gray-400 shrink-0">…/tienda.html#</span><input id="ctEnlace" maxlength="30" placeholder="mitienda" class="min-w-0 flex-grow bg-transparent text-sm text-white focus:outline-none"></div>
+            <div class="flex items-center gap-1 bg-gray-800 border border-gray-700 rounded-xl px-3 py-2.5"><span class="text-[11px] text-gray-400 shrink-0">epicstreaming.vip/t/</span><input id="ctEnlace" maxlength="30" placeholder="mitienda" class="min-w-0 flex-grow bg-transparent text-sm text-white focus:outline-none"></div>
             <input id="ctWhatsapp" type="tel" maxlength="15" placeholder="Tu WhatsApp" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none">
             <button type="button" id="btnCtEnviar" onclick="enviarSolicitudTienda()" class="w-full py-3 rounded-xl text-black font-black text-sm" style="background:linear-gradient(120deg,#10b981,#06b6d4)">Quiero mi tienda</button></div>`}
         </div></div>`;
@@ -17877,7 +17898,7 @@
 
     // ==================== MENÚ DEL PANEL POR GRUPOS (estilo app) ====================
     const GRUPOS_MENU = [
-      ['Ventas', ['reporte', 'actividad', 'campanas', 'dealers', 'historial', 'recargas', 'promociones', 'marketing']],
+      ['Ventas', ['reporte', 'actividad', 'campanas', 'dealers', 'historial', 'recargas', 'promociones', 'marketing', 'tiendas']],
       ['Clientes', ['usuarios', 'tickets', 'novedades', 'asistente', 'whatsapp']],
       ['Inventario', ['productos', 'stock', 'proveedores', 'buscar', 'cortes']],
       ['Configuración', ['categorias', 'apariencia', 'pagos', 'vista', 'ajustes']]
@@ -17966,7 +17987,41 @@
 
     // ==================== TIENDAS DE CLIENTES (streaming): CREAR Y ADMINISTRAR ====================
     var tiendasCreadas = [], unsubTiendasAdm = null, miTiendaCliente = null;
-    function urlTiendaCliente(slug) { return location.origin + '/tienda.html#' + slug; }
+    function urlTiendaCliente(slug) { return location.origin + '/t/' + slug; }   // enlace corto (404.html lo lleva a tienda.html#<enlace>)
+    // ➕ Crear una tienda desde el panel (para probar o para un cliente), sin esperar una solicitud
+    function ctAdmSugerir() { const e = document.getElementById('ctAdmEnlace'); if (e && !e.dataset.tocado) e.value = slugTienda(document.getElementById('ctAdmNombre').value); ctAdmPrevia(); }
+    function ctAdmPrevia() {
+      const e = document.getElementById('ctAdmPrevia'); if (!e) return;
+      const slug = slugTienda((document.getElementById('ctAdmEnlace') || {}).value), c = cfgTiendas || {};
+      e.innerHTML = slug.length >= 3 ? `Enlace: <b class="font-mono">${escaparHtml(urlTiendaCliente(slug))}</b> · Plan: ${escaparHtml(textoModeloTienda(c))}` : 'Escribe el nombre y se arma el enlace solo.';
+    }
+    async function crearTiendaDesdePanel() {
+      if (!esAdminSesionActual()) return;
+      const v = id => String((document.getElementById(id) || {}).value || '').trim();
+      const nombre = v('ctAdmNombre').slice(0, 40), slug = slugTienda(v('ctAdmEnlace') || nombre), wa = v('ctAdmWa').replace(/\D/g, '').slice(0, 15), correo = v('ctAdmDueno').toLowerCase(), prueba = !!(document.getElementById('ctAdmPrueba') || {}).checked;
+      if (nombre.length < 3) { alert('Escribe el nombre de la tienda.'); return; }
+      if (slug.length < 3) { alert('El enlace debe tener al menos 3 letras o números.'); return; }
+      let dueno = { uid: currentUser.uid, email: currentUser.email };
+      if (correo && correo !== String(currentUser.email || '').toLowerCase()) { const enc = await buscarUidPorCorreo(correo); if (!enc || !enc.uid) { alert('No encontré una cuenta con el correo ' + correo + '. Pídele que se registre primero, o deja el campo vacío para que la tienda sea tuya.'); return; } dueno = { uid: enc.uid, email: enc.email || correo }; }
+      const c = cfgTiendas || await cargarCfgTiendas();
+      const dias = c.modo === 'gratis' ? 0 : (c.modo === 'demo' ? (c.diasDemo || 15) : 30);
+      if (!await confirmarModal(`¿Crear la tienda "${nombre}"${prueba ? ' (🧪 prueba)' : ''}?\n\nEnlace: ${urlTiendaCliente(slug)}\nDueño: ${dueno.email}\nPlan: ${textoModeloTienda(c)}`, { textoAceptar: 'Sí, crear' })) return;
+      const btn = document.getElementById('btnCtAdmCrear'); if (btn) btn.disabled = true;
+      try {
+        const ref = db.collection('tiendas').doc(), ahora = new Date().toISOString();
+        await db.runTransaction(async (t) => {
+          const sRef = db.collection('slugs').doc(slug), ya = await t.get(sRef);
+          if (ya.exists) throw new Error('Ya existe una tienda con el enlace "' + slug + '". Elige otro.');
+          t.set(ref, { slug: slug, nombre: nombre, ownerUid: dueno.uid, ownerEmail: dueno.email, whatsapp: wa, color: '#10b981', frase: '', logo: '', tipo: 'streaming', plan: c.modo, estado: 'activa', venceEl: dias ? new Date(Date.now() + dias * 86400000).toISOString() : '', creadoEl: ahora, creadoPor: currentUser.email, prueba: prueba, creadaDesdePanel: true });
+          t.set(sRef, { tiendaId: ref.id, creadoEl: ahora });
+        });
+        if (!prueba && dueno.uid !== currentUser.uid) { try { avisarClienteTicket(dueno.uid, '🏪 ¡Tu tienda está lista!', 'Entra a ' + urlTiendaCliente(slug) + ' y toca "Mi panel" para agregar tus productos.'); } catch (e) { /* opcional */ } }
+        ['ctAdmNombre', 'ctAdmEnlace', 'ctAdmDueno', 'ctAdmWa'].forEach(id => { const e = document.getElementById(id); if (e) { e.value = ''; delete e.dataset.tocado; } }); ctAdmPrevia();
+        mostrarToast('🏪 Tienda creada: ' + slug);
+        try { abrirDialogoTextoCopiable('Tienda creada', '🏪 ' + nombre + '\n' + urlTiendaCliente(slug) + '\n\nDueño: ' + dueno.email + '\nPara administrarla: entra a ese enlace con la cuenta del dueño y toca "Mi panel".'); } catch (e) { /* opcional */ }
+      } catch (e) { alert('No se pudo crear: ' + e.message); }
+      finally { if (btn) btn.disabled = false; }
+    }
     async function crearTiendaCliente(solId) {
       if (!esAdminSesionActual()) return;
       const sol = solicitudesTiendas.find(x => x.id === solId); if (!sol) return;
@@ -17995,7 +18050,7 @@
     function pintarTiendasAdmin() {
       const c = document.getElementById('ctTiendas'); if (!c) return;
       c.innerHTML = tiendasCreadas.length ? tiendasCreadas.map(t => { const dias = t.venceEl ? Math.ceil((Date.parse(t.venceEl) - Date.now()) / 86400000) : null; const cerrada = t.estado === 'suspendida' || (dias !== null && dias <= 0); return `<div class="p-2.5 rounded-xl bg-gray-800/50 border ${cerrada ? 'border-red-500/40' : 'border-gray-700/60'}">
-        <div class="flex items-start justify-between gap-2"><div class="min-w-0"><p class="text-xs font-black text-white truncate">${escaparHtml(t.nombre)} <span class="text-gray-500 font-normal">tienda.html#${escaparHtml(t.slug)}</span></p><p class="text-[10px] text-gray-400 truncate">${escaparHtml(t.ownerEmail || '')} · ${escaparHtml(t.plan || '')}${dias === null ? ' · sin vencimiento' : (dias > 0 ? ' · ' + dias + ' días' : ' · VENCIDA')}</p></div><span class="shrink-0 px-1.5 py-0.5 rounded-full text-[9px] font-black ${cerrada ? 'bg-red-500/15 text-red-300' : 'bg-emerald-500/15 text-emerald-300'}">${cerrada ? 'CERRADA' : 'ACTIVA'}</span></div>
+        <div class="flex items-start justify-between gap-2"><div class="min-w-0"><p class="text-xs font-black text-white truncate">${t.prueba ? '🧪 ' : ''}${escaparHtml(t.nombre)} <span class="text-gray-500 font-normal">/t/${escaparHtml(t.slug)}</span></p><p class="text-[10px] text-gray-400 truncate">${escaparHtml(t.ownerEmail || '')} · ${escaparHtml(t.plan || '')}${dias === null ? ' · sin vencimiento' : (dias > 0 ? ' · ' + dias + ' días' : ' · VENCIDA')}</p></div><span class="shrink-0 px-1.5 py-0.5 rounded-full text-[9px] font-black ${cerrada ? 'bg-red-500/15 text-red-300' : 'bg-emerald-500/15 text-emerald-300'}">${cerrada ? 'CERRADA' : 'ACTIVA'}</span></div>
         <div class="flex flex-wrap gap-1.5 mt-2"><a href="${escaparHtml(urlTiendaCliente(t.slug))}" target="_blank" rel="noopener" class="px-2 py-1 rounded-lg bg-gray-800 border border-gray-700 text-gray-200 text-[10px] font-bold">Abrir</a><button type="button" onclick="extenderTienda('${escaparJsAttr(t.id)}',30)" class="px-2 py-1 rounded-lg bg-cyan-500 text-black text-[10px] font-black">+30 días</button><button type="button" onclick="estadoTienda('${escaparJsAttr(t.id)}','${t.estado === 'suspendida' ? 'activa' : 'suspendida'}')" class="px-2 py-1 rounded-lg ${t.estado === 'suspendida' ? 'bg-emerald-500/15 text-emerald-300' : 'bg-red-500/10 text-red-300 border border-red-500/30'} text-[10px] font-bold">${t.estado === 'suspendida' ? 'Reactivar' : 'Suspender'}</button></div></div>`; }).join('') : '<p class="text-[11px] text-gray-500">Todavía no hay tiendas. Aprueba una solicitud y toca "Crear tienda".</p>';
     }
     async function extenderTienda(id, dias) {
@@ -20014,6 +20069,8 @@
 
     // ==================== NOVEDADES INTERNAS DEL PANEL (solo el equipo) ====================
     const ACTUALIZACIONES_INTERNAS = [
+      { fecha: '2026-10-14', titulo: '🔑 "No tengo la contraseña" ya no es un reclamo', mensaje: 'Si un cliente escribe "no tengo la contraseña", "perdí los datos" o "pásame mis cuentas": **con su WhatsApp conectado**, el bot le pasa ahí mismo sus cuentas de las últimas 3 compras; **sin conectar**, le dice dónde están (Mi cuenta → Mis compras) y le ofrece conectarse para pasárselas. Si luego dice **"no entra"**, le pregunta cuál y **revisa la garantía**: si aplica crea el reporte; si no, le ofrece una nueva. También entiende mejor las fallas ("contraseña incorrecta", "no puedo entrar"). **Tiendas:** ahora tienen enlace corto **epicstreaming.vip/t/nombre**.', ir: 'whatsapp' },
+      { fecha: '2026-10-14', titulo: '🏪 Tiendas: tarjeta propia y crear desde el panel', mensaje: 'Las **Tiendas para clientes** ya no están escondidas en Ajustes: tienen su tarjeta **🏪 Tiendas** en el menú (grupo Ventas). Ahí puedes **➕ Crear tienda** tú mismo, sin esperar una solicitud: nombre, enlace, dueño (tú o un cliente por su correo) y WhatsApp, con el plan que tengas configurado. Marca **"Es de prueba"** para probar: sale con 🧪 y no le avisa al dueño. Solo la ves tú.', ir: 'tiendas' },
       { fecha: '2026-10-14', titulo: '🟢 ¿Su WhatsApp está conectado?', mensaje: 'En **Usuarios**, junto al 🔑 ID de cada cliente hay un ícono de WhatsApp: **verde con ✓** si su WhatsApp ya está conectado al bot (tócalo para ver con qué nombre y desde cuándo) y **gris** si todavía no. Solo lo ves tú, no los moderadores.', ir: 'usuarios' },
       { fecha: '2026-10-14', titulo: '🔄 Alquileres vencidos y cortes', mensaje: 'Hasta **2 días después de vencer**, el bot le ofrece **Renovar**. Pasado ese plazo va el **corte** y el perfil pasa al stock disponible: el bot le ofrece **Volver a tener su Netflix** desde el stock (al instante) y, si el corte aún no se hizo, **te avisa por Telegram ✂️ Corte pendiente**. Si ya marcaste **"no renovó"** y se liberó, el bot lo reconoce por el historial y le ofrece **Volver a tener su Netflix**: lo compra de la tienda (venta automática de Alquileres) y le llega un perfil libre al instante. Si **no hay perfiles libres**, le dice que ya avisaste al equipo, **te llega a Telegram** y le ofrece otro producto con stock.', ir: 'netflix' },
       { fecha: '2026-10-14', titulo: '📺 El bot atiende a quien alquila Netflix', mensaje: 'Si un cliente reconocido tiene un **alquiler** (pantalla o cuenta completa), su saludo lo muestra: si **vence en 3 días o menos**, "🔄 Tu Netflix (Perfil 2) vence en 2 días" con la opción **Renovar** y si su saldo le alcanza; si está al día, "📺 Netflix · cuenta completa · al día hasta 25/10". Siempre trae **Ver el código de mi Netflix**. Y si escribe "me pide código", "actualizar hogar" o "estoy de viaje", el bot le manda **su enlace del código**: en pantallas recuerda que es para 1 dispositivo; en cuentas completas explica que sirve para el código de inicio de sesión u hogar de cualquiera de sus perfiles. Si venció, le ofrece renovar primero.', ir: 'whatsapp' },
@@ -23082,7 +23139,7 @@
       return { cuentas: legado, stock: legado.length || stockPublico };
     }
 
-    const VERSION_SERVIDOR_NECESARIA = '2026-10-14g';   // la versión del servidor que necesita esta página
+    const VERSION_SERVIDOR_NECESARIA = '2026-10-14h';   // la versión del servidor que necesita esta página
     async function llamarBackend(accion, datos) {
       if (modoPruebaCliente) { const rs = backendSimulado(accion, datos || {}); if (rs) return rs; }
       const url = obtenerBackendUrl();
