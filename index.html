@@ -11585,9 +11585,10 @@
     let pagoEnCurso = null;
     const comprobantesLimpiados = {};
 
-    function comprobanteVigente(p) { return !!p && p.comprobante === true && Number(p.comprobanteExpiraMs) > Date.now(); }
+    function comprobanteVigente(p) { return !!p && p.comprobante === true && !p.comprobanteBorradoEl && Number(p.comprobanteExpiraMs) > Date.now(); }
 
     function textoVenceComprobante(p) {
+      if (p && p.ciclo) return 'guardado';
       const h = Math.max(0, Math.ceil((Number(p.comprobanteExpiraMs) - Date.now()) / 3600000));
       return h <= 1 ? 'vence en menos de 1 hora' : `vence en ${h} horas`;
     }
@@ -11837,6 +11838,7 @@
 
     function botonComprobante(p) {
       if (comprobanteVigente(p)) return `<button onclick="verComprobantePago('${escaparJsAttr(p.id)}')" class="px-2.5 py-1 rounded-lg text-[10px] font-bold bg-sky-500/15 hover:bg-sky-500/25 text-sky-300 border border-sky-500/30"><i class="fa-solid fa-image mr-1"></i>Ver comprobante · ${textoVenceComprobante(p)}</button>`;
+      if (p.comprobanteBorradoEl) return '<span class="text-[10px] text-gray-500">Comprobante borrado (ciclo de 200 cuentas)</span>';
       if (p.comprobante === true) return '<span class="text-[10px] text-gray-500">Comprobante vencido (borrado)</span>';
       return '<span class="text-[10px] text-gray-500">Sin comprobante</span>';
     }
@@ -11845,7 +11847,8 @@
       const caja = document.getElementById('provPagosCaja'), cont = document.getElementById('provPagos');
       if (!caja || !cont) return;
       caja.classList.toggle('hidden', !pagosProveedoresLista.length);
-      cont.innerHTML = pagosProveedoresLista.slice(0, 10).map(p => {
+      const enCiclo = pagosProveedoresLista.filter(p => p.ciclo === 'abierto').reduce((s, p) => s + (parseInt(p.cuentas, 10) || 0), 0);
+      cont.innerHTML = (pagosProveedoresLista.some(p => p.ciclo) ? `<p class="text-[11px] text-sky-200 p-2 rounded-lg bg-sky-500/10 border border-sky-500/30">📸 Comprobantes guardados: <b>${enCiclo}</b> de ${CICLO_COMPROBANTES} cuentas. Al llegar a ${CICLO_COMPROBANTES} se borran las fotos de los anteriores (tus pagos siguen registrados).</p>` : '') + pagosProveedoresLista.slice(0, 10).map(p => {
         const fecha = new Date(p.fecha).toLocaleDateString('es-CO', { day: '2-digit', month: '2-digit', year: 'numeric' });
         return `<div class="p-3 rounded-xl bg-gray-800/50 border border-gray-700/60">
           <div class="flex items-center justify-between gap-2"><p class="text-sm font-black text-white">${formatoCOP(p.monto || 0)}</p><p class="text-[10px] text-gray-400">${fecha}${p.medio ? ' · ' + etiquetaMedioPago(p.medio) : ''}</p></div>
@@ -11957,6 +11960,19 @@
       document.getElementById('pagarFotoTexto').textContent = 'Comprobante listo · toca para cambiarlo';
     }
 
+    // 📸 Comprobantes de pago a proveedores: se guardan y se borran cada 200 cuentas pagadas (solo las fotos; los pagos quedan)
+    const CICLO_COMPROBANTES = 200;
+    async function cicloComprobantesProveedor(uid, idNuevo) {
+      const sn = await db.collection('pagos_proveedores').where('proveedorUid', '==', uid).get();
+      const abiertos = []; sn.forEach(d => { const x = d.data(); if (x.ciclo === 'abierto') abiertos.push(Object.assign({ id: d.id }, x)); });
+      const total = abiertos.reduce((s, x) => s + (parseInt(x.cuentas, 10) || 0), 0);
+      if (total < CICLO_COMPROBANTES) return { cerrado: false, total: total };
+      // el pago de hoy se queda (es la prueba de su último pago) y abre la cuenta nueva; se borran los anteriores
+      const viejos = abiertos.filter(x => x.id !== idNuevo), lote = db.batch(), ahora = new Date().toISOString(); let borrados = 0;
+      viejos.forEach(x => { if (x.comprobante) { lote.delete(db.collection('comprobantes_pago').doc(x.id)); borrados++; } lote.update(db.collection('pagos_proveedores').doc(x.id), { ciclo: 'cerrado', comprobanteBorradoEl: x.comprobante ? ahora : '' }); });
+      await lote.commit();
+      return { cerrado: true, total: total, borrados: borrados };
+    }
     async function confirmarPagoProveedor() {
       if (!esAdminSesionActual() || !pagoEnCurso) return;
       const pc = pagoEnCurso;
@@ -11969,7 +11985,8 @@
       try {
         const foto = archivo ? await prepararFotoReporte(archivo) : '';
         const ahora = new Date().toISOString();
-        const expira = Date.now() + HORAS_COMPROBANTE * 3600000;
+        const expira = Date.now() + 3650 * 86400000;   // se guarda: se borra por ciclos de 200 cuentas, no por horas
+        const cuentasPago = lotes.reduce((s, l) => s + (parseInt(l.cantidad, 10) || 0), 0);
         const pagoRef = db.collection('pagos_proveedores').doc();
         const lote = db.batch();
         lotes.forEach(l => lote.update(db.collection('stock_pendiente').doc(l.id), { pagado: true, pagadoEl: ahora, pagadoPor: currentUser.email }));
@@ -11977,12 +11994,14 @@
         lote.set(pagoRef, {
           proveedorUid: pc.uid, proveedorNombre: pc.nombre, monto: pc.total, lotes: pc.ids, cantidadLotes: pc.ids.length,
           fecha: ahora, por: currentUser.email, medio: document.getElementById('pagarMedio').value || 'otro',
-          comprobante: !!foto, comprobanteExpiraMs: foto ? expira : 0
+          comprobante: !!foto, comprobanteExpiraMs: foto ? expira : 0, cuentas: cuentasPago, ciclo: 'abierto'
         });
         if (foto) lote.set(db.collection('comprobantes_pago').doc(pagoRef.id), { proveedorUid: pc.uid, pagoId: pagoRef.id, foto: foto, creadoEl: ahora, expiraMs: expira });
         await lote.commit();
         cerrarPagarProveedor();
-        mostrarToast(`Pago registrado: ${formatoCOP(pc.total)} a ${pc.nombre}.${foto ? ' El comprobante se ve 48 horas.' : ''}`);
+        let cicloTxt = '';
+        try { const r = await cicloComprobantesProveedor(pc.uid, pagoRef.id); cicloTxt = r.cerrado ? ` 🧹 Llegó a ${r.total} cuentas: borré ${r.borrados} comprobante${r.borrados === 1 ? '' : 's'} anterior${r.borrados === 1 ? '' : 'es'} y el contador empezó de nuevo.` : ` 📸 Comprobantes guardados: ${r.total} de ${CICLO_COMPROBANTES} cuentas.`; } catch (e) { console.warn('Ciclo de comprobantes:', e); }
+        mostrarToast(`Pago registrado: ${formatoCOP(pc.total)} a ${pc.nombre}.${cicloTxt}`);
       } catch (err) {
         alert('No se pudo registrar el pago: ' + err.message);
       } finally {
@@ -15494,7 +15513,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-15l';
+    const VERSION_PAGINA = '2026-10-15m';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261010_wacompra', fecha: '2026-10-10', titulo: 'Compra por WhatsApp 💬', mensaje: 'Ahora puedes **comprar con tu saldo desde nuestro WhatsApp**. Ve a tu perfil → **Mis datos → Comprar por WhatsApp**, vincula tu chat con el código y pide la autorización.' },
       { id: 'act_20261010_vista2', fecha: '2026-10-10', titulo: 'Nueva vista de la tienda ▦', mensaje: 'Ahora puedes ver los productos **en 2 columnas**: más productos en tu pantalla, con las **promos resaltadas** (🔥 campaña, ⚡ relámpago, 🎁 regalo). Toca uno y se abre su ficha para comprar. Cambia de vista con los íconos ☰ / ▦ arriba de las categorías.' },
@@ -20148,6 +20167,7 @@
 
     // ==================== NOVEDADES INTERNAS DEL PANEL (solo el equipo) ====================
     const ACTUALIZACIONES_INTERNAS = [
+      { fecha: '2026-10-15', titulo: '📸 Comprobantes a proveedores: se guardan hasta 200 cuentas', mensaje: 'El comprobante que adjuntas al pagarle a un proveedor ya no se borra a las 48 horas: **se guarda**. Cada proveedor tiene su contador de cuentas pagadas (él lo ve en su panel: "Comprobantes guardados: 120 de 200 cuentas"). Al llegar a **200**, se borran **solo las fotos** de los comprobantes anteriores (los pagos quedan registrados) y el contador empieza de nuevo. El del pago que completa las 200 se queda, para que vea la prueba de su último pago.', ir: 'proveedores' },
       { fecha: '2026-10-15', titulo: '📋 Lista de seguimiento con WhatsApp o Business', mensaje: 'La lista diaria de clientes para recontactar ya no trae enlaces larguísimos: cada cliente tiene dos botones, **💬 WhatsApp** y **💼 Business**, que abren esa app con el mensaje ya escrito (solo das enviar). Arriba va el mensaje para copiar con un toque. Sube el archivo nuevo **wa.html** a GitHub, junto a index.html.', ir: 'whatsapp' },
       { fecha: '2026-10-15', titulo: '🎯 Cazador más estricto', mensaje: 'El cazador le respondió "Si hay" a un vendedor que ofrecía su lista. Ahora ignora los anuncios: listas de 3 líneas o más, 3 plataformas o más, textos largos, mensajes que empiezan ofreciendo ("Si hay…", "Tengo…", "Vendo…") y frases de vendedor ("y mucho más", "trato adm", "a su dominio", "links", "facturación"…). Solo responde a preguntas o pedidos cortos: "¿Quién tiene Prime?", "Busco Amazon", "Necesito 10 Prime", "Hay prime?".', ir: 'whatsapp' },
       { fecha: '2026-10-15', titulo: '🎁 Promos "paga 5, regalo 1" arregladas', mensaje: 'La caja de **Promociones por perfil** salía vacía (sin productos ni niveles) porque solo se llenaba al abrir Usuarios. Ahora se llena sola donde la abras y está **arriba en 🏷️ Promociones** (y también en 👑 Dealers → Promos y niveles). Al agregar un producto arranca en **paga 5, regalo 1**; cámbialo como quieras y elige a quién aplica.', ir: 'promociones' },
