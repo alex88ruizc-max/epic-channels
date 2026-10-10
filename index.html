@@ -1257,7 +1257,7 @@
             <i id="promosDealerFlecha" class="fa-solid fa-chevron-down text-amber-200/70 transition-transform"></i>
           </button>
           <div id="promosDealerCuerpo" class="hidden px-4 pb-4 space-y-3">
-            <p class="text-[11px] text-amber-100/70 leading-relaxed">Activa una promo en el producto que quieras: <b class="text-white">compra 10, llévate 1</b>. Las compras del mismo día se suman. Solo aplica a clientes con insignia <b class="dealer-texto">Dealer</b>.</p>
+            <p class="text-[11px] text-amber-100/70 leading-relaxed">Activa una promo en el producto que quieras: <b class="text-white">paga 5, llévate 1 de regalo</b> (tú eliges los números). Las compras del mismo día se suman. En cada promo eliges <b class="dealer-texto">a quién aplica</b>: Dealers, clientes o todos.</p>
             <div id="promosDealerLista" class="space-y-2"></div>
             <div class="flex gap-2">
               <select id="promoDealerNuevo" class="min-w-0 flex-grow bg-gray-900 border border-yellow-400/30 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"></select>
@@ -1908,6 +1908,7 @@
 
       <!-- ==================== ADMIN: PROMOCIONES ==================== -->
       <div id="adminSecPromociones" class="hidden space-y-4 pb-28 sm:pb-0">
+        <div id="promoDealerSlot"></div>
         <div class="p-4 rounded-2xl border border-rose-500/30 bg-gradient-to-br from-rose-500/10 via-gray-900 to-gray-900">
           <h3 class="text-base font-black text-white flex items-center gap-2"><i class="fa-solid fa-tags text-rose-400"></i> Promociones</h3>
           <p class="text-xs text-gray-400 mt-1 leading-relaxed">Elige productos y ponles un descuento. La tienda muestra el precio tachado y el servidor cobra el precio con descuento. Si pones fechas, empieza y termina sola.</p>
@@ -8198,7 +8199,7 @@
       if (tab === 'asistente') { try { cargarFaqAdmin(); } catch (e) { /* nada */ } }
       if (tab === 'tickets') { try { iniciarDescuentosAdmin(); } catch (e) { /* nada */ } }
       if (tab === 'tickets') { renderizarTickets(); limpiarFotosRespuestaVencidas(); }
-      if (tab === 'promociones') { renderizarPromoProductos(); renderizarPromoActivas(); }
+      if (tab === 'promociones') { renderizarPromoProductos(); renderizarPromoActivas(); try { ubicarPromosDealer('promoDealerSlot'); } catch (e) { /* nada */ } }
       if (tab === 'vista') { renderizarEditorVistaPanel(); cargarPermisosModerador(); }
       if (tab === 'actividad') { try { cargarActividad(); } catch (e) { console.warn(e); } }
       if (tab === 'campanas') { try { prepararCampanas(); } catch (e) { console.warn(e); } }
@@ -15493,7 +15494,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-15h';
+    const VERSION_PAGINA = '2026-10-15j';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261010_wacompra', fecha: '2026-10-10', titulo: 'Compra por WhatsApp 💬', mensaje: 'Ahora puedes **comprar con tu saldo desde nuestro WhatsApp**. Ve a tu perfil → **Mis datos → Comprar por WhatsApp**, vincula tu chat con el código y pide la autorización.' },
       { id: 'act_20261010_vista2', fecha: '2026-10-10', titulo: 'Nueva vista de la tienda ▦', mensaje: 'Ahora puedes ver los productos **en 2 columnas**: más productos en tu pantalla, con las **promos resaltadas** (🔥 campaña, ⚡ relámpago, 🎁 regalo). Toca uno y se abre su ficha para comprar. Cambia de vista con los íconos ☰ / ▦ arriba de las categorías.' },
@@ -15685,7 +15686,7 @@
     function agregarPromoDealer() {
       const id = (document.getElementById('promoDealerNuevo') || {}).value;
       if (!id) { alert('Elige el producto.'); return; }
-      promosDealerEdit[id] = { activo: true, compra: 10, regalo: 1, maxDia: 1, regaloProductoId: '' };
+      promosDealerEdit[id] = { activo: true, compra: 5, regalo: 1, maxDia: 1, regaloProductoId: '' };
       marcarPromosSucio();
       renderizarPromosDealerAdmin();
     }
@@ -18013,7 +18014,7 @@
       ['Precio por cantidad', 'campanas', 'escalonado volumen mayorista descuento cantidad', ''],
       ['Casi compraron', 'campanas', 'saldo insuficiente recordatorio abandonado carrito', ''],
       ['Horas de más visitas', 'actividad', 'visitas hora pico estadisticas trafico conectados dispositivos origen', ''],
-      ['Promos para dealers', 'usuarios', 'dealer promocion regalo nivel oro plata bronce multiplicador', 'adminRegaloRevendedor'],
+      ['Promos para dealers (paga 5, regalo 1)', 'promociones', 'dealer promocion regalo nivel oro plata bronce multiplicador paga lleva gratis 5+1 10+1', 'adminRegaloRevendedor'],
       ['Referidos y comisiones', 'usuarios', 'referido comision recomendar bono', 'adminReferidosCaja'],
       ['Crear cuenta de usuario', 'usuarios', 'crear registrar usuario cliente proveedor nuevo', ''],
       ['Clientes con crédito', 'usuarios', 'credito cupo deuda prestamo preaprobado', 'adminCreditosCaja'],
@@ -20147,6 +20148,8 @@
 
     // ==================== NOVEDADES INTERNAS DEL PANEL (solo el equipo) ====================
     const ACTUALIZACIONES_INTERNAS = [
+      { fecha: '2026-10-15', titulo: '🎯 Cazador más estricto', mensaje: 'El cazador le respondió "Si hay" a un vendedor que ofrecía su lista. Ahora ignora los anuncios: listas de 3 líneas o más, 3 plataformas o más, textos largos, mensajes que empiezan ofreciendo ("Si hay…", "Tengo…", "Vendo…") y frases de vendedor ("y mucho más", "trato adm", "a su dominio", "links", "facturación"…). Solo responde a preguntas o pedidos cortos: "¿Quién tiene Prime?", "Busco Amazon", "Necesito 10 Prime", "Hay prime?".', ir: 'whatsapp' },
+      { fecha: '2026-10-15', titulo: '🎁 Promos "paga 5, regalo 1" arregladas', mensaje: 'La caja de **Promociones por perfil** salía vacía (sin productos ni niveles) porque solo se llenaba al abrir Usuarios. Ahora se llena sola donde la abras y está **arriba en 🏷️ Promociones** (y también en 👑 Dealers → Promos y niveles). Al agregar un producto arranca en **paga 5, regalo 1**; cámbialo como quieras y elige a quién aplica.', ir: 'promociones' },
       { fecha: '2026-10-15', titulo: '🔁 Seguimiento a clientes (Amazon al mejor precio)', mensaje: 'En **💬 WhatsApp → 🔁 Seguimiento a clientes**: a quien lleve 3 días (lo cambias) sin escribir ni comprar: 🤖 si tiene Telegram conectado, le llega el recordatorio solo a las 10 a. m., y si responde, el bot le sigue la venta; 💬 si vuelve a escribir por WhatsApp, el bot abre con "¡Qué bueno tenerte de vuelta! Te recuerdo que tenemos Amazon al mejor precio del mercado" y tu precio real; 📋 y a ti te llega cada mañana a Telegram la lista con su WhatsApp y el mensaje listo (solo das enviar, seguro para tu número). Si escriben o compran antes, se reinicia.', ir: 'whatsapp' },
       { fecha: '2026-10-15', titulo: '🛒 Compra sin registro + bienvenida nueva', mensaje: '**Sin registro:** al pedir por WhatsApp, el cliente elige "Pagar y recibirlas aquí (sin registro)": paga el valor exacto por Bre-B y le llegan las cuentas al chat. Queda como **cliente invitado** (en Usuarios lo ves como "Nombre (WhatsApp)"). **Si después se registra** (por el bot o vinculando su cuenta de la tienda), sus compras, recargas y saldo pasan solos a su cuenta. **Bienvenida en 2 mensajes:** 1) saludo, quién es el bot, **Prime y Free** arriba y los demás planes como menú; 2) garantía y **referencias**. Y un **"hola"** a mitad de un pedido reinicia la conversación (salvo esperando un pago).', ir: 'whatsapp' },
       { fecha: '2026-10-15', titulo: '🛠 Modo mantenimiento', mensaje: 'En **Ajustes Generales → 🛠 Modo mantenimiento**: tus clientes ven la tienda pero no compran ni recargan. Arriba les sale "Estamos en mantenimiento · Compra por WhatsApp 👉 304 395 6726 · ¡Volvemos en un rato!", y al tocar Comprar o Recargar les abre tu WhatsApp con el pedido escrito. Tú sigues usando el panel normal. No usa el servidor: sirve aunque esté caído.', ir: 'ajustes' },
@@ -20708,9 +20711,17 @@
     }
     // Promos y niveles: el mismo bloque de siempre, ahora aquí (se mueve, no se duplica)
     setTimeout(() => { try { const c = document.getElementById('dlPanelPromos'), b = document.getElementById('adminRegaloRevendedor'); if (c && b && b.parentElement !== c) c.appendChild(b); } catch (e) { /* nada */ } }, 0);
+    // La caja de "paga X, llévate Y" se puede ver en 🏷️ Promociones y en 👑 Dealers: se mueve y SIEMPRE se llena al mostrarse
+    function ubicarPromosDealer(idCont) {
+      const c = document.getElementById(idCont), b = document.getElementById('adminRegaloRevendedor'); if (!c || !b) return;
+      if (b.parentElement !== c) c.appendChild(b);
+      b.classList.remove('hidden-en-usuarios', 'hidden');
+      if (!promosDealerSucio) { try { cargarRegaloRevendedor(); } catch (e) { /* nada */ } }
+      alternarPromosDealer(true);
+    }
     function pintarPromosDealersSeccion() {
       const c = document.getElementById('dlPanelPromos'), b = document.getElementById('adminRegaloRevendedor'); if (!c || !b) return;
-      if (b.parentElement !== c) { c.appendChild(b); }
+      ubicarPromosDealer('dlPanelPromos');
       try { const box = document.getElementById('promosDealerBox') || b.querySelector('[id^="promosDealer"]'); if (b.querySelector('details') && !b.querySelector('details').open) b.querySelector('details').open = true; } catch (e) { /* nada */ }
     }
     function pintarMensajesDealers() {
@@ -23269,7 +23280,7 @@
       return { cuentas: legado, stock: legado.length || stockPublico };
     }
 
-    const VERSION_SERVIDOR_NECESARIA = '2026-10-15d';   // la versión del servidor que necesita esta página
+    const VERSION_SERVIDOR_NECESARIA = '2026-10-15e';   // la versión del servidor que necesita esta página
     async function llamarBackend(accion, datos) {
       if (mantenimientoActivo() && /^(comprar|recarga|renovar|carrito|preorden|combo)/.test(String(accion || ''))) { avisoMantenimiento(''); throw new Error('Estamos en mantenimiento. Compra por WhatsApp mientras tanto.'); }
       if (modoPruebaCliente) { const rs = backendSimulado(accion, datos || {}); if (rs) return rs; }
