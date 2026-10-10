@@ -15373,7 +15373,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-13p';
+    const VERSION_PAGINA = '2026-10-13s';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261010_wacompra', fecha: '2026-10-10', titulo: 'Compra por WhatsApp 💬', mensaje: 'Ahora puedes **comprar con tu saldo desde nuestro WhatsApp**. Ve a tu perfil → **Mis datos → Comprar por WhatsApp**, vincula tu chat con el código y pide la autorización.' },
       { id: 'act_20261010_vista2', fecha: '2026-10-10', titulo: 'Nueva vista de la tienda ▦', mensaje: 'Ahora puedes ver los productos **en 2 columnas**: más productos en tu pantalla, con las **promos resaltadas** (🔥 campaña, ⚡ relámpago, 🎁 regalo). Toca uno y se abre su ficha para comprar. Cambia de vista con los íconos ☰ / ▦ arriba de las categorías.' },
@@ -19878,6 +19878,9 @@
 
     // ==================== NOVEDADES INTERNAS DEL PANEL (solo el equipo) ====================
     const ACTUALIZACIONES_INTERNAS = [
+      { fecha: '2026-10-13', titulo: '🛡 Grupos blindados', mensaje: 'El bot separa grupos y chats privados con más cuidado: cualquier señal de grupo (el dato de la app en cualquier formato, el nombre del grupo o quién escribió en él) hace que el mensaje vaya a la lógica de grupos, donde solo responde si lo mencionan o le toca una publicación por horario. Un mensaje de grupo nunca entra a la conversación de ventas como si fuera una persona.', ir: 'whatsapp' },
+      { fecha: '2026-10-13', titulo: '🤖 El bot se presenta: Epic Bot', mensaje: 'En la bienvenida el bot ahora se presenta: "Soy **Epic Bot** 🤖, tu asistente: te atiendo al instante, 24/7." Así el cliente sabe que habla con un asistente automático. Cambia el nombre (o déjalo vacío para que no se presente) en **💬 WhatsApp → 🤖 Nombre del bot**.', ir: 'whatsapp' },
+      { fecha: '2026-10-13', titulo: '🎤📷 El bot responde a audios y fotos', mensaje: 'Si un cliente manda un **audio** ("🎤 Mensaje de voz"), el bot responde que no puede escuchar audios y le pide escribirlo, con ejemplos. Si manda una **foto, video o documento**, responde que no puede verlos y le dice qué escribir (comprobante → "ya pagué", error de cuenta → el correo). Una vez cada 10 minutos por chat, y **te avisa por Telegram** para que lo revises. Si el bot está esperando un **comprobante de pago**, la foto se sigue tomando como comprobante. Los stickers no se responden.', ir: 'whatsapp' },
       { fecha: '2026-10-13', titulo: '🔥 Las promociones avisan solas', mensaje: 'Cuando activas una **oferta relámpago**, una **promoción** (precio rebajado) o un **lleva más**, además del estado de WhatsApp ahora se avisa solo **en la campana de la tienda** (a todos) y **por el bot de Telegram** de clientes, con el enlace directo al producto. Una vez por producto cada 12 h, nunca de productos VIP. Cada cliente puede apagar "Promociones" en sus avisos de Telegram.', ir: 'productos' },
       { fecha: '2026-10-13', titulo: '⚡ Botones de Telegram más rápidos', mensaje: '**Telegram:** tus toques en ✅ Aceptar / ❌ Rechazar ahora se aplican en segundos (el servidor los revisa con cada mensaje de WhatsApp y cada 15 s mientras tengas el panel abierto con solicitudes pendientes). **Bot:** si un cliente escribe el correo de su cuenta de la tienda junto a su pago, el bot ya no lo toma como una cuenta para reclamar: le dice que la recarga se acredita sola (o que ya quedó) y te avisa por Telegram.', ir: 'usuarios' },
       { fecha: '2026-10-13', titulo: '🔧 Botones de Telegram arreglados', mensaje: 'Los botones **✅ Aceptar / ❌ Rechazar** de "¿Identificar este chat?" no respondían cuando tu bot de avisos es el mismo bot de los clientes: la revisión de clientes descartaba tus toques. Ahora cada bot se revisa una sola vez y atiende ambos. Al tocar, el mensaje cambia en máximo 1 minuto. Si tocaste antes y no pasó nada, vuelve a tocar (las solicitudes siguen pendientes) o usa **Usuarios → 🚨 Vigilancia**.', ir: 'usuarios' },
@@ -21444,6 +21447,9 @@
               <button type="button" onclick="publicarPromoComunidad()" class="py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-black text-[11px]">📢 Publicar</button>
             </div>
           </div>
+          <p class="text-[12px] font-black text-white mt-4">🤖 Nombre del bot</p>
+          <p class="text-[10px] text-gray-500">Se presenta con este nombre en la bienvenida ("Soy <b>Epic Bot</b> 🤖, tu asistente"). Déjalo vacío para que no se presente.</p>
+          <input id="waNombreBot" maxlength="30" placeholder="Epic Bot" value="${escaparHtml(k.nombreBot === undefined ? 'Epic Bot' : (k.nombreBot || ''))}" class="${inp} mt-1.5">
           <p class="text-[12px] font-black text-white mt-4">✍️ Frase del menú</p>
           <p class="text-[10px] text-gray-500">Va debajo del saludo en el menú. Las promos del día se agregan solas.</p>
           <textarea id="waIntro" rows="2" maxlength="200" placeholder="Cuentas premium con entrega al instante y garantía." class="${inp} mt-1.5">${escaparHtml(k.intro || '')}</textarea>
@@ -21526,7 +21532,7 @@
       const v = id => document.getElementById(id), datos = { activo: v('waActivo').checked, actualizadoEl: new Date().toISOString() };
       if (!soloActivo) {
         Object.assign(datos, { autoAutorizar: !!(v('waAuto') && v('waAuto').checked), registro: v('waRegistro').checked, sinRegistro: v('waSinRegistro').checked, saldo: v('waSaldo').checked,
-          horasAsesor: Math.max(1, Math.min(24, parseInt(v('waHoras').value, 10) || 2)), llave: String(v('waLlave').value || '').trim().slice(0, 60), intro: String(v('waIntro').value || '').trim().slice(0, 200) });
+          horasAsesor: Math.max(1, Math.min(24, parseInt(v('waHoras').value, 10) || 2)), llave: String(v('waLlave').value || '').trim().slice(0, 60), intro: String(v('waIntro').value || '').trim().slice(0, 200), nombreBot: String((v('waNombreBot') || {}).value || '').trim().slice(0, 30) });
         const noWa = {}; document.querySelectorAll('[data-wa-vende]').forEach(i => { if (!i.checked) noWa[i.dataset.waVende] = true; }); datos.noWa = noWa;
         datos.recargo = 0;   // mismo precio que la web
         const com = String((v('waComunidad') || {}).value || '').trim();
@@ -22916,7 +22922,7 @@
       return { cuentas: legado, stock: legado.length || stockPublico };
     }
 
-    const VERSION_SERVIDOR_NECESARIA = '2026-10-13l';   // la versión del servidor que necesita esta página
+    const VERSION_SERVIDOR_NECESARIA = '2026-10-13o';   // la versión del servidor que necesita esta página
     async function llamarBackend(accion, datos) {
       if (modoPruebaCliente) { const rs = backendSimulado(accion, datos || {}); if (rs) return rs; }
       const url = obtenerBackendUrl();
