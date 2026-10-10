@@ -15615,7 +15615,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-16u';
+    const VERSION_PAGINA = '2026-10-16v';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261010_wacompra', fecha: '2026-10-10', titulo: 'Compra por WhatsApp 💬', mensaje: 'Ahora puedes **comprar con tu saldo desde nuestro WhatsApp**. Ve a tu perfil → **Mis datos → Comprar por WhatsApp**, vincula tu chat con el código y pide la autorización.' },
       { id: 'act_20261010_vista2', fecha: '2026-10-10', titulo: 'Nueva vista de la tienda ▦', mensaje: 'Ahora puedes ver los productos **en 2 columnas**: más productos en tu pantalla, con las **promos resaltadas** (🔥 campaña, ⚡ relámpago, 🎁 regalo). Toca uno y se abre su ficha para comprar. Cambia de vista con los íconos ☰ / ▦ arriba de las categorías.' },
@@ -16429,7 +16429,7 @@
       const g = parseGarantia(tipoGarantia);
       if (g) { const v = new Date(venceGarantia(desdeMs || Date.now(), g)); t += `\n🛡 Garantía: ${textoGarantia(tipoGarantia)} (hasta el ${String(v.getDate()).padStart(2, '0')}/${String(v.getMonth() + 1).padStart(2, '0')}/${v.getFullYear()})`; }
       if (opciones && opciones.vip) t += `\n\n👑 Eres *cliente VIP* de EPIC STREAMING 🙌`;
-      t += `\n🌐 ${typeof enlaceMk === 'function' ? enlaceMk() : dominioActual()}`;
+      t += `\n🌐 ${typeof enlaceMk === 'function' ? enlaceMkUrl() : dominioActual()}`;
       return t;
     }
     function textoVentaManual(prod, cuentas) {
@@ -17880,7 +17880,7 @@
       try {
         const blob = await new Promise(r => c.toBlob(r, 'image/png'));
         const file = new File([blob], nombreArchivoMk(prod), { type: 'image/png' });
-        if (navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share({ files: [file], text: mkTipoImagen === 'novedad' ? `${mkNov.titulo}\n👉 ${enlaceMk()}` : textoProductoMk(prod) }); return; }
+        if (navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share({ files: [file], text: mkTipoImagen === 'novedad' ? `${mkNov.titulo}\n👉 ${enlaceMkUrl()}` : textoProductoMk(prod) }); return; }
       } catch (e) { /* si no se puede compartir, se descarga */ }
       descargarMarketing(); mostrarToast('Tu celular no permite compartir directo: la imagen se descargó.');
     }
@@ -17895,7 +17895,7 @@
     function textoProductoMk(p) {
       const pc = promoPerfilCliente(p.docId), dur = (typeof infoVentaProducto === 'function' ? infoVentaProducto(p) : {}).duracion;
       return `✨ *${p.nombre.toUpperCase()}*\n${LINEA_MK}\n\n💰 ${precioLineaMk(p)}${finPromoMk(p)}\n` + (pc ? `🎁 Compra ${pc.compra || 10} y llévate ${pc.regalo || 1} gratis\n` : '') +
-        (parseGarantia(p.tipoGarantia) ? `🛡 Garantía de ${textoGarantia(p.tipoGarantia)}\n` : '') + (dur ? `📅 Cuenta por ${textoDuracion(dur)}\n` : '') + `⚡ Entrega inmediata, 24/7\n\n👉 Pídelo en *${enlaceMk()}*`;
+        (parseGarantia(p.tipoGarantia) ? `🛡 Garantía de ${textoGarantia(p.tipoGarantia)}\n` : '') + (dur ? `📅 Cuenta por ${textoDuracion(dur)}\n` : '') + `⚡ Entrega inmediata, 24/7\n\n👉 Pídelo en *${enlaceMkUrl()}*`;
     }
 
     function pintarTiposTexto() {
@@ -17914,7 +17914,7 @@
     function finPromoMk(p) { const sn = snapshotInventario[p.docId] || {}; if (!(Number(sn.promoPct) > 0) || !sn.promoHasta) return ''; const d = new Date(sn.promoHasta); return d > new Date() ? ` · hasta las ${d.toLocaleTimeString('es-CO', { hour: 'numeric', minute: '2-digit' })}` : ''; }
     function generarTextoMarketing() {
       const t = document.getElementById('mkTexto'); if (!t) return;
-      const L = productosMarketing(), enl = enlaceMk(), tienda = nombreTienda(), T = tienda.toUpperCase();
+      const L = productosMarketing(), enl = enlaceMkUrl(), tienda = nombreTienda(), T = tienda.toUpperCase();
       const cta = `👉 Compra en *${enl}*`;
       let out = '';
       if (mkTipoTexto === 'bienvenida') {
@@ -18307,6 +18307,8 @@
     // ==================== MARKETING: MÁS TIPOS, MENSAJES EDITABLES, ENLACE Y PLANTILLAS ====================
     var mkTipoImagen = 'producto', mkEnlaceCfg = '', mkPlantillas = [];
     function enlaceMk() { return (mkEnlaceCfg || '').trim() || dominioTienda(); }
+    // En mensajes de texto va completo (https://…) para que sea tocable en WhatsApp, Instagram y Facebook; en las imágenes se ve corto
+    function enlaceMkUrl() { const e = enlaceMk(); return /^https?:\/\//i.test(e) ? e : 'https://' + e; }
     async function cargarCfgMarketing() {
       try { const d = await db.collection('configuracion').doc('marketing').get(); const c = d.exists ? (d.data() || {}) : {}; mkEnlaceCfg = c.enlace || ''; mkPlantillas = Array.isArray(c.plantillas) ? c.plantillas : []; } catch (e) { /* nada */ }
       const i = document.getElementById('mkEnlace'); if (i) i.value = enlaceMk();
@@ -18321,7 +18323,7 @@
     // El enlace de la tienda siempre va en el mensaje
     function mensajeConEnlace() {
       let t = String((document.getElementById('mkTexto') || {}).value || '').trim();
-      const enl = enlaceMk();
+      const enl = enlaceMkUrl();
       if (t && t.toLowerCase().indexOf(enl.toLowerCase()) === -1) t += '\n\n👉 ' + enl;
       return t;
     }
@@ -18349,7 +18351,7 @@
     }
     // Mensajes nuevos
     function textoExtraMk(tipo) {
-      const L = productosMarketing(), enl = enlaceMk(), tienda = nombreTienda();
+      const L = productosMarketing(), enl = enlaceMkUrl(), tienda = nombreTienda();
       if (tipo === 'nuevo') {
         const con = L.filter(p => (Number(p.stock) || 0) > 0);
         return con.length ? `🚨 *¡LLEGÓ STOCK!* 🚨\n\nYa tenemos disponible:\n` + con.slice(0, 15).map(p => `✅ *${p.nombre}* — ${formatoCOP(p.precio)}`).join('\n') + `\n\n⚡ Compra ya y recíbelo al instante\n👉 ${enl}` : 'No hay productos con stock en este momento.';
@@ -19917,7 +19919,7 @@
       if (!cfgAvisosRen.__cargado) { try { const d = await db.collection('configuracion').doc('avisos_renovacion').get(); if (d.exists) cfgAvisosRen = Object.assign(cfgAvisosRen, d.data()); } catch (e) { /* nada */ } cfgAvisosRen.__cargado = true; }
       const nom = String(a.clienteNombre || '').split(' ')[0] || '', plat = a.plataforma || 'Netflix', f = esFechaNetflix(a.proximoPago) ? a.proximoPago.split('-').reverse().slice(0, 2).join('/') : '', precio = Number(a.precio) || 0;
       const est = estadoNetflix(a), cuando = est.dias === 0 ? 'vence hoy' : (est.dias < 0 ? 'venció el ' + f : 'vence el ' + f);
-      const texto = `Hola${nom ? ' ' + nom : ''} 👋 tu ${plat} ${cuando}. ¿Deseas renovarla${precio ? ' por ' + formatoCOP(precio) : ''}?\n\nPuedes renovarla desde tu perfil en ${enlaceMk()} o respondiendo este mensaje. ¡Gracias por tu confianza! 🙌`;
+      const texto = `Hola${nom ? ' ' + nom : ''} 👋 tu ${plat} ${cuando}. ¿Deseas renovarla${precio ? ' por ' + formatoCOP(precio) : ''}?\n\nPuedes renovarla desde tu perfil en ${enlaceMkUrl()} o respondiendo este mensaje. ¡Gracias por tu confianza! 🙌`;
       abrirWhatsappNumero(a.clienteWhatsapp || a.whatsapp, texto, cfgAvisosRen.app !== 'normal');
     }
 
@@ -19946,7 +19948,7 @@
         const ya = new Set(); const elegir = (lista) => { const p = lista.find(x => !ya.has(x.docId)) || lista[0]; if (p) ya.add(p.docId); return p; };
         const DIAS = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
         const hoy = new Date(); const fechaDe = k => { const d = new Date(hoy); d.setDate(hoy.getDate() + k); return d; };
-        const enlace = enlaceMk();
+        const enlace = enlaceMkUrl();
         const tipos = [
           { t: '🔥 Producto estrella', d: 'impacto', lista: top, msg: p => `🔥 *${p.nombre}* — el más pedido de la semana\n\n💲 ${formatoCOP(p.precio)} c/u\n⚡ Entrega inmediata${parseGarantia(p.tipoGarantia) ? ' · 🛡 Garantía ' + textoGarantia(p.tipoGarantia) : ''}\n\n👉 Pídelo ya en ${enlace}` },
           { t: '📦 Mueve el stock', d: 'tarjeta', lista: sobra, msg: p => `📦 ¡Llegó stock de *${p.nombre}*!\n\nTenemos ${p.stock} disponibles a ${formatoCOP(p.precio)} c/u. Ideal para revender 💼\n\n👉 ${enlace}` },
@@ -20272,6 +20274,7 @@
 
     // ==================== NOVEDADES INTERNAS DEL PANEL (solo el equipo) ====================
     const ACTUALIZACIONES_INTERNAS = [
+      { fecha: '2026-10-16', titulo: '🔗 Enlace siempre tocable', mensaje: 'En los mensajes y textos que copias o compartes (marketing, estados, avisos de renovación, Dealers), el enlace de la tienda sale completo con https:// aunque en Marketing lo tengas escrito corto. Así es tocable en WhatsApp, Instagram y Facebook. En las imágenes se sigue viendo corto.', ir: 'marketing' },
       { fecha: '2026-10-16', titulo: '🟢 En línea: la lista solo al tocar', mensaje: 'En Monitoreo de actividad ya no se muestran todos los clientes conectados: toca el botón "N En Línea" para ver la lista, y vuelve a tocarlo para ocultarla.', ir: '' },
       { fecha: '2026-10-16', titulo: '📲 Compartir imagen con el enlace pegado', mensaje: 'Al tocar Compartir en la imagen de un producto, el estado sale con el texto listo ("🔥 Producto · precio · 👉 Compra aquí: epicstreaming.vip/p/…"). Y el texto queda copiado en el portapapeles: si la app no lo pega sola (WhatsApp a veces no), lo pegas con un toque.', ir: 'productos' },
       { fecha: '2026-10-16', titulo: '🔗 El enlace directo va en la imagen', mensaje: 'Las imágenes que creas desde la tarjeta (promo o producto, en cualquier diseño) llevan abajo un cintillo con el enlace directo del producto (epicstreaming.vip/p/…). Quien vea el estado sabe dónde comprar.', ir: 'productos' },
@@ -20836,7 +20839,7 @@
     }
     function whatsappDealer(uid) {
       const x = dlDatos.lista.find(d => d.uid === uid); if (!x) return; const inf = infoDealer(x), nom = String(x.nombre || '').split(' ')[0];
-      const t = `Hola${nom ? ' ' + nom : ''} 👑 vas en *Dealer ${inf.nv.nombre}* con ${x.mes} cuentas este mes.${inf.nv.sig ? ` Te faltan solo *${inf.falta}* para *${inf.nv.sig}* y multiplicar tus regalos 🎁` : ' ¡Estás en el nivel más alto!'}\n\n👉 ${enlaceMk()}`;
+      const t = `Hola${nom ? ' ' + nom : ''} 👑 vas en *Dealer ${inf.nv.nombre}* con ${x.mes} cuentas este mes.${inf.nv.sig ? ` Te faltan solo *${inf.falta}* para *${inf.nv.sig}* y multiplicar tus regalos 🎁` : ' ¡Estás en el nivel más alto!'}\n\n👉 ${enlaceMkUrl()}`;
       abrirWhatsappNumero(x.whatsapp, t, (cfgAvisosRen || {}).app !== 'normal');
     }
     var dlBusquedaTimer = null;
@@ -21482,7 +21485,7 @@
     async function compartirImagenPromo() {
       const img = document.getElementById('promoImgVista'); if (!img) return;
       // 🔗 el enlace directo del producto va como texto del estado, y además queda copiado por si la app no lo pega
-      const prod = catalogoUnificado.find(p => p.docId === promoImgId), url = prod ? enlaceProducto(prod.docId) : enlaceMk();
+      const prod = catalogoUnificado.find(p => p.docId === promoImgId), url = prod ? enlaceProducto(prod.docId) : enlaceMkUrl();
       const texto = (prod ? '🔥 ' + prod.nombre + ' · ' + formatoCOP(promoDeProducto(prod).precio) + ' c/u\n' : '') + '👉 Compra aquí: ' + url;
       try { await navigator.clipboard.writeText(texto); } catch (e) { /* sin portapapeles */ }
       try { const blob = await (await fetch(img.src)).blob(), f = new File([blob], nombreArchivoPromo(), { type: 'image/jpeg' }); if (navigator.canShare && navigator.canShare({ files: [f] })) { await navigator.share({ files: [f], text: texto, title: prod ? prod.nombre : 'Epic Streaming' }); mostrarToast('🔗 El enlace también quedó copiado: pégalo si el estado no lo trae'); return; } } catch (e) { if (e && e.name === 'AbortError') return; }
