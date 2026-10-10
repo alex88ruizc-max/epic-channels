@@ -9493,6 +9493,10 @@
             const bloqueados = u.productos_bloqueados || [];
             const nombreCliente = u.nombre ? `<span class="font-bold text-white block">${u.nombre}</span><span class="text-[11px] text-gray-400 font-mono">${u.email || ''}</span>` : (u.email ? `<span class="font-bold text-white block">${u.email}</span>` : `<span class="font-bold text-amber-300 block"><i class="fa-solid fa-triangle-exclamation mr-1"></i>Ficha incompleta (sin correo)</span><span class="text-[10px] text-gray-500 font-mono block">${uid}</span>`);
             const chipId = esIdEpic(u.idEpic) ? `<button type="button" onclick="event.stopPropagation();copiarIdContacto('${escaparJsAttr(u.idEpic)}','${escaparJsAttr(u.nombre || '')}')" title="Copiar nombre para el contacto de WhatsApp" class="mt-0.5 inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-violet-500/15 border border-violet-500/30 text-violet-200 text-[10px] font-mono">🔑 ${escaparHtml(u.idEpic)}</button>` : '';
+            // 🟢 WhatsApp conectado al bot (solo lo ve el administrador)
+            const chipWa = !esAdminSesionActual() ? '' : (u.waVinculadoEl
+              ? `<button type="button" onclick="event.stopPropagation();mostrarToast('🟢 WhatsApp conectado al bot${u.waVinculado ? ' como «' + escaparJsAttr(String(u.waVinculado)) + '»' : ''} desde ${escaparJsAttr(new Date(u.waVinculadoEl).toLocaleDateString('es-CO', { day: '2-digit', month: '2-digit', year: 'numeric' }))}')" title="WhatsApp conectado al bot" class="mt-0.5 ml-1 inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-emerald-500/15 border border-emerald-500/40 text-emerald-300 text-[10px] font-bold"><i class="fa-brands fa-whatsapp"></i>✓</button>`
+              : `<button type="button" onclick="event.stopPropagation();mostrarToast('⚪ Su WhatsApp aún no está conectado al bot')" title="WhatsApp sin conectar" class="mt-0.5 ml-1 inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-gray-800 border border-gray-700 text-gray-500 text-[10px]"><i class="fa-brands fa-whatsapp"></i></button>`);
 
             let fechaRegStr = 'N/A';
             if (u.fechaRegistro) {
@@ -9533,7 +9537,7 @@
                       <div class="min-w-0 flex-grow">
                         <p class="text-sm font-black text-white truncate">${escaparHtml(u.nombre || u.email || 'Ficha incompleta')}</p>
                         <p class="text-[11px] text-gray-400 font-mono truncate">${escaparHtml(u.email || uid)}</p>
-                        <div class="flex flex-wrap items-center gap-1.5 mt-1">${(() => { const et = etiquetaTipoCuenta(u.rol, u.tipoCuenta); return et ? `<span class="px-1.5 py-0.5 rounded ${et[1]} text-[9px] font-black">${et[0]}</span>` : ''; })()}${chipId}<span data-nivel-uid="${uid}"></span>${deudaU > 0 ? `<span class="px-1.5 py-0.5 rounded bg-violet-500/20 text-violet-200 text-[9px] font-black">DEBE ${formatoCOP(deudaU)}</span>` : ''}</div>
+                        <div class="flex flex-wrap items-center gap-1.5 mt-1">${(() => { const et = etiquetaTipoCuenta(u.rol, u.tipoCuenta); return et ? `<span class="px-1.5 py-0.5 rounded ${et[1]} text-[9px] font-black">${et[0]}</span>` : ''; })()}${chipId}${chipWa}<span data-nivel-uid="${uid}"></span>${deudaU > 0 ? `<span class="px-1.5 py-0.5 rounded bg-violet-500/20 text-violet-200 text-[9px] font-black">DEBE ${formatoCOP(deudaU)}</span>` : ''}</div>
                       </div>
                       <div class="shrink-0 text-right"><p class="text-[10px] text-gray-500">Saldo</p><p class="text-base font-black text-emerald-400">${formatoCOP(u.saldo || 0)}</p></div>
                     </div>
@@ -9553,7 +9557,7 @@
                   </div>
                 </td>
                 <td class="hidden md:table-cell px-4 py-3">
-                  ${nombreCliente}${chipId}
+                  ${nombreCliente}${chipId}${chipWa}
                   ${(() => { const et = etiquetaTipoCuenta(u.rol, u.tipoCuenta); return et ? `<span class="inline-block mt-1 px-1.5 py-0.5 rounded ${et[1]} text-[9px] font-black">${et[0]}</span>` : ''; })()}
                   <span data-nivel-uid="${uid}" class="block mt-1"></span>
                   <button onclick="abrirModalEditarCliente('${uid}', '${escaparJsAttr(u.email)}', '${escaparJsAttr(u.nombre)}')" class="mt-1 text-[10px] bg-gray-800 hover:bg-gray-700 text-emerald-400 px-2 py-0.5 rounded"><i class="fa-solid fa-pen mr-1"></i> Editar perfil</button>
@@ -15400,7 +15404,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-14f';
+    const VERSION_PAGINA = '2026-10-14i';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261010_wacompra', fecha: '2026-10-10', titulo: 'Compra por WhatsApp 💬', mensaje: 'Ahora puedes **comprar con tu saldo desde nuestro WhatsApp**. Ve a tu perfil → **Mis datos → Comprar por WhatsApp**, vincula tu chat con el código y pide la autorización.' },
       { id: 'act_20261010_vista2', fecha: '2026-10-10', titulo: 'Nueva vista de la tienda ▦', mensaje: 'Ahora puedes ver los productos **en 2 columnas**: más productos en tu pantalla, con las **promos resaltadas** (🔥 campaña, ⚡ relámpago, 🎁 regalo). Toca uno y se abre su ficha para comprar. Cambia de vista con los íconos ☰ / ▦ arriba de las categorías.' },
@@ -20010,6 +20014,8 @@
 
     // ==================== NOVEDADES INTERNAS DEL PANEL (solo el equipo) ====================
     const ACTUALIZACIONES_INTERNAS = [
+      { fecha: '2026-10-14', titulo: '🟢 ¿Su WhatsApp está conectado?', mensaje: 'En **Usuarios**, junto al 🔑 ID de cada cliente hay un ícono de WhatsApp: **verde con ✓** si su WhatsApp ya está conectado al bot (tócalo para ver con qué nombre y desde cuándo) y **gris** si todavía no. Solo lo ves tú, no los moderadores.', ir: 'usuarios' },
+      { fecha: '2026-10-14', titulo: '🔄 Alquileres vencidos y cortes', mensaje: 'Hasta **2 días después de vencer**, el bot le ofrece **Renovar**. Pasado ese plazo va el **corte** y el perfil pasa al stock disponible: el bot le ofrece **Volver a tener su Netflix** desde el stock (al instante) y, si el corte aún no se hizo, **te avisa por Telegram ✂️ Corte pendiente**. Si ya marcaste **"no renovó"** y se liberó, el bot lo reconoce por el historial y le ofrece **Volver a tener su Netflix**: lo compra de la tienda (venta automática de Alquileres) y le llega un perfil libre al instante. Si **no hay perfiles libres**, le dice que ya avisaste al equipo, **te llega a Telegram** y le ofrece otro producto con stock.', ir: 'netflix' },
       { fecha: '2026-10-14', titulo: '📺 El bot atiende a quien alquila Netflix', mensaje: 'Si un cliente reconocido tiene un **alquiler** (pantalla o cuenta completa), su saludo lo muestra: si **vence en 3 días o menos**, "🔄 Tu Netflix (Perfil 2) vence en 2 días" con la opción **Renovar** y si su saldo le alcanza; si está al día, "📺 Netflix · cuenta completa · al día hasta 25/10". Siempre trae **Ver el código de mi Netflix**. Y si escribe "me pide código", "actualizar hogar" o "estoy de viaje", el bot le manda **su enlace del código**: en pantallas recuerda que es para 1 dispositivo; en cuentas completas explica que sirve para el código de inicio de sesión u hogar de cualquiera de sus perfiles. Si venció, le ofrece renovar primero.', ir: 'whatsapp' },
       { fecha: '2026-10-14', titulo: '🎬 El bot dice a qué te dedicas', mensaje: 'La bienvenida y la invitación a ser cliente VIP ahora explican el negocio: "tu tienda de cuentas de streaming · vendemos al por mayor, con entrega inmediata y también sobre pedido", y destacan **🔥 Full Prime Video** con su precio más bajo y cuántas hay listas. Al invitar a ser VIP también ofrece atajos: 1 Pedir Prime Video · 2 Ver precios · 0 Menú.', ir: 'whatsapp' },
       { fecha: '2026-10-14', titulo: '👑 "Hazte cliente VIP" en vez de "Regístrate"', mensaje: 'El bot ya no dice "Registrarme" a secas: ofrece **"Hacerme cliente VIP (gratis)"** y, al elegirlo, explica lo que gana: compras al instante 24/7, sus cuentas guardadas con garantía, recargas Bre-B que se acreditan solas (con el +5% si está activo), sobre pedido con su fila, avisos por Telegram y compras por el chat. Los beneficios se ajustan solos a lo que tienes activo. Termina con "Relájate, yo mismo te registro aquí". Si escribiste tus propios beneficios en 💬 WhatsApp, usa los tuyos.', ir: 'whatsapp' },
@@ -23076,7 +23082,7 @@
       return { cuentas: legado, stock: legado.length || stockPublico };
     }
 
-    const VERSION_SERVIDOR_NECESARIA = '2026-10-14e';   // la versión del servidor que necesita esta página
+    const VERSION_SERVIDOR_NECESARIA = '2026-10-14g';   // la versión del servidor que necesita esta página
     async function llamarBackend(accion, datos) {
       if (modoPruebaCliente) { const rs = backendSimulado(accion, datos || {}); if (rs) return rs; }
       const url = obtenerBackendUrl();
