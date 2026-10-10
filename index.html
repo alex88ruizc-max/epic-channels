@@ -12254,6 +12254,7 @@
     const ETIQUETA_RESULTADO_TICKET = { cerrar: 'ticket cerrado', funcional: 'la cuenta funciona', arreglada: 'misma cuenta arreglada', reemplazo: 'cuenta nueva entregada' };
 
     function renderizarTickets() {
+      try { if (!dobleVentaMapa) setTimeout(cargarDobleVentaParaTickets, 500); } catch (e) { /* nada */ }
       const abiertos = ticketsCuentas.filter(t => t.estado !== 'resuelto').length;
       ['badgeTickets', 'badgeTabTickets'].forEach(idB => {
         const b = document.getElementById(idB);
@@ -12288,6 +12289,7 @@
               <p class="text-[11px] text-gray-300">${escaparHtml(t.motivo || '')}${t.detalle ? ' · ' + escaparHtml(t.detalle) : ''}</p>
               <p class="text-[10px] text-gray-400">${t.origen === 'cliente' ? '<span class="px-1.5 py-0.5 rounded bg-sky-500/20 text-sky-300 text-[9px] font-black mr-1">CLIENTE</span>' : ''}${escaparHtml(t.productoNombre || 'Producto no identificado')} · ${asignado} · ${fecha}${t.clienteEmail ? ' · cliente ' + escaparHtml(t.clienteEmail) : ''}</p>
               ${textoGarantiaTicket(t)}
+              ${(() => { const L = dobleVentaMapa && dobleVentaMapa.get(String(t.cuenta || '').trim().toLowerCase()); if (!L) return ''; const f = x => x.fecha ? new Date(x.fecha).toLocaleDateString('es-CO', { day: '2-digit', month: '2-digit' }) : ''; return `<p class="text-[10px] mt-1 px-2 py-1 rounded-lg bg-rose-500/15 border border-rose-500/40 text-rose-200"><b>⚠️ Vendida ${L.length} veces:</b> ${L.map((x, k) => (k + 1) + 'ª ' + f(x) + ' · ' + escaparHtml(x.cliente)).join(' · ')}. Repónsela a quien la compró de último.</p>`; })()}
               ${t.estado === 'en_revision' ? `<p class="text-[10px] text-sky-300 mt-0.5">🔍 En revisión${t.revisionNota ? ': ' + escaparHtml(t.revisionNota) : ''} · ${new Date(t.revisionEl).toLocaleString('es-CO', { day: '2-digit', month: '2-digit', hour: 'numeric', minute: '2-digit' })}</p>` : ''}
               ${resuelto ? `<p class="text-[10px] text-emerald-300 mt-0.5"><i class="fa-solid fa-circle-check mr-1"></i>Resuelto${ETIQUETA_RESULTADO_TICKET[tipoRes] ? ' · ' + ETIQUETA_RESULTADO_TICKET[tipoRes] : ''}${t.resolucion ? ': ' + escaparHtml(t.resolucion) : ''}${t.garantiaReiniciada ? ' · garantía reiniciada' : ''}</p>` : ''}
               ${resuelto && t.respuestaCuenta ? `<p class="text-[10px] text-sky-300 mt-0.5 break-all"><i class="fa-solid fa-link mr-1"></i>Cuenta entregada: <span class="font-mono">${escaparHtml(t.respuestaCuenta)}</span></p>` : (t.cuentaNueva ? `<p class="text-[10px] text-sky-300 mt-0.5"><i class="fa-solid fa-link mr-1"></i>Reemplazada por <span class="font-mono break-all">${escaparHtml(t.cuentaNueva)}</span> (enlazada a ${escaparHtml(t.cuenta || '')})</p>` : '')}
@@ -15398,7 +15400,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-13x';
+    const VERSION_PAGINA = '2026-10-13y';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261010_wacompra', fecha: '2026-10-10', titulo: 'Compra por WhatsApp 💬', mensaje: 'Ahora puedes **comprar con tu saldo desde nuestro WhatsApp**. Ve a tu perfil → **Mis datos → Comprar por WhatsApp**, vincula tu chat con el código y pide la autorización.' },
       { id: 'act_20261010_vista2', fecha: '2026-10-10', titulo: 'Nueva vista de la tienda ▦', mensaje: 'Ahora puedes ver los productos **en 2 columnas**: más productos en tu pantalla, con las **promos resaltadas** (🔥 campaña, ⚡ relámpago, 🎁 regalo). Toca uno y se abre su ficha para comprar. Cambia de vista con los íconos ☰ / ▦ arriba de las categorías.' },
@@ -16132,14 +16134,28 @@
       const inv = invDoc.data() || {};
       const legado = Array.isArray(inv.cuentas) ? inv.cuentas : [];
       const priv = (privDoc.exists && Array.isArray((privDoc.data() || {}).cuentas)) ? privDoc.data().cuentas : [];
-      const todas = priv.concat(legado), sacadas = [], quedan = [];
-      todas.forEach(x => { if (sacadas.length < cantidad && !(x && typeof x === 'object' && x.alquilerId)) sacadas.push(x); else quedan.push(x); });
-      if (sacadas.length < cantidad) throw new Error(`Solo hay ${sacadas.length} cuentas libres de "${inv.nombre || productoId}".`);
+      const todas = priv.concat(legado), sacadas = [], quedan = [], purgadas = [], vistos = new Set(), nomP = inv.nombre || productoId;
+      // 🛡 candado: una cuenta ya vendida (o repetida) nunca se entrega; se saca del stock y se toma la siguiente
+      for (const x of todas) {
+        if (sacadas.length >= cantidad || (x && typeof x === 'object' && x.alquilerId)) { quedan.push(x); continue; }
+        const e = String(parseCredencialObj(x).email || '').trim().toLowerCase();
+        if (e && !exentaUnica(x, nomP)) {
+          if (vistos.has(e)) { purgadas.push(x); continue; }
+          let ya = false; try { ya = (await tx.get(db.collection('cuentas_vendidas').doc(idVendida(e)))).exists; } catch (err) { ya = false; }
+          if (ya) { purgadas.push(x); continue; }
+          vistos.add(e);
+        }
+        sacadas.push(x);
+      }
+      if (sacadas.length < cantidad) throw new Error(`Solo hay ${sacadas.length} cuentas libres de "${nomP}"` + (purgadas.length ? ` (${purgadas.length} ya se habían vendido: sácalas en Cargar stock → 🛡 Cuentas vendidas dos veces)` : '') + '.');
       if (privDoc.exists || inventarioSeguroActivo()) {
         tx.set(privRef, { cuentas: quedan }, { merge: true });
         tx.set(invRef, { stock: quedan.length, cuentas: firebase.firestore.FieldValue.delete() }, { merge: true });
       } else tx.set(invRef, { cuentas: quedan, stock: quedan.length }, { merge: true });
-      return { sacadas: sacadas, inv: inv };
+      const ahoraV = new Date().toISOString();
+      sacadas.forEach(x => { const e = String(parseCredencialObj(x).email || '').trim().toLowerCase(); if (e && !exentaUnica(x, nomP)) tx.set(db.collection('cuentas_vendidas').doc(idVendida(e)), { email: e, fecha: ahoraV, productoId: productoId, por: (currentUser && currentUser.email) || '' }); });
+      if (purgadas.length) setTimeout(() => { try { mostrarToast('🛡 ' + purgadas.length + ' cuenta(s) ya vendida(s) salieron del stock y se entregaron otras'); } catch (e) { /* nada */ } }, 300);
+      return { sacadas: sacadas, inv: inv, purgadas: purgadas };
     }
     function opcionesProductosStock(sel, conLibres) {
       if (!sel) return;
@@ -18514,7 +18530,17 @@
     // ==================== 🛡 CUENTAS VENDIDAS DOS VECES ====================
     const idVendida = e => String(e || '').trim().toLowerCase().replace(/[\/\s]/g, '_').slice(0, 300);
     const exentaUnica = (linea, nombreProd) => /pantalla|perfil/i.test(String(nombreProd || '')) || /\bperfil\b|\bpin\b/i.test(typeof linea === 'string' ? linea : String((linea && linea.pass) || '')) || !!(linea && typeof linea === 'object' && linea.alquilerId);
-    var dvDatos = null;
+    var dvDatos = null, dobleVentaMapa = null;
+    // Para los tickets: si reportan una cuenta vendida dos veces, se muestra el aviso (se calcula una vez por sesión)
+    async function cargarDobleVentaParaTickets() {
+      if (dobleVentaMapa || !esAdminSesionActual() || window.__cargandoDobles) return; window.__cargandoDobles = true;
+      try { const v = new Map();
+        (await db.collection('compras').get()).forEach(d => { const c = d.data() || {}; if (c.esRenovacion === true) return; const lineas = String(c.credenciales || '').split('\n').filter(Boolean), lista = Array.isArray(c.correos) && c.correos.length ? c.correos : lineas, vistos = new Set();
+          lista.forEach((l, i) => { const e = correoDeCuenta(l); if (!e || vistos.has(e) || exentaUnica(lineas[i] || l, c.productoNombre)) return; vistos.add(e); if (!v.has(e)) v.set(e, []); v.get(e).push({ id: d.id, fecha: c.fecha || '', producto: c.productoNombre || '', cliente: c.usuarioEmail || '' }); }); });
+        v.forEach(L => L.sort((a, b) => String(a.fecha).localeCompare(String(b.fecha))));
+        dobleVentaMapa = new Map([...v.entries()].filter(([e, L]) => L.length > 1)); try { renderizarTickets(); } catch (e) { /* nada */ }
+      } catch (e) { /* nada */ } finally { window.__cargandoDobles = false; }
+    }
     async function revisarDobleVenta() {
       if (!esAdminSesionActual()) return; const out = document.getElementById('dvResultado'); if (!out) return;
       out.innerHTML = '<p class="text-[11px] text-gray-400"><i class="fa-solid fa-spinner fa-spin mr-1"></i>Revisando todas las ventas y el stock…</p>';
@@ -18525,6 +18551,8 @@
           const vistos = new Set();
           lista.forEach((l, i) => { const e = correoDeCuenta(l); if (!e || vistos.has(e) || exentaUnica(lineas[i] || l, c.productoNombre)) return; vistos.add(e);
             if (!vendidas.has(e)) vendidas.set(e, []); vendidas.get(e).push({ id: d.id, fecha: c.fecha || '', producto: c.productoNombre || c.productoId || '', cliente: c.usuarioEmail || c.usuarioId || '' }); }); });
+        vendidas.forEach(L => L.sort((a, b) => String(a.fecha).localeCompare(String(b.fecha))));
+        dobleVentaMapa = new Map([...vendidas.entries()].filter(([e, L]) => L.length > 1));
         const dobles = [...vendidas.entries()].filter(([e, L]) => L.length > 1).sort((a, b) => String(b[1][b[1].length - 1].fecha).localeCompare(String(a[1][a[1].length - 1].fecha)));
         const enStock = [];
         const revisarLista = (id, lista) => (Array.isArray(lista) ? lista : []).forEach(c => { const e = correoDeCuenta(c), nom = ((catalogoUnificado || []).find(p => p.docId === id) || snapshotInventario[id] || {}).nombre || id; if (e && !exentaUnica(c, nom) && vendidas.has(e)) enStock.push({ id, nombre: nom, email: e }); });
@@ -18544,7 +18572,10 @@
         const r = document.getElementById('dvResumen'); if (r) r.textContent = dobles.length ? '⚠️ ' + dobles.length + ' vendidas dos veces · ' + enStock.length + ' en stock ya vendidas' : (enStock.length ? '🧹 ' + enStock.length + ' en stock ya vendidas' : '✅ Todo en orden');
       } catch (e) { out.innerHTML = '<p class="text-[11px] text-rose-300">No se pudo revisar: ' + escaparHtml(e.message) + '</p>'; }
     }
-    function abrirCuentaEnBuscador(email) { try { const i = document.getElementById('txtBuscarCuenta'); if (i) { i.value = email; i.scrollIntoView({ behavior: 'smooth', block: 'center' }); buscarCuentaAdmin(); } } catch (e) { /* nada */ } }
+    function abrirCuentaEnBuscador(email) {
+      try { irATabAdmin('buscar'); } catch (e) { /* nada */ }
+      setTimeout(() => { try { const i = document.getElementById('txtBuscarCuenta'); if (i) { i.value = email; buscarCuentaAdmin(); i.scrollIntoView({ behavior: 'smooth', block: 'start' }); } } catch (e) { /* nada */ } }, 350);
+    }
     async function limpiarStockVendidas() {
       const L = (dvDatos && dvDatos.enStock) || []; if (!L.length) return;
       if (!await confirmarModal(`¿Sacar ${L.length} ${L.length === 1 ? 'cuenta' : 'cuentas'} del stock? Ya se vendieron antes, así que no se pueden volver a vender.`, { textoAceptar: 'Sí, sacarlas' })) return;
@@ -19979,6 +20010,7 @@
 
     // ==================== NOVEDADES INTERNAS DEL PANEL (solo el equipo) ====================
     const ACTUALIZACIONES_INTERNAS = [
+      { fecha: '2026-10-13', titulo: '🛡 Candado también en la venta por WhatsApp', mensaje: 'La **venta por WhatsApp** que registras desde el panel ahora usa el mismo candado: nunca entrega una cuenta ya vendida (la saca del stock y entrega otra) y registra las que entrega. En **🛡 Cuentas vendidas dos veces**, **Ver** abre el buscador con esa cuenta, y las ventas salen en orden de fecha (la que se repone es la más reciente). Y si un cliente **reporta** una cuenta vendida dos veces, su ticket muestra **⚠️ Vendida 2 veces** con las fechas y a quién se vendió.', ir: 'tickets' },
       { fecha: '2026-10-13', titulo: '🛡 Una cuenta jamás se vende dos veces', mensaje: 'El servidor ahora tiene un **candado**: cada correo vendido queda registrado y la base de datos **rechaza** venderlo otra vez, por cualquier camino (venta normal, stock compartido, combos, sobre pedido, regalos de dealer y reemplazos de tickets). Si una cuenta ya vendida aparece en algún stock, el servidor la **saca sola**, entrega otra y te avisa por Telegram. Las pantallas y perfiles (un correo, varios perfiles) no cuentan. En **Cargar stock → 🛡 Cuentas vendidas dos veces** revisas lo de antes: las vendidas dos veces (para reponer al último comprador), las que siguen en stock aunque ya se vendieron (y las sacas con un toque), y activas el candado con todo tu historial.', ir: 'stock' },
       { fecha: '2026-10-13', titulo: '🎁 Bono Bre-B y promo de proveedores separada', mensaje: '**Marketing → 🎁 Bono por recargar con Bre-B automático:** todos los clientes que recarguen por Bre-B automático reciben un % extra (5% por defecto), solo este mes, siempre o hasta una fecha. No aplica a Binance, comprobantes ni cargas manuales. Al acreditarse les llega en la campana y por Telegram: "🎁 +5% extra… Este mes tienes 5% en todas tus recargas automáticas (no aplica otra forma)". Se anuncia también en el modal de recarga y en el bot al darles el valor exacto. **El bono por cliente referido se reemplazó por este bono.** La **🏭 Promo para proveedores** (bloques, meta propia, tope) ahora está en **Proveedores**, con su propio interruptor.', ir: 'marketing' },
       { fecha: '2026-10-13', titulo: '👋 Saludo de cliente favorito', mensaje: 'Cuando un cliente con cuenta vuelve a saludar, el bot ya no dice "¿Lo de siempre?": lo saluda por su nombre ("Eres uno de nuestros clientes favoritos 🙌 ¿Cómo puedo ayudarte hoy?"), le propone una oferta real distinta a lo que ya compra (a los **dealers**: "¿Qué tal si sorprendes a tus clientes con esta promo? 5 Prime Video por solo $15.000"), le dice **cuánto saldo tiene y para qué le alcanza**, y le ofrece **recargar por ahí mismo**. Opciones: repetir su última compra, llevar la oferta, recargar o ver precios.', ir: 'whatsapp' },
@@ -21288,7 +21320,7 @@
 
 
     // ==================== COMPROBAR TODO (estado de la página, servidor, reglas y tareas) ====================
-    const VERSION_REGLAS_ESPERADA = '2026-10-13d';
+    const VERSION_REGLAS_ESPERADA = '2026-10-13e';
     async function abrirComprobarTodo() {
       let m = document.getElementById('modalComprobarTodo');
       if (!m) { m = document.createElement('div'); m.id = 'modalComprobarTodo'; m.className = 'fixed inset-0 z-[96] hidden items-center justify-center p-4 bg-black/75 backdrop-blur-sm'; m.onclick = ev => { if (ev.target === m) cerrarComprobarTodo(); }; document.body.appendChild(m); }
