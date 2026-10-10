@@ -15425,7 +15425,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-14s';
+    const VERSION_PAGINA = '2026-10-14x';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261010_wacompra', fecha: '2026-10-10', titulo: 'Compra por WhatsApp 💬', mensaje: 'Ahora puedes **comprar con tu saldo desde nuestro WhatsApp**. Ve a tu perfil → **Mis datos → Comprar por WhatsApp**, vincula tu chat con el código y pide la autorización.' },
       { id: 'act_20261010_vista2', fecha: '2026-10-10', titulo: 'Nueva vista de la tienda ▦', mensaje: 'Ahora puedes ver los productos **en 2 columnas**: más productos en tu pantalla, con las **promos resaltadas** (🔥 campaña, ⚡ relámpago, 🎁 regalo). Toca uno y se abre su ficha para comprar. Cambia de vista con los íconos ☰ / ▦ arriba de las categorías.' },
@@ -16213,7 +16213,7 @@
     // ==================== ENTREGA POR WHATSAPP: FORMATO SENCILLO ====================
     // Una cuenta por línea (correo : clave del correo); la contraseña de la plataforma y la garantía, una sola vez al final.
     function limpiarClaveEntrega(c) { return String(c || '').trim().split(/\s+/)[0]; }   // quita notas pegadas después de un espacio ("ok", "on"…)
-    function textoListaCuentasWa(nombre, cuentas, prime, tipoGarantia, desdeMs) {
+    function textoListaCuentasWa(nombre, cuentas, prime, tipoGarantia, desdeMs, opciones) {
       const filas = [], vistos = new Set(); const platPorCuenta = [];
       cuentas.forEach(raw => {
         const c = parseCredencialObj(raw), email = String(c.email || '').trim(); if (!email || vistos.has(email.toLowerCase())) return; vistos.add(email.toLowerCase());
@@ -16224,18 +16224,26 @@
       const cuenta = {}; platPorCuenta.filter(Boolean).forEach(p => { cuenta[p] = (cuenta[p] || 0) + 1; });
       const comun = Object.keys(cuenta).sort((a, b) => cuenta[b] - cuenta[a])[0] || '';
       const nPlat = prime ? 'Prime Video' : 'la plataforma';
-      let t = `✨ *${nombre || 'Tu compra'}*${filas.length > 1 ? ' · ' + filas.length + ' cuentas' : ''}\n\n`;
-      if (!prime && !comun) t += '```\n' + filas.map(f => f.email + ' : ' + f.clave).join('\n') + '\n```\n';
-      else t += '```\n' + filas.map(f => f.email + ' : ' + f.clave + (f.plat && f.plat !== comun ? ' · ' + (prime ? 'Prime' : 'Plataforma') + ': ' + f.plat : '')).join('\n') + '\n```\n';
-      if (comun) t += `\n🔑 Contraseña de ${nPlat}${filas.length > 1 ? ' (todas)' : ''}: *${comun}*`;
-      if (prime || comun) t += `\n✉️ La clave al lado de cada correo es la del correo (para los códigos).`;
+      // Formato limpio para WhatsApp: sin bloques de código (meten espacios y letra rara)
+      let t = `✨ *${nombre || 'Tu compra'}*${filas.length > 1 ? ' · ' + filas.length + ' cuentas' : ''}\n`;
+      const extraPlat = f => (f.plat && f.plat !== comun ? ' · ' + (prime ? 'Prime' : 'Plataforma') + ': ' + f.plat : '');
+      if (filas.length === 1) {
+        const f = filas[0];
+        t += `📧 ${f.email}\n` + ((prime || comun) ? `✉️ Clave del correo: ${f.clave}` : `🔑 Clave: ${f.clave}`) + extraPlat(f);
+        if (comun) t += `\n🔑 Contraseña de ${nPlat}: *${comun}*`;
+      } else {
+        t += filas.map((f, k) => `${k + 1}. ${f.email} · ${f.clave}${extraPlat(f)}`).join('\n');
+        if (comun) t += `\n\n🔑 Contraseña de ${nPlat} (todas): *${comun}*`;
+        if (prime || comun) t += `\n✉️ La clave al lado de cada correo es la del correo (para los códigos).`;
+      }
       const g = parseGarantia(tipoGarantia);
       if (g) { const v = new Date(venceGarantia(desdeMs || Date.now(), g)); t += `\n🛡 Garantía: ${textoGarantia(tipoGarantia)} (hasta el ${String(v.getDate()).padStart(2, '0')}/${String(v.getMonth() + 1).padStart(2, '0')}/${v.getFullYear()})`; }
+      if (opciones && opciones.vip) t += `\n\n👑 Eres *cliente VIP* de EPIC STREAMING 🙌`;
       t += `\n🌐 ${typeof enlaceMk === 'function' ? enlaceMk() : dominioActual()}`;
       return t;
     }
     function textoVentaManual(prod, cuentas) {
-      return textoListaCuentasWa(prod.nombre, cuentas, esProductoPrime(prod), prod.tipoGarantia, Date.now());
+      return textoListaCuentasWa(prod.nombre, cuentas, esProductoPrime(prod), prod.tipoGarantia, Date.now(), { vip: true });
     }
 
     async function hacerVentaManual() {
@@ -20069,6 +20077,11 @@
 
     // ==================== NOVEDADES INTERNAS DEL PANEL (solo el equipo) ====================
     const ACTUALIZACIONES_INTERNAS = [
+      { fecha: '2026-10-14', titulo: '🎉 "Ya me registré" ya no es un reporte', mensaje: 'Si un cliente sin conectar dice "ya me registré", "con este Gmail" o manda el correo de su cuenta recién creada, el bot lo felicita ("¡Genial! Ya eres cliente VIP 👑"), le manda su **enlace para conectar el WhatsApp** y le recuerda su pedido pendiente. No repite la felicitación: si ya le mandó el enlace, le recuerda corto. Si habla de un pago o recarga, sigue el flujo de recargas; si es el correo de una cuenta vendida con falla, va al reporte. Te avisa por Telegram.', ir: 'whatsapp' },
+      { fecha: '2026-10-14', titulo: '🆕 Aviso de registros y VIP sin exagerar', mensaje: '**Telegram te avisa cada cliente nuevo**, se registre en la tienda o con el bot: nombre, correo, su WhatsApp (con enlace para escribirle) y de dónde llegó. El bot ya no dice "Escribe menú": al "gracias" responde "¡Con gusto! 🙌 Aquí estoy cuando me necesites". **VIP en los momentos clave:** el saludo del cliente ("Cliente VIP 👑"), al terminar el registro ("Ya eres cliente VIP de epicstreaming.vip") y en la venta por WhatsApp.', ir: 'usuarios' },
+      { fecha: '2026-10-14', titulo: '✨ Cuentas para WhatsApp más limpias', mensaje: 'El texto de las cuentas para WhatsApp (venta por WhatsApp y botones de copiar) ya no usa bloques de código, que metían espacios y letra rara. Una cuenta: correo, clave del correo y contraseña de Prime, cada una en su línea. Varias: numeradas, una por línea. En la **venta por WhatsApp** termina con "👑 Eres cliente VIP de EPIC STREAMING 🙌".', ir: 'venta_manual' },
+      { fecha: '2026-10-14', titulo: '🧠 El bot recuerda cuántas quiere', mensaje: 'Si el cliente ya dijo una cantidad en los últimos 30 minutos ("solo necesito una", "necesito 10"), el bot la usa: si alcanza el mínimo va directo al pedido sin preguntar "¿cuántas?"; si no alcanza, se lo dice claro y le da las dos salidas ("Prime es desde 5 · 1️⃣ Llevar 5 · Si solo necesitas una: 2️⃣ YouTube · 3️⃣ Netflix").', ir: 'whatsapp' },
+      { fecha: '2026-10-14', titulo: '⚡ El bot responde más rápido en las compras', mensaje: 'Con "Atiende como tú", cada respuesta esperaba a que Gemini la reescribiera, y la app de WhatsApp a veces se cansaba de esperar y no enviaba nada. Ahora Gemini solo reescribe los mensajes de conversación (saludos, ofertas, dudas); **los pasos de una compra salen al instante**. Y si una respuesta ya va lenta, sale tal cual.', ir: 'whatsapp' },
       { fecha: '2026-10-14', titulo: '🎯 Modo cazador en grupos', mensaje: 'Si alguien **pide** Amazon o Prime Video en un grupo ("¿quién con Prime video?", "busco Amazon"), el bot responde ahí mismo **"Si hay 🙌 Escríbeme al interno 👉 wa.me/573043956726"** y **te avisa por Telegram** con el grupo y quién fue. No responde a anuncios de otros vendedores, solo si tienes Prime o Amazon disponible, a cada persona una vez cada 6 h y en cada grupo una vez cada 3 min. Se configura en **💬 WhatsApp → 🎯 Modo cazador** (número y texto).', ir: 'whatsapp' },
       { fecha: '2026-10-14', titulo: '🛡⭐ Garantía y referencias al primer contacto', mensaje: 'La **primera respuesta** a un contacto nuevo (no registrado y sin conversación previa), pregunte lo que pregunte, termina con **"Prime: garantía de acceso o 24 horas"** y tu **referencia** (la que configuras en 💬 WhatsApp: nombre, detalle y su WhatsApp) y tu comunidad si la tienes. Solo una vez: no se repite ni le sale a clientes registrados o que ya conversaron, salvo que pidan referencias.', ir: 'whatsapp' },
       { fecha: '2026-10-14', titulo: '🔢 "Solo necesito una" ya no se pierde', mensaje: 'Si el cliente dice una cantidad sin producto ("solo necesito una", "quiero dos") o pregunta "¿cuánto?" justo después, el bot ya no repite la lista completa: responde con lo que le puede vender en esa cantidad y su precio total ("Una sola, listo 🙌 YouTube $6.000 · Netflix $10.000… Prime es desde 5"), y con un número arma el pedido. Si venía hablando de un producto, le ofrece ese directo. No repite la misma respuesta si el cliente escribe "¿cuánto?" y "?" seguidos.', ir: 'whatsapp' },
@@ -23098,6 +23111,7 @@
             referidoPorEmail: (function () { const r = String((document.getElementById('authReferido') || {}).value || '').trim().toLowerCase(); return /^\S+@\S+\.\S+$/.test(r) && r !== email.trim().toLowerCase() ? r.slice(0, 120) : ''; })()
           });
           cerrarModalAuth();
+          setTimeout(() => { try { mostrarToast('🎉 ¡Bienvenido! Ya eres cliente VIP de epicstreaming.vip 👑'); } catch (e) { /* nada */ } }, 600);
         } catch (err) { alert(err.message); }
       } else {
         try {
@@ -23165,7 +23179,7 @@
       return { cuentas: legado, stock: legado.length || stockPublico };
     }
 
-    const VERSION_SERVIDOR_NECESARIA = '2026-10-14p';   // la versión del servidor que necesita esta página
+    const VERSION_SERVIDOR_NECESARIA = '2026-10-14t';   // la versión del servidor que necesita esta página
     async function llamarBackend(accion, datos) {
       if (modoPruebaCliente) { const rs = backendSimulado(accion, datos || {}); if (rs) return rs; }
       const url = obtenerBackendUrl();
