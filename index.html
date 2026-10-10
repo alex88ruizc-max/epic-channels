@@ -15425,7 +15425,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-14k';
+    const VERSION_PAGINA = '2026-10-14m';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261010_wacompra', fecha: '2026-10-10', titulo: 'Compra por WhatsApp 💬', mensaje: 'Ahora puedes **comprar con tu saldo desde nuestro WhatsApp**. Ve a tu perfil → **Mis datos → Comprar por WhatsApp**, vincula tu chat con el código y pide la autorización.' },
       { id: 'act_20261010_vista2', fecha: '2026-10-10', titulo: 'Nueva vista de la tienda ▦', mensaje: 'Ahora puedes ver los productos **en 2 columnas**: más productos en tu pantalla, con las **promos resaltadas** (🔥 campaña, ⚡ relámpago, 🎁 regalo). Toca uno y se abre su ficha para comprar. Cambia de vista con los íconos ☰ / ▦ arriba de las categorías.' },
@@ -20069,6 +20069,8 @@
 
     // ==================== NOVEDADES INTERNAS DEL PANEL (solo el equipo) ====================
     const ACTUALIZACIONES_INTERNAS = [
+      { fecha: '2026-10-14', titulo: '🗣 El bot atiende como tú', mensaje: 'En **💬 WhatsApp → 🗣 Atiende como tú**: Gemini reescribe cada respuesta del bot con tu estilo (corto, directo, "bro", "man", "manito"), aprendiendo de tus ejemplos reales, que puedes ampliar. **Los precios, cantidades, enlaces y cuentas los pone el sistema**: si Gemini cambia un solo dato, se descarta y sale el mensaje normal. Las cuentas con contraseña, los pagos exactos y los códigos nunca se tocan. Si un cliente pregunta "¿eres un bot?", responde la verdad y ofrece pasarte con Alex.', ir: 'whatsapp' },
+      { fecha: '2026-10-14', titulo: '🤫 El bot no se mete en tus conversaciones', mensaje: 'Si el **primer** mensaje de un chat es una respuesta suelta ("si mi bro", "ok", "listo gracias", "dale"), el bot **no responde**: casi siempre te están contestando a ti. Y si el contacto tiene su **🔑 ID** pero aún no aceptas la autorización en Telegram, el bot ya no lo trata como desconocido: lo saluda por su nombre, le dice que ya lo reconoció y le ofrece la promo y los precios, sin "hazte VIP". Cuando aceptas, lo atiende como cliente favorito, con su saldo y sus compras. Si se te pasó el aviso: **Usuarios → 🚨 Vigilancia → 🔑 Esperan tu autorización**.', ir: 'whatsapp' },
       { fecha: '2026-10-14', titulo: '🔑 "No tengo la contraseña" ya no es un reclamo', mensaje: 'Si un cliente escribe "no tengo la contraseña", "perdí los datos" o "pásame mis cuentas": **con su WhatsApp conectado**, el bot le pasa ahí mismo sus cuentas de las últimas 3 compras; **sin conectar**, le dice dónde están (Mi cuenta → Mis compras) y le ofrece conectarse para pasárselas. Si luego dice **"no entra"**, le pregunta cuál y **revisa la garantía**: si aplica crea el reporte; si no, le ofrece una nueva. También entiende mejor las fallas ("contraseña incorrecta", "no puedo entrar"). **Tiendas:** ahora tienen enlace corto **epicstreaming.vip/t/nombre**.', ir: 'whatsapp' },
       { fecha: '2026-10-14', titulo: '🏪 Tiendas: tarjeta propia y crear desde el panel', mensaje: 'Las **Tiendas para clientes** ya no están escondidas en Ajustes: tienen su tarjeta **🏪 Tiendas** en el menú (grupo Ventas). Ahí puedes **➕ Crear tienda** tú mismo, sin esperar una solicitud: nombre, enlace, dueño (tú o un cliente por su correo) y WhatsApp, con el plan que tengas configurado. Marca **"Es de prueba"** para probar: sale con 🧪 y no le avisa al dueño. Solo la ves tú.', ir: 'tiendas' },
       { fecha: '2026-10-14', titulo: '🟢 ¿Su WhatsApp está conectado?', mensaje: 'En **Usuarios**, junto al 🔑 ID de cada cliente hay un ícono de WhatsApp: **verde con ✓** si su WhatsApp ya está conectado al bot (tócalo para ver con qué nombre y desde cuándo) y **gris** si todavía no. Solo lo ves tú, no los moderadores.', ir: 'usuarios' },
@@ -21605,6 +21607,7 @@
         if (document.getElementById('adminSecWhatsapp') && !document.getElementById('adminSecWhatsapp').classList.contains('hidden')) pintarWaAdmin();
       }, () => {}); } catch (e) { /* nada */ }
     }
+    const ESTILO_ALEX_BASE = 'Cliente: hola bro tienes prime\nAlex: Si bro, ¿cuántas te mando?\nCliente: Necesito 1 netflix mano\nAlex: Si hay\nCliente: Cuánto sería las 6 pana\nAlex: 18k manito\nCliente: 5 bro porfa\nAlex: Ok bro\nCliente: Verificas porfa\nAlex: Voy\nCliente: Pa las Netflix x fa\nAlex: Calma, ya te las mando\nCliente: Regalame 2 Netflix x fa\nAlex: Claro man, ¿junto con la que venció hoy o nuevas?\nCliente: Hoy tienes prime video?\nAlex: Si claro\nCliente: bro\nAlex: Dime bro\nCliente: (manda el comprobante)\nAlex: Recibido';
     async function pintarPanelWa() {
       const c = document.getElementById('waPanel'); if (!c || !esAdminSesionActual()) return;
       try { const d = await db.collection('configuracion').doc('whatsapp').get(); cfgWaPanel = d.exists ? (d.data() || {}) : {}; } catch (e) { cfgWaPanel = {}; }
@@ -21661,6 +21664,15 @@
           <p class="text-[12px] font-black text-white mt-4">🤖 Nombre del bot</p>
           <p class="text-[10px] text-gray-500">Se presenta con este nombre en la bienvenida ("Soy <b>Epic Bot</b> 🤖, tu asistente"). Déjalo vacío para que no se presente.</p>
           <input id="waNombreBot" maxlength="30" placeholder="Epic Bot" value="${escaparHtml(k.nombreBot === undefined ? 'Epic Bot' : (k.nombreBot || ''))}" class="${inp} mt-1.5">
+          <details class="mt-4 rounded-xl bg-gray-800/40 border border-emerald-500/40 overflow-hidden" open>
+            <summary class="p-3 cursor-pointer select-none flex items-center gap-2 list-none"><span class="text-[12px] font-black text-white">🗣 Atiende como tú</span><span class="text-[10px] text-gray-400">corto, directo, a tu manera</span><i class="fa-solid fa-chevron-down text-gray-500 text-xs ml-auto"></i></summary>
+            <div class="px-3 pb-3 space-y-2 border-t border-gray-700/60 pt-2">
+              <label class="flex items-center justify-between gap-3 p-2.5 rounded-xl bg-gray-800/60 border border-gray-700/60 cursor-pointer"><span class="text-[11px] text-gray-300">Gemini reescribe cada respuesta del bot con tu estilo. Los precios, cantidades, enlaces y cuentas los pone el sistema: <b class="text-white">si Gemini cambia un solo dato, se descarta</b> y sale el mensaje normal. Lo delicado (cuentas, pagos exactos, códigos) nunca se toca. Siempre se presenta como bot.</span><input type="checkbox" id="waEstilo" ${k.estiloActivo !== false ? 'checked' : ''} class="w-5 h-5 accent-emerald-500 shrink-0"></label>
+              <p class="text-[11px] text-gray-400">Así respondes tú <span class="text-gray-500">(ejemplos reales: el bot aprende de ellos; agrega más cuando quieras)</span></p>
+              <textarea id="waEstiloEjemplos" rows="8" maxlength="3000" class="${inp} mt-1 font-mono text-[11px]">${escaparHtml(k.estiloEjemplos || ESTILO_ALEX_BASE)}</textarea>
+              <p class="text-[10px] text-gray-500">Formato: una línea <b>Cliente:</b> y otra <b>Alex:</b>. Usa 1 consulta de Gemini por respuesta (del cupo de 300 al día); si se acaba, el bot responde normal.</p>
+            </div>
+          </details>
           <p class="text-[12px] font-black text-white mt-4">🎯 Modo vendedor con Gemini</p>
           <label class="flex items-center justify-between gap-3 mt-1.5 p-2.5 rounded-xl bg-gray-800/60 border border-gray-700/60 cursor-pointer"><span class="text-[11px] text-gray-300">Cuando digan "está caro", "no confío", "lo pienso" o algo que el bot no entienda en medio de una venta, Gemini argumenta y el bot arma la oferta con tus precios y stock reales. Si dicen que no dos veces, deja de insistir 24 h.</span><input type="checkbox" id="waVendedorIa" ${k.vendedorIa !== false ? 'checked' : ''} class="w-5 h-5 accent-emerald-500 shrink-0"></label>
           <p class="text-[11px] text-gray-400 mt-2">Tus argumentos de venta <span class="text-gray-500">(Gemini los usa como guía, con prioridad)</span></p>
@@ -21748,7 +21760,7 @@
       const v = id => document.getElementById(id), datos = { activo: v('waActivo').checked, actualizadoEl: new Date().toISOString() };
       if (!soloActivo) {
         Object.assign(datos, { autoAutorizar: !!(v('waAuto') && v('waAuto').checked), registro: v('waRegistro').checked, sinRegistro: v('waSinRegistro').checked, saldo: v('waSaldo').checked,
-          horasAsesor: Math.max(1, Math.min(24, parseInt(v('waHoras').value, 10) || 2)), llave: String(v('waLlave').value || '').trim().slice(0, 60), intro: String(v('waIntro').value || '').trim().slice(0, 200), nombreBot: String((v('waNombreBot') || {}).value || '').trim().slice(0, 30), vendedorIa: !!(v('waVendedorIa') || {}).checked, argumentos: String((v('waArgumentos') || {}).value || '').trim().slice(0, 1500) });
+          horasAsesor: Math.max(1, Math.min(24, parseInt(v('waHoras').value, 10) || 2)), llave: String(v('waLlave').value || '').trim().slice(0, 60), intro: String(v('waIntro').value || '').trim().slice(0, 200), nombreBot: String((v('waNombreBot') || {}).value || '').trim().slice(0, 30), vendedorIa: !!(v('waVendedorIa') || {}).checked, argumentos: String((v('waArgumentos') || {}).value || '').trim().slice(0, 1500), estiloActivo: !!(v('waEstilo') || {}).checked, estiloEjemplos: String((v('waEstiloEjemplos') || {}).value || '').trim().slice(0, 3000) });
         const noWa = {}; document.querySelectorAll('[data-wa-vende]').forEach(i => { if (!i.checked) noWa[i.dataset.waVende] = true; }); datos.noWa = noWa;
         datos.recargo = 0;   // mismo precio que la web
         const com = String((v('waComunidad') || {}).value || '').trim();
@@ -23139,7 +23151,7 @@
       return { cuentas: legado, stock: legado.length || stockPublico };
     }
 
-    const VERSION_SERVIDOR_NECESARIA = '2026-10-14h';   // la versión del servidor que necesita esta página
+    const VERSION_SERVIDOR_NECESARIA = '2026-10-14j';   // la versión del servidor que necesita esta página
     async function llamarBackend(accion, datos) {
       if (modoPruebaCliente) { const rs = backendSimulado(accion, datos || {}); if (rs) return rs; }
       const url = obtenerBackendUrl();
