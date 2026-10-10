@@ -15615,7 +15615,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-16p';
+    const VERSION_PAGINA = '2026-10-16t';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261010_wacompra', fecha: '2026-10-10', titulo: 'Compra por WhatsApp 💬', mensaje: 'Ahora puedes **comprar con tu saldo desde nuestro WhatsApp**. Ve a tu perfil → **Mis datos → Comprar por WhatsApp**, vincula tu chat con el código y pide la autorización.' },
       { id: 'act_20261010_vista2', fecha: '2026-10-10', titulo: 'Nueva vista de la tienda ▦', mensaje: 'Ahora puedes ver los productos **en 2 columnas**: más productos en tu pantalla, con las **promos resaltadas** (🔥 campaña, ⚡ relámpago, 🎁 regalo). Toca uno y se abre su ficha para comprar. Cambia de vista con los íconos ☰ / ▦ arriba de las categorías.' },
@@ -20272,6 +20272,10 @@
 
     // ==================== NOVEDADES INTERNAS DEL PANEL (solo el equipo) ====================
     const ACTUALIZACIONES_INTERNAS = [
+      { fecha: '2026-10-16', titulo: '📲 Compartir imagen con el enlace pegado', mensaje: 'Al tocar Compartir en la imagen de un producto, el estado sale con el texto listo ("🔥 Producto · precio · 👉 Compra aquí: epicstreaming.vip/p/…"). Y el texto queda copiado en el portapapeles: si la app no lo pega sola (WhatsApp a veces no), lo pegas con un toque.', ir: 'productos' },
+      { fecha: '2026-10-16', titulo: '🔗 El enlace directo va en la imagen', mensaje: 'Las imágenes que creas desde la tarjeta (promo o producto, en cualquier diseño) llevan abajo un cintillo con el enlace directo del producto (epicstreaming.vip/p/…). Quien vea el estado sabe dónde comprar.', ir: 'productos' },
+      { fecha: '2026-10-16', titulo: '🔗 Enlace directo de cada producto', mensaje: 'En el recuadro de compartir de cada tarjeta hay un botón "Copiar enlace directo" (epicstreaming.vip/p/<producto>). Pégalo en tus estados o redes: abre la tarjeta lista para comprar; si quien entra no tiene cuenta, se registra y vuelve directo a esa tarjeta.', ir: 'productos' },
+      { fecha: '2026-10-16', titulo: '🖼 Crear imagen en todas las tarjetas', mensaje: 'Para ti y los moderadores, todas las tarjetas de producto traen el recuadro de compartir: Crear imagen para estados (con el precio normal si no hay promo) y el enlace para crear o editar la promo Dealer/clientes. Antes solo salía en los productos con promo.', ir: 'productos' },
       { fecha: '2026-10-16', titulo: '🧰 Nuevo perfil: Proveedor y ventas', mensaje: 'En Editar cliente, con el tipo Cliente, Cliente normal o Dealer, marca la casilla "🧰 También es proveedor" y elige qué productos puede subir. Ese usuario sube cuentas desde su panel (botón verde "Subir stock" en la barra) y sigue comprando en la tienda con su perfil (precios y regalos de Dealer incluidos). Es distinto de "Proveedor externo", que solo sube y no compra.', ir: 'usuarios' },
       { fecha: '2026-10-16', titulo: '🔄 Renovar por el chat (pantalla o cuenta completa)', mensaje: 'Al escribir "renovar", el bot renueva primero SU alquiler (la misma pantalla o cuenta completa): le da el valor exacto para pagar por Bre-B aunque no esté autorizado para comprar con saldo (pagar entra plata, no la gasta). Si la cuenta completa ya se le quitó, no le ofrece una pantalla: te avisa por Telegram marcado como cuenta completa para que se la consigas. Las pantallas sí se venden solas del stock de Venta automática.', ir: 'alquileres' },
       { fecha: '2026-10-16', titulo: '🔄 Renovar un alquiler que ya se le quitó', mensaje: 'Si a un cliente se le venció y se le quitó su Netflix y escribe "renovar", "volver a tener", "me la quitaron"…, el bot lo reconoce: con stock le ofrece una pantalla al instante ("¿Te la separo?"); sin stock le dice que ya avisó al equipo y a ti te llega el aviso a Telegram. Además, la alternativa "Mejor N" solo aparece cuando ahorra algo.', ir: 'alquileres' },
@@ -21193,6 +21197,13 @@
         }
       }, 150);
     }
+    // 🔗 Enlace directo del producto (para estados y redes): abre la tarjeta lista para comprar; si no tiene sesión, se registra y vuelve a la tarjeta
+    function enlaceProducto(id) { return 'https://www.epicstreaming.vip/p/' + encodeURIComponent(String(id || '')); }
+    async function copiarEnlaceProducto(id) {
+      const url = enlaceProducto(id), p = catalogoUnificado.find(x => x.docId === id);
+      try { await navigator.clipboard.writeText(url); mostrarToast('🔗 Enlace copiado: ' + (p ? p.nombre : '') + ' · pégalo en tus estados'); }
+      catch (e) { try { window.prompt('Copia el enlace:', url); } catch (x) { /* nada */ } }
+    }
     function htmlPromosVistaEquipo(prod) {
       try {
         const pr = ((cfgDealer && cfgDealer.promos) || {})[prod.docId]; const items = [];
@@ -21208,9 +21219,9 @@
         const esc = escalasDe(prod), base = Number(prod.precioLista || prod.precio) || 0, rarosE = esc.filter(e => base && e.precio < base * 0.5);
         if (esc.length) items.push(`<p class="text-[11px] text-emerald-100"><b class="text-emerald-300">💰 Por cantidad:</b> ${esc.map(e => e.desde + '+ ' + formatoCOP(e.precio)).join(' · ')}</p>`);
         if (rarosE.length) items.push(`<p class="text-[11px] text-red-200"><b>⚠️ Revisa:</b> ${rarosE.map(e => e.desde + '+ a ' + formatoCOP(e.precio)).join(', ')} es menos de la mitad del precio normal. ¿Error al escribir? <button type="button" onclick="irAPrecioPorCantidad('${prod.docId}')" class="underline font-bold">Corregir</button></p>`);
-        if (!items.length) return '';
-        const links = `<p class="text-[10px] mt-1 flex gap-3 flex-wrap">${pr ? `<button type="button" onclick="irATabAdmin('dealers');setTimeout(()=>{dlVista='promos';pintarTabsDealers();pintarVistaDealers();},300)" class="underline text-amber-200">Editar promo Dealer/clientes</button>` : ''}${escalasDe(prod).length ? `<button type="button" onclick="irAPrecioPorCantidad('${prod.docId}')" class="underline text-emerald-200">Editar precio por cantidad</button>` : ''}</p>`;
-        return `<div class="mb-2.5 px-3 py-2 rounded-xl border border-dashed border-gray-500/60 bg-black/25"><p class="text-[9px] font-black uppercase tracking-[0.14em] text-gray-400 mb-0.5"><i class="fa-solid fa-eye mr-1"></i>Promos vigentes · solo tú las ves aquí</p>${items.join('')}${links}${esAdminSesionActual() ? `<button type="button" onclick="abrirImagenPromo('${prod.docId}')" class="mt-2 w-full py-2 rounded-xl font-black text-[11px] text-black" style="background:linear-gradient(90deg,#10b981,#f7d774)">🖼 Crear imagen de esta promo</button>` : ''}</div>`;
+        const sinPromo = !items.length;   // sin promo igual se puede crear la imagen para los estados
+        const links = `<p class="text-[10px] mt-1 flex gap-3 flex-wrap"><button type="button" onclick="irATabAdmin('dealers');setTimeout(()=>{dlVista='promos';pintarTabsDealers();pintarVistaDealers();},300)" class="underline text-amber-200">${pr ? 'Editar promo Dealer/clientes' : 'Crear promo Dealer/clientes'}</button>${escalasDe(prod).length ? `<button type="button" onclick="irAPrecioPorCantidad('${prod.docId}')" class="underline text-emerald-200">Editar precio por cantidad</button>` : ''}</p>`;
+        return `<div class="mb-2.5 px-3 py-2 rounded-xl border border-dashed border-gray-500/60 bg-black/25"><p class="text-[9px] font-black uppercase tracking-[0.14em] text-gray-400 mb-0.5"><i class="fa-solid fa-eye mr-1"></i>${sinPromo ? 'Compartir · solo tú lo ves aquí' : 'Promos vigentes · solo tú las ves aquí'}</p>${sinPromo ? '<p class="text-[11px] text-gray-400">Sin promo activa. Puedes crear la imagen con el precio normal para tus estados.</p>' : items.join('')}${links}<button type="button" onclick="abrirImagenPromo('${prod.docId}')" class="mt-2 w-full py-2 rounded-xl font-black text-[11px] text-black" style="background:linear-gradient(90deg,#10b981,#f7d774)">🖼 ${sinPromo ? 'Crear imagen para estados' : 'Crear imagen de esta promo'}</button><button type="button" onclick="copiarEnlaceProducto('${prod.docId}')" class="mt-1.5 w-full py-2 rounded-xl font-black text-[11px] bg-gray-800 hover:bg-gray-700 border border-gray-600 text-white">🔗 Copiar enlace directo <span class="font-mono font-normal text-gray-400">${escaparHtml(enlaceProducto(prod.docId).replace(/^https?:\/\/(www\.)?/, ''))}</span></button></div>`;
       } catch (e) { return ''; }
     }
 
@@ -21450,14 +21461,31 @@
       img.src = lienzoImagenPromoActual(prod, promoImgPara).toDataURL('image/jpeg', 0.9);
       if (promoImgDiseno === 'premium' && !fuentesPremiumListas) cargarFuentesPremium().then(ok => { if (ok) pintarImagenPromo(); });
     }
-    function lienzoImagenPromoActual(prod, para) { return promoImgDiseno === 'premium' ? aZonaSeguraEstado(lienzoPremium(prod, para, () => pintarImagenPromo())) : lienzoPromoProducto(prod, para); }
+    function lienzoImagenPromoActual(prod, para) { return conEnlaceProducto(promoImgDiseno === 'premium' ? aZonaSeguraEstado(lienzoPremium(prod, para, () => pintarImagenPromo())) : lienzoPromoProducto(prod, para), prod); }
+    // 🔗 Cintillo con el enlace directo del producto, abajo de la imagen (para que quien la vea sepa dónde comprar)
+    function conEnlaceProducto(cv, prod) {
+      try {
+        if (!cv || !prod) return cv;
+        const x = cv.getContext('2d'), W = cv.width, H = cv.height, txt = enlaceProducto(prod.docId).replace(/^https?:\/\/(www\.)?/, '');
+        const fs = Math.round(W * 0.034); x.save(); x.font = `800 ${fs}px Inter, Arial, sans-serif`; x.textAlign = 'center'; x.textBaseline = 'middle';
+        const tw = x.measureText(txt).width + fs * 2.6, th = fs * 2, cx = W / 2, cy = H - Math.round(H * 0.075), r = th / 2;
+        x.fillStyle = 'rgba(0,0,0,.62)'; x.beginPath(); x.moveTo(cx - tw / 2 + r, cy - th / 2); x.arcTo(cx + tw / 2, cy - th / 2, cx + tw / 2, cy + th / 2, r); x.arcTo(cx + tw / 2, cy + th / 2, cx - tw / 2, cy + th / 2, r); x.arcTo(cx - tw / 2, cy + th / 2, cx - tw / 2, cy - th / 2, r); x.arcTo(cx - tw / 2, cy - th / 2, cx + tw / 2, cy - th / 2, r); x.closePath(); x.fill();
+        x.strokeStyle = 'rgba(255,255,255,.35)'; x.lineWidth = Math.max(2, fs * 0.08); x.stroke();
+        x.fillStyle = '#ffffff'; x.fillText('🔗 ' + txt, cx, cy + fs * 0.06); x.restore();
+      } catch (e) { /* la imagen sale igual, sin cintillo */ }
+      return cv;
+    }
     function cerrarImagenPromo() { const m = document.getElementById('modalImagenPromo'); if (m) { m.classList.add('hidden'); m.style.display = 'none'; } }
     function nombreArchivoPromo() { const p = catalogoUnificado.find(x => x.docId === promoImgId) || {}; return 'promo-' + (promoImgPara === 'dealer' ? 'dealers-' : '') + String(p.nombre || 'producto').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') + '.jpg'; }
     function descargarImagenPromo() { const img = document.getElementById('promoImgVista'); if (!img) return; const a = document.createElement('a'); a.href = img.src; a.download = nombreArchivoPromo(); document.body.appendChild(a); a.click(); a.remove(); }
     async function compartirImagenPromo() {
       const img = document.getElementById('promoImgVista'); if (!img) return;
-      try { const blob = await (await fetch(img.src)).blob(), f = new File([blob], nombreArchivoPromo(), { type: 'image/jpeg' }); if (navigator.canShare && navigator.canShare({ files: [f] })) { await navigator.share({ files: [f], text: '👉 ' + enlaceMk() }); return; } } catch (e) { if (e && e.name === 'AbortError') return; }
-      descargarImagenPromo(); mostrarToast('Imagen descargada: adjúntala en WhatsApp');
+      // 🔗 el enlace directo del producto va como texto del estado, y además queda copiado por si la app no lo pega
+      const prod = catalogoUnificado.find(p => p.docId === promoImgId), url = prod ? enlaceProducto(prod.docId) : enlaceMk();
+      const texto = (prod ? '🔥 ' + prod.nombre + ' · ' + formatoCOP(promoDeProducto(prod).precio) + ' c/u\n' : '') + '👉 Compra aquí: ' + url;
+      try { await navigator.clipboard.writeText(texto); } catch (e) { /* sin portapapeles */ }
+      try { const blob = await (await fetch(img.src)).blob(), f = new File([blob], nombreArchivoPromo(), { type: 'image/jpeg' }); if (navigator.canShare && navigator.canShare({ files: [f] })) { await navigator.share({ files: [f], text: texto, title: prod ? prod.nombre : 'Epic Streaming' }); mostrarToast('🔗 El enlace también quedó copiado: pégalo si el estado no lo trae'); return; } } catch (e) { if (e && e.name === 'AbortError') return; }
+      descargarImagenPromo(); mostrarToast('Imagen descargada y enlace copiado: adjúntala y pega el enlace');
     }
     async function publicarEstadoImagenPromo() {
       const prod = catalogoUnificado.find(p => p.docId === promoImgId); if (!prod) return;
