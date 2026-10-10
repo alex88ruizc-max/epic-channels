@@ -3591,7 +3591,7 @@
 
       <!-- MÉTODO MANUAL (el de siempre) -->
       <details id="recargaManualDetalle" open ontoggle="if (typeof actualizarEtiquetaManual === 'function') actualizarEtiquetaManual()" class="group rounded-xl">
-        <summary id="recargaManualResumen" style="list-style:none" class="hidden cursor-pointer px-3 py-2 rounded-xl bg-gray-800/60 border border-gray-700 text-[11px] font-bold text-gray-300 flex items-center justify-between gap-2"><span><i class="fa-brands fa-whatsapp mr-1.5 text-emerald-400"></i>Otro método (manual, con comprobante por WhatsApp)</span><span class="shrink-0 flex items-center gap-1 text-gray-400"><span id="recargaManualAccion">Ocultar</span><i class="fa-solid fa-chevron-down text-[10px] transition group-open:rotate-180"></i></span></summary>
+        <summary id="recargaManualResumen" style="list-style:none" class="hidden cursor-pointer px-3 py-2 rounded-xl bg-gray-800/60 border border-gray-700 text-[11px] font-bold text-gray-300 flex items-center justify-between gap-2"><span><i class="fa-brands fa-whatsapp mr-1.5 text-emerald-400"></i>Otro método (manual, con pantallazo)</span><span class="shrink-0 flex items-center gap-1 text-gray-400"><span id="recargaManualAccion">Ocultar</span><i class="fa-solid fa-chevron-down text-[10px] transition group-open:rotate-180"></i></span></summary>
         <div class="pt-3">
           <p class="text-xs text-gray-400 mb-3">Transfiere a través de nuestras cuentas oficiales escaneando el código QR o copiando la llave.</p>
           <div id="contenedorMetodosPagoClientes" class="space-y-3 mb-4">
@@ -3602,8 +3602,13 @@
               <label class="block text-xs text-gray-400 mb-1">Monto transferido (COP)</label>
               <input type="number" id="recargaMonto" required min="1000" placeholder="Monto transferido" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none">
             </div>
-            <button type="submit" class="w-full bg-emerald-500 hover:bg-emerald-400 text-black font-bold py-2.5 rounded-xl text-sm transition flex items-center justify-center gap-2">
-              <i class="fa-brands fa-whatsapp text-base"></i> Notificar y Enviar Comprobante
+            <div>
+              <label class="block text-xs text-gray-400 mb-1">📸 Pantallazo del pago</label>
+              <label class="flex items-center justify-center gap-2 py-3 rounded-xl border-2 border-dashed border-gray-600 text-gray-300 text-sm cursor-pointer"><i class="fa-solid fa-image"></i><span id="recargaFotoTxt">Elegir pantallazo</span><input type="file" id="recargaFoto" accept="image/*" class="hidden" onchange="previaFotoRecarga(this)"></label>
+              <img id="recargaFotoPrevia" class="hidden mt-2 max-h-48 mx-auto rounded-xl border border-gray-700">
+            </div>
+            <button type="submit" id="btnReportarRecarga" class="w-full bg-emerald-500 hover:bg-emerald-400 text-black font-bold py-2.5 rounded-xl text-sm transition flex items-center justify-center gap-2">
+              <i class="fa-solid fa-paper-plane text-base"></i> Enviar pantallazo
             </button>
           </form>
         </div>
@@ -4173,7 +4178,10 @@
         <div id="grupoAuthWhatsapp" class="hidden space-y-3">
           <div>
             <label class="block text-xs text-gray-400 mb-1">Número de WhatsApp</label>
-            <input type="tel" id="authWhatsapp" placeholder="Ej: 3001234567" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none">
+            <div class="flex gap-2">
+              <select id="authPais" onchange="cambioPaisRegistro()" aria-label="País" class="shrink-0 w-[118px] bg-gray-800 border border-gray-700 rounded-xl px-2 py-2 text-sm text-white focus:outline-none"></select>
+              <input type="tel" id="authWhatsapp" inputmode="numeric" placeholder="Ej: 3001234567" class="min-w-0 flex-grow bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none">
+            </div>
           </div>
           <div>
             <label class="block text-xs text-gray-400 mb-1">¿Quién te recomendó? (opcional)</label>
@@ -10576,6 +10584,11 @@
       modal.style.display = 'none';
     }
 
+    async function previaFotoRecarga(inp) {
+      const f = inp.files && inp.files[0], im = document.getElementById('recargaFotoPrevia'), tx = document.getElementById('recargaFotoTxt');
+      if (!f) { im.classList.add('hidden'); tx.textContent = 'Elegir pantallazo'; return; }
+      try { im.src = URL.createObjectURL(f); im.classList.remove('hidden'); tx.textContent = 'Cambiar pantallazo'; } catch (e) { /* nada */ }
+    }
     async function reportarRecarga(e) {
       e.preventDefault();
       if (!currentUser) return;
@@ -10592,25 +10605,32 @@
         return;
       }
       
-      await db.collection('recargas').add({ 
-        usuarioId: currentUser.uid, 
-        usuarioEmail: currentUser.email, 
-        monto: monto, 
-        estado: 'pendiente', 
-        fecha: new Date().toISOString() 
-      });
-
-      await enviarNotificacionRecargaTelegram({
-        cliente: currentUser.email,
-        monto: monto,
-        fecha: new Date().toLocaleString('es-CO')
-      });
-
-      const numeroAdmin = ajustesGeneralesConfig.whatsappNumero || "573043956726";
-      const wa = encodeURIComponent(`Hola, acabo de transferir $${monto.toLocaleString('es-CO')} COP para recargar saldo. Mi correo registrado es: ${currentUser.email}`);
-      window.open(`https://wa.me/${numeroAdmin}?text=${wa}`, '_blank');
-      cerrarModalRecarga();
-      mostrarToast("¡Solicitud enviada y notificada!");
+      const archivoRec = (document.getElementById('recargaFoto').files || [])[0];
+      if (!archivoRec) { alert('Sube el pantallazo del pago para que podamos verificarlo.'); return; }
+      const btnR = document.getElementById('btnReportarRecarga'); if (btnR) { btnR.disabled = true; btnR.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Enviando…'; }
+      try {
+        const fotoRec = await prepararFotoReporte(archivoRec);
+        const refRec = await db.collection('recargas').add({ 
+          usuarioId: currentUser.uid, 
+          usuarioEmail: currentUser.email, 
+          monto: monto, 
+          estado: 'pendiente', 
+          fecha: new Date().toISOString() 
+        });
+        let enviada = false, fuera = false;
+        // 📸 el pantallazo te llega a Telegram como foto con ✅ Aprobar / ❌ Rechazar
+        if (obtenerBackendUrl()) { try { const rr = await llamarBackend('recarga_comprobante', { recargaId: refRec.id, foto: fotoRec }); enviada = !!(rr && rr.ok); fuera = !!(rr && rr.fueraHorario); } catch (e) { enviada = false; } }
+        if (!enviada) {
+          await enviarNotificacionRecargaTelegram({ cliente: currentUser.email, monto: monto, fecha: new Date().toLocaleString('es-CO') });
+          const numeroAdmin = ajustesGeneralesConfig.whatsappNumero || "573043956726";
+          const wa = encodeURIComponent(`Hola, acabo de transferir $${monto.toLocaleString('es-CO')} COP para recargar saldo. Mi correo registrado es: ${currentUser.email}`);
+          window.open(`https://wa.me/${numeroAdmin}?text=${wa}`, '_blank');
+        }
+        cerrarModalRecarga();
+        try { document.getElementById('recargaFoto').value = ''; document.getElementById('recargaFotoPrevia').classList.add('hidden'); document.getElementById('recargaFotoTxt').textContent = 'Elegir pantallazo'; } catch (e) { /* nada */ }
+        mostrarToast(enviada ? '📸 ¡Recibimos tu pantallazo! Te avisamos apenas se apruebe tu recarga.' + (fuera ? ' A esta hora puede tardar un poco más.' : '') : '¡Solicitud enviada! Envíanos el comprobante por WhatsApp.');
+      } catch (err) { alert('No se pudo enviar: ' + err.message); }
+      finally { if (btnR) { btnR.disabled = false; btnR.innerHTML = '<i class="fa-solid fa-paper-plane text-base"></i> Enviar pantallazo'; } }
     }
 
     async function cargarRecargasAdmin() {
@@ -11973,6 +11993,14 @@
       await lote.commit();
       return { cerrado: true, total: total, borrados: borrados };
     }
+    // 🌎 País del WhatsApp al registrarse (Colombia por defecto)
+    const PAISES_WA = [['CO', '🇨🇴', '57', 'Colombia', '3001234567'], ['VE', '🇻🇪', '58', 'Venezuela', '4141234567'], ['EC', '🇪🇨', '593', 'Ecuador', '991234567'], ['PE', '🇵🇪', '51', 'Perú', '912345678'], ['MX', '🇲🇽', '52', 'México', '5512345678'], ['CL', '🇨🇱', '56', 'Chile', '912345678'], ['AR', '🇦🇷', '54', 'Argentina', '91123456789'], ['PA', '🇵🇦', '507', 'Panamá', '61234567'], ['CR', '🇨🇷', '506', 'Costa Rica', '81234567'], ['DO', '🇩🇴', '1', 'Rep. Dominicana', '8091234567'], ['US', '🇺🇸', '1', 'Estados Unidos', '2015550123'], ['ES', '🇪🇸', '34', 'España', '612345678'], ['BO', '🇧🇴', '591', 'Bolivia', '71234567'], ['PY', '🇵🇾', '595', 'Paraguay', '961456789'], ['UY', '🇺🇾', '598', 'Uruguay', '94231234'], ['GT', '🇬🇹', '502', 'Guatemala', '51234567'], ['HN', '🇭🇳', '504', 'Honduras', '91234567'], ['SV', '🇸🇻', '503', 'El Salvador', '70123456'], ['NI', '🇳🇮', '505', 'Nicaragua', '81234567']];
+    function llenarPaisesRegistro() {
+      const sel = document.getElementById('authPais'); if (!sel || sel.options.length) return;
+      sel.innerHTML = PAISES_WA.map(x => `<option value="${x[0]}">${x[1]} +${x[2]}</option>`).join(''); sel.value = 'CO'; cambioPaisRegistro();
+    }
+    function cambioPaisRegistro() { const sel = document.getElementById('authPais'), inp = document.getElementById('authWhatsapp'); const x = PAISES_WA.find(y => y[0] === (sel && sel.value)) || PAISES_WA[0]; if (inp) inp.placeholder = 'Ej: ' + x[4]; }
+    document.addEventListener('DOMContentLoaded', () => { try { llenarPaisesRegistro(); } catch (e) { /* nada */ } });
     async function confirmarPagoProveedor() {
       if (!esAdminSesionActual() || !pagoEnCurso) return;
       const pc = pagoEnCurso;
@@ -14925,6 +14953,65 @@
       return r.json();
     }
 
+    // ==================== 💵 PÁGINA PÚBLICA DEL PAGO EN USDT (#pago/TOKEN): tus datos de Binance + subir el pantallazo ====================
+    function tokenPagoDeRuta() { const m = String(window.location.hash || '').match(/^#\/?pago\/([a-z0-9]{32,80})\/?$/i); return m ? m[1].toLowerCase() : ''; }
+    async function llamarPagoPublico(accion, datos) {
+      const url = await urlServidorPublico(); if (!url) throw new Error('El servicio no está disponible por ahora. Intenta más tarde.');
+      let r; try { r = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(Object.assign({ accion: accion }, datos)) }); }
+      catch (e) { throw new Error('No hay conexión. Revisa tu internet e intenta de nuevo.'); }
+      if (!r.ok) throw new Error('El servicio no respondió. Intenta de nuevo en un momento.'); return r.json();
+    }
+    let pagoUsdtFoto = '';
+    function vistaPagoUsdt() {
+      let v = document.getElementById('vistaPagoUsdt');
+      if (!v) { v = document.createElement('div'); v.id = 'vistaPagoUsdt'; v.className = 'hidden fixed inset-0 z-[300] overflow-y-auto bg-[#0b0f19]'; v.innerHTML = '<div class="min-h-full flex flex-col items-center px-4 py-8" style="padding-top:max(2rem, env(safe-area-inset-top));"><div class="w-full max-w-sm"><div class="text-center mb-5"><p class="text-3xl">💵</p><p class="text-lg font-black text-white mt-1">Pago en USDT</p><p class="text-xs text-gray-400">EPIC STREAMING</p></div><div id="puContenido" class="rounded-3xl border border-amber-400/40 bg-gradient-to-b from-amber-500/10 to-gray-900 p-5 shadow-2xl"></div></div></div>'; document.body.appendChild(v); }
+      return v;
+    }
+    async function revisarVistaPagoUsdt() {
+      const t = tokenPagoDeRuta(), ex = document.getElementById('vistaPagoUsdt');
+      if (!t) { if (ex && !ex.classList.contains('hidden')) { ex.classList.add('hidden'); document.body.style.overflow = ''; } return; }
+      const v = vistaPagoUsdt(), c = document.getElementById('puContenido'); v.classList.remove('hidden'); document.body.style.overflow = 'hidden';
+      c.innerHTML = '<p class="text-center text-sm text-gray-400"><i class="fa-solid fa-spinner fa-spin mr-1"></i> Cargando tu pedido…</p>';
+      try {
+        const i = await llamarPagoPublico('pago_usdt_info', { token: t });
+        if (!i || !i.ok) { c.innerHTML = `<p class="text-center text-sm text-red-300">${escaparHtml((i && i.error) || 'No se pudo cargar.')}</p>`; return; }
+        if (i.estado === 'aprobado') { c.innerHTML = '<p class="text-center text-4xl">✅</p><p class="text-center text-white font-black mt-2">¡Tu pago ya fue confirmado!</p><p class="text-center text-sm text-gray-300 mt-1">Vuelve al chat de WhatsApp y escríbeme: ahí te entrego tus cuentas.</p>'; return; }
+        const copiar = `navigator.clipboard&&navigator.clipboard.writeText('${escaparJsAttr(i.payId)}').then(()=>mostrarToast('Pay ID copiado ✓'))`;
+        c.innerHTML = `<p class="text-[11px] text-gray-400 uppercase tracking-wider font-bold">Tu pedido</p>
+          <p class="text-white font-black text-lg">${escaparHtml(String(i.n))} ${escaparHtml(i.producto)}</p>
+          <p class="text-3xl font-black text-amber-300 mt-1">${escaparHtml(i.usdt)} USDT</p>
+          <div class="mt-4 p-3 rounded-2xl bg-black/30 border border-amber-400/30">
+            <p class="text-[11px] text-gray-400">1️⃣ Envía <b class="text-white">${escaparHtml(i.usdt)} USDT</b> por <b class="text-white">${escaparHtml(i.nombreMetodo || 'Binance Pay')}</b> a:</p>
+            <div class="flex items-center gap-2 mt-1.5"><span class="min-w-0 flex-grow font-mono text-lg text-white font-black break-all">${escaparHtml(i.payId)}</span><button type="button" onclick="${copiar}" class="shrink-0 px-3 py-1.5 rounded-lg bg-amber-400 text-black text-xs font-black">Copiar</button></div>
+            ${i.titular ? `<p class="text-[11px] text-gray-400 mt-1">A nombre de: <b class="text-gray-200">${escaparHtml(i.titular)}</b></p>` : ''}
+            ${i.qr ? `<img src="${i.qr}" alt="QR de Binance" class="mt-3 w-44 h-44 mx-auto rounded-xl bg-white p-1.5 object-contain">` : ''}
+          </div>
+          <div class="mt-3 p-3 rounded-2xl bg-black/30 border border-gray-700">
+            <p class="text-[11px] text-gray-400">2️⃣ Sube el <b class="text-white">pantallazo del pago</b>:</p>
+            <label class="mt-2 flex items-center justify-center gap-2 py-3 rounded-xl border-2 border-dashed border-gray-600 text-gray-300 text-sm cursor-pointer"><i class="fa-solid fa-image"></i><span id="puNombre">Elegir pantallazo</span><input type="file" accept="image/*" class="hidden" onchange="elegirFotoPagoUsdt(this)"></label>
+            <img id="puPrevia" class="hidden mt-2 max-h-56 mx-auto rounded-xl border border-gray-700">
+            <button type="button" id="puEnviar" onclick="enviarPagoUsdt()" disabled class="mt-3 w-full py-3 rounded-xl bg-emerald-500 disabled:opacity-40 text-black font-black">Enviar pantallazo</button>
+          </div>
+          ${i.estado === 'comprobante' ? '<p class="mt-3 text-[11px] text-sky-300 text-center">Ya recibimos un pantallazo y lo estamos verificando. Si te equivocaste, puedes subir otro.</p>' : ''}
+          ${i.estado === 'rechazado' ? '<p class="mt-3 text-[11px] text-red-300 text-center">No pudimos confirmar el pantallazo anterior. Sube uno donde se vea el envío completo.</p>' : ''}`;
+      } catch (e) { c.innerHTML = `<p class="text-center text-sm text-red-300">${escaparHtml(e.message)}</p>`; }
+    }
+    async function elegirFotoPagoUsdt(inp) {
+      const f = inp.files && inp.files[0]; if (!f) return;
+      try { pagoUsdtFoto = await prepararFotoReporte(f); const im = document.getElementById('puPrevia'); im.src = pagoUsdtFoto; im.classList.remove('hidden'); document.getElementById('puNombre').textContent = 'Cambiar pantallazo'; document.getElementById('puEnviar').disabled = false; }
+      catch (e) { alert(e.message); }
+    }
+    async function enviarPagoUsdt() {
+      const b = document.getElementById('puEnviar'); if (!pagoUsdtFoto) return; b.disabled = true; b.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Enviando…';
+      try {
+        const r = await llamarPagoPublico('pago_usdt_subir', { token: tokenPagoDeRuta(), foto: pagoUsdtFoto });
+        if (!r || !r.ok) throw new Error((r && r.error) || 'No se pudo enviar.');
+        document.getElementById('puContenido').innerHTML = '<p class="text-center text-4xl">📸✅</p><p class="text-center text-white font-black mt-2">¡Recibimos tu pantallazo!</p><p class="text-center text-sm text-gray-300 mt-2">Vuelve al chat de WhatsApp y <b class="text-white">escríbeme en 5 minutos</b> para confirmar tu pago y entregarte tus cuentas.</p>' + (r.fueraHorario ? '<p class="text-center text-[11px] text-amber-300 mt-3">A esta hora la verificación puede tardar un poco más.</p>' : '');
+      } catch (e) { alert(e.message); b.disabled = false; b.textContent = 'Enviar pantallazo'; }
+    }
+    window.addEventListener('hashchange', function () { try { revisarVistaPagoUsdt(); } catch (e) { console.warn(e); } });
+    window.addEventListener('DOMContentLoaded', function () { try { revisarVistaPagoUsdt(); } catch (e) { console.warn(e); } });
+
     let cpInfo = null, cpCargando = false;
 
     function revisarVistaCodigoPublico() {
@@ -15513,7 +15600,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-15m';
+    const VERSION_PAGINA = '2026-10-15w';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261010_wacompra', fecha: '2026-10-10', titulo: 'Compra por WhatsApp 💬', mensaje: 'Ahora puedes **comprar con tu saldo desde nuestro WhatsApp**. Ve a tu perfil → **Mis datos → Comprar por WhatsApp**, vincula tu chat con el código y pide la autorización.' },
       { id: 'act_20261010_vista2', fecha: '2026-10-10', titulo: 'Nueva vista de la tienda ▦', mensaje: 'Ahora puedes ver los productos **en 2 columnas**: más productos en tu pantalla, con las **promos resaltadas** (🔥 campaña, ⚡ relámpago, 🎁 regalo). Toca uno y se abre su ficha para comprar. Cambia de vista con los íconos ☰ / ▦ arriba de las categorías.' },
@@ -20167,6 +20254,15 @@
 
     // ==================== NOVEDADES INTERNAS DEL PANEL (solo el equipo) ====================
     const ACTUALIZACIONES_INTERNAS = [
+      { fecha: '2026-10-15', titulo: '💬 Oferta sin botones', mensaje: 'Cuando piden un producto ("dame 5 prime"), el bot responde precio, stock, garantía, una sola sugerencia de ahorro y "¿Te las separo? Responde sí o dime otra cantidad". Con "sí", "dale" o "listo" confirma; un número es otra cantidad. Si dicen "prime", ya no pregunta entre Prime y Amazon Free. Y la primera vez que alguien escribe, las referencias llegan como segundo mensaje aparte.', ir: 'whatsapp' },
+      { fecha: '2026-10-15', titulo: '🛡 La garantía va en la oferta', mensaje: 'Cuando el cliente pide un producto ("dame 5 prime"), justo debajo del precio el bot le dice la garantía: Prime y Amazon "de acceso o 24 horas" (a clientes VIP, la del producto); los demás, la que tengas en el producto (30 días, 1 mes…). Si un producto no tiene garantía puesta, no dice nada.', ir: 'productos' },
+      { fecha: '2026-10-15', titulo: '💬 El bot habla como persona', mensaje: 'Precios por cantidad y casi sin íconos: "Claro manito 🙌 Tengo: Prime con Pago 5 x $15.000 · Amazon Free 5 x $9.000 (sobre pedido)…  ¿Cuántas necesitas?". La primera vez que alguien escribe van 2 mensajes (saludo con precios + referencias); las demás veces, solo uno. Si responde solo un número ("5"), lo toma como cantidad; si dice "2" y luego "netflix", recuerda las 2.', ir: 'whatsapp' },
+      { fecha: '2026-10-15', titulo: '💬 Saludos en conversación, sin menús', mensaje: 'La bienvenida y el saludo de quien vuelve ya no traen botones numerados: muestran lo que tienes con viñetas (Prime y Free arriba, luego "También tengo") y cierran con "Cuéntame qué necesitas". Al cliente conocido, máximo 2 sugerencias y sin "0 para el menú".', ir: 'whatsapp' },
+      { fecha: '2026-10-15', titulo: '⏱ Tiempos según el caso', mensaje: 'Reporte de garantía abierto: "Escríbeme en unas 2 horas (o antes) y te cuento cómo va tu reporte". Pago que estás verificando (comprobante o USDT): "Si ves que tardo más de 5 minutos, escríbeme" (el de USDT pasó de 10 a 5 minutos). Sobre pedido: sin frase, porque llegan solas.', ir: 'whatsapp' },
+      { fecha: '2026-10-15', titulo: '⏱ "Si tardo más de 5 minutos, escríbeme"', mensaje: 'Como el bot solo puede hablar cuando le escriben, mientras un cliente tenga algo abierto (un reporte de garantía, un pedido sobre pedido o un pedido que estás atendiendo tú) sus respuestas terminan con "⏱ Si ves que tardo más de 5 minutos, escríbeme por aquí". Así vuelve a escribir y el bot le da el estado o le entrega. Cuando el tema se cierra, ya no lo dice. Nunca en medio de una compra o un registro.', ir: 'whatsapp' },
+      { fecha: '2026-10-15', titulo: '📸 Recarga manual con pantallazo a tu Telegram', mensaje: 'En la tienda, la recarga manual ahora pide el **pantallazo del pago** y te llega a Telegram **como foto con ✅ Aprobar / ❌ Rechazar**. Aprobar desde Telegram hace lo mismo que tu botón del panel (abona primero a la deuda y aplica el bono de recarga). Ya no abre WhatsApp. Y los precios en **USDT** se redondean **a tu favor** a la siguiente décima (1,39 → 1,40 · 10,25 → 10,30).', ir: 'recargas' },
+      { fecha: '2026-10-15', titulo: '💵 Pago en USDT con pantallazo', mensaje: 'Cuando un cliente compra en USDT por WhatsApp, el bot le da **tu Binance Pay ID** (de Métodos de pago → Binance Pay automática) y un **enlace mágico** donde ve el QR y **sube el pantallazo**. Te llega a Telegram **como foto con ✅ Aprobar / ❌ Rechazar**. Al aprobar, el pago se acredita y la compra se hace sola (con el candado de no vender dos veces). Al cliente se le dice que escriba en 10 minutos: si ya aprobaste, le entrega las cuentas; si no, "dame 10 minutos más". Fuera de tu horario (8 a. m. – 9 p. m.) le avisa que puede tardar un poco más, sin decir por qué.', ir: 'pagos' },
+      { fecha: '2026-10-15', titulo: '🌎 Clientes de otros países y precios en USDT', mensaje: '**Bot:** si alguien pregunta "en USDT", "dólares" o "Binance", le responde con el precio en **USDT a la tasa del día** (la misma de tus recargas por Binance, con tu ajuste), primero lo que estaba mirando, y con **1️⃣ Comprar** te llega a Telegram "🔥 Venta en USDT — escríbele ya" para pasarle tu Binance. Si escribe desde un número de **otro país** (+58, +51…), no le ofrece Bre-B y le recuerda que puede pagar en USDT. **Registro:** el WhatsApp ahora se pide con **país y bandera** (🇨🇴 Colombia por defecto); se guarda el país de cada cliente.', ir: 'whatsapp' },
       { fecha: '2026-10-15', titulo: '📸 Comprobantes a proveedores: se guardan hasta 200 cuentas', mensaje: 'El comprobante que adjuntas al pagarle a un proveedor ya no se borra a las 48 horas: **se guarda**. Cada proveedor tiene su contador de cuentas pagadas (él lo ve en su panel: "Comprobantes guardados: 120 de 200 cuentas"). Al llegar a **200**, se borran **solo las fotos** de los comprobantes anteriores (los pagos quedan registrados) y el contador empieza de nuevo. El del pago que completa las 200 se queda, para que vea la prueba de su último pago.', ir: 'proveedores' },
       { fecha: '2026-10-15', titulo: '📋 Lista de seguimiento con WhatsApp o Business', mensaje: 'La lista diaria de clientes para recontactar ya no trae enlaces larguísimos: cada cliente tiene dos botones, **💬 WhatsApp** y **💼 Business**, que abren esa app con el mensaje ya escrito (solo das enviar). Arriba va el mensaje para copiar con un toque. Sube el archivo nuevo **wa.html** a GitHub, junto a index.html.', ir: 'whatsapp' },
       { fecha: '2026-10-15', titulo: '🎯 Cazador más estricto', mensaje: 'El cazador le respondió "Si hay" a un vendedor que ofrecía su lista. Ahora ignora los anuncios: listas de 3 líneas o más, 3 plataformas o más, textos largos, mensajes que empiezan ofreciendo ("Si hay…", "Tengo…", "Vendo…") y frases de vendedor ("y mucho más", "trato adm", "a su dominio", "links", "facturación"…). Solo responde a preguntas o pedidos cortos: "¿Quién tiene Prime?", "Busco Amazon", "Necesito 10 Prime", "Hay prime?".', ir: 'whatsapp' },
@@ -23215,13 +23311,17 @@
       const password = document.getElementById('authPassword').value;
 
       if (modoAuth === 'register') {
-        const whatsapp = document.getElementById('authWhatsapp').value.trim();
+        const paisSel = PAISES_WA.find(x => x[0] === ((document.getElementById('authPais') || {}).value || 'CO')) || PAISES_WA[0];
+        const digWa = document.getElementById('authWhatsapp').value.replace(/\D/g, '').replace(new RegExp('^' + paisSel[2]), '');
+        // Colombia se guarda como siempre (10 dígitos); otros países con su código: +58 4241234567
+        const whatsapp = digWa ? (paisSel[0] === 'CO' ? digWa.slice(-10) : '+' + paisSel[2] + ' ' + digWa) : '';
         if (registroPareceRobot()) { alert('No pudimos crear la cuenta. Espera unos segundos e inténtalo de nuevo.'); return; }
         try {
           const cred = await auth.createUserWithEmailAndPassword(email, password);
           await db.collection('usuarios').doc(cred.user.uid).set({ 
             email, 
             whatsapp: whatsapp || 'Sin WhatsApp', 
+            pais: paisSel[0], paisCodigo: paisSel[2],
             saldo: 0, 
             puede_subir_stock: false, 
             productos_permitidos: [],
@@ -23301,7 +23401,7 @@
       return { cuentas: legado, stock: legado.length || stockPublico };
     }
 
-    const VERSION_SERVIDOR_NECESARIA = '2026-10-15g';   // la versión del servidor que necesita esta página
+    const VERSION_SERVIDOR_NECESARIA = '2026-10-15q';   // la versión del servidor que necesita esta página
     async function llamarBackend(accion, datos) {
       if (mantenimientoActivo() && /^(comprar|recarga|renovar|carrito|preorden|combo)/.test(String(accion || ''))) { avisoMantenimiento(''); throw new Error('Estamos en mantenimiento. Compra por WhatsApp mientras tanto.'); }
       if (modoPruebaCliente) { const rs = backendSimulado(accion, datos || {}); if (rs) return rs; }
