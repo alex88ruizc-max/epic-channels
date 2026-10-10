@@ -8824,7 +8824,7 @@
                   <button type="button" onclick="cambiarCantidad('${prod.docId}', 1, ${maxTarjeta(prod, stockDisponible)}, ${limiteInferior})" ${agotado ? 'disabled' : ''} class="w-7 h-7 flex items-center justify-center rounded-lg bg-gray-700/60 hover:bg-gray-700 text-gray-200 font-black text-sm disabled:opacity-40">+</button>
                 </div>
               </div>
-              ${encargoUtil(prod, stockDisponible) && !agotado ? htmlCajaPedido(prod, stockDisponible) : '<p id="mixto_' + prod.docId + '" class="hidden"></p>'}
+              ${cajaPedidoVisible(prod, stockDisponible) && !agotado ? htmlCajaPedido(prod, stockDisponible) : '<p id="mixto_' + prod.docId + '" class="hidden"></p>'}
               <button id="btnComprar_${prod.docId}" onclick="comprarProducto('${prod.docId}')" ${agotado ? 'disabled' : ''} class="w-full py-2.5 rounded-xl text-xs font-bold ${agotado ? 'bg-gray-800 text-gray-500 cursor-not-allowed' : (esNf ? 'nf-btn' : (marcaT ? 'brand-btn' : estiloCat.btn))} transition flex items-center justify-center gap-1.5">
                 <i class="fa-solid fa-cart-shopping"></i> ${agotado ? ttH('botonAgotado') : ttH('botonComprar')}
               </button>
@@ -15600,7 +15600,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-15z';
+    const VERSION_PAGINA = '2026-10-16c';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261010_wacompra', fecha: '2026-10-10', titulo: 'Compra por WhatsApp 💬', mensaje: 'Ahora puedes **comprar con tu saldo desde nuestro WhatsApp**. Ve a tu perfil → **Mis datos → Comprar por WhatsApp**, vincula tu chat con el código y pide la autorización.' },
       { id: 'act_20261010_vista2', fecha: '2026-10-10', titulo: 'Nueva vista de la tienda ▦', mensaje: 'Ahora puedes ver los productos **en 2 columnas**: más productos en tu pantalla, con las **promos resaltadas** (🔥 campaña, ⚡ relámpago, 🎁 regalo). Toca uno y se abre su ficha para comprar. Cambia de vista con los íconos ☰ / ▦ arriba de las categorías.' },
@@ -19135,6 +19135,8 @@
     function maxTarjeta(prod, stock) { return (stock > 0 && encargoMixtoActivo(prod)) ? stock + datosEncargo(prod).max : stock; }
     // Con encargo activo la caja siempre está: lo disponible se entrega ya y lo que falte (hasta tu máximo) queda por encargo
     function encargoUtil(prod, stock) { return stock > 0 && encargoMixtoActivo(prod); }
+    // La caja "¿Lo necesitas en cantidad?" solo se muestra cuando queda poco stock (con mucho stock no tiene sentido)
+    function cajaPedidoVisible(prod, stock) { return encargoUtil(prod, stock) && stock <= 30 && opcionesPedido(prod, stock).length > 0; }
     function pintarMixto(docId) {
       const prod = catalogoUnificado.find(p => p.docId === docId), inp = document.getElementById('cant_' + docId), el = document.getElementById('mixto_' + docId), btn = document.getElementById('btnComprar_' + docId);
       if (!prod || !inp || !el) return;
@@ -19187,11 +19189,11 @@
       const st = Number(p.stock) || 0, minC = Math.max(1, parseInt(p.minCompra, 10) || 1), m2 = marcaDeProducto(p);
       const maxC = maxTarjeta(p, st), ini = Math.min(Math.max(minC, parseInt(cantidadInicial, 10) || 1), Math.max(maxC, 1));
       m.innerHTML = `<div class="w-full max-w-sm rounded-3xl bg-gray-900 border border-gray-700 p-4 shadow-2xl max-h-[85vh] overflow-y-auto" style="animation:credEntrar .25s ease-out;margin-bottom:max(0px, env(safe-area-inset-bottom))">
-        <div class="flex items-start justify-between gap-2"><div class="min-w-0"><p class="text-[10px] font-black tracking-[0.2em] uppercase" style="color:${m2.color}">${escaparHtml(m2.etiqueta)}</p><p class="text-base font-black text-white leading-snug">${escaparHtml(p.nombre)}</p><p class="text-xs text-gray-400 mt-0.5">${formatoCOP(promoDeProducto(p).precio)} c/u · ${st ? `<span class="${st <= 5 ? 'text-amber-300' : 'text-emerald-300'} font-bold">${st} disponibles</span>` : (sobrePedidoTarjeta(p) ? `<span class="text-sky-300 font-bold">📦 sobre pedido · hasta ${sobrePedidoTarjeta(p).max}</span>` : '<span class="text-red-300 font-bold">agotado</span>')}</p></div><button type="button" onclick="cerrarCompraRapida()" class="w-8 h-8 shrink-0 rounded-full bg-gray-800 text-gray-300"><i class="fa-solid fa-xmark"></i></button></div>
+        <div class="flex items-start justify-between gap-2"><div class="min-w-0"><p class="text-[10px] font-black tracking-[0.2em] uppercase" style="color:${m2.color}">${escaparHtml(m2.etiqueta)}</p><p class="text-base font-black text-white leading-snug">${escaparHtml(p.nombre)}</p><p class="text-xs text-gray-400 mt-0.5">${st ? `<span class="${st <= 5 ? 'text-amber-300' : 'text-emerald-300'} font-bold">${st} disponibles</span>` : (sobrePedidoTarjeta(p) ? `<span class="text-sky-300 font-bold">📦 sobre pedido · hasta ${sobrePedidoTarjeta(p).max}</span>` : '<span class="text-red-300 font-bold">agotado</span>')}</p></div><div class="flex items-start gap-2 shrink-0"><div class="text-right leading-none pt-0.5">${promoDeProducto(p).precio < (Number(p.precio) || 0) ? `<p class="text-[11px] text-gray-500 line-through">${formatoCOP(Number(p.precio) || 0)}</p>` : ''}<p class="text-2xl font-black text-white" style="text-shadow:0 1px 10px rgba(0,0,0,.45)">${formatoCOP(promoDeProducto(p).precio)}</p><p class="text-[10px] text-gray-400 font-bold mt-1">c/u</p></div><button type="button" onclick="cerrarCompraRapida()" class="w-8 h-8 shrink-0 rounded-full bg-gray-800 text-gray-300"><i class="fa-solid fa-xmark"></i></button></div></div>
         ${htmlInfoFicha(p)}
         ${maxC > 0 ? `<div class="flex items-center justify-between gap-3 mt-4"><div><p class="text-[10px] text-gray-400">Total</p><p id="crTotal" class="text-xl font-black text-white">$0</p></div>
           <div class="flex items-center bg-gray-800 border border-gray-700 rounded-xl p-0.5"><button type="button" onclick="crCambiar(-1)" class="w-9 h-9 rounded-lg bg-gray-700/60 text-white font-black">-</button><input id="crCant" type="number" inputmode="numeric" value="${ini}" min="${minC}" max="${maxC}" onfocus="this.select()" oninput="crRecalcular()" onchange="crCambiar(0)" class="w-14 text-center bg-transparent text-white font-bold focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"><button type="button" onclick="crCambiar(1)" class="w-9 h-9 rounded-lg bg-gray-700/60 text-white font-black">+</button></div></div>
-          ${encargoUtil(p, st) ? `<div class="caja-pedido mt-3"><div class="flex items-center gap-2.5"><span class="ico"><i class="fa-solid fa-box-open text-sm"></i></span><div class="min-w-0 flex-1"><p class="text-[13.5px] font-black text-white leading-tight">¿Lo necesitas en cantidad?</p><p class="text-[11px] text-sky-200">Lo que falte te llega cuando entre stock</p></div></div><div class="flex flex-wrap gap-1.5 mt-2.5">${opcionesPedido(p, st).map(n => `<button type="button" data-crop="${n}" onclick="crElegirPedido({value:'${n}'})" class="op-cuantas">${n}</button>`).join('')}<button type="button" data-crop="otra" onclick="crElegirPedido({value:'otra'})" class="op-cuantas">Otra…</button></div></div>` : ''}
+          ${cajaPedidoVisible(p, st) ? `<div class="caja-pedido mt-3"><div class="flex items-center gap-2.5"><span class="ico"><i class="fa-solid fa-box-open text-sm"></i></span><div class="min-w-0 flex-1"><p class="text-[13.5px] font-black text-white leading-tight">¿Lo necesitas en cantidad?</p><p class="text-[11px] text-sky-200">Lo que falte te llega cuando entre stock</p></div></div><div class="flex flex-wrap gap-1.5 mt-2.5">${opcionesPedido(p, st).map(n => `<button type="button" data-crop="${n}" onclick="crElegirPedido({value:'${n}'})" class="op-cuantas">${n}</button>`).join('')}<button type="button" data-crop="otra" onclick="crElegirPedido({value:'otra'})" class="op-cuantas">Otra…</button></div></div>` : ''}
           <p id="crMixto" class="hidden mt-2 text-[11px] text-sky-100 px-2.5 py-1.5 rounded-lg bg-sky-500/10 border border-sky-400/30"></p>
           <button type="button" id="btnCompraRapida" onclick="confirmarCompraRapida()" class="mt-3 w-full py-3 rounded-xl text-black font-black text-sm" style="background:${m2.color}"><i class="fa-solid fa-bolt mr-1"></i>Comprar</button>
           ${minC > 1 ? `<p class="text-[10px] text-gray-500 mt-1.5 text-center">Compra mínima: ${minC}</p>` : ''}`
@@ -19250,9 +19252,10 @@
     function opcionesPedido(prod, stock) {
       const max = maxTarjeta(prod, stock), min = Math.max(1, parseInt(prod.minCompra, 10) || 1);
       const base = [10, 20, 30, 40, 50, 60, 75, 80, 100, 120, 150, 200, 250, 300, 400, 500];
+      // solo cantidades redondas (40, 50, 80, 100…), nunca "stock + 5" (131, 136…)
       let ops = base.filter(n => n > stock && n >= min && n <= max);
-      if (ops.length < 3) ops = Array.from(new Set(ops.concat([stock + 5, stock + 10, stock + 20, max].filter(n => n > stock && n <= max)))).sort((a, b) => a - b);
-      return ops.slice(0, 6);
+      if (ops.length < 3) { for (let n = Math.ceil((stock + 1) / 10) * 10; n <= max && ops.length < 5; n += 10) if (n >= min && ops.indexOf(n) === -1) ops.push(n); ops.sort((a, b) => a - b); }
+      return ops.slice(0, 5);
     }
     function htmlCajaPedido(prod, stock) {
       const ops = opcionesPedido(prod, stock), id = prod.docId;
@@ -20254,6 +20257,7 @@
 
     // ==================== NOVEDADES INTERNAS DEL PANEL (solo el equipo) ====================
     const ACTUALIZACIONES_INTERNAS = [
+      { fecha: '2026-10-16', titulo: '📦 "¿Lo necesitas en cantidad?" solo cuando queda poco', mensaje: 'La caja de sobre pedido salía siempre, con cifras raras (131, 136, 146…). Ahora solo aparece cuando quedan 30 o menos en stock, y con cantidades redondas (40, 50, 60, 80, 100…). Si alguien escribe más de lo que hay, el aviso de que lo que falte llega después sigue saliendo.', ir: 'productos' },
       { fecha: '2026-10-15', titulo: '📷 Fotos con texto y pagos de alquiler', mensaje: 'Si el cliente manda una foto con texto, el bot ahora lee el texto y responde a eso (y te avisa que llegó la foto). Y si un cliente con un alquiler por vencer habla de pagar ("pago", "plata", "dame 1 hora", "ahorita", "renovar"…), le responde sobre su alquiler: cuál vence, cuándo y cuánto, y que escriba renovar cuando tenga la plata. Te avisa por Telegram.', ir: 'whatsapp' },
       { fecha: '2026-10-15', titulo: '📺 Alquileres aunque el ID no esté autorizado', mensaje: 'Si una clienta tiene su ID en el nombre del contacto pero aún no la autorizas, y habla de su alquiler ("se vence", "renovar", "netflix"…) o saluda, el bot ya no le tira la oferta del día: le dice el estado de sus alquileres ("📺 Netflix (Lina) · vence hoy (10/10)"), sin códigos ni claves, y te avisa por Telegram para que la autorices.', ir: 'usuarios' },
       { fecha: '2026-10-15', titulo: '🧭 Tiendas: asistente paso a paso', mensaje: 'En las tiendas de tus clientes, "Mis primeros pasos" ahora es un asistente de verdad: una pantalla por paso con sus campos, barra "Paso 4 de 8" y botones Atrás / Siguiente. Si falta algo no avanza y dice exactamente qué ("Falta tu WhatsApp con 10 dígitos", "No encontré ningún correo en lo que pegaste", "Falta el precio"…). Telegram tiene "Lo hago después". Se abre la primera vez, con cada "Ir" de la guía y con "▶ Configurar paso a paso". Sube tienda.html.', ir: 'tiendas' },
