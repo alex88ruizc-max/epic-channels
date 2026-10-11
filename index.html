@@ -2128,6 +2128,9 @@
             <button type="button" onclick="guardarMantenimiento()" class="w-full py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-black text-xs">Guardar</button>
           </div>
         </details>
+        <div class="p-4 rounded-2xl bg-gray-900 border border-gray-800 max-w-3xl">
+          <label class="flex items-center justify-between gap-3 cursor-pointer"><span><span class="text-sm font-bold text-white">📦 Mostrar la cantidad de stock a los clientes</span><br><span class="text-[11px] text-gray-400">Apagado: los clientes ven <b class="text-white">"Stock disponible"</b> (o <b class="text-white">"Últimas unidades"</b> si quedan 5 o menos) sin el número, en tarjetas, ventana de compra, cinta "En vivo" y el bot de WhatsApp. Tú y los moderadores siguen viendo las cantidades.</span></span><input type="checkbox" id="chkMostrarStock" onchange="guardarMostrarStock(this.checked)" class="w-5 h-5 accent-emerald-500 shrink-0" checked></label>
+        </div>
         <div class="p-4 rounded-2xl bg-gray-900 border border-gray-800 flex flex-col sm:flex-row sm:items-center gap-3 max-w-3xl">
           <div class="flex-1 min-w-0"><p class="text-sm font-black text-white"><i class="fa-solid fa-flask text-amber-300 mr-1.5"></i>Simulador de cliente</p>
             <p class="text-[11px] text-gray-400 mt-0.5">Se actualiza solo: usa exactamente la misma tienda que tus clientes (versión <b id="simVersionTxt" class="text-gray-200"></b>). Las compras de prueba no tocan saldo, stock ni ventas reales.</p></div>
@@ -6249,7 +6252,17 @@
       b.innerHTML = adm ? '🛠 Modo mantenimiento ACTIVO · tus clientes compran por WhatsApp · <a href="#" onclick="event.preventDefault();irATabAdmin(\'ajustes\')" style="color:#1c1300;text-decoration:underline">apagarlo</a>'
         : `🛠 Estamos en mantenimiento · Compra por WhatsApp 👉 <a href="${waMant('Hola 👋 quiero hacer un pedido')}" target="_blank" rel="noopener" style="color:#1c1300;text-decoration:underline">${numV}</a> · ¡Volvemos en un rato!`;
     }
-    function pintarCajaMant() { const d = datosMant(), m = (ajustesGeneralesConfig && ajustesGeneralesConfig.mantenimiento) || {}; const a = document.getElementById('mantActivo'); if (!a || document.activeElement && /^mant/.test(document.activeElement.id || '')) return; a.checked = d.activo; document.getElementById('mantWa').value = d.wa; if (m.mensaje) document.getElementById('mantMsg').value = m.mensaje; }
+    // 📦 ¿Los clientes ven la cantidad de stock? (marketing: "Stock disponible" sin número)
+    function mostrarStockClientes() { try { return !(ajustesGeneralesConfig && ajustesGeneralesConfig.mostrarStockClientes === false); } catch (e) { return true; } }
+    function veCantidadStock() { try { return mostrarStockClientes() || (esStaffSesion() && !modoPruebaCliente); } catch (e) { return true; } }
+    function textoStockCliente(n) { return n <= 5 ? 'Últimas unidades' : 'Stock disponible'; }
+    async function guardarMostrarStock(on) {
+      if (!esAdminSesionActual()) return;
+      try { await db.collection('configuracion').doc('ajustes').set({ mostrarStockClientes: !!on }, { merge: true }); ajustesGeneralesConfig.mostrarStockClientes = !!on; mostrarToast(on ? '📦 Los clientes ven la cantidad de stock' : '📦 Los clientes ven "Stock disponible", sin número'); try { renderizarCatalogo(); pintarCintaStock(); } catch (e) { /* nada */ } }
+      catch (e) { alert('No se pudo guardar: ' + e.message); }
+    }
+    function pintarCajaMant() {
+      try { const c = document.getElementById('chkMostrarStock'); if (c) c.checked = mostrarStockClientes(); } catch (e) { /* nada */ } const d = datosMant(), m = (ajustesGeneralesConfig && ajustesGeneralesConfig.mantenimiento) || {}; const a = document.getElementById('mantActivo'); if (!a || document.activeElement && /^mant/.test(document.activeElement.id || '')) return; a.checked = d.activo; document.getElementById('mantWa').value = d.wa; if (m.mensaje) document.getElementById('mantMsg').value = m.mensaje; }
     async function guardarMantenimiento() {
       if (!esAdminSesionActual()) return;
       const datos = { activo: document.getElementById('mantActivo').checked, wa: String(document.getElementById('mantWa').value || '').replace(/\D/g, '').slice(0, 13) || '3043956726', mensaje: String(document.getElementById('mantMsg').value || '').trim().slice(0, 200), desde: new Date().toISOString() };
@@ -15615,7 +15628,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-16x';
+    const VERSION_PAGINA = '2026-10-16y';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261010_wacompra', fecha: '2026-10-10', titulo: 'Compra por WhatsApp 💬', mensaje: 'Ahora puedes **comprar con tu saldo desde nuestro WhatsApp**. Ve a tu perfil → **Mis datos → Comprar por WhatsApp**, vincula tu chat con el código y pide la autorización.' },
       { id: 'act_20261010_vista2', fecha: '2026-10-10', titulo: 'Nueva vista de la tienda ▦', mensaje: 'Ahora puedes ver los productos **en 2 columnas**: más productos en tu pantalla, con las **promos resaltadas** (🔥 campaña, ⚡ relámpago, 🎁 regalo). Toca uno y se abre su ficha para comprar. Cambia de vista con los íconos ☰ / ▦ arriba de las categorías.' },
@@ -19018,6 +19031,7 @@
       if (agotado || !(n > 0)) return `<span class="inline-flex items-center gap-1.5 text-[11px] font-black text-red-400"><i class="fa-solid fa-box-open"></i>Stock: agotado</span>`;
       const niveles = n >= 20 ? 4 : (n >= 10 ? 3 : (n >= 5 ? 2 : 1)), col = niveles >= 3 ? '#34d399' : (niveles === 2 ? '#a3e635' : '#fbbf24');
       const gira = cambioReciente(id) ? ' num-cambio' : '';
+      if (!veCantidadStock()) return `<span class="bateria">${[1, 2, 3, 4].map(k => `<i style="${k <= niveles ? 'background:' + col : ''}"></i>`).join('')}<span class="ml-1.5 text-[11px] font-bold ${n <= 5 ? 'text-amber-300' : 'text-gray-200'}">${textoStockCliente(n)}</span></span>`;
       return `<span class="bateria" title="${n} en stock">${[1, 2, 3, 4].map(k => `<i style="${k <= niveles ? 'background:' + col : ''}"></i>`).join('')}<span class="ml-1.5 text-[11px] font-bold ${n <= 5 ? 'text-amber-300' : 'text-gray-200'}${gira}">Stock ${n}${n <= 5 ? ' · ¡últimas!' : ''}</span></span>`;
     }
 
@@ -19034,7 +19048,7 @@
       const mostrar = cfgVistaTienda.cintaStock !== false && enLugar && L.length > 0 && !(esProveedorSesion() && !staff) && !modoPruebaCliente;   // en el simulador no se muestra
       c.classList.toggle('hidden', !mostrar);
       if (!mostrar) return;
-      const item = p => { const n = Number(p.stock) || 0, d = cambioReciente(p.docId); return `<a href="#" onclick="${visitante ? "abrirModalAuth('registro');try{mostrarToast('Crea tu cuenta gratis para ver precios y comprar')}catch(e){}" : "abrirCompraRapida('" + escaparJsAttr(p.docId) + "')"};return false" class="hover:text-white">${escaparHtml(p.nombre)} <b class="${n ? (n <= 5 ? 'text-amber-300' : 'text-gray-200') : (sobrePedidoTarjeta(p) ? 'text-sky-300' : 'text-red-400')}">${n ? n : (sobrePedidoTarjeta(p) ? 'sobre pedido' : 'agotado')}</b>${d === 'sube' ? ' <span class="text-emerald-300">↑</span>' : (d === 'baja' ? ' <span class="text-red-300">↓</span>' : '')}</a>`; };
+      const item = p => { const n = Number(p.stock) || 0, d = cambioReciente(p.docId); return `<a href="#" onclick="${visitante ? "abrirModalAuth('registro');try{mostrarToast('Crea tu cuenta gratis para ver precios y comprar')}catch(e){}" : "abrirCompraRapida('" + escaparJsAttr(p.docId) + "')"};return false" class="hover:text-white">${escaparHtml(p.nombre)} <b class="${n ? (n <= 5 ? 'text-amber-300' : 'text-gray-200') : (sobrePedidoTarjeta(p) ? 'text-sky-300' : 'text-red-400')}">${n ? (veCantidadStock() ? n : (n <= 5 ? '¡últimas!' : '✓')) : (sobrePedidoTarjeta(p) ? 'sobre pedido' : 'agotado')}</b>${d === 'sube' ? ' <span class="text-emerald-300">↑</span>' : (d === 'baja' ? ' <span class="text-red-300">↓</span>' : '')}</a>`; };
       const una = L.map(item).join('<span class="mx-2 text-gray-600">·</span>') + '<span class="mx-4"></span>';
       const html = una + una;   // repetida para que el movimiento sea continuo
       if (mov.dataset.html !== html) { mov.innerHTML = html; mov.dataset.html = html; mov.style.setProperty('--cinta-dur', Math.max(18, L.length * 5) + 's'); }
@@ -19206,7 +19220,7 @@
       const st = Number(p.stock) || 0, minC = Math.max(1, parseInt(p.minCompra, 10) || 1), m2 = marcaDeProducto(p);
       const maxC = maxTarjeta(p, st), ini = Math.min(Math.max(minC, parseInt(cantidadInicial, 10) || 1), Math.max(maxC, 1));
       m.innerHTML = `<div class="w-full max-w-sm rounded-3xl bg-gray-900 border border-gray-700 p-4 shadow-2xl max-h-[85vh] overflow-y-auto" style="animation:credEntrar .25s ease-out;margin-bottom:max(0px, env(safe-area-inset-bottom))">
-        <div class="flex items-start justify-between gap-2"><div class="min-w-0"><p class="text-[10px] font-black tracking-[0.2em] uppercase" style="color:${m2.color}">${escaparHtml(m2.etiqueta)}</p><p class="text-base font-black text-white leading-snug">${escaparHtml(p.nombre)}</p><p class="text-xs text-gray-400 mt-0.5">${st ? `<span class="${st <= 5 ? 'text-amber-300' : 'text-emerald-300'} font-bold">${st} disponibles</span>` : (sobrePedidoTarjeta(p) ? `<span class="text-sky-300 font-bold">📦 sobre pedido · hasta ${sobrePedidoTarjeta(p).max}</span>` : '<span class="text-red-300 font-bold">agotado</span>')}</p></div><div class="flex items-start gap-2 shrink-0"><div class="text-right leading-none pt-0.5">${promoDeProducto(p).precio < (Number(p.precio) || 0) ? `<p class="text-[11px] text-gray-500 line-through">${formatoCOP(Number(p.precio) || 0)}</p>` : ''}<p class="text-2xl font-black text-white" style="text-shadow:0 1px 10px rgba(0,0,0,.45)">${formatoCOP(promoDeProducto(p).precio)}</p><p class="text-[10px] text-gray-400 font-bold mt-1">c/u</p></div><button type="button" onclick="cerrarCompraRapida()" class="w-8 h-8 shrink-0 rounded-full bg-gray-800 text-gray-300"><i class="fa-solid fa-xmark"></i></button></div></div>
+        <div class="flex items-start justify-between gap-2"><div class="min-w-0"><p class="text-[10px] font-black tracking-[0.2em] uppercase" style="color:${m2.color}">${escaparHtml(m2.etiqueta)}</p><p class="text-base font-black text-white leading-snug">${escaparHtml(p.nombre)}</p><p class="text-xs text-gray-400 mt-0.5">${st ? `<span class="${st <= 5 ? 'text-amber-300' : 'text-emerald-300'} font-bold">${veCantidadStock() ? st + ' disponibles' : textoStockCliente(st)}</span>` : (sobrePedidoTarjeta(p) ? `<span class="text-sky-300 font-bold">📦 sobre pedido · hasta ${sobrePedidoTarjeta(p).max}</span>` : '<span class="text-red-300 font-bold">agotado</span>')}</p></div><div class="flex items-start gap-2 shrink-0"><div class="text-right leading-none pt-0.5">${promoDeProducto(p).precio < (Number(p.precio) || 0) ? `<p class="text-[11px] text-gray-500 line-through">${formatoCOP(Number(p.precio) || 0)}</p>` : ''}<p class="text-2xl font-black text-white" style="text-shadow:0 1px 10px rgba(0,0,0,.45)">${formatoCOP(promoDeProducto(p).precio)}</p><p class="text-[10px] text-gray-400 font-bold mt-1">c/u</p></div><button type="button" onclick="cerrarCompraRapida()" class="w-8 h-8 shrink-0 rounded-full bg-gray-800 text-gray-300"><i class="fa-solid fa-xmark"></i></button></div></div>
         ${htmlInfoFicha(p)}
         ${maxC > 0 ? `<div class="flex items-center justify-between gap-3 mt-4"><div><p class="text-[10px] text-gray-400">Total</p><p id="crTotal" class="text-xl font-black text-white">$0</p></div>
           <div class="flex items-center bg-gray-800 border border-gray-700 rounded-xl p-0.5"><button type="button" onclick="crCambiar(-1)" class="w-9 h-9 rounded-lg bg-gray-700/60 text-white font-black">-</button><input id="crCant" type="number" inputmode="numeric" value="${ini}" min="${minC}" max="${maxC}" onfocus="this.select()" oninput="crRecalcular()" onchange="crCambiar(0)" class="w-14 text-center bg-transparent text-white font-bold focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"><button type="button" onclick="crCambiar(1)" class="w-9 h-9 rounded-lg bg-gray-700/60 text-white font-black">+</button></div></div>
@@ -20274,6 +20288,7 @@
 
     // ==================== NOVEDADES INTERNAS DEL PANEL (solo el equipo) ====================
     const ACTUALIZACIONES_INTERNAS = [
+      { fecha: '2026-10-16', titulo: '📦 Ocultar la cantidad de stock', mensaje: 'En Ajustes Generales hay un interruptor "Mostrar la cantidad de stock a los clientes". Apagado, los clientes ven "Stock disponible" (o "Últimas unidades" si quedan 5 o menos) sin el número: en las tarjetas, la ventana de compra, la cinta En vivo y el bot de WhatsApp. Tú y los moderadores siguen viendo las cantidades.', ir: 'ajustes' },
       { fecha: '2026-10-16', titulo: '💳 "¿Dónde transfiero?"', mensaje: 'Si alguien pregunta dónde pagar ("dónde le transfiero", "cuál es tu Nequi", "cómo pago", "datos de pago"), el bot da la llave Bre-B y pregunta qué va a llevar; si ya tenía un pedido en curso, le da el pago de ese pedido. Un número suelto después ("10") se toma como la cantidad. Y el saludo a quien tiene ID sin autorizar ya no trae menú.', ir: 'whatsapp' },
       { fecha: '2026-10-16', titulo: '🔗 Enlaces de producto en forma corta', mensaje: 'Los enlaces directos de producto ahora van como epicstreaming.vip/p/… (sin https ni www), la misma forma que WhatsApp ya vuelve tocable en tus estados. El texto al compartir queda: "🔥 Producto · precio c/u · 👉 epicstreaming.vip/p/…".', ir: 'productos' },
       { fecha: '2026-10-16', titulo: '🔗 Enlace siempre tocable', mensaje: 'En los mensajes y textos que copias o compartes (marketing, estados, avisos de renovación, Dealers), el enlace de la tienda sale completo con https:// aunque en Marketing lo tengas escrito corto. Así es tocable en WhatsApp, Instagram y Facebook. En las imágenes se sigue viendo corto.', ir: 'marketing' },
@@ -23468,7 +23483,7 @@
       return { cuentas: legado, stock: legado.length || stockPublico };
     }
 
-    const VERSION_SERVIDOR_NECESARIA = '2026-10-16l';   // la versión del servidor que necesita esta página
+    const VERSION_SERVIDOR_NECESARIA = '2026-10-16m';   // la versión del servidor que necesita esta página
     async function llamarBackend(accion, datos) {
       if (mantenimientoActivo() && /^(comprar|recarga|renovar|carrito|preorden|combo)/.test(String(accion || ''))) { avisoMantenimiento(''); throw new Error('Estamos en mantenimiento. Compra por WhatsApp mientras tanto.'); }
       if (modoPruebaCliente) { const rs = backendSimulado(accion, datos || {}); if (rs) return rs; }
