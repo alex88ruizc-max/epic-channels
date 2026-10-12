@@ -305,6 +305,13 @@
     .punto-vivo { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: #34d399; box-shadow: 0 0 0 0 rgba(52,211,153,.6); animation: puntoVivo 1.6s ease-out infinite; }
     @keyframes puntoVivo { 0% { box-shadow: 0 0 0 0 rgba(52,211,153,.6); } 100% { box-shadow: 0 0 0 7px rgba(52,211,153,0); } }
     .bateria { display: inline-flex; align-items: center; gap: 2px; }
+    /* 🏪 MODO TIENDA (nombre.epicstreaming.vip o ?tienda=nombre): la misma vitrina, sin nada de Epic */
+    body.modo-tienda #navSaldoDirecto, body.modo-tienda #btnAdminTab, body.modo-tienda #btnNavNetflix, body.modo-tienda #btnNavSubirStock,
+    body.modo-tienda #btnFlotanteModoCliente, body.modo-tienda #btnFlotanteTelegramBot, body.modo-tienda #btnFlotanteSoporte, body.modo-tienda #flotanteCredito,
+    body.modo-tienda #encabezadoTienda button[onclick^="abrirModalRecarga"], body.modo-tienda #btnCreaTiendaTienda, body.modo-tienda #bannerDealer,
+    body.modo-tienda #txtNuevoEstado, body.modo-tienda #navRayo { display: none !important; }
+    #btnFlotanteTiendaWa { display: none; }
+    body.modo-tienda #btnFlotanteTiendaWa { display: flex; }
     body.stock-oculto .stk-num { display: none !important; }
     body:not(.stock-oculto) .stk-gen { display: none !important; }
     .bateria i { display: inline-block; width: 4px; height: 10px; border-radius: 1px; background: rgba(148,163,184,.25); font-style: normal; }
@@ -392,6 +399,12 @@
     #visorEstados .flecha { display: none; }
     @media (min-width: 768px) { #visorEstados .flecha { display: flex; position: fixed; top: 50%; transform: translateY(-50%); width: 44px; height: 44px; border-radius: 9999px; background: rgba(255,255,255,.12); color: #fff; align-items: center; justify-content: center; z-index: 6; } }
   </style>
+  <link rel="manifest" href="/manifest.webmanifest">
+  <meta name="theme-color" content="#000000">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Epic Streaming">
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 </head>
 <body class="min-h-screen flex flex-col justify-between">
   <script>
@@ -594,7 +607,9 @@
       <!-- Grilla de Productos -->
       <button type="button" id="btnCreaTiendaTienda" onclick="abrirCreaTienda()" class="hidden w-full mb-4 rounded-2xl p-[1px] text-left" style="background:linear-gradient(120deg,#10b981,#06b6d4,#8b5cf6)"><span class="flex items-center gap-3 rounded-2xl bg-gray-950 px-4 py-3"><span class="w-10 h-10 shrink-0 rounded-xl flex items-center justify-center text-lg" style="background:linear-gradient(135deg,#10b981,#06b6d4)">🏪</span><span class="min-w-0 flex-grow"><span class="block text-sm font-black text-white">Crea tu propia tienda</span><span class="block text-[11px] text-gray-400">Vende con tu marca lo que compras aquí</span></span><span class="shrink-0 text-[11px] font-bold text-emerald-300">Ver cómo <i class="fa-solid fa-chevron-right text-[9px]"></i></span></span></button>
       <div id="bannerDealer" class="hidden dealer-banner mb-5"></div>
-      <div id="gridProductos" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 gap-5">
+      <button id="btnInstalarApp" type="button" onclick="instalarApp()" class="hidden fixed bottom-5 left-5 z-40 items-center gap-2 px-4 py-2.5 rounded-full bg-gray-900/95 border border-amber-400/50 text-amber-200 font-black text-sm shadow-2xl"><i class="fa-solid fa-mobile-screen-button"></i> Instalar app <span onclick="event.stopPropagation();ocultarInstalarApp(true)" class="ml-1 text-gray-400 font-normal">✕</span></button>
+        <a id="btnFlotanteTiendaWa" href="#" target="_blank" rel="noopener" class="fixed bottom-5 right-5 z-40 items-center gap-2 px-5 py-3 rounded-full bg-emerald-500 text-black font-black shadow-2xl"><i class="fa-brands fa-whatsapp text-xl"></i> Pedir</a>
+        <div id="gridProductos" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 gap-5">
         <div class="col-span-full py-12 text-center text-gray-500">
           <i class="fa-solid fa-spinner fa-spin text-2xl mb-2 text-emerald-400"></i>
           <p>Conectando con inventario...</p>
@@ -4257,7 +4272,7 @@
 
   <!-- FOOTER -->
   <footer class="border-t border-gray-800 bg-gray-900/40 py-6 mt-12 text-center text-xs text-gray-500">
-    <p>© 2026 Epic Channels. Todos los derechos reservados.</p>
+    <p id="txtPieMarca">© 2026 Epic Channels. Todos los derechos reservados.</p>
   </footer>
 
   <!-- ==================== LÓGICA JAVASCRIPT ==================== -->
@@ -7730,6 +7745,11 @@
     }
 
     function bloquearAccesoVisitante() {
+      if (typeof TIENDA_SLUG !== 'undefined' && TIENDA_SLUG) {   // 🏪 en modo tienda la vitrina es pública
+        const vb0 = document.getElementById('vistaBloqueada'); if (vb0) { vb0.classList.add('hidden'); vb0.style.display = 'none'; }
+        const ci = document.getElementById('cargandoInicial'); if (ci) ci.style.display = 'none';
+        document.getElementById('vistaTienda').classList.remove('hidden'); return;
+      }
       document.getElementById('vistaTienda').classList.add('hidden');
       document.getElementById('vistaMisCuentas').classList.add('hidden');
       document.getElementById('vistaAdmin').classList.add('hidden');
@@ -8270,12 +8290,13 @@
         renderizarAdminCategoriasColores();
       });
       db.collection('configuracion').doc('apariencia').onSnapshot(doc => {
-        if (doc.exists) {
+        if (doc.exists && !TIENDA_SLUG) {
           aparienciaConfig = { ...aparienciaConfig, ...doc.data() };
         }
+        if (TIENDA_SLUG) { try { aplicarMarcaTienda(); } catch (e) { /* nada */ } return; }
         renderizarApariencia();
       });
-      db.collection('inventario').onSnapshot(snap => {
+      if (TIENDA_SLUG) iniciarModoTienda(); else db.collection('inventario').onSnapshot(snap => {
         snapshotInventario = {};
         snap.forEach(d => { snapshotInventario[d.id] = d.data(); });
         catalogoCargado = true;
@@ -8562,6 +8583,77 @@
       }
     }
 
+    // 📲 APP INSTALABLE (PWA): manifiesto + service worker; el botón "Instalar app" sale solo si se puede instalar
+    var eventoInstalarApp = null;
+    try { if ('serviceWorker' in navigator && location.protocol === 'https:') window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js').catch(() => {})); } catch (e) { /* nada */ }
+    function esAppInstalada() { try { return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true; } catch (e) { return false; } }
+    function ocultarInstalarApp(siempre) { const b = document.getElementById('btnInstalarApp'); if (b) { b.classList.add('hidden'); b.classList.remove('flex'); } if (siempre) try { localStorage.setItem('instalarAppOculto', String(Date.now())); } catch (e) { /* nada */ } }
+    window.addEventListener('beforeinstallprompt', ev => {
+      ev.preventDefault(); eventoInstalarApp = ev;
+      let oculto = 0; try { oculto = parseInt(localStorage.getItem('instalarAppOculto'), 10) || 0; } catch (e) { /* nada */ }
+      if (esAppInstalada() || Date.now() - oculto < 7 * 86400000) return;   // si lo cerró, no insiste en 7 días
+      const b = document.getElementById('btnInstalarApp'); if (b) { b.classList.remove('hidden'); b.classList.add('flex'); }
+    });
+    window.addEventListener('appinstalled', () => { ocultarInstalarApp(true); try { mostrarToast('📲 ¡Listo! Ya tienes la app en tu celular'); } catch (e) { /* nada */ } });
+    async function instalarApp() {
+      if (!eventoInstalarApp) { alert('Para instalarla: abre el menú del navegador (⋮) y toca "Instalar aplicación" o "Agregar a la pantalla de inicio".'); return; }
+      eventoInstalarApp.prompt(); try { await eventoInstalarApp.userChoice; } catch (e) { /* nada */ } eventoInstalarApp = null; ocultarInstalarApp(false);
+    }
+    // 🏪 MODO TIENDA: la tienda sale de la dirección (nombre.epicstreaming.vip) o de ?tienda=nombre (para probar). ?tienda=0 vuelve a Epic.
+    var TIENDA_SLUG = (function () {
+      try {
+        const h = location.hostname.toLowerCase(), m = h.match(/^([a-z0-9-]{2,40})\.epicstreaming\.vip$/);
+        if (m && ['www', 'api', 'app', 'admin', 'panel'].indexOf(m[1]) === -1) return m[1];
+        const q = new URLSearchParams(location.search).get('tienda');
+        if (q !== null) { if (q === '0' || q === '') { sessionStorage.removeItem('tiendaSlug'); return ''; } const v = q.toLowerCase().replace(/[^a-z0-9-]/g, '').slice(0, 40); sessionStorage.setItem('tiendaSlug', v); return v; }
+        return sessionStorage.getItem('tiendaSlug') || '';
+      } catch (e) { return ''; }
+    })();
+    var tiendaActual = null, tiendaActualId = '';
+    function garantiaATipoTienda(txt) {
+      const t = String(txt || '').toLowerCase(); if (!t || /sin garant/.test(t)) return 'ninguna';
+      const m = t.match(/(\d+)\s*(hora|h\b|d[ií]a|mes|a[ñn]o)/); if (!m) return /24/.test(t) ? '24h' : '';
+      return m[1] + ({ hora: 'h', h: 'h', 'día': 'd', dia: 'd', mes: 'm', 'año': 'y', ano: 'y' }[m[2]] || 'd');
+    }
+    function aplicarMarcaTienda() {
+      const t = tiendaActual || {};
+      aparienciaConfig = { ...aparienciaConfig, titulo: t.nombre || 'Tienda', subtitulo: t.frase || 'Pide por WhatsApp · entrega rápida', logoUrl: t.logo || '', insignia: '24/7' };
+      try { renderizarApariencia(); } catch (e) { /* nada */ }
+      document.title = t.nombre || 'Tienda';
+      const pie = document.getElementById('txtPieMarca'); if (pie) pie.textContent = '© 2026 ' + (t.nombre || 'Tienda') + ' · Tienda creada con Epic Streaming';
+      const nl = document.querySelector('#navLogoContainer span.font-black'); if (nl) nl.textContent = String(t.nombre || 'Tienda').toUpperCase();
+      const ni = document.getElementById('navLogoImg'); if (ni && t.logo) { ni.src = t.logo; ni.classList.remove('hidden'); }
+      const wa = String(t.whatsapp || '').replace(/\D/g, ''), b = document.getElementById('btnFlotanteTiendaWa');
+      if (b) b.href = wa ? 'https://wa.me/' + (wa.length === 10 ? '57' + wa : wa) + '?text=' + encodeURIComponent('Hola 👋 vengo de tu tienda ' + (t.nombre || '')) : '#';
+      const vencida = (t.estado && t.estado !== 'activa') || (t.venceEl && Date.parse(t.venceEl) < Date.now());
+      const g = document.getElementById('gridProductos'); if (vencida && g) g.innerHTML = '<div class="col-span-full text-center py-16 text-gray-400"><p class="text-4xl mb-2">🏪</p><p class="font-black text-white">Esta tienda no está disponible por ahora.</p><p class="text-sm mt-1">Vuelve pronto.</p></div>';
+    }
+    async function iniciarModoTienda() {
+      document.body.classList.add('modo-tienda');
+      try {
+        const sd = await db.collection('slugs').doc(TIENDA_SLUG).get();
+        if (!sd.exists || !sd.data().tiendaId) { tiendaActual = { nombre: 'Tienda no encontrada', estado: 'no' }; aplicarMarcaTienda(); catalogoCargado = true; return; }
+        tiendaActualId = sd.data().tiendaId;
+        db.collection('tiendas').doc(tiendaActualId).onSnapshot(doc => { tiendaActual = doc.exists ? doc.data() : { estado: 'no' }; aplicarMarcaTienda(); });
+        db.collection('tiendas_productos').where('tiendaId', '==', tiendaActualId).onSnapshot(snap => {
+          snapshotInventario = {};
+          snap.forEach(d => { const x = d.data() || {}; if (x.activo === false || !x.nombre) return;
+            snapshotInventario[d.id] = { nombre: x.nombre, categoria: x.categoria || 'Varios', descripcion: x.descripcion || '', precio: Number(x.precio) || 0, minCompra: 1, activo: true, imagenUrl: x.imagenUrl || x.imagen || '',
+              stock: x.usaStock === false ? (x.disponible === false ? 0 : 999) : (Number(x.stock) || 0), tipoGarantia: garantiaATipoTienda(x.garantia) }; });
+          ajustesGeneralesConfig.mostrarStockClientes = false;   // la vitrina de una tienda muestra "Stock disponible", sin números
+          catalogoCargado = true; procesarYRenderizar(); try { aplicarMarcaTienda(); } catch (e) { /* nada */ }
+        }, err => { console.warn('Tienda: productos no disponibles', err); catalogoCargado = true; procesarYRenderizar(); });
+      } catch (e) { console.warn('Modo tienda:', e); catalogoCargado = true; }
+    }
+    // En modo tienda, "Comprar" arma el pedido y lo manda al WhatsApp del dueño
+    function pedidoTiendaWhatsApp(id, n) {
+      const p = catalogoUnificado.find(x => x.docId === id); if (!p) return;
+      const t = tiendaActual || {}, wa = String(t.whatsapp || '').replace(/\D/g, '');
+      if (!wa) { alert('Esta tienda aún no configuró su WhatsApp.'); return; }
+      const total = (Number(p.precio) || 0) * n, medios = t.pagos && t.pagos.medios ? '\n\nMedios de pago: ' + t.pagos.medios : '';
+      const txt = 'Hola 👋 quiero pedir:\n• ' + n + ' ' + p.nombre + ' · ' + formatoCOP(total) + '\n\n¿Cómo te pago?' + medios;
+      window.open('https://wa.me/' + (wa.length === 10 ? '57' + wa : wa) + '?text=' + encodeURIComponent(txt), '_blank');
+    }
     function procesarYRenderizar() {
       const mapaProds = new Map();
 
@@ -8695,6 +8787,7 @@
     }
 
     function usuarioTienePermisoProducto(prod) {
+      if (typeof TIENDA_SLUG !== 'undefined' && TIENDA_SLUG) return true;   // 🏪 en la vitrina de una tienda se ven todos sus productos
       if (!currentUser) return false;
       const userEmail = (currentUser.email || '').trim().toLowerCase();
       const esAdmin = ADMIN_EMAILS.some(e => e.trim().toLowerCase() === userEmail);
@@ -8817,7 +8910,7 @@
                 ${prod.promoPct ? `<span class="text-[11px] text-gray-500 line-through font-normal mr-1">$${(prod.precioLista || 0).toLocaleString('es-CO')}</span>` : ''}${esNf || marcaT || prod.promoPct ? '' : '<i class="fa-solid fa-tag mr-1"></i> '}<span id="precioUnit_${prod.docId}" class="${prod.promoPct && !esNf && !marcaT ? 'text-rose-300 text-sm font-black' : ''}">${formatoCOP(precioPorCantidad(prod, cantidadInicial))}</span> <span class="text-[10px] text-gray-400 font-normal">c/u</span>
               </div>
               ${htmlEscalasTarjeta(prod)}
-              ${esNf && tt('chipNetflix') !== '-' ? `<div class="mb-2"><span class="nf-chip"><i class="fa-solid fa-key"></i> ${ttH('chipNetflix')}</span></div>` : ''}
+              ${esNf && !TIENDA_SLUG && tt('chipNetflix') !== '-' ? `<div class="mb-2"><span class="nf-chip"><i class="fa-solid fa-key"></i> ${ttH('chipNetflix')}</span></div>` : ''}
               <p class="text-xs text-gray-400 mb-2 leading-relaxed">${prod.descripcion}</p>
               ${esComboT ? '' : htmlGarantiaTarjeta(prod)}${esComboT ? '' : htmlDuracionTarjeta(prod)}
               ${(!promoD && promoParaMi(prod.docId)) ? (() => { const pc = promoParaMi(prod.docId); return `<div class="mb-2.5 px-3 py-2 rounded-xl border border-pink-400/40 bg-gradient-to-r from-pink-500/15 to-violet-500/10"><p class="text-[11px] font-black text-pink-200">🎁 Promo: compra ${pc.compra || 10}, lleva ${pc.regalo || 1} gratis</p><p class="text-[10px] text-pink-100/70 mt-0.5">${pc.vence ? 'Válida ' + textoVencePromo(pc) : 'Por tiempo limitado'} · las compras del mismo día se suman.</p></div>`; })() : ''}
@@ -8876,6 +8969,7 @@
     }
 
     async function comprarProducto(docId, desdeMixto) {
+      if (typeof TIENDA_SLUG !== 'undefined' && TIENDA_SLUG) { const ci = document.getElementById('cant_' + docId); pedidoTiendaWhatsApp(docId, Math.max(1, parseInt(ci && ci.value, 10) || 1)); return; }   // 🏪 tienda: pedido por WhatsApp
       if (mantenimientoActivo()) { avisoMantenimiento(((catalogoUnificado || []).find(p => p.docId === docId) || {}).nombre); return; }
       if (!currentUser) { abrirModalAuth('login'); return; }
       if (modoPruebaCliente && ((catalogoUnificado.find(p => p.docId === docId) || {}).esCombo || !obtenerBackendUrl())) { comprarProductoSimulado(docId); return; }
@@ -15635,7 +15729,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-17r';
+    const VERSION_PAGINA = '2026-10-17x';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261010_wacompra', fecha: '2026-10-10', titulo: 'Compra por WhatsApp 💬', mensaje: 'Ahora puedes **comprar con tu saldo desde nuestro WhatsApp**. Ve a tu perfil → **Mis datos → Comprar por WhatsApp**, vincula tu chat con el código y pide la autorización.' },
       { id: 'act_20261010_vista2', fecha: '2026-10-10', titulo: 'Nueva vista de la tienda ▦', mensaje: 'Ahora puedes ver los productos **en 2 columnas**: más productos en tu pantalla, con las **promos resaltadas** (🔥 campaña, ⚡ relámpago, 🎁 regalo). Toca uno y se abre su ficha para comprar. Cambia de vista con los íconos ☰ / ▦ arriba de las categorías.' },
@@ -19213,8 +19307,8 @@
     var crId = '';
     function abrirCompraRapida(id, cantidadInicial) {
       const p = catalogoUnificado.find(x => x.docId === id); if (!p) return;
-      if (mantenimientoActivo()) { avisoMantenimiento((cantidadInicial ? cantidadInicial + ' ' : '') + p.nombre); return; }
-      if (!currentUser) { abrirModalAuth('login'); return; }
+      if (mantenimientoActivo() && !TIENDA_SLUG) { avisoMantenimiento((cantidadInicial ? cantidadInicial + ' ' : '') + p.nombre); return; }
+      if (!currentUser && !TIENDA_SLUG) { abrirModalAuth('login'); return; }   // en modo tienda se pide por WhatsApp, sin registro
       crId = id;
       let m = document.getElementById('modalCompraRapida');
       if (!m) {
@@ -19255,6 +19349,7 @@
     async function confirmarCompraRapida() {
       const id = crId, i = document.getElementById('crCant'); if (!id || !i) return;
       const n = parseInt(i.value, 10) || 1;
+      if (TIENDA_SLUG) { pedidoTiendaWhatsApp(id, n); cerrarCompraRapida(); return; }
       const limpiarCant = asegurarCampoCantidad(id, n);
       if (!limpiarCant) { alert('Este producto no está disponible ahora.'); return; }
       const b = document.getElementById('btnCompraRapida'); if (b) { b.disabled = true; b.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Comprando…'; }
@@ -20294,6 +20389,10 @@
 
     // ==================== NOVEDADES INTERNAS DEL PANEL (solo el equipo) ====================
     const ACTUALIZACIONES_INTERNAS = [
+      { fecha: '2026-10-17', titulo: '🤖 USDT por WhatsApp, automático', mensaje: 'Los pedidos en USDT por WhatsApp ya se cobran solos: el bot da un valor con centavos únicos para pagar por Binance Pay, y cuando llega el correo verificado de Binance con ese monto se acredita sin que apruebes nada; con "listo" el cliente recibe sus cuentas. Cada pedido en USDT suma $200 de comisión a tu favor. Si paga otro valor, te llega a Telegram con los botones. Requiere tener activa la recarga automática por Binance.', ir: 'recargas' },
+      { fecha: '2026-10-17', titulo: '🌎 Clientes de otros países: todo en USDT', mensaje: 'Si el número de WhatsApp no es de Colombia, el bot muestra todos los precios directamente en USDT (a la tasa del día, redondeados a tu favor) y, al confirmar, lo lleva al pago por Binance con tu Pay ID y el enlace para subir el pantallazo. Ya no le ofrece Bre-B.', ir: 'whatsapp' },
+      { fecha: '2026-10-17', titulo: '📲 La página ya es una app', mensaje: 'Tu página se puede instalar como app en el celular: al entrar desde Chrome sale el botón "Instalar app" (o en el menú ⋮ → Instalar aplicación). Queda con el ícono de Epic Streaming y se abre a pantalla completa. Siempre carga la versión más nueva de la página. Sube a GitHub también manifest.webmanifest, sw.js y la carpeta icons.', ir: '' },
+      { fecha: '2026-10-17', titulo: '🏪 Tiendas: la vitrina usa tu misma página', mensaje: 'Fase 1A del plan de tiendas: tu página tiene un modo tienda. Con la dirección nombre.epicstreaming.vip (cuando esté Cloudflare) o, para probar ya, epicstreaming.vip/?tienda=nombre, muestra la marca de esa tienda (nombre, frase, logo) y solo sus productos, con tus mismas tarjetas, buscador, categorías y ventana de compra. Comprar manda el pedido al WhatsApp del dueño con sus medios de pago. Se ocultan saldo, recargas, panel, bot y Netflix. ?tienda=0 vuelve a Epic.', ir: 'tiendas' },
       { fecha: '2026-10-17', titulo: '📦 Cargar stock: "ok" ya no es contraseña', mensaje: 'Al pegar cuentas, palabras que el proveedor agrega para marcar (ok, on, listo, ✅, verificada, "Prime:"…) ya no se toman como contraseña de la plataforma. Por eso una entrega de Prime Local dijo "Contraseña de Prime Video: ok". Las cuentas que ya estaban cargadas con "ok" conviene revisarlas en Stock.', ir: 'stock' },
       { fecha: '2026-10-17', titulo: '🔄 Ajustes privados visibles', mensaje: 'La contraseña máster, el token y el chat de Telegram ahora se ven en Ajustes Generales con lo que realmente está guardado. Antes el formulario se llenaba antes de que llegaran y se veían vacíos (por eso la contraseña máster parecía vacía aunque estaba guardada como "ok").', ir: 'ajustes' },
       { fecha: '2026-10-17', titulo: '🔑 "¿Cuál es la contraseña?"', mensaje: 'Si un cliente pregunta cuál es la contraseña de sus cuentas (sin decir que no le funciona), el bot se la responde con la de su última compra, en vez de abrir un reporte de "Contraseña incorrecta". Si dice que no le sirve, sigue siendo un reporte. Revisa que la Clave de Amazon en Ajustes sea la real.', ir: 'whatsapp' },
@@ -23510,7 +23609,7 @@
       return { cuentas: legado, stock: legado.length || stockPublico };
     }
 
-    const VERSION_SERVIDOR_NECESARIA = '2026-10-17l';   // la versión del servidor que necesita esta página
+    const VERSION_SERVIDOR_NECESARIA = '2026-10-17n';   // la versión del servidor que necesita esta página
     async function llamarBackend(accion, datos) {
       if (mantenimientoActivo() && /^(comprar|recarga|renovar|carrito|preorden|combo)/.test(String(accion || ''))) { avisoMantenimiento(''); throw new Error('Estamos en mantenimiento. Compra por WhatsApp mientras tanto.'); }
       if (modoPruebaCliente) { const rs = backendSimulado(accion, datos || {}); if (rs) return rs; }
