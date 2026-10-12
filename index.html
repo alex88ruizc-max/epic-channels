@@ -15634,7 +15634,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-17h';
+    const VERSION_PAGINA = '2026-10-17j';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261010_wacompra', fecha: '2026-10-10', titulo: 'Compra por WhatsApp 💬', mensaje: 'Ahora puedes **comprar con tu saldo desde nuestro WhatsApp**. Ve a tu perfil → **Mis datos → Comprar por WhatsApp**, vincula tu chat con el código y pide la autorización.' },
       { id: 'act_20261010_vista2', fecha: '2026-10-10', titulo: 'Nueva vista de la tienda ▦', mensaje: 'Ahora puedes ver los productos **en 2 columnas**: más productos en tu pantalla, con las **promos resaltadas** (🔥 campaña, ⚡ relámpago, 🎁 regalo). Toca uno y se abre su ficha para comprar. Cambia de vista con los íconos ☰ / ▦ arriba de las categorías.' },
@@ -20293,6 +20293,8 @@
 
     // ==================== NOVEDADES INTERNAS DEL PANEL (solo el equipo) ====================
     const ACTUALIZACIONES_INTERNAS = [
+      { fecha: '2026-10-17', titulo: '🛡 Aviso: la garantía vence en 2 días', mensaje: 'Cada día a las 10 a. m., si a una compra le quedan 2 días de garantía (solo garantías de 7 días o más), el cliente recibe el aviso por Telegram (si conectó el bot) y por WhatsApp a través de la cola de MacroDroid, y a ti te llega un resumen. No repite el aviso de una misma compra.', ir: 'whatsapp' },
+      { fecha: '2026-10-17', titulo: '📸 Estados automáticos', mensaje: 'El servidor elige qué publicar (&macro=estado: Prime primero y rota con los demás que tengan stock) y entrega el texto con el enlace directo. La página epicstreaming.vip/#estado-auto/<producto> crea la imagen y la descarga sola (con sesión de administrador). Así el celular servidor publica estados sin que nadie lo toque.', ir: 'marketing' },
       { fecha: '2026-10-17', titulo: '🤖 Puertas para MacroDroid', mensaje: 'El servidor tiene dos enlaces nuevos para el celular servidor (con la misma clave del bot): &macro=siguiente entrega un cliente de la lista de seguimiento por vez (número, mensaje y enlace de WhatsApp), y &macro=pausar&chat=NOMBRE pausa el bot 2 horas en ese chat.', ir: 'whatsapp' },
       { fecha: '2026-10-17', titulo: '🔒 El bot no habla de tu negocio', mensaje: 'Si un cliente pregunta cuántas ventas llevas, cuánto ganas, quiénes son tus clientes, a cómo compras o quién es tu proveedor, el bot responde "Eso es información interna del negocio 🙏" y le ofrece lo que tienes (Prime 5 x $…). Antes no revelaba nada, pero respondía cosas sin sentido.', ir: 'whatsapp' },
       { fecha: '2026-10-17', titulo: '💳 Varios pagos parecidos / pagó otra persona', mensaje: 'Si hay varios pagos parecidos sin dueño, Telegram te los muestra todos (hasta 3), cada uno con su botón, y primero el que coincide con el nombre del cliente. Si ninguno coincide, el bot le pregunta al cliente a nombre de quién salió el pago (ej. "lo pagó mi esposa María") y te lo pasa para que elijas. Un pago nunca se acredita dos veces.', ir: 'recargas' },
@@ -22312,7 +22314,8 @@
     var accionEnlace = (function () {
       try {
         const h = String(location.hash || ''), m = h.match(/^#\/?(p|producto)\/([A-Za-z0-9_-]{2,60})/i), r = /^#\/?recargar\/?$/i.test(h), g = /^#\/?(registro|registrarme|crear-cuenta)\/?$/i.test(h);
-        const a = m ? { tipo: 'producto', id: decodeURIComponent(m[2]) } : (r ? { tipo: 'recargar' } : (g ? { tipo: 'registro' } : null));
+        const ea = h.match(/^#\/?estado-auto\/([A-Za-z0-9_-]{2,60})(?:\/(premium|clasico))?/i);   // 🤖 celular servidor: crea y descarga la imagen sola
+        const a = ea ? { tipo: 'estado-auto', id: decodeURIComponent(ea[1]), diseno: (ea[2] || '').toLowerCase() } : (m ? { tipo: 'producto', id: decodeURIComponent(m[2]) } : (r ? { tipo: 'recargar' } : (g ? { tipo: 'registro' } : null)));
         if (a) { sessionStorage.setItem('accionEnlace', JSON.stringify(a)); history.replaceState(null, '', location.pathname + location.search + '#tienda'); return a; }
         return JSON.parse(sessionStorage.getItem('accionEnlace') || 'null');
       } catch (e) { return null; }
@@ -22324,6 +22327,14 @@
       if (a.tipo === 'registro') { if (currentUser) return fin(); if (accionEnlaceVueltas > 1) { try { abrirModalAuth('registro'); } catch (e) { /* nada */ } return fin(); } return false; }
       if (!currentUser) { if (!accionEnlacePidioLogin && accionEnlaceVueltas > 2) { accionEnlacePidioLogin = true; try { abrirModalAuth('login'); mostrarToast(a.tipo === 'recargar' ? 'Inicia sesión para recargar' : 'Inicia sesión para comprar'); } catch (e) { /* nada */ } } return false; }
       if (a.tipo === 'recargar') { try { cambiarVista('tienda'); abrirModalRecarga(); } catch (e) { /* nada */ } return fin(); }
+      if (a.tipo === 'estado-auto') {   // 🤖 imagen del producto para el estado: se crea y se descarga sola (la publica MacroDroid)
+        if (!catalogoCargado) return false;
+        if (!esStaffSesion()) { mostrarToast('Abre esta página con la sesión de administrador'); return fin(); }
+        const p = catalogoUnificado.find(x => x.docId === a.id || String(x.docId).toLowerCase() === String(a.id).toLowerCase());
+        if (!p) { mostrarToast('Ese producto ya no está disponible'); return fin(); }
+        try { if (a.diseno) promoImgDiseno = a.diseno === 'clasico' ? 'clasico' : 'premium'; abrirImagenPromo(p.docId); setTimeout(() => { try { descargarImagenPromo(); mostrarToast('🤖 Imagen descargada para el estado'); } catch (e) { /* nada */ } }, 4000); } catch (e) { /* nada */ }
+        return fin();
+      }
       if (a.tipo === 'producto') {
         if (!catalogoCargado) return false;
         const p = catalogoUnificado.find(x => x.docId === a.id || String(x.docId).toLowerCase() === String(a.id).toLowerCase());
@@ -23494,7 +23505,7 @@
       return { cuentas: legado, stock: legado.length || stockPublico };
     }
 
-    const VERSION_SERVIDOR_NECESARIA = '2026-10-17e';   // la versión del servidor que necesita esta página
+    const VERSION_SERVIDOR_NECESARIA = '2026-10-17g';   // la versión del servidor que necesita esta página
     async function llamarBackend(accion, datos) {
       if (mantenimientoActivo() && /^(comprar|recarga|renovar|carrito|preorden|combo)/.test(String(accion || ''))) { avisoMantenimiento(''); throw new Error('Estamos en mantenimiento. Compra por WhatsApp mientras tanto.'); }
       if (modoPruebaCliente) { const rs = backendSimulado(accion, datos || {}); if (rs) return rs; }
