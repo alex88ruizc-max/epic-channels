@@ -1789,6 +1789,22 @@
           <div class="flex flex-wrap gap-1.5" id="mkTiposImagen"></div>
           <select id="mkProducto" onchange="dibujarMarketing()" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none"></select>
           <div id="mkNovedadEditor" class="hidden space-y-2">
+            <div class="p-2.5 rounded-xl bg-sky-500/10 border border-sky-400/40">
+              <div class="flex items-center gap-2"><p class="text-[11px] font-black text-sky-200 flex-1">🎬 Estados con lo que está en cada plataforma</p><button type="button" onclick="sugerirPrimeTmdb(false)" class="px-3 py-1.5 rounded-lg bg-sky-500 text-black font-black text-[11px]">Sugerencias</button></div>
+              <select id="mkPlatSel" onchange="cambiarPlataformaMk()" class="mt-2 w-full bg-gray-800 border border-gray-700 rounded-lg px-2.5 py-2 text-[11px] text-white focus:outline-none" aria-label="Plataforma"></select>
+              <p class="text-[10px] text-gray-400 mt-1">Lo más popular hoy en esa plataforma en Colombia (TMDB). Marca hasta 4 y se arma el estado con el enlace directo de ese producto.</p>
+              <div id="mkPrimeLista" class="mt-2 space-y-1.5 max-h-64 overflow-y-auto"></div>
+              <div id="mkPrimeAcciones" class="hidden mt-2 space-y-2">
+                <div class="flex items-center gap-2 flex-wrap text-[11px]"><span class="text-gray-400">Diseño:</span>
+                  <label class="flex items-center gap-1 text-gray-200"><input type="radio" name="mkPrimeModo" value="lista" checked class="accent-sky-500"> Lista (un estado)</label>
+                  <label class="flex items-center gap-1 text-gray-200"><input type="radio" name="mkPrimeModo" value="titulo" class="accent-sky-500"> Uno por título</label></div>
+                <button type="button" onclick="crearCarteleraPrime()" class="w-full py-2.5 rounded-xl bg-gradient-to-r from-sky-500 to-emerald-400 text-black font-black text-sm">🎬 Crear imágenes de cartelera</button>
+                <div id="mkPrimeVista" class="grid grid-cols-2 sm:grid-cols-3 gap-2"></div>
+              </div>
+              <details class="mt-2"><summary class="text-[10px] text-gray-400 cursor-pointer">🔑 Clave de TMDB</summary>
+                <div class="flex gap-1.5 mt-1.5"><input type="password" id="mkTmdbKey" autocomplete="off" placeholder="API key o token de lectura de TMDB" class="flex-1 bg-gray-800 border border-gray-700 rounded-lg px-2.5 py-1.5 text-[11px] text-white focus:outline-none"><button type="button" onclick="guardarClaveTmdb()" class="px-3 rounded-lg bg-sky-600 text-white font-bold text-[11px]">Guardar</button></div>
+                <p id="mkTmdbEstado" class="text-[10px] text-gray-500 mt-1">Gratis: crea tu cuenta en themoviedb.org → Ajustes → API → copia la "Clave de la API".</p></details>
+            </div>
             <select id="mkNovSel" onchange="cargarNovedadMk(this.value)" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none" aria-label="Novedad"></select>
             <div class="grid grid-cols-[70px_1fr] gap-2"><label class="text-[10px] text-gray-400">Emoji<input id="mkNovEmoji" oninput="mkNov.emoji=this.value;dibujarMarketing()" class="mt-1 w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none text-center text-base"></label><label class="text-[10px] text-gray-400">Título<input id="mkNovTitulo" oninput="mkNov.titulo=this.value;dibujarMarketing()" class="mt-1 w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"></label></div>
             <label class="block text-[10px] text-gray-400">Mensaje (lo que escribas entre **así** sale resaltado)<textarea id="mkNovMensaje" rows="4" oninput="mkNov.mensaje=this.value;dibujarMarketing()" class="mt-1 w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"></textarea></label>
@@ -15729,7 +15745,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-17x';
+    const VERSION_PAGINA = '2026-10-18b';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261010_wacompra', fecha: '2026-10-10', titulo: 'Compra por WhatsApp 💬', mensaje: 'Ahora puedes **comprar con tu saldo desde nuestro WhatsApp**. Ve a tu perfil → **Mis datos → Comprar por WhatsApp**, vincula tu chat con el código y pide la autorización.' },
       { id: 'act_20261010_vista2', fecha: '2026-10-10', titulo: 'Nueva vista de la tienda ▦', mensaje: 'Ahora puedes ver los productos **en 2 columnas**: más productos en tu pantalla, con las **promos resaltadas** (🔥 campaña, ⚡ relámpago, 🎁 regalo). Toca uno y se abre su ficha para comprar. Cambia de vista con los íconos ☰ / ▦ arriba de las categorías.' },
@@ -20316,6 +20332,120 @@
     const COLORES_NOV = { turquesa: ['#2dd4bf', '#0d4a45', '#5eead4'], verde: ['#34d399', '#064e3b', '#6ee7b7'], dorado: ['#f5c542', '#4a3606', '#fcd34d'], violeta: ['#a78bfa', '#2e1065', '#c4b5fd'], rosa: ['#fb7185', '#4c0519', '#fda4af'] };
     var mkNov = { id: '', emoji: '📣', titulo: '', mensaje: '', color: 'turquesa', fecha: '' };
     function separarEmojiTitulo(t) { const m = String(t || '').match(/^(.*?)\s*([\p{Extended_Pictographic}\uFE0F\u200D]+)\s*$/u); return m ? { titulo: m[1].trim(), emoji: m[2] } : { titulo: String(t || '').trim(), emoji: '📣' }; }
+    // 🎬 Plataformas (TMDB): sugerencias para estados. Cada una se liga al producto tuyo que la vende.
+    var mkPrimeOpc = [], mkPrimeSel = [];
+    const MK_PLATAFORMAS = [
+      { id: 119, nombre: 'Prime Video', pill: 'prime video', color: '#00a8e1', re: /prime\s*video|amazon/i, no: /local|free/i },
+      { id: 8, nombre: 'Netflix', pill: 'NETFLIX', color: '#e50914', re: /netflix/i },
+      { id: 337, nombre: 'Disney+', pill: 'Disney+', color: '#113ccf', re: /disney/i },
+      { id: 1899, nombre: 'Max', pill: 'max', color: '#5a2d82', re: /\bmax\b|hbo/i },
+      { id: 531, nombre: 'Paramount+', pill: 'Paramount+', color: '#0064ff', re: /paramount/i },
+      { id: 350, nombre: 'Apple TV+', pill: 'Apple TV+', color: '#444', re: /apple\s*tv/i },
+      { id: 283, nombre: 'Crunchyroll', pill: 'crunchyroll', color: '#f47521', re: /crunchy/i }
+    ];
+    function plataformasDisponiblesMk() {
+      return MK_PLATAFORMAS.map(pl => { const prod = catalogoUnificado.filter(p => p.activo !== false && Number(p.precio) > 0 && pl.re.test(p.nombre) && !(pl.no && pl.no.test(p.nombre))).sort((a, b) => (b.stock || 0) - (a.stock || 0))[0]; return prod ? Object.assign({}, pl, { prod }) : null; }).filter(Boolean);
+    }
+    function plataformaMk() { const sel = document.getElementById('mkPlatSel'), L = plataformasDisponiblesMk(); return L.find(x => String(x.id) === String(sel && sel.value)) || L[0] || Object.assign({}, MK_PLATAFORMAS[0], { prod: null }); }
+    function pintarPlataformasMk() {
+      const sel = document.getElementById('mkPlatSel'); if (!sel) return; const L = plataformasDisponiblesMk(), act = sel.value;
+      sel.innerHTML = L.length ? L.map(x => `<option value="${x.id}">${escaparHtml(x.nombre)} · ${escaparHtml(x.prod.nombre)}</option>`).join('') : '<option value="119">Prime Video (no tienes producto de streaming con precio)</option>';
+      if (act && L.some(x => String(x.id) === act)) sel.value = act;
+    }
+    function cambiarPlataformaMk() { mkPrimeOpc = []; mkPrimeSel = []; pintarPrimeTmdb(); const ac = document.getElementById('mkPrimeAcciones'); if (ac) ac.classList.add('hidden'); const v = document.getElementById('mkPrimeVista'); if (v) v.innerHTML = ''; sugerirPrimeTmdb(false); }
+    async function guardarClaveTmdb() {
+      const v = String((document.getElementById('mkTmdbKey') || {}).value || '').trim(), est = document.getElementById('mkTmdbEstado');
+      if (v && v.length < 20) { alert('Esa clave parece incompleta. Cópiala completa desde themoviedb.org → Ajustes → API.'); return; }
+      try { await db.collection('secretos').doc('ajustes').set({ tmdbKey: v }, { merge: true }); document.getElementById('mkTmdbKey').value = ''; if (est) est.textContent = v ? '✓ Clave guardada (oculta).' : 'Clave borrada.'; mostrarToast(v ? '🎬 Clave de TMDB guardada' : 'Clave borrada'); if (v) sugerirPrimeTmdb(true); }
+      catch (e) { alert(e.message); }
+    }
+    async function sugerirPrimeTmdb(refrescar) {
+      const l = document.getElementById('mkPrimeLista'); if (!l) return;
+      l.innerHTML = '<p class="text-[11px] text-gray-400"><i class="fa-solid fa-spinner fa-spin"></i> Buscando…</p>';
+      try {
+        pintarPlataformasMk(); const plQ = plataformaMk();
+        const r = await llamarBackend('mk_prime_tmdb', { refrescar: !!refrescar, proveedor: plQ.id });
+        if (!r || !r.ok) { l.innerHTML = '<p class="text-[11px] text-amber-300">' + escaparHtml((r && r.error) || 'No se pudo consultar.') + '</p>'; return; }
+        const se = (r.series || []).slice(0, 6), pe = (r.peliculas || []).slice(0, 6); mkPrimeOpc = []; mkPrimeSel = [];
+        for (let i = 0; i < Math.max(se.length, pe.length); i++) { if (se[i]) mkPrimeOpc.push(se[i]); if (pe[i]) mkPrimeOpc.push(pe[i]); }   // series y películas intercaladas
+        pintarPrimeTmdb();
+      } catch (e) { l.innerHTML = '<p class="text-[11px] text-amber-300">' + escaparHtml(e.message || 'Error') + '</p>'; }
+    }
+    function pintarPrimeTmdb() {
+      const l = document.getElementById('mkPrimeLista'); if (!l) return;
+      l.innerHTML = mkPrimeOpc.length ? mkPrimeOpc.map((x, i) => `<label class="flex items-start gap-2 p-1.5 rounded-lg ${mkPrimeSel.includes(i) ? 'bg-sky-500/15' : ''}"><input type="checkbox" ${mkPrimeSel.includes(i) ? 'checked' : ''} onchange="marcarPrimeTmdb(${i}, this.checked)" class="mt-0.5 accent-sky-500 w-4 h-4 shrink-0"><span class="text-[11px] text-gray-200"><b class="text-white">${escaparHtml(x.titulo)}</b> <span class="text-gray-500">· ${x.tipo}${x.anio ? ' ' + x.anio : ''}</span>${x.resumen ? `<span class="block text-[10px] text-gray-500 line-clamp-2">${escaparHtml(x.resumen)}</span>` : ''}</span></label>`).join('') : '<p class="text-[11px] text-gray-400">Sin resultados por ahora.</p>';
+    }
+    function marcarPrimeTmdb(i, on) {
+      mkPrimeSel = mkPrimeSel.filter(x => x !== i);
+      if (on) { if (mkPrimeSel.length >= 4) { alert('Máximo 4 títulos para que se lean bien en el estado.'); pintarPrimeTmdb(); return; } mkPrimeSel.push(i); }
+      pintarPrimeTmdb(); aplicarPrimeANovedad();
+      const ac = document.getElementById('mkPrimeAcciones'); if (ac) ac.classList.toggle('hidden', !mkPrimeSel.length);
+    }
+    // 🎬 Cartelera: imagen 9:16 con los títulos (sin carátulas), tu logo, tu precio de Prime y el enlace directo
+    function primeProductoMk() { return plataformaMk().prod || null; }
+    function lienzoCarteleraPrime(items, modo) {
+      const W = 1080, H = 1920, c = document.createElement('canvas'); c.width = W; c.height = H; const x = c.getContext('2d'), F = 'system-ui, -apple-system, "Segoe UI", Roboto, sans-serif';
+      const pl = plataformaMk(), AZ = pl.color || '#00a8e1', ORO = '#f5c542', VER = '#10b981', PILL = pl.pill || pl.nombre;
+      const lg = x.createLinearGradient(0, 0, 0, H); lg.addColorStop(0, '#06090f'); lg.addColorStop(1, '#101a36'); x.fillStyle = lg; x.fillRect(0, 0, W, H);
+      x.fillStyle = '#0e1220'; for (let i = 0; i < W; i += 90) { x.fillRect(i, 0, 45, 70); x.fillRect(i, H - 70, 45, 70); }
+      x.fillStyle = AZ; x.fillRect(0, 70, W, 8); x.fillRect(0, H - 78, W, 8);
+      const envolver = (t, font, maxw) => { x.font = font; const out = []; let l = ''; String(t || '').split(/\s+/).forEach(w => { const tt = (l + ' ' + w).trim(); if (x.measureText(tt).width <= maxw) l = tt; else { if (l) out.push(l); l = w; } }); if (l) out.push(l); return out; };
+      const pill = (tx, px, py, bg, fg, font, pad) => { x.font = font; const w = x.measureText(tx).width + pad * 2, h = parseInt(font.match(/(\d+)px/)[1], 10) + pad; x.fillStyle = bg; x.beginPath(); x.roundRect(px, py, w, h, 18); x.fill(); x.fillStyle = fg; x.textBaseline = 'middle'; x.fillText(tx, px + pad, py + h / 2 + 2); x.textBaseline = 'alphabetic'; return w; };
+      // logo + marca
+      let y = 120; x.textAlign = 'left';
+      if (mkLogoImg && mkLogoListo) { const r = 46; x.save(); x.beginPath(); x.arc(70 + r, y + r, r, 0, Math.PI * 2); x.clip(); x.drawImage(mkLogoImg, 70, y, r * 2, r * 2); x.restore(); x.strokeStyle = ORO; x.lineWidth = 5; x.beginPath(); x.arc(70 + r, y + r, r, 0, Math.PI * 2); x.stroke(); x.fillStyle = '#fff'; x.font = `900 40px ${F}`; x.fillText(nombreTienda().toUpperCase(), 70 + r * 2 + 24, y + r + 14); }
+      else { x.fillStyle = ORO; x.font = `900 44px ${F}`; x.fillText(nombreTienda().toUpperCase(), 70, y + 50); }
+      y = 230;
+      const prime = primeProductoMk(), precioTxt = prime ? String(prime.nombre).replace(/\s*\(.*?\)\s*/g, ' ').trim().slice(0, 22) + ' ' + (prime.minCompra || 1) + ' x ' + formatoCOP(Number(prime.precio) * (prime.minCompra || 1)) : '', link = prime ? enlaceProducto(prime.docId) : dominioActual().replace(/^https?:\/\/(www\.)?/, '');
+      if (modo === 'titulo') {
+        const it = items[0];
+        x.fillStyle = '#c8d2e6'; x.font = `800 46px ${F}`; x.fillText('DISPONIBLE AHORA EN', 70, y + 40);
+        pill(PILL, 70, y + 70, AZ, '#fff', `900 46px ${F}`, 22);
+        x.fillStyle = ORO; x.fillRect(70, y + 170, W - 140, 8);
+        let yy = y + 250; const palabras = String(it.titulo || '').toUpperCase().split(/\s+/);
+        let lineasT = envolver(palabras.join(' '), `900 150px ${F}`, W - 140); let tam = 150;
+        while (lineasT.length > 3 && tam > 80) { tam -= 10; lineasT = envolver(palabras.join(' '), `900 ${tam}px ${F}`, W - 140); }
+        x.fillStyle = '#fff'; x.font = `900 ${tam}px ${F}`; lineasT.forEach(l => { x.fillText(l, 70, yy + tam * 0.85); yy += tam * 1.02; });
+        x.fillStyle = (pl.id === 8 ? '#ff6b6b' : pl.id === 350 ? '#ddd' : '#00c8ff'); x.font = `800 44px ${F}`; x.fillText(String(it.tipo || '').toUpperCase() + (it.anio ? ' · ' + it.anio : ''), 70, yy + 60); yy += 110;
+        x.fillStyle = '#bec8dc'; envolver(it.resumen || '', `400 46px ${F}`, W - 140).slice(0, 4).forEach(l => { x.font = `400 46px ${F}`; x.fillText(l, 70, yy + 46); yy += 62; });
+      } else {
+        x.fillStyle = '#c8d2e6'; x.font = `800 50px ${F}`; x.fillText('ESTA SEMANA EN', 70, y + 40);
+        pill(PILL, 70, y + 70, AZ, '#fff', `900 58px ${F}`, 26);
+        let yy = y + 200; const n = Math.min(items.length, 4), alto = n <= 3 ? 300 : 230, gap = n <= 3 ? 40 : 24;
+        items.slice(0, 4).forEach(it => {
+          x.fillStyle = '#111827'; x.beginPath(); x.roundRect(70, yy, W - 140, alto, 28); x.fill(); x.strokeStyle = AZ; x.lineWidth = 3; x.stroke();
+          x.fillStyle = ORO; x.fillRect(70, yy + 10, 18, alto - 20);
+          x.fillStyle = '#fff'; let tam = n <= 3 ? 70 : 56; x.font = `900 ${tam}px ${F}`; let tt = String(it.titulo || '').toUpperCase(); while (x.measureText(tt).width > W - 260 && tam > 34) { tam -= 4; x.font = `900 ${tam}px ${F}`; }
+          x.fillText(tt, 120, yy + tam + 24);
+          x.fillStyle = (pl.id === 8 ? '#ff6b6b' : pl.id === 350 ? '#ddd' : '#00c8ff'); x.font = `800 30px ${F}`; x.fillText(String(it.tipo || '').toUpperCase() + (it.anio ? ' · ' + it.anio : ''), 120, yy + tam + 72);
+          if (n <= 3) { x.fillStyle = '#aab4c8'; envolver(it.resumen || '', `400 34px ${F}`, W - 260).slice(0, 2).forEach((l, i) => { x.font = `400 34px ${F}`; x.fillText(l, 120, yy + tam + 125 + i * 44); }); }
+          yy += alto + gap;
+        });
+      }
+      // precio + enlace
+      if (precioTxt) { x.fillStyle = VER; x.beginPath(); x.roundRect(70, H - 420, W - 140, 120, 30); x.fill(); x.fillStyle = '#000'; let tp = 60; x.font = `900 ${tp}px ${F}`; while (x.measureText(precioTxt).width > W - 220 && tp > 30) { tp -= 3; x.font = `900 ${tp}px ${F}`; } x.fillText(precioTxt, 110, H - 360 + tp / 3); }
+      x.fillStyle = '#000'; x.beginPath(); x.roundRect(70, H - 270, W - 140, 90, 24); x.fill(); x.fillStyle = ORO; x.font = `800 38px ${F}`; x.fillText('Pídelo: ' + link, 110, H - 212);
+      return c;
+    }
+    async function crearCarteleraPrime() {
+      const el = mkPrimeSel.map(i => mkPrimeOpc[i]).filter(Boolean); if (!el.length) { alert('Marca al menos un título.'); return; }
+      const modo = (document.querySelector('input[name=mkPrimeModo]:checked') || {}).value || 'lista', v = document.getElementById('mkPrimeVista'); if (!v) return;
+      const lienzos = modo === 'titulo' ? el.map(it => lienzoCarteleraPrime([it], 'titulo')) : [lienzoCarteleraPrime(el, 'lista')];
+      v.innerHTML = lienzos.map((c, i) => `<div class="rounded-xl overflow-hidden border border-gray-700 bg-gray-900"><img src="${c.toDataURL('image/jpeg', 0.92)}" alt="" class="w-full"><a download="estado-${plataformaMk().nombre.toLowerCase().replace(/[^a-z0-9]+/g, '')}-${i + 1}.jpg" href="${c.toDataURL('image/jpeg', 0.92)}" class="block text-center text-[11px] font-bold text-sky-200 py-1.5">⬇️ Descargar</a></div>`).join('');
+      const prime = primeProductoMk(), link = prime ? enlaceProducto(prime.docId) : dominioActual().replace(/^https?:\/\/(www\.)?/, '');
+      const plT = plataformaMk(), texto = '🎬 Esta semana en ' + plT.nombre + ':\n' + el.map(it => '• ' + it.titulo + ' (' + it.tipo + ')').join('\n') + '\n\n🍿 ¿Aún no tienes ' + plT.nombre + '? Pídelo 👉 ' + link;
+      try { await navigator.clipboard.writeText(texto); mostrarToast(lienzos.length + (lienzos.length === 1 ? ' imagen lista' : ' imágenes listas') + ' · texto copiado para el estado'); } catch (e) { mostrarToast('Imágenes listas'); }
+    }
+    function aplicarPrimeANovedad() {
+      const el = mkPrimeSel.map(i => mkPrimeOpc[i]).filter(Boolean); if (!el.length) return;
+      const pl = plataformaMk(), prime = pl.prod;
+      const link = prime ? enlaceProducto(prime.docId) : dominioActual().replace(/^https?:\/\/(www\.)?/, '');
+      mkNov.emoji = '🎬'; mkNov.titulo = 'Esta semana en ' + pl.nombre;
+      mkNov.mensaje = el.map(x => '**' + x.titulo + '** · ' + x.tipo).join('\n') + '\n\n🍿 ¿Aún no tienes ' + pl.nombre + '? Pídelo 👉 ' + link;
+      const set = (id, v) => { const e = document.getElementById(id); if (e) e.value = v; };
+      set('mkNovEmoji', mkNov.emoji); set('mkNovTitulo', mkNov.titulo); set('mkNovMensaje', mkNov.mensaje);
+      try { dibujarMarketing(); } catch (e) { /* nada */ }
+    }
     function cargarNovedadMk(id) {
       const a = ACTUALIZACIONES_PAGINA.find(x => x.id === id) || ACTUALIZACIONES_PAGINA[0]; if (!a) return;
       const t = separarEmojiTitulo(a.titulo);
@@ -20389,6 +20519,10 @@
 
     // ==================== NOVEDADES INTERNAS DEL PANEL (solo el equipo) ====================
     const ACTUALIZACIONES_INTERNAS = [
+      { fecha: '2026-10-18', titulo: '🎬 Cartelera para todas tus plataformas', mensaje: 'El recuadro de estados con lo que está en cada plataforma ya funciona con Netflix, Disney+, Max, Paramount+, Apple TV+ y Crunchyroll, además de Prime Video. Elige la plataforma (sale cada producto tuyo que la vende), marca los títulos y crea la cartelera con el color de la marca, tu precio y el enlace directo de ese producto.', ir: 'marketing' },
+      { fecha: '2026-10-18', titulo: '🎬 Cartelera de Prime Video para estados', mensaje: 'En Marketing → Novedad → recuadro de Prime Video: marca los títulos y toca "Crear imágenes de cartelera". Diseño "Lista" (un estado con hasta 4 títulos y su gancho) o "Uno por título" (un estado por cada uno, con el nombre en letras grandes). Llevan tu logo, tu precio de Prime y el enlace directo. El texto del estado queda copiado.', ir: 'marketing' },
+      { fecha: '2026-10-17', titulo: '🎬 Estados con lo que está en Prime Video', mensaje: 'En Marketing → Imágenes para estados → Novedad, el botón "Sugerencias" trae lo más popular hoy en Prime Video Colombia (series y películas, de TMDB). Marca hasta 4 y se arma la novedad: "🎬 Esta semana en Prime Video", la lista y tu enlace directo de Prime. Primero pon tu clave gratis de TMDB en 🔑.', ir: 'marketing' },
+      { fecha: '2026-10-17', titulo: '💵 "Pago con USDT" en cualquier momento', mensaje: 'Si un cliente (también colombiano) dice que paga con USDT, Binance, dólares o cripto con un pedido en curso —después de la oferta o incluso cuando ya tenía los datos de Bre-B—, el bot pasa ese mismo pedido a USDT (con la comisión de $200) y le da el pago automático por Binance Pay.', ir: 'whatsapp' },
       { fecha: '2026-10-17', titulo: '🤖 USDT por WhatsApp, automático', mensaje: 'Los pedidos en USDT por WhatsApp ya se cobran solos: el bot da un valor con centavos únicos para pagar por Binance Pay, y cuando llega el correo verificado de Binance con ese monto se acredita sin que apruebes nada; con "listo" el cliente recibe sus cuentas. Cada pedido en USDT suma $200 de comisión a tu favor. Si paga otro valor, te llega a Telegram con los botones. Requiere tener activa la recarga automática por Binance.', ir: 'recargas' },
       { fecha: '2026-10-17', titulo: '🌎 Clientes de otros países: todo en USDT', mensaje: 'Si el número de WhatsApp no es de Colombia, el bot muestra todos los precios directamente en USDT (a la tasa del día, redondeados a tu favor) y, al confirmar, lo lleva al pago por Binance con tu Pay ID y el enlace para subir el pantallazo. Ya no le ofrece Bre-B.', ir: 'whatsapp' },
       { fecha: '2026-10-17', titulo: '📲 La página ya es una app', mensaje: 'Tu página se puede instalar como app en el celular: al entrar desde Chrome sale el botón "Instalar app" (o en el menú ⋮ → Instalar aplicación). Queda con el ícono de Epic Streaming y se abre a pantalla completa. Siempre carga la versión más nueva de la página. Sube a GitHub también manifest.webmanifest, sw.js y la carpeta icons.', ir: '' },
@@ -23609,7 +23743,7 @@
       return { cuentas: legado, stock: legado.length || stockPublico };
     }
 
-    const VERSION_SERVIDOR_NECESARIA = '2026-10-17n';   // la versión del servidor que necesita esta página
+    const VERSION_SERVIDOR_NECESARIA = '2026-10-17q';   // la versión del servidor que necesita esta página
     async function llamarBackend(accion, datos) {
       if (mantenimientoActivo() && /^(comprar|recarga|renovar|carrito|preorden|combo)/.test(String(accion || ''))) { avisoMantenimiento(''); throw new Error('Estamos en mantenimiento. Compra por WhatsApp mientras tanto.'); }
       if (modoPruebaCliente) { const rs = backendSimulado(accion, datos || {}); if (rs) return rs; }
