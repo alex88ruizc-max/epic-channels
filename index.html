@@ -10328,7 +10328,8 @@
       let vistas = 0;
       L.forEach(l0 => { const l = l0.trim(); if (!l) return; const m = l.match(RE);
         if (m) { vistas++; const resto = (l.slice(0, m.index) + ' ' + l.slice(m.index + m[0].length)).replace(/^[\s:|;,\t]+|[\s:|;,\t]+$/g, '');
-          const tok = resto.split(/[\s:|;\t]+/).map(x => x.trim()).filter(Boolean);
+          // ok / on / listo / ✅ / verificada / "Prime:"… son marcas del proveedor, no contraseñas
+          const tok = resto.split(/[\s:|;\t]+/).map(x => x.trim()).filter(Boolean).filter(x => !/^(ok|okay|okey|on|off|listo|lista|ready|✅|✔️|✔|☑️|verificad[ao]s?|activ[ao]s?|nuev[ao]s?|fresh|good|live|working|prime|premium|amazon|netflix|disney|max|hbo|plan|pais|país|co|col|colombia|usa|us|mx)$/i.test(x.replace(/[.,!¡]+$/, '')));
           cuentas.push({ email: m[0], pass: tok[0] || '', plat: tok.length > 1 ? tok.slice(1).join(' ') : '' }); }
         else if (vistas === 1) primerBloque.push(l); });   // las indicaciones: solo el bloque de la primera cuenta (los demás son copias)
       return { cuentas, indicaciones: primerBloque.join('\n').trim(), hayTextoExtra: L.some(l => l.trim() && !RE.test(l.trim())) };
@@ -15634,7 +15635,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-17p';
+    const VERSION_PAGINA = '2026-10-17r';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261010_wacompra', fecha: '2026-10-10', titulo: 'Compra por WhatsApp 💬', mensaje: 'Ahora puedes **comprar con tu saldo desde nuestro WhatsApp**. Ve a tu perfil → **Mis datos → Comprar por WhatsApp**, vincula tu chat con el código y pide la autorización.' },
       { id: 'act_20261010_vista2', fecha: '2026-10-10', titulo: 'Nueva vista de la tienda ▦', mensaje: 'Ahora puedes ver los productos **en 2 columnas**: más productos en tu pantalla, con las **promos resaltadas** (🔥 campaña, ⚡ relámpago, 🎁 regalo). Toca uno y se abre su ficha para comprar. Cambia de vista con los íconos ☰ / ▦ arriba de las categorías.' },
@@ -20293,6 +20294,7 @@
 
     // ==================== NOVEDADES INTERNAS DEL PANEL (solo el equipo) ====================
     const ACTUALIZACIONES_INTERNAS = [
+      { fecha: '2026-10-17', titulo: '📦 Cargar stock: "ok" ya no es contraseña', mensaje: 'Al pegar cuentas, palabras que el proveedor agrega para marcar (ok, on, listo, ✅, verificada, "Prime:"…) ya no se toman como contraseña de la plataforma. Por eso una entrega de Prime Local dijo "Contraseña de Prime Video: ok". Las cuentas que ya estaban cargadas con "ok" conviene revisarlas en Stock.', ir: 'stock' },
       { fecha: '2026-10-17', titulo: '🔄 Ajustes privados visibles', mensaje: 'La contraseña máster, el token y el chat de Telegram ahora se ven en Ajustes Generales con lo que realmente está guardado. Antes el formulario se llenaba antes de que llegaran y se veían vacíos (por eso la contraseña máster parecía vacía aunque estaba guardada como "ok").', ir: 'ajustes' },
       { fecha: '2026-10-17', titulo: '🔑 "¿Cuál es la contraseña?"', mensaje: 'Si un cliente pregunta cuál es la contraseña de sus cuentas (sin decir que no le funciona), el bot se la responde con la de su última compra, en vez de abrir un reporte de "Contraseña incorrecta". Si dice que no le sirve, sigue siendo un reporte. Revisa que la Clave de Amazon en Ajustes sea la real.', ir: 'whatsapp' },
       { fecha: '2026-10-17', titulo: '💳 Mensaje de pago más claro', mensaje: 'El mensaje de pago por WhatsApp ahora muestra una sola cifra destacada: "Paga $26.001 por Bre-B a la llave…", con la explicación del $1 de más, "Usamos tu saldo de $3.000, te falta el resto" y "Además te regalo $1.300 de saldo por pagar así". Antes salían cuatro cifras y no quedaba claro cuál pagar.', ir: 'whatsapp' },
@@ -23508,7 +23510,7 @@
       return { cuentas: legado, stock: legado.length || stockPublico };
     }
 
-    const VERSION_SERVIDOR_NECESARIA = '2026-10-17k';   // la versión del servidor que necesita esta página
+    const VERSION_SERVIDOR_NECESARIA = '2026-10-17l';   // la versión del servidor que necesita esta página
     async function llamarBackend(accion, datos) {
       if (mantenimientoActivo() && /^(comprar|recarga|renovar|carrito|preorden|combo)/.test(String(accion || ''))) { avisoMantenimiento(''); throw new Error('Estamos en mantenimiento. Compra por WhatsApp mientras tanto.'); }
       if (modoPruebaCliente) { const rs = backendSimulado(accion, datos || {}); if (rs) return rs; }
