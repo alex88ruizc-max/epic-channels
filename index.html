@@ -15634,7 +15634,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-17n';
+    const VERSION_PAGINA = '2026-10-17p';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261010_wacompra', fecha: '2026-10-10', titulo: 'Compra por WhatsApp 💬', mensaje: 'Ahora puedes **comprar con tu saldo desde nuestro WhatsApp**. Ve a tu perfil → **Mis datos → Comprar por WhatsApp**, vincula tu chat con el código y pide la autorización.' },
       { id: 'act_20261010_vista2', fecha: '2026-10-10', titulo: 'Nueva vista de la tienda ▦', mensaje: 'Ahora puedes ver los productos **en 2 columnas**: más productos en tu pantalla, con las **promos resaltadas** (🔥 campaña, ⚡ relámpago, 🎁 regalo). Toca uno y se abre su ficha para comprar. Cambia de vista con los íconos ☰ / ▦ arriba de las categorías.' },
@@ -20293,6 +20293,8 @@
 
     // ==================== NOVEDADES INTERNAS DEL PANEL (solo el equipo) ====================
     const ACTUALIZACIONES_INTERNAS = [
+      { fecha: '2026-10-17', titulo: '🔄 Ajustes privados visibles', mensaje: 'La contraseña máster, el token y el chat de Telegram ahora se ven en Ajustes Generales con lo que realmente está guardado. Antes el formulario se llenaba antes de que llegaran y se veían vacíos (por eso la contraseña máster parecía vacía aunque estaba guardada como "ok").', ir: 'ajustes' },
+      { fecha: '2026-10-17', titulo: '🔑 "¿Cuál es la contraseña?"', mensaje: 'Si un cliente pregunta cuál es la contraseña de sus cuentas (sin decir que no le funciona), el bot se la responde con la de su última compra, en vez de abrir un reporte de "Contraseña incorrecta". Si dice que no le sirve, sigue siendo un reporte. Revisa que la Clave de Amazon en Ajustes sea la real.', ir: 'whatsapp' },
       { fecha: '2026-10-17', titulo: '💳 Mensaje de pago más claro', mensaje: 'El mensaje de pago por WhatsApp ahora muestra una sola cifra destacada: "Paga $26.001 por Bre-B a la llave…", con la explicación del $1 de más, "Usamos tu saldo de $3.000, te falta el resto" y "Además te regalo $1.300 de saldo por pagar así". Antes salían cuatro cifras y no quedaba claro cuál pagar.', ir: 'whatsapp' },
       { fecha: '2026-10-17', titulo: '🛡 Aviso: la garantía vence en 2 días', mensaje: 'Cada día a las 10 a. m., si a una compra le quedan 2 días de garantía (solo garantías de 7 días o más), el cliente recibe el aviso por Telegram (si conectó el bot) y por WhatsApp a través de la cola de MacroDroid, y a ti te llega un resumen. No repite el aviso de una misma compra.', ir: 'whatsapp' },
       { fecha: '2026-10-17', titulo: '📸 Estados automáticos', mensaje: 'El servidor elige qué publicar (&macro=estado: Prime primero y rota con los demás que tengan stock) y entrega el texto con el enlace directo. La página epicstreaming.vip/#estado-auto/<producto> crea la imagen y la descarga sola (con sesión de administrador). Así el celular servidor publica estados sin que nadie lo toque.', ir: 'marketing' },
@@ -23506,7 +23508,7 @@
       return { cuentas: legado, stock: legado.length || stockPublico };
     }
 
-    const VERSION_SERVIDOR_NECESARIA = '2026-10-17j';   // la versión del servidor que necesita esta página
+    const VERSION_SERVIDOR_NECESARIA = '2026-10-17k';   // la versión del servidor que necesita esta página
     async function llamarBackend(accion, datos) {
       if (mantenimientoActivo() && /^(comprar|recarga|renovar|carrito|preorden|combo)/.test(String(accion || ''))) { avisoMantenimiento(''); throw new Error('Estamos en mantenimiento. Compra por WhatsApp mientras tanto.'); }
       if (modoPruebaCliente) { const rs = backendSimulado(accion, datos || {}); if (rs) return rs; }
@@ -23601,6 +23603,8 @@
             const d = doc.data() || {};
             secretosAdmin = { telegramToken: d.telegramToken || '', telegramChatId: d.telegramChatId || '', claveAmazon: d.claveAmazon || '' };
             ajustesGeneralesConfig = { ...ajustesGeneralesConfig, ...secretosAdmin };
+            // 🔄 los datos privados llegan después del formulario: se rellenan los campos vacíos con lo que de verdad está guardado
+            [['ajusteTelegramToken', secretosAdmin.telegramToken], ['ajusteTelegramChatId', secretosAdmin.telegramChatId], ['ajusteClaveAmazon', secretosAdmin.claveAmazon]].forEach(([id, v]) => { const el = document.getElementById(id); if (el && !el.value && v && document.activeElement !== el) el.value = v; });
           }
           renderizarEstadoSeguridadAdmin();
         }, err => console.warn('Secretos no disponibles:', err));
