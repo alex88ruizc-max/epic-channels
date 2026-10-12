@@ -305,6 +305,8 @@
     .punto-vivo { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: #34d399; box-shadow: 0 0 0 0 rgba(52,211,153,.6); animation: puntoVivo 1.6s ease-out infinite; }
     @keyframes puntoVivo { 0% { box-shadow: 0 0 0 0 rgba(52,211,153,.6); } 100% { box-shadow: 0 0 0 7px rgba(52,211,153,0); } }
     .bateria { display: inline-flex; align-items: center; gap: 2px; }
+    body.stock-oculto .stk-num { display: none !important; }
+    body:not(.stock-oculto) .stk-gen { display: none !important; }
     .bateria i { display: inline-block; width: 4px; height: 10px; border-radius: 1px; background: rgba(148,163,184,.25); font-style: normal; }
     .num-cambio { display: inline-block; animation: numGira .6s ease-out; }
     @keyframes numGira { 0% { transform: rotateX(90deg); opacity: 0; } 100% { transform: rotateX(0); opacity: 1; } }
@@ -6199,13 +6201,13 @@
 
       try {
         // Secretos: zona privada (solo admin). Se borran de la configuración pública.
-        await db.collection('secretos').doc('ajustes').set({
-          telegramToken: nuevoToken,
-          telegramChatId: nuevoChatId,
-          claveAmazon: nuevaClaveAmz,
-          actualizadoEl: new Date().toISOString()
-        }, { merge: true });
-        secretosAdmin = { telegramToken: nuevoToken, telegramChatId: nuevoChatId, claveAmazon: nuevaClaveAmz };
+        // 🛡 Un campo vacío NO borra el secreto guardado (si la pantalla se abrió antes de cargarlos, quedaban vacíos y al guardar se perdía el Telegram)
+        const prevS = secretosAdmin || {}, secretoNuevo = { actualizadoEl: new Date().toISOString() };
+        if (String(nuevoToken || '').trim()) secretoNuevo.telegramToken = String(nuevoToken).trim();
+        if (String(nuevoChatId || '').trim()) secretoNuevo.telegramChatId = String(nuevoChatId).trim();
+        if (String(nuevaClaveAmz || '').trim()) secretoNuevo.claveAmazon = String(nuevaClaveAmz).trim();
+        await db.collection('secretos').doc('ajustes').set(secretoNuevo, { merge: true });
+        secretosAdmin = { telegramToken: secretoNuevo.telegramToken || prevS.telegramToken || '', telegramChatId: secretoNuevo.telegramChatId || prevS.telegramChatId || '', claveAmazon: secretoNuevo.claveAmazon || prevS.claveAmazon || '' };
         Object.assign(ajustesGeneralesConfig, secretosAdmin);
 
         const borrar = firebase.firestore.FieldValue.delete();
@@ -6253,7 +6255,7 @@
         : `🛠 Estamos en mantenimiento · Compra por WhatsApp 👉 <a href="${waMant('Hola 👋 quiero hacer un pedido')}" target="_blank" rel="noopener" style="color:#1c1300;text-decoration:underline">${numV}</a> · ¡Volvemos en un rato!`;
     }
     // 📦 ¿Los clientes ven la cantidad de stock? (marketing: "Stock disponible" sin número)
-    function mostrarStockClientes() { try { return !(ajustesGeneralesConfig && ajustesGeneralesConfig.mostrarStockClientes === false); } catch (e) { return true; } }
+    function mostrarStockClientes() { try { const on = !(ajustesGeneralesConfig && ajustesGeneralesConfig.mostrarStockClientes === false); document.body.classList.toggle('stock-oculto', !on); return on; } catch (e) { return true; } }
     function veCantidadStock() { return mostrarStockClientes(); }   // aplica a todos en la tienda (las cantidades siguen en el panel: Productos y Stock)
     function textoStockCliente(n) { return n <= 5 ? 'Últimas unidades' : 'Stock disponible'; }
     async function guardarMostrarStock(on) {
@@ -6273,6 +6275,7 @@
       ajustesPublicosRaw = data || {};
       const stockAntes = ajustesGeneralesConfig.mostrarStockClientes;
       ajustesGeneralesConfig = { ...ajustesGeneralesConfig, ...data };
+      try { mostrarStockClientes(); } catch (e) { /* nada */ }   // 📦 el cuerpo toma la clase stock-oculto al instante
       // 📦 si cambió "mostrar cantidad de stock", las tarjetas ya dibujadas se vuelven a pintar
       try { if (stockAntes !== ajustesGeneralesConfig.mostrarStockClientes) { renderizarCatalogo(); pintarCintaStock(); } } catch (e) { /* nada */ }
       try { pintarBannerMant(); pintarCajaMant(); } catch (e) { /* nada */ }
@@ -15631,7 +15634,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-17a';
+    const VERSION_PAGINA = '2026-10-17h';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261010_wacompra', fecha: '2026-10-10', titulo: 'Compra por WhatsApp 💬', mensaje: 'Ahora puedes **comprar con tu saldo desde nuestro WhatsApp**. Ve a tu perfil → **Mis datos → Comprar por WhatsApp**, vincula tu chat con el código y pide la autorización.' },
       { id: 'act_20261010_vista2', fecha: '2026-10-10', titulo: 'Nueva vista de la tienda ▦', mensaje: 'Ahora puedes ver los productos **en 2 columnas**: más productos en tu pantalla, con las **promos resaltadas** (🔥 campaña, ⚡ relámpago, 🎁 regalo). Toca uno y se abre su ficha para comprar. Cambia de vista con los íconos ☰ / ▦ arriba de las categorías.' },
@@ -19034,8 +19037,7 @@
       if (agotado || !(n > 0)) return `<span class="inline-flex items-center gap-1.5 text-[11px] font-black text-red-400"><i class="fa-solid fa-box-open"></i>Stock: agotado</span>`;
       const niveles = n >= 20 ? 4 : (n >= 10 ? 3 : (n >= 5 ? 2 : 1)), col = niveles >= 3 ? '#34d399' : (niveles === 2 ? '#a3e635' : '#fbbf24');
       const gira = cambioReciente(id) ? ' num-cambio' : '';
-      if (!veCantidadStock()) return `<span class="bateria">${[1, 2, 3, 4].map(k => `<i style="${k <= niveles ? 'background:' + col : ''}"></i>`).join('')}<span class="ml-1.5 text-[11px] font-bold ${n <= 5 ? 'text-amber-300' : 'text-gray-200'}">${textoStockCliente(n)}</span></span>`;
-      return `<span class="bateria" title="${n} en stock">${[1, 2, 3, 4].map(k => `<i style="${k <= niveles ? 'background:' + col : ''}"></i>`).join('')}<span class="ml-1.5 text-[11px] font-bold ${n <= 5 ? 'text-amber-300' : 'text-gray-200'}${gira}">Stock ${n}${n <= 5 ? ' · ¡últimas!' : ''}</span></span>`;
+      return `<span class="bateria">${[1, 2, 3, 4].map(k => `<i style="${k <= niveles ? 'background:' + col : ''}"></i>`).join('')}<span class="stk-num ml-1.5 text-[11px] font-bold ${n <= 5 ? 'text-amber-300' : 'text-gray-200'}${gira}">Stock ${n}${n <= 5 ? ' · ¡últimas!' : ''}</span><span class="stk-gen ml-1.5 text-[11px] font-bold ${n <= 5 ? 'text-amber-300' : 'text-gray-200'}">${textoStockCliente(n)}</span></span>`;
     }
 
     function pintarCintaStock() {
@@ -20291,6 +20293,12 @@
 
     // ==================== NOVEDADES INTERNAS DEL PANEL (solo el equipo) ====================
     const ACTUALIZACIONES_INTERNAS = [
+      { fecha: '2026-10-17', titulo: '🤖 Puertas para MacroDroid', mensaje: 'El servidor tiene dos enlaces nuevos para el celular servidor (con la misma clave del bot): &macro=siguiente entrega un cliente de la lista de seguimiento por vez (número, mensaje y enlace de WhatsApp), y &macro=pausar&chat=NOMBRE pausa el bot 2 horas en ese chat.', ir: 'whatsapp' },
+      { fecha: '2026-10-17', titulo: '🔒 El bot no habla de tu negocio', mensaje: 'Si un cliente pregunta cuántas ventas llevas, cuánto ganas, quiénes son tus clientes, a cómo compras o quién es tu proveedor, el bot responde "Eso es información interna del negocio 🙏" y le ofrece lo que tienes (Prime 5 x $…). Antes no revelaba nada, pero respondía cosas sin sentido.', ir: 'whatsapp' },
+      { fecha: '2026-10-17', titulo: '💳 Varios pagos parecidos / pagó otra persona', mensaje: 'Si hay varios pagos parecidos sin dueño, Telegram te los muestra todos (hasta 3), cada uno con su botón, y primero el que coincide con el nombre del cliente. Si ninguno coincide, el bot le pregunta al cliente a nombre de quién salió el pago (ej. "lo pagó mi esposa María") y te lo pasa para que elijas. Un pago nunca se acredita dos veces.', ir: 'recargas' },
+      { fecha: '2026-10-17', titulo: '💳 Pagos con otro valor', mensaje: 'Si un cliente paga un valor distinto al pedido (por ejemplo $10.000 en vez de $10.001) y escribe "listo" o manda la foto, el bot busca ese pago entre los no identificados y te lo manda a Telegram con ✅ Es suyo / ❌ No es. Al aprobar, se acredita y se le entregan las cuentas apenas escriba. Si no aparece ningún pago, le pide el número de comprobante y te lo pasa. Además, el valor a pagar remarca el extra ("⬅️ incluye el $1 del final").', ir: 'recargas' },
+      { fecha: '2026-10-17', titulo: '🛡 Tu Telegram ya no se borra al guardar ajustes', mensaje: 'El botón Guardar de Ajustes Generales podía borrar tu token y chat de Telegram si la pantalla se abría antes de cargarlos (por eso dejaron de llegar los avisos). Ahora un campo vacío no borra el que está guardado: solo se reemplaza cuando escribes uno nuevo.', ir: 'ajustes' },
+      { fecha: '2026-10-17', titulo: '🔒 Mensajes seguidos, uno por uno', mensaje: 'Si un cliente manda dos mensajes seguidos ("hola" + "cuál es el precio", o "buenas" + un reporte con el correo), el bot ahora los atiende en orden: el segundo espera a que el primero termine. Se acabaron las bienvenidas dobles y los estados pisados (como el "4" del motivo de garantía tomado como 4 Prime).', ir: 'whatsapp' },
       { fecha: '2026-10-16', titulo: '📦 Ocultar la cantidad de stock', mensaje: 'En Ajustes Generales hay un interruptor "Mostrar la cantidad de stock a los clientes". Apagado, los clientes ven "Stock disponible" (o "Últimas unidades" si quedan 5 o menos) sin el número: en las tarjetas, la ventana de compra, la cinta En vivo y el bot de WhatsApp. Tú y los moderadores siguen viendo las cantidades.', ir: 'ajustes' },
       { fecha: '2026-10-16', titulo: '💳 "¿Dónde transfiero?"', mensaje: 'Si alguien pregunta dónde pagar ("dónde le transfiero", "cuál es tu Nequi", "cómo pago", "datos de pago"), el bot da la llave Bre-B y pregunta qué va a llevar; si ya tenía un pedido en curso, le da el pago de ese pedido. Un número suelto después ("10") se toma como la cantidad. Y el saludo a quien tiene ID sin autorizar ya no trae menú.', ir: 'whatsapp' },
       { fecha: '2026-10-16', titulo: '🔗 Enlaces de producto en forma corta', mensaje: 'Los enlaces directos de producto ahora van como epicstreaming.vip/p/… (sin https ni www), la misma forma que WhatsApp ya vuelve tocable en tus estados. El texto al compartir queda: "🔥 Producto · precio c/u · 👉 epicstreaming.vip/p/…".', ir: 'productos' },
@@ -23486,7 +23494,7 @@
       return { cuentas: legado, stock: legado.length || stockPublico };
     }
 
-    const VERSION_SERVIDOR_NECESARIA = '2026-10-16m';   // la versión del servidor que necesita esta página
+    const VERSION_SERVIDOR_NECESARIA = '2026-10-17e';   // la versión del servidor que necesita esta página
     async function llamarBackend(accion, datos) {
       if (mantenimientoActivo() && /^(comprar|recarga|renovar|carrito|preorden|combo)/.test(String(accion || ''))) { avisoMantenimiento(''); throw new Error('Estamos en mantenimiento. Compra por WhatsApp mientras tanto.'); }
       if (modoPruebaCliente) { const rs = backendSimulado(accion, datos || {}); if (rs) return rs; }
