@@ -15745,7 +15745,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-18b';
+    const VERSION_PAGINA = '2026-10-18c';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261010_wacompra', fecha: '2026-10-10', titulo: 'Compra por WhatsApp 💬', mensaje: 'Ahora puedes **comprar con tu saldo desde nuestro WhatsApp**. Ve a tu perfil → **Mis datos → Comprar por WhatsApp**, vincula tu chat con el código y pide la autorización.' },
       { id: 'act_20261010_vista2', fecha: '2026-10-10', titulo: 'Nueva vista de la tienda ▦', mensaje: 'Ahora puedes ver los productos **en 2 columnas**: más productos en tu pantalla, con las **promos resaltadas** (🔥 campaña, ⚡ relámpago, 🎁 regalo). Toca uno y se abre su ficha para comprar. Cambia de vista con los íconos ☰ / ▦ arriba de las categorías.' },
@@ -20431,10 +20431,27 @@
       const el = mkPrimeSel.map(i => mkPrimeOpc[i]).filter(Boolean); if (!el.length) { alert('Marca al menos un título.'); return; }
       const modo = (document.querySelector('input[name=mkPrimeModo]:checked') || {}).value || 'lista', v = document.getElementById('mkPrimeVista'); if (!v) return;
       const lienzos = modo === 'titulo' ? el.map(it => lienzoCarteleraPrime([it], 'titulo')) : [lienzoCarteleraPrime(el, 'lista')];
-      v.innerHTML = lienzos.map((c, i) => `<div class="rounded-xl overflow-hidden border border-gray-700 bg-gray-900"><img src="${c.toDataURL('image/jpeg', 0.92)}" alt="" class="w-full"><a download="estado-${plataformaMk().nombre.toLowerCase().replace(/[^a-z0-9]+/g, '')}-${i + 1}.jpg" href="${c.toDataURL('image/jpeg', 0.92)}" class="block text-center text-[11px] font-bold text-sky-200 py-1.5">⬇️ Descargar</a></div>`).join('');
       const prime = primeProductoMk(), link = prime ? enlaceProducto(prime.docId) : dominioActual().replace(/^https?:\/\/(www\.)?/, '');
       const plT = plataformaMk(), texto = '🎬 Esta semana en ' + plT.nombre + ':\n' + el.map(it => '• ' + it.titulo + ' (' + it.tipo + ')').join('\n') + '\n\n🍿 ¿Aún no tienes ' + plT.nombre + '? Pídelo 👉 ' + link;
-      try { await navigator.clipboard.writeText(texto); mostrarToast(lienzos.length + (lienzos.length === 1 ? ' imagen lista' : ' imágenes listas') + ' · texto copiado para el estado'); } catch (e) { mostrarToast('Imágenes listas'); }
+      mkCartLienzos = lienzos; mkCartTexto = texto;
+      const slug = plT.nombre.toLowerCase().replace(/[^a-z0-9]+/g, '');
+      v.innerHTML = lienzos.map((c, i) => `<div class="rounded-xl overflow-hidden border border-gray-700 bg-gray-900"><img src="${c.toDataURL('image/jpeg', 0.92)}" alt="" class="w-full">
+        <button type="button" onclick="compartirCarteleraPrime(${i})" class="w-full py-2 bg-emerald-500 text-black font-black text-[12px]"><i class="fa-brands fa-whatsapp"></i> Compartir</button>
+        <a download="estado-${slug}-${i + 1}.jpg" href="${c.toDataURL('image/jpeg', 0.92)}" class="block text-center text-[10px] text-gray-400 py-1">⬇️ o descargar</a></div>`).join('');
+      try { await navigator.clipboard.writeText(texto); } catch (e) { /* nada */ }
+      mostrarToast(lienzos.length + (lienzos.length === 1 ? ' imagen lista' : ' imágenes listas') + ' · toca Compartir y elige WhatsApp');
+    }
+    var mkCartLienzos = [], mkCartTexto = '';
+    async function compartirCarteleraPrime(i) {
+      const c = mkCartLienzos[i]; if (!c) return;
+      const blob = await new Promise(r => c.toBlob(r, 'image/jpeg', 0.92)); if (!blob) return;
+      const file = new File([blob], 'estado-' + (i + 1) + '.jpg', { type: 'image/jpeg' });
+      try { await navigator.clipboard.writeText(mkCartTexto); } catch (e) { /* nada */ }
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        try { await navigator.share({ files: [file], text: mkCartTexto }); return; } catch (e) { if (e && e.name === 'AbortError') return; }
+      }
+      const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = file.name; document.body.appendChild(a); a.click(); a.remove();
+      mostrarToast('Este navegador no comparte imágenes: se descargó. El texto quedó copiado.');
     }
     function aplicarPrimeANovedad() {
       const el = mkPrimeSel.map(i => mkPrimeOpc[i]).filter(Boolean); if (!el.length) return;
