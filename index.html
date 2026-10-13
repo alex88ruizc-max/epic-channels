@@ -2418,6 +2418,14 @@
                   <input type="number" id="ajusteMaxSobrePedido" min="1" max="1000" placeholder="50" class="w-full bg-gray-900 border border-gray-700 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500">
                   <p class="text-[10px] text-gray-500 mt-1">Por producto. Cuenta lo que el cliente ya tiene en fila: si ya pidió 30, solo puede encargar 20 más. Aplica en la tienda y en WhatsApp.</p>
                 </div>
+                <div class="mb-3">
+                  <label class="block text-xs font-bold text-gray-300 mb-1">📦 Entrega de los pedidos sobre pedido</label>
+                  <div class="grid grid-cols-2 gap-2">
+                    <div><input type="number" id="ajusteSpEspera" min="0" max="72" placeholder="4" class="w-full bg-gray-900 border border-gray-700 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none"><p class="text-[10px] text-gray-500 mt-1">Horas que espera para entregarlo <b>completo</b></p></div>
+                    <div><input type="number" id="ajusteSpBloque" min="1" max="100" placeholder="5" class="w-full bg-gray-900 border border-gray-700 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none"><p class="text-[10px] text-gray-500 mt-1">Después de esas horas, entrega en bloques de</p></div>
+                  </div>
+                  <p class="text-[10px] text-gray-500 mt-1">Cada pedido se entrega todo junto (un mensaje, una lista). Si pasan esas horas sin completarse, recibe lo que haya en bloques. Con 0 horas, entrega por bloques de una vez.</p>
+                </div>
                 <div class="mb-3 hidden">
                   <label class="block text-xs font-bold text-gray-300 mb-1">📧 Correos de proveedores (Correo para crear cuenta)</label>
                   <div class="grid grid-cols-2 gap-2">
@@ -6212,6 +6220,7 @@
       document.getElementById('ajusteWhatsappNumero').value = ajustesGeneralesConfig.whatsappNumero || '';
       { const e = document.getElementById('ajusteDominioTienda'); if (e) e.value = dominioActual(); }
       { const e = document.getElementById('ajusteMaxSobrePedido'); if (e) e.value = maxSobrePedidoCliente(); }
+      { const e = document.getElementById('ajusteSpEspera'), b = document.getElementById('ajusteSpBloque'), a = ajustesGeneralesConfig || {}; if (e) e.value = a.sobrePedidoEsperaH !== undefined && a.sobrePedidoEsperaH !== '' ? a.sobrePedidoEsperaH : 4; if (b) b.value = a.sobrePedidoBloque || 5; }
         { const e1 = document.getElementById('ajusteProvCorreosSinUsar'), e2 = document.getElementById('ajusteProvCorreosDia'); if (e1) e1.value = parseInt(ajustesGeneralesConfig.provCorreosSinUsar, 10) || 3; if (e2) e2.value = parseInt(ajustesGeneralesConfig.provCorreosDia, 10) || 40; }
       document.getElementById('ajusteClaveAmazon').value = ajustesGeneralesConfig.claveAmazon || '';
       document.getElementById('ajusteMinRecarga').value = ajustesGeneralesConfig.minRecarga || 5000;
@@ -6246,6 +6255,8 @@
         telegramBotUrl: nuevoBotUrl,
         whatsappNumero: nuevoWa,
         maxSobrePedido: Math.max(1, Math.min(1000, parseInt((document.getElementById('ajusteMaxSobrePedido') || {}).value, 10) || 50)),
+        sobrePedidoEsperaH: (v => isNaN(v) ? 4 : Math.max(0, Math.min(72, v)))(parseInt((document.getElementById('ajusteSpEspera') || {}).value, 10)),
+        sobrePedidoBloque: Math.max(1, Math.min(100, parseInt((document.getElementById('ajusteSpBloque') || {}).value, 10) || 5)),
           provCorreosSinUsar: Math.max(1, Math.min(100, parseInt((document.getElementById('ajusteProvCorreosSinUsar') || {}).value, 10) || 3)),
           provCorreosDia: Math.max(1, Math.min(500, parseInt((document.getElementById('ajusteProvCorreosDia') || {}).value, 10) || 40)),
         dominioTienda: String((document.getElementById('ajusteDominioTienda') || {}).value || '').replace(/^https?:\/\//, '').replace(/\/.*$/, '').trim().toLowerCase() || dominioActual(),
@@ -8326,6 +8337,9 @@
         }
       });
 
+      // 💵 Tasa USDT del día (la misma que usa el bot): para mostrar el precio pequeño en USD
+      try { db.collection('configuracion').doc('recarga_estado').onSnapshot(d => { const v = d.exists ? Number((d.data() || {}).tasaUsdt) || 0 : 0; if (v !== tasaUsdtPagina.base) { tasaUsdtPagina.base = v; try { procesarYRenderizar(); } catch (e) { /* nada */ } } }, () => {}); } catch (e) { /* nada */ }
+      try { db.collection('configuracion').doc('recarga_auto').onSnapshot(d => { const a = d.exists ? Number((d.data() || {}).binanceAjustePct) || 0 : 0; if (a !== tasaUsdtPagina.ajuste) { tasaUsdtPagina.ajuste = Math.max(-20, Math.min(20, a)); try { procesarYRenderizar(); } catch (e) { /* nada */ } } }, () => {}); } catch (e) { /* nada */ }
       db.collection('configuracion').doc('precios').onSnapshot(doc => {
         if (doc.exists) preciosConfig = doc.data() || {};
         procesarYRenderizar();
@@ -8959,7 +8973,7 @@
               </div>
 
               <div class="${esNf || marcaT ? 'text-lg font-black text-white' : 'text-xs font-bold text-emerald-400'} mb-1.5">
-                ${prod.promoPct ? `<span class="text-[11px] text-gray-500 line-through font-normal mr-1">$${(prod.precioLista || 0).toLocaleString('es-CO')}</span>` : ''}${esNf || marcaT || prod.promoPct ? '' : '<i class="fa-solid fa-tag mr-1"></i> '}<span id="precioUnit_${prod.docId}" class="${prod.promoPct && !esNf && !marcaT ? 'text-rose-300 text-sm font-black' : ''}">${formatoCOP(precioPorCantidad(prod, cantidadInicial))}</span> <span class="text-[10px] text-gray-400 font-normal">c/u</span>
+                ${prod.promoPct ? `<span class="text-[11px] text-gray-500 line-through font-normal mr-1">$${(prod.precioLista || 0).toLocaleString('es-CO')}</span>` : ''}${esNf || marcaT || prod.promoPct ? '' : '<i class="fa-solid fa-tag mr-1"></i> '}<span id="precioUnit_${prod.docId}" class="${prod.promoPct && !esNf && !marcaT ? 'text-rose-300 text-sm font-black' : ''}">${formatoCOP(precioPorCantidad(prod, cantidadInicial))}</span><span id="precioUsd_${prod.docId}" class="ml-1.5 text-[10px] text-gray-400 font-semibold">${usdDeCop(precioPorCantidad(prod, cantidadInicial)) ? '≈ ' + usdDeCop(precioPorCantidad(prod, cantidadInicial)) + ' USD' : ''}</span> <span class="text-[10px] text-gray-400 font-normal">c/u</span>
               </div>
               ${htmlEscalasTarjeta(prod)}
               ${esNf && !TIENDA_SLUG && tt('chipNetflix') !== '-' ? `<div class="mb-2"><span class="nf-chip"><i class="fa-solid fa-key"></i> ${ttH('chipNetflix')}</span></div>` : ''}
@@ -10409,9 +10423,11 @@
         } catch (e) { alert(e.message); }
         return;
       }
+      try {
       await db.runTransaction(async (t) => {
         const uDoc = await t.get(userRef);
-        const datosU = uDoc.exists ? (uDoc.data() || {}) : {};
+        if (!uDoc.exists) throw new Error('La ficha de este cliente no existe en la base de datos (uid ' + uid + '). Pídele que entre una vez a la tienda con su cuenta, o escríbeme para revisarlo.');
+        const datosU = uDoc.data() || {};
         const rep = repartirRecargaCliente(datosU, monto);
         const bonoRec = bonoPara(Number(monto) || 0);
         const nuevoSaldo = (datosU.saldo || 0) + rep.alSaldo + bonoRec;
@@ -10431,6 +10447,12 @@
           metodo: 'Carga manual del administrador', fecha: new Date().toISOString(), aprobadoPor: currentUser.email, cargaManual: true });
         abonoCarga = rep.abono;
       });
+      } catch (e) {   // antes fallaba en silencio: ahora siempre se dice por qué
+        console.error('Cargar saldo:', e);
+        const m = String((e && e.message) || e || '');
+        alert('❌ No se cargó el saldo.\n\n' + (/permission|insufficient/i.test(m) ? 'Firebase no dejó guardar el cambio (permisos). Detalle: ' + m : m));
+        return;
+      }
       const inpMonto = document.getElementById(`inputSaldo_${uid}`);
       if (inpMonto) inpMonto.value = '';
       mostrarToast(abonoCarga > 0 ? `Saldo acreditado. ${formatoCOP(abonoCarga)} pagaron su crédito.` : "¡Saldo acreditado con éxito!");
@@ -14356,7 +14378,7 @@
       }
       const txt = document.getElementById('txtTotal_' + docId);
       if (txt) txt.innerText = `$${(val * precioUnitarioConCombo(prod, val)).toLocaleString('es-CO')}`;
-      try { const pu = document.getElementById('precioUnit_' + docId); if (pu) pu.textContent = formatoCOP(precioPorCantidad(prod, val)); document.querySelectorAll(`[data-esc-de="${docId}"]`).forEach(b => { const on = val >= Number(b.dataset.desde) && (!b.dataset.hasta || val < Number(b.dataset.hasta)); b.classList.toggle('esc-on', on); }); } catch (e) { /* nada */ }
+      try { const pu = document.getElementById('precioUnit_' + docId); if (pu) pu.textContent = formatoCOP(precioPorCantidad(prod, val)); const pud = document.getElementById('precioUsd_' + docId); if (pud) { const u = usdDeCop(precioPorCantidad(prod, val)); pud.textContent = u ? '≈ ' + u + ' USD' : ''; } document.querySelectorAll(`[data-esc-de="${docId}"]`).forEach(b => { const on = val >= Number(b.dataset.desde) && (!b.dataset.hasta || val < Number(b.dataset.hasta)); b.classList.toggle('esc-on', on); }); } catch (e) { /* nada */ }
       try { pintarMixto(docId); } catch (e) { /* nada */ }
     }
 
@@ -15878,8 +15900,9 @@
       let inp = document.getElementById('inputSaldo_' + scUid);
       if (!inp) { inp = document.createElement('input'); inp.type = 'hidden'; inp.id = 'inputSaldo_' + scUid; document.body.appendChild(inp); }
       inp.value = String(monto);
+      if (!scUid) { alert('No sé a qué cliente cargarle. Cierra y vuelve a abrir su ficha.'); return; }
       cerrarSaldoCliente();
-      await adminCargarSaldo(scUid);
+      try { await adminCargarSaldo(scUid); } catch (e) { alert('❌ No se cargó el saldo: ' + ((e && e.message) || e)); }
     }
 
     async function verRecargasCliente(uid, nombre) {
@@ -15907,7 +15930,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-19n';
+    const VERSION_PAGINA = '2026-10-19r';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261010_wacompra', fecha: '2026-10-10', titulo: 'Compra por WhatsApp 💬', mensaje: 'Ahora puedes **comprar con tu saldo desde nuestro WhatsApp**. Ve a tu perfil → **Mis datos → Comprar por WhatsApp**, vincula tu chat con el código y pide la autorización.' },
       { id: 'act_20261010_vista2', fecha: '2026-10-10', titulo: 'Nueva vista de la tienda ▦', mensaje: 'Ahora puedes ver los productos **en 2 columnas**: más productos en tu pantalla, con las **promos resaltadas** (🔥 campaña, ⚡ relámpago, 🎁 regalo). Toca uno y se abre su ficha para comprar. Cambia de vista con los íconos ☰ / ▦ arriba de las categorías.' },
@@ -16791,7 +16814,7 @@
           try { await llamarBackend('prov_correos', { op: 'asignar_propio', correo: ac.libre, cliente: uidCli ? emCli : (cliente || 'WhatsApp') }); } catch (e) { /* la venta ya quedó */ }
           const cp = correosPropios.find(x => x.correo === ac.libre); if (cp) cp.asignadoA = emCli || cliente || 'WhatsApp';
         } else if (nInm > 0) {
-          let res = null; const ref = db.collection('compras').doc();
+          let res = null; const ref = db.collection('compras').doc(); window.__vmCompraRef = ref;
           await db.runTransaction(async (tx) => {
             res = await sacarCuentasInventario(tx, id, nInm);
             const costo = res.sacadas.reduce((t, x) => t + (parseCredencialObj(x).costo || 0), 0);
@@ -16805,7 +16828,8 @@
         if (nPed) {
           const r = await llamarBackend('venta_manual_preorden', { email: emCli, productoId: id, cantidad: nPed, total: totalCobro - totInm });
           if (!r || !r.ok) { alert('⚠️ ' + (nInm ? 'Las ' + nInm + ' se entregaron, pero ' : '') + 'el sobre pedido no se pudo crear: ' + ((r && r.error) || 'error')); }
-          else extra = `\n\n📦 *Y ${nPed} ${nPed === 1 ? 'te queda' : 'te quedan'} sobre pedido:* te ${nPed === 1 ? 'llega sola' : 'llegan solas'} a tu cuenta apenas entren${r.fila && r.fila.delante ? ' (hay ' + r.fila.delante + ' pedidas antes que las tuyas)' : ''}.`;
+          else { try { if (nInm > 0 && window.__vmCompraRef) await window.__vmCompraRef.update({ preordenId: r.id }); } catch (e) { /* solo es para agrupar */ } }
+          if (r && r.ok) extra = `\n\n📦 *Y ${nPed} ${nPed === 1 ? 'te queda' : 'te quedan'} sobre pedido:* te ${nPed === 1 ? 'llega sola' : 'llegan solas'} a tu cuenta apenas entren${r.fila && r.fila.delante ? ' (hay ' + r.fila.delante + ' pedidas antes que las tuyas)' : ''}.`;
         }
         const texto = (sacadas.length ? textoVentaManual(prod, sacadas) : `✅ *Tu pedido de ${prod.nombre}*`) + extra;
         document.getElementById('vmCantidad').value = 1; document.getElementById('vmCliente').value = ''; const ec = document.getElementById('vmCuentaCliente'); if (ec) ec.value = ''; const sb = document.getElementById('vmSobre'); if (sb) sb.checked = false;
@@ -18106,10 +18130,7 @@
     // Al subir o aprobar stock: se entregan solos los pedidos en espera de ese producto (en orden)
     async function despacharPreordenesProducto(productoId) {
       if (!esStaffSesion()) return;
-      const pend = preordenesTodas.filter(p => p.productoId === productoId && (p.estado === 'pendiente' || p.estado === 'parcial'));
-      let total = 0;
-      for (const p of pend) { const r = await despacharPreorden(p.id, true); if (!r || !r.ok || r.sinStock || !r.entregadas) break; total += r.entregadas; if (r.falta) break; }
-      if (total) mostrarToast(`⏳ Se entregaron ${total} cuentas a pedidos en espera.`);
+      try { const r = await llamarBackend('preorden_repartir', { productoId: productoId }); if (r && r.ok && r.entregadas) mostrarToast(`⏳ Se entregaron ${r.entregadas} cuentas a pedidos en espera.`); } catch (e) { console.warn('Repartir pedidos en espera:', e); }
     }
 
 
@@ -20757,6 +20778,7 @@
 
     // ==================== NOVEDADES INTERNAS DEL PANEL (solo el equipo) ====================
     const ACTUALIZACIONES_INTERNAS = [
+      { fecha: '2026-10-19', titulo: '📦 Sobre pedido: entrega completa y precios en USD', mensaje: 'Cada pedido sobre pedido se entrega COMPLETO de una vez (un mensaje y una lista). Si pasan 4 horas sin completarse, recibe lo que haya en bloques de 5 (Ajustes Generales). En Mis cuentas el pedido sale en una tarjeta con las nuevas marcadas NEW. Y la tienda muestra el precio pequeño en USD (misma tasa del bot).', ir: '' },
       { fecha: '2026-10-19', titulo: '📦 Venta manual con sobre pedido y correos libres', mensaje: 'En Venta manual (WhatsApp): escribe el correo de la cuenta del cliente y la venta le queda en Mis cuentas. Si pide más de lo que hay, marca "sobre pedido": se entrega lo que hay y el resto queda en su fila. Y en la lista de productos salen tus 🆓 correos libres para asignarlos a un cliente (eliges como qué producto se registra).', ir: '' },
       { fecha: '2026-10-19', titulo: '📧 Correos de tu dominio con destino', mensaje: 'En Cargar Cuentas, al generar un correo eliges a dónde va: un producto Prime (sube solo con "Bienvenido a Prime"), otro producto como Amazon Free (toca Confirmar cuando la crees y sube al stock) o Libre (no se sube; queda para asignarlo a un cliente). Debajo ves tus correos con su código (🔑) y su estado. Todos se vigilan por suspensión.', ir: '' },
       { fecha: '2026-10-18', titulo: '📧 Los correos del proveedor ya no se pierden al recargar', mensaje: 'En "Correo para crear cuenta", los correos pedidos se guardan en el servidor y también en el celular del proveedor. Y hay un buscador: pega el correo y toca "Buscar código" (solo funciona con correos suyos).', ir: '' },
@@ -21268,7 +21290,10 @@
     function agruparHtmlCompras(cortes, html) {
       try {
         const diaDe = c => { const d = new Date(c.fecha); return isNaN(d) ? '' : d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate(); };
-        const clave = c => (c.regalo || c.esCombo || c.esRenovacion || !c.productoId) ? '' : c.productoId + '|' + diaDe(c);
+        // 📦 un pedido sobre pedido es UN grupo aunque llegue por partes y en días distintos
+        // (las del mismo producto y día que un pedido —p. ej. lo entregado ya en una venta mixta— se unen a ese pedido)
+        const pedDia = {}; cortes.forEach(([idx]) => { const c = misComprasPerfilCache[idx]; if (c && c.preordenId && c.productoId) { const kd = c.productoId + '|' + diaDe(c); if (!pedDia[kd]) pedDia[kd] = c.preordenId; } });
+        const clave = c => (c.regalo || c.esCombo || c.esRenovacion || !c.productoId) ? '' : (c.preordenId ? 'pre|' + c.preordenId : (pedDia[c.productoId + '|' + diaDe(c)] ? 'pre|' + pedDia[c.productoId + '|' + diaDe(c)] : c.productoId + '|' + diaDe(c)));
         const grupos = {}; cortes.forEach(([idx]) => { const c = misComprasPerfilCache[idx], k = c && clave(c); if (k) (grupos[k] = grupos[k] || []).push(idx); });
         const hecho = new Set(); let out = '';
         cortes.forEach(([idx, a, b]) => {
@@ -21280,15 +21305,25 @@
           const vig = cs.filter(x => { try { return estadoGarantiaCompra(x).estado === 'vigente'; } catch (e) { return false; } }).length;
           const f = new Date(c.fecha), fecha = String(f.getDate()).padStart(2, '0') + '/' + String(f.getMonth() + 1).padStart(2, '0');
           const pr = productoComprable(c.productoId);
-          out += `<details class="grupo-compras rounded-2xl bg-gray-900 border border-gray-800 overflow-hidden">
+          const esPedido = /^pre\|/.test(k);
+          // todas las cuentas del grupo en una sola lista
+          // 2 bloques: lo entregado al comprar y TODO lo que llegó después sobre pedido (junto, para copiarlo de una vez)
+          const lineasT = [], bloques = []; cs.slice().sort((a2, b2) => String(a2.fecha).localeCompare(String(b2.fecha))).forEach((x, n) => { const ls = String(x.credenciales || '').split('\n').map(l => l.trim()).filter(Boolean); if (!ls.length) return; const tipo = esPedido && n === 0 && cs.length > 1 ? 'ya' : 'sp'; let bq = bloques.find(b0 => b0.tipo === tipo); if (!bq) { bq = { tipo: tipo, f: x.fecha, ls: [], desde: lineasT.length }; bloques.push(bq); } bq.f = x.fecha; ls.forEach(l => { bq.ls.push(l); lineasT.push(l); }); });
+          // cada entrega con su botón "Copiar estas" (así copia solo lo nuevo), y arriba "Copiar todas"
+          const hora = f => { const d = new Date(f); return isNaN(d) ? '' : String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth() + 1).padStart(2, '0') + ' ' + d.toLocaleTimeString('es-CO', { hour: 'numeric', minute: '2-digit' }); };
+          const listaUna = `<div class="mx-1 p-2.5 rounded-xl bg-gray-950/70 border border-gray-800"><p class="text-[11px] font-black text-emerald-300 mb-1.5">📋 ${esPedido ? 'Tu pedido' : 'Tus cuentas'} · ${lineasT.length} ${lineasT.length === 1 ? 'cuenta' : 'cuentas'}</p>${bloques.map((bq, n) => `<div class="${n ? 'mt-2 pt-2 border-t border-gray-800' : ''}">${bloques.length > 1 ? `<div class="flex items-center justify-between gap-2 mb-1"><span class="text-[10px] font-bold ${bq.tipo === 'sp' ? 'text-amber-300' : 'text-gray-400'}">${bq.tipo === 'ya' ? '⚡ Entregadas al comprar' : '🆕 Nuevas · llegaron sobre pedido'} · ${bq.ls.length} · ${bq.tipo === 'sp' ? 'la última ' : ''}${hora(bq.f)}</span><button type="button" onclick="copiarTexto(decodeURIComponent('${encodeURIComponent(bq.ls.join('\n'))}'), '${bq.ls.length === 1 ? 'Cuenta copiada' : bq.ls.length + ' cuentas copiadas'}')" class="px-2 py-0.5 rounded-lg bg-gray-800 border border-gray-700 text-emerald-300 text-[10px] font-bold"><i class="fa-solid fa-copy mr-1"></i>Copiar ${bq.ls.length === 1 ? 'esta' : 'estas ' + bq.ls.length}</button></div>` : ''}<div class="font-mono text-[11px] text-gray-200 leading-relaxed break-all">${bq.ls.map((l, j) => `<div>${bq.tipo === 'sp' && bloques.length > 1 ? '<span class="inline-block mr-1 px-1 rounded bg-emerald-500 text-black text-[9px] font-black font-sans align-middle">NEW</span>' : ''}${bq.desde + j + 1}. ${escaparHtml(l)}</div>`).join('')}</div></div>`).join('')}</div>`;
+          out += `<details class="grupo-compras rounded-2xl bg-gray-900 border border-gray-800 overflow-hidden"${esPedido ? ' open' : ''}>
             <summary class="list-none cursor-pointer p-3 flex items-center gap-3">
               <span class="w-10 h-10 shrink-0 rounded-xl bg-gray-800 flex items-center justify-center text-[11px] font-black text-gray-300">×${miembros.length}</span>
-              <span class="flex-1 min-w-0"><span class="block text-sm font-black text-white truncate">${escaparHtml(c.productoNombre || '')}</span><span class="block text-[11px] text-gray-400">${fecha} · ${miembros.length} compras · ${cuentas} ${cuentas === 1 ? 'cuenta' : 'cuentas'}${vig ? ` · <span class="text-emerald-300">garantía vigente</span>` : ''}</span></span>
+              <span class="flex-1 min-w-0"><span class="block text-sm font-black text-white truncate">${escaparHtml(c.productoNombre || '')}</span><span class="block text-[11px] text-gray-400">${fecha} · ${esPedido ? '📦 un pedido · llegó en ' + miembros.length + ' partes' : miembros.length + ' compras'} · ${cuentas} ${cuentas === 1 ? 'cuenta' : 'cuentas'}${vig ? ` · <span class="text-emerald-300">garantía vigente</span>` : ''}</span></span>
               <span class="text-right shrink-0"><span class="block text-sm font-black text-white">${formatoCOP(total)}</span><i class="fa-solid fa-chevron-down text-[10px] text-gray-500"></i></span>
             </summary>
             <div class="px-2 pb-2 space-y-2">
-              <div class="grid ${pr ? 'grid-cols-2' : 'grid-cols-1'} gap-2 px-1"><button type="button" onclick="copiarGrupoCompras('${miembros.join(',')}')" class="py-2 rounded-xl bg-gray-800 border border-gray-700 text-emerald-400 font-bold text-xs"><i class="fa-solid fa-copy mr-1"></i>Copiar las ${cuentas}</button>${pr ? `<button type="button" onclick="volverAComprar(${miembros[0]})" class="py-2 rounded-xl bg-emerald-500/15 border border-emerald-500/40 text-emerald-300 font-bold text-xs"><i class="fa-solid fa-rotate-right mr-1"></i>Volver a comprar</button>` : ''}</div>
+              <div class="grid ${pr ? 'grid-cols-2' : 'grid-cols-1'} gap-2 px-1"><button type="button" onclick="copiarGrupoCompras('${miembros.join(',')}')" class="py-2 rounded-xl bg-gray-800 border border-gray-700 text-emerald-400 font-bold text-xs"><i class="fa-solid fa-copy mr-1"></i>Copiar ${cuentas === 1 ? 'la cuenta' : 'todas (' + cuentas + ')'}</button>${pr ? `<button type="button" onclick="volverAComprar(${miembros[0]})" class="py-2 rounded-xl bg-emerald-500/15 border border-emerald-500/40 text-emerald-300 font-bold text-xs"><i class="fa-solid fa-rotate-right mr-1"></i>Volver a comprar</button>` : ''}</div>
+              ${listaUna}
+              <details class="mx-1"><summary class="list-none cursor-pointer text-[11px] text-gray-400 font-bold py-1.5"><i class="fa-solid fa-chevron-down text-[9px] mr-1"></i>Ver cada entrega (${miembros.length}) · garantía y reportes</summary><div class="space-y-2 mt-1">
               ${miembros.map(i => { const cc = cortes.find(x => x[0] === i); hecho.add(i); return cc ? html.slice(cc[1], cc[2]) : ''; }).join('')}
+              </div></details>
             </div></details>`;
         });
         return out;
@@ -22158,13 +22193,17 @@
     setInterval(() => { try { document.querySelectorAll('[data-cuenta-atras]').forEach(e => { e.textContent = textoCuentaAtras(e.dataset.cuentaAtras); }); } catch (e) { /* nada */ } }, 1000);
     // Sin stock pero con sobre pedido activo: se vende igual ("📦 Sobre pedido · hasta 50"), nunca "Agotado"
     function sobrePedidoTarjeta(p) { try { if ((Number(p.stock) || 0) > 0) return null; const e = datosEncargo(p); return e && e.activo ? { max: e.max > 0 ? e.max : maxSobrePedidoCliente() } : null; } catch (err) { return null; } }
+    var tasaUsdtPagina = { base: 0, ajuste: 0 };
+    // Mismo redondeo que el bot (hacia arriba, de a 0,10): 2.500 COP → "0,70 USD"
+    function usdDeCop(cop) { const t = Math.round((tasaUsdtPagina.base || 0) * (1 + (tasaUsdtPagina.ajuste || 0) / 100)); if (!(t > 1000) || !(Number(cop) > 0) || TIENDA_SLUG) return ''; return (Math.ceil(Number(cop) / t * 10 - 1e-9) / 10).toFixed(2).replace('.', ','); }
+    function htmlUsdMini(cop, clase) { const u = usdDeCop(cop); return u ? `<span class="${clase || 'block text-[10px] text-gray-400 font-semibold mt-0.5'}">≈ ${u} USD</span>` : ''; }
     function htmlCuadroCompacto(p) {
       const st = Number(p.stock) || 0, pr = promoDeProducto(p), sp = sobrePedidoTarjeta(p), ag = st <= 0 && !sp;
       return `<button type="button" onclick="abrirCompraRapida('${escaparJsAttr(p.docId)}')" class="relative text-left rounded-2xl p-2.5 pt-3 overflow-hidden transition active:scale-[.97] ${ag ? 'opacity-55' : ''}" style="background:linear-gradient(160deg,rgba(15,42,44,.9),rgba(11,17,32,.95));border:1px solid ${pr.cinta ? 'rgba(249,115,22,.75)' : 'rgba(19,78,74,.9)'};${pr.cinta ? 'box-shadow:0 8px 22px -12px rgba(249,115,22,.7)' : ''}">
         ${pr.cinta ? `<span class="absolute top-0 left-0 right-0 text-center text-[10px] font-black py-1 tracking-wide text-white" style="background:${pr.cinta[1]}">${pr.cinta[0]}${pr.tipo === 'flash' && pr.hasta ? ` <span data-cuenta-atras="${escaparHtml(pr.hasta)}">${textoCuentaAtras(pr.hasta)}</span>` : ''}</span>` : ''}
         <div class="${pr.cinta ? 'mt-5' : 'mt-1'} mb-1.5">${htmlLogoProducto(p, 52)}</div>
         <p class="text-[12px] font-bold text-white text-center leading-tight line-clamp-2 min-h-[30px]">${escaparHtml(p.nombre || '')}</p>
-        <p class="text-center mt-1 leading-none">${pr.tachado ? `<s class="text-[10px] text-gray-400 font-semibold mr-1">${formatoCOP(pr.tachado)}</s>` : ''}<span class="text-[17px] font-black text-white">${formatoCOP(pr.precio)}</span>${pr.pct ? `<span class="ml-1 align-middle text-[9px] font-black px-1.5 py-0.5 rounded-md bg-red-600 text-white">-${pr.pct}%</span>` : ''}</p>
+        <p class="text-center mt-1 leading-none">${pr.tachado ? `<s class="text-[10px] text-gray-400 font-semibold mr-1">${formatoCOP(pr.tachado)}</s>` : ''}<span class="text-[17px] font-black text-white">${formatoCOP(pr.precio)}</span>${htmlUsdMini(pr.precio, 'block text-[10px] text-gray-400 font-semibold mt-1')}${pr.pct ? `<span class="ml-1 align-middle text-[9px] font-black px-1.5 py-0.5 rounded-md bg-red-600 text-white">-${pr.pct}%</span>` : ''}</p>
         ${pr.regaloTxt ? `<p class="text-[10px] text-center mt-1 font-bold text-purple-300 leading-tight">🎁 ${escaparHtml(pr.regaloTxt)}</p>` : (pr.desde ? `<p class="text-[10px] text-center mt-1 font-bold text-emerald-300">💰 Desde ${formatoCOP(pr.desde.precio)}</p>` : '')}
         <p class="flex items-center justify-center gap-1 text-[10px] text-gray-400 mt-1">${sp ? `<span class="px-2 py-0.5 rounded-full bg-sky-500/15 border border-sky-400/50 text-sky-200 font-black">📦 Sobre pedido · hasta ${sp.max}</span>` : htmlBateriaMini(st) + ' ' + (ag ? '<span class="text-red-400 font-bold">Agotado</span>' : '<span class="stk-num">Stock ' + st + '</span><span class="stk-gen">' + textoStockCliente(st) + '</span>')}</p>
       </button>`;
@@ -23996,7 +24035,7 @@
       return { cuentas: legado, stock: legado.length || stockPublico };
     }
 
-    const VERSION_SERVIDOR_NECESARIA = '2026-10-19j';   // la versión del servidor que necesita esta página
+    const VERSION_SERVIDOR_NECESARIA = '2026-10-19l';   // la versión del servidor que necesita esta página
     async function llamarBackend(accion, datos) {
       if (mantenimientoActivo() && /^(comprar|recarga|renovar|carrito|preorden|combo)/.test(String(accion || ''))) { avisoMantenimiento(''); throw new Error('Estamos en mantenimiento. Compra por WhatsApp mientras tanto.'); }
       if (modoPruebaCliente) { const rs = backendSimulado(accion, datos || {}); if (rs) return rs; }
