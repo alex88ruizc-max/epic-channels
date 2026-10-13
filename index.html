@@ -6995,7 +6995,8 @@
         db.collection('usuarios').doc(user.uid).onSnapshot(doc => {
           if (doc.exists) {
             const dataU = doc.data();
-            userSaldo = dataU.saldo || 0;
+            // 🧪 durante la prueba de compra simulada el saldo es de mentira: el real se guarda aparte y se repone al terminar
+            if (typeof pruebaCompraCorriendo !== 'undefined' && pruebaCompraCorriendo) window.__saldoRealPrueba = dataU.saldo || 0; else userSaldo = dataU.saldo || 0;
             try { if (dataU.debeCambiarClave === true) exigirCambioClave(); } catch (e) { /* nada */ }
             try { perfilWa = { waVinculado: dataU.waVinculado || '', waCompraAutorizada: dataU.waCompraAutorizada === true, waSolicitaEl: dataU.waSolicitaEl || '' }; if (document.getElementById('waClienteCaja')) pintarWaCliente(); } catch (e) { /* nada */ }
             setTimeout(() => { try { revisarCompraTrasRecarga(); } catch (e) { /* nada */ } }, 0);
@@ -15906,7 +15907,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-19l';
+    const VERSION_PAGINA = '2026-10-19n';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261010_wacompra', fecha: '2026-10-10', titulo: 'Compra por WhatsApp 💬', mensaje: 'Ahora puedes **comprar con tu saldo desde nuestro WhatsApp**. Ve a tu perfil → **Mis datos → Comprar por WhatsApp**, vincula tu chat con el código y pide la autorización.' },
       { id: 'act_20261010_vista2', fecha: '2026-10-10', titulo: 'Nueva vista de la tienda ▦', mensaje: 'Ahora puedes ver los productos **en 2 columnas**: más productos en tu pantalla, con las **promos resaltadas** (🔥 campaña, ⚡ relámpago, 🎁 regalo). Toca uno y se abre su ficha para comprar. Cambia de vista con los íconos ☰ / ▦ arriba de las categorías.' },
@@ -22678,12 +22679,13 @@
     async function probarCompraSimulada() {
       if (pruebaCompraCorriendo) return { ok: true, detalle: 'ya está corriendo' };
       pruebaCompraCorriendo = true;
-      const prev = { cat: categoriaActiva, saldo: userSaldo, llamar: window.llamarBackend, alerta: window.alert, conf: window.confirmarModal, curso: compraEnCurso };
+      const prev = { cat: categoriaActiva, saldo: userSaldo, llamar: window.llamarBackend, alerta: window.alert, conf: window.confirmarModal, curso: compraEnCurso, sinSaldo: window.abrirModalSaldoInsuficiente };
+      window.__saldoRealPrueba = undefined;
       const st = document.createElement('style'); st.id = 'estiloPruebaCompra'; st.textContent = '#modalCompraRapida,.modal-exito-compra{visibility:hidden!important}'; document.head.appendChild(st);
       const fallas = []; let llamado = null, probadas = 0;
       try {
         userSaldo = 999999999;
-        window.alert = () => {}; window.confirmarModal = async () => true;
+        window.alert = () => {}; window.confirmarModal = async () => true; window.abrirModalSaldoInsuficiente = () => {};   // nada de ventanas mientras prueba
         window.llamarBackend = async (accion, body) => { if (accion === 'comprar' || accion === 'preorden_crear') { llamado = body && body.productoId; return { ok: false, error: '__prueba__' }; } return prev.llamar(accion, body); };
         const prods = (catalogoUnificado || []).filter(p => p.activo !== false && !p.esCombo && Number(p.precio) > 0 && Number(p.stock) >= Math.max(1, Number(p.minCompra) || 1) && usuarioTienePermisoProducto(p));
         const cats = ['todas', 'promos'].concat(Array.from(new Set(prods.map(p => p.categoria).filter(Boolean))));
@@ -22702,7 +22704,8 @@
         return { ok: !unicas.length, probadas, detalle: unicas.length ? 'la compra no llega al servidor: ' + unicas.slice(0, 4).join(' · ') + (unicas.length > 4 ? ' y ' + (unicas.length - 4) + ' más' : '') : probadas + ' compras simuladas bien (' + prods.length + ' productos × ' + cats.length + ' vistas)' };
       } catch (e) { return { ok: false, detalle: 'la prueba no pudo correr: ' + e.message }; }
       finally {
-        window.llamarBackend = prev.llamar; window.alert = prev.alerta; window.confirmarModal = prev.conf; userSaldo = prev.saldo; compraEnCurso = prev.curso; categoriaActiva = prev.cat;
+        window.llamarBackend = prev.llamar; window.alert = prev.alerta; window.confirmarModal = prev.conf; window.abrirModalSaldoInsuficiente = prev.sinSaldo;
+        userSaldo = window.__saldoRealPrueba !== undefined ? window.__saldoRealPrueba : prev.saldo; compraEnCurso = prev.curso; categoriaActiva = prev.cat;
         try { renderizarCatalogo(); } catch (e) { /* nada */ }
         try { const m = document.getElementById('modalCompraRapida'); if (m) m.style.display = 'none'; } catch (e) { /* nada */ }
         try { st.remove(); } catch (e) { /* nada */ }
@@ -23993,7 +23996,7 @@
       return { cuentas: legado, stock: legado.length || stockPublico };
     }
 
-    const VERSION_SERVIDOR_NECESARIA = '2026-10-19i';   // la versión del servidor que necesita esta página
+    const VERSION_SERVIDOR_NECESARIA = '2026-10-19j';   // la versión del servidor que necesita esta página
     async function llamarBackend(accion, datos) {
       if (mantenimientoActivo() && /^(comprar|recarga|renovar|carrito|preorden|combo)/.test(String(accion || ''))) { avisoMantenimiento(''); throw new Error('Estamos en mantenimiento. Compra por WhatsApp mientras tanto.'); }
       if (modoPruebaCliente) { const rs = backendSimulado(accion, datos || {}); if (rs) return rs; }
