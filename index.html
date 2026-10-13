@@ -1386,7 +1386,7 @@
             <i class="fa-solid fa-chevron-down text-gray-400"></i>
           </button>
           <div id="vmCuerpo" class="hidden border-t border-gray-800 p-4 space-y-2.5">
-            <select id="vmProducto" onchange="vmCambioProducto()" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none"></select>
+            <select id="vmProducto" onfocus="if(!this.options.length){prepararVentaManual();}" onpointerdown="if(!this.options.length){prepararVentaManual();}" onchange="vmCambioProducto()" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none"></select>
             <div class="grid grid-cols-3 gap-2">
               <label class="text-[10px] text-gray-400">Cantidad<input type="number" id="vmCantidad" min="1" value="1" oninput="vmCalcularTotal()" class="mt-1 w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"></label>
               <label class="text-[10px] text-gray-400">Total a cobrar ($)<input type="number" id="vmTotal" min="0" step="100" oninput="this.dataset.manual='1';vmCalcularTotal()" class="mt-1 w-full bg-gray-800 border border-emerald-600/60 rounded-xl px-3 py-2 text-xs text-white font-bold focus:outline-none"><input type="hidden" id="vmPrecio"></label>
@@ -8793,6 +8793,8 @@
       });
 
       catalogoUnificado = Array.from(mapaProds.values());
+      try { const vmS = document.getElementById('vmProducto'); if (vmS && (!vmS.options.length || !vmS.value)) { opcionesProductosStock(vmS); vmAgregarLibres(); vmCambioProducto(); } } catch (e) { /* nada */ }
+      try { const dS = document.getElementById('correoPropioDestino'); if (dS && !dS.options.length) poblarDestinoPropio(); } catch (e) { /* nada */ }
       try { aplicarPromociones(); } catch (e) { console.warn('Promociones:', e); }
       aplicarStockCompartido();
       try { if (document.getElementById('adminSecPromociones') && !document.getElementById('adminSecPromociones').classList.contains('hidden')) { renderizarPromoProductos(); renderizarPromoActivas(); } } catch (e) { /* nada */ }
@@ -15903,7 +15905,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-19e';
+    const VERSION_PAGINA = '2026-10-19g';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261010_wacompra', fecha: '2026-10-10', titulo: 'Compra por WhatsApp 💬', mensaje: 'Ahora puedes **comprar con tu saldo desde nuestro WhatsApp**. Ve a tu perfil → **Mis datos → Comprar por WhatsApp**, vincula tu chat con el código y pide la autorización.' },
       { id: 'act_20261010_vista2', fecha: '2026-10-10', titulo: 'Nueva vista de la tienda ▦', mensaje: 'Ahora puedes ver los productos **en 2 columnas**: más productos en tu pantalla, con las **promos resaltadas** (🔥 campaña, ⚡ relámpago, 🎁 regalo). Toca uno y se abre su ficha para comprar. Cambia de vista con los íconos ☰ / ▦ arriba de las categorías.' },
@@ -16663,8 +16665,8 @@
     function opcionesProductosStock(sel, conLibres) {
       if (!sel) return;
       const prev = sel.value;
-      sel.innerHTML = catalogoUnificado.filter(p => !p.esCombo).sort((a, b) => String(a.nombre).localeCompare(String(b.nombre), 'es'))
-        .map(p => `<option value="${escaparHtml(p.docId)}">${escaparHtml(p.nombre || p.docId)} · ${stockLibreDeProducto(p.docId)} libres</option>`).join('');
+      sel.innerHTML = catalogoUnificado.filter(p => p && p.docId && !p.esCombo).sort((a, b) => String(a.nombre).localeCompare(String(b.nombre), 'es'))
+        .map(p => { let lb = 0; try { lb = stockLibreDeProducto(p.docId); } catch (e) { lb = Number(p.stock) || 0; } return `<option value="${escaparHtml(p.docId)}">${escaparHtml(p.nombre || p.docId)} · ${lb} libres</option>`; }).join('');
       if (prev) sel.value = prev;
     }
 
@@ -16699,7 +16701,7 @@
       const t = document.getElementById('vmTotal');
       if (t && !t.dataset.manual) t.value = sugerido || '';
       const total = Math.round(Number(t && t.value) || 0), libres = ac.libre ? 1 : (p ? stockLibreDeProducto(id) : 0);
-      { const sc = document.getElementById('vmSobreCaja'), falta = Math.max(0, n - libres); if (sc) sc.classList.toggle('hidden', !!ac.libre || !falta); const h = document.getElementById('vmHay'); if (h) h.textContent = libres; const fz = document.getElementById('vmFaltan'); if (fz) fz.textContent = falta; }
+      { const sc = document.getElementById('vmSobreCaja'), falta = Math.max(0, n - libres); if (sc) sc.classList.toggle('hidden', !p || !!ac.libre || !falta); const h = document.getElementById('vmHay'); if (h) h.textContent = libres; const fz = document.getElementById('vmFaltan'); if (fz) fz.textContent = falta; }
       const inf = document.getElementById('vmInfo');
       if (inf && p) inf.innerHTML = `${libres} ${libres === 1 ? 'cuenta libre' : 'cuentas libres'}${n > libres ? ' · <b class="text-red-300">no alcanzan</b>' : ''} · precio normal ${formatoCOP(unit)} c/u · sugerido <b class="text-white">${formatoCOP(sugerido)}</b>${t && t.dataset.manual && total !== sugerido ? ` · <span class="text-amber-300">cobrarás ${formatoCOP(total)}${sugerido ? ' (' + (total < sugerido ? '-' : '+') + formatoCOP(Math.abs(sugerido - total)) + ')' : ''}</span> <button type="button" onclick="delete document.getElementById('vmTotal').dataset.manual;vmCalcularTotal()" class="underline text-gray-400">usar sugerido</button>` : ''}${esProductoPrime(p) ? ' · incluye la contraseña de Prime Video' : ''}`;
     }
@@ -23972,7 +23974,7 @@
       return { cuentas: legado, stock: legado.length || stockPublico };
     }
 
-    const VERSION_SERVIDOR_NECESARIA = '2026-10-19d';   // la versión del servidor que necesita esta página
+    const VERSION_SERVIDOR_NECESARIA = '2026-10-19e';   // la versión del servidor que necesita esta página
     async function llamarBackend(accion, datos) {
       if (mantenimientoActivo() && /^(comprar|recarga|renovar|carrito|preorden|combo)/.test(String(accion || ''))) { avisoMantenimiento(''); throw new Error('Estamos en mantenimiento. Compra por WhatsApp mientras tanto.'); }
       if (modoPruebaCliente) { const rs = backendSimulado(accion, datos || {}); if (rs) return rs; }
