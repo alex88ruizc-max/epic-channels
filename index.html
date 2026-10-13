@@ -632,6 +632,14 @@
         <div id="provPedidosLista" class="border-t border-gray-800 p-3 space-y-3"></div>
       </div>
       <div id="provReferidosCaja" class="hidden"></div>
+      <div id="provDominioCaja" class="bg-gray-900 border border-emerald-500/40 rounded-2xl p-4">
+        <div class="flex items-center gap-3">
+          <span class="w-10 h-10 shrink-0 rounded-xl bg-emerald-500/15 text-emerald-300 flex items-center justify-center"><i class="fa-solid fa-at"></i></span>
+          <div class="min-w-0 flex-grow"><p class="text-sm font-black text-white">Correo para crear cuenta</p><p class="text-[10px] text-gray-500">Pide uno, crea la cuenta y toca "Ver código" para verificarla.</p></div>
+          <button type="button" onclick="provDominioNuevo()" class="shrink-0 px-3 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-black text-[11px]"><i class="fa-solid fa-plus"></i> Nuevo</button>
+        </div>
+        <div id="provDominioLista" class="mt-3 space-y-2"></div>
+      </div>
       <div id="provCorreosCaja" class="bg-gray-900 border border-violet-500/40 rounded-2xl overflow-hidden">
         <div class="p-4 flex items-center gap-3">
           <span class="relative w-10 h-10 shrink-0 rounded-xl bg-violet-500/15 text-violet-300 flex items-center justify-center"><i class="fa-solid fa-envelope"></i><span id="provCorreosNuevos" class="hidden absolute -top-1.5 -right-1.5 min-w-[20px] h-5 px-1 rounded-full bg-red-500 text-white text-[11px] font-black flex items-center justify-center border-2 border-gray-950"></span></span>
@@ -1389,6 +1397,11 @@
             <i class="fa-solid fa-key text-emerald-400"></i> Cargar Cuentas al Inventario
           </h3>
           <p class="text-xs text-gray-400 mb-4">Pega una cuenta por cada renglón (correo:clave).</p>
+          <div class="solo-admin mb-4 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/40">
+            <div class="flex items-center gap-2"><p class="text-[11px] font-black text-emerald-200 flex-1">📧 Correo para crear tu cuenta Prime</p><button type="button" onclick="generarCorreoPropio()" class="px-3 py-1.5 rounded-lg bg-emerald-500 text-black font-black text-[11px]"><i class="fa-solid fa-wand-magic-sparkles"></i> Generar</button></div>
+            <div id="correoPropioCaja" class="hidden mt-2 flex items-center gap-2 flex-wrap"><span id="correoPropioTxt" class="font-mono text-[12px] text-white"></span><button type="button" onclick="copiarTexto(document.getElementById('correoPropioTxt').textContent,'Correo copiado')" class="px-2 py-1 rounded-lg bg-gray-700 text-gray-200 text-[10px] font-bold">Copiar correo</button><button type="button" onclick="copiarTexto('epic2828','Clave copiada')" class="px-2 py-1 rounded-lg bg-gray-700 text-gray-200 text-[10px] font-bold">Copiar clave</button></div>
+            <p class="text-[10px] text-gray-400 mt-1.5">Crea la cuenta con este correo y la clave <b class="font-mono">epic2828</b>. Cuando llegue "Bienvenido a Prime", entra sola al stock de Prime Local.</p>
+          </div>
           <form onsubmit="cargarStockMasivo(event)" class="space-y-4">
             <div class="solo-admin">
               <label class="block text-xs text-gray-400 mb-1">¿Quién trajo estas cuentas?</label>
@@ -11334,8 +11347,41 @@
     let unsubProveedor = null;
     let proveedorLotes = [];
 
+    async function generarCorreoPropio() {
+      try { const r = await llamarBackend('prov_correos', { op: 'propio' }); if (!r || !r.ok) { alert((r && r.error) || 'No se pudo.'); return; }
+        const t = document.getElementById('correoPropioTxt'), c = document.getElementById('correoPropioCaja'); if (t) t.textContent = r.correo; if (c) c.classList.remove('hidden');
+        copiarTexto(r.correo, '📧 Correo copiado · clave: epic2828'); } catch (e) { alert(e.message); }
+    }
+    // 📧 Correos de tu dominio para el proveedor: uno a la vez, con "Ver código" solo de sus correos
+    var provDominioCorreos = [];
+    function pintarProvDominio() {
+      const l = document.getElementById('provDominioLista'); if (!l) return;
+      l.innerHTML = provDominioCorreos.length ? provDominioCorreos.slice(0, 8).map((c, i) => `<div class="p-2.5 rounded-xl bg-gray-800/70 border ${c.codigoVistoEl ? 'border-gray-700' : 'border-emerald-500/40'}">
+          <div class="flex items-center gap-2"><span class="font-mono text-[12px] text-white truncate flex-1">${escaparHtml(c.correo)}</span>
+            <button type="button" onclick="copiarTexto('${escaparHtml(c.correo)}','Correo copiado')" class="px-2 py-1 rounded-lg bg-gray-700 text-gray-200 text-[10px] font-bold"><i class="fa-solid fa-copy"></i></button>
+            <button type="button" onclick="provDominioCodigo(${i})" class="px-2.5 py-1 rounded-lg bg-emerald-500 text-black text-[10px] font-black">🔑 Ver código</button></div>
+          <div id="provDomCod_${i}" class="mt-1.5 text-[11px] text-gray-400 ${c.codigoVistoEl ? '' : 'hidden'}">${c.codigoVistoEl ? '✓ Ya verificaste este correo' : ''}</div></div>`).join('') : '<p class="text-[11px] text-gray-500">Toca <b>Nuevo</b> para recibir un correo.</p>';
+    }
+    async function provDominioCargar() { try { const r = await llamarBackend('prov_correos', { op: 'lista' }); if (r && r.ok) { provDominioCorreos = r.correos || []; pintarProvDominio(); } } catch (e) { /* nada */ } }
+    async function provDominioNuevo() {
+      try { const r = await llamarBackend('prov_correos', { op: 'nuevo' }); if (!r || !r.ok) { alert((r && r.error) || 'No se pudo.'); return; }
+        provDominioCorreos.unshift({ correo: r.correo, creadoEl: new Date().toISOString() }); pintarProvDominio(); copiarTexto(r.correo, '📧 Correo nuevo copiado: créale la cuenta'); } catch (e) { alert(e.message); }
+    }
+    async function provDominioCodigo(i) {
+      const c = provDominioCorreos[i], box = document.getElementById('provDomCod_' + i); if (!c || !box) return;
+      box.classList.remove('hidden'); box.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Buscando el código…';
+      try {
+        const r = await llamarBackend('prov_correos', { op: 'codigo', correo: c.correo });
+        if (!r || !r.ok) { box.innerHTML = '<span class="text-amber-300">' + escaparHtml((r && r.error) || 'No se pudo.') + '</span>'; return; }
+        const L = (r.resultados || []).filter(x => x.codigo || x.aprobar);
+        if (!L.length) { box.innerHTML = '<span class="text-gray-400">Aún no llega ningún código. Pídelo en la plataforma y toca de nuevo en unos segundos.</span>'; return; }
+        box.innerHTML = L.map(x => x.codigo ? `<div class="flex items-center gap-2 mt-1"><span class="font-mono font-black text-xl tracking-[0.25em] text-emerald-400">${escaparHtml(x.codigo)}</span><span class="text-[10px] text-gray-500">${escaparHtml(x.plataforma || '')} · ${new Date(x.fecha).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })}</span><button type="button" onclick="copiarTexto('${escaparHtml(x.codigo)}','Código copiado')" class="ml-auto px-2 py-1 rounded-lg bg-gray-700 text-gray-200 text-[10px] font-bold">Copiar</button></div>` : `<p class="text-amber-200 mt-1">📩 ${escaparHtml(x.plataforma || 'La plataforma')} pide aprobar el inicio de sesión desde el correo.</p>`).join('');
+        c.codigoVistoEl = c.codigoVistoEl || new Date().toISOString();
+      } catch (e) { box.innerHTML = '<span class="text-amber-300">' + escaparHtml(e.message || 'Error') + '</span>'; }
+    }
     function iniciarProveedor() {
       if (unsubProveedor || !currentUser) return;
+      try { provDominioCargar(); } catch (e) { /* nada */ }
       try {
         iniciarTicketsProveedor();
         iniciarPagosProveedor();
@@ -15745,7 +15791,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-18c';
+    const VERSION_PAGINA = '2026-10-18m';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261010_wacompra', fecha: '2026-10-10', titulo: 'Compra por WhatsApp 💬', mensaje: 'Ahora puedes **comprar con tu saldo desde nuestro WhatsApp**. Ve a tu perfil → **Mis datos → Comprar por WhatsApp**, vincula tu chat con el código y pide la autorización.' },
       { id: 'act_20261010_vista2', fecha: '2026-10-10', titulo: 'Nueva vista de la tienda ▦', mensaje: 'Ahora puedes ver los productos **en 2 columnas**: más productos en tu pantalla, con las **promos resaltadas** (🔥 campaña, ⚡ relámpago, 🎁 regalo). Toca uno y se abre su ficha para comprar. Cambia de vista con los íconos ☰ / ▦ arriba de las categorías.' },
@@ -20536,6 +20582,12 @@
 
     // ==================== NOVEDADES INTERNAS DEL PANEL (solo el equipo) ====================
     const ACTUALIZACIONES_INTERNAS = [
+      { fecha: '2026-10-18', titulo: '📥 Tus cuentas Prime suben solas', mensaje: 'Cada 15 minutos, si Amazon mandó "Welcome to Prime / Bienvenido a Prime" a un correo de tu dominio que no es de un proveedor, la cuenta entra sola al stock de Prime Local como correo:epic2828 y te avisa por Telegram. No repite cuentas que ya están en stock, vendidas o retiradas. Las de los proveedores las siguen subiendo ellos.', ir: 'stock' },
+      { fecha: '2026-10-18', titulo: '🚫 Cuentas suspendidas salen solas del stock', mensaje: 'Una vez al día el servidor revisa los correos de Amazon a tu dominio. Si avisan cuenta bloqueada/suspendida, Prime cancelado o pago rechazado: si la cuenta está en stock sin vender, la saca del stock y te avisa por Telegram; si ya estaba vendida, solo te avisa con el cliente que la tiene. Solo aplica a correos de tu dominio (no Hotmail).', ir: 'stock' },
+      { fecha: '2026-10-18', titulo: '📧 Correos de tu dominio para proveedores', mensaje: 'En el panel del proveedor hay una tarjeta "Correo para crear cuenta": toca Nuevo y recibe un correo de tu dominio con nombre natural y sin punto (ej. andrearojas91@epicstreaming.vip). Crea la cuenta y toca "Ver código": solo ve los códigos de sus propios correos. Máximo 3 sin usar a la vez. Necesita el atrapa-todo de Gmail activo.', ir: 'proveedores' },
+      { fecha: '2026-10-18', titulo: '📦 Códigos de Amazon (Hotmail reenviado)', mensaje: 'La consulta de códigos ya reconoce también los correos de Amazon/Prime Video. Para que funcione con cuentas Hotmail, cada Hotmail debe tener activado el reenvío automático a codigos@epicstreaming.vip (Outlook → Configuración → Correo → Reenvío). El cliente consulta igual que con Netflix.', ir: 'codigos' },
+      { fecha: '2026-10-18', titulo: '👍 Reacciones y emojis sueltos', mensaje: 'Si al bot le llega solo un emoji (una reacción 👍, ❤️, 🙏…), ya no responde "No te entendí": se queda callado. Un 👍/👌/✅ justo después de una oferta o pregunta de confirmación cuenta como "sí".', ir: 'whatsapp' },
+      { fecha: '2026-10-18', titulo: '🤫 El bot calla si el chat lo empezaste tú', mensaje: 'Si en un chat nuevo el primer mensaje que llega suena a respuesta ("ya te envío", "dame un momento", "déjame ver"…), el bot entiende que la conversación la empezaste tú (un proveedor, por ejemplo), no responde y te avisa por Telegram con un botón por si sí era un cliente. Queda en silencio 24 h. Además, el segundo mensaje de bienvenida ahora es corto: la garantía y "vincular"; las referencias salen solo si el cliente duda.', ir: 'whatsapp' },
       { fecha: '2026-10-18', titulo: '🎬 Cartelera para todas tus plataformas', mensaje: 'El recuadro de estados con lo que está en cada plataforma ya funciona con Netflix, Disney+, Max, Paramount+, Apple TV+ y Crunchyroll, además de Prime Video. Elige la plataforma (sale cada producto tuyo que la vende), marca los títulos y crea la cartelera con el color de la marca, tu precio y el enlace directo de ese producto.', ir: 'marketing' },
       { fecha: '2026-10-18', titulo: '🎬 Cartelera de Prime Video para estados', mensaje: 'En Marketing → Novedad → recuadro de Prime Video: marca los títulos y toca "Crear imágenes de cartelera". Diseño "Lista" (un estado con hasta 4 títulos y su gancho) o "Uno por título" (un estado por cada uno, con el nombre en letras grandes). Llevan tu logo, tu precio de Prime y el enlace directo. El texto del estado queda copiado.', ir: 'marketing' },
       { fecha: '2026-10-17', titulo: '🎬 Estados con lo que está en Prime Video', mensaje: 'En Marketing → Imágenes para estados → Novedad, el botón "Sugerencias" trae lo más popular hoy en Prime Video Colombia (series y películas, de TMDB). Marca hasta 4 y se arma la novedad: "🎬 Esta semana en Prime Video", la lista y tu enlace directo de Prime. Primero pon tu clave gratis de TMDB en 🔑.', ir: 'marketing' },
@@ -23760,7 +23812,7 @@
       return { cuentas: legado, stock: legado.length || stockPublico };
     }
 
-    const VERSION_SERVIDOR_NECESARIA = '2026-10-17q';   // la versión del servidor que necesita esta página
+    const VERSION_SERVIDOR_NECESARIA = '2026-10-18a';   // la versión del servidor que necesita esta página
     async function llamarBackend(accion, datos) {
       if (mantenimientoActivo() && /^(comprar|recarga|renovar|carrito|preorden|combo)/.test(String(accion || ''))) { avisoMantenimiento(''); throw new Error('Estamos en mantenimiento. Compra por WhatsApp mientras tanto.'); }
       if (modoPruebaCliente) { const rs = backendSimulado(accion, datos || {}); if (rs) return rs; }
@@ -24608,7 +24660,7 @@
         return `
           <div class="p-3 bg-gray-800/70 border border-emerald-500/30 rounded-lg mb-2">
             <div class="flex items-center justify-between gap-2 mb-2">
-              <span class="text-[11px] font-bold text-white flex items-center gap-1.5"><i class="fa-solid ${r.restablecer ? 'fa-key text-amber-400' : 'fa-envelope-open-text text-emerald-400'}"></i> ${r.restablecer ? 'Restablecer contraseña' : 'Netflix'}</span>
+              <span class="text-[11px] font-bold text-white flex items-center gap-1.5"><i class="fa-solid ${r.restablecer ? 'fa-key text-amber-400' : 'fa-envelope-open-text text-emerald-400'}"></i> ${r.restablecer ? 'Restablecer contraseña' : (r.plataforma || 'Netflix')}</span>
               <span class="text-[10px] text-gray-400">${mins ? 'vence en ~' + mins + ' min' : ''}</span>
             </div>
             ${r.codigo ? `
@@ -24616,6 +24668,7 @@
                 <span class="font-mono font-black text-2xl tracking-[0.3em] text-emerald-400">${escaparHtml(r.codigo)}</span>
                 <button onclick="copiarCodigoNetflix('${ambito}','${id}',${j})" class="text-gray-300 hover:text-white text-xs px-2 py-1 bg-gray-800 rounded-lg"><i class="fa-solid fa-copy mr-1"></i>Copiar</button>
               </div>` : ''}
+            ${!r.codigo && r.enlaceTipo === 'aprobar' ? `<p class="text-[11px] text-amber-200 bg-amber-500/10 border border-amber-500/30 rounded-lg px-3 py-2">📩 Amazon pide <b>aprobar el inicio de sesión</b> desde el correo de la cuenta. Intenta de nuevo en la app: suele llegar un código de 6 dígitos.</p>` : ''}
             ${r.enlace ? `
               <button onclick="abrirEnlaceNetflix('${ambito}','${id}',${j})" class="w-full ${r.restablecer ? 'bg-amber-500 hover:bg-amber-400 text-black' : 'bg-red-600 hover:bg-red-500 text-white'} font-black py-2.5 rounded-lg text-xs flex items-center justify-center gap-1.5 transition">
                 <i class="fa-solid fa-arrow-up-right-from-square"></i> ${escaparHtml(r.enlaceTipo || 'Abrir enlace de Netflix')}
