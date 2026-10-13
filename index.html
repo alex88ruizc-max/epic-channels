@@ -1392,6 +1392,9 @@
               <label class="text-[10px] text-gray-400">Total a cobrar ($)<input type="number" id="vmTotal" min="0" step="100" oninput="this.dataset.manual='1';vmCalcularTotal()" class="mt-1 w-full bg-gray-800 border border-emerald-600/60 rounded-xl px-3 py-2 text-xs text-white font-bold focus:outline-none"><input type="hidden" id="vmPrecio"></label>
               <label class="text-[10px] text-gray-400">Cliente (nota)<input type="text" id="vmCliente" maxlength="80" placeholder="Opcional" class="mt-1 w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"></label>
             </div>
+            <div id="vmComoCaja" class="hidden"><label class="text-[10px] text-gray-400">🆓 Este correo libre se registra como<select id="vmComo" onchange="vmCambioProducto(true)" class="mt-1 w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"></select></label></div>
+            <label class="block text-[10px] text-gray-400">👤 Cuenta del cliente (correo) · opcional<input type="email" id="vmCuentaCliente" inputmode="email" autocomplete="off" placeholder="Así la ve en Mis cuentas con su garantía" class="mt-1 w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"></label>
+            <label id="vmSobreCaja" class="hidden flex items-start gap-2 p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/40 text-[11px] text-amber-100"><input type="checkbox" id="vmSobre" class="mt-0.5"><span>📦 Entregar las <b id="vmHay"></b> que hay ya y dejar las <b id="vmFaltan"></b> que faltan <b>sobre pedido</b> (le llegan solas cuando entre stock). Necesita la <b>cuenta del cliente</b>.</span></label>
             <p id="vmInfo" class="text-[11px] text-gray-400"></p>
             <button type="button" id="btnVentaManual" onclick="hacerVentaManual()" class="w-full py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-black text-xs"><i class="fa-brands fa-whatsapp mr-1"></i>Vender y armar mensaje</button>
           </div>
@@ -15900,7 +15903,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-19b';
+    const VERSION_PAGINA = '2026-10-19e';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261010_wacompra', fecha: '2026-10-10', titulo: 'Compra por WhatsApp 💬', mensaje: 'Ahora puedes **comprar con tu saldo desde nuestro WhatsApp**. Ve a tu perfil → **Mis datos → Comprar por WhatsApp**, vincula tu chat con el código y pide la autorización.' },
       { id: 'act_20261010_vista2', fecha: '2026-10-10', titulo: 'Nueva vista de la tienda ▦', mensaje: 'Ahora puedes ver los productos **en 2 columnas**: más productos en tu pantalla, con las **promos resaltadas** (🔥 campaña, ⚡ relámpago, 🎁 regalo). Toca uno y se abre su ficha para comprar. Cambia de vista con los íconos ☰ / ▦ arriba de las categorías.' },
@@ -16666,22 +16669,37 @@
     }
 
     // ==================== VENTA MANUAL POR WHATSAPP ====================
-    function prepararVentaManual() { opcionesProductosStock(document.getElementById('vmProducto')); vmCambioProducto(); }
+    async function prepararVentaManual() {
+      const sel = document.getElementById('vmProducto'); opcionesProductosStock(sel); vmAgregarLibres(); vmCambioProducto();
+      try { if (!correosPropios.length) { await cargarCorreosPropios(); vmAgregarLibres(); } } catch (e) { /* nada */ }
+    }
+    function vmAgregarLibres() {
+      const sel = document.getElementById('vmProducto'); if (!sel) return; const prev = sel.value;
+      [...sel.querySelectorAll('optgroup[data-libres]')].forEach(x => x.remove());
+      const L = (typeof correosPropios !== 'undefined' ? correosPropios : []).filter(c => c.destino === 'libre' && !c.asignadoA);
+      if (L.length) { const og = document.createElement('optgroup'); og.label = '🆓 Correos libres (' + L.length + ')'; og.dataset.libres = '1'; L.forEach(c => { const o = document.createElement('option'); o.value = 'libre:' + c.correo; o.textContent = '🆓 ' + c.correo; og.appendChild(o); }); sel.appendChild(og); }
+      if (prev && [...sel.options].some(o => o.value === prev)) sel.value = prev;
+      const como = document.getElementById('vmComo'); if (como && !como.options.length) { opcionesProductosStock(como); const af = (catalogoUnificado || []).find(p => /amazon/i.test(p.nombre || '') && /free/i.test(p.nombre || '')); if (af) como.value = af.docId; }
+    }
+    function vmProductoActual() { const v = (document.getElementById('vmProducto') || {}).value || ''; if (/^libre:/.test(v)) { const c = (document.getElementById('vmComo') || {}).value; return { libre: v.slice(6), id: c, p: catalogoUnificado.find(x => x.docId === c) }; } return { libre: '', id: v, p: catalogoUnificado.find(x => x.docId === v) }; }
     function vmCambioProducto() {
-      const id = (document.getElementById('vmProducto') || {}).value;
-      const p = catalogoUnificado.find(x => x.docId === id);
+      const ac = vmProductoActual(), id = ac.id, p = ac.p;
+      const cc = document.getElementById('vmComoCaja'); if (cc) cc.classList.toggle('hidden', !ac.libre);
+      if (ac.libre) { const q = document.getElementById('vmCantidad'); if (q) q.value = 1; }
       const pr = document.getElementById('vmPrecio'); if (pr && p) pr.value = (p.precioLista !== undefined ? p.precioLista : p.precio) || '';
       const t = document.getElementById('vmTotal'); if (t) delete t.dataset.manual;
       vmCalcularTotal();
     }
     // Total = cantidad × precio del producto; si lo editas, se respeta tu total
     function vmCalcularTotal() {
-      const id = (document.getElementById('vmProducto') || {}).value, p = catalogoUnificado.find(x => x.docId === id);
+      const ac = vmProductoActual(), id = ac.id, p = ac.p;
+      if (ac.libre) { const q = document.getElementById('vmCantidad'); if (q && q.value !== '1') q.value = 1; }
       const n = Math.max(1, parseInt((document.getElementById('vmCantidad') || {}).value, 10) || 1);
       const unit = Math.round(Number((document.getElementById('vmPrecio') || {}).value) || 0), sugerido = unit * n;
       const t = document.getElementById('vmTotal');
       if (t && !t.dataset.manual) t.value = sugerido || '';
-      const total = Math.round(Number(t && t.value) || 0), libres = p ? stockLibreDeProducto(id) : 0;
+      const total = Math.round(Number(t && t.value) || 0), libres = ac.libre ? 1 : (p ? stockLibreDeProducto(id) : 0);
+      { const sc = document.getElementById('vmSobreCaja'), falta = Math.max(0, n - libres); if (sc) sc.classList.toggle('hidden', !!ac.libre || !falta); const h = document.getElementById('vmHay'); if (h) h.textContent = libres; const fz = document.getElementById('vmFaltan'); if (fz) fz.textContent = falta; }
       const inf = document.getElementById('vmInfo');
       if (inf && p) inf.innerHTML = `${libres} ${libres === 1 ? 'cuenta libre' : 'cuentas libres'}${n > libres ? ' · <b class="text-red-300">no alcanzan</b>' : ''} · precio normal ${formatoCOP(unit)} c/u · sugerido <b class="text-white">${formatoCOP(sugerido)}</b>${t && t.dataset.manual && total !== sugerido ? ` · <span class="text-amber-300">cobrarás ${formatoCOP(total)}${sugerido ? ' (' + (total < sugerido ? '-' : '+') + formatoCOP(Math.abs(sugerido - total)) + ')' : ''}</span> <button type="button" onclick="delete document.getElementById('vmTotal').dataset.manual;vmCalcularTotal()" class="underline text-gray-400">usar sugerido</button>` : ''}${esProductoPrime(p) ? ' · incluye la contraseña de Prime Video' : ''}`;
     }
@@ -16726,30 +16744,50 @@
 
     async function hacerVentaManual() {
       if (!puedeSeccion('venta_manual')) return;
-      const id = document.getElementById('vmProducto').value;
-      const prod = catalogoUnificado.find(x => x.docId === id);
+      const ac = vmProductoActual(), id = ac.id, prod = ac.p;
       const n = Math.max(1, parseInt(document.getElementById('vmCantidad').value, 10) || 1);
       const totalCobro = Math.max(0, Math.round(Number((document.getElementById('vmTotal') || {}).value) || 0));
-      const precio = Math.round(totalCobro / Math.max(1, parseInt(document.getElementById('vmCantidad').value, 10) || 1));
       const cliente = String(document.getElementById('vmCliente').value || '').trim().slice(0, 80);
+      const emCli = String((document.getElementById('vmCuentaCliente') || {}).value || '').trim().toLowerCase();
       if (!prod) { alert('Elige el producto.'); return; }
-      if (!await confirmarModal(`¿Vender ${n} ${n === 1 ? 'cuenta' : 'cuentas'} de ${prod.nombre} por ${formatoCOP(totalCobro)}?\n\nSe entregan de tu stock y queda registrada como venta.`, { textoAceptar: 'Sí, vender' })) return;
+      const libres = ac.libre ? 1 : stockLibreDeProducto(id), sobre = !ac.libre && n > libres && !!(document.getElementById('vmSobre') || {}).checked;
+      if (!ac.libre && n > libres && !sobre) { alert(`Solo hay ${libres} libres. Marca "sobre pedido" para dejar el resto en fila, o baja la cantidad.`); return; }
+      if (sobre && !emCli) { alert('Para dejar cuentas sobre pedido escribe el correo de la cuenta del cliente.'); return; }
+      // 👤 cuenta del cliente (si la escribiste): la compra queda a su nombre
+      let uidCli = '';
+      if (emCli) { try { const q = await db.collection('usuarios').where('email', '==', emCli).limit(1).get(); if (q.empty) { alert('No encontré una cuenta con ese correo.'); return; } uidCli = q.docs[0].id; } catch (e) { alert('No pude buscar la cuenta: ' + e.message); return; } }
+      const nInm = ac.libre ? 1 : Math.min(n, libres), nPed = sobre ? n - nInm : 0, precio = Math.round(totalCobro / n), totInm = nPed ? precio * nInm : totalCobro;
+      const msgC = ac.libre ? `¿Vender el correo libre ${ac.libre} como ${prod.nombre} por ${formatoCOP(totalCobro)}?` : `¿Vender ${n} ${n === 1 ? 'cuenta' : 'cuentas'} de ${prod.nombre} por ${formatoCOP(totalCobro)}?` + (nPed ? `\n\n${nInm} se entregan ya y ${nPed} quedan sobre pedido a nombre de ${emCli}.` : '\n\nSe entregan de tu stock y queda registrada como venta.');
+      if (!await confirmarModal(msgC, { textoAceptar: 'Sí, vender' })) return;
       const btn = document.getElementById('btnVentaManual'); if (btn) btn.disabled = true;
       try {
-        let res = null;
-        const ref = db.collection('compras').doc();
-        await db.runTransaction(async (tx) => {
-          res = await sacarCuentasInventario(tx, id, n);
-          const costo = res.sacadas.reduce((t, x) => t + (parseCredencialObj(x).costo || 0), 0);
-          tx.set(ref, {
-            usuarioId: '', usuarioEmail: cliente ? 'WhatsApp · ' + cliente : 'Venta por WhatsApp', productoId: id, productoNombre: prod.nombre || id, categoria: prod.categoria || '',
-            cantidad: n, precioUnitario: precio, total: totalCobro, costoTotal: costo, gananciaNeta: totalCobro - costo, tipoGarantia: prod.tipoGarantia || '',
-            credenciales: res.sacadas.map(x => { const c = parseCredencialObj(x); return c.email + ':' + c.pass; }).join('\n'),
-            correos: res.sacadas.map(x => String(parseCredencialObj(x).email || '').toLowerCase()), fecha: new Date().toISOString(), procesadoPor: 'manual', ventaManual: true, vendidoPor: currentUser.email
+        let sacadas = [];
+        const base = { usuarioId: uidCli, usuarioEmail: uidCli ? emCli : (cliente ? 'WhatsApp · ' + cliente : 'Venta por WhatsApp'), productoId: id, productoNombre: prod.nombre || id, categoria: prod.categoria || '', tipoGarantia: prod.tipoGarantia || '', fecha: new Date().toISOString(), procesadoPor: 'manual', ventaManual: true, vendidoPor: currentUser.email, nota: cliente };
+        if (ac.libre) {
+          sacadas = [ac.libre + ':epic2828'];
+          await db.collection('compras').add(Object.assign({}, base, { cantidad: 1, precioUnitario: totalCobro, total: totalCobro, costoTotal: 0, gananciaNeta: totalCobro, credenciales: sacadas[0], correos: [ac.libre], correoLibre: true }));
+          try { await llamarBackend('prov_correos', { op: 'asignar_propio', correo: ac.libre, cliente: uidCli ? emCli : (cliente || 'WhatsApp') }); } catch (e) { /* la venta ya quedó */ }
+          const cp = correosPropios.find(x => x.correo === ac.libre); if (cp) cp.asignadoA = emCli || cliente || 'WhatsApp';
+        } else if (nInm > 0) {
+          let res = null; const ref = db.collection('compras').doc();
+          await db.runTransaction(async (tx) => {
+            res = await sacarCuentasInventario(tx, id, nInm);
+            const costo = res.sacadas.reduce((t, x) => t + (parseCredencialObj(x).costo || 0), 0);
+            tx.set(ref, Object.assign({}, base, { cantidad: nInm, precioUnitario: precio, total: totInm, costoTotal: costo, gananciaNeta: totInm - costo,
+              credenciales: res.sacadas.map(x => { const c = parseCredencialObj(x); return c.email + ':' + c.pass; }).join('\n'),
+              correos: res.sacadas.map(x => String(parseCredencialObj(x).email || '').toLowerCase()) }));
           });
-        });
-        const texto = textoVentaManual(prod, res.sacadas);
-        document.getElementById('vmCantidad').value = 1; document.getElementById('vmCliente').value = ''; vmCambioProducto();
+          sacadas = res.sacadas;
+        }
+        let extra = '';
+        if (nPed) {
+          const r = await llamarBackend('venta_manual_preorden', { email: emCli, productoId: id, cantidad: nPed, total: totalCobro - totInm });
+          if (!r || !r.ok) { alert('⚠️ ' + (nInm ? 'Las ' + nInm + ' se entregaron, pero ' : '') + 'el sobre pedido no se pudo crear: ' + ((r && r.error) || 'error')); }
+          else extra = `\n\n📦 *Y ${nPed} ${nPed === 1 ? 'te queda' : 'te quedan'} sobre pedido:* te ${nPed === 1 ? 'llega sola' : 'llegan solas'} a tu cuenta apenas entren${r.fila && r.fila.delante ? ' (hay ' + r.fila.delante + ' pedidas antes que las tuyas)' : ''}.`;
+        }
+        const texto = (sacadas.length ? textoVentaManual(prod, sacadas) : `✅ *Tu pedido de ${prod.nombre}*`) + extra;
+        document.getElementById('vmCantidad').value = 1; document.getElementById('vmCliente').value = ''; const ec = document.getElementById('vmCuentaCliente'); if (ec) ec.value = ''; const sb = document.getElementById('vmSobre'); if (sb) sb.checked = false;
+        vmAgregarLibres(); vmCambioProducto(); try { pintarCorreosPropios(); } catch (e) { /* nada */ }
         abrirDialogoTextoCopiable('Venta lista para WhatsApp', texto);
       } catch (err) { alert('No se pudo: ' + err.message); }
       finally { if (btn) btn.disabled = false; }
@@ -20697,6 +20735,7 @@
 
     // ==================== NOVEDADES INTERNAS DEL PANEL (solo el equipo) ====================
     const ACTUALIZACIONES_INTERNAS = [
+      { fecha: '2026-10-19', titulo: '📦 Venta manual con sobre pedido y correos libres', mensaje: 'En Venta manual (WhatsApp): escribe el correo de la cuenta del cliente y la venta le queda en Mis cuentas. Si pide más de lo que hay, marca "sobre pedido": se entrega lo que hay y el resto queda en su fila. Y en la lista de productos salen tus 🆓 correos libres para asignarlos a un cliente (eliges como qué producto se registra).', ir: '' },
       { fecha: '2026-10-19', titulo: '📧 Correos de tu dominio con destino', mensaje: 'En Cargar Cuentas, al generar un correo eliges a dónde va: un producto Prime (sube solo con "Bienvenido a Prime"), otro producto como Amazon Free (toca Confirmar cuando la crees y sube al stock) o Libre (no se sube; queda para asignarlo a un cliente). Debajo ves tus correos con su código (🔑) y su estado. Todos se vigilan por suspensión.', ir: '' },
       { fecha: '2026-10-18', titulo: '📧 Los correos del proveedor ya no se pierden al recargar', mensaje: 'En "Correo para crear cuenta", los correos pedidos se guardan en el servidor y también en el celular del proveedor. Y hay un buscador: pega el correo y toca "Buscar código" (solo funciona con correos suyos).', ir: '' },
       { fecha: '2026-10-18', titulo: '🛑 Ninguna compra se ejecuta sola', mensaje: 'Antes, si un cliente intentaba comprar sin saldo y luego recargaba, la página completaba la compra automáticamente al llegar el saldo. Ahora pregunta: "¡Recarga lista! ¿Completo tu compra de 1 Netflix por $10.000?" con Sí/No. Si dice no, el saldo queda guardado.', ir: '' },
@@ -23933,7 +23972,7 @@
       return { cuentas: legado, stock: legado.length || stockPublico };
     }
 
-    const VERSION_SERVIDOR_NECESARIA = '2026-10-19a';   // la versión del servidor que necesita esta página
+    const VERSION_SERVIDOR_NECESARIA = '2026-10-19d';   // la versión del servidor que necesita esta página
     async function llamarBackend(accion, datos) {
       if (mantenimientoActivo() && /^(comprar|recarga|renovar|carrito|preorden|combo)/.test(String(accion || ''))) { avisoMantenimiento(''); throw new Error('Estamos en mantenimiento. Compra por WhatsApp mientras tanto.'); }
       if (modoPruebaCliente) { const rs = backendSimulado(accion, datos || {}); if (rs) return rs; }
