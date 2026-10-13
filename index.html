@@ -8793,7 +8793,7 @@
       });
 
       catalogoUnificado = Array.from(mapaProds.values());
-      try { const vmS = document.getElementById('vmProducto'); if (vmS && (!vmS.options.length || !vmS.value)) { opcionesProductosStock(vmS); vmAgregarLibres(); vmCambioProducto(); } } catch (e) { /* nada */ }
+      try { const vmS = document.getElementById('vmProducto'); if (vmS && (!vmS.options.length || !vmS.value)) { opcionesProductosStock(vmS); vmAgregarLibres(); vmCambioProducto(); } else if (vmS) { vmRefrescarLibres(); vmCalcularTotal(); } } catch (e) { /* nada */ }
       try { const dS = document.getElementById('correoPropioDestino'); if (dS && !dS.options.length) poblarDestinoPropio(); } catch (e) { /* nada */ }
       try { aplicarPromociones(); } catch (e) { console.warn('Promociones:', e); }
       aplicarStockCompartido();
@@ -15905,7 +15905,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-19g';
+    const VERSION_PAGINA = '2026-10-19h';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261010_wacompra', fecha: '2026-10-10', titulo: 'Compra por WhatsApp 💬', mensaje: 'Ahora puedes **comprar con tu saldo desde nuestro WhatsApp**. Ve a tu perfil → **Mis datos → Comprar por WhatsApp**, vincula tu chat con el código y pide la autorización.' },
       { id: 'act_20261010_vista2', fecha: '2026-10-10', titulo: 'Nueva vista de la tienda ▦', mensaje: 'Ahora puedes ver los productos **en 2 columnas**: más productos en tu pantalla, con las **promos resaltadas** (🔥 campaña, ⚡ relámpago, 🎁 regalo). Toca uno y se abre su ficha para comprar. Cambia de vista con los íconos ☰ / ▦ arriba de las categorías.' },
@@ -16684,7 +16684,12 @@
       const como = document.getElementById('vmComo'); if (como && !como.options.length) { opcionesProductosStock(como); const af = (catalogoUnificado || []).find(p => /amazon/i.test(p.nombre || '') && /free/i.test(p.nombre || '')); if (af) como.value = af.docId; }
     }
     function vmProductoActual() { const v = (document.getElementById('vmProducto') || {}).value || ''; if (/^libre:/.test(v)) { const c = (document.getElementById('vmComo') || {}).value; return { libre: v.slice(6), id: c, p: catalogoUnificado.find(x => x.docId === c) }; } return { libre: '', id: v, p: catalogoUnificado.find(x => x.docId === v) }; }
+    function vmRefrescarLibres() {   // el número de libres de cada opción, al día
+      const sel = document.getElementById('vmProducto'); if (!sel) return;
+      [...sel.options].forEach(o => { if (/^libre:/.test(o.value)) return; const p = catalogoUnificado.find(x => x.docId === o.value); if (!p) return; let lb = 0; try { lb = stockLibreDeProducto(p.docId); } catch (e) { lb = Number(p.stock) || 0; } const tx = (p.nombre || p.docId) + ' · ' + lb + ' libres'; if (o.textContent !== tx) o.textContent = tx; });
+    }
     function vmCambioProducto() {
+      try { vmRefrescarLibres(); } catch (e) { /* nada */ }
       const ac = vmProductoActual(), id = ac.id, p = ac.p;
       const cc = document.getElementById('vmComoCaja'); if (cc) cc.classList.toggle('hidden', !ac.libre);
       if (ac.libre) { const q = document.getElementById('vmCantidad'); if (q) q.value = 1; }
@@ -16745,7 +16750,13 @@
     }
 
     async function hacerVentaManual() {
-      if (!puedeSeccion('venta_manual')) return;
+      if (!puedeSeccion('venta_manual')) { alert('No tienes permiso para Venta manual.'); return; }
+      const btn0 = document.getElementById('btnVentaManual');
+      try { await hacerVentaManualInterno(); }
+      catch (e) { console.error('Venta manual:', e); alert('No se pudo hacer la venta: ' + (e && e.message ? e.message : e)); }
+      finally { if (btn0) btn0.disabled = false; }
+    }
+    async function hacerVentaManualInterno() {
       const ac = vmProductoActual(), id = ac.id, prod = ac.p;
       const n = Math.max(1, parseInt(document.getElementById('vmCantidad').value, 10) || 1);
       const totalCobro = Math.max(0, Math.round(Number((document.getElementById('vmTotal') || {}).value) || 0));
@@ -16757,7 +16768,14 @@
       if (sobre && !emCli) { alert('Para dejar cuentas sobre pedido escribe el correo de la cuenta del cliente.'); return; }
       // 👤 cuenta del cliente (si la escribiste): la compra queda a su nombre
       let uidCli = '';
-      if (emCli) { try { const q = await db.collection('usuarios').where('email', '==', emCli).limit(1).get(); if (q.empty) { alert('No encontré una cuenta con ese correo.'); return; } uidCli = q.docs[0].id; } catch (e) { alert('No pude buscar la cuenta: ' + e.message); return; } }
+      if (emCli) {
+        const escrito = String((document.getElementById('vmCuentaCliente') || {}).value || '').trim();
+        try {
+          for (const v of [...new Set([emCli, escrito])]) { const q = await db.collection('usuarios').where('email', '==', v).limit(1).get(); if (!q.empty) { uidCli = q.docs[0].id; break; } }
+          if (!uidCli) { const r = await llamarBackend('buscar_usuario', { email: emCli }); if (r && r.ok && r.uid) uidCli = r.uid; }
+        } catch (e) { alert('No pude buscar la cuenta: ' + e.message); return; }
+        if (!uidCli) { alert('No encontré una cuenta con el correo ' + emCli + '. Revisa que esté bien escrito (o que el cliente ya se haya registrado).'); return; }
+      }
       const nInm = ac.libre ? 1 : Math.min(n, libres), nPed = sobre ? n - nInm : 0, precio = Math.round(totalCobro / n), totInm = nPed ? precio * nInm : totalCobro;
       const msgC = ac.libre ? `¿Vender el correo libre ${ac.libre} como ${prod.nombre} por ${formatoCOP(totalCobro)}?` : `¿Vender ${n} ${n === 1 ? 'cuenta' : 'cuentas'} de ${prod.nombre} por ${formatoCOP(totalCobro)}?` + (nPed ? `\n\n${nInm} se entregan ya y ${nPed} quedan sobre pedido a nombre de ${emCli}.` : '\n\nSe entregan de tu stock y queda registrada como venta.');
       if (!await confirmarModal(msgC, { textoAceptar: 'Sí, vender' })) return;
@@ -23974,7 +23992,7 @@
       return { cuentas: legado, stock: legado.length || stockPublico };
     }
 
-    const VERSION_SERVIDOR_NECESARIA = '2026-10-19e';   // la versión del servidor que necesita esta página
+    const VERSION_SERVIDOR_NECESARIA = '2026-10-19f';   // la versión del servidor que necesita esta página
     async function llamarBackend(accion, datos) {
       if (mantenimientoActivo() && /^(comprar|recarga|renovar|carrito|preorden|combo)/.test(String(accion || ''))) { avisoMantenimiento(''); throw new Error('Estamos en mantenimiento. Compra por WhatsApp mientras tanto.'); }
       if (modoPruebaCliente) { const rs = backendSimulado(accion, datos || {}); if (rs) return rs; }
