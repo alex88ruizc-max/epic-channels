@@ -15832,7 +15832,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-18s';
+    const VERSION_PAGINA = '2026-10-18u';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261010_wacompra', fecha: '2026-10-10', titulo: 'Compra por WhatsApp 💬', mensaje: 'Ahora puedes **comprar con tu saldo desde nuestro WhatsApp**. Ve a tu perfil → **Mis datos → Comprar por WhatsApp**, vincula tu chat con el código y pide la autorización.' },
       { id: 'act_20261010_vista2', fecha: '2026-10-10', titulo: 'Nueva vista de la tienda ▦', mensaje: 'Ahora puedes ver los productos **en 2 columnas**: más productos en tu pantalla, con las **promos resaltadas** (🔥 campaña, ⚡ relámpago, 🎁 regalo). Toca uno y se abre su ficha para comprar. Cambia de vista con los íconos ☰ / ▦ arriba de las categorías.' },
@@ -17838,12 +17838,15 @@
       compraTrasRecarga = null;
       const av = document.getElementById('avisoCompraTrasRecarga'); if (av) av.classList.add('hidden');
       try { cerrarModalRecarga(); } catch (e) { /* nada */ }
-      mostrarToast('💚 ¡Recarga lista! Completando tu compra de ' + c.nombre + '…');
-      setTimeout(() => {
+      // 🛑 Nunca compra sola: pregunta primero (si el cliente dice que no, no pasa nada)
+      setTimeout(async () => {
+        let ok = false;
+        try { ok = await confirmarModal('¿Completo tu compra de ' + c.cantidad + ' ' + c.nombre + ' por ' + formatoCOP(c.total) + '? Si dices que no, tu saldo queda guardado.', { titulo: '💚 ¡Recarga lista!', tipo: 'pregunta' }); } catch (e) { ok = false; }
+        if (!ok) { mostrarToast('Listo, tu saldo queda guardado. Compra cuando quieras.'); return; }
         if (!document.getElementById('cant_' + c.docId)) { try { categoriaActiva = 'todas'; renderizarCatalogo(); } catch (e) { /* nada */ } }
         const inp = document.getElementById('cant_' + c.docId); if (inp) inp.value = String(c.cantidad);
         comprarProducto(c.docId);
-      }, 900);
+      }, 600);
     }
 
     // ==================== CORREOS DESECHABLES: NO SE PUEDEN REGISTRAR ====================
@@ -20626,6 +20629,7 @@
 
     // ==================== NOVEDADES INTERNAS DEL PANEL (solo el equipo) ====================
     const ACTUALIZACIONES_INTERNAS = [
+      { fecha: '2026-10-18', titulo: '🛑 Ninguna compra se ejecuta sola', mensaje: 'Antes, si un cliente intentaba comprar sin saldo y luego recargaba, la página completaba la compra automáticamente al llegar el saldo. Ahora pregunta: "¡Recarga lista! ¿Completo tu compra de 1 Netflix por $10.000?" con Sí/No. Si dice no, el saldo queda guardado.', ir: '' },
       { fecha: '2026-10-18', titulo: '📩 Códigos de Amazon para tus cuentas de dominio', mensaje: 'Las cuentas con correo de tu dominio se entregan sin "clave del correo" y con la explicación: "¿Amazon te pide un código? Escríbeme código". El cliente escribe código por WhatsApp y el bot le pasa el código de sus cuentas (solo las suyas), o lo ve en Mis compras con el botón "📩 Ver código de Amazon".', ir: 'ventas' },
       { fecha: '2026-10-18', titulo: '📧 Límites de correos de proveedores', mensaje: 'En Ajustes Generales defines cuántos correos sin usar puede tener cada proveedor a la vez y cuántos por día (antes fijos en 3 y 40). Además, cuando a un correo de proveedor le llega la bienvenida de Prime, en su panel la fila se pone "✅ Prime activo · súbela", ya no cuenta para su límite y desaparece sola a las 24 horas.', ir: 'ajustes' },
       { fecha: '2026-10-18', titulo: '📥 Tus cuentas Prime suben solas', mensaje: 'Cada 15 minutos, si Amazon mandó "Welcome to Prime / Bienvenido a Prime" a un correo de tu dominio que no es de un proveedor, la cuenta entra sola al stock de Prime Local como correo:epic2828 y te avisa por Telegram. No repite cuentas que ya están en stock, vendidas o retiradas. Las de los proveedores las siguen subiendo ellos.', ir: 'stock' },
@@ -23859,7 +23863,7 @@
       return { cuentas: legado, stock: legado.length || stockPublico };
     }
 
-    const VERSION_SERVIDOR_NECESARIA = '2026-10-18g';   // la versión del servidor que necesita esta página
+    const VERSION_SERVIDOR_NECESARIA = '2026-10-18h';   // la versión del servidor que necesita esta página
     async function llamarBackend(accion, datos) {
       if (mantenimientoActivo() && /^(comprar|recarga|renovar|carrito|preorden|combo)/.test(String(accion || ''))) { avisoMantenimiento(''); throw new Error('Estamos en mantenimiento. Compra por WhatsApp mientras tanto.'); }
       if (modoPruebaCliente) { const rs = backendSimulado(accion, datos || {}); if (rs) return rs; }
