@@ -1402,9 +1402,10 @@
           </h3>
           <p class="text-xs text-gray-400 mb-4">Pega una cuenta por cada renglón (correo:clave).</p>
           <div class="solo-admin mb-4 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/40">
-            <div class="flex items-center gap-2"><p class="text-[11px] font-black text-emerald-200 flex-1">📧 Correo para crear tu cuenta Prime</p><button type="button" onclick="revisarBienvenidasAhora(this)" class="px-2.5 py-1.5 rounded-lg bg-gray-800 border border-emerald-500/40 text-emerald-200 font-bold text-[11px]">🔄 Revisar ahora</button><button type="button" onclick="generarCorreoPropio()" class="px-3 py-1.5 rounded-lg bg-emerald-500 text-black font-black text-[11px]"><i class="fa-solid fa-wand-magic-sparkles"></i> Generar</button></div>
-            <div id="correoPropioCaja" class="hidden mt-2 flex items-center gap-2 flex-wrap"><span id="correoPropioTxt" class="font-mono text-[12px] text-white"></span><button type="button" onclick="copiarTexto(document.getElementById('correoPropioTxt').textContent,'Correo copiado')" class="px-2 py-1 rounded-lg bg-gray-700 text-gray-200 text-[10px] font-bold">Copiar correo</button><button type="button" onclick="copiarTexto('epic2828','Clave copiada')" class="px-2 py-1 rounded-lg bg-gray-700 text-gray-200 text-[10px] font-bold">Copiar clave</button></div>
-            <p class="text-[10px] text-gray-400 mt-1.5">Crea la cuenta con este correo y la clave <b class="font-mono">epic2828</b>. Cuando llegue "Bienvenido a Prime", entra sola al stock de Prime Local.</p>
+            <div class="flex items-center gap-2"><p class="text-[11px] font-black text-emerald-200 flex-1">📧 Correo de tu dominio</p><button type="button" onclick="revisarBienvenidasAhora(this)" class="px-2.5 py-1.5 rounded-lg bg-gray-800 border border-emerald-500/40 text-emerald-200 font-bold text-[11px]">🔄 Revisar</button></div>
+            <div class="mt-2 flex gap-2"><select id="correoPropioDestino" class="flex-1 min-w-0 bg-gray-900 border border-gray-700 rounded-lg px-2 py-1.5 text-[12px] text-white"></select><button type="button" onclick="generarCorreoPropio()" class="shrink-0 px-3 py-1.5 rounded-lg bg-emerald-500 text-black font-black text-[11px]"><i class="fa-solid fa-wand-magic-sparkles"></i> Generar</button></div>
+            <p class="text-[10px] text-gray-400 mt-1.5">Clave: <b class="font-mono">epic2828</b> · <b>Prime</b>: sube solo con "Bienvenido a Prime" · <b>Otro producto</b> (ej. Amazon Free): toca <b>Confirmar</b> cuando la crees · <b>Libre</b>: queda guardado para asignarlo a un cliente. Todos se vigilan por suspensión.</p>
+            <div id="correosPropiosLista" class="mt-2 space-y-1.5"></div>
           </div>
           <form onsubmit="cargarStockMasivo(event)" class="space-y-4">
             <div class="solo-admin">
@@ -10429,6 +10430,7 @@
     }
 
     function poblarSelectStock() {
+      try { poblarDestinoPropio(); if (!correosPropios.length && !window.__cpCargados && currentUser && ADMIN_EMAILS.some(e => e.trim().toLowerCase() === String(currentUser.email || '').toLowerCase())) { window.__cpCargados = true; cargarCorreosPropios(); } } catch (e) { /* nada */ }
       const select = document.getElementById('selectStockProducto');
       if (!select) return;
       try {
@@ -11379,12 +11381,49 @@
         else alert((r && r.error) || 'No se pudo revisar.'); }
       catch (e) { alert(e.message); } finally { if (btn) { btn.disabled = false; btn.innerHTML = t0; } }
     }
+    // 📧 Correos de tu dominio con destino: Prime (sube solo con la bienvenida), otro producto (botón Confirmar) o Libre
+    var correosPropios = [];
+    function esProdPrime(p) { return p && /prime/i.test(p.nombre || '') && !/free/i.test(p.nombre || ''); }
+    function poblarDestinoPropio() {
+      const sel = document.getElementById('correoPropioDestino'); if (!sel) return; const prev = sel.value;
+      const L = (catalogoUnificado || []).filter(p => !p.esCombo);
+      sel.innerHTML = L.map(p => `<option value="${p.docId}">${escaparHtml(p.nombre)}${esProdPrime(p) ? ' · sube con la bienvenida' : ' · con Confirmar'}</option>`).join('') + '<option value="libre">🆓 Libre (no se sube)</option>';
+      const local = L.find(p => /prime/i.test(p.nombre || '') && /local/i.test(p.nombre || ''));
+      sel.value = prev && [...sel.options].some(o => o.value === prev) ? prev : (local ? local.docId : 'libre');
+    }
+    function nombreDestino(d) { if (d === 'libre') return '🆓 Libre'; const p = (catalogoUnificado || []).find(x => x.docId === d); return p ? p.nombre : (d ? d : 'Prime Local'); }
+    function pintarCorreosPropios() {
+      const l = document.getElementById('correosPropiosLista'); if (!l) return;
+      l.innerHTML = correosPropios.slice(0, 12).map((c, i) => {
+        const p = (catalogoUnificado || []).find(x => x.docId === c.destino), prime = !c.destino || esProdPrime(p), listo = c.confirmadoEl || (prime && c.primeActivoEl && c.destino !== 'libre');
+        const estado = c.asignadoA ? '<span class="text-[10px] text-sky-300 font-bold">👤 asignado</span>' : listo ? '<span class="text-[10px] text-emerald-300 font-bold">✅ en stock</span>' : c.destino === 'libre' ? '<span class="text-[10px] text-gray-400 font-bold">🆓 libre</span>' : prime ? '<span class="text-[10px] text-amber-300 font-bold">⏳ esperando bienvenida</span>' : `<button type="button" onclick="confirmarCorreoPropio(${i}, this)" class="px-2 py-1 rounded-lg bg-emerald-500 text-black text-[10px] font-black">✅ Confirmar</button>`;
+        return `<div class="p-2 rounded-lg bg-gray-900/70 border border-gray-700"><div class="flex items-center gap-1.5"><span class="font-mono text-[11px] text-white truncate flex-1">${escaparHtml(c.correo)}</span><button type="button" onclick="copiarTexto('${escaparHtml(c.correo)}','Correo copiado')" class="px-1.5 py-1 rounded bg-gray-700 text-gray-200 text-[10px]"><i class="fa-solid fa-copy"></i></button><button type="button" onclick="codigoCorreoPropio(${i})" class="px-1.5 py-1 rounded bg-gray-700 text-gray-200 text-[10px] font-bold">🔑</button>${estado}</div><p class="text-[10px] text-gray-500 mt-0.5">${escaparHtml(nombreDestino(c.destino))}</p><div id="cpCod_${i}" class="hidden text-[11px] mt-1"></div></div>`;
+      }).join('');
+    }
+    async function cargarCorreosPropios() { try { const r = await llamarBackend('prov_correos', { op: 'lista' }); if (r && r.ok) { correosPropios = (r.correos || []).filter(x => x.propio); pintarCorreosPropios(); } } catch (e) { /* nada */ } }
     async function generarCorreoPropio() {
-      const t = document.getElementById('correoPropioTxt'), c = document.getElementById('correoPropioCaja'), prop = correoNaturalLocal();
-      if (t) t.textContent = prop; if (c) c.classList.remove('hidden'); copiarTexto(prop, '📧 Correo copiado · clave: epic2828');
-      try { const r = await llamarBackend('prov_correos', { op: 'propio', correo: prop });
-        if (!r || !r.ok) { alert((r && r.error) || 'No se pudo reservar el correo.'); return; }
-        if (r.correo !== prop) { if (t) t.textContent = r.correo; copiarTexto(r.correo, '⚠️ Ese ya existía: usa este otro (copiado)'); } } catch (e) { /* el correo ya está en pantalla; se reserva la próxima vez */ }
+      poblarDestinoPropio();
+      const sel = document.getElementById('correoPropioDestino'), destino = sel ? sel.value : '', prop = correoNaturalLocal();
+      const fila = { correo: prop, creadoEl: new Date().toISOString(), destino: destino, propio: true };
+      correosPropios.unshift(fila); pintarCorreosPropios(); copiarTexto(prop, '📧 Correo copiado · clave: epic2828');
+      try { const r = await llamarBackend('prov_correos', { op: 'propio', correo: prop, destino: destino });
+        if (!r || !r.ok) { correosPropios = correosPropios.filter(x => x !== fila); pintarCorreosPropios(); alert((r && r.error) || 'No se pudo reservar el correo.'); return; }
+        if (r.correo !== prop) { fila.correo = r.correo; pintarCorreosPropios(); copiarTexto(r.correo, '⚠️ Ese ya existía: usa este otro (copiado)'); } } catch (e) { /* queda en pantalla */ }
+    }
+    async function confirmarCorreoPropio(i, btn) {
+      const c = correosPropios[i]; if (!c) return; if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>'; }
+      try { const r = await llamarBackend('prov_correos', { op: 'confirmar_propio', correo: c.correo });
+        if (!r || !r.ok) { alert((r && r.error) || 'No se pudo.'); if (btn) { btn.disabled = false; btn.textContent = '✅ Confirmar'; } return; }
+        c.confirmadoEl = new Date().toISOString(); pintarCorreosPropios(); mostrarToast(r.yaEstaba ? 'Esa cuenta ya estaba en el stock o vendida' : '📥 Subida a ' + (r.nombre || 'el stock'));
+      } catch (e) { alert(e.message); if (btn) { btn.disabled = false; btn.textContent = '✅ Confirmar'; } }
+    }
+    async function codigoCorreoPropio(i) {
+      const c = correosPropios[i], box = document.getElementById('cpCod_' + i); if (!c || !box) return;
+      box.classList.remove('hidden'); box.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Buscando…';
+      try { const r = await llamarBackend('prov_correos', { op: 'codigo', correo: c.correo });
+        if (!r || !r.ok) { box.innerHTML = '<span class="text-amber-300">' + escaparHtml((r && r.error) || 'No se pudo.') + '</span>'; return; }
+        const L = (r.resultados || []).filter(x => x.codigo); box.innerHTML = L.length ? `<span class="font-mono font-black text-lg tracking-[0.2em] text-emerald-400">${escaparHtml(L[0].codigo)}</span> <button type="button" onclick="copiarTexto('${escaparHtml(L[0].codigo)}','Código copiado')" class="ml-1 px-2 py-0.5 rounded bg-gray-700 text-white text-[10px] font-bold">Copiar</button>` : '<span class="text-gray-400">Aún no llega el código. Pídelo y toca 🔑 otra vez.</span>';
+      } catch (e) { box.innerHTML = '<span class="text-amber-300">' + escaparHtml(e.message) + '</span>'; }
     }
     // 📧 Correos de tu dominio para el proveedor: uno a la vez, con "Ver código" solo de sus correos
     var provDominioCorreos = [];
@@ -15861,7 +15900,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-19a';
+    const VERSION_PAGINA = '2026-10-19b';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261010_wacompra', fecha: '2026-10-10', titulo: 'Compra por WhatsApp 💬', mensaje: 'Ahora puedes **comprar con tu saldo desde nuestro WhatsApp**. Ve a tu perfil → **Mis datos → Comprar por WhatsApp**, vincula tu chat con el código y pide la autorización.' },
       { id: 'act_20261010_vista2', fecha: '2026-10-10', titulo: 'Nueva vista de la tienda ▦', mensaje: 'Ahora puedes ver los productos **en 2 columnas**: más productos en tu pantalla, con las **promos resaltadas** (🔥 campaña, ⚡ relámpago, 🎁 regalo). Toca uno y se abre su ficha para comprar. Cambia de vista con los íconos ☰ / ▦ arriba de las categorías.' },
@@ -20658,6 +20697,7 @@
 
     // ==================== NOVEDADES INTERNAS DEL PANEL (solo el equipo) ====================
     const ACTUALIZACIONES_INTERNAS = [
+      { fecha: '2026-10-19', titulo: '📧 Correos de tu dominio con destino', mensaje: 'En Cargar Cuentas, al generar un correo eliges a dónde va: un producto Prime (sube solo con "Bienvenido a Prime"), otro producto como Amazon Free (toca Confirmar cuando la crees y sube al stock) o Libre (no se sube; queda para asignarlo a un cliente). Debajo ves tus correos con su código (🔑) y su estado. Todos se vigilan por suspensión.', ir: '' },
       { fecha: '2026-10-18', titulo: '📧 Los correos del proveedor ya no se pierden al recargar', mensaje: 'En "Correo para crear cuenta", los correos pedidos se guardan en el servidor y también en el celular del proveedor. Y hay un buscador: pega el correo y toca "Buscar código" (solo funciona con correos suyos).', ir: '' },
       { fecha: '2026-10-18', titulo: '🛑 Ninguna compra se ejecuta sola', mensaje: 'Antes, si un cliente intentaba comprar sin saldo y luego recargaba, la página completaba la compra automáticamente al llegar el saldo. Ahora pregunta: "¡Recarga lista! ¿Completo tu compra de 1 Netflix por $10.000?" con Sí/No. Si dice no, el saldo queda guardado.', ir: '' },
       { fecha: '2026-10-18', titulo: '📩 Códigos de Amazon para tus cuentas de dominio', mensaje: 'Las cuentas con correo de tu dominio se entregan sin "clave del correo" y con la explicación: "¿Amazon te pide un código? Escríbeme código". El cliente escribe código por WhatsApp y el bot le pasa el código de sus cuentas (solo las suyas), o lo ve en Mis compras con el botón "📩 Ver código de Amazon".', ir: 'ventas' },
@@ -23893,7 +23933,7 @@
       return { cuentas: legado, stock: legado.length || stockPublico };
     }
 
-    const VERSION_SERVIDOR_NECESARIA = '2026-10-18o';   // la versión del servidor que necesita esta página
+    const VERSION_SERVIDOR_NECESARIA = '2026-10-19a';   // la versión del servidor que necesita esta página
     async function llamarBackend(accion, datos) {
       if (mantenimientoActivo() && /^(comprar|recarga|renovar|carrito|preorden|combo)/.test(String(accion || ''))) { avisoMantenimiento(''); throw new Error('Estamos en mantenimiento. Compra por WhatsApp mientras tanto.'); }
       if (modoPruebaCliente) { const rs = backendSimulado(accion, datos || {}); if (rs) return rs; }
