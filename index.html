@@ -638,6 +638,10 @@
           <div class="min-w-0 flex-grow"><p class="text-sm font-black text-white">Correo para crear cuenta</p><p class="text-[10px] text-gray-500">Pide uno, crea la cuenta y toca "Ver código" para verificarla.</p></div>
           <button type="button" onclick="provDominioNuevo()" class="shrink-0 px-3 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-black text-[11px]"><i class="fa-solid fa-plus"></i> Nuevo</button>
         </div>
+        <div class="mt-3 flex gap-2">
+          <input id="provDomBuscar" type="email" inputmode="email" autocomplete="off" placeholder="Pega un correo tuyo" class="flex-1 min-w-0 bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-[12px] text-white font-mono" onkeydown="if(event.key==='Enter'){event.preventDefault();provDominioBuscar();}">
+          <button type="button" onclick="provDominioBuscar()" class="shrink-0 px-3 py-2 rounded-xl bg-gray-700 hover:bg-gray-600 text-white font-bold text-[11px]"><i class="fa-solid fa-key mr-1"></i>Buscar código</button>
+        </div>
         <div id="provDominioLista" class="mt-3 space-y-2"></div>
       </div>
       <div id="provCorreosCaja" class="bg-gray-900 border border-violet-500/40 rounded-2xl overflow-hidden">
@@ -11389,13 +11393,35 @@
             <button type="button" onclick="provDominioCodigo(${i})" class="px-2.5 py-1 rounded-lg bg-emerald-500 text-black text-[10px] font-black">🔑 Ver código</button></div>
           <div id="provDomCod_${i}" class="mt-1.5 text-[11px] text-gray-400 ${c.codigoVistoEl ? '' : 'hidden'}">${c.codigoVistoEl ? '✓ Ya verificaste este correo' : ''}</div></div>`).join('') : '<p class="text-[11px] text-gray-500">Toca <b>Nuevo</b> para recibir un correo.</p>';
     }
-    async function provDominioCargar() { try { const r = await llamarBackend('prov_correos', { op: 'lista' }); if (r && r.ok) { provDominioCorreos = r.correos || []; pintarProvDominio(); } } catch (e) { /* nada */ } }
+    // 💾 Los correos pedidos también se guardan en este celular (48 h): si se recarga la página no se pierden
+    function provDomLocal() { try { const L = JSON.parse(localStorage.getItem('provDomLocal_' + (currentUser ? currentUser.uid : '')) || '[]'); return Array.isArray(L) ? L.filter(x => x && x.correo && Date.parse(x.creadoEl || 0) > Date.now() - 2 * 86400000) : []; } catch (e) { return []; } }
+    function provDomGuardarLocal() { try { localStorage.setItem('provDomLocal_' + (currentUser ? currentUser.uid : ''), JSON.stringify(provDominioCorreos.filter(x => !x.reservando).slice(0, 20).map(x => ({ correo: x.correo, creadoEl: x.creadoEl })))); } catch (e) { /* nada */ } }
+    function provDomMezclar(srv) {
+      const m = {}; (srv || []).forEach(x => { m[x.correo] = x; });
+      provDomLocal().forEach(x => { if (!m[x.correo]) m[x.correo] = x; });
+      provDominioCorreos.forEach(x => { if (!m[x.correo]) m[x.correo] = x; });
+      provDominioCorreos = Object.values(m).sort((a, b) => String(b.creadoEl || '').localeCompare(String(a.creadoEl || '')));
+    }
+    async function provDominioCargar() {
+      provDomMezclar([]); pintarProvDominio();
+      try { const r = await llamarBackend('prov_correos', { op: 'lista' }); if (r && r.ok) { provDomMezclar(r.correos || []); pintarProvDominio(); provDomGuardarLocal(); } } catch (e) { /* nada: quedan los guardados en el celular */ }
+    }
+    // 🔎 Buscar el código de un correo escrito a mano (por si se borró de la lista)
+    function provDominioBuscar() {
+      const inp = document.getElementById('provDomBuscar'), c = String(inp ? inp.value : '').trim().toLowerCase();
+      if (!/^[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$/.test(c)) { mostrarToast('Escribe el correo completo'); return; }
+      let i = provDominioCorreos.findIndex(x => String(x.correo).toLowerCase() === c);
+      if (i === -1) { provDominioCorreos.unshift({ correo: c, creadoEl: new Date().toISOString() }); i = 0; }
+      else if (i > 7) { const x = provDominioCorreos.splice(i, 1)[0]; provDominioCorreos.unshift(x); i = 0; }
+      pintarProvDominio(); provDomGuardarLocal(); if (inp) inp.value = '';
+      provDominioCodigo(i);
+    }
     async function provDominioNuevo() {
       const prop = correoNaturalLocal(), fila = { correo: prop, creadoEl: new Date().toISOString(), reservando: true };
       provDominioCorreos.unshift(fila); pintarProvDominio(); copiarTexto(prop, '📧 Correo nuevo copiado: créale la cuenta');
       try { const r = await llamarBackend('prov_correos', { op: 'nuevo', correo: prop });
         if (!r || !r.ok) { provDominioCorreos = provDominioCorreos.filter(x => x !== fila); pintarProvDominio(); alert((r && r.error) || 'No se pudo.'); return; }
-        fila.reservando = false; if (r.correo !== prop) { fila.correo = r.correo; pintarProvDominio(); copiarTexto(r.correo, '⚠️ Ese ya existía: usa este otro (copiado)'); } }
+        fila.reservando = false; if (r.correo !== prop) { fila.correo = r.correo; pintarProvDominio(); copiarTexto(r.correo, '⚠️ Ese ya existía: usa este otro (copiado)'); } provDomGuardarLocal(); }
       catch (e) { provDominioCorreos = provDominioCorreos.filter(x => x !== fila); pintarProvDominio(); alert(e.message); }
     }
     async function provDominioCodigo(i) {
@@ -15832,7 +15858,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-18w';
+    const VERSION_PAGINA = '2026-10-18x';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261010_wacompra', fecha: '2026-10-10', titulo: 'Compra por WhatsApp 💬', mensaje: 'Ahora puedes **comprar con tu saldo desde nuestro WhatsApp**. Ve a tu perfil → **Mis datos → Comprar por WhatsApp**, vincula tu chat con el código y pide la autorización.' },
       { id: 'act_20261010_vista2', fecha: '2026-10-10', titulo: 'Nueva vista de la tienda ▦', mensaje: 'Ahora puedes ver los productos **en 2 columnas**: más productos en tu pantalla, con las **promos resaltadas** (🔥 campaña, ⚡ relámpago, 🎁 regalo). Toca uno y se abre su ficha para comprar. Cambia de vista con los íconos ☰ / ▦ arriba de las categorías.' },
@@ -20629,6 +20655,7 @@
 
     // ==================== NOVEDADES INTERNAS DEL PANEL (solo el equipo) ====================
     const ACTUALIZACIONES_INTERNAS = [
+      { fecha: '2026-10-18', titulo: '📧 Los correos del proveedor ya no se pierden al recargar', mensaje: 'En "Correo para crear cuenta", los correos pedidos se guardan en el servidor y también en el celular del proveedor. Y hay un buscador: pega el correo y toca "Buscar código" (solo funciona con correos suyos).', ir: '' },
       { fecha: '2026-10-18', titulo: '🛑 Ninguna compra se ejecuta sola', mensaje: 'Antes, si un cliente intentaba comprar sin saldo y luego recargaba, la página completaba la compra automáticamente al llegar el saldo. Ahora pregunta: "¡Recarga lista! ¿Completo tu compra de 1 Netflix por $10.000?" con Sí/No. Si dice no, el saldo queda guardado.', ir: '' },
       { fecha: '2026-10-18', titulo: '📩 Códigos de Amazon para tus cuentas de dominio', mensaje: 'Las cuentas con correo de tu dominio se entregan sin "clave del correo" y con la explicación: "¿Amazon te pide un código? Escríbeme código". El cliente escribe código por WhatsApp y el bot le pasa el código de sus cuentas (solo las suyas), o lo ve en Mis compras con el botón "📩 Ver código de Amazon".', ir: 'ventas' },
       { fecha: '2026-10-18', titulo: '📧 Límites de correos de proveedores', mensaje: 'En Ajustes Generales defines cuántos correos sin usar puede tener cada proveedor a la vez y cuántos por día (antes fijos en 3 y 40). Además, cuando a un correo de proveedor le llega la bienvenida de Prime, en su panel la fila se pone "✅ Prime activo · súbela", ya no cuenta para su límite y desaparece sola a las 24 horas.', ir: 'ajustes' },
@@ -23863,7 +23890,7 @@
       return { cuentas: legado, stock: legado.length || stockPublico };
     }
 
-    const VERSION_SERVIDOR_NECESARIA = '2026-10-18j';   // la versión del servidor que necesita esta página
+    const VERSION_SERVIDOR_NECESARIA = '2026-10-18k';   // la versión del servidor que necesita esta página
     async function llamarBackend(accion, datos) {
       if (mantenimientoActivo() && /^(comprar|recarga|renovar|carrito|preorden|combo)/.test(String(accion || ''))) { avisoMantenimiento(''); throw new Error('Estamos en mantenimiento. Compra por WhatsApp mientras tanto.'); }
       if (modoPruebaCliente) { const rs = backendSimulado(accion, datos || {}); if (rs) return rs; }
