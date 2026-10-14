@@ -1390,6 +1390,18 @@
 
       <!-- TAB 3: CARGA DE STOCK -->
       <div id="adminSecStock" class="hidden">
+        <!-- 🩺 SALUD DE CUENTAS DE DOMINIO (interno) -->
+        <details id="saludCuentasCaja" class="solo-admin mb-4 rounded-2xl bg-gray-900 border border-sky-500/40 overflow-hidden">
+          <summary class="p-4 cursor-pointer select-none flex items-center gap-3 list-none">
+            <span class="w-9 h-9 shrink-0 rounded-xl bg-sky-500/15 text-sky-300 flex items-center justify-center">🩺</span>
+            <span class="min-w-0 flex-grow"><span class="block font-bold text-white text-sm">Salud de cuentas de dominio</span><span class="block text-[11px] text-gray-400">Vivas vs suspendidas, por producto y por proveedor. Cuentas de +35 días para revisar.</span></span>
+            <i class="fa-solid fa-chevron-down text-gray-400"></i>
+          </summary>
+          <div class="px-4 pb-4 pt-3 border-t border-gray-800 space-y-3">
+            <button type="button" onclick="cargarSaludCuentas(this)" class="w-full py-2.5 rounded-xl bg-sky-500 hover:bg-sky-400 text-white font-black text-sm"><i class="fa-solid fa-heart-pulse mr-1"></i> Revisar salud ahora</button>
+            <div id="saludCuentasResultado" class="space-y-4"></div>
+          </div>
+        </details>
         <details id="dobleVentaCaja" class="solo-admin rounded-2xl bg-gray-900 border border-rose-500/40 overflow-hidden">
           <summary class="p-4 cursor-pointer select-none flex items-center gap-3 list-none"><span class="w-9 h-9 shrink-0 rounded-xl bg-rose-500/15 text-rose-300 flex items-center justify-center">🛡</span><span class="min-w-0 flex-grow"><span class="block font-bold text-white text-sm">Cuentas vendidas dos veces</span><span id="dvResumen" class="block text-[11px] text-gray-400 truncate">Revisa, limpia el stock y activa el candado con tu historial</span></span><i class="fa-solid fa-chevron-down text-gray-500 text-xs"></i></summary>
           <div class="px-4 pb-4 pt-3 space-y-3 border-t border-gray-800">
@@ -1432,6 +1444,12 @@
             <div class="flex items-center gap-2"><p class="text-[11px] font-black text-emerald-200 flex-1">📧 Correo de tu dominio</p><button type="button" onclick="revisarBienvenidasAhora(this)" class="px-2.5 py-1.5 rounded-lg bg-gray-800 border border-emerald-500/40 text-emerald-200 font-bold text-[11px]">🔄 Revisar</button></div>
             <div class="mt-2 flex gap-2"><select id="correoPropioDestino" class="flex-1 min-w-0 bg-gray-900 border border-gray-700 rounded-lg px-2 py-1.5 text-[12px] text-white"></select><button type="button" onclick="generarCorreoPropio()" class="shrink-0 px-3 py-1.5 rounded-lg bg-emerald-500 text-black font-black text-[11px]"><i class="fa-solid fa-wand-magic-sparkles"></i> Generar</button></div>
             <p class="text-[10px] text-gray-400 mt-1.5">Clave: <b class="font-mono">epic2828</b> · <b>Prime</b>: sube solo con "Bienvenido a Prime" · <b>Otro producto</b> (ej. Amazon Free): toca <b>Confirmar</b> cuando la crees · <b>Libre</b>: queda guardado para asignarlo a un cliente. Todos se vigilan por suspensión.</p>
+            <div class="mt-2 flex flex-wrap gap-2">
+              <button type="button" onclick="comprobarSubidaCorreos(this)" class="flex-1 min-w-[140px] py-1.5 rounded-lg bg-sky-500/15 border border-sky-500/40 text-sky-200 text-[11px] font-black"><i class="fa-solid fa-list-check mr-1"></i> Comprobar cuáles se subieron</button>
+              <button type="button" onclick="copiarLinkOtpAmazon(this)" class="flex-1 min-w-[140px] py-1.5 rounded-lg bg-amber-500/15 border border-amber-500/40 text-amber-200 text-[11px] font-black"><i class="fa-solid fa-key mr-1"></i> Link de códigos Amazon</button>
+              <button type="button" onclick="renovarLinkOtpAmazon(this)" title="Generar un link nuevo (el anterior deja de servir)" class="shrink-0 px-2.5 py-1.5 rounded-lg bg-gray-800 border border-gray-700 text-gray-300 text-[11px] font-bold"><i class="fa-solid fa-rotate"></i></button>
+            </div>
+            <div id="comprobarCorreosResultado" class="mt-1"></div>
             <div id="correosPropiosLista" class="mt-2 space-y-1.5"></div>
           </div>
           <form onsubmit="cargarStockMasivo(event)" class="space-y-4">
@@ -8369,7 +8387,7 @@
       if (tab === 'categorias') renderizarAdminCategoriasColores();
       if (tab === 'usuarios') { cargarUsuariosAdmin(); cargarRegaloRevendedor(); }
       if (tab === 'proveedores') { try { cargarPanelReferidos(); } catch (e) { /* nada */ } }
-      if (tab === 'stock') { poblarSelectStock(); cargarAportantesStock(); prepararVentaManual(); iniciarPreordenesAdmin(); renderizarPreordenesAdmin(); }
+      if (tab === 'stock') { try { const sc = document.getElementById('saludCuentasResultado'); if (sc && !sc.innerHTML) cargarSaludCuentas(); } catch (e) {} poblarSelectStock(); cargarAportantesStock(); prepararVentaManual(); iniciarPreordenesAdmin(); renderizarPreordenesAdmin(); }
       if (tab === 'apariencia') cargarDatosAparienciaAdmin();
       if (tab === 'pagos') cargarMetodosPagoAdmin();
       if (tab === 'recargas') cargarRecargasAdmin();
@@ -11571,6 +11589,89 @@
     }
     // 📧 Correos de tu dominio con destino: Prime (sube solo con la bienvenida), otro producto (botón Confirmar) o Libre
     var correosPropios = [];
+    // ============================================================
+    // 🩺 SALUD DE CUENTAS + COMPROBADOR + LINK OTP DE AMAZON (solo admin)
+    // ============================================================
+    async function cargarSaludCuentas(btn) {
+      const cont = document.getElementById('saludCuentasResultado'); if (!cont) return;
+      if (btn) { btn.disabled = true; btn.dataset.t = btn.innerHTML; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i> Revisando…'; }
+      try {
+        const r = await llamarBackend('amz_salud', {});
+        if (!r || !r.ok) throw new Error((r && r.error) || 'No se pudo.');
+        const barra = (vivas, susp) => { const t = vivas + susp || 1; return `<div class="flex h-2.5 rounded-full overflow-hidden bg-gray-800"><div style="width:${Math.round(vivas / t * 100)}%" class="bg-emerald-500"></div><div style="width:${Math.round(susp / t * 100)}%" class="bg-amber-500"></div></div>`; };
+        const fila = x => `<div><div class="flex justify-between text-[12px]"><span class="text-gray-200 truncate pr-2">${escaparHtml(x.nombre)}</span><span class="${x.pct >= 20 ? 'text-amber-300' : 'text-gray-400'} shrink-0">${x.pct}% · ${x.susp}/${x.total}</span></div><div class="mt-1">${barra(x.vivas, x.susp)}</div></div>`;
+        const rev = (r.porRevisar || []);
+        cont.innerHTML = `
+          <div class="grid grid-cols-3 gap-2">
+            <div class="p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-center"><p class="text-[10px] text-gray-400">✅ Vivas</p><p class="text-xl font-black text-emerald-300">${r.vivas}</p></div>
+            <div class="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-center"><p class="text-[10px] text-gray-400">⛔ Suspendidas</p><p class="text-xl font-black text-amber-300">${r.suspendidas}</p></div>
+            <div class="p-2.5 rounded-xl bg-gray-800 border border-gray-700 text-center"><p class="text-[10px] text-gray-400">💀 Caída</p><p class="text-xl font-black text-white">${r.tasa}%</p></div>
+          </div>
+          ${r.productos && r.productos.length ? `<div class="space-y-2.5"><p class="text-xs font-black text-gray-300">Por producto · más afectados arriba</p>${r.productos.map(fila).join('')}</div>` : ''}
+          ${r.proveedores && r.proveedores.length ? `<div class="space-y-2.5"><p class="text-xs font-black text-gray-300">Por proveedor · a quién revisar</p>${r.proveedores.map(fila).join('')}</div>` : ''}
+          <div>
+            <div class="flex items-center justify-between"><p class="text-xs font-black text-gray-300">⏳ Por revisar · 35+ días</p><span id="revPendN" class="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-200 font-black">${rev.length} pendientes</span></div>
+            <p class="text-[11px] text-gray-400 mt-0.5 mb-2">Siguen vivas y sin cambio de correo. Cámbiales el correo de recuperación y márcalas listas.</p>
+            <div id="revLista" class="space-y-2">${rev.length ? rev.map(filaRevisar).join('') : '<p class="text-[11px] text-gray-500">Ninguna cuenta pasa de 35 días. 👍</p>'}</div>
+          </div>`;
+      } catch (e) { cont.innerHTML = `<p class="text-[12px] text-rose-300">${escaparHtml(e.message || 'Error')}</p>`; }
+      finally { if (btn) { btn.disabled = false; btn.innerHTML = btn.dataset.t; } }
+    }
+    function filaRevisar(x) {
+      const id = 'rev_' + x.correo.replace(/[^a-z0-9]/gi, '');
+      return `<div id="${id}" class="border border-gray-700 rounded-xl p-2.5">
+        <div class="flex items-center justify-between gap-2">
+          <div class="min-w-0"><p class="font-mono text-[12px] text-white truncate">${escaparHtml(x.correo)}</p><p class="text-[11px] text-gray-400">${escaparHtml(x.producto)} · <b class="text-amber-300">${x.dias} días</b></p></div>
+        </div>
+        <div class="grid grid-cols-3 gap-1.5 mt-2">
+          <button type="button" onclick="copiarTexto('${escaparJsAttr(x.correo)}', this, 'Correo')" class="py-1.5 rounded-lg bg-gray-800 border border-gray-700 text-gray-200 text-[11px] font-bold"><i class="fa-regular fa-copy"></i> Correo</button>
+          <button type="button" onclick="copiarTexto('${escaparJsAttr(x.clave || 'epic2828')}', this, 'Clave')" class="py-1.5 rounded-lg bg-gray-800 border border-gray-700 text-gray-200 text-[11px] font-bold"><i class="fa-solid fa-key"></i> Clave</button>
+          <button type="button" onclick="marcarRevisada('${escaparJsAttr(x.correo)}', '${id}')" class="py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-black text-[11px] font-black"><i class="fa-solid fa-check"></i> Ya cambié</button>
+        </div></div>`;
+    }
+    async function marcarRevisada(correo, id) {
+      try {
+        await llamarBackend('amz_revisada', { correo });
+        const el = document.getElementById(id);
+        if (el) el.innerHTML = `<div class="flex items-center justify-between opacity-60 p-1"><span class="font-mono text-[12px] line-through text-gray-400 truncate">${escaparHtml(correo)}</span><button type="button" onclick="deshacerRevisada('${escaparJsAttr(correo)}','${id}')" class="text-[11px] text-sky-300 shrink-0">Deshacer</button></div>`;
+        const n = document.getElementById('revPendN'); if (n) { const q = Math.max(0, (parseInt(n.textContent) || 1) - 1); n.textContent = q + ' pendientes'; }
+        mostrarToast('Contador reiniciado ✓');
+      } catch (e) { mostrarToast('No se pudo: ' + (e.message || e)); }
+    }
+    async function deshacerRevisada(correo, id) { try { await llamarBackend('amz_revisada', { correo, deshacer: true }); cargarSaludCuentas(); } catch (e) { mostrarToast('No se pudo deshacer.'); } }
+    function copiarTexto(t, btn, etq) { try { navigator.clipboard.writeText(t); } catch (e) { /* nada */ } if (btn) { const o = btn.innerHTML; btn.innerHTML = '<i class="fa-solid fa-check"></i> ' + (etq || ''); setTimeout(() => btn.innerHTML = o, 1200); } }
+
+    async function comprobarSubidaCorreos(btn) {
+      const cont = document.getElementById('comprobarCorreosResultado'); if (!cont) return;
+      if (btn) { btn.disabled = true; btn.dataset.t = btn.innerHTML; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i> Revisando…'; }
+      try {
+        const r = await llamarBackend('prov_comprobar', {});
+        if (!r || !r.ok) throw new Error((r && r.error) || 'No se pudo.');
+        const L = r.correos || [];
+        cont.innerHTML = `<div class="flex gap-2 text-[11px] mb-2"><span class="flex-1 text-center py-1 rounded-lg bg-emerald-500/15 text-emerald-200 font-black">✅ ${r.subidas} subidas</span><span class="flex-1 text-center py-1 rounded-lg bg-amber-500/15 text-amber-200 font-black">⏳ ${r.esperando} esperando</span></div>`
+          + L.map(x => `<div class="flex items-center gap-2 border rounded-lg px-2.5 py-1.5 mb-1 ${x.subida ? 'border-emerald-500/40' : 'border-amber-500/40'}"><span class="${x.subida ? 'text-emerald-400' : 'text-amber-400'}">${x.subida ? '✅' : '⏳'}</span><span class="flex-1 min-w-0 font-mono text-[11px] text-gray-200 truncate">${escaparHtml(x.correo)}</span><span class="text-[10px] ${x.subida ? 'text-emerald-300' : 'text-amber-300'} shrink-0">${x.subida ? 'subida' : 'esperando'}</span></div>`).join('');
+      } catch (e) { cont.innerHTML = `<p class="text-[12px] text-rose-300">${escaparHtml(e.message || 'Error')}</p>`; }
+      finally { if (btn) { btn.disabled = false; btn.innerHTML = btn.dataset.t; } }
+    }
+
+    async function copiarLinkOtpAmazon(btn) {
+      try {
+        const r = await llamarBackend('amz_otp_link', {});
+        if (!r || !r.ok || !r.url) throw new Error((r && r.error) || 'No se pudo.');
+        try { await navigator.clipboard.writeText(r.url); } catch (e) { /* nada */ }
+        abrirDialogoTextoCopiable('🔑 Link de códigos de Amazon', r.url + '\n\nÁbrelo, escribe el correo nuevo de tu dominio y te muestra su código. Solo tú lo ves.');
+      } catch (e) { mostrarToast('No se pudo: ' + (e.message || e)); }
+    }
+    async function renovarLinkOtpAmazon(btn) {
+      if (!await confirmarModal('¿Generar un link de códigos NUEVO? El link anterior dejará de funcionar.', { textoAceptar: 'Sí, renovar' })) return;
+      try {
+        const r = await llamarBackend('amz_otp_link', { renovar: true });
+        if (!r || !r.ok || !r.url) throw new Error((r && r.error) || 'No se pudo.');
+        try { await navigator.clipboard.writeText(r.url); } catch (e) { /* nada */ }
+        abrirDialogoTextoCopiable('🔑 Link nuevo (copiado)', r.url);
+      } catch (e) { mostrarToast('No se pudo: ' + (e.message || e)); }
+    }
+
     function esProdPrime(p) { return p && /prime/i.test(p.nombre || '') && !/free/i.test(p.nombre || ''); }
     function poblarDestinoPropio() {
       const sel = document.getElementById('correoPropioDestino'); if (!sel) return; const prev = sel.value;
@@ -16122,7 +16223,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-20j';
+    const VERSION_PAGINA = '2026-10-20l';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261020_ajuste', fecha: '2026-10-20', titulo: 'Se ve mejor en iPhone 📱', mensaje: 'La tienda ahora **se ajusta siempre a tu pantalla**: ya no se agranda al escribir ni se corre hacia los lados. Si la tienes abierta, **recarga la página** para verla así.' },
       { id: 'act_20261020_app', fecha: '2026-10-20', titulo: 'App oficial de Epic Streaming 📲', mensaje: 'Ya tenemos **app oficial**: en la tienda toca **Descargar** (Android), **Instalar** (PC) o **Agregar** (iPhone). Abre más rápido, a pantalla completa, con tu misma cuenta y **se actualiza sola**.' },
@@ -20995,6 +21096,8 @@
 
     // ==================== NOVEDADES INTERNAS DEL PANEL (solo el equipo) ====================
     const ACTUALIZACIONES_INTERNAS = [
+      { fecha: '2026-10-20', titulo: '🔒 El cupo solo sirve si el cliente lo acepta', mensaje: 'Un cliente con crédito pre-aprobado en estado SIN ACEPTAR ya no puede comprar usando ese cupo (en la tienda ni por WhatsApp): primero debe tocar "Aceptar crédito". Cuando recarga, su deuda se sigue descontando primero de forma automática, acepte o no. Así no se te va plata en cupos que nadie aceptó.', ir: '' },
+      { fecha: '2026-10-20', titulo: '🩺 Salud de cuentas + link de códigos Amazon', mensaje: 'En Cargar cuentas (Stock) tienes ahora: **🩺 Salud de cuentas** (vivas vs suspendidas, por producto y por proveedor, para ver qué productos y proveedores fallan más), una **lista de cuentas de +35 días** una por una con Copiar correo/clave y **Ya cambié**, un **comprobador** de cuáles de tus correos ya se subieron, y un **link único de códigos de Amazon** que copias/renuevas para ver el OTP del correo nuevo al pasar lotes a tu dominio. El bot ya renueva sola la cuenta cuando le cambias el correo a otro de tu dominio, marca las suspendidas (on hold / suspendu / suspensa, cualquier idioma) y las saca del stock. Todo es interno: el cliente no ve nada distinto.', ir: 'stock' },
       { fecha: '2026-10-20', titulo: '💵 Recargas de hoy junto a las ventas', mensaje: 'Arriba del panel ahora ves dos cifras lado a lado: **Vendido hoy** (ventas y cuentas, como antes) y **Recargas hoy**: el dinero que entró hoy por recargas aprobadas (Bre-B, Binance y tus cargas manuales), con cuántas fueron y cuántas manuales. "Ver recargas" muestra cada una con la hora, el cliente y el método. No cuenta pendientes, rechazadas, regalos, bonos ni premios.', ir: '' },
       { fecha: '2026-10-20', titulo: '📱 La página se ajusta a la pantalla', mensaje: 'En iPhone la página ya no se agranda al tocar un campo de texto ni se corre hacia los lados: siempre queda ajustada al ancho de la pantalla, en la tienda y en tu panel. El zoom con dos dedos sigue funcionando.', ir: '' },
       { fecha: '2026-10-20', titulo: '📲 La app también para visitantes', mensaje: 'El aviso "App oficial de Epic Streaming" ahora aparece también en la pantalla de entrada (Portal privado), para quien todavía no inicia sesión: en iPhone explica cómo agregarla a inicio y en Android descarga el APK. El pie de página y el título de la pestaña ya dicen Epic Streaming.', ir: '' },
@@ -24295,7 +24398,7 @@
       return { cuentas: legado, stock: legado.length || stockPublico };
     }
 
-    const VERSION_SERVIDOR_NECESARIA = '2026-10-20c';   // la versión del servidor que necesita esta página
+    const VERSION_SERVIDOR_NECESARIA = '2026-10-20e';   // la versión del servidor que necesita esta página
     async function llamarBackend(accion, datos) {
       if (mantenimientoActivo() && /^(comprar|recarga|renovar|carrito|preorden|combo)/.test(String(accion || ''))) { avisoMantenimiento(''); throw new Error('Estamos en mantenimiento. Compra por WhatsApp mientras tanto.'); }
       if (modoPruebaCliente) { const rs = backendSimulado(accion, datos || {}); if (rs) return rs; }
