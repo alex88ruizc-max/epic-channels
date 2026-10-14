@@ -6360,16 +6360,13 @@
     function hacerAjustesPlegables() {
       const form = document.querySelector('form[onsubmit="guardarAjustesGeneralesAdmin(event)"]');
       if (!form || form.dataset.plegable === '1') return;
-      // Cada tarjeta directa del form que tenga un <h4> se vuelve plegable. A prueba de fallos:
-      // si una tarjeta falla, se salta y sigue con las demás (nunca se pierde una sección).
       Array.from(form.children).forEach(function (card) {
         try {
           if (card.tagName !== 'DIV') return;
           const h4 = card.querySelector('h4');
           if (!h4) return;
           const cab = (h4.parentElement === card) ? h4 : h4.parentElement;
-          if (!cab || cab.parentElement !== card) return;   // estructura rara: no la toco, la dejo visible
-          // envolver el resto del contenido (lo que viene después del encabezado) en un cuerpo plegable
+          if (!cab || cab.parentElement !== card) return;
           const cuerpo = document.createElement('div');
           cuerpo.className = 'mt-3 space-y-3 ajustes-cuerpo';
           let n = cab.nextSibling;
@@ -6382,14 +6379,16 @@
           fila.appendChild(cab);
           fila.appendChild(flecha);
           card.appendChild(cuerpo);
-          cuerpo.style.display = 'none';
+          // ABIERTO por defecto: nunca se esconde una sección al cargar. El usuario la cierra si quiere.
+          cuerpo.style.display = '';
+          flecha.style.transform = 'rotate(180deg)';
           fila.addEventListener('click', function (ev) {
             if (ev.target.closest('input, textarea, button, select, a, label')) return;
             const abierto = cuerpo.style.display !== 'none';
             cuerpo.style.display = abierto ? 'none' : '';
             flecha.style.transform = abierto ? '' : 'rotate(180deg)';
           });
-        } catch (e) { /* esta tarjeta se queda como estaba, no se pierde */ }
+        } catch (e) { /* esta tarjeta se queda como estaba */ }
       });
       form.dataset.plegable = '1';
     }
@@ -16374,7 +16373,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-20y';
+    const VERSION_PAGINA = '2026-10-20z';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261020_ajuste', fecha: '2026-10-20', titulo: 'Se ve mejor en iPhone 📱', mensaje: 'La tienda ahora **se ajusta siempre a tu pantalla**: ya no se agranda al escribir ni se corre hacia los lados. Si la tienes abierta, **recarga la página** para verla así.' },
       { id: 'act_20261020_app', fecha: '2026-10-20', titulo: 'App oficial de Epic Streaming 📲', mensaje: 'Ya tenemos **app oficial**: en la tienda toca **Descargar** (Android), **Instalar** (PC) o **Agregar** (iPhone). Abre más rápido, a pantalla completa, con tu misma cuenta y **se actualiza sola**.' },
