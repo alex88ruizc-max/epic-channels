@@ -8349,6 +8349,7 @@
 
       // 💵 Tasa USDT del día (la misma que usa el bot): para mostrar el precio pequeño en USD
       try { db.collection('configuracion').doc('recarga_estado').onSnapshot(d => { const v = d.exists ? Number((d.data() || {}).tasaUsdt) || 0 : 0; if (v !== tasaUsdtPagina.base) { tasaUsdtPagina.base = v; try { procesarYRenderizar(); } catch (e) { /* nada */ } } }, () => {}); } catch (e) { /* nada */ }
+      setTimeout(async () => { if (tasaUsdtPagina.base > 1000) return; try { const r = await llamarPagoPublico('tasa_usdt', {}); if (r && r.ok && r.tasa > 1000) { tasaUsdtPagina.base = r.tasa; tasaUsdtPagina.ajuste = Number(r.ajuste) || 0; procesarYRenderizar(); } } catch (e) { /* sin tasa: no se muestra el USD */ } }, 4000);   // 💵 respaldo
       try { db.collection('configuracion').doc('recarga_auto').onSnapshot(d => { const a = d.exists ? Number((d.data() || {}).binanceAjustePct) || 0 : 0; if (a !== tasaUsdtPagina.ajuste) { tasaUsdtPagina.ajuste = Math.max(-20, Math.min(20, a)); try { procesarYRenderizar(); } catch (e) { /* nada */ } } }, () => {}); } catch (e) { /* nada */ }
       db.collection('configuracion').doc('precios').onSnapshot(doc => {
         if (doc.exists) preciosConfig = doc.data() || {};
@@ -11408,9 +11409,16 @@
       const N = ['andrea', 'camila', 'valentina', 'daniela', 'laura', 'paula', 'natalia', 'sofia', 'juliana', 'carolina', 'mariana', 'tatiana', 'diana', 'catalina', 'luisa', 'angela', 'monica', 'sara', 'manuela', 'isabella', 'gabriela', 'alejandra', 'veronica', 'adriana', 'patricia', 'sandra', 'liliana', 'marcela', 'viviana', 'lorena', 'claudia', 'yuliana', 'karen', 'jessica', 'melissa', 'estefania', 'vanessa', 'paola', 'lina', 'johanna', 'erika', 'ximena', 'fernanda', 'luciana', 'antonella', 'valeria', 'salome', 'mariajose', 'daniella', 'susana', 'beatriz', 'rocio', 'silvia', 'esperanza', 'amparo', 'gloria', 'lucia', 'camilo', 'andres', 'felipe', 'santiago', 'sebastian', 'mateo', 'nicolas', 'julian', 'david', 'daniel', 'alejandro', 'diego', 'carlos', 'jorge', 'miguel', 'oscar', 'ricardo', 'cristian', 'esteban', 'jhon', 'alex', 'alexander', 'fernando', 'javier', 'luis', 'eduardo', 'mauricio', 'hernan', 'gustavo', 'jaime', 'rafael', 'ivan', 'cesar', 'hector', 'mario', 'raul', 'victor', 'wilson', 'fabian', 'edwin', 'jhonatan', 'kevin', 'brayan', 'samuel', 'emiliano', 'tomas', 'martin', 'simon', 'jeronimo', 'maximiliano', 'gabriel', 'joaquin', 'leonardo', 'francisco', 'antonio', 'manuel', 'pablo', 'arturo', 'hugo', 'ruben', 'elkin'];
       const A = ['rojas', 'torres', 'gomez', 'diaz', 'ramirez', 'castro', 'morales', 'vargas', 'herrera', 'moreno', 'jimenez', 'ruiz', 'ortiz', 'suarez', 'rios', 'mejia', 'medina', 'cardenas', 'salazar', 'arias', 'pineda', 'ospina', 'zapata', 'cortes', 'guzman', 'acosta', 'molina', 'restrepo', 'duarte', 'valencia', 'mendoza', 'pardo', 'lozano', 'quintero', 'parra', 'giraldo', 'munoz', 'pena', 'rincon', 'beltran', 'garcia', 'rodriguez', 'martinez', 'lopez', 'gonzalez', 'hernandez', 'perez', 'sanchez', 'romero', 'alvarez', 'ramos', 'navarro', 'gil', 'serrano', 'blanco', 'molano', 'marin', 'sierra', 'ochoa', 'londono', 'gutierrez', 'castano', 'ocampo', 'osorio', 'cifuentes', 'betancur', 'villegas', 'uribe', 'echeverri', 'arango', 'vasquez', 'velez', 'montoya', 'henao', 'agudelo', 'correa', 'franco', 'cano', 'palacios', 'mosquera', 'cuesta', 'rivera', 'bermudez', 'leon', 'reyes', 'cruz', 'guerrero', 'rubio', 'prieto', 'nieto', 'bustos', 'camacho', 'barrera', 'benitez', 'cardona', 'escobar', 'fajardo', 'galvis', 'hoyos', 'ibarra', 'lara', 'luna', 'mora', 'orozco', 'pacheco', 'quiroga', 'salcedo', 'trujillo', 'vega', 'zuluaga'];
       const r = function (a) { return a[Math.floor(Math.random() * a.length)]; };
-      // Sin números (alexruiz, alex.ruiz, alexruizmejia, aruizmejia): parecen correos de personas reales
-      const n = r(N), a1 = r(A); let a2 = r(A); if (a2 === a1) a2 = r(A);
-      const f = Math.random(), base = f < 0.35 ? n + a1 : f < 0.6 ? n + '.' + a1 : f < 0.85 ? n + a1 + a2 : n.charAt(0) + a1 + a2;
+      // Correos cortos (máx. 12 letras, sin números): sararios, ana.rojas, crojasm, camilar
+      const CORTO = { valentina: 'vale', alejandra: 'aleja', alejandro: 'alejo', sebastian: 'sebas', leonardo: 'leo', santiago: 'santi', maximiliano: 'maxi', jeronimo: 'jero', catalina: 'cata', mariajose: 'majo', estefania: 'estefa', jhonatan: 'jhona', francisco: 'fran', gabriela: 'gabi', isabella: 'isa', alexander: 'alex', fernanda: 'fer', fernando: 'fer', antonella: 'anto', daniella: 'dani', emiliano: 'emi', nicolas: 'nico', mauricio: 'mauro', esperanza: 'espe', veronica: 'vero', patricia: 'paty', carolina: 'caro', gustavo: 'gus', eduardo: 'edu', ricardo: 'richi', cristian: 'cris' };
+      let base = '';
+      for (let k = 0; k < 60 && !base; k++) {
+        let n = r(N); n = CORTO[n] || n; if (n.length > 7) continue;
+        const a1 = r(A); let a2 = r(A); if (a2 === a1) a2 = r(A);
+        const f = Math.random(), b = f < 0.35 ? n + a1 : f < 0.65 ? n + '.' + a1 : f < 0.8 ? n.charAt(0) + a1 + a2.charAt(0) : n + a1.charAt(0);
+        const largo = b.replace('.', '').length; if (largo >= 5 && largo <= 12) base = b;
+      }
+      if (!base) base = 'ana' + r(A).slice(0, 6);
       return base + '@epicstreaming.vip';
     }
     async function revisarBienvenidasAhora(btn) {
@@ -15969,7 +15977,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-19v';
+    const VERSION_PAGINA = '2026-10-19x';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261010_wacompra', fecha: '2026-10-10', titulo: 'Compra por WhatsApp 💬', mensaje: 'Ahora puedes **comprar con tu saldo desde nuestro WhatsApp**. Ve a tu perfil → **Mis datos → Comprar por WhatsApp**, vincula tu chat con el código y pide la autorización.' },
       { id: 'act_20261010_vista2', fecha: '2026-10-10', titulo: 'Nueva vista de la tienda ▦', mensaje: 'Ahora puedes ver los productos **en 2 columnas**: más productos en tu pantalla, con las **promos resaltadas** (🔥 campaña, ⚡ relámpago, 🎁 regalo). Toca uno y se abre su ficha para comprar. Cambia de vista con los íconos ☰ / ▦ arriba de las categorías.' },
@@ -20822,6 +20830,7 @@
     // ==================== NOVEDADES INTERNAS DEL PANEL (solo el equipo) ====================
     const ACTUALIZACIONES_INTERNAS = [
       { fecha: '2026-10-19', titulo: '📋 Mis cuentas: vista compacta desde 2 cuentas', mensaje: 'Para todos los perfiles que compran (menos Netflix, que sigue con la contraseña oculta): las compras de 2 cuentas o más ya se ven en la lista compacta (Copiar todas / Reportar una cuenta), y "Ver una por una" queda abajo para reportar o asignar a un cliente. Tus Dealers copian y reparten más rápido.', ir: '' },
+      { fecha: '2026-10-19', titulo: '📧 Correos de dominio más cortos', mensaje: 'Los correos que generas tú y los que piden tus proveedores ahora tienen máximo 12 letras y sin números (sararios, ana.rojas, crojasm, camilar). Se escriben más rápido en Amazon y hay menos errores al tipearlos.', ir: '' },
       { fecha: '2026-10-19', titulo: '📥 Proveedores: subida automática con la bienvenida de Prime', mensaje: 'Cuando a un correo de dominio de un proveedor le llega "Bienvenido a Prime", la cuenta se sube sola a su lote del día (uno por proveedor y día) en el stock que le habilitaste en su ficha. Tú la apruebas en Aprobar lotes como siempre. El proveedor ve arriba: "Hoy llevas X cuentas subidas automáticamente".', ir: '' },
       { fecha: '2026-10-19', titulo: '📦 Sobre pedido: entrega completa y precios en USD', mensaje: 'Cada pedido sobre pedido se entrega COMPLETO de una vez (un mensaje y una lista). Si pasan 4 horas sin completarse, recibe lo que haya en bloques de 5 (Ajustes Generales). En Mis cuentas el pedido sale en una tarjeta con las nuevas marcadas NEW. Y la tienda muestra el precio pequeño en USD (misma tasa del bot).', ir: '' },
       { fecha: '2026-10-19', titulo: '📦 Venta manual con sobre pedido y correos libres', mensaje: 'En Venta manual (WhatsApp): escribe el correo de la cuenta del cliente y la venta le queda en Mis cuentas. Si pide más de lo que hay, marca "sobre pedido": se entrega lo que hay y el resto queda en su fila. Y en la lista de productos salen tus 🆓 correos libres para asignarlos a un cliente (eliges como qué producto se registra).', ir: '' },
@@ -24080,7 +24089,7 @@
       return { cuentas: legado, stock: legado.length || stockPublico };
     }
 
-    const VERSION_SERVIDOR_NECESARIA = '2026-10-19n';   // la versión del servidor que necesita esta página
+    const VERSION_SERVIDOR_NECESARIA = '2026-10-19p';   // la versión del servidor que necesita esta página
     async function llamarBackend(accion, datos) {
       if (mantenimientoActivo() && /^(comprar|recarga|renovar|carrito|preorden|combo)/.test(String(accion || ''))) { avisoMantenimiento(''); throw new Error('Estamos en mantenimiento. Compra por WhatsApp mientras tanto.'); }
       if (modoPruebaCliente) { const rs = backendSimulado(accion, datos || {}); if (rs) return rs; }
