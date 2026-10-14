@@ -491,6 +491,7 @@
           <span class="text-[9px] text-gray-400 block leading-none">Mi Saldo</span>
           <span id="txtSaldoHeader" class="text-xs sm:text-sm font-bold text-white leading-tight">$0 COP</span>
         </div>
+        <button type="button" id="btnMonedaVista" onclick="alternarMonedaVista()" title="Ver en pesos o dólares" class="ml-1 px-1.5 py-0.5 rounded-md border border-gray-600 text-[9px] font-black text-gray-200 hover:bg-gray-700 transition">COP</button>
         <button onclick="abrirModalRecarga()" title="Recargar saldo" class="ml-1 bg-emerald-500 hover:bg-emerald-400 text-black rounded p-1 text-xs transition">
           <i class="fa-solid fa-plus"></i>
         </button>
@@ -3579,8 +3580,8 @@
         <div class="p-3.5 rounded-2xl border border-emerald-500/40 bg-emerald-500/5">
           <p class="text-[11px] font-bold text-emerald-300 uppercase tracking-wider mb-2"><i class="fa-solid fa-bolt mr-1"></i> Recarga automática</p>
           <div id="recargaVias" class="hidden grid grid-cols-2 gap-1 p-1 rounded-xl bg-gray-900/80 border border-gray-700/60 mb-2.5">
-            <button type="button" onclick="elegirViaRecarga('breb')" data-via="breb" class="py-2 rounded-lg text-[11px] font-black">🇨🇴 Bre-B (pesos)</button>
-            <button type="button" onclick="elegirViaRecarga('binance')" data-via="binance" class="py-2 rounded-lg text-[11px] font-black">🟡 Binance (USDT)</button>
+            <button type="button" onclick="elegirViaRecarga('breb'); try { if (clienteInternacional) fijarMonedaVista('COP', true); } catch (e) {}" data-via="breb" class="py-2 rounded-lg text-[11px] font-black">🇨🇴 Bre-B (pesos)</button>
+            <button type="button" onclick="elegirViaRecarga('binance'); try { if (clienteInternacional) fijarMonedaVista('USD', true); } catch (e) {}" data-via="binance" class="py-2 rounded-lg text-[11px] font-black">🟡 Binance (USDT)</button>
           </div>
 
           <p id="avisoCompraTrasRecarga" class="hidden mb-2 px-3 py-2 rounded-xl bg-emerald-500/10 border border-emerald-400/40 text-[11px] text-emerald-100"></p><div id="recargaAutoForm">
@@ -7019,6 +7020,7 @@
             // 🧪 durante la prueba de compra simulada el saldo es de mentira: el real se guarda aparte y se repone al terminar
             if (typeof pruebaCompraCorriendo !== 'undefined' && pruebaCompraCorriendo) window.__saldoRealPrueba = dataU.saldo || 0; else userSaldo = dataU.saldo || 0;
             try { if (dataU.debeCambiarClave === true) exigirCambioClave(); } catch (e) { /* nada */ }
+            try { if (!modoPruebaCliente) { clienteInternacional = esNumeroInternacional(dataU.whatsapp); fijarMonedaVista(dataU.monedaVista || (clienteInternacional ? 'USD' : 'COP'), false); actualizarSaldoHeader(); } } catch (e) { /* nada */ }
             try { perfilWa = { waVinculado: dataU.waVinculado || '', waCompraAutorizada: dataU.waCompraAutorizada === true, waSolicitaEl: dataU.waSolicitaEl || '' }; if (document.getElementById('waClienteCaja')) pintarWaCliente(); } catch (e) { /* nada */ }
             setTimeout(() => { try { revisarCompraTrasRecarga(); } catch (e) { /* nada */ } }, 0);
             if (ticketsAvisadosCuenta === null) { ticketsAvisadosCuenta = Array.isArray(dataU.ticketsAvisados) ? dataU.ticketsAvisados : []; setTimeout(() => { try { revisarTicketsClienteUI(); } catch (e) { /* nada */ } }, 0); }
@@ -7144,7 +7146,9 @@
 
     function actualizarSaldoHeader() {
       const el = document.getElementById('txtSaldoHeader');
-      if (el) el.innerText = `$${(modoPruebaCliente ? saldoSimulado : userSaldo).toLocaleString('es-CO')} COP`;
+      const saldoVer = modoPruebaCliente ? saldoSimulado : userSaldo;
+      if (el) el.innerText = enUsd() && usdSaldo(saldoVer) ? `${usdSaldo(saldoVer)} USD` : `$${saldoVer.toLocaleString('es-CO')} COP`;
+      try { const bm = document.getElementById('btnMonedaVista'); if (bm) { bm.textContent = enUsd() ? 'USD' : 'COP'; bm.classList.toggle('hidden', !!TIENDA_SLUG || !usdDeCop(1000) || !puedeUsd()); bm.classList.toggle('border-yellow-400', enUsd()); bm.classList.toggle('text-yellow-200', enUsd()); } } catch (e) { /* nada */ }
       const caja = document.getElementById('navSaldoDirecto');
       if (caja) {
         caja.classList.toggle('border-yellow-500', modoPruebaCliente);
@@ -8348,7 +8352,7 @@
       });
 
       // 💵 Tasa USDT del día (la misma que usa el bot): para mostrar el precio pequeño en USD
-      try { db.collection('configuracion').doc('recarga_estado').onSnapshot(d => { const v = d.exists ? Number((d.data() || {}).tasaUsdt) || 0 : 0; if (v !== tasaUsdtPagina.base) { tasaUsdtPagina.base = v; try { procesarYRenderizar(); } catch (e) { /* nada */ } } }, () => {}); } catch (e) { /* nada */ }
+      try { db.collection('configuracion').doc('recarga_estado').onSnapshot(d => { const v = d.exists ? Number((d.data() || {}).tasaUsdt) || 0 : 0; if (v !== tasaUsdtPagina.base) { tasaUsdtPagina.base = v; try { procesarYRenderizar(); } catch (e) { /* nada */ } try { actualizarSaldoHeader(); } catch (e) { /* nada */ } } }, () => {}); } catch (e) { /* nada */ }
       setTimeout(async () => { if (tasaUsdtPagina.base > 1000) return; try { const r = await llamarPagoPublico('tasa_usdt', {}); if (r && r.ok && r.tasa > 1000) { tasaUsdtPagina.base = r.tasa; tasaUsdtPagina.ajuste = Number(r.ajuste) || 0; procesarYRenderizar(); } } catch (e) { /* sin tasa: no se muestra el USD */ } }, 4000);   // 💵 respaldo
       try { db.collection('configuracion').doc('recarga_auto').onSnapshot(d => { const a = d.exists ? Number((d.data() || {}).binanceAjustePct) || 0 : 0; if (a !== tasaUsdtPagina.ajuste) { tasaUsdtPagina.ajuste = Math.max(-20, Math.min(20, a)); try { procesarYRenderizar(); } catch (e) { /* nada */ } } }, () => {}); } catch (e) { /* nada */ }
       db.collection('configuracion').doc('precios').onSnapshot(doc => {
@@ -8984,7 +8988,7 @@
               </div>
 
               <div class="${esNf || marcaT ? 'text-lg font-black text-white' : 'text-xs font-bold text-emerald-400'} mb-1.5">
-                ${prod.promoPct ? `<span class="text-[11px] text-gray-500 line-through font-normal mr-1">$${(prod.precioLista || 0).toLocaleString('es-CO')}</span>` : ''}${esNf || marcaT || prod.promoPct ? '' : '<i class="fa-solid fa-tag mr-1"></i> '}<span id="precioUnit_${prod.docId}" class="${prod.promoPct && !esNf && !marcaT ? 'text-rose-300 text-sm font-black' : ''}">${formatoCOP(precioPorCantidad(prod, cantidadInicial))}</span><span id="precioUsd_${prod.docId}" class="ml-1.5 text-[10px] text-gray-400 font-semibold">${usdDeCop(precioPorCantidad(prod, cantidadInicial)) ? '≈ ' + usdDeCop(precioPorCantidad(prod, cantidadInicial)) + ' USD' : ''}</span> <span class="text-[10px] text-gray-400 font-normal">c/u</span>
+                ${prod.promoPct ? `<span class="text-[11px] text-gray-500 line-through font-normal mr-1">$${(prod.precioLista || 0).toLocaleString('es-CO')}</span>` : ''}${esNf || marcaT || prod.promoPct ? '' : '<i class="fa-solid fa-tag mr-1"></i> '}<span id="precioUnit_${prod.docId}" class="${prod.promoPct && !esNf && !marcaT ? 'text-rose-300 text-sm font-black' : ''}">${precioVista(precioPorCantidad(prod, cantidadInicial))}</span><span id="precioUsd_${prod.docId}" class="ml-1.5 text-[10px] text-gray-400 font-semibold">${textoSecundarioVista(precioPorCantidad(prod, cantidadInicial))}</span> <span class="text-[10px] text-gray-400 font-normal">c/u</span>
               </div>
               ${htmlEscalasTarjeta(prod)}
               ${esNf && !TIENDA_SLUG && tt('chipNetflix') !== '-' ? `<div class="mb-2"><span class="nf-chip"><i class="fa-solid fa-key"></i> ${ttH('chipNetflix')}</span></div>` : ''}
@@ -9009,7 +9013,7 @@
               <div class="flex items-center justify-between">
                 <div>
                   <span class="text-[10px] text-gray-400 block leading-none">${ttH('textoTotal')}</span>
-                  <span id="txtTotal_${prod.docId}" class="text-base font-black text-white">$${totalInicial.toLocaleString('es-CO')}</span>
+                  <span id="txtTotal_${prod.docId}" class="text-base font-black text-white">${precioVista(totalInicial)}</span>
                 </div>
                 <div class="flex items-center bg-gray-800 border border-gray-700 rounded-xl p-0.5">
                   <button type="button" onclick="cambiarCantidad('${prod.docId}', -1, ${maxTarjeta(prod, stockDisponible)}, ${limiteInferior})" ${agotado ? 'disabled' : ''} class="w-7 h-7 flex items-center justify-center rounded-lg bg-gray-700/60 hover:bg-gray-700 text-gray-200 font-black text-sm disabled:opacity-40">-</button>
@@ -14401,8 +14405,8 @@
         if (chk) { chk.disabled = sinStock; if (sinStock && chk.checked) { chk.checked = false; comboElegido[docId] = false; } }
       }
       const txt = document.getElementById('txtTotal_' + docId);
-      if (txt) txt.innerText = `$${(val * precioUnitarioConCombo(prod, val)).toLocaleString('es-CO')}`;
-      try { const pu = document.getElementById('precioUnit_' + docId); if (pu) pu.textContent = formatoCOP(precioPorCantidad(prod, val)); const pud = document.getElementById('precioUsd_' + docId); if (pud) { const u = usdDeCop(precioPorCantidad(prod, val)); pud.textContent = u ? '≈ ' + u + ' USD' : ''; } document.querySelectorAll(`[data-esc-de="${docId}"]`).forEach(b => { const on = val >= Number(b.dataset.desde) && (!b.dataset.hasta || val < Number(b.dataset.hasta)); b.classList.toggle('esc-on', on); }); } catch (e) { /* nada */ }
+      if (txt) txt.innerText = precioVista(val * precioUnitarioConCombo(prod, val));
+      try { const pu = document.getElementById('precioUnit_' + docId); if (pu) pu.textContent = precioVista(precioPorCantidad(prod, val)); const pud = document.getElementById('precioUsd_' + docId); if (pud) pud.textContent = textoSecundarioVista(precioPorCantidad(prod, val)); document.querySelectorAll(`[data-esc-de="${docId}"]`).forEach(b => { const on = val >= Number(b.dataset.desde) && (!b.dataset.hasta || val < Number(b.dataset.hasta)); b.classList.toggle('esc-on', on); }); } catch (e) { /* nada */ }
       try { pintarMixto(docId); } catch (e) { /* nada */ }
     }
 
@@ -15977,7 +15981,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-19x';
+    const VERSION_PAGINA = '2026-10-19z';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261010_wacompra', fecha: '2026-10-10', titulo: 'Compra por WhatsApp 💬', mensaje: 'Ahora puedes **comprar con tu saldo desde nuestro WhatsApp**. Ve a tu perfil → **Mis datos → Comprar por WhatsApp**, vincula tu chat con el código y pide la autorización.' },
       { id: 'act_20261010_vista2', fecha: '2026-10-10', titulo: 'Nueva vista de la tienda ▦', mensaje: 'Ahora puedes ver los productos **en 2 columnas**: más productos en tu pantalla, con las **promos resaltadas** (🔥 campaña, ⚡ relámpago, 🎁 regalo). Toca uno y se abre su ficha para comprar. Cambia de vista con los íconos ☰ / ▦ arriba de las categorías.' },
@@ -19629,9 +19633,9 @@
       const st = Number(p.stock) || 0, minC = Math.max(1, parseInt(p.minCompra, 10) || 1), m2 = marcaDeProducto(p);
       const maxC = maxTarjeta(p, st), ini = Math.min(Math.max(minC, parseInt(cantidadInicial, 10) || 1), Math.max(maxC, 1));
       m.innerHTML = `<div class="w-full max-w-sm rounded-3xl bg-gray-900 border border-gray-700 p-4 shadow-2xl max-h-[85vh] overflow-y-auto" style="animation:credEntrar .25s ease-out;margin-bottom:max(0px, env(safe-area-inset-bottom))">
-        <div class="flex items-start justify-between gap-2"><div class="min-w-0"><p class="text-[10px] font-black tracking-[0.2em] uppercase" style="color:${m2.color}">${escaparHtml(m2.etiqueta)}</p><p class="text-base font-black text-white leading-snug">${escaparHtml(p.nombre)}</p><p class="text-xs text-gray-400 mt-0.5">${st ? `<span class="${st <= 5 ? 'text-amber-300' : 'text-emerald-300'} font-bold">${veCantidadStock() ? st + ' disponibles' : textoStockCliente(st)}</span>` : (sobrePedidoTarjeta(p) ? `<span class="text-sky-300 font-bold">📦 sobre pedido · hasta ${sobrePedidoTarjeta(p).max}</span>` : '<span class="text-red-300 font-bold">agotado</span>')}</p></div><div class="flex items-start gap-2 shrink-0"><div class="text-right leading-none pt-0.5">${promoDeProducto(p).precio < (Number(p.precio) || 0) ? `<p class="text-[11px] text-gray-500 line-through">${formatoCOP(Number(p.precio) || 0)}</p>` : ''}<p class="text-2xl font-black text-white" style="text-shadow:0 1px 10px rgba(0,0,0,.45)">${formatoCOP(promoDeProducto(p).precio)}</p><p class="text-[10px] text-gray-400 font-bold mt-1">c/u</p></div><button type="button" onclick="cerrarCompraRapida()" class="w-8 h-8 shrink-0 rounded-full bg-gray-800 text-gray-300"><i class="fa-solid fa-xmark"></i></button></div></div>
+        <div class="flex items-start justify-between gap-2"><div class="min-w-0"><p class="text-[10px] font-black tracking-[0.2em] uppercase" style="color:${m2.color}">${escaparHtml(m2.etiqueta)}</p><p class="text-base font-black text-white leading-snug">${escaparHtml(p.nombre)}</p><p class="text-xs text-gray-400 mt-0.5">${st ? `<span class="${st <= 5 ? 'text-amber-300' : 'text-emerald-300'} font-bold">${veCantidadStock() ? st + ' disponibles' : textoStockCliente(st)}</span>` : (sobrePedidoTarjeta(p) ? `<span class="text-sky-300 font-bold">📦 sobre pedido · hasta ${sobrePedidoTarjeta(p).max}</span>` : '<span class="text-red-300 font-bold">agotado</span>')}</p></div><div class="flex items-start gap-2 shrink-0"><div class="text-right leading-none pt-0.5">${promoDeProducto(p).precio < (Number(p.precio) || 0) ? `<p class="text-[11px] text-gray-500 line-through">${precioVista(Number(p.precio) || 0)}</p>` : ''}<p class="text-2xl font-black text-white" style="text-shadow:0 1px 10px rgba(0,0,0,.45)">${precioVista(promoDeProducto(p).precio)}</p><p class="text-[10px] text-gray-400 font-bold mt-1">${textoSecundarioVista(promoDeProducto(p).precio) ? textoSecundarioVista(promoDeProducto(p).precio) + ' · ' : ''}c/u</p></div><button type="button" onclick="cerrarCompraRapida()" class="w-8 h-8 shrink-0 rounded-full bg-gray-800 text-gray-300"><i class="fa-solid fa-xmark"></i></button></div></div>
         ${htmlInfoFicha(p)}
-        ${maxC > 0 ? `<div class="flex items-center justify-between gap-3 mt-4"><div><p class="text-[10px] text-gray-400">Total</p><p id="crTotal" class="text-xl font-black text-white">$0</p></div>
+        ${maxC > 0 ? `<div class="flex items-center justify-between gap-3 mt-4"><div><p class="text-[10px] text-gray-400">Total</p><p id="crTotal" class="text-xl font-black text-white">$0</p><p id="crTotalAlt" class="text-[10px] text-gray-400 font-semibold"></p></div>
           <div class="flex items-center bg-gray-800 border border-gray-700 rounded-xl p-0.5"><button type="button" onclick="crCambiar(-1)" class="w-9 h-9 rounded-lg bg-gray-700/60 text-white font-black">-</button><input id="crCant" type="number" inputmode="numeric" value="${ini}" min="${minC}" max="${maxC}" onfocus="this.select()" oninput="crRecalcular()" onchange="crCambiar(0)" class="w-14 text-center bg-transparent text-white font-bold focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"><button type="button" onclick="crCambiar(1)" class="w-9 h-9 rounded-lg bg-gray-700/60 text-white font-black">+</button></div></div>
           ${cajaPedidoVisible(p, st) ? `<div class="caja-pedido mt-3"><div class="flex items-center gap-2.5"><span class="ico"><i class="fa-solid fa-box-open text-sm"></i></span><div class="min-w-0 flex-1"><p class="text-[13.5px] font-black text-white leading-tight">¿Lo necesitas en cantidad?</p><p class="text-[11px] text-sky-200">Lo que falte te llega cuando entre stock</p></div></div><div class="flex flex-wrap gap-1.5 mt-2.5">${opcionesPedido(p, st).map(n => `<button type="button" data-crop="${n}" onclick="crElegirPedido({value:'${n}'})" class="op-cuantas">${n}</button>`).join('')}<button type="button" data-crop="otra" onclick="crElegirPedido({value:'otra'})" class="op-cuantas">Otra…</button></div></div>` : ''}
           <p id="crMixto" class="hidden mt-2 text-[11px] text-sky-100 px-2.5 py-1.5 rounded-lg bg-sky-500/10 border border-sky-400/30"></p>
@@ -19648,7 +19652,8 @@
       const p = catalogoUnificado.find(x => x.docId === crId), i = document.getElementById('crCant'); if (!p || !i) return;
       let n = parseInt(i.value, 10) || 0; const st = Number(p.stock) || 0;
       if (n > (Number(i.max) || n)) { n = Number(i.max); i.value = String(n); mostrarToast('El máximo para este producto es ' + n); }
-      const t = document.getElementById('crTotal'); if (t) t.textContent = formatoCOP(n * precioPorCantidad(p, n));
+      const t = document.getElementById('crTotal'); if (t) t.textContent = precioVista(n * precioPorCantidad(p, n));
+      const ta = document.getElementById('crTotalAlt'); if (ta) ta.textContent = textoSecundarioVista(n * precioPorCantidad(p, n));
       const mx = document.getElementById('crMixto'), b = document.getElementById('btnCompraRapida');
       const mixto = n > st && st > 0;
       if (mx) { mx.classList.toggle('hidden', !mixto); if (mixto) mx.innerHTML = `⚡ <b>${st}</b> se entregan ya · ⏳ <b>${n - st}</b> quedan por encargo.`; }
@@ -20829,6 +20834,7 @@
 
     // ==================== NOVEDADES INTERNAS DEL PANEL (solo el equipo) ====================
     const ACTUALIZACIONES_INTERNAS = [
+      { fecha: '2026-10-19', titulo: '💱 Tienda en dólares para clientes de otros países', mensaje: 'Los clientes con WhatsApp de otro país ven la tienda en USD de entrada, con un botón COP/USD junto a su saldo (Bre-B los pasa a COP, Binance a USD). Los colombianos y quienes no tienen WhatsApp ven todo en COP, sin botón. Tú y tus moderadores también tienen el botón para revisar cómo se ve. El saldo se sigue guardando en pesos, y cada compra y recarga guarda la tasa del dólar de ese día. Tus clientes de otros países ven precios que entienden y compran con más confianza.', ir: '' },
       { fecha: '2026-10-19', titulo: '📋 Mis cuentas: vista compacta desde 2 cuentas', mensaje: 'Para todos los perfiles que compran (menos Netflix, que sigue con la contraseña oculta): las compras de 2 cuentas o más ya se ven en la lista compacta (Copiar todas / Reportar una cuenta), y "Ver una por una" queda abajo para reportar o asignar a un cliente. Tus Dealers copian y reparten más rápido.', ir: '' },
       { fecha: '2026-10-19', titulo: '📧 Correos de dominio más cortos', mensaje: 'Los correos que generas tú y los que piden tus proveedores ahora tienen máximo 12 letras y sin números (sararios, ana.rojas, crojasm, camilar). Se escriben más rápido en Amazon y hay menos errores al tipearlos.', ir: '' },
       { fecha: '2026-10-19', titulo: '📥 Proveedores: subida automática con la bienvenida de Prime', mensaje: 'Cuando a un correo de dominio de un proveedor le llega "Bienvenido a Prime", la cuenta se sube sola a su lote del día (uno por proveedor y día) en el stock que le habilitaste en su ficha. Tú la apruebas en Aprobar lotes como siempre. El proveedor ve arriba: "Hoy llevas X cuentas subidas automáticamente".', ir: '' },
@@ -22250,14 +22256,46 @@
     var tasaUsdtPagina = { base: 0, ajuste: 0 };
     // Mismo redondeo que el bot (hacia arriba, de a 0,10): 2.500 COP → "0,70 USD"
     function usdDeCop(cop) { const t = Math.round((tasaUsdtPagina.base || 0) * (1 + (tasaUsdtPagina.ajuste || 0) / 100)); if (!(t > 1000) || !(Number(cop) > 0) || TIENDA_SLUG) return ''; return (Math.ceil(Number(cop) / t * 10 - 1e-9) / 10).toFixed(2).replace('.', ','); }
-    function htmlUsdMini(cop, clase) { const u = usdDeCop(cop); return u ? `<span class="${clase || 'block text-[10px] text-gray-400 font-semibold mt-0.5'}">≈ ${u} USD</span>` : ''; }
+    // 💱 Moneda en que el cliente ve la tienda (el saldo siempre se guarda en pesos). COP por defecto.
+    var monedaVista = 'COP', clienteInternacional = false;
+    // 🌎 Número de WhatsApp de otro país: 57 + 10 dígitos o 10 dígitos que empiezan por 3 = Colombia; sin número = Colombia
+    function esNumeroInternacional(wa) {
+      const d = String(wa || '').replace(/\D/g, '');
+      if (d.length < 8) return false;
+      if (d.length === 10 && d.charAt(0) === '3') return false;
+      if (d.length === 12 && d.indexOf('57') === 0) return false;
+      return true;
+    }
+    // Solo los clientes con número internacional (y tú o tus moderadores, para revisar) pueden ver la tienda en USD
+    function puedeUsd() { try { return clienteInternacional || esStaffSesion(); } catch (e) { return clienteInternacional; } }
+    function enUsd() { return monedaVista === 'USD' && puedeUsd() && !TIENDA_SLUG && !!usdDeCop(1000); }
+    function usdSaldo(cop) { const t = Math.round((tasaUsdtPagina.base || 0) * (1 + (tasaUsdtPagina.ajuste || 0) / 100)); if (!(t > 1000)) return ''; return (Math.floor(Math.max(0, Number(cop) || 0) / t * 100) / 100).toFixed(2).replace('.', ','); }
+    function precioVista(cop) { return enUsd() ? usdDeCop(cop) + ' USD' : formatoCOP(cop); }
+    function textoSecundarioVista(cop) { if (enUsd()) return Number(cop) > 0 ? '≈ ' + formatoCOP(cop) + ' COP' : ''; const u = usdDeCop(cop); return u ? '≈ ' + u + ' USD' : ''; }
+    function htmlUsdMini(cop, clase) { const t = textoSecundarioVista(cop); return t ? `<span class="${clase || 'block text-[10px] text-gray-400 font-semibold mt-0.5'}">${t}</span>` : ''; }
+    function totalCompraVista(c) { if (!enUsd()) return formatoCOP(c.total); const u = Number(c.totalUsd) > 0 ? Number(c.totalUsd).toFixed(2).replace('.', ',') : usdDeCop(c.total); return u + ' USD'; }
+    function fijarMonedaVista(m, guardar) {
+      m = m === 'USD' && puedeUsd() ? 'USD' : 'COP';
+      if (m === monedaVista) return;
+      monedaVista = m;
+      try { procesarYRenderizar(); } catch (e) { /* nada */ }
+      try { actualizarSaldoHeader(); } catch (e) { /* nada */ }
+      try { if (document.getElementById('crCant')) crRecalcular(); } catch (e) { /* nada */ }
+      try { if (document.getElementById('listaMisCuentas') && misComprasPerfilCache.length) cargarMisCuentas(); } catch (e) { /* nada */ }
+      if (guardar && currentUser && !modoPruebaCliente) { try { db.collection('usuarios').doc(currentUser.uid).set({ monedaVista: m }, { merge: true }).catch(() => {}); } catch (e) { /* nada */ } }
+    }
+    function alternarMonedaVista() {
+      if (monedaVista === 'COP' && !usdDeCop(1000)) { mostrarToast('La tasa del dólar aún no está disponible. Intenta en un momento.'); return; }
+      fijarMonedaVista(monedaVista === 'USD' ? 'COP' : 'USD', true);
+      mostrarToast(monedaVista === 'USD' ? 'Ahora ves la tienda en dólares (USD)' : 'Ahora ves la tienda en pesos (COP)');
+    }
     function htmlCuadroCompacto(p) {
       const st = Number(p.stock) || 0, pr = promoDeProducto(p), sp = sobrePedidoTarjeta(p), ag = st <= 0 && !sp;
       return `<button type="button" onclick="abrirCompraRapida('${escaparJsAttr(p.docId)}')" class="relative text-left rounded-2xl p-2.5 pt-3 overflow-hidden transition active:scale-[.97] ${ag ? 'opacity-55' : ''}" style="background:linear-gradient(160deg,rgba(15,42,44,.9),rgba(11,17,32,.95));border:1px solid ${pr.cinta ? 'rgba(249,115,22,.75)' : 'rgba(19,78,74,.9)'};${pr.cinta ? 'box-shadow:0 8px 22px -12px rgba(249,115,22,.7)' : ''}">
         ${pr.cinta ? `<span class="absolute top-0 left-0 right-0 text-center text-[10px] font-black py-1 tracking-wide text-white" style="background:${pr.cinta[1]}">${pr.cinta[0]}${pr.tipo === 'flash' && pr.hasta ? ` <span data-cuenta-atras="${escaparHtml(pr.hasta)}">${textoCuentaAtras(pr.hasta)}</span>` : ''}</span>` : ''}
         <div class="${pr.cinta ? 'mt-5' : 'mt-1'} mb-1.5">${htmlLogoProducto(p, 52)}</div>
         <p class="text-[12px] font-bold text-white text-center leading-tight line-clamp-2 min-h-[30px]">${escaparHtml(p.nombre || '')}</p>
-        <p class="text-center mt-1 leading-none">${pr.tachado ? `<s class="text-[10px] text-gray-400 font-semibold mr-1">${formatoCOP(pr.tachado)}</s>` : ''}<span class="text-[17px] font-black text-white">${formatoCOP(pr.precio)}</span>${htmlUsdMini(pr.precio, 'block text-[10px] text-gray-400 font-semibold mt-1')}${pr.pct ? `<span class="ml-1 align-middle text-[9px] font-black px-1.5 py-0.5 rounded-md bg-red-600 text-white">-${pr.pct}%</span>` : ''}</p>
+        <p class="text-center mt-1 leading-none">${pr.tachado ? `<s class="text-[10px] text-gray-400 font-semibold mr-1">${precioVista(pr.tachado)}</s>` : ''}<span class="text-[17px] font-black text-white">${precioVista(pr.precio)}</span>${htmlUsdMini(pr.precio, 'block text-[10px] text-gray-400 font-semibold mt-1')}${pr.pct ? `<span class="ml-1 align-middle text-[9px] font-black px-1.5 py-0.5 rounded-md bg-red-600 text-white">-${pr.pct}%</span>` : ''}</p>
         ${pr.regaloTxt ? `<p class="text-[10px] text-center mt-1 font-bold text-purple-300 leading-tight">🎁 ${escaparHtml(pr.regaloTxt)}</p>` : (pr.desde ? `<p class="text-[10px] text-center mt-1 font-bold text-emerald-300">💰 Desde ${formatoCOP(pr.desde.precio)}</p>` : '')}
         <p class="flex items-center justify-center gap-1 text-[10px] text-gray-400 mt-1">${sp ? `<span class="px-2 py-0.5 rounded-full bg-sky-500/15 border border-sky-400/50 text-sky-200 font-black">📦 Sobre pedido · hasta ${sp.max}</span>` : htmlBateriaMini(st) + ' ' + (ag ? '<span class="text-red-400 font-bold">Agotado</span>' : '<span class="stk-num">Stock ' + st + '</span><span class="stk-gen">' + textoStockCliente(st) + '</span>')}</p>
       </button>`;
@@ -23898,7 +23936,7 @@
                 </div>
                 <div class="text-right shrink-0">
                   <p class="text-[11px] text-gray-400 font-mono">${fechaLegible}</p>
-                  ${c.total ? `<p class="text-xs font-bold text-white mt-0.5">${formatoCOP(c.total)}</p>` : ''}
+                  ${c.total ? `<p class="text-xs font-bold text-white mt-0.5">${totalCompraVista(c)}</p>` : ''}
                 </div>
               </div>
               <div data-garantia-idx="${idx}">${renderTarjetaGarantia(idx)}</div>
