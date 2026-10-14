@@ -6487,6 +6487,16 @@
     let currentUser = null;
     let userSaldo = 0;
     var userUltimoMov = '';
+    async function buscarUltimoMovReal() {
+      try {
+        if (!currentUser) return;
+        let t = userUltimoMov ? Date.parse(userUltimoMov) : 0;
+        const aplica = f => { const x = Date.parse(f || 0); if (x > t) t = x; };
+        try { const sc = await db.collection('compras').where('usuarioId', '==', currentUser.uid).get(); sc.forEach(d => aplica((d.data() || {}).fecha)); } catch (e) { /* nada */ }
+        try { const sr = await db.collection('recargas').where('usuarioId', '==', currentUser.uid).where('estado', '==', 'aprobado').get(); sr.forEach(d => aplica((d.data() || {}).fecha)); } catch (e) { /* nada */ }
+        if (t > 0) { userUltimoMov = new Date(t).toISOString(); try { actualizarSaldoHeader(); } catch (e) { /* nada */ } }
+      } catch (e) { /* nunca afecta la tienda */ }
+    }
     let userDeuda = 0, userCupo = 0;
     let userProductosPermitidos = [];
     let userTipoCuenta = '', userCategoriasPermitidas = [];
@@ -7117,6 +7127,7 @@
             try { if (dataU.vistaPanel) recibirVistaPanelDeCuenta(dataU.vistaPanel); } catch (e) { /* nada */ }
             userDeuda = Math.max(0, Number(dataU.deuda) || 0);
             userUltimoMov = dataU.ultimoMovimientoEl || dataU.creadoEl || dataU.registradoEl || '';
+            try { if (!dataU.ultimoMovimientoEl && !window.__movBuscado && !modoPruebaCliente) { window.__movBuscado = true; buscarUltimoMovReal(); } } catch (e) { /* nada */ }
             userCupo = Math.max(0, Number(dataU.cupoCredito) || 0);
             setTimeout(() => { try { actualizarAccesosCredito(); } catch (e) { /* nada */ } }, 0);
             if (String(dataU.avatarUrl || '') !== miAvatarUrl) { miAvatarUrl = String(dataU.avatarUrl || ''); try { pintarMiAvatar(); } catch (e) { /* nada */ } }
@@ -16265,7 +16276,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-20p';
+    const VERSION_PAGINA = '2026-10-20q';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261020_ajuste', fecha: '2026-10-20', titulo: 'Se ve mejor en iPhone 📱', mensaje: 'La tienda ahora **se ajusta siempre a tu pantalla**: ya no se agranda al escribir ni se corre hacia los lados. Si la tienes abierta, **recarga la página** para verla así.' },
       { id: 'act_20261020_app', fecha: '2026-10-20', titulo: 'App oficial de Epic Streaming 📲', mensaje: 'Ya tenemos **app oficial**: en la tienda toca **Descargar** (Android), **Instalar** (PC) o **Agregar** (iPhone). Abre más rápido, a pantalla completa, con tu misma cuenta y **se actualiza sola**.' },
