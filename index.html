@@ -502,7 +502,7 @@
         <div>
           <span class="text-[9px] text-gray-400 block leading-none">Mi Saldo</span>
           <span id="txtSaldoHeader" class="text-xs sm:text-sm font-bold text-white leading-tight">$0 COP</span>
-          <span id="txtSaldoVence" class="hidden text-[8px] font-black leading-none mt-0.5"></span>
+          <span id="txtSaldoVence" onclick="event.stopPropagation(); explicarVenceSaldo()" role="button" tabindex="0" class="hidden text-[8px] font-black leading-none mt-0.5 cursor-pointer"></span>
         </div>
         <button type="button" id="btnMonedaVista" onclick="alternarMonedaVista()" title="Ver en pesos o dólares" class="ml-1 px-1.5 py-0.5 rounded-md border border-gray-600 text-[9px] font-black text-gray-200 hover:bg-gray-700 transition">COP</button>
         <button onclick="abrirModalRecarga()" title="Recargar saldo" class="ml-1 bg-emerald-500 hover:bg-emerald-400 text-black rounded p-1 text-xs transition">
@@ -6487,6 +6487,32 @@
     let currentUser = null;
     let userSaldo = 0;
     var userUltimoMov = '';
+    function explicarVenceSaldo() {
+      try {
+        const dias = Math.max(1, parseInt((ajustesGeneralesConfig && ajustesGeneralesConfig.saldoVenceDias) || 20, 10) || 20);
+        const mov = userUltimoMov ? Date.parse(userUltimoMov) : 0;
+        const quedan = mov ? Math.max(0, Math.ceil((mov + dias * 86400000 - Date.now()) / 86400000)) : dias;
+        const saldoTxt = formatoCOP(Math.max(0, userSaldo));
+        const m = document.createElement('div');
+        m.id = 'modalVenceSaldo';
+        m.className = 'fixed inset-0 z-[95] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4';
+        m.onclick = ev => { if (ev.target === m) m.remove(); };
+        m.innerHTML = `<div class="w-full max-w-sm rounded-3xl bg-gray-900 border border-gray-700 p-5 text-center shadow-2xl" style="animation:credEntrar .25s ease-out">
+          <span class="w-12 h-12 mx-auto rounded-2xl bg-amber-500/15 flex items-center justify-center text-amber-300 text-2xl"><i class="fa-solid fa-hourglass-half"></i></span>
+          <p class="text-base font-black text-white mt-2">Tu saldo vence en ${quedan} ${quedan === 1 ? 'día' : 'días'}</p>
+          <div class="text-left mt-3 space-y-2.5 text-[13px] text-gray-300">
+            <p><i class="fa-solid fa-wallet text-emerald-400 mr-1.5"></i> Tienes <b class="text-white">${saldoTxt}</b> de saldo disponible.</p>
+            <p><i class="fa-solid fa-rotate text-sky-400 mr-1.5"></i> Cada <b class="text-white">compra o recarga</b> reinicia el tiempo a ${dias} días.</p>
+            <p><i class="fa-solid fa-hourglass-end text-amber-400 mr-1.5"></i> Si no lo usas en ese tiempo, el saldo <b class="text-white">se vence</b>.</p>
+            <p><i class="fa-solid fa-bell text-gray-400 mr-1.5"></i> Te avisamos antes de que pase.</p>
+          </div>
+          <button type="button" onclick="document.getElementById('modalVenceSaldo').remove(); cambiarVista('tienda');" class="mt-4 w-full py-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-black text-sm"><i class="fa-solid fa-cart-shopping mr-1"></i> Ver productos y comprar</button>
+          <button type="button" onclick="document.getElementById('modalVenceSaldo').remove(); abrirModalRecarga();" class="mt-2 w-full py-3 rounded-xl bg-violet-500 hover:bg-violet-400 text-white font-black text-sm"><i class="fa-solid fa-plus mr-1"></i> Recargar saldo</button>
+          <button type="button" onclick="document.getElementById('modalVenceSaldo').remove();" class="mt-2 w-full py-2.5 rounded-xl bg-gray-800 border border-gray-700 text-gray-300 font-bold text-xs">Entendido</button>
+        </div>`;
+        document.body.appendChild(m);
+      } catch (e) { /* nada */ }
+    }
     async function buscarUltimoMovReal() {
       try {
         if (!currentUser) return;
@@ -16276,7 +16302,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-20q';
+    const VERSION_PAGINA = '2026-10-20r';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261020_ajuste', fecha: '2026-10-20', titulo: 'Se ve mejor en iPhone 📱', mensaje: 'La tienda ahora **se ajusta siempre a tu pantalla**: ya no se agranda al escribir ni se corre hacia los lados. Si la tienes abierta, **recarga la página** para verla así.' },
       { id: 'act_20261020_app', fecha: '2026-10-20', titulo: 'App oficial de Epic Streaming 📲', mensaje: 'Ya tenemos **app oficial**: en la tienda toca **Descargar** (Android), **Instalar** (PC) o **Agregar** (iPhone). Abre más rápido, a pantalla completa, con tu misma cuenta y **se actualiza sola**.' },
@@ -21149,6 +21175,7 @@
 
     // ==================== NOVEDADES INTERNAS DEL PANEL (solo el equipo) ====================
     const ACTUALIZACIONES_INTERNAS = [
+      { fecha: '2026-10-20', titulo: '⌛ El cliente puede tocar "vence en X días"', mensaje: 'Al tocar el contador de vencimiento junto a su saldo, al cliente se le abre una ventana que le explica por qué vence y que cada compra o recarga lo renueva, con botones para **comprar** o **recargar** ahí mismo. Convierte el aviso en una venta.', ir: '' },
       { fecha: '2026-10-20', titulo: '⌛ El saldo sin usar se vence', mensaje: 'El saldo que un cliente no usa se vence a los **20 días** sin movimiento (compra o recarga), configurable en Ajustes Generales (0 = desactivado). Cada compra o recarga reinicia el contador. El cliente ve **"vence en X días"** junto a su saldo, y al recargar recibe la nota de que su saldo dura ese tiempo. La deuda no se toca y los proveedores/moderadores quedan fuera. En Ajustes ves cuánto saldo está por vencer. Así los clientes usan su saldo más rápido y tú recuperas el saldo muerto.', ir: 'ajustes' },
       { fecha: '2026-10-20', titulo: '🧪 El reporte no cuenta usuarios de prueba', mensaje: 'El reporte de ventas ya no suma las compras del usuario **Test** (ni de ningún usuario cuyo correo o nombre tenga "test", "prueba" o "demo"), así Ingresos, Ganancia, Órdenes, Cuentas y Clientes muestran solo ventas reales. El texto de arriba ahora dice claramente que es el histórico completo, para no confundirlo con las órdenes del mes. Toca "Actualizar gráficas" para ver los números limpios.', ir: '' },
       { fecha: '2026-10-20', titulo: '🤖 El bot cierra mejor la venta', mensaje: 'Cuando un cliente dice "gracias" o "mil gracias", el bot responde corto y ya no saca el menú de "no te entendí". Cuando dice "ya compré / ya recargué", lo felicita y le ofrece el soporte por la plataforma y el "lo de siempre", en vez de mandarle a vincular o registrarse (sobre todo si ya es cliente). Así cierra la conversación como lo harías tú y no confunde a quien acaba de comprar.', ir: '' },
