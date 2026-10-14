@@ -9062,7 +9062,7 @@
           docId: docIdFinal,
           nombre: nombreFinal,
           categoria: categoriaFinal,
-          descripcion: descripcionFinal,
+          descripcion: alinearGarantiaDesc(descripcionFinal, tipoGarantiaFinal),
           stock: infoCuentasBase.stock,
           cuentas: cuentas,
           precio: precioFinal,
@@ -9276,7 +9276,7 @@
               </div>
               ${htmlEscalasTarjeta(prod)}
               ${esNf && !TIENDA_SLUG && tt('chipNetflix') !== '-' ? `<div class="mb-2"><span class="nf-chip"><i class="fa-solid fa-key"></i> ${ttH('chipNetflix')}</span></div>` : ''}
-              <p class="text-xs text-gray-400 mb-2 leading-relaxed">${prod.descripcion}</p>
+              <p class="text-xs text-gray-400 mb-2 leading-relaxed">${alinearGarantiaDesc(prod.descripcion, prod.tipoGarantia)}</p>
               ${esComboT ? '' : htmlGarantiaTarjeta(prod)}${esComboT ? '' : htmlDuracionTarjeta(prod)}
               ${(!promoD && promoParaMi(prod.docId)) ? (() => { const pc = promoParaMi(prod.docId); return `<div class="mb-2.5 px-3 py-2 rounded-xl border border-pink-400/40 bg-gradient-to-r from-pink-500/15 to-violet-500/10"><p class="text-[11px] font-black text-pink-200">🎁 Promo: compra ${pc.compra || 10}, lleva ${pc.regalo || 1} gratis</p><p class="text-[10px] text-pink-100/70 mt-0.5">${pc.vence ? 'Válida ' + textoVencePromo(pc) : 'Por tiempo limitado'} · las compras del mismo día se suman.</p></div>`; })() : ''}
               ${promoD ? `<div class="mb-2.5 px-3 py-2 rounded-xl border border-yellow-400/40" style="background:linear-gradient(135deg,rgba(247,215,116,.12),rgba(184,134,11,.06))"><p class="text-[11px] font-black dealer-texto">🎁 Promo de hoy: compra ${promoD.compra || 10}, lleva ${(promoD.regalo || 1) * ((multiplicadoresDealer()[nivelDealerDe(progresoDealer.mes || 0).id]) || 1)}</p><p class="text-[10px] text-amber-100/70 mt-0.5 leading-snug">${promoD.vence ? 'Válida ' + textoVencePromo(promoD) : 'Válido mientras veas este mensaje'} · ¡aprovecha, pocas unidades! <span class="text-amber-200/90">Solo tú lo ves porque eres un partner especial 👑</span></p></div>` : ''}
@@ -16373,7 +16373,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-21a';
+    const VERSION_PAGINA = '2026-10-21c';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261020_ajuste', fecha: '2026-10-20', titulo: 'Se ve mejor en iPhone 📱', mensaje: 'La tienda ahora **se ajusta siempre a tu pantalla**: ya no se agranda al escribir ni se corre hacia los lados. Si la tienes abierta, **recarga la página** para verla así.' },
       { id: 'act_20261020_app', fecha: '2026-10-20', titulo: 'App oficial de Epic Streaming 📲', mensaje: 'Ya tenemos **app oficial**: en la tienda toca **Descargar** (Android), **Instalar** (PC) o **Agregar** (iPhone). Abre más rápido, a pantalla completa, con tu misma cuenta y **se actualiza sola**.' },
@@ -17834,6 +17834,17 @@
       if (g.u === 'm') d.setMonth(d.getMonth() + g.n); else d.setFullYear(d.getFullYear() + g.n);
       return d.getTime();
     }
+    // 🛡 La garantía que se muestra siempre es la BASE del producto: si la descripción menciona otra
+    // ("Garantía de acceso 24 horas"), se reemplaza por la real. Si el producto no tiene garantía, se quita la frase.
+    function alinearGarantiaDesc(desc, tipo) {
+      const t = String(desc || ''); if (!t) return t;
+      const re = /garant[ií]a(\s+de\s+acceso)?(\s+de)?(\s+por)?\s+\d{1,4}\s*(horas?|hrs?|h|d[ií]as?|d|semanas?|mes(es)?|años?)\b/gi;
+      if (!re.test(t)) return t;
+      re.lastIndex = 0;
+      const g = parseGarantia(tipo);
+      if (!g) return t.replace(re, '').replace(/\s*\.\s*\./g, '.').replace(/\s{2,}/g, ' ').trim();
+      return t.replace(re, function (m0) { return (m0.charAt(0) === 'G' ? 'Garantía de ' : 'garantía de ') + textoGarantia(tipo); });
+    }
     function textoGarantia(tipo, mayus) {
       const g = parseGarantia(tipo);
       if (!g) return mayus ? 'Sin garantía' : 'sin garantía';
@@ -18746,7 +18757,17 @@
       if (p.promoPct && p.precioLista) return `~${formatoCOP(p.precioLista)}~ *${formatoCOP(p.precio)}* (-${p.promoPct} %)`;
       return `*${formatoCOP(p.precio)}*` + (esc.length ? ` · desde ${esc[esc.length - 1].desde}: *${formatoCOP(esc[esc.length - 1].precio)}*` : '');
     }
-    function finPromoMk(p) { const sn = snapshotInventario[p.docId] || {}; if (!(Number(sn.promoPct) > 0) || !sn.promoHasta) return ''; const d = new Date(sn.promoHasta); return d > new Date() ? ` · hasta las ${d.toLocaleTimeString('es-CO', { hour: 'numeric', minute: '2-digit' })}` : ''; }
+    // Fin de una promo con el día: "hoy 3:14 p. m.", "mañana 3:14 p. m." o "el 21/10, 3:14 p. m."
+    function textoFinPromo(f) {
+      const d = new Date(f); if (isNaN(d.getTime())) return '';
+      const hora = d.toLocaleTimeString('es-CO', { hour: 'numeric', minute: '2-digit' });
+      const dia = x => x.toLocaleDateString('es-CO', { timeZone: 'America/Bogota' });
+      const hoy = new Date(), man = new Date(Date.now() + 86400000);
+      if (dia(d) === dia(hoy)) return 'hoy ' + hora;
+      if (dia(d) === dia(man)) return 'mañana ' + hora;
+      return 'el ' + d.toLocaleDateString('es-CO', { day: 'numeric', month: 'numeric', timeZone: 'America/Bogota' }) + ', ' + hora;
+    }
+    function finPromoMk(p) { const sn = snapshotInventario[p.docId] || {}; if (!(Number(sn.promoPct) > 0) || !sn.promoHasta) return ''; const d = new Date(sn.promoHasta); return d > new Date() ? ` · hasta ${textoFinPromo(d)}` : ''; }
     function generarTextoMarketing() {
       const t = document.getElementById('mkTexto'); if (!t) return;
       const L = productosMarketing(), enl = enlaceMkUrl(), tienda = nombreTienda(), T = tienda.toUpperCase();
@@ -21251,6 +21272,8 @@
 
     // ==================== NOVEDADES INTERNAS DEL PANEL (solo el equipo) ====================
     const ACTUALIZACIONES_INTERNAS = [
+      { fecha: '2026-10-21', titulo: '🛡 La garantía siempre es la del producto', mensaje: 'Si la descripción de un producto menciona otra garantía (ej. "Garantía de acceso 24 horas"), en la tienda, la ventana del producto y la imagen de promo se muestra siempre la **garantía base** configurada (ej. 5 días). Ya no se contradicen.', ir: 'productos' },
+      { fecha: '2026-10-21', titulo: '⚡ Las promos relámpago muestran el día', mensaje: 'Antes decía "-8 % hasta las 3:14 p. m." sin el día, y si la promo duraba varios días el cliente creía que ya se había acabado. Ahora dice "hasta hoy…", "hasta mañana…" o "hasta el 21/10, 3:14 p. m." en la ventana del producto, en las promos y en la imagen para estados.', ir: '' },
       { fecha: '2026-10-21', titulo: '⚙️ Control de Accesos vuelve a Ajustes Generales', mensaje: 'La sección **Control de Accesos y Reportes** (correos de admin, vencimiento de saldo, devolver saldos y correos excluidos del reporte) ahora está en **Ajustes Generales**, donde se busca, y ya no en Reporte de Ventas.', ir: 'ajustes' },
       { fecha: '2026-10-20', titulo: '🔒 Candado en Ajustes Generales', mensaje: 'Blindé la pantalla de Ajustes: si algo falla al plegar las secciones, el formulario se muestra completo igual, y un chequeo confirma que el correo de admin, el vencimiento de saldo y el servidor sigan visibles. Nunca más se esconde una sección.', ir: 'ajustes' },
       { fecha: '2026-10-20', titulo: '🪗 Ajustes Generales más fácil de usar', mensaje: 'El formulario de Ajustes Generales ahora tiene cada sección plegable (como Modo mantenimiento): ves todos los títulos de un vistazo y tocas el que quieras para abrirlo. Así encuentras rápido los correos de admin, el vencimiento de saldo, Telegram, etc., sin bajar tanto.', ir: 'ajustes' },
@@ -22267,7 +22290,7 @@
           if (aplicaPromo(pr, 'cliente')) items.push(`<p class="text-[11px] text-emerald-100"><b class="text-emerald-300">🎁 Clientes:</b> compra ${pr.compra || 10}, lleva ${pr.regalo || 1}${regaloNom} gratis${vence}</p>`);
         }
         const sn = snapshotInventario[prod.docId] || {};
-        if (Number(sn.promoPct) > 0 && (!sn.promoHasta || Date.parse(sn.promoHasta) > Date.now())) items.push(`<p class="text-[11px] text-rose-100"><b class="text-rose-300">⚡ Todos:</b> -${sn.promoPct} %${sn.promoHasta ? ' hasta las ' + new Date(sn.promoHasta).toLocaleTimeString('es-CO', { hour: 'numeric', minute: '2-digit' }) : ''}</p>`);
+        if (Number(sn.promoPct) > 0 && (!sn.promoHasta || Date.parse(sn.promoHasta) > Date.now())) items.push(`<p class="text-[11px] text-rose-100"><b class="text-rose-300">⚡ Todos:</b> -${sn.promoPct} %${sn.promoHasta ? ' hasta ' + textoFinPromo(sn.promoHasta) : ''}</p>`);
         const esc = escalasDe(prod), base = Number(prod.precioLista || prod.precio) || 0, rarosE = esc.filter(e => base && e.precio < base * 0.5);
         if (esc.length) items.push(`<p class="text-[11px] text-emerald-100"><b class="text-emerald-300">💰 Por cantidad:</b> ${esc.map(e => e.desde + '+ ' + formatoCOP(e.precio)).join(' · ')}</p>`);
         if (rarosE.length) items.push(`<p class="text-[11px] text-red-200"><b>⚠️ Revisa:</b> ${rarosE.map(e => e.desde + '+ a ' + formatoCOP(e.precio)).join(', ')} es menos de la mitad del precio normal. ¿Error al escribir? <button type="button" onclick="irAPrecioPorCantidad('${prod.docId}')" class="underline font-bold">Corregir</button></p>`);
@@ -22467,7 +22490,7 @@
       if (d.tachado) { x.fillStyle = 'rgba(255,255,255,.55)'; x.font = `700 54px ${F}`; const t = formatoCOP(d.tachado), tw = x.measureText(t).width; x.fillText(t, W / 2, y); x.strokeStyle = 'rgba(255,90,90,.9)'; x.lineWidth = 6; x.beginPath(); x.moveTo(W / 2 - tw / 2 - 8, y - 18); x.lineTo(W / 2 + tw / 2 + 8, y - 18); x.stroke(); y += 40; }
       x.fillStyle = '#fff'; x.font = `900 170px ${F}`; x.fillText(formatoCOP(d.precio), W / 2, y + 150); y += 215;
       x.fillStyle = 'rgba(255,255,255,.7)'; x.font = `600 36px ${F}`; x.fillText(`c/u · compra mínima ${d.minC}`, W / 2, y); y += 70;
-      if (d.flash) { x.fillStyle = '#fb7185'; x.font = `900 40px ${F}`; x.fillText(`⚡ -${d.flash.pct} %${d.flash.hasta ? ' hasta las ' + new Date(d.flash.hasta).toLocaleTimeString('es-CO', { hour: 'numeric', minute: '2-digit' }) : ''}`, W / 2, y); y += 70; }
+      if (d.flash) { x.fillStyle = '#fb7185'; x.font = `900 40px ${F}`; x.fillText(`⚡ -${d.flash.pct} %${d.flash.hasta ? ' hasta ' + textoFinPromo(d.flash.hasta) : ''}`, W / 2, y); y += 70; }
       if (d.regalo) {
         const bw = 640, bh = d.mult ? 300 : 260, bx = (W - bw) / 2; x.save(); textoRedondeado(x, bx, y, bw, bh, 40); x.fillStyle = `rgba(${acRgb},.14)`; x.fill(); x.lineWidth = 4; x.strokeStyle = `rgba(${acRgb},.7)`; x.stroke(); x.restore();
         x.font = `70px ${F}`; x.fillText('🎁', W / 2, y + 85); x.fillStyle = '#fff'; x.font = `900 58px ${F}`;
@@ -22608,12 +22631,12 @@
       x.font = `900 62px ${REDON}`; const nom = String(prod.nombre || '').toUpperCase(); let fn = 62; while (x.measureText(nom).width > W - 300 && fn > 36) { fn -= 4; x.font = `900 ${fn}px ${REDON}`; }
       const nw = x.measureText(nom).width; x.fillStyle = '#fff'; x.fillText(nom, W / 2, y + 40);
       x.save(); x.shadowColor = P.linea; x.shadowBlur = 20; [-1, 1].forEach(s => { const g = x.createLinearGradient(W / 2 + s * (nw / 2 + 20), 0, W / 2 + s * (nw / 2 + 150), 0); g.addColorStop(0, P.linea); g.addColorStop(1, 'rgba(0,0,0,0)'); x.fillStyle = g; x.fillRect(Math.min(W / 2 + s * (nw / 2 + 20), W / 2 + s * (nw / 2 + 150)), y + 18, 130, 5); }); x.restore(); y += 100;
-      const desc = String(prod.descripcion || '').trim();
+      const desc = alinearGarantiaDesc(String(prod.descripcion || '').trim(), prod.tipoGarantia);
       if (desc) { x.fillStyle = 'rgba(255,255,255,.92)'; x.font = `500 32px ${SANS}`; const pal = desc.split(/\s+/); let lin = '', n = 0; for (let i = 0; i < pal.length && n < 2; i++) { const t = lin ? lin + ' ' + pal[i] : pal[i]; if (x.measureText(t).width > W - 260 && lin) { x.fillText(n === 1 && i < pal.length ? lin + '…' : lin, W / 2, y); y += 44; n++; lin = pal[i]; } else lin = t; } if (n < 2 && lin) { x.fillText(lin, W / 2, y); y += 44; } y += 20; }
       if (d.tachado) { x.fillStyle = 'rgba(255,255,255,.55)'; x.font = `600 46px ${SANS}`; const t = formatoCOP(d.tachado), tw = x.measureText(t).width; x.fillText(t, W / 2, y + 30); x.strokeStyle = 'rgba(248,113,113,.95)'; x.lineWidth = 5; x.beginPath(); x.moveTo(W / 2 - tw / 2 - 6, y + 14); x.lineTo(W / 2 + tw / 2 + 6, y + 14); x.stroke(); y += 50; }
       x.fillStyle = '#fff'; x.font = `900 160px ${SERIF}`; x.fillText(formatoCOP(d.precio), W / 2, y + 150); y += 195;
       x.fillStyle = 'rgba(255,255,255,.85)'; x.font = `500 32px ${SANS}`; x.fillText(`c/u · compra mínima ${d.minC}`, W / 2, y); y += 50;
-      if (d.flash) { x.fillStyle = '#fb7185'; x.font = `800 36px ${SANS}`; x.fillText(`⚡ -${d.flash.pct} %${d.flash.hasta ? ' hasta las ' + new Date(d.flash.hasta).toLocaleTimeString('es-CO', { hour: 'numeric', minute: '2-digit' }) : ''}`, W / 2, y + 10); y += 60; }
+      if (d.flash) { x.fillStyle = '#fb7185'; x.font = `800 36px ${SANS}`; x.fillText(`⚡ -${d.flash.pct} %${d.flash.hasta ? ' hasta ' + textoFinPromo(d.flash.hasta) : ''}`, W / 2, y + 10); y += 60; }
       if (d.regalo) {
         const bw = 600, bh = d.mult ? 190 : 160, bx = (W - bw) / 2; y += 10; x.save(); textoRedondeado(x, bx, y, bw, bh, 44); x.fillStyle = hexARgba(P.acento, .13); x.fill(); x.lineWidth = 3; x.strokeStyle = hexARgba(P.acento, .75); x.stroke(); x.restore();
         x.fillStyle = '#fff'; x.font = `700 50px ${SANS}`; x.fillText('🎁 ' + (d.regalo.otro ? `Compra ${d.regalo.compra}, lleva ${d.regalo.lleva} de regalo` : `Compra ${d.regalo.compra}, lleva ${d.regalo.compra + d.regalo.lleva}`), W / 2, y + 72);
@@ -22758,7 +22781,7 @@
           ${pr.cinta ? `<span class="inline-block text-[10px] font-black px-2.5 py-1 rounded-full text-white" style="background:${pr.cinta[1]}">${pr.cinta[0]}${pr.tipo === 'flash' && pr.hasta ? ` · termina en <span data-cuenta-atras="${escaparHtml(pr.hasta)}">${textoCuentaAtras(pr.hasta)}</span>` : ''}</span>` : ''}
           ${pr.tachado ? `<p class="text-[12px] text-gray-300"><s class="text-gray-500">${formatoCOP(pr.tachado)}</s> → <b class="text-white">${formatoCOP(pr.precio)}</b> c/u <span class="text-[10px] font-black px-1.5 py-0.5 rounded-md bg-red-600 text-white">-${pr.pct}%</span></p>` : ''}
           ${pr.regaloTxt ? `<div class="px-3 py-2 rounded-xl text-[13px] font-extrabold text-white" style="border:1px solid #a855f7;background:rgba(168,85,247,.14)">🎁 ${escaparHtml(pr.regaloTxt)}</div>` : ''}
-          ${p.descripcion ? `<p class="text-[12px] text-gray-300 leading-relaxed">${escaparHtml(p.descripcion)}</p>` : ''}
+          ${p.descripcion ? `<p class="text-[12px] text-gray-300 leading-relaxed">${escaparHtml(alinearGarantiaDesc(p.descripcion, p.tipoGarantia))}</p>` : ''}
           <div class="flex flex-wrap gap-1.5">${chips.map(c => `<span class="text-[11px] font-bold px-2.5 py-1 rounded-full text-emerald-200" style="border:1px solid #134e4a;background:#0f2a2c">${c}</span>`).join('')}</div>
           ${st <= 0 && !esStaffSesion() ? `<button type="button" onclick="alternarAvisoStock('${escaparJsAttr(p.docId)}')" class="w-full py-2.5 rounded-xl bg-gray-800 border border-gray-700 text-gray-100 font-bold text-xs">🔔 Avísame cuando llegue</button>` : ''}
           ${esStaffSesion() && !modoPruebaCliente ? htmlPromosVistaEquipo(p) : ''}
