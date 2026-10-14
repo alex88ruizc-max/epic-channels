@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, interactive-widget=resizes-content">
-  <title>Epic Channels | Portal Privado</title>
+  <title>Epic Streaming | Portal Privado</title>
   
   <!-- Conexiones anticipadas: el navegador abre los canales mientras lee la página -->
   <link rel="preconnect" href="https://cdn.tailwindcss.com">
@@ -560,6 +560,8 @@
       <p id="cargandoLento" class="hidden text-xs text-amber-300 mt-2">Está tardando más de lo normal. Revisa tu conexión o <a href="#" onclick="location.reload();return false;" class="underline">recarga la página</a>.</p>
     </div>
     <section id="vistaBloqueada" style="display:none" class="py-12 md:py-20 text-center max-w-lg mx-auto px-4">
+      <!-- 📲 Aviso de la app oficial también para visitantes sin sesión -->
+      <div id="avisoAppOficialPortal" class="hidden mb-4 text-left"></div>
       <div class="p-8 bg-gray-900 border border-gray-800 rounded-3xl shadow-2xl relative overflow-hidden">
         <div class="w-16 h-16 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 rounded-2xl flex items-center justify-center mx-auto mb-5 text-2xl shadow-lg">
           <i class="fa-solid fa-lock"></i>
@@ -4340,7 +4342,7 @@
 
   <!-- FOOTER -->
   <footer class="border-t border-gray-800 bg-gray-900/40 py-6 mt-12 text-center text-xs text-gray-500">
-    <p id="txtPieMarca">© 2026 Epic Channels. Todos los derechos reservados.</p>
+    <p id="txtPieMarca">© 2026 Epic Streaming. Todos los derechos reservados.</p>
   </footer>
 
   <!-- ==================== LÓGICA JAVASCRIPT ==================== -->
@@ -8704,7 +8706,9 @@
     }
     function dispositivoApp() { const ua = navigator.userAgent || ''; return /Android/i.test(ua) ? 'android' : (/iPhone|iPad|iPod/i.test(ua) ? 'iphone' : (/Mobi/i.test(ua) ? 'otro' : 'pc')); }
     function pintarAvisoApp() {
-      const caja = document.getElementById('avisoAppOficial'); if (!caja) return;
+      const cajas = ['avisoAppOficial', 'avisoAppOficialPortal'].map(id => document.getElementById(id)).filter(Boolean);
+      if (!cajas.length) return;
+      const caja = { classList: { add: c => cajas.forEach(x => x.classList.add(c)), remove: c => cajas.forEach(x => x.classList.remove(c)) }, set innerHTML(h) { cajas.forEach(x => { x.innerHTML = h; }); } };
       let oculto = 0; try { oculto = parseInt(localStorage.getItem('avisoAppOculto'), 10) || 0; } catch (e) { /* nada */ }
       const d = dispositivoApp();
       const ver = (typeof ajustesGeneralesConfig === 'undefined' || ajustesGeneralesConfig.appAviso !== false) && !TIENDA_SLUG && !tipoAppActual() && d !== 'otro' && Date.now() - oculto > 7 * 86400000;
@@ -16071,7 +16075,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-20f';
+    const VERSION_PAGINA = '2026-10-20g';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261020_app', fecha: '2026-10-20', titulo: 'App oficial de Epic Streaming 📲', mensaje: 'Ya tenemos **app oficial**: en la tienda toca **Descargar** (Android), **Instalar** (PC) o **Agregar** (iPhone). Abre más rápido, a pantalla completa, con tu misma cuenta y **se actualiza sola**.' },
       { id: 'act_20261019_miscuentas', fecha: '2026-10-19', titulo: 'Tus cuentas más ordenadas 📋', mensaje: 'En **Mis cuentas**, las compras de 2 cuentas o más se ven en una lista compacta: **Copiar todas** de un toque y **Reportar una cuenta** pegando su correo. Si quieres verlas una por una, toca **Ver una por una**.' },
@@ -20943,6 +20947,7 @@
 
     // ==================== NOVEDADES INTERNAS DEL PANEL (solo el equipo) ====================
     const ACTUALIZACIONES_INTERNAS = [
+      { fecha: '2026-10-20', titulo: '📲 La app también para visitantes', mensaje: 'El aviso "App oficial de Epic Streaming" ahora aparece también en la pantalla de entrada (Portal privado), para quien todavía no inicia sesión: en iPhone explica cómo agregarla a inicio y en Android descarga el APK. El pie de página y el título de la pestaña ya dicen Epic Streaming.', ir: '' },
       { fecha: '2026-10-20', titulo: '🏷 Todo dice Epic Streaming', mensaje: 'El "Estado de inventario" ya sale como **EPIC STREAMING** con el enlace **epicstreaming.vip** (aunque tengas guardado el enlace viejo), el asistente se presenta como **asistente de Epic Streaming** y los avisos de venta dicen Epic Streaming. Si en tus respuestas del asistente o en la plantilla quedó "Epic Channels" o epicchannels.quest, se cambia solo.', ir: '' },
       { fecha: '2026-10-20', titulo: '🔄 Tus correos de dominio se actualizan solos', mensaje: 'La lista de tus correos de dominio se pone al día sola cada 45 segundos mientras la tienes abierta, y al volver a la pestaña. Cuando llega la bienvenida de Prime, el correo pasa de "esperando bienvenida" a "en stock" sin recargar la página.', ir: '' },
       { fecha: '2026-10-20', titulo: '🎁 Premios de proveedores: siempre a lo que les debes', mensaje: 'Los premios por referido de un proveedor ya no llegan nunca a su saldo de la tienda: van a sus cuentas por pagar, aunque su ficha no tenga el rol de proveedor (basta con que haya subido lotes, tenga permiso de stock o sea una comisión por stock). En Referidos ya no aparece "Acreditar al saldo" para ellos.', ir: '' },
