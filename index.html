@@ -11536,6 +11536,10 @@
       }).join('');
     }
     async function cargarCorreosPropios() { try { const r = await llamarBackend('prov_correos', { op: 'lista' }); if (r && r.ok) { correosPropios = (r.correos || []).filter(x => x.propio); pintarCorreosPropios(); } } catch (e) { /* nada */ } }
+    // 🔄 La lista de tus correos se pone al día sola (cada 45 s mientras la tienes abierta y al volver a la pestaña): así "esperando bienvenida" cambia a "en stock" sin recargar
+    function listaCorreosPropiosVisible() { const l = document.getElementById('correosPropiosLista'); return !!(l && l.offsetParent !== null && document.visibilityState === 'visible'); }
+    setInterval(() => { try { if (listaCorreosPropiosVisible() && esAdminSesionActual()) cargarCorreosPropios(); } catch (e) { /* nada */ } }, 45000);
+    document.addEventListener('visibilitychange', () => { try { if (listaCorreosPropiosVisible() && esAdminSesionActual()) cargarCorreosPropios(); } catch (e) { /* nada */ } });
     async function generarCorreoPropio() {
       poblarDestinoPropio();
       const sel = document.getElementById('correoPropioDestino'), destino = sel ? sel.value : '', prop = correoNaturalLocal();
@@ -16065,7 +16069,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-20b';
+    const VERSION_PAGINA = '2026-10-20c';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261010_wacompra', fecha: '2026-10-10', titulo: 'Compra por WhatsApp 💬', mensaje: 'Ahora puedes **comprar con tu saldo desde nuestro WhatsApp**. Ve a tu perfil → **Mis datos → Comprar por WhatsApp**, vincula tu chat con el código y pide la autorización.' },
       { id: 'act_20261010_vista2', fecha: '2026-10-10', titulo: 'Nueva vista de la tienda ▦', mensaje: 'Ahora puedes ver los productos **en 2 columnas**: más productos en tu pantalla, con las **promos resaltadas** (🔥 campaña, ⚡ relámpago, 🎁 regalo). Toca uno y se abre su ficha para comprar. Cambia de vista con los íconos ☰ / ▦ arriba de las categorías.' },
@@ -20930,6 +20934,7 @@
 
     // ==================== NOVEDADES INTERNAS DEL PANEL (solo el equipo) ====================
     const ACTUALIZACIONES_INTERNAS = [
+      { fecha: '2026-10-20', titulo: '🔄 Tus correos de dominio se actualizan solos', mensaje: 'La lista de tus correos de dominio se pone al día sola cada 45 segundos mientras la tienes abierta, y al volver a la pestaña. Cuando llega la bienvenida de Prime, el correo pasa de "esperando bienvenida" a "en stock" sin recargar la página.', ir: '' },
       { fecha: '2026-10-20', titulo: '🎁 Premios de proveedores: siempre a lo que les debes', mensaje: 'Los premios por referido de un proveedor ya no llegan nunca a su saldo de la tienda: van a sus cuentas por pagar, aunque su ficha no tenga el rol de proveedor (basta con que haya subido lotes, tenga permiso de stock o sea una comisión por stock). En Referidos ya no aparece "Acreditar al saldo" para ellos.', ir: '' },
       { fecha: '2026-10-20', titulo: '📲 App oficial: descarga y quién la usa', mensaje: 'En la tienda sale el aviso "App oficial de Epic Streaming": en Android descarga el APK con 3 pasos, en PC la instala como programa y en iPhone explica cómo agregarla a inicio. Lo apagas o prendes al instante en Ajustes Generales. Cada cliente con sesión que entra desde la app queda con la insignia 📲 App en Clientes, y en Actividad ves cuántos la usan, cuántos la descargaron y quiénes dejaron de abrirla. Clientes con la app vuelven más y compran más rápido.', ir: '' },
       { fecha: '2026-10-19', titulo: '💱 Tienda en dólares para clientes de otros países', mensaje: 'Los clientes con WhatsApp de otro país ven la tienda en USD de entrada, con un botón COP/USD junto a su saldo (Bre-B los pasa a COP, Binance a USD). Los colombianos y quienes no tienen WhatsApp ven todo en COP, sin botón. Tú y tus moderadores también tienen el botón para revisar cómo se ve. El saldo se sigue guardando en pesos, y cada compra y recarga guarda la tasa del dólar de ese día. Tus clientes de otros países ven precios que entienden y compran con más confianza.', ir: '' },
