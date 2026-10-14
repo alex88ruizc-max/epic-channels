@@ -16302,7 +16302,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-20r';
+    const VERSION_PAGINA = '2026-10-20s';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261020_ajuste', fecha: '2026-10-20', titulo: 'Se ve mejor en iPhone 📱', mensaje: 'La tienda ahora **se ajusta siempre a tu pantalla**: ya no se agranda al escribir ni se corre hacia los lados. Si la tienes abierta, **recarga la página** para verla así.' },
       { id: 'act_20261020_app', fecha: '2026-10-20', titulo: 'App oficial de Epic Streaming 📲', mensaje: 'Ya tenemos **app oficial**: en la tienda toca **Descargar** (Android), **Instalar** (PC) o **Agregar** (iPhone). Abre más rápido, a pantalla completa, con tu misma cuenta y **se actualiza sola**.' },
@@ -16971,18 +16971,23 @@
     async function pasarComisionADeuda(id) {
       if (!puedeSeccion('referidos')) return;
       const c = comisionesRef.find(x => x.id === id); if (!c || c.estado !== 'acreditada') return;
-      if (!await confirmarModal(`¿Pasar ${formatoCOP(c.monto)} de su saldo de la tienda a lo que le debes como proveedor?\n\nSe le descuentan ${formatoCOP(c.monto)} del saldo y se suman a lo que le debes por sus cuentas.`, { textoAceptar: 'Sí, pasar' })) return;
+      const uDoc0 = await db.collection('usuarios').doc(c.beneficiarioUid).get();
+      const saldoAct = Number((uDoc0.data() || {}).saldo) || 0, mC = Number(c.monto) || 0, descuenta0 = saldoAct >= mC;
+      const msgPasar = descuenta0
+        ? `¿Pasar ${formatoCOP(mC)} de su saldo de la tienda a lo que le debes como proveedor?\n\nSe le descuentan del saldo y se suman a lo que le debes por sus cuentas.`
+        : `¿Sumar ${formatoCOP(mC)} a lo que le debes a ${c.beneficiarioEmail} como proveedor?\n\nNo tiene ese saldo en la tienda, así que solo se suma a tus cuentas por pagar (no cambia su saldo).`;
+      if (!await confirmarModal(msgPasar, { textoAceptar: 'Sí, pasar' })) return;
       try {
         const ref = db.collection('comisiones_referidos').doc(id), uRef = db.collection('usuarios').doc(c.beneficiarioUid);
         await db.runTransaction(async (t) => {
           const d = await t.get(ref), u = await t.get(uRef); if (!d.exists || (d.data() || {}).estado !== 'acreditada') throw new Error('Esta comisión ya no está acreditada al saldo.');
           const du = u.exists ? (u.data() || {}) : {}, saldo = Number(du.saldo) || 0, m = Number(c.monto) || 0;
-          if (saldo < m) throw new Error(`Ya no tiene ese saldo (tiene ${formatoCOP(saldo)}): lo gastó en compras. No se puede pasar.`);
-          t.update(uRef, { saldo: saldo - m, notificaciones: agregarNotifALista(du.notificaciones, crearNotificacionPersonal('saldo', `Tu premio de ${formatoCOP(m)} pasó a lo que te debemos`, 'Te lo pagamos junto con tus cuentas.')) });
+          const quita = saldo >= m;
+          t.update(uRef, Object.assign(quita ? { saldo: saldo - m } : {}, { notificaciones: agregarNotifALista(du.notificaciones, crearNotificacionPersonal('saldo', `Tu premio de ${formatoCOP(m)} pasó a lo que te debemos`, 'Te lo pagamos junto con tus cuentas.')) }));
           t.set(db.collection('stock_pendiente').doc('abono_' + id), abonoProveedorDoc(c, du, id));
           t.update(ref, { estado: 'a_deuda', movidoDeSaldoEl: new Date().toISOString(), resueltoPor: currentUser.email });
         });
-        mostrarToast('↪ Listo: se descontó del saldo y se sumó a lo que le debes.');
+        mostrarToast('↪ Listo: se sumó a lo que le debes.');
       } catch (err) { alert(err.message); }
     }
 
@@ -21175,6 +21180,7 @@
 
     // ==================== NOVEDADES INTERNAS DEL PANEL (solo el equipo) ====================
     const ACTUALIZACIONES_INTERNAS = [
+      { fecha: '2026-10-20', titulo: '🎁 Comisiones de proveedor a lo que les debes', mensaje: 'El premio por referidos de un proveedor se suma a lo que le debes (sus cuentas por pagar) para pagárselo junto con el stock. Si una comisión vieja quedó suelta, el botón "↪ Pasar a lo que le debo" en Referidos ahora la suma a su deuda aunque no la tenga como saldo en la tienda, sin dar error.', ir: 'dealers' },
       { fecha: '2026-10-20', titulo: '⌛ El cliente puede tocar "vence en X días"', mensaje: 'Al tocar el contador de vencimiento junto a su saldo, al cliente se le abre una ventana que le explica por qué vence y que cada compra o recarga lo renueva, con botones para **comprar** o **recargar** ahí mismo. Convierte el aviso en una venta.', ir: '' },
       { fecha: '2026-10-20', titulo: '⌛ El saldo sin usar se vence', mensaje: 'El saldo que un cliente no usa se vence a los **20 días** sin movimiento (compra o recarga), configurable en Ajustes Generales (0 = desactivado). Cada compra o recarga reinicia el contador. El cliente ve **"vence en X días"** junto a su saldo, y al recargar recibe la nota de que su saldo dura ese tiempo. La deuda no se toca y los proveedores/moderadores quedan fuera. En Ajustes ves cuánto saldo está por vencer. Así los clientes usan su saldo más rápido y tú recuperas el saldo muerto.', ir: 'ajustes' },
       { fecha: '2026-10-20', titulo: '🧪 El reporte no cuenta usuarios de prueba', mensaje: 'El reporte de ventas ya no suma las compras del usuario **Test** (ni de ningún usuario cuyo correo o nombre tenga "test", "prueba" o "demo"), así Ingresos, Ganancia, Órdenes, Cuentas y Clientes muestran solo ventas reales. El texto de arriba ahora dice claramente que es el histórico completo, para no confundirlo con las órdenes del mes. Toca "Actualizar gráficas" para ver los números limpios.', ir: '' },
