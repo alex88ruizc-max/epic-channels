@@ -3960,6 +3960,15 @@
 
 
   <!-- VISTA PÚBLICA: VER EL CÓDIGO CON EL ENLACE DE LA CUENTA (sin iniciar sesión) -->
+  <div id="vistaAmzPublico" class="hidden fixed inset-0 z-[310] overflow-y-auto bg-[#0b0f19]">
+    <div class="max-w-md mx-auto px-4 py-6">
+      <div class="flex items-center gap-3 mb-4"><span class="w-11 h-11 rounded-2xl bg-sky-500/15 text-sky-300 flex items-center justify-center text-xl">📩</span><div class="flex-1"><p class="text-lg font-black text-white leading-tight">Códigos de Amazon</p><p class="text-[11px] text-gray-400">Pide el código en Amazon y aquí te aparece al instante.</p></div></div>
+      <div id="amzPubLista" class="space-y-2.5"></div>
+      <button type="button" onclick="cargarAmzPublico(true)" id="amzPubBtn" class="mt-4 w-full py-3 rounded-xl bg-sky-500 text-black font-black text-sm"><i class="fa-solid fa-rotate mr-1"></i>Buscar códigos nuevos</button>
+      <p class="mt-3 text-[11px] text-gray-500 text-center">Cada código de Amazon dura pocos minutos: si ya no te sirve, pide otro en Amazon y toca el botón.</p>
+      <p id="amzPubPie" class="mt-4 text-[11px] text-gray-500 text-center"></p>
+    </div>
+  </div>
   <div id="vistaCodigoPublico" class="hidden fixed inset-0 z-[300] overflow-y-auto bg-[#0b0f19]">
     <div class="min-h-full flex flex-col items-center px-4 py-8" style="padding-top:max(2rem, env(safe-area-inset-top));">
       <div class="w-full max-w-sm">
@@ -15348,6 +15357,29 @@
     window.addEventListener('hashchange', function () { try { revisarVistaPagoUsdt(); } catch (e) { console.warn(e); } });
     window.addEventListener('DOMContentLoaded', function () { try { revisarVistaPagoUsdt(); } catch (e) { console.warn(e); } });
 
+    // ==================== 📩 CÓDIGOS DE AMAZON DE UNA ENTREGA (enlace /c/<token>, sin iniciar sesión) ====================
+    function tokenAmzDeRuta() { const m = String(location.hash || '').match(/^#amz\/([A-Za-z0-9]{16,40})$/); return m ? m[1] : ''; }
+    function revisarVistaAmz() { const v = document.getElementById('vistaAmzPublico'); if (!v) return; const t = tokenAmzDeRuta(); if (!t) { v.classList.add('hidden'); return; } v.classList.remove('hidden'); document.body.style.overflow = 'hidden'; cargarAmzPublico(false); }
+    async function cargarAmzPublico(fresco) {
+      const t = tokenAmzDeRuta(), l = document.getElementById('amzPubLista'), b = document.getElementById('amzPubBtn'); if (!t || !l) return;
+      if (b) { b.disabled = true; b.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i>Buscando…'; }
+      if (!l.children.length) l.innerHTML = '<p class="text-center text-gray-400 text-sm py-6"><i class="fa-solid fa-spinner fa-spin mr-1"></i>Cargando tus cuentas…</p>';
+      try {
+        const r = await llamarPagoPublico('amz_enlace', { token: t, fresco: !!fresco });
+        if (!r || !r.ok) throw new Error((r && r.error) || 'No se pudo abrir.');
+        const hora = f => { const d = new Date(f); return isNaN(d) ? '' : d.toLocaleTimeString('es-CO', { hour: 'numeric', minute: '2-digit' }); };
+        const reciente = f => { const d = Date.parse(f); return d && Date.now() - d < 15 * 60000; };
+        l.innerHTML = (r.correos || []).map(c => `<div class="p-3 rounded-2xl bg-gray-900 border ${c.codigo && reciente(c.fecha) ? 'border-emerald-500/60' : 'border-gray-800'}">
+          <div class="flex items-center gap-2"><span class="font-mono text-[12px] text-white truncate flex-1">${escaparHtml(c.correo)}</span><button type="button" onclick="copiarTexto('${escaparHtml(c.correo)}','Correo copiado')" class="px-2 py-1 rounded-lg bg-gray-800 text-gray-300 text-[10px] font-bold"><i class="fa-solid fa-copy"></i></button></div>
+          ${c.codigo ? `<div class="mt-2 flex items-center gap-2"><span class="font-mono font-black text-2xl tracking-[0.25em] ${reciente(c.fecha) ? 'text-emerald-400' : 'text-gray-500'}">${escaparHtml(c.codigo)}</span><button type="button" onclick="copiarTexto('${escaparHtml(c.codigo)}','Código copiado')" class="ml-auto px-3 py-1.5 rounded-lg bg-emerald-500 text-black text-[11px] font-black">Copiar</button></div><p class="text-[10px] ${reciente(c.fecha) ? 'text-emerald-300' : 'text-amber-300'} mt-1">${reciente(c.fecha) ? 'Llegó a las ' + hora(c.fecha) : 'De las ' + hora(c.fecha) + ' · probablemente ya venció: pide otro en Amazon'}</p>` : '<p class="mt-2 text-[11px] text-gray-400">Aún no llega ningún código a este correo.</p>'}
+        </div>`).join('') || '<p class="text-center text-gray-400 text-sm">Este enlace no tiene cuentas.</p>';
+        const pie = document.getElementById('amzPubPie'); if (pie) pie.textContent = 'Revisado a las ' + hora(r.ahora || new Date().toISOString());
+      } catch (e) { l.innerHTML = '<p class="text-center text-amber-300 text-sm py-6">' + escaparHtml(e.message) + '</p>'; }
+      finally { if (b) { b.disabled = false; b.innerHTML = '<i class="fa-solid fa-rotate mr-1"></i>Buscar códigos nuevos'; } }
+    }
+    window.addEventListener('hashchange', function () { try { revisarVistaAmz(); } catch (e) { console.warn(e); } });
+    window.addEventListener('DOMContentLoaded', function () { try { revisarVistaAmz(); } catch (e) { console.warn(e); } });
+
     let cpInfo = null, cpCargando = false;
 
     function revisarVistaCodigoPublico() {
@@ -15937,7 +15969,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-19s';
+    const VERSION_PAGINA = '2026-10-19t';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261010_wacompra', fecha: '2026-10-10', titulo: 'Compra por WhatsApp 💬', mensaje: 'Ahora puedes **comprar con tu saldo desde nuestro WhatsApp**. Ve a tu perfil → **Mis datos → Comprar por WhatsApp**, vincula tu chat con el código y pide la autorización.' },
       { id: 'act_20261010_vista2', fecha: '2026-10-10', titulo: 'Nueva vista de la tienda ▦', mensaje: 'Ahora puedes ver los productos **en 2 columnas**: más productos en tu pantalla, con las **promos resaltadas** (🔥 campaña, ⚡ relámpago, 🎁 regalo). Toca uno y se abre su ficha para comprar. Cambia de vista con los íconos ☰ / ▦ arriba de las categorías.' },
@@ -16770,15 +16802,19 @@
         if (comun) t += `\n\n🔑 Contraseña de ${nPlat} (todas): *${comun}*`;
         if ((prime || comun) && hayHot) t += `\n✉️ La clave al lado de cada correo es la del correo (para los códigos).`;
       }
-      if (hayDom) t += `\n📩 *¿Amazon te pide un código?* Escríbenos *código* por WhatsApp y te lo pasamos al instante, o tócalo en ${typeof enlaceMk === 'function' ? enlaceMkUrl().replace(/\/$/, '') : dominioActual()}/cuentas → *Ver código*.`;
+      if (hayDom) t += (opciones && opciones.enlaceAmz) ? `\n📩 *¿Amazon te pide un código?* Míralo aquí al instante, sin iniciar sesión 👉 ${opciones.enlaceAmz}` : `\n📩 *¿Amazon te pide un código?* Escríbenos *código* por WhatsApp y te lo pasamos al instante, o tócalo en ${typeof enlaceMk === 'function' ? enlaceMkUrl().replace(/\/$/, '') : dominioActual()}/cuentas → *Ver código*.`;
       const g = parseGarantia(tipoGarantia);
       if (g) { const v = new Date(venceGarantia(desdeMs || Date.now(), g)); t += `\n🛡 Garantía: ${textoGarantia(tipoGarantia)} (hasta el ${String(v.getDate()).padStart(2, '0')}/${String(v.getMonth() + 1).padStart(2, '0')}/${v.getFullYear()})`; }
       if (opciones && opciones.vip) t += `\n\n👑 Eres *cliente VIP* de EPIC STREAMING 🙌`;
       t += `\n🌐 ${typeof enlaceMk === 'function' ? enlaceMkUrl() : dominioActual()}`;
       return t;
     }
-    function textoVentaManual(prod, cuentas) {
-      return textoListaCuentasWa(prod.nombre, cuentas, esProductoPrime(prod), prod.tipoGarantia, Date.now(), { vip: true });
+    function textoVentaManual(prod, cuentas, enlaceAmz) {
+      return textoListaCuentasWa(prod.nombre, cuentas, esProductoPrime(prod), prod.tipoGarantia, Date.now(), { vip: true, enlaceAmz: enlaceAmz || '' });
+    }
+    async function enlaceAmzDe(cuentas) {   // 📩 enlace de códigos para las cuentas de tu dominio (si las hay)
+      const cs = cuentas.map(x => String(parseCredencialObj(x).email || '').toLowerCase()).filter(e => /@epicstreaming\.vip$/.test(e)); if (!cs.length) return '';
+      try { const r = await llamarBackend('amz_enlace_crear', { correos: cs }); return r && r.ok ? r.url : ''; } catch (e) { return ''; }
     }
 
     async function hacerVentaManual() {
@@ -16838,7 +16874,7 @@
           else { try { if (nInm > 0 && window.__vmCompraRef) await window.__vmCompraRef.update({ preordenId: r.id }); } catch (e) { /* solo es para agrupar */ } }
           if (r && r.ok) extra = `\n\n📦 *Y ${nPed} ${nPed === 1 ? 'te queda' : 'te quedan'} sobre pedido:* te ${nPed === 1 ? 'llega sola' : 'llegan solas'} a tu cuenta apenas entren${r.fila && r.fila.delante ? ' (hay ' + r.fila.delante + ' pedidas antes que las tuyas)' : ''}.`;
         }
-        const texto = (sacadas.length ? textoVentaManual(prod, sacadas) : `✅ *Tu pedido de ${prod.nombre}*`) + extra;
+        const texto = (sacadas.length ? textoVentaManual(prod, sacadas, await enlaceAmzDe(sacadas)) : `✅ *Tu pedido de ${prod.nombre}*`) + extra;
         document.getElementById('vmCantidad').value = 1; document.getElementById('vmCliente').value = ''; const ec = document.getElementById('vmCuentaCliente'); if (ec) ec.value = ''; const sb = document.getElementById('vmSobre'); if (sb) sb.checked = false;
         vmAgregarLibres(); vmCambioProducto(); try { pintarCorreosPropios(); } catch (e) { /* nada */ }
         abrirDialogoTextoCopiable('Venta lista para WhatsApp', texto);
@@ -24043,7 +24079,7 @@
       return { cuentas: legado, stock: legado.length || stockPublico };
     }
 
-    const VERSION_SERVIDOR_NECESARIA = '2026-10-19m';   // la versión del servidor que necesita esta página
+    const VERSION_SERVIDOR_NECESARIA = '2026-10-19n';   // la versión del servidor que necesita esta página
     async function llamarBackend(accion, datos) {
       if (mantenimientoActivo() && /^(comprar|recarga|renovar|carrito|preorden|combo)/.test(String(accion || ''))) { avisoMantenimiento(''); throw new Error('Estamos en mantenimiento. Compra por WhatsApp mientras tanto.'); }
       if (modoPruebaCliente) { const rs = backendSimulado(accion, datos || {}); if (rs) return rs; }
