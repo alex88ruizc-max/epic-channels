@@ -502,6 +502,7 @@
         <div>
           <span class="text-[9px] text-gray-400 block leading-none">Mi Saldo</span>
           <span id="txtSaldoHeader" class="text-xs sm:text-sm font-bold text-white leading-tight">$0 COP</span>
+          <span id="txtSaldoVence" class="hidden text-[8px] font-black leading-none mt-0.5"></span>
         </div>
         <button type="button" id="btnMonedaVista" onclick="alternarMonedaVista()" title="Ver en pesos o dólares" class="ml-1 px-1.5 py-0.5 rounded-md border border-gray-600 text-[9px] font-black text-gray-200 hover:bg-gray-700 transition">COP</button>
         <button onclick="abrirModalRecarga()" title="Recargar saldo" class="ml-1 bg-emerald-500 hover:bg-emerald-400 text-black rounded p-1 text-xs transition">
@@ -2539,6 +2540,12 @@
                 <input type="text" id="ajusteAdminEmails" placeholder="alex88ruizc@gmail.com, otro@gmail.com" class="w-full bg-gray-900 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white font-mono focus:outline-none">
               </div>
               <div>
+                <label class="block text-[11px] text-gray-400 mb-1">⌛ El saldo sin usar se vence a los (días)</label>
+                <input type="number" id="ajusteSaldoVenceDias" min="0" step="1" placeholder="20 (0 = nunca se vence)" class="w-full bg-gray-900 border border-gray-700 rounded-xl px-3 py-2 text-sm text-white">
+                <p class="text-[10px] text-gray-500 mt-1">Cuenta desde la última compra o recarga. Cada movimiento lo renueva. La deuda no se toca. 0 = desactivado.</p>
+                <div id="saldoVenceResumen" class="mt-2 text-[11px] text-gray-400"></div>
+              </div>
+              <div>
                 <label class="block text-[11px] text-gray-400 mb-1">Correos Excluidos del Reporte Financiero (separados por coma)</label>
                 <input type="text" id="ajusteExcluidosReporte" placeholder="alex88ruizc@gmail.com, alex88ruiz@gmail.com" class="w-full bg-gray-900 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white font-mono focus:outline-none">
               </div>
@@ -4383,7 +4390,7 @@
   <!-- ==================== LÓGICA JAVASCRIPT ==================== -->
   <script>
     let ADMIN_EMAILS = ["alex88ruizc@gmail.com"];
-    let EMAILS_EXCLUIDOS_REPORTE = ["alex88ruizc@gmail.com", "alex88ruiz@gmail.com"];
+    let EMAILS_EXCLUIDOS_REPORTE = ["alex88ruizc@gmail.com", "alex88ruiz@gmail.com", "theodoreandradebiqm@hotmail.com"];
 
     const PRODUCTOS_VIP_EXCLUSIVOS = ["amazon28"];
 
@@ -6314,6 +6321,8 @@
       document.getElementById('ajusteAdminEmails').value = ajustesGeneralesConfig.adminEmailsStr || 'alex88ruizc@gmail.com';
       try { const ca = document.getElementById('ajusteAppAviso'); if (ca) ca.checked = ajustesGeneralesConfig.appAviso !== false; } catch (e) { /* nada */ }
       document.getElementById('ajusteExcluidosReporte').value = ajustesGeneralesConfig.excluidosReporteStr || 'alex88ruizc@gmail.com, alex88ruiz@gmail.com';
+      { const e = document.getElementById('ajusteSaldoVenceDias'); if (e) e.value = (ajustesGeneralesConfig.saldoVenceDias === 0 || ajustesGeneralesConfig.saldoVenceDias) ? ajustesGeneralesConfig.saldoVenceDias : 20; }
+      try { cargarResumenSaldoVence(); } catch (e) { /* nada */ }
       const inpBackend = document.getElementById('ajusteBackendUrl');
       if (inpBackend) inpBackend.value = ajustesGeneralesConfig.backendUrl || '';
       renderizarEstadoSeguridadAdmin();
@@ -6347,6 +6356,7 @@
         dominioTienda: String((document.getElementById('ajusteDominioTienda') || {}).value || '').replace(/^https?:\/\//, '').replace(/\/.*$/, '').trim().toLowerCase() || dominioActual(),
         minRecarga: nuevoMinRec,
         adminEmailsStr: nuevoAdminEmails,
+        saldoVenceDias: Math.max(0, Math.min(365, parseInt((document.getElementById('ajusteSaldoVenceDias') || {}).value, 10) || 0)),
         appAviso: (document.getElementById('ajusteAppAviso') || { checked: ajustesGeneralesConfig.appAviso !== false }).checked,
         excluidosReporteStr: nuevoExcluidos,
         colorTema: nuevoColorTema,
@@ -6476,6 +6486,7 @@
 
     let currentUser = null;
     let userSaldo = 0;
+    var userUltimoMov = '';
     let userDeuda = 0, userCupo = 0;
     let userProductosPermitidos = [];
     let userTipoCuenta = '', userCategoriasPermitidas = [];
@@ -7105,6 +7116,7 @@
             else { try { const ult = (dataU.notificaciones || [])[0]; if (ult && /regalo/i.test(String(ult.titulo || '')) && ult.id !== window.__ultNotifRegalo) { window.__ultNotifRegalo = ult.id; setTimeout(revisarRegalosNuevos, 800); } } catch (e) { /* nada */ } }
             try { if (dataU.vistaPanel) recibirVistaPanelDeCuenta(dataU.vistaPanel); } catch (e) { /* nada */ }
             userDeuda = Math.max(0, Number(dataU.deuda) || 0);
+            userUltimoMov = dataU.ultimoMovimientoEl || dataU.creadoEl || dataU.registradoEl || '';
             userCupo = Math.max(0, Number(dataU.cupoCredito) || 0);
             setTimeout(() => { try { actualizarAccesosCredito(); } catch (e) { /* nada */ } }, 0);
             if (String(dataU.avatarUrl || '') !== miAvatarUrl) { miAvatarUrl = String(dataU.avatarUrl || ''); try { pintarMiAvatar(); } catch (e) { /* nada */ } }
@@ -7225,6 +7237,20 @@
       const saldoVer = modoPruebaCliente ? saldoSimulado : userSaldo;
       if (el) el.innerText = enUsd() && usdSaldo(saldoVer) ? `${usdSaldo(saldoVer)} USD` : `$${saldoVer.toLocaleString('es-CO')} COP`;
       try { const bm = document.getElementById('btnMonedaVista'); if (bm) { bm.textContent = enUsd() ? 'USD' : 'COP'; bm.classList.toggle('hidden', !!TIENDA_SLUG || !usdDeCop(1000) || !puedeUsd()); bm.classList.toggle('border-yellow-400', enUsd()); bm.classList.toggle('text-yellow-200', enUsd()); } } catch (e) { /* nada */ }
+      try {
+        const bv = document.getElementById('txtSaldoVence');
+        if (bv) {
+          const dias = Math.max(1, parseInt((ajustesGeneralesConfig && ajustesGeneralesConfig.saldoVenceDias) || 20, 10) || 20);
+          const mov = userUltimoMov ? Date.parse(userUltimoMov) : 0;
+          const quedan = (mov && saldoVer > 0 && !esStaffSesion() && !modoPruebaCliente) ? Math.ceil((mov + dias * 86400000 - Date.now()) / 86400000) : null;
+          if (quedan !== null && quedan > 0) {
+            bv.textContent = '⏳ vence en ' + quedan + (quedan === 1 ? ' día' : ' días');
+            bv.classList.remove('hidden');
+            bv.classList.toggle('text-rose-300', quedan <= 3);
+            bv.classList.toggle('text-amber-300', quedan > 3);
+          } else { bv.classList.add('hidden'); }
+        }
+      } catch (e) { /* nada */ }
       const caja = document.getElementById('navSaldoDirecto');
       if (caja) {
         caja.classList.toggle('border-yellow-500', modoPruebaCliente);
@@ -8036,9 +8062,15 @@
       return promesaChartJs;
     }
 
+    // Usuarios de prueba: su correo o nombre contiene "test"/"prueba" (no cuentan en el reporte)
+    function esUsuarioDePrueba(c) {
+      const txt = ((c.usuarioEmail || '') + ' ' + (c.usuarioNombre || c.nombre || '')).toLowerCase();
+      return /\b(test|prueba|prueba sistema|demo)\b/.test(txt);
+    }
     function compraValidaParaReporte(c) {
       const email = (c.usuarioEmail || '').trim().toLowerCase();
       if (!email || email === 'sin correo' || EMAILS_EXCLUIDOS_REPORTE.includes(email)) return false;
+      if (esUsuarioDePrueba(c)) return false;
       if (!esProductoCatalogoValido(c.productoNombre) && !esProductoCatalogoValido(c.productoId)) return false;
       return true;
     }
@@ -8130,7 +8162,7 @@
         estado.classList.add('hidden');
         renderizarDashboard(ventas);
         const act = document.getElementById('dashActualizado');
-        if (act) act.innerText = `Actualizado: ${new Date().toLocaleString('es-CO')} · ${ventas.length} ventas analizadas`;
+        if (act) act.innerText = `Actualizado: ${new Date().toLocaleString('es-CO')} · ${ventas.length} compras en el histórico (reales)`;
       } catch (e) {
         estado.innerHTML = `<span class="text-red-400">No se pudieron cargar las gráficas: ${escaparHtml(e.message)}</span>`;
       }
@@ -11589,6 +11621,16 @@
     }
     // 📧 Correos de tu dominio con destino: Prime (sube solo con la bienvenida), otro producto (botón Confirmar) o Libre
     var correosPropios = [];
+    async function cargarResumenSaldoVence() {
+      const cont = document.getElementById('saldoVenceResumen'); if (!cont) return;
+      cont.textContent = 'Revisando…';
+      try {
+        const r = await llamarBackend('saldo_vence_resumen', {});
+        if (!r || !r.ok) { cont.textContent = ''; return; }
+        cont.innerHTML = (r.porVencer ? `⏳ <b class="text-amber-300">${r.porVencer}</b> cliente(s) con <b>${formatoCOP(r.montoPorVencer)}</b> por vencer (≤3 días). ` : 'Ningún saldo por vencer en los próximos 3 días. ')
+          + (r.vencidos ? `· Hoy se vencieron ${r.vencidos} ($${(r.total || 0).toLocaleString('es-CO')}).` : '');
+      } catch (e) { cont.textContent = ''; }
+    }
     // ============================================================
     // 🩺 SALUD DE CUENTAS + COMPROBADOR + LINK OTP DE AMAZON (solo admin)
     // ============================================================
@@ -16223,7 +16265,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-20l';
+    const VERSION_PAGINA = '2026-10-20p';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261020_ajuste', fecha: '2026-10-20', titulo: 'Se ve mejor en iPhone 📱', mensaje: 'La tienda ahora **se ajusta siempre a tu pantalla**: ya no se agranda al escribir ni se corre hacia los lados. Si la tienes abierta, **recarga la página** para verla así.' },
       { id: 'act_20261020_app', fecha: '2026-10-20', titulo: 'App oficial de Epic Streaming 📲', mensaje: 'Ya tenemos **app oficial**: en la tienda toca **Descargar** (Android), **Instalar** (PC) o **Agregar** (iPhone). Abre más rápido, a pantalla completa, con tu misma cuenta y **se actualiza sola**.' },
@@ -21096,6 +21138,9 @@
 
     // ==================== NOVEDADES INTERNAS DEL PANEL (solo el equipo) ====================
     const ACTUALIZACIONES_INTERNAS = [
+      { fecha: '2026-10-20', titulo: '⌛ El saldo sin usar se vence', mensaje: 'El saldo que un cliente no usa se vence a los **20 días** sin movimiento (compra o recarga), configurable en Ajustes Generales (0 = desactivado). Cada compra o recarga reinicia el contador. El cliente ve **"vence en X días"** junto a su saldo, y al recargar recibe la nota de que su saldo dura ese tiempo. La deuda no se toca y los proveedores/moderadores quedan fuera. En Ajustes ves cuánto saldo está por vencer. Así los clientes usan su saldo más rápido y tú recuperas el saldo muerto.', ir: 'ajustes' },
+      { fecha: '2026-10-20', titulo: '🧪 El reporte no cuenta usuarios de prueba', mensaje: 'El reporte de ventas ya no suma las compras del usuario **Test** (ni de ningún usuario cuyo correo o nombre tenga "test", "prueba" o "demo"), así Ingresos, Ganancia, Órdenes, Cuentas y Clientes muestran solo ventas reales. El texto de arriba ahora dice claramente que es el histórico completo, para no confundirlo con las órdenes del mes. Toca "Actualizar gráficas" para ver los números limpios.', ir: '' },
+      { fecha: '2026-10-20', titulo: '🤖 El bot cierra mejor la venta', mensaje: 'Cuando un cliente dice "gracias" o "mil gracias", el bot responde corto y ya no saca el menú de "no te entendí". Cuando dice "ya compré / ya recargué", lo felicita y le ofrece el soporte por la plataforma y el "lo de siempre", en vez de mandarle a vincular o registrarse (sobre todo si ya es cliente). Así cierra la conversación como lo harías tú y no confunde a quien acaba de comprar.', ir: '' },
       { fecha: '2026-10-20', titulo: '🔒 El cupo solo sirve si el cliente lo acepta', mensaje: 'Un cliente con crédito pre-aprobado en estado SIN ACEPTAR ya no puede comprar usando ese cupo (en la tienda ni por WhatsApp): primero debe tocar "Aceptar crédito". Cuando recarga, su deuda se sigue descontando primero de forma automática, acepte o no. Así no se te va plata en cupos que nadie aceptó.', ir: '' },
       { fecha: '2026-10-20', titulo: '🩺 Salud de cuentas + link de códigos Amazon', mensaje: 'En Cargar cuentas (Stock) tienes ahora: **🩺 Salud de cuentas** (vivas vs suspendidas, por producto y por proveedor, para ver qué productos y proveedores fallan más), una **lista de cuentas de +35 días** una por una con Copiar correo/clave y **Ya cambié**, un **comprobador** de cuáles de tus correos ya se subieron, y un **link único de códigos de Amazon** que copias/renuevas para ver el OTP del correo nuevo al pasar lotes a tu dominio. El bot ya renueva sola la cuenta cuando le cambias el correo a otro de tu dominio, marca las suspendidas (on hold / suspendu / suspensa, cualquier idioma) y las saca del stock. Todo es interno: el cliente no ve nada distinto.', ir: 'stock' },
       { fecha: '2026-10-20', titulo: '💵 Recargas de hoy junto a las ventas', mensaje: 'Arriba del panel ahora ves dos cifras lado a lado: **Vendido hoy** (ventas y cuentas, como antes) y **Recargas hoy**: el dinero que entró hoy por recargas aprobadas (Bre-B, Binance y tus cargas manuales), con cuántas fueron y cuántas manuales. "Ver recargas" muestra cada una con la hora, el cliente y el método. No cuenta pendientes, rechazadas, regalos, bonos ni premios.', ir: '' },
@@ -24398,7 +24443,7 @@
       return { cuentas: legado, stock: legado.length || stockPublico };
     }
 
-    const VERSION_SERVIDOR_NECESARIA = '2026-10-20e';   // la versión del servidor que necesita esta página
+    const VERSION_SERVIDOR_NECESARIA = '2026-10-20g';   // la versión del servidor que necesita esta página
     async function llamarBackend(accion, datos) {
       if (mantenimientoActivo() && /^(comprar|recarga|renovar|carrito|preorden|combo)/.test(String(accion || ''))) { avisoMantenimiento(''); throw new Error('Estamos en mantenimiento. Compra por WhatsApp mientras tanto.'); }
       if (modoPruebaCliente) { const rs = backendSimulado(accion, datos || {}); if (rs) return rs; }
