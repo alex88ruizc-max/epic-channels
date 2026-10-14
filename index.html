@@ -600,6 +600,9 @@
         </button>
       </div>
 
+      <!-- 📲 Aviso de la app oficial (se puede apagar desde Ajustes) -->
+      <div id="avisoAppOficial" class="hidden mb-4"></div>
+
       <!-- Filtros por Categoría Dinámicos -->
       <div id="contenedorFiltrosCat" class="flex items-center gap-2 overflow-x-auto pb-3 mb-6 no-scrollbar text-sm">
         <button onclick="filtrarCategoria('todas')" class="btn-cat active px-4 py-1.5 rounded-xl bg-emerald-500 text-black font-bold flex items-center gap-2"><i class="fa-solid fa-border-all"></i> Todas</button>
@@ -2494,6 +2497,7 @@
                 <i class="fa-solid fa-shield-halved"></i> Control de Accesos y Reportes
               </h4>
               <div>
+                <label class="flex items-center justify-between gap-3 mb-3 p-2.5 rounded-xl bg-gray-900 border border-emerald-500/30 cursor-pointer"><span class="text-[11px] text-gray-200"><b class="text-white">📲 Aviso "App oficial" en la tienda</b><br><span class="text-gray-400">Muestra el botón para descargar la app (Android), instalarla (PC) o agregarla (iPhone). Se guarda al instante.</span></span><input type="checkbox" id="ajusteAppAviso" onchange="cambiarAvisoApp(this.checked)" class="w-5 h-5 accent-emerald-500 shrink-0"></label>
                 <label class="block text-[11px] text-gray-400 mb-1">Correos de Administradores (separados por coma)</label>
                 <input type="text" id="ajusteAdminEmails" placeholder="alex88ruizc@gmail.com, otro@gmail.com" class="w-full bg-gray-900 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white font-mono focus:outline-none">
               </div>
@@ -6239,6 +6243,7 @@
       if (inpPuntos) inpPuntos.value = obtenerFactorPuntos();
       previsualizarNivelesAdmin();
       document.getElementById('ajusteAdminEmails').value = ajustesGeneralesConfig.adminEmailsStr || 'alex88ruizc@gmail.com';
+      try { const ca = document.getElementById('ajusteAppAviso'); if (ca) ca.checked = ajustesGeneralesConfig.appAviso !== false; } catch (e) { /* nada */ }
       document.getElementById('ajusteExcluidosReporte').value = ajustesGeneralesConfig.excluidosReporteStr || 'alex88ruizc@gmail.com, alex88ruiz@gmail.com';
       const inpBackend = document.getElementById('ajusteBackendUrl');
       if (inpBackend) inpBackend.value = ajustesGeneralesConfig.backendUrl || '';
@@ -6273,6 +6278,7 @@
         dominioTienda: String((document.getElementById('ajusteDominioTienda') || {}).value || '').replace(/^https?:\/\//, '').replace(/\/.*$/, '').trim().toLowerCase() || dominioActual(),
         minRecarga: nuevoMinRec,
         adminEmailsStr: nuevoAdminEmails,
+        appAviso: (document.getElementById('ajusteAppAviso') || { checked: ajustesGeneralesConfig.appAviso !== false }).checked,
         excluidosReporteStr: nuevoExcluidos,
         colorTema: nuevoColorTema,
         puntosPorCuenta: (() => { const v = parseFloat((document.getElementById('ajustePuntosPorCuenta') || {}).value); return (isNaN(v) || v <= 0) ? 0.5 : v; })(),
@@ -7021,6 +7027,7 @@
             if (typeof pruebaCompraCorriendo !== 'undefined' && pruebaCompraCorriendo) window.__saldoRealPrueba = dataU.saldo || 0; else userSaldo = dataU.saldo || 0;
             try { if (dataU.debeCambiarClave === true) exigirCambioClave(); } catch (e) { /* nada */ }
             try { if (!modoPruebaCliente) { clienteInternacional = esNumeroInternacional(dataU.whatsapp); fijarMonedaVista(dataU.monedaVista || (clienteInternacional ? 'USD' : 'COP'), false); actualizarSaldoHeader(); } } catch (e) { /* nada */ }
+            try { registrarUsoApp(dataU); } catch (e) { /* nada */ }
             try { perfilWa = { waVinculado: dataU.waVinculado || '', waCompraAutorizada: dataU.waCompraAutorizada === true, waSolicitaEl: dataU.waSolicitaEl || '' }; if (document.getElementById('waClienteCaja')) pintarWaCliente(); } catch (e) { /* nada */ }
             setTimeout(() => { try { revisarCompraTrasRecarga(); } catch (e) { /* nada */ } }, 0);
             if (ticketsAvisadosCuenta === null) { ticketsAvisadosCuenta = Array.isArray(dataU.ticketsAvisados) ? dataU.ticketsAvisados : []; setTimeout(() => { try { revisarTicketsClienteUI(); } catch (e) { /* nada */ } }, 0); }
@@ -8348,7 +8355,9 @@
       db.collection('configuracion').doc('ajustes').onSnapshot(doc => {
         if (doc.exists) {
           aplicarAjustesGeneralesEnMemoria(doc.data() || {});
+          try { ajustesGeneralesConfig.appAviso = (doc.data() || {}).appAviso !== false; } catch (e) { /* nada */ }
         }
+        try { pintarAvisoApp(); } catch (e) { /* nada */ }
       });
 
       // 💵 Tasa USDT del día (la misma que usa el bot): para mostrar el precio pequeño en USD
@@ -8671,6 +8680,7 @@
       ev.preventDefault(); eventoInstalarApp = ev;
       let oculto = 0; try { oculto = parseInt(localStorage.getItem('instalarAppOculto'), 10) || 0; } catch (e) { /* nada */ }
       if (esAppInstalada() || Date.now() - oculto < 7 * 86400000) return;   // si lo cerró, no insiste en 7 días
+      try { if (ajustesGeneralesConfig.appAviso !== false && !TIENDA_SLUG) return; } catch (e) { /* nada */ }   // con el aviso "App oficial" activo, no se muestra este otro botón
       const b = document.getElementById('btnInstalarApp'); if (b) { b.classList.remove('hidden'); b.classList.add('flex'); }
     });
     window.addEventListener('appinstalled', () => { ocultarInstalarApp(true); try { mostrarToast('📲 ¡Listo! Ya tienes la app en tu celular'); } catch (e) { /* nada */ } });
@@ -8678,6 +8688,80 @@
       if (!eventoInstalarApp) { alert('Para instalarla: abre el menú del navegador (⋮) y toca "Instalar aplicación" o "Agregar a la pantalla de inicio".'); return; }
       eventoInstalarApp.prompt(); try { await eventoInstalarApp.userChoice; } catch (e) { /* nada */ } eventoInstalarApp = null; ocultarInstalarApp(false);
     }
+    // 📲 APP OFICIAL: aviso de descarga (Android = APK, PC = instalar, iPhone = agregar a inicio) y quién la usa
+    const APK_OFICIAL_URL = '/epic-streaming.apk';
+    function tipoAppActual() {
+      try {
+        const g = sessionStorage.getItem('enAppTipo'); if (g) return g;
+        let t = '';
+        if (/^android-app:\/\/vip\.epicstreaming\.twa/i.test(document.referrer || '')) t = 'android';
+        else if (esAppInstalada()) t = (window.navigator.standalone === true || /iPhone|iPad|iPod/i.test(navigator.userAgent)) ? 'iphone' : (/Android/i.test(navigator.userAgent) ? 'android' : 'pc');
+        if (t) sessionStorage.setItem('enAppTipo', t);
+        return t;
+      } catch (e) { return ''; }
+    }
+    function dispositivoApp() { const ua = navigator.userAgent || ''; return /Android/i.test(ua) ? 'android' : (/iPhone|iPad|iPod/i.test(ua) ? 'iphone' : (/Mobi/i.test(ua) ? 'otro' : 'pc')); }
+    function pintarAvisoApp() {
+      const caja = document.getElementById('avisoAppOficial'); if (!caja) return;
+      let oculto = 0; try { oculto = parseInt(localStorage.getItem('avisoAppOculto'), 10) || 0; } catch (e) { /* nada */ }
+      const d = dispositivoApp();
+      const ver = (typeof ajustesGeneralesConfig === 'undefined' || ajustesGeneralesConfig.appAviso !== false) && !TIENDA_SLUG && !tipoAppActual() && d !== 'otro' && Date.now() - oculto > 7 * 86400000;
+      if (!ver) { caja.classList.add('hidden'); caja.innerHTML = ''; return; }
+      const pc = d === 'pc', ios = d === 'iphone';
+      caja.innerHTML = `<div class="flex items-center gap-2.5 p-2.5 rounded-2xl bg-emerald-950/60 border border-emerald-500/60">
+        <span class="w-10 h-10 shrink-0 rounded-xl bg-emerald-500/15 flex items-center justify-center text-emerald-300 text-lg"><i class="fa-solid ${pc ? 'fa-desktop' : 'fa-mobile-screen-button'}"></i></span>
+        <div class="min-w-0 flex-1"><p class="text-[13px] font-black text-white leading-tight">App oficial de Epic Streaming</p><p class="text-[11px] text-emerald-200/80">${pc ? 'Instálala en tu PC, con su propia ventana' : 'Más rápida, a pantalla completa'}</p></div>
+        <button type="button" onclick="abrirAvisoApp()" class="shrink-0 px-3 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black text-[11px] font-black"><i class="fa-solid ${ios ? 'fa-plus' : 'fa-download'} mr-1"></i>${pc ? 'Instalar' : (ios ? 'Agregar' : 'Descargar')}</button>
+        <button type="button" onclick="cerrarAvisoApp()" aria-label="Cerrar" class="shrink-0 w-7 h-7 rounded-lg text-gray-500 hover:text-white"><i class="fa-solid fa-xmark"></i></button></div>`;
+      caja.classList.remove('hidden');
+    }
+    function cerrarAvisoApp() { try { localStorage.setItem('avisoAppOculto', String(Date.now())); } catch (e) { /* nada */ } pintarAvisoApp(); }
+    function cerrarVentanaApp() { const m = document.getElementById('modalAppOficial'); if (m) m.remove(); }
+    function abrirAvisoApp() {
+      const d = dispositivoApp();
+      if (d === 'pc' && eventoInstalarApp) { instalarApp(); return; }
+      const pasos = d === 'android'
+        ? ['Toca <b class="text-white">Descargar APK</b> y ábrelo al terminar', 'Si Android pregunta, <b class="text-white">permite instalar</b> desde tu navegador', 'Toca <b class="text-white">Instalar</b> y abre Epic Streaming']
+        : d === 'iphone'
+          ? ['Abre esta página en <b class="text-white">Safari</b>', 'Toca el botón <b class="text-white">Compartir</b> (el cuadro con la flecha)', 'Elige <b class="text-white">Agregar a inicio</b> y toca Agregar']
+          : ['Abre esta página en <b class="text-white">Chrome</b> o <b class="text-white">Edge</b>', 'Toca el ícono de <b class="text-white">instalar</b> en la barra de dirección (o el menú ⋮)', 'Elige <b class="text-white">Instalar Epic Streaming</b>: queda en tu escritorio y menú Inicio'];
+      cerrarVentanaApp();
+      const m = document.createElement('div'); m.id = 'modalAppOficial';
+      m.className = 'fixed inset-0 z-[95] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4';
+      m.onclick = ev => { if (ev.target === m) cerrarVentanaApp(); };
+      m.innerHTML = `<div class="w-full max-w-sm rounded-3xl bg-gray-900 border border-gray-700 p-5 text-center shadow-2xl" style="animation:credEntrar .25s ease-out">
+        <span class="w-12 h-12 mx-auto rounded-2xl bg-emerald-500/15 flex items-center justify-center text-emerald-300 text-2xl"><i class="fa-solid fa-shield-halved"></i></span>
+        <p class="text-base font-black text-white mt-2">App oficial y segura</p>
+        <p class="text-[11px] text-gray-400 mt-0.5 mb-3">${d === 'android' ? 'La descargas directo de ' + escaparHtml(location.host) : 'Gratis y siempre actualizada'}</p>
+        <div class="text-left space-y-2">${pasos.map((p, i) => `<p class="text-[12.5px] text-gray-300"><b class="text-emerald-400">${i + 1}.</b> ${p}</p>`).join('')}</div>
+        ${d === 'android' ? `<a href="${APK_OFICIAL_URL}" download="Epic-Streaming.apk" onclick="registrarDescargaApk()" class="mt-4 w-full py-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-black text-sm flex items-center justify-center gap-1.5"><i class="fa-solid fa-download"></i> Descargar APK</a>` : ''}
+        <p class="text-[10px] text-gray-500 mt-2">Se actualiza sola, no tienes que volver a descargarla</p>
+        <button type="button" onclick="cerrarVentanaApp()" class="mt-3 w-full py-2.5 rounded-xl bg-gray-800 border border-gray-700 text-gray-200 font-bold text-xs">Cerrar</button></div>`;
+      document.body.appendChild(m);
+    }
+    function registrarDescargaApk() {
+      try { if (currentUser && !modoPruebaCliente) db.collection('usuarios').doc(currentUser.uid).set({ appDescargaEl: new Date().toISOString() }, { merge: true }).catch(() => {}); } catch (e) { /* nada */ }
+      setTimeout(cerrarVentanaApp, 1500);
+    }
+    // Cada cliente con sesión que entra desde la app queda anotado en su ficha (una vez por visita)
+    function registrarUsoApp(dataU) {
+      try {
+        if (window.__usoAppAnotado || modoPruebaCliente || !currentUser) return;
+        const t = tipoAppActual(); if (!t) return;
+        window.__usoAppAnotado = true;
+        const ahora = new Date().toISOString(), datos = { appUso: t, appUltimoUso: ahora };
+        if (!(dataU && dataU.appPrimerUso)) datos.appPrimerUso = ahora;
+        db.collection('usuarios').doc(currentUser.uid).set(datos, { merge: true }).catch(() => { window.__usoAppAnotado = false; });
+      } catch (e) { /* nunca afecta la página */ }
+    }
+    async function cambiarAvisoApp(activo) {
+      try {
+        await db.collection('configuracion').doc('ajustes').set({ appAviso: !!activo }, { merge: true });
+        ajustesGeneralesConfig.appAviso = !!activo; pintarAvisoApp();
+        mostrarToast(activo ? '📲 Aviso de la app activado en la tienda' : 'Aviso de la app desactivado');
+      } catch (e) { alert('No se pudo guardar: ' + (e.message || e)); const ca = document.getElementById('ajusteAppAviso'); if (ca) ca.checked = !activo; }
+    }
+    window.addEventListener('DOMContentLoaded', () => { try { pintarAvisoApp(); } catch (e) { /* nada */ } });
     // 🏪 MODO TIENDA: la tienda sale de la dirección (nombre.epicstreaming.vip) o de ?tienda=nombre (para probar). ?tienda=0 vuelve a Epic.
     var TIENDA_SLUG = (function () {
       try {
@@ -9832,7 +9916,7 @@
                       <div class="min-w-0 flex-grow">
                         <p class="text-sm font-black text-white truncate">${escaparHtml(u.nombre || u.email || 'Ficha incompleta')}</p>
                         <p class="text-[11px] text-gray-400 font-mono truncate">${escaparHtml(u.email || uid)}</p>
-                        <div class="flex flex-wrap items-center gap-1.5 mt-1">${(() => { const et = etiquetaTipoCuenta(u.rol, u.tipoCuenta); return et ? `<span class="px-1.5 py-0.5 rounded ${et[1]} text-[9px] font-black">${et[0]}</span>` : ''; })()}${chipId}${chipWa}<span data-nivel-uid="${uid}"></span>${deudaU > 0 ? `<span class="px-1.5 py-0.5 rounded bg-violet-500/20 text-violet-200 text-[9px] font-black">DEBE ${formatoCOP(deudaU)}</span>` : ''}</div>
+                        <div class="flex flex-wrap items-center gap-1.5 mt-1">${(() => { const et = etiquetaTipoCuenta(u.rol, u.tipoCuenta); return et ? `<span class="px-1.5 py-0.5 rounded ${et[1]} text-[9px] font-black">${et[0]}</span>` : ''; })()}${chipId}${chipWa}${u.appUso ? `<span class="px-1.5 py-0.5 rounded bg-emerald-500/15 border border-emerald-500/40 text-emerald-300 text-[9px] font-black" title="Último uso: ${escaparHtml(u.appUltimoUso ? new Date(u.appUltimoUso).toLocaleString('es-CO') : '')}">📲 App ${u.appUso === 'pc' ? 'PC' : (u.appUso === 'iphone' ? 'iPhone' : 'Android')}</span>` : (u.appDescargaEl ? '<span class="px-1.5 py-0.5 rounded bg-gray-700/60 text-gray-300 text-[9px] font-black">⬇️ Descargó la app</span>' : '')}<span data-nivel-uid="${uid}"></span>${deudaU > 0 ? `<span class="px-1.5 py-0.5 rounded bg-violet-500/20 text-violet-200 text-[9px] font-black">DEBE ${formatoCOP(deudaU)}</span>` : ''}</div>
                       </div>
                       <div class="shrink-0 text-right"><p class="text-[10px] text-gray-500">Saldo</p><p class="text-base font-black text-emerald-400">${formatoCOP(u.saldo || 0)}</p></div>
                     </div>
@@ -15981,7 +16065,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-19z';
+    const VERSION_PAGINA = '2026-10-20a';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261010_wacompra', fecha: '2026-10-10', titulo: 'Compra por WhatsApp 💬', mensaje: 'Ahora puedes **comprar con tu saldo desde nuestro WhatsApp**. Ve a tu perfil → **Mis datos → Comprar por WhatsApp**, vincula tu chat con el código y pide la autorización.' },
       { id: 'act_20261010_vista2', fecha: '2026-10-10', titulo: 'Nueva vista de la tienda ▦', mensaje: 'Ahora puedes ver los productos **en 2 columnas**: más productos en tu pantalla, con las **promos resaltadas** (🔥 campaña, ⚡ relámpago, 🎁 regalo). Toca uno y se abre su ficha para comprar. Cambia de vista con los íconos ☰ / ▦ arriba de las categorías.' },
@@ -19344,6 +19428,7 @@
     const FMT_HORA_CO = new Intl.DateTimeFormat('en-US', { timeZone: 'America/Bogota', hour: 'numeric', hour12: false, weekday: 'short', year: 'numeric', month: '2-digit', day: '2-digit' });
     function partesBogota(d) { const o = {}; FMT_HORA_CO.formatToParts(d || new Date()).forEach(p => { o[p.type] = p.value; }); return { hora: parseInt(o.hour, 10) % 24, dia: `${o.year}-${o.month}-${o.day}`, diaSemana: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].indexOf(o.weekday) }; }
     function origenVisita() {
+      try { const ta = tipoAppActual(); if (ta) return 'app-' + ta; } catch (e) { /* nada */ }
       try { const u = new URLSearchParams(location.search).get('utm_source'); if (u) return String(u).toLowerCase().slice(0, 30); } catch (e) { /* nada */ }
       const r = String(document.referrer || '');
       if (!r || r.indexOf(location.host) !== -1) return 'directo';
@@ -19408,7 +19493,15 @@
       const nombres = {};
       await Promise.all(top.map(async ([u]) => { try { const d = await db.collection('usuarios').doc(u).get(); const x = d.data() || {}; nombres[u] = x.nombre || x.email || u; } catch (e) { nombres[u] = u; } }));
       const antes = (picoCompra > 0 ? picoCompra : pico) - 1;
+      let appRes = '';
+      try {
+        const sU = await db.collection('usuarios').where('appUltimoUso', '>', '').get(), sD = await db.collection('usuarios').where('appDescargaEl', '>', '').get();
+        const o = { android: 0, pc: 0, iphone: 0 }, hace14 = Date.now() - 14 * 86400000; let inactivos = 0;
+        sU.forEach(d => { const x = d.data() || {}; if (o[x.appUso] !== undefined) o[x.appUso]++; if (Date.parse(x.appUltimoUso || 0) < hace14) inactivos++; });
+        appRes = `<div class="p-4 rounded-2xl bg-gray-900 border border-emerald-500/40"><p class="text-sm font-black text-white">📲 App oficial</p><p class="text-xs text-gray-300 mt-1"><b class="text-emerald-300 text-lg">${sU.size}</b> clientes la usan · Android ${o.android} · PC ${o.pc} · iPhone ${o.iphone}</p><p class="text-[11px] text-gray-400 mt-0.5">${sD.size} tocaron "Descargar APK"${inactivos ? ' · ' + inactivos + ' no la abren hace más de 14 días' : ''}. En Clientes verás la insignia 📲 App en cada uno.</p></div>`;
+      } catch (e) { appRes = ''; }
       c.innerHTML = `
+        ${appRes}
         <div class="grid grid-cols-2 lg:grid-cols-4 gap-2">
           ${kpi('Visitas', V.length.toLocaleString('es-CO'), `${unicos} personas distintas`, 'text-white')}
           ${kpi('Nuevos', Math.round(nuevos / V.length * 100) + '%', `${nuevos} entraron por primera vez`, 'text-cyan-300')}
@@ -19420,7 +19513,7 @@
         <div class="p-4 rounded-2xl bg-gray-900 border border-gray-800"><p class="text-sm font-black text-white mb-2">Mapa de calor: día y hora</p>${calor}<p class="text-[10px] text-gray-500 mt-1">Más brillante = más visitas.</p></div>
         <div class="grid lg:grid-cols-3 gap-3">
           <div class="p-4 rounded-2xl bg-gray-900 border border-gray-800 space-y-2"><p class="text-sm font-black text-white">Dispositivo</p>${lista(cuenta('disp'), V.length, 'bg-violet-400', { movil: '📱 Celular', pc: '💻 Computador', tablet: '📟 Tablet' })}</div>
-          <div class="p-4 rounded-2xl bg-gray-900 border border-gray-800 space-y-2"><p class="text-sm font-black text-white">De dónde llegan</p>${lista(cuenta('origen'), V.length, 'bg-pink-400', { directo: '🔗 Directo / enlace guardado', whatsapp: '💬 WhatsApp', facebook: 'Facebook', instagram: 'Instagram', google: 'Google', tiktok: 'TikTok', telegram: 'Telegram' })}</div>
+          <div class="p-4 rounded-2xl bg-gray-900 border border-gray-800 space-y-2"><p class="text-sm font-black text-white">De dónde llegan</p>${lista(cuenta('origen'), V.length, 'bg-pink-400', { 'app-android': '📲 App Android', 'app-pc': '💻 App PC', 'app-iphone': '📱 App iPhone', directo: '🔗 Directo / enlace guardado', whatsapp: '💬 WhatsApp', facebook: 'Facebook', instagram: 'Instagram', google: 'Google', tiktok: 'TikTok', telegram: 'Telegram' })}</div>
           <div class="p-4 rounded-2xl bg-gray-900 border border-gray-800 space-y-2"><p class="text-sm font-black text-white">Quiénes entran</p>${lista(cuenta('tipo'), V.length, 'bg-amber-400', { anonimo: '👀 Sin iniciar sesión', cliente: '🙋 Clientes', dealer: '👑 Dealers', normal: 'Clientes normales', proveedor: '🚚 Proveedores' })}</div>
         </div>
         <div class="p-4 rounded-2xl bg-gray-900 border border-gray-800"><p class="text-sm font-black text-white mb-2">Clientes que más entran</p>${top.length ? top.map(([u, n], i) => `<div class="flex items-center justify-between gap-2 py-1.5 ${i ? 'border-t border-gray-800' : ''}"><span class="text-xs text-gray-200 truncate"><b class="text-gray-500 mr-1">${i + 1}.</b>${escaparHtml(nombres[u] || u)}${compradores.has(u) ? ' <span class="text-[9px] px-1.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 font-bold">compró</span>' : ''}</span><span class="text-[11px] text-cyan-300 font-bold shrink-0">${n} ${n === 1 ? 'visita' : 'visitas'}</span></div>`).join('') : '<p class="text-xs text-gray-500">Aún no hay clientes con sesión en este periodo.</p>'}</div>`;
@@ -20834,6 +20927,7 @@
 
     // ==================== NOVEDADES INTERNAS DEL PANEL (solo el equipo) ====================
     const ACTUALIZACIONES_INTERNAS = [
+      { fecha: '2026-10-20', titulo: '📲 App oficial: descarga y quién la usa', mensaje: 'En la tienda sale el aviso "App oficial de Epic Streaming": en Android descarga el APK con 3 pasos, en PC la instala como programa y en iPhone explica cómo agregarla a inicio. Lo apagas o prendes al instante en Ajustes Generales. Cada cliente con sesión que entra desde la app queda con la insignia 📲 App en Clientes, y en Actividad ves cuántos la usan, cuántos la descargaron y quiénes dejaron de abrirla. Clientes con la app vuelven más y compran más rápido.', ir: '' },
       { fecha: '2026-10-19', titulo: '💱 Tienda en dólares para clientes de otros países', mensaje: 'Los clientes con WhatsApp de otro país ven la tienda en USD de entrada, con un botón COP/USD junto a su saldo (Bre-B los pasa a COP, Binance a USD). Los colombianos y quienes no tienen WhatsApp ven todo en COP, sin botón. Tú y tus moderadores también tienen el botón para revisar cómo se ve. El saldo se sigue guardando en pesos, y cada compra y recarga guarda la tasa del dólar de ese día. Tus clientes de otros países ven precios que entienden y compran con más confianza.', ir: '' },
       { fecha: '2026-10-19', titulo: '📋 Mis cuentas: vista compacta desde 2 cuentas', mensaje: 'Para todos los perfiles que compran (menos Netflix, que sigue con la contraseña oculta): las compras de 2 cuentas o más ya se ven en la lista compacta (Copiar todas / Reportar una cuenta), y "Ver una por una" queda abajo para reportar o asignar a un cliente. Tus Dealers copian y reparten más rápido.', ir: '' },
       { fecha: '2026-10-19', titulo: '📧 Correos de dominio más cortos', mensaje: 'Los correos que generas tú y los que piden tus proveedores ahora tienen máximo 12 letras y sin números (sararios, ana.rojas, crojasm, camilar). Se escriben más rápido en Amazon y hay menos errores al tipearlos.', ir: '' },
