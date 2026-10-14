@@ -16065,7 +16065,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-20a';
+    const VERSION_PAGINA = '2026-10-20b';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261010_wacompra', fecha: '2026-10-10', titulo: 'Compra por WhatsApp 💬', mensaje: 'Ahora puedes **comprar con tu saldo desde nuestro WhatsApp**. Ve a tu perfil → **Mis datos → Comprar por WhatsApp**, vincula tu chat con el código y pide la autorización.' },
       { id: 'act_20261010_vista2', fecha: '2026-10-10', titulo: 'Nueva vista de la tienda ▦', mensaje: 'Ahora puedes ver los productos **en 2 columnas**: más productos en tu pantalla, con las **promos resaltadas** (🔥 campaña, ⚡ relámpago, 🎁 regalo). Toca uno y se abre su ficha para comprar. Cambia de vista con los íconos ☰ / ▦ arriba de las categorías.' },
@@ -16478,6 +16478,8 @@
         creadoEl: ahora, aprobadoEl: ahora, aprobadoPor: (currentUser && currentUser.email) || '', pagado: false };
     }
     function esProveedorUid(uid) { return (lotesProveedores || []).some(l => l.proveedorUid === uid); }
+    // 🎁 Premio de alguien que es proveedor (rol, lotes subidos, permiso de stock o comisión por stock): SIEMPRE va a lo que se le debe, nunca al saldo
+    function esComisionDeProveedor(c, du) { du = du || {}; return du.rol === 'proveedor' || esProveedorUid(c.beneficiarioUid) || c.tipo === 'stock' || (Array.isArray(du.permisos_subir_stock) && du.permisos_subir_stock.length > 0); }
 
     // ----- Crear una comisión (una sola vez por origen) -----
     async function crearComisionReferido(datos) {
@@ -16496,7 +16498,7 @@
             const uRef = db.collection('usuarios').doc(datos.beneficiarioUid);
             const u = await t.get(uRef);
             const du = u.exists ? (u.data() || {}) : {};
-            if (du.rol === 'proveedor') {   // proveedor: el premio va a su favor en lo que se le debe
+            if (esComisionDeProveedor(datos, du)) {   // proveedor: el premio va a su favor en lo que se le debe
               t.set(db.collection('stock_pendiente').doc('abono_' + datos.id), abonoProveedorDoc(datos, du, datos.id));
               t.update(uRef, { notificaciones: agregarNotifALista(du.notificaciones, crearNotificacionPersonal('saldo', `Ganaste ${formatoCOP(datos.monto)} por referidos`, 'Se suma a lo que te debemos por tus cuentas.')) });
               doc.estado = 'a_deuda'; doc.resueltoEl = ahora; t.set(ref, doc); return true;
@@ -16668,14 +16670,15 @@
       cont.innerHTML = lista.length ? lista.slice(0, 60).map(c => `<div class="p-2.5 rounded-xl bg-gray-800/50 border border-gray-700/60">
         <div class="flex items-start justify-between gap-2"><div class="min-w-0"><p class="text-xs font-black text-white truncate">${escaparHtml(c.beneficiarioEmail || c.beneficiarioUid)}</p><p class="text-[10px] text-gray-400">${c.tipo === 'stock' ? 'Stock de ' : 'Registro de '}${escaparHtml(c.referidoEmail || '')} · ${escaparHtml(bcFecha(c.fecha))}</p><p class="text-[10px] text-gray-500">${escaparHtml(c.detalle || '')}</p></div>
         <div class="shrink-0 text-right"><p class="text-sm font-black text-sky-300">${formatoCOP(c.monto || 0)}</p><span class="inline-block mt-0.5 px-1.5 py-0.5 rounded-full text-[9px] font-bold border ${EST[c.estado] || EST.anulada}">${escaparHtml(c.estado)}</span></div></div>
-        ${c.estado === 'pendiente' && esProveedorUid(c.beneficiarioUid) ? `<button type="button" onclick="resolverComision('${escaparJsAttr(c.id)}','a_deuda')" class="w-full mt-2 py-1.5 rounded-lg bg-violet-500 hover:bg-violet-400 text-white text-[10px] font-black">🎁 A lo que le debo (es proveedor)</button>` : ''}
-        ${c.estado === 'acreditada' && esProveedorUid(c.beneficiarioUid) ? `<button type="button" onclick="pasarComisionADeuda('${escaparJsAttr(c.id)}')" class="w-full mt-2 py-1.5 rounded-lg bg-gray-700 hover:bg-gray-600 text-violet-200 text-[10px] font-black">↪ Pasar a lo que le debo (es proveedor)</button>` : ''}
-        ${c.estado === 'pendiente' ? `<div class="flex gap-1.5 mt-2"><button type="button" onclick="resolverComision('${escaparJsAttr(c.id)}','acreditada')" class="flex-1 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-black text-[10px] font-black">Acreditar al saldo</button><button type="button" onclick="resolverComision('${escaparJsAttr(c.id)}','pagada')" class="flex-1 py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 border border-gray-700 text-gray-200 text-[10px] font-bold">Pagada por fuera</button><button type="button" onclick="resolverComision('${escaparJsAttr(c.id)}','anulada')" class="px-2.5 py-1.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 text-red-300 text-[10px] font-bold">Anular</button></div>` : ''}
+        ${c.estado === 'pendiente' && esComisionDeProveedor(c) ? `<button type="button" onclick="resolverComision('${escaparJsAttr(c.id)}','a_deuda')" class="w-full mt-2 py-1.5 rounded-lg bg-violet-500 hover:bg-violet-400 text-white text-[10px] font-black">🎁 A lo que le debo (es proveedor)</button>` : ''}
+        ${c.estado === 'acreditada' && esComisionDeProveedor(c) ? `<button type="button" onclick="pasarComisionADeuda('${escaparJsAttr(c.id)}')" class="w-full mt-2 py-1.5 rounded-lg bg-gray-700 hover:bg-gray-600 text-violet-200 text-[10px] font-black">↪ Pasar a lo que le debo (es proveedor)</button>` : ''}
+        ${c.estado === 'pendiente' ? `<div class="flex gap-1.5 mt-2"><button type="button" onclick="resolverComision('${escaparJsAttr(c.id)}','acreditada')" class="${esComisionDeProveedor(c) ? 'hidden' : 'flex-1'} py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-black text-[10px] font-black">Acreditar al saldo</button><button type="button" onclick="resolverComision('${escaparJsAttr(c.id)}','pagada')" class="flex-1 py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 border border-gray-700 text-gray-200 text-[10px] font-bold">Pagada por fuera</button><button type="button" onclick="resolverComision('${escaparJsAttr(c.id)}','anulada')" class="px-2.5 py-1.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 text-red-300 text-[10px] font-bold">Anular</button></div>` : ''}
       </div>`).join('') : `<p class="text-[11px] text-gray-500 text-center py-3">${filtroRef === 'pendiente' ? 'No hay comisiones pendientes.' : 'Todavía no hay comisiones.'}</p>`;
     }
     async function resolverComision(id, estado) {
       if (!puedeSeccion('referidos')) return;
       const c = comisionesRef.find(x => x.id === id); if (!c || c.estado !== 'pendiente') return;
+      if (estado === 'acreditada' && esComisionDeProveedor(c)) estado = 'a_deuda';   // a un proveedor nunca se le suma al saldo
       const preg = { a_deuda: `¿Sumar ${formatoCOP(c.monto)} a lo que le debes a ${c.beneficiarioEmail} como proveedor? No cambia su saldo de la tienda.`, acreditada: `¿Sumar ${formatoCOP(c.monto)} al saldo de ${c.beneficiarioEmail}?`, pagada: `¿Marcar como pagada por fuera (${formatoCOP(c.monto)})? No cambia su saldo.`, anulada: '¿Anular esta comisión?' };
       if (!await confirmarModal(preg[estado], { textoAceptar: 'Sí' })) return;
       try {
@@ -20927,6 +20930,7 @@
 
     // ==================== NOVEDADES INTERNAS DEL PANEL (solo el equipo) ====================
     const ACTUALIZACIONES_INTERNAS = [
+      { fecha: '2026-10-20', titulo: '🎁 Premios de proveedores: siempre a lo que les debes', mensaje: 'Los premios por referido de un proveedor ya no llegan nunca a su saldo de la tienda: van a sus cuentas por pagar, aunque su ficha no tenga el rol de proveedor (basta con que haya subido lotes, tenga permiso de stock o sea una comisión por stock). En Referidos ya no aparece "Acreditar al saldo" para ellos.', ir: '' },
       { fecha: '2026-10-20', titulo: '📲 App oficial: descarga y quién la usa', mensaje: 'En la tienda sale el aviso "App oficial de Epic Streaming": en Android descarga el APK con 3 pasos, en PC la instala como programa y en iPhone explica cómo agregarla a inicio. Lo apagas o prendes al instante en Ajustes Generales. Cada cliente con sesión que entra desde la app queda con la insignia 📲 App en Clientes, y en Actividad ves cuántos la usan, cuántos la descargaron y quiénes dejaron de abrirla. Clientes con la app vuelven más y compran más rápido.', ir: '' },
       { fecha: '2026-10-19', titulo: '💱 Tienda en dólares para clientes de otros países', mensaje: 'Los clientes con WhatsApp de otro país ven la tienda en USD de entrada, con un botón COP/USD junto a su saldo (Bre-B los pasa a COP, Binance a USD). Los colombianos y quienes no tienen WhatsApp ven todo en COP, sin botón. Tú y tus moderadores también tienen el botón para revisar cómo se ve. El saldo se sigue guardando en pesos, y cada compra y recarga guarda la tasa del dólar de ese día. Tus clientes de otros países ven precios que entienden y compran con más confianza.', ir: '' },
       { fecha: '2026-10-19', titulo: '📋 Mis cuentas: vista compacta desde 2 cuentas', mensaje: 'Para todos los perfiles que compran (menos Netflix, que sigue con la contraseña oculta): las compras de 2 cuentas o más ya se ven en la lista compacta (Copiar todas / Reportar una cuenta), y "Ver una por una" queda abajo para reportar o asignar a un cliente. Tus Dealers copian y reparten más rápido.', ir: '' },
