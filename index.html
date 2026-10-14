@@ -4796,7 +4796,7 @@
       if (!chatId) return;
 
       const mensaje = 
-        `🚨 *¡NUEVA VENTA EN EPIC CHANNELS!* 🚨\n\n` +
+        `🚨 *¡NUEVA VENTA EN EPIC STREAMING!* 🚨\n\n` +
         `📦 *Producto:* ${datos.producto}\n` +
         `🔢 *Cantidad:* ${datos.cantidad}\n` +
         `🛡 *Garantía:* ${datos.garantia || '24 Horas'}\n` +
@@ -4960,8 +4960,8 @@
 
     // Respuestas originales. {minimo} y {minutos} se reemplazan con la configuración real de la recarga automática.
     const ASISTENTE_PREDETERMINADO = {
-      bienvenidaCliente: '¡Hola! 👋 Soy el asistente de Epic Channels. Te ayudo con lo más común y, si hace falta, te conecto con una persona. ¿Qué necesitas?',
-      bienvenidaProveedor: '¡Hola! 👋 Soy el asistente de Epic Channels. Te ayudo con tus envíos, pagos y reportes. ¿Qué necesitas?',
+      bienvenidaCliente: '¡Hola! 👋 Soy el asistente de Epic Streaming. Te ayudo con lo más común y, si hace falta, te conecto con una persona. ¿Qué necesitas?',
+      bienvenidaProveedor: '¡Hola! 👋 Soy el asistente de Epic Streaming. Te ayudo con tus envíos, pagos y reportes. ¿Qué necesitas?',
       noEntendi: 'No estoy seguro de haberte entendido. Elige una opción o habla con una persona:',
       saludoCliente: '👋 ¡Hola! ¿Necesitas ayuda?',
       saludoProveedor: '👋 ¿Dudas sobre tus envíos o pagos?',
@@ -5020,7 +5020,9 @@
     // Revisa lo guardado: lo que venga mal formado se descarta y nunca rompe el asistente
     function asistenteSanear(raw) {
       if (!raw || typeof raw !== 'object' || !Array.isArray(raw.temas)) return null;
-      const txt = (v, max) => String(v == null ? '' : v).replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f]/g, '').slice(0, max).trim();
+      // También pasa el nombre y el dominio viejos (Epic Channels / epicchannels.quest) a los nuevos, aunque estén guardados en tus respuestas
+      const marca = v => { let t = String(v == null ? '' : v).replace(/Epic Channels/g, 'Epic Streaming').replace(/EPIC CHANNELS/g, 'EPIC STREAMING'); try { t = t.replace(/epicchannels\.quest/gi, dominioActual()); } catch (e) { /* nada */ } return t; };
+      const txt = (v, max) => marca(v).replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f]/g, '').slice(0, max).trim();
       const def = ASISTENTE_PREDETERMINADO;
       const ids = new Set();
       const temas = [];
@@ -5407,7 +5409,7 @@
 
     // ==================== MENSAJE DE STOCK (TELEGRAM) ====================
     const PLANTILLA_STOCK_BASE =
-`📊 *ESTADO DE INVENTARIO - EPIC CHANNELS* 📊
+`📊 *ESTADO DE INVENTARIO - EPIC STREAMING* 📊
 
 {productos}
 
@@ -5453,13 +5455,13 @@
         });
       });
 
-      const tpl = String(cfg.plantillaStockTelegram || '').trim() || PLANTILLA_STOCK_BASE;
+      const tpl = (String(cfg.plantillaStockTelegram || '').trim() || PLANTILLA_STOCK_BASE).replace(/EPIC CHANNELS/g, 'EPIC STREAMING').replace(/Epic Channels/g, 'Epic Streaming');
       const texto = reemplazarVariablesPlantilla(tpl, {
         productos: lineas.join('\n'),
         total_productos: lista.length,
         total_cuentas: lista.reduce((s, p) => s + (p.stock || 0), 0),
         fecha: new Date().toLocaleString('es-CO'),
-        tienda: cfg.stockUrlTienda || ('https://' + dominioActual() + '/')
+        tienda: (cfg.stockUrlTienda && !/epicchannels\.quest/i.test(cfg.stockUrlTienda)) ? cfg.stockUrlTienda : ('https://' + dominioActual() + '/')
       }).replace(/\n{3,}/g, '\n\n').trim();
 
       return { texto, cantidad: lista.length, vipExcluidos };
@@ -16069,7 +16071,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-20e';
+    const VERSION_PAGINA = '2026-10-20f';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261020_app', fecha: '2026-10-20', titulo: 'App oficial de Epic Streaming 📲', mensaje: 'Ya tenemos **app oficial**: en la tienda toca **Descargar** (Android), **Instalar** (PC) o **Agregar** (iPhone). Abre más rápido, a pantalla completa, con tu misma cuenta y **se actualiza sola**.' },
       { id: 'act_20261019_miscuentas', fecha: '2026-10-19', titulo: 'Tus cuentas más ordenadas 📋', mensaje: 'En **Mis cuentas**, las compras de 2 cuentas o más se ven en una lista compacta: **Copiar todas** de un toque y **Reportar una cuenta** pegando su correo. Si quieres verlas una por una, toca **Ver una por una**.' },
@@ -20941,6 +20943,7 @@
 
     // ==================== NOVEDADES INTERNAS DEL PANEL (solo el equipo) ====================
     const ACTUALIZACIONES_INTERNAS = [
+      { fecha: '2026-10-20', titulo: '🏷 Todo dice Epic Streaming', mensaje: 'El "Estado de inventario" ya sale como **EPIC STREAMING** con el enlace **epicstreaming.vip** (aunque tengas guardado el enlace viejo), el asistente se presenta como **asistente de Epic Streaming** y los avisos de venta dicen Epic Streaming. Si en tus respuestas del asistente o en la plantilla quedó "Epic Channels" o epicchannels.quest, se cambia solo.', ir: '' },
       { fecha: '2026-10-20', titulo: '🔄 Tus correos de dominio se actualizan solos', mensaje: 'La lista de tus correos de dominio se pone al día sola cada 45 segundos mientras la tienes abierta, y al volver a la pestaña. Cuando llega la bienvenida de Prime, el correo pasa de "esperando bienvenida" a "en stock" sin recargar la página.', ir: '' },
       { fecha: '2026-10-20', titulo: '🎁 Premios de proveedores: siempre a lo que les debes', mensaje: 'Los premios por referido de un proveedor ya no llegan nunca a su saldo de la tienda: van a sus cuentas por pagar, aunque su ficha no tenga el rol de proveedor (basta con que haya subido lotes, tenga permiso de stock o sea una comisión por stock). En Referidos ya no aparece "Acreditar al saldo" para ellos.', ir: '' },
       { fecha: '2026-10-20', titulo: '📲 App oficial: descarga y quién la usa', mensaje: 'En la tienda sale el aviso "App oficial de Epic Streaming": en Android descarga el APK con 3 pasos, en PC la instala como programa y en iPhone explica cómo agregarla a inicio. Lo apagas o prendes al instante en Ajustes Generales. Cada cliente con sesión que entra desde la app queda con la insignia 📲 App en Clientes, y en Actividad ves cuántos la usan, cuántos la descargaron y quiénes dejaron de abrirla. Clientes con la app vuelven más y compran más rápido.', ir: '' },
@@ -24237,7 +24240,7 @@
       return { cuentas: legado, stock: legado.length || stockPublico };
     }
 
-    const VERSION_SERVIDOR_NECESARIA = '2026-10-20b';   // la versión del servidor que necesita esta página
+    const VERSION_SERVIDOR_NECESARIA = '2026-10-20c';   // la versión del servidor que necesita esta página
     async function llamarBackend(accion, datos) {
       if (mantenimientoActivo() && /^(comprar|recarga|renovar|carrito|preorden|combo)/.test(String(accion || ''))) { avisoMantenimiento(''); throw new Error('Estamos en mantenimiento. Compra por WhatsApp mientras tanto.'); }
       if (modoPruebaCliente) { const rs = backendSimulado(accion, datos || {}); if (rs) return rs; }
