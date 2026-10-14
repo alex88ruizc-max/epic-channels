@@ -642,6 +642,7 @@
           <input id="provDomBuscar" type="email" inputmode="email" autocomplete="off" placeholder="Pega un correo tuyo" class="flex-1 min-w-0 bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-[12px] text-white font-mono" onkeydown="if(event.key==='Enter'){event.preventDefault();provDominioBuscar();}">
           <button type="button" onclick="provDominioBuscar()" class="shrink-0 px-3 py-2 rounded-xl bg-gray-700 hover:bg-gray-600 text-white font-bold text-[11px]"><i class="fa-solid fa-key mr-1"></i>Buscar código</button>
         </div>
+        <div id="provAutoResumen" class="hidden mt-3 p-2.5 rounded-xl bg-emerald-500/15 border border-emerald-400/50 text-[12px] text-emerald-100"></div>
         <div id="provDominioLista" class="mt-3 space-y-2"></div>
       </div>
       <div id="provCorreosCaja" class="bg-gray-900 border border-violet-500/40 rounded-2xl overflow-hidden">
@@ -11457,8 +11458,14 @@
     // 📧 Correos de tu dominio para el proveedor: uno a la vez, con "Ver código" solo de sus correos
     var provDominioCorreos = [];
     function pintarProvDominio() {
+      try {   // 📥 contador de lo que se subió solo hoy
+        const caja = document.getElementById('provAutoResumen'), hoy = new Date().toDateString();
+        const hoyL = provDominioCorreos.filter(c => c.autoSubidaEl && new Date(c.autoSubidaEl).toDateString() === hoy);
+        if (caja) { caja.classList.toggle('hidden', !hoyL.length); const prod = [...new Set(hoyL.map(c => c.autoProducto).filter(Boolean))].join(', ');
+          caja.innerHTML = hoyL.length ? `📥 <b>Hoy llevas ${hoyL.length} ${hoyL.length === 1 ? 'cuenta subida' : 'cuentas subidas'} automáticamente</b>${prod ? ' a ' + escaparHtml(prod) : ''}.<br><span class="text-[10px] text-emerald-200/80">Llegó la bienvenida de Prime y se subieron solas a tu lote del día: quedan en revisión para que te las aprueben. No tienes que subirlas.</span>` : ''; }
+      } catch (e) { /* nada */ }
       const l = document.getElementById('provDominioLista'); if (!l) return;
-      l.innerHTML = provDominioCorreos.length ? provDominioCorreos.slice(0, 8).map((c, i) => c.primeActivoEl ? `<div class="p-2.5 rounded-xl bg-emerald-500/15 border border-emerald-400/60 flex items-center gap-2"><span class="font-mono text-[12px] text-white truncate flex-1">${escaparHtml(c.correo)}</span><span class="text-[10px] font-black text-emerald-300 shrink-0">✅ Prime activo · súbela</span><button type="button" onclick="copiarTexto('${escaparHtml(c.correo)}','Correo copiado')" class="px-2 py-1 rounded-lg bg-gray-700 text-gray-200 text-[10px] font-bold"><i class="fa-solid fa-copy"></i></button></div>` : `<div class="p-2.5 rounded-xl bg-gray-800/70 border ${c.codigoVistoEl ? 'border-gray-700' : 'border-emerald-500/40'}">
+      l.innerHTML = provDominioCorreos.length ? provDominioCorreos.slice(0, 8).map((c, i) => c.primeActivoEl ? `<div class="p-2.5 rounded-xl bg-emerald-500/15 border border-emerald-400/60 flex items-center gap-2"><span class="font-mono text-[12px] text-white truncate flex-1">${escaparHtml(c.correo)}</span><span class="text-[10px] font-black text-emerald-300 shrink-0">${c.autoSubidaEl ? '✅ Subida sola · en revisión' : '✅ Prime activo · súbela'}</span><button type="button" onclick="copiarTexto('${escaparHtml(c.correo)}','Correo copiado')" class="px-2 py-1 rounded-lg bg-gray-700 text-gray-200 text-[10px] font-bold"><i class="fa-solid fa-copy"></i></button></div>` : `<div class="p-2.5 rounded-xl bg-gray-800/70 border ${c.codigoVistoEl ? 'border-gray-700' : 'border-emerald-500/40'}">
           <div class="flex items-center gap-2"><span class="font-mono text-[12px] text-white truncate flex-1">${escaparHtml(c.correo)}</span>
             <button type="button" onclick="copiarTexto('${escaparHtml(c.correo)}','Correo copiado')" class="px-2 py-1 rounded-lg bg-gray-700 text-gray-200 text-[10px] font-bold"><i class="fa-solid fa-copy"></i></button>
             <button type="button" onclick="provDominioCodigo(${i})" class="px-2.5 py-1 rounded-lg bg-emerald-500 text-black text-[10px] font-black">🔑 Ver código</button></div>
@@ -15930,7 +15937,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-19r';
+    const VERSION_PAGINA = '2026-10-19s';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261010_wacompra', fecha: '2026-10-10', titulo: 'Compra por WhatsApp 💬', mensaje: 'Ahora puedes **comprar con tu saldo desde nuestro WhatsApp**. Ve a tu perfil → **Mis datos → Comprar por WhatsApp**, vincula tu chat con el código y pide la autorización.' },
       { id: 'act_20261010_vista2', fecha: '2026-10-10', titulo: 'Nueva vista de la tienda ▦', mensaje: 'Ahora puedes ver los productos **en 2 columnas**: más productos en tu pantalla, con las **promos resaltadas** (🔥 campaña, ⚡ relámpago, 🎁 regalo). Toca uno y se abre su ficha para comprar. Cambia de vista con los íconos ☰ / ▦ arriba de las categorías.' },
@@ -20778,6 +20785,7 @@
 
     // ==================== NOVEDADES INTERNAS DEL PANEL (solo el equipo) ====================
     const ACTUALIZACIONES_INTERNAS = [
+      { fecha: '2026-10-19', titulo: '📥 Proveedores: subida automática con la bienvenida de Prime', mensaje: 'Cuando a un correo de dominio de un proveedor le llega "Bienvenido a Prime", la cuenta se sube sola a su lote del día (uno por proveedor y día) en el stock que le habilitaste en su ficha. Tú la apruebas en Aprobar lotes como siempre. El proveedor ve arriba: "Hoy llevas X cuentas subidas automáticamente".', ir: '' },
       { fecha: '2026-10-19', titulo: '📦 Sobre pedido: entrega completa y precios en USD', mensaje: 'Cada pedido sobre pedido se entrega COMPLETO de una vez (un mensaje y una lista). Si pasan 4 horas sin completarse, recibe lo que haya en bloques de 5 (Ajustes Generales). En Mis cuentas el pedido sale en una tarjeta con las nuevas marcadas NEW. Y la tienda muestra el precio pequeño en USD (misma tasa del bot).', ir: '' },
       { fecha: '2026-10-19', titulo: '📦 Venta manual con sobre pedido y correos libres', mensaje: 'En Venta manual (WhatsApp): escribe el correo de la cuenta del cliente y la venta le queda en Mis cuentas. Si pide más de lo que hay, marca "sobre pedido": se entrega lo que hay y el resto queda en su fila. Y en la lista de productos salen tus 🆓 correos libres para asignarlos a un cliente (eliges como qué producto se registra).', ir: '' },
       { fecha: '2026-10-19', titulo: '📧 Correos de tu dominio con destino', mensaje: 'En Cargar Cuentas, al generar un correo eliges a dónde va: un producto Prime (sube solo con "Bienvenido a Prime"), otro producto como Amazon Free (toca Confirmar cuando la crees y sube al stock) o Libre (no se sube; queda para asignarlo a un cliente). Debajo ves tus correos con su código (🔑) y su estado. Todos se vigilan por suspensión.', ir: '' },
@@ -24035,7 +24043,7 @@
       return { cuentas: legado, stock: legado.length || stockPublico };
     }
 
-    const VERSION_SERVIDOR_NECESARIA = '2026-10-19l';   // la versión del servidor que necesita esta página
+    const VERSION_SERVIDOR_NECESARIA = '2026-10-19m';   // la versión del servidor que necesita esta página
     async function llamarBackend(accion, datos) {
       if (mantenimientoActivo() && /^(comprar|recarga|renovar|carrito|preorden|combo)/.test(String(accion || ''))) { avisoMantenimiento(''); throw new Error('Estamos en mantenimiento. Compra por WhatsApp mientras tanto.'); }
       if (modoPruebaCliente) { const rs = backendSimulado(accion, datos || {}); if (rs) return rs; }
