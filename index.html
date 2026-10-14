@@ -970,13 +970,18 @@
               <i class="fa-solid fa-shield-halved text-emerald-400"></i> Administración General
             </h2>
           </div>
-          <div class="bg-gray-900 border border-emerald-500/40 px-3.5 py-1.5 rounded-2xl flex items-center gap-2.5 shadow-lg">
-            <div class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></div>
-            <div>
-              <span class="text-[9px] text-gray-400 block font-semibold leading-none uppercase">Recaudado Hoy</span>
-              <span id="txtAdminRecaudadoHoyEnVivo" class="text-sm font-black text-emerald-400 leading-tight">$0 COP <span class="text-xs text-gray-400 font-semibold">(0 cuentas)</span></span>
+          <div class="grid grid-cols-2 gap-2 w-full md:w-auto">
+            <div class="bg-gray-900 border border-emerald-500/40 px-3 py-2 rounded-2xl shadow-lg min-w-0">
+              <span class="text-[9px] text-gray-400 block font-semibold leading-none uppercase flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>Vendido hoy</span>
+              <span id="txtAdminRecaudadoHoyEnVivo" class="block text-sm font-black text-emerald-400 leading-tight mt-1">$0 COP <span class="text-xs text-gray-400 font-semibold">(0 cuentas)</span></span>
+              <button type="button" onclick="verVentasHoy()" class="mt-1.5 w-full py-1 rounded-lg bg-emerald-500/20 border border-emerald-500/40 text-emerald-200 text-[11px] font-black hover:bg-emerald-500/30">Ver ventas</button>
             </div>
-            <button type="button" onclick="verVentasHoy()" class="ml-1 px-2.5 py-1 rounded-lg bg-emerald-500/20 border border-emerald-500/40 text-emerald-200 text-[11px] font-black hover:bg-emerald-500/30">Ver</button>
+            <div class="bg-gray-900 border border-sky-500/40 px-3 py-2 rounded-2xl shadow-lg min-w-0">
+              <span class="text-[9px] text-gray-400 block font-semibold leading-none uppercase flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-sky-400 animate-pulse"></span>Recargas hoy</span>
+              <span id="txtAdminRecargasHoy" class="block text-sm font-black text-sky-400 leading-tight mt-1">$0 COP</span>
+              <span id="txtAdminRecargasHoyDet" class="block text-[10px] text-gray-400 font-semibold">0 recargas</span>
+              <button type="button" onclick="verRecargasHoy()" class="mt-1.5 w-full py-1 rounded-lg bg-sky-500/20 border border-sky-500/40 text-sky-200 text-[11px] font-black hover:bg-sky-500/30">Ver recargas</button>
+            </div>
           </div>
         </div>
 
@@ -5717,7 +5722,36 @@
       if (regalos.length) msg += `\n\n————————\n🎁 REGALOS (no cuentan en lo recaudado)\n\n` + regalos.map(linea).join('\n\n');
       abrirDialogo({ tipo: 'info', titulo: '🧾 Ventas de hoy', mensaje: msg, textoAceptar: 'Cerrar' });
     }
+    // 💵 Recargas de hoy: solo dinero que entró (aprobadas). No cuenta pendientes, rechazadas, regalos, bonos ni premios.
+    var recargasHoyCache = [], unsubRecargasHoy = null;
+    function esRecargaDeDinero(r) { return r.estado === 'aprobado' && (Number(r.monto) || 0) > 0 && !/regalo|bonific|cortes[ií]a|premio/i.test(String(r.metodo || '') + ' ' + String(r.origen || '')) && r.esRegalo !== true; }
+    function escucharRecargasHoyEnVivo() {
+      if (unsubRecargasHoy) return;
+      try {
+        const inicioHoy = new Date(); inicioHoy.setHours(0, 0, 0, 0);
+        unsubRecargasHoy = db.collection('recargas').where('fecha', '>=', inicioHoy.toISOString()).onSnapshot(snap => {
+          const hoyStr = obtenerFechaLocalStr(); const lista = [];
+          snap.forEach(doc => { const r = doc.data() || {}; const f = new Date(r.fecha); if (isNaN(f.getTime()) || obtenerFechaLocalStr(f) !== hoyStr || !esRecargaDeDinero(r)) return; lista.push({ id: doc.id, r: r, fecha: f, auto: /autom/i.test(String(r.metodo || '')) }); });
+          recargasHoyCache = lista.sort((a, b) => b.fecha - a.fecha);
+          const tot = lista.reduce((a, x) => a + (Number(x.r.monto) || 0), 0), man = lista.filter(x => !x.auto).length;
+          const t = document.getElementById('txtAdminRecargasHoy'); if (t) t.textContent = '$' + tot.toLocaleString('es-CO') + ' COP';
+          const d = document.getElementById('txtAdminRecargasHoyDet'); if (d) d.textContent = lista.length + (lista.length === 1 ? ' recarga' : ' recargas') + (man ? ' · ' + man + (man === 1 ? ' manual' : ' manuales') : '');
+        }, () => { unsubRecargasHoy = null; });
+        // A la medianoche vuelve a empezar desde cero
+        const man = new Date(); man.setHours(24, 0, 5, 0);
+        setTimeout(() => { try { if (unsubRecargasHoy) unsubRecargasHoy(); } catch (e) { /* nada */ } unsubRecargasHoy = null; escucharRecargasHoyEnVivo(); }, man - Date.now());
+      } catch (e) { /* nunca afecta el panel */ }
+    }
+    function verRecargasHoy() {
+      const L = recargasHoyCache || [];
+      const hora = d => d.toLocaleTimeString('es-CO', { hour: 'numeric', minute: '2-digit' });
+      const tot = L.reduce((a, x) => a + (Number(x.r.monto) || 0), 0);
+      const linea = x => `🕒 ${hora(x.fecha)} · $${(Number(x.r.monto) || 0).toLocaleString('es-CO')}${x.r.usdt ? ' (' + x.r.usdt + ' USDT)' : ''}\n👤 ${x.r.usuarioEmail || 'Cliente'}\n${x.auto ? '⚡' : '✍️'} ${x.r.metodo || 'Manual'}${Number(x.r.bono) > 0 ? ' · 🎁 bono $' + Number(x.r.bono).toLocaleString('es-CO') + ' (no suma)' : ''}`;
+      const msg = L.length ? `💵 ${L.length} ${L.length === 1 ? 'recarga' : 'recargas'} · $${tot.toLocaleString('es-CO')}\n\n` + L.map(linea).join('\n\n') : 'Todavía no hay recargas aprobadas hoy.';
+      abrirDialogo({ tipo: 'info', titulo: '💵 Recargas de hoy', mensaje: msg, textoAceptar: 'Cerrar' });
+    }
     function escucharTotalRecaudadoHoyEnVivo() {
+      try { escucharRecargasHoyEnVivo(); } catch (e) { /* nada */ }
       // Solo las compras de hoy (antes se leía todo el historial en cada ingreso del administrador)
       const inicioHoy = new Date(); inicioHoy.setHours(0, 0, 0, 0);
       db.collection('compras').where('fecha', '>=', inicioHoy.toISOString()).onSnapshot(snap => {
@@ -16087,7 +16121,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-20h';
+    const VERSION_PAGINA = '2026-10-20i';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261020_ajuste', fecha: '2026-10-20', titulo: 'Se ve mejor en iPhone 📱', mensaje: 'La tienda ahora **se ajusta siempre a tu pantalla**: ya no se agranda al escribir ni se corre hacia los lados. Si la tienes abierta, **recarga la página** para verla así.' },
       { id: 'act_20261020_app', fecha: '2026-10-20', titulo: 'App oficial de Epic Streaming 📲', mensaje: 'Ya tenemos **app oficial**: en la tienda toca **Descargar** (Android), **Instalar** (PC) o **Agregar** (iPhone). Abre más rápido, a pantalla completa, con tu misma cuenta y **se actualiza sola**.' },
@@ -20960,6 +20994,7 @@
 
     // ==================== NOVEDADES INTERNAS DEL PANEL (solo el equipo) ====================
     const ACTUALIZACIONES_INTERNAS = [
+      { fecha: '2026-10-20', titulo: '💵 Recargas de hoy junto a las ventas', mensaje: 'Arriba del panel ahora ves dos cifras lado a lado: **Vendido hoy** (ventas y cuentas, como antes) y **Recargas hoy**: el dinero que entró hoy por recargas aprobadas (Bre-B, Binance y tus cargas manuales), con cuántas fueron y cuántas manuales. "Ver recargas" muestra cada una con la hora, el cliente y el método. No cuenta pendientes, rechazadas, regalos, bonos ni premios.', ir: '' },
       { fecha: '2026-10-20', titulo: '📱 La página se ajusta a la pantalla', mensaje: 'En iPhone la página ya no se agranda al tocar un campo de texto ni se corre hacia los lados: siempre queda ajustada al ancho de la pantalla, en la tienda y en tu panel. El zoom con dos dedos sigue funcionando.', ir: '' },
       { fecha: '2026-10-20', titulo: '📲 La app también para visitantes', mensaje: 'El aviso "App oficial de Epic Streaming" ahora aparece también en la pantalla de entrada (Portal privado), para quien todavía no inicia sesión: en iPhone explica cómo agregarla a inicio y en Android descarga el APK. El pie de página y el título de la pestaña ya dicen Epic Streaming.', ir: '' },
       { fecha: '2026-10-20', titulo: '🏷 Todo dice Epic Streaming', mensaje: 'El "Estado de inventario" ya sale como **EPIC STREAMING** con el enlace **epicstreaming.vip** (aunque tengas guardado el enlace viejo), el asistente se presenta como **asistente de Epic Streaming** y los avisos de venta dicen Epic Streaming. Si en tus respuestas del asistente o en la plantilla quedó "Epic Channels" o epicchannels.quest, se cambia solo.', ir: '' },
