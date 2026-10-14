@@ -979,7 +979,7 @@
             <div class="bg-gray-900 border border-sky-500/40 px-3 py-2 rounded-2xl shadow-lg min-w-0">
               <span class="text-[9px] text-gray-400 block font-semibold leading-none uppercase flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-sky-400 animate-pulse"></span>Recargas hoy</span>
               <span id="txtAdminRecargasHoy" class="block text-sm font-black text-sky-400 leading-tight mt-1">$0 COP</span>
-              <span id="txtAdminRecargasHoyDet" class="block text-[10px] text-gray-400 font-semibold">0 recargas</span>
+              <span id="txtAdminRecargasHoyDet" class="hidden"></span>
               <button type="button" onclick="verRecargasHoy()" class="mt-1.5 w-full py-1 rounded-lg bg-sky-500/20 border border-sky-500/40 text-sky-200 text-[11px] font-black hover:bg-sky-500/30">Ver recargas</button>
             </div>
           </div>
@@ -5747,8 +5747,9 @@
       const hora = d => d.toLocaleTimeString('es-CO', { hour: 'numeric', minute: '2-digit' });
       const tot = L.reduce((a, x) => a + (Number(x.r.monto) || 0), 0);
       const linea = x => `🕒 ${hora(x.fecha)} · $${(Number(x.r.monto) || 0).toLocaleString('es-CO')}${x.r.usdt ? ' (' + x.r.usdt + ' USDT)' : ''}\n👤 ${x.r.usuarioEmail || 'Cliente'}\n${x.auto ? '⚡' : '✍️'} ${x.r.metodo || 'Manual'}${Number(x.r.bono) > 0 ? ' · 🎁 bono $' + Number(x.r.bono).toLocaleString('es-CO') + ' (no suma)' : ''}`;
-      const msg = L.length ? `💵 ${L.length} ${L.length === 1 ? 'recarga' : 'recargas'} · $${tot.toLocaleString('es-CO')}\n\n` + L.map(linea).join('\n\n') : 'Todavía no hay recargas aprobadas hoy.';
-      abrirDialogo({ tipo: 'info', titulo: '💵 Recargas de hoy', mensaje: msg, textoAceptar: 'Cerrar' });
+      const man = L.filter(x => !x.auto).length;
+      const msg = L.length ? `💰 Total: $${tot.toLocaleString('es-CO')} COP\n⚡ ${L.length - man} automáticas · ✍️ ${man} manuales\n\n` + L.map(linea).join('\n\n') : 'Todavía no hay recargas aprobadas hoy.';
+      abrirDialogo({ tipo: 'info', titulo: '💵 Recargas de hoy · ' + L.length + (L.length === 1 ? ' recarga' : ' recargas'), mensaje: msg, textoAceptar: 'Cerrar' });
     }
     function escucharTotalRecaudadoHoyEnVivo() {
       try { escucharRecargasHoyEnVivo(); } catch (e) { /* nada */ }
@@ -16121,7 +16122,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-20i';
+    const VERSION_PAGINA = '2026-10-20j';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261020_ajuste', fecha: '2026-10-20', titulo: 'Se ve mejor en iPhone 📱', mensaje: 'La tienda ahora **se ajusta siempre a tu pantalla**: ya no se agranda al escribir ni se corre hacia los lados. Si la tienes abierta, **recarga la página** para verla así.' },
       { id: 'act_20261020_app', fecha: '2026-10-20', titulo: 'App oficial de Epic Streaming 📲', mensaje: 'Ya tenemos **app oficial**: en la tienda toca **Descargar** (Android), **Instalar** (PC) o **Agregar** (iPhone). Abre más rápido, a pantalla completa, con tu misma cuenta y **se actualiza sola**.' },
