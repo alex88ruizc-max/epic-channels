@@ -6,6 +6,8 @@ self.addEventListener('activate', (e) => {
 });
 self.addEventListener('fetch', (e) => {
   if (e.request.mode !== 'navigate') return;   // solo la página; Firebase, imágenes y el servidor van directo
+  const ruta = new URL(e.request.url).pathname;
+  if (/\.[a-z0-9]+$/i.test(ruta) && !/\.html?$/i.test(ruta)) return;   // archivos (APK, imágenes, json): el navegador los descarga directo
   e.respondWith(fetch(e.request).catch(() => new Response(
     '<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">' +
     '<body style="background:#000;color:#fff;font-family:sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;text-align:center">' +
