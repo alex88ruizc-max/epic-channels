@@ -15969,7 +15969,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-19t';
+    const VERSION_PAGINA = '2026-10-19v';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261010_wacompra', fecha: '2026-10-10', titulo: 'Compra por WhatsApp 💬', mensaje: 'Ahora puedes **comprar con tu saldo desde nuestro WhatsApp**. Ve a tu perfil → **Mis datos → Comprar por WhatsApp**, vincula tu chat con el código y pide la autorización.' },
       { id: 'act_20261010_vista2', fecha: '2026-10-10', titulo: 'Nueva vista de la tienda ▦', mensaje: 'Ahora puedes ver los productos **en 2 columnas**: más productos en tu pantalla, con las **promos resaltadas** (🔥 campaña, ⚡ relámpago, 🎁 regalo). Toca uno y se abre su ficha para comprar. Cambia de vista con los íconos ☰ / ▦ arriba de las categorías.' },
@@ -17957,7 +17957,7 @@
       const prime = esProductoPrime(c);
       const clavePlat = c.claveAcceso && (prime || String(c.claveAcceso) !== obtenerClaveMaster()) ? c.claveAcceso : '';
       return `<div class="rounded-xl bg-gray-950/70 border border-gray-700/60 overflow-hidden">
-        <div class="flex items-center justify-between gap-2 px-3 py-2 border-b border-gray-800"><p class="text-[11px] font-black text-white">${unicas.length} cuentas <span class="text-gray-500 font-normal">· correo:contraseña del correo</span></p>${clavePlat ? `<span class="text-[10px] text-sky-200">Contraseña plataforma: <b class="font-mono text-white">${escaparHtml(clavePlat)}</b></span>` : ''}</div>
+        <div class="flex items-center justify-between gap-2 px-3 py-2 border-b border-gray-800"><p class="text-[11px] font-black text-white">${unicas.length} cuentas <span class="text-gray-500 font-normal">· ${unicas.some(l => /@epicstreaming\.vip/i.test(l)) ? 'correo:contraseña' : 'correo:contraseña del correo'}</span></p>${clavePlat ? `<span class="text-[10px] text-sky-200">Contraseña plataforma: <b class="font-mono text-white">${escaparHtml(clavePlat)}</b></span>` : ''}</div>
         <pre class="px-3 py-2 max-h-56 overflow-auto text-[11px] leading-relaxed text-gray-200 font-mono whitespace-pre select-all">${escaparHtml(unicas.join('\n'))}</pre>
         <div class="grid grid-cols-2 gap-2 p-2 border-t border-gray-800">
           <button type="button" onclick="copiarLoteGrande(${idx})" class="py-2 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-black font-black text-[11px]"><i class="fa-solid fa-copy mr-1"></i>Copiar todas</button>
@@ -20821,6 +20821,7 @@
 
     // ==================== NOVEDADES INTERNAS DEL PANEL (solo el equipo) ====================
     const ACTUALIZACIONES_INTERNAS = [
+      { fecha: '2026-10-19', titulo: '📋 Mis cuentas: vista compacta desde 2 cuentas', mensaje: 'Para todos los perfiles que compran (menos Netflix, que sigue con la contraseña oculta): las compras de 2 cuentas o más ya se ven en la lista compacta (Copiar todas / Reportar una cuenta), y "Ver una por una" queda abajo para reportar o asignar a un cliente. Tus Dealers copian y reparten más rápido.', ir: '' },
       { fecha: '2026-10-19', titulo: '📥 Proveedores: subida automática con la bienvenida de Prime', mensaje: 'Cuando a un correo de dominio de un proveedor le llega "Bienvenido a Prime", la cuenta se sube sola a su lote del día (uno por proveedor y día) en el stock que le habilitaste en su ficha. Tú la apruebas en Aprobar lotes como siempre. El proveedor ve arriba: "Hoy llevas X cuentas subidas automáticamente".', ir: '' },
       { fecha: '2026-10-19', titulo: '📦 Sobre pedido: entrega completa y precios en USD', mensaje: 'Cada pedido sobre pedido se entrega COMPLETO de una vez (un mensaje y una lista). Si pasan 4 horas sin completarse, recibe lo que haya en bloques de 5 (Ajustes Generales). En Mis cuentas el pedido sale en una tarjeta con las nuevas marcadas NEW. Y la tienda muestra el precio pequeño en USD (misma tasa del bot).', ir: '' },
       { fecha: '2026-10-19', titulo: '📦 Venta manual con sobre pedido y correos libres', mensaje: 'En Venta manual (WhatsApp): escribe el correo de la cuenta del cliente y la venta le queda en Mis cuentas. Si pide más de lo que hay, marca "sobre pedido": se entrega lo que hay y el resto queda en su fila. Y en la lista de productos salen tus 🆓 correos libres para asignarlos a un cliente (eliges como qué producto se registra).', ir: '' },
@@ -22285,7 +22286,7 @@
 
 
     // ==================== COMPROBAR TODO (estado de la página, servidor, reglas y tareas) ====================
-    const VERSION_REGLAS_ESPERADA = '2026-10-15a';
+    const VERSION_REGLAS_ESPERADA = '2026-10-19a';
     async function abrirComprobarTodo() {
       let m = document.getElementById('modalComprobarTodo');
       if (!m) { m = document.createElement('div'); m.id = 'modalComprobarTodo'; m.className = 'fixed inset-0 z-[96] hidden items-center justify-center p-4 bg-black/75 backdrop-blur-sm'; m.onclick = ev => { if (ev.target === m) cerrarComprobarTodo(); }; document.body.appendChild(m); }
@@ -23873,7 +23874,7 @@
               }).join('')
             : '<div class="text-gray-500">Sin credenciales registradas.</div>';
 
-          const lineasVista = lineas.length >= 6 ? htmlLoteGrande(c, idx, lineas) + `<details class="mt-2"><summary class="cursor-pointer text-[11px] text-gray-400 select-none">Ver una por una (para reportar o entregar)</summary><div class="mt-2">${lineasHtml}</div></details>` : lineasHtml;
+          const lineasVista = (lineas.length >= 2 && !esNfC) ? htmlLoteGrande(c, idx, lineas) + `<details class="mt-2"><summary class="cursor-pointer text-[11px] text-gray-400 select-none">Ver una por una (para reportar o entregar)</summary><div class="mt-2">${lineasHtml}</div></details>` : lineasHtml;
 
           const estadoGar = estadoGarantiaCompra(c).estado;
 
