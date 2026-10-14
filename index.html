@@ -6332,6 +6332,44 @@
       cargarPlantillasEntregaEnForm();
       cargarPlantillaStockEnForm();
       renderizarNovedadesAdmin();
+      try { hacerAjustesPlegables(); } catch (e) { /* nada */ }
+    }
+
+    // 🪗 Convierte cada sección del formulario de Ajustes en un bloque plegable (como "Modo mantenimiento").
+    function hacerAjustesPlegables() {
+      const form = document.querySelector('form[onsubmit="guardarAjustesGeneralesAdmin(event)"]');
+      if (!form || form.dataset.plegable === '1') return;
+      form.dataset.plegable = '1';
+      // Cada tarjeta directa del form que contiene un <h4> se vuelve plegable.
+      Array.from(form.children).forEach(function (card) {
+        if (card.tagName !== 'DIV') return;
+        const h4 = card.querySelector(':scope > h4, :scope > div > h4, :scope > div > div > h4');
+        if (!h4) return;
+        // el contenido a ocultar: todo lo de la tarjeta menos el encabezado
+        const cab = h4.closest('div') === card ? h4 : h4.parentElement;
+        const cuerpo = document.createElement('div');
+        cuerpo.className = 'mt-3 space-y-3';
+        // mover todo lo que viene después del encabezado al cuerpo
+        let n = cab.nextSibling;
+        while (n) { const sig = n.nextSibling; cuerpo.appendChild(n); n = sig; }
+        // flecha
+        const flecha = document.createElement('i');
+        flecha.className = 'fa-solid fa-chevron-down text-gray-400 text-xs transition-transform shrink-0';
+        // fila de encabezado clicable
+        const fila = document.createElement('div');
+        fila.className = 'flex items-center justify-between gap-3 cursor-pointer select-none';
+        cab.parentNode.insertBefore(fila, cab);
+        fila.appendChild(cab);
+        fila.appendChild(flecha);
+        card.appendChild(cuerpo);
+        cuerpo.style.display = 'none';   // cerrado por defecto
+        fila.addEventListener('click', function (ev) {
+          if (ev.target.closest('input, textarea, button, select, a, label')) return;
+          const abierto = cuerpo.style.display !== 'none';
+          cuerpo.style.display = abierto ? 'none' : '';
+          flecha.style.transform = abierto ? '' : 'rotate(180deg)';
+        });
+      });
     }
 
     async function guardarAjustesGeneralesAdmin(e) {
@@ -16314,7 +16352,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-20t';
+    const VERSION_PAGINA = '2026-10-20u';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261020_ajuste', fecha: '2026-10-20', titulo: 'Se ve mejor en iPhone 📱', mensaje: 'La tienda ahora **se ajusta siempre a tu pantalla**: ya no se agranda al escribir ni se corre hacia los lados. Si la tienes abierta, **recarga la página** para verla así.' },
       { id: 'act_20261020_app', fecha: '2026-10-20', titulo: 'App oficial de Epic Streaming 📲', mensaje: 'Ya tenemos **app oficial**: en la tienda toca **Descargar** (Android), **Instalar** (PC) o **Agregar** (iPhone). Abre más rápido, a pantalla completa, con tu misma cuenta y **se actualiza sola**.' },
@@ -21192,6 +21230,7 @@
 
     // ==================== NOVEDADES INTERNAS DEL PANEL (solo el equipo) ====================
     const ACTUALIZACIONES_INTERNAS = [
+      { fecha: '2026-10-20', titulo: '🪗 Ajustes Generales más fácil de usar', mensaje: 'El formulario de Ajustes Generales ahora tiene cada sección plegable (como Modo mantenimiento): ves todos los títulos de un vistazo y tocas el que quieras para abrirlo. Así encuentras rápido los correos de admin, el vencimiento de saldo, Telegram, etc., sin bajar tanto.', ir: 'ajustes' },
       { fecha: '2026-10-20', titulo: '⌛ El vencimiento de saldo cuenta desde hoy', mensaje: 'Corregido: el saldo que vence por inactividad ahora cuenta los 20 días **desde que activaste la regla**, nunca por tiempo anterior. Así a nadie se le vence el saldo de golpe por compras viejas. Si a algún cliente ya se le venció por error, en Ajustes Generales hay un botón **"Devolver saldos vencidos por error (últimas 24 h)"** que se lo regresa y le avisa.', ir: 'ajustes' },
       { fecha: '2026-10-20', titulo: '🎁 Comisiones de proveedor a lo que les debes', mensaje: 'El premio por referidos de un proveedor se suma a lo que le debes (sus cuentas por pagar) para pagárselo junto con el stock. Si una comisión vieja quedó suelta, el botón "↪ Pasar a lo que le debo" en Referidos ahora la suma a su deuda aunque no la tenga como saldo en la tienda, sin dar error.', ir: 'dealers' },
       { fecha: '2026-10-20', titulo: '⌛ El cliente puede tocar "vence en X días"', mensaje: 'Al tocar el contador de vencimiento junto a su saldo, al cliente se le abre una ventana que le explica por qué vence y que cada compra o recarga lo renueva, con botones para **comprar** o **recargar** ahí mismo. Convierte el aviso en una venta.', ir: '' },
