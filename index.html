@@ -2544,6 +2544,7 @@
                 <input type="number" id="ajusteSaldoVenceDias" min="0" step="1" placeholder="20 (0 = nunca se vence)" class="w-full bg-gray-900 border border-gray-700 rounded-xl px-3 py-2 text-sm text-white">
                 <p class="text-[10px] text-gray-500 mt-1">Cuenta desde la última compra o recarga. Cada movimiento lo renueva. La deuda no se toca. 0 = desactivado.</p>
                 <div id="saldoVenceResumen" class="mt-2 text-[11px] text-gray-400"></div>
+                <button type="button" onclick="revertirSaldosVencidosBtn(this)" class="mt-2 w-full py-2 rounded-lg bg-amber-500/15 border border-amber-500/40 text-amber-200 text-[11px] font-black"><i class="fa-solid fa-rotate-left mr-1"></i> Devolver saldos vencidos por error (últimas 24 h)</button>
               </div>
               <div>
                 <label class="block text-[11px] text-gray-400 mb-1">Correos Excluidos del Reporte Financiero (separados por coma)</label>
@@ -11658,6 +11659,17 @@
     }
     // 📧 Correos de tu dominio con destino: Prime (sube solo con la bienvenida), otro producto (botón Confirmar) o Libre
     var correosPropios = [];
+    async function revertirSaldosVencidosBtn(btn) {
+      if (!await confirmarModal('¿Devolver el saldo a los clientes a los que se les venció por error en las últimas 24 horas?\n\nSe les regresa a su cuenta y se les avisa. Queda registrado.', { textoAceptar: 'Sí, devolver' })) return;
+      if (btn) { btn.disabled = true; btn.dataset.t = btn.innerHTML; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i> Devolviendo…'; }
+      try {
+        const r = await llamarBackend('saldo_vence_revertir', { horas: 24 });
+        if (!r || !r.ok) throw new Error((r && r.error) || 'No se pudo.');
+        mostrarToast(r.devueltos ? `✅ Devuelto a ${r.devueltos} cliente(s): ${formatoCOP(r.total)}` : 'No había saldos vencidos por error en las últimas 24 h.');
+        try { cargarResumenSaldoVence(); } catch (e) { /* nada */ }
+      } catch (e) { mostrarToast('No se pudo: ' + (e.message || e)); }
+      finally { if (btn) { btn.disabled = false; btn.innerHTML = btn.dataset.t; } }
+    }
     async function cargarResumenSaldoVence() {
       const cont = document.getElementById('saldoVenceResumen'); if (!cont) return;
       cont.textContent = 'Revisando…';
@@ -16302,7 +16314,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-20s';
+    const VERSION_PAGINA = '2026-10-20t';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261020_ajuste', fecha: '2026-10-20', titulo: 'Se ve mejor en iPhone 📱', mensaje: 'La tienda ahora **se ajusta siempre a tu pantalla**: ya no se agranda al escribir ni se corre hacia los lados. Si la tienes abierta, **recarga la página** para verla así.' },
       { id: 'act_20261020_app', fecha: '2026-10-20', titulo: 'App oficial de Epic Streaming 📲', mensaje: 'Ya tenemos **app oficial**: en la tienda toca **Descargar** (Android), **Instalar** (PC) o **Agregar** (iPhone). Abre más rápido, a pantalla completa, con tu misma cuenta y **se actualiza sola**.' },
@@ -21180,6 +21192,7 @@
 
     // ==================== NOVEDADES INTERNAS DEL PANEL (solo el equipo) ====================
     const ACTUALIZACIONES_INTERNAS = [
+      { fecha: '2026-10-20', titulo: '⌛ El vencimiento de saldo cuenta desde hoy', mensaje: 'Corregido: el saldo que vence por inactividad ahora cuenta los 20 días **desde que activaste la regla**, nunca por tiempo anterior. Así a nadie se le vence el saldo de golpe por compras viejas. Si a algún cliente ya se le venció por error, en Ajustes Generales hay un botón **"Devolver saldos vencidos por error (últimas 24 h)"** que se lo regresa y le avisa.', ir: 'ajustes' },
       { fecha: '2026-10-20', titulo: '🎁 Comisiones de proveedor a lo que les debes', mensaje: 'El premio por referidos de un proveedor se suma a lo que le debes (sus cuentas por pagar) para pagárselo junto con el stock. Si una comisión vieja quedó suelta, el botón "↪ Pasar a lo que le debo" en Referidos ahora la suma a su deuda aunque no la tenga como saldo en la tienda, sin dar error.', ir: 'dealers' },
       { fecha: '2026-10-20', titulo: '⌛ El cliente puede tocar "vence en X días"', mensaje: 'Al tocar el contador de vencimiento junto a su saldo, al cliente se le abre una ventana que le explica por qué vence y que cada compra o recarga lo renueva, con botones para **comprar** o **recargar** ahí mismo. Convierte el aviso en una venta.', ir: '' },
       { fecha: '2026-10-20', titulo: '⌛ El saldo sin usar se vence', mensaje: 'El saldo que un cliente no usa se vence a los **20 días** sin movimiento (compra o recarga), configurable en Ajustes Generales (0 = desactivado). Cada compra o recarga reinicia el contador. El cliente ve **"vence en X días"** junto a su saldo, y al recargar recibe la nota de que su saldo dura ese tiempo. La deuda no se toca y los proveedores/moderadores quedan fuera. En Ajustes ves cuánto saldo está por vencer. Así los clientes usan su saldo más rápido y tú recuperas el saldo muerto.', ir: 'ajustes' },
@@ -24487,7 +24500,7 @@
       return { cuentas: legado, stock: legado.length || stockPublico };
     }
 
-    const VERSION_SERVIDOR_NECESARIA = '2026-10-20g';   // la versión del servidor que necesita esta página
+    const VERSION_SERVIDOR_NECESARIA = '2026-10-20i';   // la versión del servidor que necesita esta página
     async function llamarBackend(accion, datos) {
       if (mantenimientoActivo() && /^(comprar|recarga|renovar|carrito|preorden|combo)/.test(String(accion || ''))) { avisoMantenimiento(''); throw new Error('Estamos en mantenimiento. Compra por WhatsApp mientras tanto.'); }
       if (modoPruebaCliente) { const rs = backendSimulado(accion, datos || {}); if (rs) return rs; }
