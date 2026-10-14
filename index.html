@@ -1450,8 +1450,8 @@
               <button type="button" onclick="copiarLinkOtpAmazon(this)" class="flex-1 min-w-[140px] py-1.5 rounded-lg bg-amber-500/15 border border-amber-500/40 text-amber-200 text-[11px] font-black"><i class="fa-solid fa-key mr-1"></i> Link de códigos Amazon</button>
               <button type="button" onclick="renovarLinkOtpAmazon(this)" title="Generar un link nuevo (el anterior deja de servir)" class="shrink-0 px-2.5 py-1.5 rounded-lg bg-gray-800 border border-gray-700 text-gray-300 text-[11px] font-bold"><i class="fa-solid fa-rotate"></i></button>
             </div>
-            <div id="comprobarCorreosResultado" class="mt-1"></div>
             <div id="correosPropiosLista" class="mt-2 space-y-1.5"></div>
+            <div id="comprobarCorreosResultado" class="mt-2"></div>
           </div>
           <form onsubmit="cargarStockMasivo(event)" class="space-y-4">
             <div class="solo-admin">
@@ -11798,7 +11798,7 @@
         const r = await llamarBackend('prov_comprobar', {});
         if (!r || !r.ok) throw new Error((r && r.error) || 'No se pudo.');
         const L = r.correos || [];
-        cont.innerHTML = `<div class="flex gap-2 text-[11px] mb-2"><span class="flex-1 text-center py-1 rounded-lg bg-emerald-500/15 text-emerald-200 font-black">✅ ${r.subidas} subidas</span><span class="flex-1 text-center py-1 rounded-lg bg-amber-500/15 text-amber-200 font-black">⏳ ${r.esperando} esperando</span></div>`
+        cont.innerHTML = `<div class="flex gap-2 text-[11px] mb-2"><button type="button" onclick="document.getElementById('comprobarCorreosResultado').innerHTML=''" title="Ocultar" class="px-2 rounded-lg bg-gray-800 border border-gray-700 text-gray-300"><i class="fa-solid fa-xmark"></i></button><span class="flex-1 text-center py-1 rounded-lg bg-emerald-500/15 text-emerald-200 font-black">✅ ${r.subidas} subidas</span><span class="flex-1 text-center py-1 rounded-lg bg-amber-500/15 text-amber-200 font-black">⏳ ${r.esperando} esperando</span></div>`
           + L.map(x => `<div class="flex items-center gap-2 border rounded-lg px-2.5 py-1.5 mb-1 ${x.subida ? 'border-emerald-500/40' : 'border-amber-500/40'}"><span class="${x.subida ? 'text-emerald-400' : 'text-amber-400'}">${x.subida ? '✅' : '⏳'}</span><span class="flex-1 min-w-0 font-mono text-[11px] text-gray-200 truncate">${escaparHtml(x.correo)}</span><span class="text-[10px] ${x.subida ? 'text-emerald-300' : 'text-amber-300'} shrink-0">${x.subida ? 'subida' : 'esperando'}</span></div>`).join('');
       } catch (e) { cont.innerHTML = `<p class="text-[12px] text-rose-300">${escaparHtml(e.message || 'Error')}</p>`; }
       finally { if (btn) { btn.disabled = false; btn.innerHTML = btn.dataset.t; } }
@@ -11849,6 +11849,8 @@
       const sel = document.getElementById('correoPropioDestino'), destino = sel ? sel.value : '', prop = correoNaturalLocal();
       const fila = { correo: prop, creadoEl: new Date().toISOString(), destino: destino, propio: true };
       correosPropios.unshift(fila); pintarCorreosPropios(); copiarTexto(prop, '📧 Correo copiado · clave: epic2828');
+      try { const l = document.getElementById('correosPropiosLista'), f = l && l.firstElementChild;
+        if (f) { f.classList.add('ring-2', 'ring-emerald-400'); f.scrollIntoView({ behavior: 'smooth', block: 'center' }); setTimeout(() => f.classList.remove('ring-2', 'ring-emerald-400'), 4000); } } catch (e) { /* nada */ }
       try { const r = await llamarBackend('prov_correos', { op: 'propio', correo: prop, destino: destino });
         if (!r || !r.ok) { correosPropios = correosPropios.filter(x => x !== fila); pintarCorreosPropios(); alert((r && r.error) || 'No se pudo reservar el correo.'); return; }
         if (r.correo !== prop) { fila.correo = r.correo; pintarCorreosPropios(); copiarTexto(r.correo, '⚠️ Ese ya existía: usa este otro (copiado)'); } } catch (e) { /* queda en pantalla */ }
@@ -16373,7 +16375,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-21c';
+    const VERSION_PAGINA = '2026-10-21d';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261020_ajuste', fecha: '2026-10-20', titulo: 'Se ve mejor en iPhone 📱', mensaje: 'La tienda ahora **se ajusta siempre a tu pantalla**: ya no se agranda al escribir ni se corre hacia los lados. Si la tienes abierta, **recarga la página** para verla así.' },
       { id: 'act_20261020_app', fecha: '2026-10-20', titulo: 'App oficial de Epic Streaming 📲', mensaje: 'Ya tenemos **app oficial**: en la tienda toca **Descargar** (Android), **Instalar** (PC) o **Agregar** (iPhone). Abre más rápido, a pantalla completa, con tu misma cuenta y **se actualiza sola**.' },
