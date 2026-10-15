@@ -11676,12 +11676,13 @@
     }
     async function pintarMontosUsd() {
       const g = document.getElementById('recargaMontosUsd'); if (!g) return;
+      { const ct = document.getElementById('recargaBinanceCotiza'), ot = document.getElementById('recargaOtroUsd'); if (ct && ot) ct.classList.toggle('hidden', ot.classList.contains('hidden')); }
       const min = recargaAutoCfg.binanceMinimo || 5, lista = [10, 20, 50].filter(u => u >= min);
       const tasa = (tasaBinanceCache && tasaBinanceCache.v) || 0;
       g.innerHTML = lista.map(u => `<button type="button" onclick="recargaTocarMonto(this, ${u}, true)" class="text-left p-3 rounded-2xl border ${u === 20 ? 'border-yellow-400/70 bg-yellow-500/10 ring-1 ring-yellow-400/30' : 'border-gray-700 bg-gray-800/70'} hover:bg-gray-700/70 transition">
           <span class="flex items-center gap-1.5 text-base font-black text-white">${u} USDT${u === 20 ? '<span class="text-[9px] px-1.5 py-0.5 rounded-full bg-yellow-500/20 text-yellow-300 font-black uppercase">popular</span>' : ''}</span>
           <span class="block text-[11px] text-gray-400">${tasa ? '≈ ' + formatoCOP(Math.round(u * tasa)) + ' de saldo' : 'saldo en pesos, tasa de hoy'}</span></button>`).join('')
-        + `<button type="button" onclick="document.getElementById('recargaOtroUsd').classList.toggle('hidden'); document.getElementById('recargaBinanceUsdt').focus();" class="col-span-2 py-2 rounded-xl border border-dashed border-gray-600 text-[12px] font-bold text-gray-300 hover:bg-gray-800/60">Otro monto <span class="text-gray-500 font-normal">· desde ${min} USDT</span></button>`;
+        + `<button type="button" onclick="document.getElementById('recargaOtroUsd').classList.toggle('hidden'); document.getElementById('recargaBinanceCotiza').classList.toggle('hidden', document.getElementById('recargaOtroUsd').classList.contains('hidden')); document.getElementById('recargaBinanceUsdt').focus(); cotizarBinance();" class="col-span-2 py-2 rounded-xl border border-dashed border-gray-600 text-[12px] font-bold text-gray-300 hover:bg-gray-800/60">Otro monto <span class="text-gray-500 font-normal">· desde ${min} USDT</span></button>`;
       if (!tasa) { try { await obtenerTasaBinance(); if (tasaBinanceCache && tasaBinanceCache.v) pintarMontosUsd(); } catch (e) { /* nada */ } }
     }
     function recargaAutoElegir(n) {
@@ -16794,7 +16795,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-22v';
+    const VERSION_PAGINA = '2026-10-22w';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261020_ajuste', fecha: '2026-10-20', titulo: 'Se ve mejor en iPhone 📱', mensaje: 'La tienda ahora **se ajusta siempre a tu pantalla**: ya no se agranda al escribir ni se corre hacia los lados. Si la tienes abierta, **recarga la página** para verla así.' },
       { id: 'act_20261020_app', fecha: '2026-10-20', titulo: 'App oficial de Epic Streaming 📲', mensaje: 'Ya tenemos **app oficial**: en la tienda toca **Descargar** (Android), **Instalar** (PC) o **Agregar** (iPhone). Abre más rápido, a pantalla completa, con tu misma cuenta y **se actualiza sola**.' },
@@ -20167,6 +20168,7 @@
       document.querySelectorAll('#recargaVias [data-via]').forEach(b => { const on = b.dataset.via === v; b.className = 'py-2 rounded-lg text-[11px] font-black ' + (on ? (v === 'binance' ? 'bg-yellow-400 text-black' : 'bg-emerald-500 text-black') : 'text-gray-300 hover:bg-gray-800'); });
       const f1 = document.getElementById('recargaAutoForm'), f2 = document.getElementById('recargaBinanceForm');
       if (!pedidoRecargaActivo) { if (f1) f1.classList.toggle('hidden', v !== 'breb'); if (f2) f2.classList.toggle('hidden', v !== 'binance'); }
+      if (v === 'binance') { try { pintarMontosUsd(); } catch (e) { /* nada */ } }
       if (v === 'binance') { const i = document.getElementById('recargaBinanceUsdt'); if (i) { i.min = String(recargaAutoCfg.binanceMinimo || 5); if (!i.value) i.value = String(recargaAutoCfg.binanceMinimo || 5); } cotizarBinance(); }
     }
     async function obtenerTasaBinance() {
