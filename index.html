@@ -14,7 +14,19 @@
     @supports (overflow-x: clip) { body { overflow-x: clip; } }
     body { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
     img, video, canvas, svg { max-width: 100%; }
-  </style>
+  
+    /* 📱 Panel como app (solo celular): el menú y cada sección son pantallas que se deslizan */
+    @keyframes panEntraDerecha { from { transform: translateX(100%); opacity: .4; } to { transform: none; opacity: 1; } }
+    @keyframes panEntraIzquierda { from { transform: translateX(-30%); opacity: .3; } to { transform: none; opacity: 1; } }
+    @media (max-width: 1023px) {
+      #vistaAdmin:not(.sec-abierta) #adminContenidoTabs { display: none; }
+      #vistaAdmin.sec-abierta #navPanelAdmin, #vistaAdmin.sec-abierta .adm-oculta-sec { display: none !important; }
+      #vistaAdmin.sec-abierta #adminContenidoTabs { animation: panEntraDerecha .28s ease-out; }
+      #vistaAdmin.menu-vuelve #navPanelAdmin { animation: panEntraIzquierda .25s ease-out; }
+      #vistaAdmin { overflow-x: clip; }
+    }
+    @media (min-width: 1024px) { #barraSeccionMovil { display: none !important; } }
+</style>
   <title>Epic Streaming | Portal Privado</title>
   
   <!-- Conexiones anticipadas: el navegador abre los canales mientras lee la página -->
@@ -963,7 +975,7 @@
 
     <!-- VISTA: PANEL DE ADMINISTRACIÓN -->
     <section id="vistaAdmin" class="hidden">
-      <div class="flex flex-col md:flex-row md:items-center justify-between mb-6 pb-4 border-b border-gray-800 gap-4">
+      <div class="adm-oculta-sec flex flex-col md:flex-row md:items-center justify-between mb-6 pb-4 border-b border-gray-800 gap-4">
         <div class="flex items-start sm:items-center gap-4 flex-wrap">
           <div>
             <span class="text-xs text-emerald-400 font-bold tracking-widest uppercase">Panel de Control</span>
@@ -1000,7 +1012,7 @@
       </div>
 
       <!-- SECCIÓN EN LÍNEA EN TIEMPO REAL -->
-      <div class="mb-6 p-4 bg-gray-900 border border-emerald-500/30 rounded-2xl space-y-3">
+      <div class="adm-oculta-sec mb-6 p-4 bg-gray-900 border border-emerald-500/30 rounded-2xl space-y-3">
         <div class="flex items-center justify-between">
           <div class="flex items-center gap-3">
             <div class="w-3 h-3 rounded-full bg-emerald-500 animate-ping"></div>
@@ -1112,6 +1124,10 @@
         </nav>
 
         <div id="adminContenidoTabs" class="min-w-0 scroll-mt-24">
+        <div id="barraSeccionMovil" class="lg:hidden sticky top-0 z-30 -mx-1 mb-3 px-1 py-2 bg-gray-950/95 backdrop-blur flex items-center gap-2">
+          <button type="button" onclick="cerrarSeccionPanel()" class="shrink-0 flex items-center gap-2 px-3 py-2 rounded-xl bg-gray-800 border border-gray-700 text-gray-200 text-sm font-bold"><i class="fa-solid fa-arrow-left"></i> Panel</button>
+          <p id="barraSeccionTitulo" class="min-w-0 truncate text-base font-black text-white"></p>
+        </div>
 
       <!-- TAB: ALQUILER NETFLIX -->
       <div id="adminSecNetflix" class="hidden space-y-4">
@@ -1368,8 +1384,8 @@
               </div>
             </div>
           </div>
-          <div class="overflow-x-auto">
-            <table class="w-full text-left text-sm text-gray-300">
+          <div class="overflow-x-hidden md:overflow-x-auto">
+            <table class="w-full table-fixed md:table-auto text-left text-sm text-gray-300">
               <thead class="hidden md:table-header-group bg-gray-800/60 text-xs uppercase text-gray-400">
                 <tr>
                   <th class="px-4 py-3">Cliente / Correo</th>
@@ -8048,6 +8064,8 @@
       if (vista === 'admin' && !esStaffSesion()) {
         vista = 'tienda';
       }
+      // 📱 Al entrar al panel (o salir de él) en el celular, siempre se empieza por el menú
+      try { if (!aplicandoRuta || vista !== 'admin') { const vA = document.getElementById('vistaAdmin'); if (vA) vA.classList.remove('sec-abierta', 'menu-vuelve'); } } catch (e) { /* nada */ }
       // El proveedor solo tiene su propio panel
       if (esProveedorSesion() && !userProveedorVende) vista = 'proveedor';   // proveedor y ventas sí navega la tienda
 
@@ -8137,6 +8155,7 @@
         if (!currentUser) return;
         const r = leerRuta();
         if (!r || r === rutaActual) return;
+        if (panelEsMovil() && cerrarSeccionPanel(true)) { rutaActual = r; return; }
         aplicarRuta(r);
       } catch (e) { console.warn(e); }
     });
@@ -8484,12 +8503,31 @@
     }
 
     // Desde los botones: cambia de sección y en móvil baja al contenido
+    let panelSeccionPusheada = false;
+    function panelEsMovil() { return window.innerWidth < 1024; }
     function irATabAdmin(tab) {
+      const habiaRuta = rutaActual;
       cambiarTabAdmin(tab);
-      if (window.innerWidth < 1024) {
-        const cont = document.getElementById('adminContenidoTabs');
-        if (cont) cont.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }
+      if (!panelEsMovil()) return;
+      try {
+        const v = document.getElementById('vistaAdmin'); if (!v) return;
+        const nombre = tab.charAt(0).toUpperCase() + tab.slice(1), btn = document.getElementById('tabBtn' + nombre);
+        const tit = document.getElementById('barraSeccionTitulo');
+        if (tit) tit.textContent = btn ? ((btn.querySelector('span') || btn).textContent || '').trim() : '';
+        v.classList.remove('menu-vuelve'); v.classList.add('sec-abierta');
+        panelSeccionPusheada = rutaActual !== habiaRuta;
+        window.scrollTo(0, 0);
+      } catch (e) { /* nada */ }
+    }
+    // ← Panel: vuelve al menú (también con el botón atrás del celular)
+    function cerrarSeccionPanel(desdeAtras) {
+      const v = document.getElementById('vistaAdmin'); if (!v || !v.classList.contains('sec-abierta')) return false;
+      if (!desdeAtras && panelSeccionPusheada && window.history && history.length > 1) { panelSeccionPusheada = false; history.back(); return true; }
+      panelSeccionPusheada = false;
+      v.classList.remove('sec-abierta'); v.classList.add('menu-vuelve');
+      setTimeout(() => v.classList.remove('menu-vuelve'), 400);
+      try { const n = document.getElementById('navPanelAdmin'); window.scrollTo(0, n ? Math.max(0, n.getBoundingClientRect().top + window.scrollY - 80) : 0); } catch (e) { window.scrollTo(0, 0); }
+      return true;
     }
 
     function cambiarTabAdmin(tab) {
@@ -16375,7 +16413,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-21e';
+    const VERSION_PAGINA = '2026-10-21g';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261020_ajuste', fecha: '2026-10-20', titulo: 'Se ve mejor en iPhone 📱', mensaje: 'La tienda ahora **se ajusta siempre a tu pantalla**: ya no se agranda al escribir ni se corre hacia los lados. Si la tienes abierta, **recarga la página** para verla así.' },
       { id: 'act_20261020_app', fecha: '2026-10-20', titulo: 'App oficial de Epic Streaming 📲', mensaje: 'Ya tenemos **app oficial**: en la tienda toca **Descargar** (Android), **Instalar** (PC) o **Agregar** (iPhone). Abre más rápido, a pantalla completa, con tu misma cuenta y **se actualiza sola**.' },
@@ -21274,6 +21312,7 @@
 
     // ==================== NOVEDADES INTERNAS DEL PANEL (solo el equipo) ====================
     const ACTUALIZACIONES_INTERNAS = [
+      { fecha: '2026-10-21', titulo: '📱 El panel funciona como app en el celular', mensaje: 'En el celular, al tocar una opción del panel (Productos, Usuarios, Ajustes…), la sección entra desde la derecha ocupando toda la pantalla, con **← Panel** arriba para volver al menú. El botón atrás del celular también regresa al menú. En computador no cambia nada.', ir: '' },
       { fecha: '2026-10-21', titulo: '💳 Recargar saldo más claro', mensaje: 'En **Recargar saldo** lo primero es pagar: arriba está la **recarga automática**, debajo el bono en una línea pequeña, luego el método manual y al final **¿Pagaste y no se acreditó?**.', ir: '' },
       { fecha: '2026-10-21', titulo: '🛡 La garantía siempre es la del producto', mensaje: 'Si la descripción de un producto menciona otra garantía (ej. "Garantía de acceso 24 horas"), en la tienda, la ventana del producto y la imagen de promo se muestra siempre la **garantía base** configurada (ej. 5 días). Ya no se contradicen.', ir: 'productos' },
       { fecha: '2026-10-21', titulo: '⚡ Las promos relámpago muestran el día', mensaje: 'Antes decía "-8 % hasta las 3:14 p. m." sin el día, y si la promo duraba varios días el cliente creía que ya se había acabado. Ahora dice "hasta hoy…", "hasta mañana…" o "hasta el 21/10, 3:14 p. m." en la ventana del producto, en las promos y en la imagen para estados.', ir: '' },
