@@ -4083,6 +4083,10 @@
       <label class="block text-xs text-gray-400 mb-1">Correo del cliente</label>
       <input type="text" id="asignarPagoEmail" placeholder="Escribe nombre, correo o WhatsApp" autocomplete="off" oninput="buscarClienteAsignar(this.value)" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none mb-2">
       <div id="asignarPagoSugerencias" class="space-y-1.5 mb-3 max-h-56 overflow-y-auto"></div>
+      <label id="asignarRecordarCaja" class="hidden flex items-start gap-2.5 p-2.5 mb-3 rounded-xl bg-gray-800/70 border border-gray-700 cursor-pointer">
+        <input type="checkbox" id="asignarRecordar" checked class="accent-emerald-500 w-5 h-5 mt-0.5 shrink-0">
+        <span class="text-[11px] text-gray-300 leading-snug">🧠 <b class="text-white">Recordar</b>: cuando <b id="asignarRecordarNombre" class="text-emerald-300"></b> pague directo a la llave (sin pedido), acreditar solo a esta cuenta.<span class="block text-gray-500 mt-0.5">Si ese nombre paga por otra cuenta o es de un negocio, no se usa y te llega para asignar.</span></span>
+      </label>
       <button type="button" id="btnAsignarPago" onclick="confirmarAsignarPago()" class="w-full bg-emerald-500 hover:bg-emerald-400 text-black font-bold py-2.5 rounded-xl text-sm transition">Acreditar saldo</button>
     </div>
   </div>
@@ -12060,6 +12064,7 @@
       document.getElementById('asignarPagoInfo').innerHTML = `Pago de <b class="text-white">${formatoCOP(p.monto)}</b> de ${escaparHtml(p.pagador || '—')}. Se sumará completo al saldo del cliente.`;
       document.getElementById('asignarPagoEmail').value = p.sugeridoEmail || '';
       asignarPagoUid = ''; { const b = document.getElementById('asignarPagoSugerencias'); if (b) b.innerHTML = ''; } if (p.sugeridoEmail) buscarClienteAsignar(p.sugeridoEmail);
+      { const rc = document.getElementById('asignarRecordarCaja'), rn = document.getElementById('asignarRecordarNombre'), ck = document.getElementById('asignarRecordar'); if (rc) rc.classList.toggle('hidden', !p.pagador); if (rn) rn.textContent = p.pagador || ''; if (ck) ck.checked = true; }
       const m = document.getElementById('modalAsignarPago');
       m.classList.remove('hidden'); m.style.display = 'flex';
     }
@@ -12092,10 +12097,11 @@
       const btn = document.getElementById('btnAsignarPago');
       btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
       try {
-        const r = await llamarBackend('pago_asignar', { txn: pagoAsignandoTxn, email: email, uid: asignarPagoUid || '' });
+        const recordar = !!((document.getElementById('asignarRecordar') || {}).checked) && !document.getElementById('asignarRecordarCaja').classList.contains('hidden');
+        const r = await llamarBackend('pago_asignar', { txn: pagoAsignandoTxn, email: email, uid: asignarPagoUid || '', recordar: recordar });
         if (!r.ok) { alert(r.error || 'No se pudo acreditar.'); return; }
         cerrarAsignarPago();
-        mostrarToast(`Acreditado ${formatoCOP(r.monto)} a ${email}.`);
+        mostrarToast(`Acreditado ${formatoCOP(r.monto)} a ${email}.` + (r.recordado === 'si' ? ` 🧠 La próxima vez que ${r.pagador} pague directo, se acredita solo.` : (r.recordado && r.recordado.indexOf('no') === 0 ? ` (No se recordó el nombre: ${r.recordado.slice(4)})` : '')));
       } catch (e) { alert(e.message); }
       finally { btn.disabled = false; btn.innerHTML = 'Acreditar saldo'; }
     }
@@ -16927,7 +16933,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-23u';
+    const VERSION_PAGINA = '2026-10-23z';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261020_ajuste', fecha: '2026-10-20', titulo: 'Se ve mejor en iPhone 📱', mensaje: 'La tienda ahora **se ajusta siempre a tu pantalla**: ya no se agranda al escribir ni se corre hacia los lados. Si la tienes abierta, **recarga la página** para verla así.' },
       { id: 'act_20261020_app', fecha: '2026-10-20', titulo: 'App oficial de Epic Streaming 📲', mensaje: 'Ya tenemos **app oficial**: en la tienda toca **Descargar** (Android), **Instalar** (PC) o **Agregar** (iPhone). Abre más rápido, a pantalla completa, con tu misma cuenta y **se actualiza sola**.' },
@@ -25449,7 +25455,7 @@ async function pintarPanelWa() {
       return { cuentas: legado, stock: legado.length || stockPublico };
     }
 
-    const VERSION_SERVIDOR_NECESARIA = '2026-10-22j';   // la versión del servidor que necesita esta página
+    const VERSION_SERVIDOR_NECESARIA = '2026-10-22o';   // la versión del servidor que necesita esta página
     async function llamarBackend(accion, datos) {
       if (mantenimientoActivo() && /^(comprar|recarga|renovar|carrito|preorden|combo)/.test(String(accion || ''))) { avisoMantenimiento(''); throw new Error('Estamos en mantenimiento. Compra por WhatsApp mientras tanto.'); }
       if (modoPruebaCliente) { const rs = backendSimulado(accion, datos || {}); if (rs) return rs; }
