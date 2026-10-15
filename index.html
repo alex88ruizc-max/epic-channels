@@ -2633,6 +2633,11 @@
                 <input type="url" id="ajusteBackendUrl" placeholder="https://script.google.com/macros/s/.../exec" class="w-full bg-gray-900 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white font-mono focus:outline-none">
                 <p class="text-[10px] text-gray-500 mt-1">Con esta URL las compras se procesan en el servidor: el cliente nunca toca su saldo ni el inventario. Se guarda con "Guardar Ajustes Generales".</p>
               </div>
+              <div>
+                <label class="block text-[11px] text-gray-400 mb-1">📧 URL del servidor de CORREO (el de codigos@: pagos, códigos y bot)</label>
+                <input type="url" id="ajusteBackendUrlCorreo" placeholder="https://script.google.com/macros/s/.../exec" class="w-full bg-gray-900 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white font-mono focus:outline-none">
+                <p class="text-[10px] text-gray-500 mt-1">Opcional. Si la pones, la página usa el servidor de arriba (con su propio cupo de Google) y solo lo que necesita el correo va a este. Vacío = todo va al de arriba.</p>
+              </div>
               <div class="flex flex-wrap gap-2">
                 <button type="button" onclick="probarConexionBackend()" class="px-3 py-2 bg-gray-900 hover:bg-gray-700 border border-gray-700 text-gray-200 text-xs font-bold rounded-xl flex items-center gap-1.5 transition">
                   <i class="fa-solid fa-plug"></i> Probar conexión
@@ -6582,6 +6587,7 @@
       try { cargarResumenSaldoVence(); } catch (e) { /* nada */ }
       const inpBackend = document.getElementById('ajusteBackendUrl');
       if (inpBackend) inpBackend.value = ajustesGeneralesConfig.backendUrl || '';
+      { const e = document.getElementById('ajusteBackendUrlCorreo'); if (e) e.value = ajustesGeneralesConfig.backendUrlCorreo || ''; }
       renderizarEstadoSeguridadAdmin();
       renderizarSelectorTemas();
       restaurarTemaGuardado();
@@ -6686,6 +6692,7 @@
         plantillaEntrega: (document.getElementById('ajustePlantillaEntrega') || {}).value || '',
         plantillaCuentaEntrega: (document.getElementById('ajustePlantillaCuenta') || {}).value || '',
         backendUrl: ((document.getElementById('ajusteBackendUrl') || {}).value || ajustesGeneralesConfig.backendUrl || '').trim(),
+        backendUrlCorreo: String((document.getElementById('ajusteBackendUrlCorreo') || {}).value || '').trim(),
         actualizadoEl: new Date().toISOString()
       };
 
@@ -16097,11 +16104,11 @@
     }
 
     async function urlServidorPublico() {
-      const u = obtenerBackendUrl();
+      const u = obtenerBackendUrl('*correo');
       if (u) return u;
       try {
-        const d = await db.collection('configuracion').doc('ajustes').get();
-        return String((d.exists && (d.data() || {}).backendUrl) || '').trim();
+        const d = await db.collection('configuracion').doc('ajustes').get(), x = (d.exists && d.data()) || {};
+        return String(x.backendUrlCorreo || x.backendUrl || '').trim();
       } catch (e) { return ''; }
     }
 
@@ -16787,7 +16794,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-22q';
+    const VERSION_PAGINA = '2026-10-22r';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261020_ajuste', fecha: '2026-10-20', titulo: 'Se ve mejor en iPhone 📱', mensaje: 'La tienda ahora **se ajusta siempre a tu pantalla**: ya no se agranda al escribir ni se corre hacia los lados. Si la tienes abierta, **recarga la página** para verla así.' },
       { id: 'act_20261020_app', fecha: '2026-10-20', titulo: 'App oficial de Epic Streaming 📲', mensaje: 'Ya tenemos **app oficial**: en la tienda toca **Descargar** (Android), **Instalar** (PC) o **Agregar** (iPhone). Abre más rápido, a pantalla completa, con tu misma cuenta y **se actualiza sola**.' },
@@ -23281,7 +23288,7 @@
         if (ping.tgClientes) sub.push(fila(ping.tgClientes.token && ping.tgClientes.bot ? true : null, 'Bot de avisos para clientes', ping.tgClientes.token && ping.tgClientes.bot ? '@' + ping.tgClientes.bot : (ping.tgClientes.token ? 'Token guardado: toca "Guardar y probar" en Ajustes' : 'Opcional: sin configurar')));
       }
       // 📶 Cupo diario de Google (no gasta llamadas: responde aunque el servidor esté sin cupo)
-      try { const u = obtenerBackendUrl(); if (u) { const ctl = new AbortController(); setTimeout(() => ctl.abort(), 12000);
+      try { const u = obtenerBackendUrl('cupo'); if (u) { const ctl = new AbortController(); setTimeout(() => ctl.abort(), 12000);
           const rc = await (await fetch(u, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ accion: 'cupo' }), signal: ctl.signal })).json();
           if (rc && rc.ok) items.push(fila(!rc.agotado && rc.hoy < rc.limite * 0.75, '📶 Cupo diario de Google', (rc.agotado ? 'AGOTADO ahora · el bot y la página fallan hasta que se libere · ' : '') + Number(rc.hoy || 0).toLocaleString('es-CO') + ' llamadas contadas hoy' + (rc.errores ? ' · ' + rc.errores + ' rechazadas por Google' : '') + ((rc.porOrigen || []).length ? ' · más gastan: ' + rc.porOrigen.map(x => x[0] + ' ' + Number(x[1]).toLocaleString('es-CO')).join(', ') : ''), rc.agotado ? 'Mándame captura de esta línea.' : ''));
           else if (rc && rc.ok === undefined) items.push(fila(null, '📶 Cupo diario de Google', 'Publica el servidor 2026-10-21p para verlo')); } } catch (e) { items.push(fila(null, '📶 Cupo diario de Google', 'No se pudo leer: ' + (e.message || 'sin respuesta'))); }
@@ -23308,7 +23315,7 @@
       try { const d = await db.collection('secretos').doc('ajustes').get(); waClaveActual = d.exists ? String((d.data() || {}).waSecreto || '') : ''; } catch (x) { waClaveActual = ''; }
       e.innerHTML = waClaveActual ? `<span class="text-emerald-300">✓ URL generada.</span> <span class="font-mono break-all text-gray-400">${escaparHtml(urlAsistenteWa().replace(waClaveActual, waClaveActual.slice(0, 4) + '••••'))}</span>` : 'Aún no has generado la URL.';
     }
-    function urlAsistenteWa() { const b = obtenerBackendUrl() || ''; return b ? b + (b.indexOf('?') === -1 ? '?' : '&') + 'wa=' + waClaveActual : ''; }
+    function urlAsistenteWa() { const b = obtenerBackendUrl('*correo') || ''; return b ? b + (b.indexOf('?') === -1 ? '?' : '&') + 'wa=' + waClaveActual : ''; }
     async function generarClaveAsistenteWa() {
       if (!obtenerBackendUrl()) { alert('Primero configura la URL del servidor en Ajustes.'); return; }
       if (waClaveActual && !await confirmarModal('¿Generar una URL nueva? La anterior dejará de funcionar y tendrás que pegar la nueva en la app.', { textoAceptar: 'Sí, generar' })) return;
@@ -25101,7 +25108,7 @@ async function pintarPanelWa() {
         const ref = document.getElementById('authReferido'); if (ref && !ref.value) { try { ref.value = sessionStorage.getItem('refEmail') || ''; } catch (e) { /* nada */ } }
         modoAuth = 'register'; authAbiertoEl = portAbiertaEl || (Date.now() - 5000);
         await procesarAuth({ preventDefault() {} });
-        if (auth.currentUser) { portPasosEnviados.fin = false; const u = obtenerBackendUrl(); if (u) { let vid = ''; try { vid = localStorage.getItem('embVid') || ''; } catch (e) { /* nada */ } fetch(u, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ accion: 'embudo_registro', paso: 'fin', vid: vid || ('x' + Date.now()) }) }).catch(() => {}); } }
+        if (auth.currentUser) { portPasosEnviados.fin = false; const u = obtenerBackendUrl('embudo_registro'); if (u) { let vid = ''; try { vid = localStorage.getItem('embVid') || ''; } catch (e) { /* nada */ } fetch(u, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ accion: 'embudo_registro', paso: 'fin', vid: vid || ('x' + Date.now()) }) }).catch(() => {}); } }
       } catch (e) { fallo(e.message || 'No se pudo crear la cuenta.'); }
       finally { if (btn) { btn.disabled = false; btn.textContent = 'Crear cuenta y entrar'; } }
     }
@@ -25125,7 +25132,7 @@ async function pintarPanelWa() {
     function portEmbudo(paso) {
       try {
         if (currentUser || portPasosEnviados[paso]) return; portPasosEnviados[paso] = true;
-        const url = obtenerBackendUrl(); if (!url) return;
+        const url = obtenerBackendUrl('embudo_registro'); if (!url) return;
         let vid = ''; try { vid = localStorage.getItem('embVid') || ''; if (!vid) { vid = Math.random().toString(36).slice(2) + Date.now().toString(36); localStorage.setItem('embVid', vid); } } catch (e) { vid = Math.random().toString(36).slice(2) + Date.now().toString(36); }
         fetch(url, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ accion: 'embudo_registro', paso: paso, vid: vid }) }).catch(() => {});
       } catch (e) { /* nada */ }
@@ -25224,8 +25231,14 @@ async function pintarPanelWa() {
       return ajustesGeneralesConfig && ajustesGeneralesConfig.inventarioSeguro === true;
     }
 
-    function obtenerBackendUrl() {
-      return String((ajustesGeneralesConfig && ajustesGeneralesConfig.backendUrl) || '').trim();
+    // 📶 Dos servidores: el de la PÁGINA (su propio cupo de Google) y el de CORREO (codigos@: lee pagos y códigos).
+    // Las acciones que necesitan el correo van al servidor de correo; el resto, al de la página. Sin el segundo, todo va al único que haya.
+    const ACCIONES_SERVIDOR_CORREO = new Set(['otp', 'recarga_crear', 'recarga_binance_crear', 'recarga_cancelar', 'recarga_verificar', 'recarga_diagnostico', 'recarga_comprobante', 'pago_reportar', 'prov_correos', 'prov_comprobar', 'codigo_dominio', 'amz_otp', 'amz_otp_link', 'amz_salud', 'amz_revisada', 'amz_enlace_crear', 'codigo_enlace_obtener', 'salud', 'cupo', 'saldo_vence_resumen', 'saldo_vence_revertir', 'embudo_registro', 'embudo_registro_ver', 'wa_codigo', 'wa_codigo_admin', 'binance_tasa']);
+    function obtenerBackendUrl(accion) {
+      const pag = String((ajustesGeneralesConfig && ajustesGeneralesConfig.backendUrl) || '').trim();
+      const cor = String((ajustesGeneralesConfig && ajustesGeneralesConfig.backendUrlCorreo) || '').trim();
+      if (cor && (accion === '*correo' || (accion && ACCIONES_SERVIDOR_CORREO.has(accion)))) return cor;
+      return pag || cor;
     }
 
     // Une las cuentas del inventario protegido con las que aún estén en formato antiguo
@@ -25244,7 +25257,7 @@ async function pintarPanelWa() {
     async function llamarBackend(accion, datos) {
       if (mantenimientoActivo() && /^(comprar|recarga|renovar|carrito|preorden|combo)/.test(String(accion || ''))) { avisoMantenimiento(''); throw new Error('Estamos en mantenimiento. Compra por WhatsApp mientras tanto.'); }
       if (modoPruebaCliente) { const rs = backendSimulado(accion, datos || {}); if (rs) return rs; }
-      const url = obtenerBackendUrl();
+      const url = obtenerBackendUrl(accion);
       if (!url) throw new Error('El servidor seguro no está configurado.');
       if (!currentUser) throw new Error('Debes iniciar sesión.');
       let idToken;
