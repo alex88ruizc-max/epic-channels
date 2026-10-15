@@ -577,6 +577,7 @@
 
   <!-- ==================== CONTENIDO PRINCIPAL ==================== -->
   <main class="flex-grow max-w-6xl w-full mx-auto px-4 py-6">
+      <button type="button" id="barraReportesProv" onclick="abrirAvisoReportesProv(true)" class="hidden w-full mb-4 flex items-center gap-2 px-3.5 py-2.5 rounded-xl border text-left text-sm font-bold"></button>
 
     <!-- VISTA: BLOQUEADA -->
     <div id="cargandoInicial" class="py-24 text-center">
@@ -13617,6 +13618,7 @@
 
     // ----- lo que ve el proveedor -----
     function renderizarTicketsProveedor() {
+      try { actualizarAvisoReportesProv(); } catch (e) { /* nada */ }
       const caja = document.getElementById('provTicketsCaja');
       const cont = document.getElementById('provTickets');
       if (!caja || !cont) return;
@@ -13647,6 +13649,53 @@
       }).join('');
     }
 
+    // 🚨 AVISO DE REPORTES AL PROVEEDOR: barra fija + ventana al entrar, hasta que resuelva
+    let avisoProvUltimo = 0;
+    function reportesProvPendientes() { return (proveedorTickets || []).filter(t => t.estado !== 'resuelto'); }
+    function tiempoReporte(t) {
+      const min = Math.max(0, Math.round((Date.now() - Date.parse(t.creadoEl || 0)) / 60000));
+      const txt = min < 60 ? `hace ${min} min` : min < 1440 ? `hace ${Math.floor(min / 60)} h` : `hace ${Math.floor(min / 1440)} d`;
+      return { txt, nivel: min < 60 ? 'verde' : min < 360 ? 'ambar' : 'rojo', min };
+    }
+    function actualizarAvisoReportesProv() {
+      const bar = document.getElementById('barraReportesProv'); if (!bar) return;
+      const P = reportesProvPendientes();
+      if (!P.length) { bar.classList.add('hidden'); const m = document.getElementById('modalAvisoReportesProv'); if (m) m.remove(); return; }
+      const viejo = P.reduce((a, t) => Date.parse(t.creadoEl || 0) < Date.parse(a.creadoEl || 0) ? t : a, P[0]), tr = tiempoReporte(viejo);
+      const col = { verde: 'bg-emerald-500/15 border-emerald-500/40 text-emerald-200', ambar: 'bg-amber-500/15 border-amber-500/50 text-amber-200', rojo: 'bg-red-500/20 border-red-500/60 text-red-200' }[tr.nivel];
+      bar.className = 'w-full mb-4 flex items-center gap-2 px-3.5 py-2.5 rounded-xl border text-left text-sm font-bold ' + col;
+      bar.innerHTML = `<i class="fa-solid fa-triangle-exclamation"></i><span class="flex-1">${P.length === 1 ? '1 reporte sin resolver' : P.length + ' reportes sin resolver'} · ${tr.txt}</span><span>Revisar ›</span>`;
+      if (Date.now() - avisoProvUltimo > 30 * 60000) abrirAvisoReportesProv(false);
+    }
+    function abrirAvisoReportesProv(forzar) {
+      const P = reportesProvPendientes(); if (!P.length) return;
+      if (!forzar && Array.from(document.querySelectorAll('.fixed.inset-0')).some(el => el.id !== 'modalAvisoReportesProv' && !el.classList.contains('hidden') && el.offsetParent !== null)) return;
+      avisoProvUltimo = Date.now();
+      let m = document.getElementById('modalAvisoReportesProv'); if (m) m.remove();
+      m = document.createElement('div'); m.id = 'modalAvisoReportesProv';
+      m.className = 'fixed inset-0 z-[60] bg-black/75 backdrop-blur-sm flex items-center justify-center p-4';
+      const chip = { verde: 'bg-emerald-500/15 text-emerald-300', ambar: 'bg-amber-500/15 text-amber-300', rojo: 'bg-red-500/20 text-red-300' };
+      const filas = P.slice(0, 6).map(t => { const tr = tiempoReporte(t), id = escaparJsAttr(t.id), rev = t.estado === 'en_revision';
+        return `<div class="p-3 rounded-xl bg-gray-800/60 border border-gray-700">
+          <div class="flex items-start justify-between gap-2"><div class="min-w-0"><p class="text-xs font-bold text-white font-mono truncate">${escaparHtml(t.cuenta || '')}</p><p class="text-[11px] text-gray-400 mt-0.5">${escaparHtml(t.motivo || '')}${t.productoNombre ? ' · ' + escaparHtml(t.productoNombre) : ''}</p></div><span class="shrink-0 text-[10px] font-black px-2 py-0.5 rounded-full ${chip[tr.nivel]}">${tr.txt}</span></div>
+          <div class="grid grid-cols-3 gap-1.5 mt-2.5">
+            ${t.tieneFoto ? `<button type="button" onclick="document.getElementById('modalAvisoReportesProv').remove(); verFotoTicket('${id}')" class="py-2 rounded-lg bg-sky-500/15 border border-sky-500/30 text-sky-300 text-[11px] font-bold"><i class="fa-solid fa-image mr-1"></i>Foto</button>` : '<span></span>'}
+            <button type="button" onclick="marcarTicketEnRevision('${id}')" class="py-2 rounded-lg text-[11px] font-bold border ${rev ? 'bg-sky-500/25 border-sky-400/50 text-sky-200' : 'bg-gray-800 border-gray-700 text-gray-200'}"><i class="fa-solid fa-magnifying-glass mr-1"></i>${rev ? 'Revisando ✓' : 'Revisando'}</button>
+            <button type="button" onclick="document.getElementById('modalAvisoReportesProv').remove(); abrirResolverProveedor('${id}')" class="py-2 rounded-lg bg-emerald-500 text-black text-[11px] font-black">Resolver</button>
+          </div></div>`; }).join('');
+      m.innerHTML = `<div class="w-full max-w-md max-h-[88vh] overflow-y-auto rounded-3xl bg-gray-900 border border-red-500/40 p-5 shadow-2xl">
+        <div class="text-center"><span class="w-12 h-12 mx-auto rounded-2xl bg-red-500/15 text-red-300 text-2xl flex items-center justify-center"><i class="fa-solid fa-triangle-exclamation"></i></span>
+        <p class="text-base font-black text-white mt-2">${P.length === 1 ? 'Tienes 1 cuenta reportada' : 'Tienes ' + P.length + ' cuentas reportadas'}</p>
+        <p class="text-xs text-gray-400 mt-1">El cliente está esperando. Revísala para no perder el pago.</p></div>
+        <div class="mt-4 space-y-2">${filas}</div>
+        ${P.length > 6 ? `<p class="text-[11px] text-gray-400 text-center mt-2">y ${P.length - 6} más en tu panel</p>` : ''}
+        <button type="button" onclick="document.getElementById('modalAvisoReportesProv').remove()" class="mt-3 w-full py-2.5 rounded-xl bg-gray-800 border border-gray-700 text-gray-300 text-xs font-bold">Lo reviso en un momento</button>
+      </div>`;
+      document.body.appendChild(m);
+    }
+    document.addEventListener('visibilitychange', function () { try { if (document.visibilityState === 'visible' && reportesProvPendientes().length && Date.now() - avisoProvUltimo > 10 * 60000) abrirAvisoReportesProv(false); } catch (e) { /* nada */ } });
+    setInterval(function () { try { if (reportesProvPendientes().length) actualizarAvisoReportesProv(); } catch (e) { /* nada */ } }, 60000);
+
     function iniciarTicketsProveedor() {
       if (unsubProvTickets || !currentUser) return;
       try {
@@ -13660,6 +13709,7 @@
     }
 
     function detenerTicketsProveedor() {
+      try { const b = document.getElementById('barraReportesProv'); if (b) b.classList.add('hidden'); const m = document.getElementById('modalAvisoReportesProv'); if (m) m.remove(); avisoProvUltimo = 0; } catch (e) { /* nada */ }
       try { if (unsubProvTickets) unsubProvTickets(); } catch (e) { /* nada */ }
       unsubProvTickets = null;
       proveedorTickets = [];
@@ -16413,7 +16463,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-21g';
+    const VERSION_PAGINA = '2026-10-21i';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261020_ajuste', fecha: '2026-10-20', titulo: 'Se ve mejor en iPhone 📱', mensaje: 'La tienda ahora **se ajusta siempre a tu pantalla**: ya no se agranda al escribir ni se corre hacia los lados. Si la tienes abierta, **recarga la página** para verla así.' },
       { id: 'act_20261020_app', fecha: '2026-10-20', titulo: 'App oficial de Epic Streaming 📲', mensaje: 'Ya tenemos **app oficial**: en la tienda toca **Descargar** (Android), **Instalar** (PC) o **Agregar** (iPhone). Abre más rápido, a pantalla completa, con tu misma cuenta y **se actualiza sola**.' },
@@ -17262,7 +17312,7 @@
         if (comun) t += `\n\n🔑 Contraseña de ${nPlat} (todas): *${comun}*`;
         if ((prime || comun) && hayHot) t += `\n✉️ La clave al lado de cada correo es la del correo (para los códigos).`;
       }
-      if (hayDom) t += (opciones && opciones.enlaceAmz) ? `\n📩 *¿Amazon te pide un código?* Míralo aquí al instante, sin iniciar sesión 👉 ${opciones.enlaceAmz}` : `\n📩 *¿Amazon te pide un código?* Escríbenos *código* por WhatsApp y te lo pasamos al instante, o tócalo en ${typeof enlaceMk === 'function' ? enlaceMkUrl().replace(/\/$/, '') : dominioActual()}/cuentas → *Ver código*.`;
+      if (hayDom) t += `\n📩 *¿Amazon te pide un código?* Pon el correo aquí y te sale al instante 👉 ${'https://' + String((ajustesGeneralesConfig && ajustesGeneralesConfig.dominioTienda) || 'epicstreaming.vip').replace(/^https?:\/\//, '').replace(/\/.*$/, '') + '/codigo'}\n_Sirve para iniciar sesión y para cambiar la contraseña. Puedes compartirlo con tus clientes._`;
       const g = parseGarantia(tipoGarantia);
       if (g) { const v = new Date(venceGarantia(desdeMs || Date.now(), g)); t += `\n🛡 Garantía: ${textoGarantia(tipoGarantia)} (hasta el ${String(v.getDate()).padStart(2, '0')}/${String(v.getMonth() + 1).padStart(2, '0')}/${v.getFullYear()})`; }
       if (opciones && opciones.vip) t += `\n\n👑 Eres *cliente VIP* de EPIC STREAMING 🙌`;
@@ -21312,6 +21362,8 @@
 
     // ==================== NOVEDADES INTERNAS DEL PANEL (solo el equipo) ====================
     const ACTUALIZACIONES_INTERNAS = [
+      { fecha: '2026-10-21', titulo: '🚨 Los proveedores no se pierden los reportes', mensaje: 'Si un proveedor tiene una cuenta reportada sin resolver, ve una **barra arriba** con el tiempo que lleva (verde, amarillo y rojo pasadas 6 h) y una **ventana al entrar** con botones para ver la foto, marcar revisando y resolver. Vuelve a salir cada 30 min hasta que lo resuelva. Si no lo toca en 2 h, le llega un recordatorio por Telegram.', ir: 'tickets' },
+      { fecha: '2026-10-21', titulo: '🔑 Página para ver el código de Amazon', mensaje: 'Nueva página **/codigo** sin iniciar sesión: el cliente pone el correo de su cuenta de Prime y le sale el código más reciente (inicio de sesión, verificación o cambio de contraseña). Es neutral, sin marca, para que tus revendedores se la den a sus clientes. Cada entrega con cuentas de tu dominio ya incluye el link.', ir: '' },
       { fecha: '2026-10-21', titulo: '📱 El panel funciona como app en el celular', mensaje: 'En el celular, al tocar una opción del panel (Productos, Usuarios, Ajustes…), la sección entra desde la derecha ocupando toda la pantalla, con **← Panel** arriba para volver al menú. El botón atrás del celular también regresa al menú. En computador no cambia nada.', ir: '' },
       { fecha: '2026-10-21', titulo: '💳 Recargar saldo más claro', mensaje: 'En **Recargar saldo** lo primero es pagar: arriba está la **recarga automática**, debajo el bono en una línea pequeña, luego el método manual y al final **¿Pagaste y no se acreditó?**.', ir: '' },
       { fecha: '2026-10-21', titulo: '🛡 La garantía siempre es la del producto', mensaje: 'Si la descripción de un producto menciona otra garantía (ej. "Garantía de acceso 24 horas"), en la tienda, la ventana del producto y la imagen de promo se muestra siempre la **garantía base** configurada (ej. 5 días). Ya no se contradicen.', ir: 'productos' },
@@ -24627,7 +24679,7 @@
       return { cuentas: legado, stock: legado.length || stockPublico };
     }
 
-    const VERSION_SERVIDOR_NECESARIA = '2026-10-20i';   // la versión del servidor que necesita esta página
+    const VERSION_SERVIDOR_NECESARIA = '2026-10-21e';   // la versión del servidor que necesita esta página
     async function llamarBackend(accion, datos) {
       if (mantenimientoActivo() && /^(comprar|recarga|renovar|carrito|preorden|combo)/.test(String(accion || ''))) { avisoMantenimiento(''); throw new Error('Estamos en mantenimiento. Compra por WhatsApp mientras tanto.'); }
       if (modoPruebaCliente) { const rs = backendSimulado(accion, datos || {}); if (rs) return rs; }
