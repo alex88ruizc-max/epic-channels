@@ -1770,22 +1770,23 @@
               <i class="fa-solid fa-rotate"></i> Actualizar
             </button>
           </div>
-          <div class="overflow-x-auto">
-            <table class="w-full text-left text-sm text-gray-300">
-              <thead class="bg-gray-800/60 text-xs uppercase text-gray-400">
-                <tr>
-                  <th class="px-4 py-3">Fecha y Hora</th>
-                  <th class="px-4 py-3">Comprador</th>
-                  <th class="px-4 py-3">Producto</th>
-                  <th class="px-4 py-3 text-center">Credenciales</th>
-                  <th class="px-4 py-3 text-right">Total</th>
-                </tr>
-              </thead>
-              <tbody id="tablaAdminHistorialVentas" class="divide-y divide-gray-800">
-                <tr><td colspan="5" class="px-4 py-8 text-center text-gray-500">Cargando historial...</td></tr>
-              </tbody>
-            </table>
+          <div id="hvCaja" class="p-3 sm:p-4 space-y-3">
+            <div class="grid grid-cols-3 gap-2">
+              <div class="rounded-xl bg-gray-800/60 border border-gray-700/60 p-2 text-center"><span id="hvResTit" class="block text-[10px] text-gray-400">Vendido hoy</span><span id="hvResTotal" class="block text-sm sm:text-base font-black text-emerald-300">$0</span></div>
+              <div class="rounded-xl bg-gray-800/60 border border-gray-700/60 p-2 text-center"><span class="block text-[10px] text-gray-400">Ventas · cuentas</span><span id="hvResN" class="block text-sm sm:text-base font-black text-white">0 · 0</span></div>
+              <div class="rounded-xl bg-gray-800/60 border border-gray-700/60 p-2 text-center"><span class="block text-[10px] text-gray-400">Ganancia</span><span id="hvResGan" class="block text-sm sm:text-base font-black text-sky-300">$0</span></div>
+            </div>
+            <div id="hvPeriodos" class="flex gap-1.5 overflow-x-auto">
+              <button type="button" data-p="hoy" onclick="hvPeriodo('hoy')" class="shrink-0 px-3 py-1.5 rounded-full text-xs font-bold border">Hoy</button>
+              <button type="button" data-p="7d" onclick="hvPeriodo('7d')" class="shrink-0 px-3 py-1.5 rounded-full text-xs font-bold border">7 días</button>
+              <button type="button" data-p="mes" onclick="hvPeriodo('mes')" class="shrink-0 px-3 py-1.5 rounded-full text-xs font-bold border">Este mes</button>
+              <button type="button" data-p="todo" onclick="hvPeriodo('todo')" class="shrink-0 px-3 py-1.5 rounded-full text-xs font-bold border">Todo</button>
+            </div>
+            <input type="search" id="hvBuscar" oninput="hvPintar()" onkeydown="if(event.key==='Enter') hvBuscarCuenta()" placeholder="Buscar cliente, correo de cuenta o producto…" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none">
+            <div id="hvLista" class="space-y-2"><p class="py-8 text-center text-gray-500 text-xs">Cargando historial…</p></div>
+            <button type="button" id="hvMas" onclick="hvCargar(true)" class="hidden w-full py-2.5 rounded-xl bg-gray-800 border border-gray-700 text-xs font-bold text-gray-300">Ver más ventas</button>
           </div>
+          <table class="hidden"><tbody id="tablaAdminHistorialVentas"></tbody></table>
         </div>
       </div>
 
@@ -6189,44 +6190,111 @@
       }
     }
 
-    async function cargarHistorialVentasAdmin() {
-      const tbody = document.getElementById('tablaAdminHistorialVentas');
-      if (!tbody) return;
-
+    // ==================== HISTORIAL DE VENTAS (tarjetas por día) ====================
+    let hvVentas = [], hvUltimoDoc = null, hvPer = 'hoy', hvNombres = {}, hvAbiertas = {};
+    function hvDesde(p) { const d = new Date(); d.setHours(0, 0, 0, 0); if (p === '7d') d.setDate(d.getDate() - 6); else if (p === 'mes') d.setDate(1); else if (p === 'todo') return null; return d.toISOString(); }
+    function hvPeriodo(p) { hvPer = p; hvCargar(false); }
+    async function cargarHistorialVentasAdmin() { return hvCargar(false); }
+    async function hvCargar(mas) {
+      const lista = document.getElementById('hvLista'); if (!lista) return;
+      document.querySelectorAll('#hvPeriodos button').forEach(b => { const on = b.dataset.p === hvPer; b.className = 'shrink-0 px-3 py-1.5 rounded-full text-xs font-bold border ' + (on ? 'bg-emerald-500/20 border-emerald-500/50 text-emerald-300' : 'bg-gray-800 border-gray-700 text-gray-300'); });
+      if (!mas) { hvVentas = []; hvUltimoDoc = null; lista.innerHTML = '<p class="py-8 text-center text-gray-500 text-xs"><i class="fa-solid fa-spinner fa-spin mr-1"></i>Cargando…</p>'; }
       try {
-        const snap = await db.collection('compras').orderBy('fecha', 'desc').get();
-        tbody.innerHTML = '';
-
-        if (snap.empty) {
-          tbody.innerHTML = '<tr><td colspan="5" class="px-4 py-8 text-center text-gray-500 text-xs">No hay ventas registradas todavía.</td></tr>';
-          return;
-        }
-
-        snap.forEach(doc => {
-          const c = doc.data();
-          let fechaFormateada = 'N/A';
-          if (c.fecha) {
-            const d = new Date(c.fecha);
-            if (!isNaN(d.getTime())) fechaFormateada = d.toLocaleString('es-CO');
-          }
-
-          tbody.innerHTML += `
-            <tr class="hover:bg-gray-800/40 text-xs">
-              <td class="px-4 py-3 text-gray-400 whitespace-nowrap">${fechaFormateada}</td>
-              <td class="px-4 py-3 font-semibold text-emerald-300">${c.usuarioEmail || 'Sin correo'}</td>
-              <td class="px-4 py-3 text-white font-medium">${c.productoNombre || 'Producto'}</td>
-              <td class="px-4 py-3 font-mono text-emerald-300 whitespace-pre-line">${c.credenciales || 'N/A'}</td>
-              <td class="px-4 py-3 text-right whitespace-nowrap">
-                <span class="font-bold text-emerald-400 block">$${(c.total || 0).toLocaleString('es-CO')} COP</span>
-                <span class="text-[10px] text-rose-400 block">Inversión: ${formatoCOP(parseFloat(c.costoTotal) || 0)}</span>
-                <span class="text-[10px] text-sky-400 block">Ganancia: ${formatoCOP((parseFloat(c.total) || 0) - (parseFloat(c.costoTotal) || 0))}</span>
-              </td>
-            </tr>
-          `;
-        });
-      } catch (e) {
-        tbody.innerHTML = `<tr><td colspan="5" class="px-4 py-8 text-center text-red-400 text-xs">Error al cargar historial: ${e.message}</td></tr>`;
-      }
+        const desde = hvDesde(hvPer);
+        let q = db.collection('compras').orderBy('fecha', 'desc');
+        if (desde) q = q.where('fecha', '>=', desde);
+        q = q.limit(desde ? 400 : 50);
+        if (mas && hvUltimoDoc) q = q.startAfter(hvUltimoDoc);
+        const snap = await q.get();
+        snap.forEach(d => hvVentas.push(Object.assign({ id: d.id }, d.data())));
+        hvUltimoDoc = snap.docs.length ? snap.docs[snap.docs.length - 1] : hvUltimoDoc;
+        const bMas = document.getElementById('hvMas'); if (bMas) bMas.classList.toggle('hidden', snap.size < (desde ? 400 : 50));
+        await hvCargarNombres();
+        hvPintar();
+      } catch (e) { lista.innerHTML = `<p class="py-8 text-center text-red-400 text-xs">No se pudo cargar: ${escaparHtml(e.message || '')}</p>`; }
+    }
+    async function hvCargarNombres() {
+      const uids = [...new Set(hvVentas.map(v => v.usuarioId).filter(u => u && !(u in hvNombres)))].slice(0, 120);
+      await Promise.all(uids.map(async uid => { try { const d = await db.collection('usuarios').doc(uid).get(); hvNombres[uid] = d.exists ? (d.data() || {}) : {}; } catch (e) { hvNombres[uid] = {}; } }));
+    }
+    function hvClienteNombre(v) { const u = hvNombres[v.usuarioId] || {}; return String(u.nombre || '').trim() || String(v.usuarioEmail || 'Sin correo'); }
+    function hvCanal(v) {
+      if (v.preordenId || v.pagadoEnPedido) return ['Sobre pedido', 'bg-sky-500/15 text-sky-300'];
+      if (v.canal === 'whatsapp') return ['WhatsApp', 'bg-emerald-500/15 text-emerald-300'];
+      if (v.esRegalo || v.bonificacion || v.esBono) return ['Regalo', 'bg-pink-500/15 text-pink-300'];
+      if (v.canal === 'tienda') return ['Tienda', 'bg-gray-700/60 text-gray-300'];
+      return null;
+    }
+    function hvIcono(v) {
+      const p = (catalogoUnificado || []).find(x => x.docId === v.productoId || x.nombre === v.productoNombre) || {};
+      const img = p.iconoTarjeta || p.imagenUrl;
+      if (img) return `<img src="${escaparHtml(img)}" class="w-10 h-10 rounded-xl object-cover bg-gray-800 shrink-0" alt="">`;
+      const n = String(v.productoNombre || '?'), c = /netflix/i.test(n) ? 'bg-red-500/15 text-red-300' : /prime|amazon/i.test(n) ? 'bg-sky-500/15 text-sky-300' : /youtube/i.test(n) ? 'bg-rose-500/15 text-rose-300' : /gemini|link/i.test(n) ? 'bg-violet-500/15 text-violet-300' : 'bg-emerald-500/15 text-emerald-300';
+      return `<span class="w-10 h-10 rounded-xl shrink-0 flex items-center justify-center text-base font-black ${c}">${escaparHtml(n.charAt(0).toUpperCase())}</span>`;
+    }
+    function hvToggle(id) { hvAbiertas[id] = !hvAbiertas[id]; hvPintar(); }
+    function hvPintar() {
+      const lista = document.getElementById('hvLista'); if (!lista) return;
+      const q = String((document.getElementById('hvBuscar') || {}).value || '').trim().toLowerCase();
+      const L = hvVentas.filter(v => !q || [hvClienteNombre(v), v.usuarioEmail, v.productoNombre, v.credenciales, (v.correos || []).join(' ')].some(x => String(x || '').toLowerCase().indexOf(q) !== -1));
+      const tot = L.reduce((a, v) => a + (Number(v.total) || 0), 0), cue = L.reduce((a, v) => a + (Number(v.cantidad) || String(v.credenciales || '').split('\n').filter(Boolean).length || 0), 0);
+      const gan = L.reduce((a, v) => a + ((Number(v.total) || 0) - (Number(v.costoTotal) || 0)), 0);
+      const set = (id, t) => { const e = document.getElementById(id); if (e) e.textContent = t; };
+      set('hvResTit', { hoy: 'Vendido hoy', '7d': 'Vendido 7 días', mes: 'Vendido este mes', todo: 'Vendido (cargado)' }[hvPer]);
+      set('hvResTotal', formatoCOP(tot)); set('hvResN', `${L.length} · ${cue}`); set('hvResGan', formatoCOP(gan));
+      if (!L.length) { lista.innerHTML = `<div class="py-8 text-center text-gray-500 text-xs">${q ? 'Nada coincide con la búsqueda.' + (/@/.test(q) ? `<br><button type="button" onclick="hvBuscarCuenta()" class="mt-2 px-3 py-1.5 rounded-lg bg-gray-800 border border-gray-700 text-gray-200 font-bold">Buscar esta cuenta en todo el historial</button>` : '') : 'No hay ventas en este periodo.'}</div>`; return; }
+      const dias = {}; L.forEach(v => { const k = String(v.fecha || '').slice(0, 10) && new Date(v.fecha).toLocaleDateString('es-CO'); (dias[k] = dias[k] || []).push(v); });
+      const hoyK = new Date().toLocaleDateString('es-CO'), ayerK = new Date(Date.now() - 86400000).toLocaleDateString('es-CO');
+      lista.innerHTML = Object.keys(dias).map(k => {
+        const V = dias[k], d0 = new Date(V[0].fecha);
+        const tit = (k === hoyK ? 'Hoy · ' : k === ayerK ? 'Ayer · ' : '') + d0.toLocaleDateString('es-CO', { weekday: 'long', day: 'numeric', month: 'short' });
+        return `<div class="flex items-baseline justify-between gap-2 pt-2"><p class="text-xs font-black text-white capitalize">${escaparHtml(tit)}</p><p class="text-[11px] text-gray-400">${V.length} venta${V.length === 1 ? '' : 's'} · ${formatoCOP(V.reduce((a, v) => a + (Number(v.total) || 0), 0))}</p></div>` + V.map(v => {
+          const creds = String(v.credenciales || '').split('\n').map(x => x.trim()).filter(Boolean), n = Number(v.cantidad) || creds.length || 1;
+          const gan = (Number(v.total) || 0) - (Number(v.costoTotal) || 0), canal = hvCanal(v), ab = !!hvAbiertas[v.id], id = escaparJsAttr(v.id);
+          const hora = v.fecha ? new Date(v.fecha).toLocaleTimeString('es-CO', { hour: 'numeric', minute: '2-digit' }) : '';
+          return `<div class="rounded-2xl bg-gray-800/50 border border-gray-700/60 p-3">
+            <div class="flex gap-3 items-start">
+              ${hvIcono(v)}
+              <div class="min-w-0 flex-1">
+                <div class="flex justify-between gap-2"><p class="text-sm font-black text-white truncate">${escaparHtml(v.productoNombre || 'Producto')} <span class="text-gray-400 font-bold">×${n}</span></p><p class="shrink-0 text-sm font-black text-emerald-300">${formatoCOP(Number(v.total) || 0)}</p></div>
+                <div class="flex justify-between gap-2 mt-0.5">
+                  <p class="min-w-0 text-[11px] text-gray-400 truncate"><button type="button" onclick="abrirModalEditarCliente('${escaparJsAttr(v.usuarioId || '')}', '${escaparJsAttr(v.usuarioEmail || '')}', '${escaparJsAttr((hvNombres[v.usuarioId] || {}).nombre || '')}')" class="font-bold text-gray-200 underline decoration-dotted decoration-gray-500 underline-offset-2 hover:text-emerald-300">${escaparHtml(hvClienteNombre(v))}</button> · ${hora}</p>
+                  ${v.costoTotal !== undefined ? `<p class="shrink-0 text-[10px] ${gan >= 0 ? 'text-sky-300' : 'text-rose-300'}">ganancia ${formatoCOP(gan)}</p>` : ''}
+                </div>
+                ${canal ? `<span class="inline-block mt-1.5 text-[10px] font-bold px-2 py-0.5 rounded-full ${canal[1]}">${canal[0]}</span>` : ''}
+              </div>
+            </div>
+            ${creds.length ? `<div class="mt-2.5 pt-2 border-t border-gray-700/60">
+              <button type="button" onclick="hvToggle('${id}')" class="text-[11px] font-bold text-gray-300"><i class="fa-solid fa-chevron-${ab ? 'up' : 'down'} mr-1"></i>${creds.length} cuenta${creds.length === 1 ? '' : 's'} entregada${creds.length === 1 ? '' : 's'}</button>
+              ${ab ? `<div class="mt-1.5 space-y-1">${creds.map(c => `<div class="flex items-center justify-between gap-2 text-[11px] font-mono text-emerald-200"><span class="min-w-0 truncate">${escaparHtml(c)}</span><button type="button" onclick="copiarTexto('${escaparJsAttr(c)}', 'Cuenta copiada')" class="shrink-0 px-2 py-0.5 rounded-md bg-gray-900 border border-gray-700 text-gray-300"><i class="fa-solid fa-copy"></i></button></div>`).join('')}
+                <div class="grid grid-cols-2 gap-1.5 mt-2">
+                  <button type="button" onclick="hvCopiarTodas('${id}')" class="py-1.5 rounded-lg bg-gray-900 border border-gray-700 text-[11px] font-bold text-gray-200"><i class="fa-solid fa-copy mr-1"></i>Copiar todas</button>
+                  <button type="button" onclick="hvReenviar('${id}')" class="py-1.5 rounded-lg bg-emerald-500/15 border border-emerald-500/40 text-[11px] font-bold text-emerald-300"><i class="fa-brands fa-whatsapp mr-1"></i>Reenviar</button>
+                </div></div>` : ''}
+            </div>` : ''}
+          </div>`;
+        }).join('');
+      }).join('');
+    }
+    async function hvBuscarCuenta() {
+      const q = String((document.getElementById('hvBuscar') || {}).value || '').trim().toLowerCase(); if (!/@/.test(q)) return;
+      try {
+        const snap = await db.collection('compras').where('correos', 'array-contains', q).limit(20).get();
+        if (snap.empty) { mostrarToast('Esa cuenta no aparece en ninguna venta'); return; }
+        hvPer = 'todo'; hvVentas = []; snap.forEach(d => hvVentas.push(Object.assign({ id: d.id }, d.data())));
+        hvVentas.sort((a, b) => String(b.fecha).localeCompare(String(a.fecha))); hvVentas.forEach(v => hvAbiertas[v.id] = true);
+        document.querySelectorAll('#hvPeriodos button').forEach(b => b.className = 'shrink-0 px-3 py-1.5 rounded-full text-xs font-bold border ' + (b.dataset.p === 'todo' ? 'bg-emerald-500/20 border-emerald-500/50 text-emerald-300' : 'bg-gray-800 border-gray-700 text-gray-300'));
+        const bMas = document.getElementById('hvMas'); if (bMas) bMas.classList.add('hidden');
+        await hvCargarNombres(); hvPintar();
+      } catch (e) { mostrarToast('No se pudo buscar: ' + (e.message || '')); }
+    }
+    function hvCopiarTodas(id) { const v = hvVentas.find(x => x.id === id); if (v) copiarTexto(String(v.credenciales || '').trim(), 'Cuentas copiadas'); }
+    function hvReenviar(id) {
+      const v = hvVentas.find(x => x.id === id); if (!v) return;
+      const u = hvNombres[v.usuarioId] || {}; let wa = String(u.whatsapp || '').replace(/\D/g, ''); if (/^3\d{9}$/.test(wa)) wa = '57' + wa;
+      const txt = `Hola${u.nombre ? ' ' + String(u.nombre).split(' ')[0] : ''} 👋 Te reenvío tu compra de ${v.productoNombre || 'cuentas'}:\n\n${String(v.credenciales || '').trim()}${v.claveAcceso && !/:/.test(String(v.credenciales || '')) ? '\n\n🔑 Contraseña: ' + v.claveAcceso : ''}`;
+      if (wa.length >= 10) window.open('https://wa.me/' + wa + '?text=' + encodeURIComponent(txt), '_blank');
+      else copiarTexto(txt, 'El cliente no tiene WhatsApp: copié el mensaje');
     }
 
     // ==================== ADMIN: MENSAJE DE ENTREGA ====================
@@ -16522,7 +16590,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-21s';
+    const VERSION_PAGINA = '2026-10-21t';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261020_ajuste', fecha: '2026-10-20', titulo: 'Se ve mejor en iPhone 📱', mensaje: 'La tienda ahora **se ajusta siempre a tu pantalla**: ya no se agranda al escribir ni se corre hacia los lados. Si la tienes abierta, **recarga la página** para verla así.' },
       { id: 'act_20261020_app', fecha: '2026-10-20', titulo: 'App oficial de Epic Streaming 📲', mensaje: 'Ya tenemos **app oficial**: en la tienda toca **Descargar** (Android), **Instalar** (PC) o **Agregar** (iPhone). Abre más rápido, a pantalla completa, con tu misma cuenta y **se actualiza sola**.' },
@@ -21440,6 +21508,7 @@
 
     // ==================== NOVEDADES INTERNAS DEL PANEL (solo el equipo) ====================
     const ACTUALIZACIONES_INTERNAS = [
+      { fecha: '2026-10-21', titulo: '🧾 Historial de ventas nuevo', mensaje: 'El historial de ventas ya no es una tabla: resumen arriba (vendido, ventas, cuentas y ganancia), filtros Hoy / 7 días / Este mes / Todo, buscador por cliente, producto o correo de cuenta, y cada venta como tarjeta agrupada por día. Toca el **nombre del cliente** para editarlo; despliega las cuentas para copiarlas o **reenviarlas por WhatsApp**. Carga por partes, más rápido.', ir: 'ventas' },
       { fecha: '2026-10-21', titulo: '💳 Recargar saldo en dos toques', mensaje: 'Nueva pantalla de recarga: el cliente toca un monto (tarjetas grandes, con lo que **recibe** con el bono y una marcada como **popular**, configurable en Ajustes) y ya tiene su pago listo. En la pantalla de pago, el peso extra se ve **grande y explicado** ("los 1 peso de más son tu código") o dice "Monto exacto". Para clientes de fuera: montos cerrados de 10, 20 y 50 USDT. Los métodos manuales ahora son tarjetas con el QR grande y botón de copiar.', ir: '' },
       { fecha: '2026-10-21', titulo: '🚨 Los proveedores no se pierden los reportes', mensaje: 'Si un proveedor tiene una cuenta reportada sin resolver, ve una **barra arriba** con el tiempo que lleva (verde, amarillo y rojo pasadas 6 h) y una **ventana al entrar** con botones para ver la foto, marcar revisando y resolver. Vuelve a salir cada 30 min hasta que lo resuelva. Si no lo toca en 2 h, le llega un recordatorio por Telegram.', ir: 'tickets' },
       { fecha: '2026-10-21', titulo: '🔑 Página para ver el código de Amazon', mensaje: 'Nueva página **/codigo** sin iniciar sesión: el cliente pone el correo de su cuenta de Prime y le sale el código más reciente (inicio de sesión, verificación o cambio de contraseña). Es neutral, sin marca, para que tus revendedores se la den a sus clientes. Cada entrega con cuentas de tu dominio ya incluye el link.', ir: '' },
@@ -24771,7 +24840,7 @@
       return { cuentas: legado, stock: legado.length || stockPublico };
     }
 
-    const VERSION_SERVIDOR_NECESARIA = '2026-10-21k';   // la versión del servidor que necesita esta página
+    const VERSION_SERVIDOR_NECESARIA = '2026-10-21l';   // la versión del servidor que necesita esta página
     async function llamarBackend(accion, datos) {
       if (mantenimientoActivo() && /^(comprar|recarga|renovar|carrito|preorden|combo)/.test(String(accion || ''))) { avisoMantenimiento(''); throw new Error('Estamos en mantenimiento. Compra por WhatsApp mientras tanto.'); }
       if (modoPruebaCliente) { const rs = backendSimulado(accion, datos || {}); if (rs) return rs; }
