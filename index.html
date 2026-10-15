@@ -11840,8 +11840,8 @@
       let txt = metodo ? `<span class="text-emerald-400">Activa</span> · llave que ven los clientes: <b class="font-mono text-white">${escaparHtml(metodo.llave)}</b>` : '<span class="text-amber-400">Activa, pero falta marcar un método de pago como "Bre-B automática".</span>';
       if (recargaEstadoSrv && recargaEstadoSrv.ultimoEscaneo) {
         const min = Math.max(0, Math.round((Date.now() - Date.parse(recargaEstadoSrv.ultimoEscaneo)) / 60000));
-        const sano = min <= 12;
-        txt += ` · Último escaneo de Gmail: ${min <= 0 ? 'ahora' : 'hace ' + min + ' min'}${sano ? '' : ' <span class="text-amber-400">(lento: revisa el activador del servidor)</span>'}`;
+        const sano = min <= 25;   // sin pagos pendientes revisa cada 10 min (ahorro de cupo); con un pago pendiente, cada minuto
+        txt += ` · Último escaneo de Gmail: ${min <= 0 ? 'ahora' : 'hace ' + min + ' min'}${sano ? (min > 2 ? ' <span class="text-gray-500">(sin pagos pendientes revisa cada 10 min; cuando alguien genera un pago, cada minuto)</span>' : '') : ' <span class="text-amber-400">(lento: revisa el activador del servidor de correo)</span>'}`;
       } else {
         txt += ' · <span class="text-amber-400">Aún no hay escaneos: ejecuta crearActivadores en el servidor.</span>';
       }
@@ -16794,7 +16794,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-22t';
+    const VERSION_PAGINA = '2026-10-22v';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261020_ajuste', fecha: '2026-10-20', titulo: 'Se ve mejor en iPhone 📱', mensaje: 'La tienda ahora **se ajusta siempre a tu pantalla**: ya no se agranda al escribir ni se corre hacia los lados. Si la tienes abierta, **recarga la página** para verla así.' },
       { id: 'act_20261020_app', fecha: '2026-10-20', titulo: 'App oficial de Epic Streaming 📲', mensaje: 'Ya tenemos **app oficial**: en la tienda toca **Descargar** (Android), **Instalar** (PC) o **Agregar** (iPhone). Abre más rápido, a pantalla completa, con tu misma cuenta y **se actualiza sola**.' },
@@ -25245,7 +25245,7 @@ async function pintarPanelWa() {
 
     // 📶 Dos servidores: el de la PÁGINA (su propio cupo de Google) y el de CORREO (codigos@: lee pagos y códigos).
     // Las acciones que necesitan el correo van al servidor de correo; el resto, al de la página. Sin el segundo, todo va al único que haya.
-    const ACCIONES_SERVIDOR_CORREO = new Set(['otp', 'recarga_crear', 'recarga_binance_crear', 'recarga_cancelar', 'recarga_verificar', 'recarga_diagnostico', 'recarga_comprobante', 'pago_reportar', 'prov_correos', 'prov_comprobar', 'codigo_dominio', 'amz_otp', 'amz_otp_link', 'amz_salud', 'amz_revisada', 'amz_enlace_crear', 'codigo_enlace_obtener', 'salud', 'cupo', 'saldo_vence_resumen', 'saldo_vence_revertir', 'embudo_registro', 'embudo_registro_ver', 'wa_codigo', 'wa_codigo_admin', 'binance_tasa']);
+    const ACCIONES_SERVIDOR_CORREO = new Set(['otp', 'recarga_crear', 'recarga_binance_crear', 'recarga_cancelar', 'recarga_verificar', 'recarga_diagnostico', 'recarga_comprobante', 'pago_reportar', 'prov_correos', 'prov_comprobar', 'codigo_dominio', 'amz_otp', 'amz_otp_link', 'amz_salud', 'amz_revisada', 'amz_enlace_crear', 'codigo_enlace_obtener', 'salud', 'cupo', 'saldo_vence_resumen', 'saldo_vence_revertir', 'embudo_registro', 'embudo_registro_ver', 'wa_codigo', 'wa_codigo_admin', 'binance_tasa', 'tg_revisar', 'wa_grupos_log', 'wa_seguimiento_ahora']);
     function obtenerBackendUrl(accion) {
       const pag = String((ajustesGeneralesConfig && ajustesGeneralesConfig.backendUrl) || '').trim();
       const cor = String((ajustesGeneralesConfig && ajustesGeneralesConfig.backendUrlCorreo) || '').trim();
