@@ -725,6 +725,10 @@
           <div class="min-w-0 flex-grow"><p class="text-sm font-black text-white">Correo para crear cuenta</p><p class="text-[10px] text-gray-500">Pide uno, crea la cuenta y toca "Ver código" para verificarla.</p></div>
           <button type="button" onclick="provDominioNuevo()" class="shrink-0 px-3 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-black text-[11px]"><i class="fa-solid fa-plus"></i> Nuevo</button>
         </div>
+        <div class="mt-3 grid grid-cols-2 gap-2">
+          <div class="rounded-xl bg-gray-800/70 border border-gray-700/60 p-2.5 text-center"><p id="provHoySubidas" class="text-xl font-black text-white">0</p><p class="text-[10px] text-gray-400">subidas hoy</p></div>
+          <div class="rounded-xl bg-gray-800/70 border border-gray-700/60 p-2.5 text-center"><p id="provHoyAprobadas" class="text-xl font-black text-emerald-300">0</p><p class="text-[10px] text-gray-400">aprobadas hoy</p></div>
+        </div>
         <div class="mt-3 flex gap-2">
           <input id="provDomBuscar" type="email" inputmode="email" autocomplete="off" placeholder="Pega un correo tuyo" class="flex-1 min-w-0 bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-[12px] text-white font-mono" onkeydown="if(event.key==='Enter'){event.preventDefault();provDominioBuscar();}">
           <button type="button" onclick="provDominioBuscar()" class="shrink-0 px-3 py-2 rounded-xl bg-gray-700 hover:bg-gray-600 text-white font-bold text-[11px]"><i class="fa-solid fa-key mr-1"></i>Buscar código</button>
@@ -12266,6 +12270,9 @@
       set('provDebe', formatoCOP(debe));
       set('provEnRevision', String(suma(lotes.filter(l => l.estado === 'pendiente'), l => l.cantidad)));
       set('provAprobadas', String(suma(aprobados, l => l.cantidad)));
+      { const hoy = new Date().toLocaleDateString('es-CO'), esHoy = f => !!f && new Date(f).toLocaleDateString('es-CO') === hoy, reales = lotes.filter(l => !l.esAbono);
+        set('provHoySubidas', String(suma(reales.filter(l => esHoy(l.creadoEl)), l => l.cantidadEnviada || l.cantidad)));
+        set('provHoyAprobadas', String(suma(reales.filter(l => l.estado === 'aprobado' && esHoy(l.aprobadoEl || l.creadoEl)), l => l.cantidad))); }
       set('provPagado', formatoCOP(pagado));
       set('provNombre', perfilNombreActual || (currentUser ? currentUser.email : ''));
       renderizarMetodosPagoProveedor();
@@ -13860,6 +13867,7 @@
     }
 
     // ----- lo que ve el proveedor -----
+    var provVerResueltos = false;
     function renderizarTicketsProveedor() {
       try { actualizarAvisoReportesProv(); } catch (e) { /* nada */ }
       const caja = document.getElementById('provTicketsCaja');
@@ -13872,10 +13880,10 @@
       if (!proveedorTickets.length) { cont.innerHTML = '<p class="text-xs text-gray-400 text-center py-3">Ninguna de tus cuentas tiene reportes. ¡Sigue así! 💪</p>'; const b0 = document.getElementById('provTicketsAbiertos'); if (b0) b0.classList.add('hidden'); return; }
       const b = document.getElementById('provTicketsAbiertos');
       if (b) { b.textContent = abiertos; b.classList.toggle('hidden', !abiertos); }
-      cont.innerHTML = proveedorTickets.map(t => {
+      const tarjetaTicketProv = t => {
         const resuelto = t.estado === 'resuelto';
         const fecha = new Date(t.creadoEl).toLocaleDateString('es-CO', { day: '2-digit', month: '2-digit', year: 'numeric' });
-        return `<div class="p-3 rounded-xl bg-gray-800/50 border border-gray-700/60">
+        return `<div class="p-3 rounded-xl bg-gray-800/50 ${resuelto ? 'border border-gray-700/60' : 'border-2 border-amber-400/60'}">
           <div class="flex items-center justify-between gap-2"><p class="text-xs font-bold text-white break-all">${escaparHtml(t.cuenta || '')}</p><span class="shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-full border ${resuelto ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30' : 'bg-amber-500/15 text-amber-300 border-amber-500/30'}">${resuelto ? 'Resuelto' : 'Abierto'}</span></div>
           <p class="text-[11px] text-gray-300 mt-0.5">${escaparHtml(t.motivo || '')}${t.detalle ? ' · ' + escaparHtml(t.detalle) : ''}</p>
           <p class="text-[10px] text-gray-500">${escaparHtml(t.productoNombre || '')} · ${fecha}</p>
@@ -13889,7 +13897,11 @@
           ${!resuelto ? `<button type="button" onclick="abrirResolverProveedor('${escaparJsAttr(t.id)}')" class="mt-1.5 mr-1 px-2.5 py-1 rounded-lg text-[10px] font-black bg-emerald-500 hover:bg-emerald-400 text-black"><i class="fa-solid fa-circle-check mr-1"></i>Resolver</button>` : ''}
           ${t.tieneFoto ? `<button onclick="verFotoTicket('${escaparJsAttr(t.id)}')" class="mt-1.5 px-2.5 py-1 rounded-lg text-[10px] font-bold bg-sky-500/15 hover:bg-sky-500/25 text-sky-300 border border-sky-500/30"><i class="fa-solid fa-image mr-1"></i>Ver foto del error</button>` : ''}
         </div>`;
-      }).join('');
+      };
+      const abiertosT = proveedorTickets.filter(t => t.estado !== 'resuelto'), resueltosT = proveedorTickets.filter(t => t.estado === 'resuelto');
+      cont.innerHTML = abiertosT.map(tarjetaTicketProv).join('')
+        + (resueltosT.length ? `<button type="button" onclick="provVerResueltos = !provVerResueltos; renderizarTicketsProveedor()" class="w-full flex items-center justify-between px-3 py-2.5 rounded-xl bg-gray-800/50 border border-gray-700/60 text-xs font-bold text-gray-200"><span><i class="fa-solid fa-circle-check text-emerald-400 mr-1"></i>${resueltosT.length} resuelto${resueltosT.length === 1 ? '' : 's'}</span><span class="text-gray-400">${provVerResueltos ? 'Ocultar' : 'Ver'} <i class="fa-solid fa-chevron-${provVerResueltos ? 'up' : 'down'} ml-0.5"></i></span></button>` : '')
+        + (provVerResueltos ? resueltosT.map(tarjetaTicketProv).join('') : '');
     }
 
     // 🚨 AVISO DE REPORTES AL PROVEEDOR: barra fija + ventana al entrar, hasta que resuelva
@@ -16706,7 +16718,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-22d';
+    const VERSION_PAGINA = '2026-10-22e';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261020_ajuste', fecha: '2026-10-20', titulo: 'Se ve mejor en iPhone 📱', mensaje: 'La tienda ahora **se ajusta siempre a tu pantalla**: ya no se agranda al escribir ni se corre hacia los lados. Si la tienes abierta, **recarga la página** para verla así.' },
       { id: 'act_20261020_app', fecha: '2026-10-20', titulo: 'App oficial de Epic Streaming 📲', mensaje: 'Ya tenemos **app oficial**: en la tienda toca **Descargar** (Android), **Instalar** (PC) o **Agregar** (iPhone). Abre más rápido, a pantalla completa, con tu misma cuenta y **se actualiza sola**.' },
