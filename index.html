@@ -16794,7 +16794,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-22r';
+    const VERSION_PAGINA = '2026-10-22s';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261020_ajuste', fecha: '2026-10-20', titulo: 'Se ve mejor en iPhone 📱', mensaje: 'La tienda ahora **se ajusta siempre a tu pantalla**: ya no se agranda al escribir ni se corre hacia los lados. Si la tienes abierta, **recarga la página** para verla así.' },
       { id: 'act_20261020_app', fecha: '2026-10-20', titulo: 'App oficial de Epic Streaming 📲', mensaje: 'Ya tenemos **app oficial**: en la tienda toca **Descargar** (Android), **Instalar** (PC) o **Agregar** (iPhone). Abre más rápido, a pantalla completa, con tu misma cuenta y **se actualiza sola**.' },
@@ -23266,10 +23266,21 @@
       // 2) Servidor
       let ping = null;
       try { ping = await llamarBackend('ping', {}); } catch (e) { ping = { ok: false, error: e.message }; }
-      if (!ping || !ping.ok) items.push(fila(false, 'Servidor (Apps Script)', 'No responde', (ping && ping.error) || 'Revisa la URL del servidor en Ajustes.'));
+      const dosServ = !!(ajustesGeneralesConfig.backendUrlCorreo && String(ajustesGeneralesConfig.backendUrlCorreo).trim() !== String(ajustesGeneralesConfig.backendUrl || '').trim());
+      const nomPag = dosServ ? 'Servidor de la página (Epic Alex)' : 'Servidor (Apps Script)';
+      let pingC = null;
+      if (dosServ) {
+        try { pingC = await llamarBackend('ping', { __servidor: 'correo' }); } catch (e) { pingC = { ok: false, error: e.message }; }
+      }
+      if (!ping || !ping.ok) items.push(fila(false, nomPag, 'No responde', (ping && ping.error) || 'Revisa la URL del servidor en Ajustes.'));
       else {
         const viejo = !ping.version || String(ping.version) < VERSION_SERVIDOR_NECESARIA;
-        items.push(fila(!viejo, 'Servidor (Apps Script)', `Versión del servidor: ${ping.version || 'antigua'}`, viejo ? `Esta página necesita la ${VERSION_SERVIDOR_NECESARIA}: publica el servidor nuevo (Implementar → Gestionar implementaciones → lápiz → Nueva versión).` : ''));
+        items.push(fila(!viejo, nomPag, `Versión del servidor: ${ping.version || 'antigua'}`, viejo ? `Esta página necesita la ${VERSION_SERVIDOR_NECESARIA}: publica el servidor nuevo (Implementar → Gestionar implementaciones → lápiz → Nueva versión).` : ''));
+      }
+      if (dosServ) {
+        if (!pingC || !pingC.ok) items.push(fila(false, 'Servidor de correo (codigos@)', 'No responde', (pingC && pingC.error) || 'Si dice "demasiadas veces", es el cupo diario: se libera solo.'));
+        else { const vC = !pingC.version || String(pingC.version) < VERSION_SERVIDOR_NECESARIA, igual = ping && ping.version && pingC.version === ping.version;
+          items.push(fila(!vC && (igual || !ping), 'Servidor de correo (codigos@)', `Versión: ${pingC.version || 'antigua'}${ping && ping.version && !igual ? ' · distinta a la de la página (' + ping.version + ')' : ''}`, (!vC && igual) ? '' : 'Pega el mismo servidor en los dos proyectos y publica nueva versión en ambos.')); }
       }
       // 3) Reglas de Firebase (marca de versión)
       try { await db.collection('reglas_version').doc(VERSION_REGLAS_ESPERADA).get(); items.push(fila(true, 'Reglas de Firebase', `Publicadas (${VERSION_REGLAS_ESPERADA})`)); }
@@ -23278,8 +23289,9 @@
       const sub = [];
       if (ping && ping.ok) {
         sub.push(fila(!!ping.firestore, 'Conexión con Firebase', ping.firestore ? 'Lee y escribe sin problema' : 'El servidor no puede leer Firebase', ping.firestore ? '' : 'Revisa la cuenta de servicio del servidor.'));
-        if (Array.isArray(ping.tareas)) {
-          const t = ping.tareas, tiene = n => t.indexOf(n) !== -1, falta = 'Falta: en Apps Script ejecuta crearActivadores una vez.';
+        const pT = (dosServ && pingC && pingC.ok) ? pingC : ping;   // las tareas automáticas solo corren en el de correo
+        if (Array.isArray(pT.tareas)) {
+          const t = pT.tareas, tiene = n => t.indexOf(n) !== -1, falta = 'Falta: en Apps Script ejecuta crearActivadores una vez.';
           sub.push(fila(tiene('procesarPagosGmail'), 'Lector de pagos Bre-B y Binance (cada minuto)', tiene('procesarPagosGmail') ? 'Activo' : 'No está activo', tiene('procesarPagosGmail') ? '' : falta));
           sub.push(fila(tiene('revisarVencimientos'), 'Tarea cada hora (estados, comprobantes, vencimientos)', tiene('revisarVencimientos') ? 'Activa' : 'No está activa', tiene('revisarVencimientos') ? '' : falta));
           sub.push(fila(tiene('resumenDiario'), 'Tarea diaria (resumen, avisos y plan de marketing)', tiene('resumenDiario') ? 'Activa' : 'No está activa', tiene('resumenDiario') ? '' : falta));
@@ -25257,7 +25269,8 @@ async function pintarPanelWa() {
     async function llamarBackend(accion, datos) {
       if (mantenimientoActivo() && /^(comprar|recarga|renovar|carrito|preorden|combo)/.test(String(accion || ''))) { avisoMantenimiento(''); throw new Error('Estamos en mantenimiento. Compra por WhatsApp mientras tanto.'); }
       if (modoPruebaCliente) { const rs = backendSimulado(accion, datos || {}); if (rs) return rs; }
-      const url = obtenerBackendUrl(accion);
+      const aCorreo = !!(datos && datos.__servidor === 'correo'); if (aCorreo) { datos = Object.assign({}, datos); delete datos.__servidor; }
+      const url = aCorreo ? obtenerBackendUrl('*correo') : obtenerBackendUrl(accion);
       if (!url) throw new Error('El servidor seguro no está configurado.');
       if (!currentUser) throw new Error('Debes iniciar sesión.');
       let idToken;
