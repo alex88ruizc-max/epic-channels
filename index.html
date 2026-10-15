@@ -3655,8 +3655,8 @@
           </div>
 
           <p id="avisoCompraTrasRecarga" class="hidden mb-2 px-3 py-2 rounded-xl bg-emerald-500/10 border border-emerald-400/40 text-[11px] text-emerald-100"></p><div id="recargaAutoForm">
-            <p class="text-sm font-bold text-white">¿Cuánto quieres recargar?</p>
-            <p class="text-[11px] text-gray-400 mb-2.5">Toca un monto y listo. Se acredita solo en 1 o 2 minutos.</p>
+            <p id="recargaTituloMontos" class="text-sm font-bold text-white">¿Cuánto quieres recargar?</p>
+            <p id="recargaSubMontos" class="text-[11px] text-gray-400 mb-2.5">Toca un monto y listo. Se acredita solo en 1 o 2 minutos.</p>
             <div id="recargaMontos" class="grid grid-cols-2 gap-2 mb-2"></div>
             <div id="recargaOtroMonto" class="hidden flex gap-2">
               <input type="number" id="recargaAutoMonto" min="1000" step="1000" placeholder="Otro monto" class="w-full min-w-0 bg-gray-800 border border-gray-700 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none">
@@ -11394,6 +11394,9 @@
     function montoPopularRecarga() { const v = parseInt((ajustesGeneralesConfig || {}).recargaPopular, 10); return v > 0 ? v : 50000; }
     function pintarMontosRecarga() {
       const g = document.getElementById('recargaMontos'); if (!g) return;
+      { const avC = document.getElementById('avisoCompraTrasRecarga'), desdeCompra = !!(compraTrasRecarga && compraTrasRecarga.falta && Date.now() < compraTrasRecarga.expira && avC && !avC.classList.contains('hidden')), t1 = document.getElementById('recargaTituloMontos'), t2 = document.getElementById('recargaSubMontos');
+        if (t1) t1.textContent = desdeCompra ? 'O elige otro monto' : '¿Cuánto quieres recargar?';
+        if (t2) t2.textContent = desdeCompra ? 'Lo que sobre queda en tu saldo.' : 'Toca un monto y listo. Se acredita solo en 1 o 2 minutos.'; }
       const pop = montoPopularRecarga(), pB = (typeof pctBonoBreb === 'function' ? pctBonoBreb() : 0) || 0;
       const base = [10000, 20000, 50000, 100000]; if (base.indexOf(pop) === -1) base.splice(2, 0, pop);
       const montos = base.filter(v => v >= (recargaAutoCfg.minimo || 0)).slice(0, 4);
@@ -11422,7 +11425,8 @@
     async function recargaAutoCrear() {
       const inp = document.getElementById('recargaAutoMonto');
       const monto = parseInt(inp && inp.value, 10);
-      if (!(monto >= recargaAutoCfg.minimo)) { alert(`El monto mínimo es ${formatoCOP(recargaAutoCfg.minimo)} COP.`); return; }
+      const paraCompra = !!(compraTrasRecarga && compraTrasRecarga.falta && monto >= compraTrasRecarga.falta && monto >= 1000);
+      if (!(monto >= recargaAutoCfg.minimo) && !paraCompra) { alert(`El monto mínimo es ${formatoCOP(recargaAutoCfg.minimo)} COP.`); return; }
       if (modoPruebaCliente) {
         // Simulación: monto único como el real; el pago se "detecta" solo en unos segundos
         const unico = monto + 1 + Math.floor(Math.random() * 98);
@@ -11436,7 +11440,7 @@
       const btn = document.getElementById('btnRecargaAutoCrear');
       if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>'; }
       try {
-        const r = await llamarBackend('recarga_crear', { monto: monto });
+        const r = await llamarBackend('recarga_crear', { monto: monto, paraCompra: paraCompra });
         if (!r.ok) { alert(r.error || 'No se pudo crear el pedido.'); return; }
         pedidoRecargaActivo = r.pedido;
         pedidosRecargaVistos[r.pedido.id] = 'pendiente';
@@ -16501,7 +16505,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-21k';
+    const VERSION_PAGINA = '2026-10-21l';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261020_ajuste', fecha: '2026-10-20', titulo: 'Se ve mejor en iPhone 📱', mensaje: 'La tienda ahora **se ajusta siempre a tu pantalla**: ya no se agranda al escribir ni se corre hacia los lados. Si la tienes abierta, **recarga la página** para verla así.' },
       { id: 'act_20261020_app', fecha: '2026-10-20', titulo: 'App oficial de Epic Streaming 📲', mensaje: 'Ya tenemos **app oficial**: en la tienda toca **Descargar** (Android), **Instalar** (PC) o **Agregar** (iPhone). Abre más rápido, a pantalla completa, con tu misma cuenta y **se actualiza sola**.' },
@@ -18579,9 +18583,28 @@
       const falta = Math.max(0, total - (Number(userSaldo) || 0));
       setTimeout(() => {
         const inp = document.getElementById('recargaAutoMonto');
-        if (inp && falta > 0) { const minimo = (recargaAutoCfg && recargaAutoCfg.minimo) || 0; inp.value = String(Math.max(minimo, Math.ceil(falta))); }   // exactamente lo que falta (sin redondear al mil)
+        const exacto = Math.max(1000, Math.ceil(falta));
+        if (inp && falta > 0) inp.value = String(exacto);
+        compraTrasRecarga.falta = exacto;
+        const sugerido = Math.ceil((exacto + 1) / 10000) * 10000;
+        const pB = (typeof pctBonoBreb === 'function' ? pctBonoBreb() : 0) || 0;
+        const recibe = v => pB ? `<span class="block text-[10px] font-bold opacity-80">recibes ${formatoCOP(v + Math.round(v * pB / 100))}</span>` : '';
         const aviso = document.getElementById('avisoCompraTrasRecarga');
-        if (aviso) { aviso.classList.remove('hidden'); aviso.innerHTML = `<i class="fa-solid fa-cart-shopping mr-1"></i>Al recargar se completa sola tu compra: <b>${it.cantidad} × ${escaparHtml(prod.nombre)}</b> (${formatoCOP(total)}).`; }
+        if (aviso) {
+          aviso.className = 'mb-3 p-3.5 rounded-2xl bg-emerald-500/10 border border-emerald-400/50 text-emerald-50';
+          aviso.innerHTML = `<p class="text-sm font-black text-white mb-2"><i class="fa-solid fa-cart-shopping text-emerald-300 mr-1"></i>Completa tu compra</p>
+            <div class="text-[12px] space-y-1">
+              <div class="flex justify-between gap-2"><span class="truncate">${it.cantidad} × ${escaparHtml(prod.nombre)}</span><b class="text-white">${formatoCOP(total)}</b></div>
+              <div class="flex justify-between gap-2 text-emerald-200/70"><span>Tu saldo</span><span>− ${formatoCOP(Math.max(0, Number(userSaldo) || 0))}</span></div>
+              <div class="flex justify-between gap-2 pt-1.5 mt-1 border-t border-emerald-400/20 text-[13px]"><span class="font-bold">Te faltan</span><b class="text-white">${formatoCOP(exacto)}</b></div>
+            </div>
+            <div class="grid grid-cols-2 gap-2 mt-3">
+              <button type="button" onclick="recargaTocarMonto(this, ${exacto}, false)" class="p-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black text-left"><span class="block text-[10px] font-black uppercase opacity-70">Lo exacto</span><span class="block text-base font-black">${formatoCOP(exacto)}</span>${recibe(exacto)}</button>
+              <button type="button" onclick="recargaTocarMonto(this, ${sugerido}, false)" class="p-2.5 rounded-xl bg-gray-800 border border-emerald-400/40 hover:bg-gray-700 text-white text-left"><span class="block text-[10px] font-black uppercase text-emerald-300">Sugerido</span><span class="block text-base font-black">${formatoCOP(sugerido)}</span><span class="block text-[10px] text-gray-400">te sobran ${formatoCOP(sugerido - exacto)}</span></button>
+            </div>
+            <p class="text-[10px] text-emerald-200/70 mt-2 text-center">Cuando entre tu pago te pregunto si completo la compra. O elige otro monto abajo 👇</p>`;
+        }
+        try { pintarMontosRecarga(); } catch (e) { /* nada */ }
       }, 50);
     }
     // Cuando el saldo alcanza, se hace la compra pendiente (una sola vez)
@@ -24718,7 +24741,7 @@
       return { cuentas: legado, stock: legado.length || stockPublico };
     }
 
-    const VERSION_SERVIDOR_NECESARIA = '2026-10-21e';   // la versión del servidor que necesita esta página
+    const VERSION_SERVIDOR_NECESARIA = '2026-10-21f';   // la versión del servidor que necesita esta página
     async function llamarBackend(accion, datos) {
       if (mantenimientoActivo() && /^(comprar|recarga|renovar|carrito|preorden|combo)/.test(String(accion || ''))) { avisoMantenimiento(''); throw new Error('Estamos en mantenimiento. Compra por WhatsApp mientras tanto.'); }
       if (modoPruebaCliente) { const rs = backendSimulado(accion, datos || {}); if (rs) return rs; }
