@@ -16787,7 +16787,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-22n';
+    const VERSION_PAGINA = '2026-10-22q';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261020_ajuste', fecha: '2026-10-20', titulo: 'Se ve mejor en iPhone 📱', mensaje: 'La tienda ahora **se ajusta siempre a tu pantalla**: ya no se agranda al escribir ni se corre hacia los lados. Si la tienes abierta, **recarga la página** para verla así.' },
       { id: 'act_20261020_app', fecha: '2026-10-20', titulo: 'App oficial de Epic Streaming 📲', mensaje: 'Ya tenemos **app oficial**: en la tienda toca **Descargar** (Android), **Instalar** (PC) o **Agregar** (iPhone). Abre más rápido, a pantalla completa, con tu misma cuenta y **se actualiza sola**.' },
@@ -23448,7 +23448,18 @@
       }, () => {}); } catch (e) { /* nada */ }
     }
     const ESTILO_ALEX_BASE = 'Cliente: hola bro tienes prime\nAlex: Si bro, ¿cuántas te mando?\nCliente: Necesito 1 netflix mano\nAlex: Si hay\nCliente: Cuánto sería las 6 pana\nAlex: 18k manito\nCliente: 5 bro porfa\nAlex: Ok bro\nCliente: Verificas porfa\nAlex: Voy\nCliente: Pa las Netflix x fa\nAlex: Calma, ya te las mando\nCliente: Regalame 2 Netflix x fa\nAlex: Claro man, ¿junto con la que venció hoy o nuevas?\nCliente: Hoy tienes prime video?\nAlex: Si claro\nCliente: bro\nAlex: Dime bro\nCliente: (manda el comprobante)\nAlex: Recibido';
-    async function pintarPanelWa() {
+        // ⚡ Interruptores rápidos del panel de WhatsApp (se guardan al instante)
+    async function waInterruptorRapido(campo, valor) {
+      try {
+        if (campo === 'gruposActivo' && valor && !String((cfgWaPanel && cfgWaPanel.gruposMenciones) || '').trim() && !(cfgWaPanel && cfgWaPanel.gruposMenciones === undefined)) { alert('Para encender los grupos primero escribe al menos una palabra de mención en "Promos en grupos".'); return; }
+        const datos = {}; datos[campo] = !!valor;
+        await db.collection('configuracion').doc('whatsapp').set(datos, { merge: true });
+        if (typeof cfgWaPanel === 'object' && cfgWaPanel) Object.assign(cfgWaPanel, datos);
+        mostrarToast((campo === 'gruposActivo' ? '👥 Grupos ' : '🎯 Cazador ') + (valor ? 'encendido' : 'apagado') + ' · el bot lo aplica en 1 minuto');
+        pintarPanelWa();
+      } catch (e) { alert('No se pudo guardar: ' + (e.message || e)); }
+    }
+async function pintarPanelWa() {
       const c = document.getElementById('waPanel'); if (!c || !esAdminSesionActual()) return;
       try { const d = await db.collection('configuracion').doc('whatsapp').get(); cfgWaPanel = d.exists ? (d.data() || {}) : {}; } catch (e) { cfgWaPanel = {}; }
       const k = cfgWaPanel, on = v => v !== false;
@@ -23456,6 +23467,14 @@
       const inp = 'w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500';
       const caja = 'p-4 rounded-2xl bg-gray-900 border border-gray-800';
       c.innerHTML = `
+        <div class="grid grid-cols-2 gap-2 mb-3">
+          <button type="button" id="waQGrupos" onclick="waInterruptorRapido('gruposActivo', ${k.gruposActivo === true ? 'false' : 'true'})" class="p-3 rounded-2xl text-left border ${k.gruposActivo === true ? 'bg-emerald-500/15 border-emerald-500/50' : 'bg-gray-900 border-gray-700'}">
+            <span class="block text-[12px] font-black text-white">👥 Grupos</span>
+            <span class="block text-[10px] ${k.gruposActivo === true ? 'text-emerald-300' : 'text-gray-400'}">${k.gruposActivo === true ? 'ENCENDIDO · toca para apagar' : 'APAGADO · toca para encender'}</span></button>
+          <button type="button" id="waQCazador" onclick="waInterruptorRapido('cazadorActivo', ${k.cazadorActivo !== false ? 'false' : 'true'})" class="p-3 rounded-2xl text-left border ${k.cazadorActivo !== false ? 'bg-emerald-500/15 border-emerald-500/50' : 'bg-gray-900 border-gray-700'}">
+            <span class="block text-[12px] font-black text-white">🎯 Cazador</span>
+            <span class="block text-[10px] ${k.cazadorActivo !== false ? 'text-emerald-300' : 'text-gray-400'}">${k.cazadorActivo !== false ? 'ENCENDIDO · toca para apagar' : 'APAGADO · toca para encender'}</span></button>
+        </div>
         <div class="${caja} border-emerald-500/40">
           <div class="flex items-center justify-between gap-3"><span><span class="block text-sm font-black text-white">🤖 Asistente de WhatsApp</span><span class="block text-[11px] text-gray-400">Responde con los datos reales de tu tienda. Si no entiende, te deja la conversación.</span></span><input type="checkbox" id="waActivo" ${on(k.activo) ? 'checked' : ''} onchange="guardarCfgWa(true)" class="accent-emerald-500 w-6 h-6 shrink-0"></div>
           <div id="waAsistenteEstado" class="text-[11px] text-gray-300 mt-2"></div>
@@ -25221,7 +25240,7 @@
       return { cuentas: legado, stock: legado.length || stockPublico };
     }
 
-    const VERSION_SERVIDOR_NECESARIA = '2026-10-21q';   // la versión del servidor que necesita esta página
+    const VERSION_SERVIDOR_NECESARIA = '2026-10-21s';   // la versión del servidor que necesita esta página
     async function llamarBackend(accion, datos) {
       if (mantenimientoActivo() && /^(comprar|recarga|renovar|carrito|preorden|combo)/.test(String(accion || ''))) { avisoMantenimiento(''); throw new Error('Estamos en mantenimiento. Compra por WhatsApp mientras tanto.'); }
       if (modoPruebaCliente) { const rs = backendSimulado(accion, datos || {}); if (rs) return rs; }
