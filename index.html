@@ -26,6 +26,15 @@
       #vistaAdmin { overflow-x: clip; }
     }
     @media (min-width: 1024px) { #barraSeccionMovil { display: none !important; } }
+
+    /* 💚 Botón "Ya pagué": late y lo cruza un destello para que el cliente lo vea */
+    @keyframes yaPagueLatido { 0%,100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(16,185,129,.55); } 50% { transform: scale(1.03); box-shadow: 0 0 0 10px rgba(16,185,129,0); } }
+    @keyframes yaPagueBrillo { 0% { left: -60%; } 100% { left: 130%; } }
+    .btn-ya-pague { position: relative; overflow: hidden; animation: yaPagueLatido 1.6s ease-in-out infinite; }
+    .btn-ya-pague::after { content: ""; position: absolute; top: 0; bottom: 0; left: -60%; width: 40%; background: linear-gradient(90deg, transparent, rgba(255,255,255,.45), transparent); transform: skewX(-20deg); animation: yaPagueBrillo 2.4s ease-in-out infinite; pointer-events: none; }
+    .btn-ya-pague:disabled { animation: none; opacity: .8; }
+    .btn-ya-pague:disabled::after { animation: none; display: none; }
+    @media (prefers-reduced-motion: reduce) { .btn-ya-pague, .btn-ya-pague::after { animation: none !important; } }
 </style>
   <title>Epic Streaming | Cuentas de streaming al por mayor</title>
   
@@ -3793,9 +3802,10 @@
             </div>
             <p id="recAutoReloj" class="text-center text-sm font-bold text-amber-300 mt-3"></p>
             <p class="text-[10px] text-amber-200 bg-amber-500/10 border border-amber-500/30 rounded-lg p-2 mt-2 leading-snug"><i class="fa-solid fa-triangle-exclamation mr-1"></i> <span id="recAutoAvisoExacto">El monto debe ser <b>exacto</b>, con los pesos de más. Si envías otro valor, no se acredita solo.</span></p>
-            <div class="grid grid-cols-2 gap-2 mt-3">
-              <button type="button" id="btnRecargaAutoYaPague" onclick="recargaAutoYaPague()" class="bg-emerald-500 hover:bg-emerald-400 text-black font-bold py-2.5 rounded-xl text-xs transition">Ya pagué</button>
-              <button type="button" onclick="recargaAutoCancelar()" class="bg-gray-800 hover:bg-gray-700 text-gray-300 font-bold py-2.5 rounded-xl text-xs transition">Cancelar pedido</button>
+            <div class="mt-3 space-y-2">
+              <p class="text-center text-[13px] font-black text-white">👇 Cuando hayas enviado el pago, toca aquí</p>
+              <button type="button" id="btnRecargaAutoYaPague" onclick="recargaAutoYaPague()" class="btn-ya-pague w-full bg-emerald-500 hover:bg-emerald-400 text-black font-black py-3.5 rounded-2xl text-base transition"><i class="fa-solid fa-circle-check mr-1"></i> Ya pagué</button>
+              <button type="button" onclick="recargaAutoCancelar()" class="w-full bg-gray-800 hover:bg-gray-700 text-gray-400 font-bold py-2 rounded-xl text-xs transition">Cancelar pedido</button>
             </div>
             <p id="recAutoEstado" class="text-[11px] text-center text-gray-400 mt-2 leading-snug"></p>
           </div>
@@ -11739,7 +11749,7 @@
       } catch (e) {
         recargaAutoEstadoTxt(e.message);
       } finally {
-        if (btn) { btn.disabled = false; btn.innerHTML = 'Ya pagué'; }
+        if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-circle-check mr-1"></i> Ya pagué'; }
       }
     }
 
@@ -11841,8 +11851,8 @@
       let txt = metodo ? `<span class="text-emerald-400">Activa</span> · llave que ven los clientes: <b class="font-mono text-white">${escaparHtml(metodo.llave)}</b>` : '<span class="text-amber-400">Activa, pero falta marcar un método de pago como "Bre-B automática".</span>';
       if (recargaEstadoSrv && recargaEstadoSrv.ultimoEscaneo) {
         const min = Math.max(0, Math.round((Date.now() - Date.parse(recargaEstadoSrv.ultimoEscaneo)) / 60000));
-        const sano = min <= 25;   // sin pagos pendientes revisa cada 10 min (ahorro de cupo); con un pago pendiente, cada minuto
-        txt += ` · Último escaneo de Gmail: ${min <= 0 ? 'ahora' : 'hace ' + min + ' min'}${sano ? (min > 2 ? ' <span class="text-gray-500">(sin pagos pendientes revisa cada 10 min; cuando alguien genera un pago, cada minuto)</span>' : '') : ' <span class="text-amber-400">(lento: revisa el activador del servidor de correo)</span>'}`;
+        const sano = min <= 45;   // el correo se mira cada minuto; este registro se guarda cada 30 min cuando no hay pagos (ahorro de cupo)
+        txt += ` · Último escaneo de Gmail: ${min <= 0 ? 'ahora' : 'hace ' + min + ' min'}${sano ? (min > 2 ? ' <span class="text-gray-500">(el correo se revisa cada minuto; este dato se actualiza cada 30 min cuando nadie está recargando)</span>' : '') : ' <span class="text-amber-400">(lento: revisa el activador del servidor de correo)</span>'}`;
       } else {
         txt += ' · <span class="text-amber-400">Aún no hay escaneos: ejecuta crearActivadores en el servidor.</span>';
       }
@@ -16795,7 +16805,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-22w';
+    const VERSION_PAGINA = '2026-10-22z';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261020_ajuste', fecha: '2026-10-20', titulo: 'Se ve mejor en iPhone 📱', mensaje: 'La tienda ahora **se ajusta siempre a tu pantalla**: ya no se agranda al escribir ni se corre hacia los lados. Si la tienes abierta, **recarga la página** para verla así.' },
       { id: 'act_20261020_app', fecha: '2026-10-20', titulo: 'App oficial de Epic Streaming 📲', mensaje: 'Ya tenemos **app oficial**: en la tienda toca **Descargar** (Android), **Instalar** (PC) o **Agregar** (iPhone). Abre más rápido, a pantalla completa, con tu misma cuenta y **se actualiza sola**.' },
@@ -18090,9 +18100,8 @@
       } catch (e) { /* se reintenta en la siguiente vuelta */ }
       finally { recargaVerifEnCurso = false; }
     }
-    setInterval(() => { if (document.visibilityState === 'visible') verificarRecargaSilenciosa('tiempo'); }, 20000);
-    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') verificarRecargaSilenciosa('volvio'); });
-    window.addEventListener('focus', () => verificarRecargaSilenciosa('volvio'));
+    // 📶 Sin preguntas automáticas al servidor: el lector revisa el correo cada minuto mientras haya un pago pendiente
+    //    y la página se entera sola (escucha en vivo de Firebase). Solo se consulta al tocar "Ya pagué".
 
 
     // ==================== DEALER (antes "Revendedor") ====================
@@ -25267,7 +25276,7 @@ async function pintarPanelWa() {
       return { cuentas: legado, stock: legado.length || stockPublico };
     }
 
-    const VERSION_SERVIDOR_NECESARIA = '2026-10-21t';   // la versión del servidor que necesita esta página
+    const VERSION_SERVIDOR_NECESARIA = '2026-10-21v';   // la versión del servidor que necesita esta página
     async function llamarBackend(accion, datos) {
       if (mantenimientoActivo() && /^(comprar|recarga|renovar|carrito|preorden|combo)/.test(String(accion || ''))) { avisoMantenimiento(''); throw new Error('Estamos en mantenimiento. Compra por WhatsApp mientras tanto.'); }
       if (modoPruebaCliente) { const rs = backendSimulado(accion, datos || {}); if (rs) return rs; }
