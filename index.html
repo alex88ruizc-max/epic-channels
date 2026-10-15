@@ -4043,7 +4043,8 @@
       <h3 class="text-base font-black text-white mb-1">Acreditar pago a un cliente</h3>
       <p id="asignarPagoInfo" class="text-xs text-gray-300 mb-3"></p>
       <label class="block text-xs text-gray-400 mb-1">Correo del cliente</label>
-      <input type="email" id="asignarPagoEmail" placeholder="cliente@correo.com" autocomplete="off" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none mb-3">
+      <input type="text" id="asignarPagoEmail" placeholder="Escribe nombre, correo o WhatsApp" autocomplete="off" oninput="buscarClienteAsignar(this.value)" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none mb-2">
+      <div id="asignarPagoSugerencias" class="space-y-1.5 mb-3 max-h-56 overflow-y-auto"></div>
       <button type="button" id="btnAsignarPago" onclick="confirmarAsignarPago()" class="w-full bg-emerald-500 hover:bg-emerald-400 text-black font-bold py-2.5 rounded-xl text-sm transition">Acreditar saldo</button>
     </div>
   </div>
@@ -10419,7 +10420,7 @@
 
           const ahora = new Date().getTime();
           let html = '';
-          try { const us = []; snap.forEach(dd => us.push(Object.assign({ uid: dd.id }, dd.data() || {}))); renderizarCreditosPendientes(us); setTimeout(() => asegurarIdsClientes(us), 1500); escucharIdPendientes(); } catch (e) { console.warn(e); }
+          try { const us = []; snap.forEach(dd => us.push(Object.assign({ uid: dd.id }, dd.data() || {}))); window.usuariosAdminLista = us; renderizarCreditosPendientes(us); setTimeout(() => asegurarIdsClientes(us), 1500); escucharIdPendientes(); } catch (e) { console.warn(e); }
 
           snap.forEach(doc => {
             const u = doc.data();
@@ -12013,6 +12014,7 @@
       pagoAsignandoTxn = txn;
       document.getElementById('asignarPagoInfo').innerHTML = `Pago de <b class="text-white">${formatoCOP(p.monto)}</b> de ${escaparHtml(p.pagador || '—')}. Se sumará completo al saldo del cliente.`;
       document.getElementById('asignarPagoEmail').value = p.sugeridoEmail || '';
+      asignarPagoUid = ''; { const b = document.getElementById('asignarPagoSugerencias'); if (b) b.innerHTML = ''; } if (p.sugeridoEmail) buscarClienteAsignar(p.sugeridoEmail);
       const m = document.getElementById('modalAsignarPago');
       m.classList.remove('hidden'); m.style.display = 'flex';
     }
@@ -12023,13 +12025,29 @@
       pagoAsignandoTxn = '';
     }
 
+    // 👤 Elegir el cliente de la lista (sin depender de mayúsculas ni de escribir el correo exacto)
+    var asignarPagoUid = '';
+    function buscarClienteAsignar(q) {
+      asignarPagoUid = '';
+      const box = document.getElementById('asignarPagoSugerencias'); if (!box) return;
+      const t = String(q || '').trim().toLowerCase(), dig = t.replace(/\D/g, '');
+      if (t.length < 2) { box.innerHTML = ''; return; }
+      const L = (window.usuariosAdminLista || []).filter(u => String(u.email || '').toLowerCase().includes(t) || String(u.nombre || '').toLowerCase().includes(t) || (dig.length >= 4 && String(u.whatsapp || '').replace(/\D/g, '').includes(dig))).slice(0, 6);
+      box.innerHTML = L.length ? L.map(u => `<button type="button" onclick="elegirClienteAsignar('${escaparHtml(u.uid)}')" class="w-full text-left p-2.5 rounded-xl bg-gray-800/80 border border-gray-700 hover:border-emerald-500/60"><span class="block text-xs font-bold text-white truncate">${escaparHtml(u.nombre || u.email || '')}</span><span class="block text-[11px] text-gray-400 truncate">${escaparHtml(u.email || '')}${u.whatsapp ? ' · ' + escaparHtml(u.whatsapp) : ''} · saldo $${(Number(u.saldo) || 0).toLocaleString('es-CO')}</span></button>`).join('') : '<p class="text-[11px] text-gray-500 px-1">No encontré clientes con eso. Revisa cómo lo escribiste.</p>';
+    }
+    function elegirClienteAsignar(uid) {
+      const u = (window.usuariosAdminLista || []).find(x => x.uid === uid); if (!u) return;
+      asignarPagoUid = uid;
+      const i = document.getElementById('asignarPagoEmail'); if (i) i.value = u.email || '';
+      const box = document.getElementById('asignarPagoSugerencias'); if (box) box.innerHTML = `<p class="text-[11px] text-emerald-300 px-1">✅ ${escaparHtml(u.nombre || u.email || '')} seleccionado</p>`;
+    }
     async function confirmarAsignarPago() {
-      const email = (document.getElementById('asignarPagoEmail').value || '').trim().toLowerCase();
-      if (!pagoAsignandoTxn || !/^\S+@\S+\.\S+$/.test(email)) { alert('Escribe el correo del cliente.'); return; }
+      const email = (document.getElementById('asignarPagoEmail').value || '').trim();
+      if (!pagoAsignandoTxn || !/^\S+@\S+\.\S+$/.test(email)) { alert('Elige el cliente de la lista (escribe su nombre, correo o WhatsApp).'); return; }
       const btn = document.getElementById('btnAsignarPago');
       btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
       try {
-        const r = await llamarBackend('pago_asignar', { txn: pagoAsignandoTxn, email: email });
+        const r = await llamarBackend('pago_asignar', { txn: pagoAsignandoTxn, email: email, uid: asignarPagoUid || '' });
         if (!r.ok) { alert(r.error || 'No se pudo acreditar.'); return; }
         cerrarAsignarPago();
         mostrarToast(`Acreditado ${formatoCOP(r.monto)} a ${email}.`);
@@ -16861,7 +16879,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-23l';
+    const VERSION_PAGINA = '2026-10-23n';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261020_ajuste', fecha: '2026-10-20', titulo: 'Se ve mejor en iPhone 📱', mensaje: 'La tienda ahora **se ajusta siempre a tu pantalla**: ya no se agranda al escribir ni se corre hacia los lados. Si la tienes abierta, **recarga la página** para verla así.' },
       { id: 'act_20261020_app', fecha: '2026-10-20', titulo: 'App oficial de Epic Streaming 📲', mensaje: 'Ya tenemos **app oficial**: en la tienda toca **Descargar** (Android), **Instalar** (PC) o **Agregar** (iPhone). Abre más rápido, a pantalla completa, con tu misma cuenta y **se actualiza sola**.' },
@@ -25339,7 +25357,7 @@ async function pintarPanelWa() {
       return { cuentas: legado, stock: legado.length || stockPublico };
     }
 
-    const VERSION_SERVIDOR_NECESARIA = '2026-10-22d';   // la versión del servidor que necesita esta página
+    const VERSION_SERVIDOR_NECESARIA = '2026-10-22f';   // la versión del servidor que necesita esta página
     async function llamarBackend(accion, datos) {
       if (mantenimientoActivo() && /^(comprar|recarga|renovar|carrito|preorden|combo)/.test(String(accion || ''))) { avisoMantenimiento(''); throw new Error('Estamos en mantenimiento. Compra por WhatsApp mientras tanto.'); }
       if (modoPruebaCliente) { const rs = backendSimulado(accion, datos || {}); if (rs) return rs; }
