@@ -16787,7 +16787,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-22l';
+    const VERSION_PAGINA = '2026-10-22m';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261020_ajuste', fecha: '2026-10-20', titulo: 'Se ve mejor en iPhone 📱', mensaje: 'La tienda ahora **se ajusta siempre a tu pantalla**: ya no se agranda al escribir ni se corre hacia los lados. Si la tienes abierta, **recarga la página** para verla así.' },
       { id: 'act_20261020_app', fecha: '2026-10-20', titulo: 'App oficial de Epic Streaming 📲', mensaje: 'Ya tenemos **app oficial**: en la tienda toca **Descargar** (Android), **Instalar** (PC) o **Agregar** (iPhone). Abre más rápido, a pantalla completa, con tu misma cuenta y **se actualiza sola**.' },
@@ -23280,6 +23280,11 @@
         sub.push(fila(!!ping.telegram, 'Telegram (tus avisos)', ping.telegram ? 'Configurado' : 'Sin configurar', ping.telegram ? '' : 'Pon tu token y chat en Ajustes → Telegram.'));
         if (ping.tgClientes) sub.push(fila(ping.tgClientes.token && ping.tgClientes.bot ? true : null, 'Bot de avisos para clientes', ping.tgClientes.token && ping.tgClientes.bot ? '@' + ping.tgClientes.bot : (ping.tgClientes.token ? 'Token guardado: toca "Guardar y probar" en Ajustes' : 'Opcional: sin configurar')));
       }
+      // 📶 Cupo diario de Google (no gasta llamadas: responde aunque el servidor esté sin cupo)
+      try { const u = obtenerBackendUrl(); if (u) { const ctl = new AbortController(); setTimeout(() => ctl.abort(), 12000);
+          const rc = await (await fetch(u, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ accion: 'cupo' }), signal: ctl.signal })).json();
+          if (rc && rc.ok) items.push(fila(!rc.agotado && rc.hoy < rc.limite * 0.75, '📶 Cupo diario de Google', (rc.agotado ? 'AGOTADO ahora · el bot y la página fallan hasta que se libere · ' : '') + Number(rc.hoy || 0).toLocaleString('es-CO') + ' llamadas contadas hoy' + (rc.errores ? ' · ' + rc.errores + ' rechazadas por Google' : '') + ((rc.porOrigen || []).length ? ' · más gastan: ' + rc.porOrigen.map(x => x[0] + ' ' + Number(x[1]).toLocaleString('es-CO')).join(', ') : ''), rc.agotado ? 'Mándame captura de esta línea.' : ''));
+          else if (rc && rc.ok === undefined) items.push(fila(null, '📶 Cupo diario de Google', 'Publica el servidor 2026-10-21p para verlo')); } } catch (e) { items.push(fila(null, '📶 Cupo diario de Google', 'No se pudo leer: ' + (e.message || 'sin respuesta'))); }
       // 5) Prueba de compra simulada (no cobra) y vigilancia automática del servidor
       const sim = await probarCompraConReintento();
       items.push(fila(sim.ok, '🛒 Prueba de compra simulada', sim.detalle, sim.ok ? '' : 'Mándame captura de esto: hay un producto que no se puede comprar desde la página.'));
@@ -25216,7 +25221,7 @@
       return { cuentas: legado, stock: legado.length || stockPublico };
     }
 
-    const VERSION_SERVIDOR_NECESARIA = '2026-10-21o';   // la versión del servidor que necesita esta página
+    const VERSION_SERVIDOR_NECESARIA = '2026-10-21p';   // la versión del servidor que necesita esta página
     async function llamarBackend(accion, datos) {
       if (mantenimientoActivo() && /^(comprar|recarga|renovar|carrito|preorden|combo)/.test(String(accion || ''))) { avisoMantenimiento(''); throw new Error('Estamos en mantenimiento. Compra por WhatsApp mientras tanto.'); }
       if (modoPruebaCliente) { const rs = backendSimulado(accion, datos || {}); if (rs) return rs; }
