@@ -2511,6 +2511,11 @@
                 <input type="number" id="ajusteRecargaPopular" min="1000" step="1000" placeholder="50000" class="w-full bg-gray-900 border border-gray-700 rounded-xl px-3 py-2 text-sm text-white">
                 <p class="text-[10px] text-gray-500 mt-1">La tarjeta que sale resaltada para guiar al cliente que no sabe cuánto recargar.</p>
               </div>
+              <div>
+                <label class="block text-[11px] text-gray-400 mb-1">🆘 Avisarme por Telegram cuando un cliente genere este número de pagos sin completar</label>
+                <input type="number" id="ajusteAvisoRecargaIntentos" min="0" max="20" step="1" placeholder="3 (0 = no avisar)" class="w-full bg-gray-900 border border-gray-700 rounded-xl px-3 py-2 text-sm text-white">
+                <p class="text-[10px] text-gray-500 mt-1">Te llega su nombre y un botón para escribirle por WhatsApp ofreciendo recarga manual. Máximo un aviso por cliente cada 6 horas.</p>
+              </div>
               </div>
             </div>
 
@@ -3685,7 +3690,7 @@
             <div class="mt-3 p-3 bg-gray-800/70 rounded-xl flex items-center justify-between gap-2">
               <div class="min-w-0">
                 <span id="recAutoNombre" class="block text-[10px] text-gray-400 font-bold uppercase tracking-wider">Llave Bre-B</span>
-                <span id="recAutoLlave" class="font-mono font-black text-white text-sm select-all break-all">—</span>
+                <span id="recAutoLlave" class="block font-mono font-black text-white text-xl tracking-wide leading-tight my-0.5 select-all break-all">—</span>
                 <span id="recAutoTitular" class="text-[10px] text-gray-400 block"></span>
               </div>
               <div class="flex flex-col gap-1 shrink-0">
@@ -6338,6 +6343,7 @@
       document.getElementById('ajusteExcluidosReporte').value = ajustesGeneralesConfig.excluidosReporteStr || 'alex88ruizc@gmail.com, alex88ruiz@gmail.com';
       { const e = document.getElementById('ajusteSaldoVenceDias'); if (e) e.value = (ajustesGeneralesConfig.saldoVenceDias === 0 || ajustesGeneralesConfig.saldoVenceDias) ? ajustesGeneralesConfig.saldoVenceDias : 20; }
       { const e = document.getElementById('ajusteRecargaPopular'); if (e) e.value = ajustesGeneralesConfig.recargaPopular || 50000; }
+      { const e = document.getElementById('ajusteAvisoRecargaIntentos'); if (e) e.value = (ajustesGeneralesConfig.avisoRecargaIntentos === 0 || ajustesGeneralesConfig.avisoRecargaIntentos) ? ajustesGeneralesConfig.avisoRecargaIntentos : 3; }
       try { cargarResumenSaldoVence(); } catch (e) { /* nada */ }
       const inpBackend = document.getElementById('ajusteBackendUrl');
       if (inpBackend) inpBackend.value = ajustesGeneralesConfig.backendUrl || '';
@@ -6433,6 +6439,7 @@
         adminEmailsStr: nuevoAdminEmails,
         saldoVenceDias: Math.max(0, Math.min(365, parseInt((document.getElementById('ajusteSaldoVenceDias') || {}).value, 10) || 0)),
         recargaPopular: Math.max(1000, parseInt((document.getElementById('ajusteRecargaPopular') || {}).value, 10) || 50000),
+        avisoRecargaIntentos: (function () { const x = parseInt((document.getElementById('ajusteAvisoRecargaIntentos') || {}).value, 10); return isNaN(x) ? 3 : Math.max(0, Math.min(20, x)); })(),
         appAviso: (document.getElementById('ajusteAppAviso') || { checked: ajustesGeneralesConfig.appAviso !== false }).checked,
         excluidosReporteStr: nuevoExcluidos,
         colorTema: nuevoColorTema,
@@ -16506,7 +16513,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-21p';
+    const VERSION_PAGINA = '2026-10-21r';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261020_ajuste', fecha: '2026-10-20', titulo: 'Se ve mejor en iPhone 📱', mensaje: 'La tienda ahora **se ajusta siempre a tu pantalla**: ya no se agranda al escribir ni se corre hacia los lados. Si la tienes abierta, **recarga la página** para verla así.' },
       { id: 'act_20261020_app', fecha: '2026-10-20', titulo: 'App oficial de Epic Streaming 📲', mensaje: 'Ya tenemos **app oficial**: en la tienda toca **Descargar** (Android), **Instalar** (PC) o **Agregar** (iPhone). Abre más rápido, a pantalla completa, con tu misma cuenta y **se actualiza sola**.' },
@@ -24755,7 +24762,7 @@
       return { cuentas: legado, stock: legado.length || stockPublico };
     }
 
-    const VERSION_SERVIDOR_NECESARIA = '2026-10-21j';   // la versión del servidor que necesita esta página
+    const VERSION_SERVIDOR_NECESARIA = '2026-10-21k';   // la versión del servidor que necesita esta página
     async function llamarBackend(accion, datos) {
       if (mantenimientoActivo() && /^(comprar|recarga|renovar|carrito|preorden|combo)/.test(String(accion || ''))) { avisoMantenimiento(''); throw new Error('Estamos en mantenimiento. Compra por WhatsApp mientras tanto.'); }
       if (modoPruebaCliente) { const rs = backendSimulado(accion, datos || {}); if (rs) return rs; }
