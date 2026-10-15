@@ -1276,8 +1276,9 @@
             </div>
             <button onclick="abrirModalTicket()" class="shrink-0 px-3 py-2 bg-amber-500 hover:bg-amber-400 text-black font-bold text-xs rounded-xl transition flex items-center gap-1.5"><i class="fa-solid fa-plus"></i> Nuevo</button>
           </div>
-          <div class="grid grid-cols-3 gap-2 mt-3">
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-3">
             <div class="rounded-xl bg-gray-900/70 border border-amber-500/20 p-2.5 text-center"><span class="text-[10px] text-gray-400 block">Abiertos</span><span id="tkStatAbiertos" class="text-lg font-black text-amber-300">0</span></div>
+            <button type="button" id="tkStatPorAprobarCaja" onclick="filtrarTickets('aprobar')" class="rounded-xl bg-gray-900/70 border border-sky-500/30 p-2.5 text-center"><span class="text-[10px] text-gray-400 block">Por aprobar</span><span id="tkStatPorAprobar" class="text-lg font-black text-sky-300">0</span></button>
             <div class="rounded-xl bg-gray-900/70 border border-emerald-500/20 p-2.5 text-center"><span class="text-[10px] text-gray-400 block">Resueltos</span><span id="tkStatResueltos" class="text-lg font-black text-emerald-300">0</span></div>
             <div class="rounded-xl bg-gray-900/70 border border-gray-700 p-2.5 text-center"><span class="text-[10px] text-gray-400 block">Sin proveedor</span><span id="tkStatSinProv" class="text-lg font-black text-white">0</span></div>
           </div>
@@ -1303,6 +1304,7 @@
         <div class="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden">
           <div class="px-4 pt-3 flex flex-wrap items-center gap-1.5 text-[11px] font-bold">
             <button id="tkFiltroAbiertos" onclick="filtrarTickets('abiertos')" class="px-3 py-1 rounded-lg border">Abiertos</button>
+            <button id="tkFiltroAprobar" onclick="filtrarTickets('aprobar')" class="px-3 py-1 rounded-lg border">Por aprobar <span id="tkFiltroAprobarN" class="hidden ml-1 px-1.5 rounded-full bg-sky-500 text-black text-[10px] font-black"></span></button>
             <button id="tkFiltroResueltos" onclick="filtrarTickets('resueltos')" class="px-3 py-1 rounded-lg border">Resueltos</button>
             <button id="tkFiltroTodos" onclick="filtrarTickets('todos')" class="px-3 py-1 rounded-lg border">Todos</button>
           </div>
@@ -13226,25 +13228,32 @@
     function renderizarTickets() {
       try { if (!dobleVentaMapa) setTimeout(cargarDobleVentaParaTickets, 500); } catch (e) { /* nada */ }
       const abiertos = ticketsCuentas.filter(t => t.estado !== 'resuelto').length;
+      // Resueltos por el proveedor que esperan tu aprobación
+      const esPorAprobar = t => t.estado === 'resuelto' && t.resueltoPorProveedor && t.revisado !== 'aprobado' && t.revisado !== 'rechazado';
+      const porAprobar = ticketsCuentas.filter(esPorAprobar).length;
+      const pend = abiertos + porAprobar;
       ['badgeTickets', 'badgeTabTickets'].forEach(idB => {
         const b = document.getElementById(idB);
-        if (b) { b.textContent = (idB === 'badgeTabTickets' && abiertos > 9) ? '9+' : abiertos; b.classList.toggle('hidden', !abiertos); }
+        if (b) { b.textContent = (idB === 'badgeTabTickets' && pend > 9) ? '9+' : pend; b.classList.toggle('hidden', !pend); }
       });
+      { const e = document.getElementById('tkStatPorAprobar'); if (e) e.textContent = porAprobar;
+        const c = document.getElementById('tkStatPorAprobarCaja'); if (c) c.classList.toggle('ring-2', porAprobar > 0), c && c.classList.toggle('ring-sky-400', porAprobar > 0);
+        const n = document.getElementById('tkFiltroAprobarN'); if (n) { n.textContent = porAprobar; n.classList.toggle('hidden', !porAprobar); } }
       const setT = (idE, v) => { const e = document.getElementById(idE); if (e) e.textContent = v; };
-      setT('tkStatAbiertos', abiertos); setT('tkStatResueltos', ticketsCuentas.length - abiertos);
+      setT('tkStatAbiertos', abiertos); setT('tkStatResueltos', ticketsCuentas.length - abiertos - porAprobar);
       setT('tkStatSinProv', ticketsCuentas.filter(t => t.estado !== 'resuelto' && !t.proveedorNombre).length);
       try { renderizarPerfilAdmin(); } catch (e) { /* el perfil del administrador se dibuja aparte */ }
       const cont = document.getElementById('listaTickets');
       if (!cont) return;
-      [['tkFiltroAbiertos', 'abiertos'], ['tkFiltroResueltos', 'resueltos'], ['tkFiltroTodos', 'todos']].forEach(([id, f]) => {
+      [['tkFiltroAbiertos', 'abiertos'], ['tkFiltroAprobar', 'aprobar'], ['tkFiltroResueltos', 'resueltos'], ['tkFiltroTodos', 'todos']].forEach(([id, f]) => {
         const b = document.getElementById(id);
         if (b) b.className = 'px-3 py-1 rounded-lg border ' + (filtroTicketsActual === f ? 'bg-amber-500/20 text-amber-300 border-amber-500/40' : 'bg-gray-800 text-gray-400 border-gray-700');
       });
       const q = String((document.getElementById('tkBuscar') || {}).value || '').trim().toLowerCase();
       const lista = ticketsCuentas
-        .filter(t => filtroTicketsActual === 'todos' || (filtroTicketsActual === 'abiertos' ? t.estado !== 'resuelto' : t.estado === 'resuelto'))
+        .filter(t => filtroTicketsActual === 'todos' || (filtroTicketsActual === 'abiertos' ? t.estado !== 'resuelto' : filtroTicketsActual === 'aprobar' ? (t.estado === 'resuelto' && t.resueltoPorProveedor && t.revisado !== 'aprobado' && t.revisado !== 'rechazado') : t.estado === 'resuelto'))
         .filter(t => !q || [t.cuenta, t.clienteEmail, t.productoNombre, t.proveedorNombre, t.motivo].some(x => String(x || '').toLowerCase().indexOf(q) !== -1));
-      if (!lista.length) { cont.innerHTML = `<p class="px-4 py-6 text-center text-gray-500 text-sm">${q ? 'Ningún ticket coincide con la búsqueda.' : (filtroTicketsActual === 'abiertos' ? 'No hay tickets abiertos.' : 'No hay tickets.')}</p>`; return; }
+      if (!lista.length) { cont.innerHTML = `<p class="px-4 py-6 text-center text-gray-500 text-sm">${q ? 'Ningún ticket coincide con la búsqueda.' : (filtroTicketsActual === 'abiertos' ? 'No hay tickets abiertos.' : filtroTicketsActual === 'aprobar' ? 'Nada por aprobar. ¡Al día! ✅' : 'No hay tickets.')}</p>`; return; }
       cont.innerHTML = lista.map(t => {
         const resuelto = t.estado === 'resuelto';
         const fecha = new Date(t.creadoEl).toLocaleDateString('es-CO', { day: '2-digit', month: '2-digit', year: 'numeric' });
@@ -16513,7 +16522,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-21r';
+    const VERSION_PAGINA = '2026-10-21s';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261020_ajuste', fecha: '2026-10-20', titulo: 'Se ve mejor en iPhone 📱', mensaje: 'La tienda ahora **se ajusta siempre a tu pantalla**: ya no se agranda al escribir ni se corre hacia los lados. Si la tienes abierta, **recarga la página** para verla así.' },
       { id: 'act_20261020_app', fecha: '2026-10-20', titulo: 'App oficial de Epic Streaming 📲', mensaje: 'Ya tenemos **app oficial**: en la tienda toca **Descargar** (Android), **Instalar** (PC) o **Agregar** (iPhone). Abre más rápido, a pantalla completa, con tu misma cuenta y **se actualiza sola**.' },
