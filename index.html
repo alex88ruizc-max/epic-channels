@@ -4382,19 +4382,56 @@
 
   <!-- MODAL: LOGIN / REGISTRO -->
   <div id="modalAuth" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
-    <div class="bg-gray-900 border border-gray-800 rounded-2xl max-w-sm w-full p-6 relative shadow-2xl">
+    <div class="bg-gray-900 border border-gray-800 rounded-3xl max-w-sm w-full p-6 relative shadow-2xl max-h-[92vh] overflow-y-auto">
       <button onclick="cerrarModalAuth()" class="absolute top-4 right-4 text-gray-400 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
-      <h3 id="modalAuthTitulo" class="text-xl font-bold text-white mb-1">Iniciar Sesión</h3>
-      <form onsubmit="procesarAuth(event)" class="space-y-3 mt-4">
+      <div class="text-center">
+        <span class="inline-flex w-16 h-16 rounded-full border-2 border-amber-400/70 bg-gray-800 items-center justify-center overflow-hidden shadow-lg shadow-amber-500/10"><img id="authLogo" alt="Logo" class="hidden w-full h-full object-cover"><i id="authLogoIcono" class="fa-solid fa-bolt text-emerald-400 text-2xl"></i></span>
+        <h3 id="modalAuthTitulo" class="text-xl font-black text-white mt-3">Iniciar Sesión</h3>
+        <p id="modalAuthSub" class="text-xs text-gray-400 mt-0.5"></p>
+      </div>
+      <form onsubmit="procesarAuth(event)" class="space-y-3 mt-5">
         <div>
-          <label class="block text-xs text-gray-400 mb-1">Correo Electrónico</label>
-          <input type="email" id="authEmail" required class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none">
+          <label class="block text-xs text-gray-400 mb-1">Correo</label>
+          <input type="email" id="authEmail" required autocomplete="email" placeholder="nombre@gmail.com" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500">
         </div>
+
+        <div id="grupoAuthWhatsapp" class="hidden space-y-3">
+          <div>
+            <label class="block text-xs text-gray-400 mb-1">WhatsApp</label>
+            <div class="flex gap-2">
+              <select id="authPais" onchange="cambioPaisRegistro()" aria-label="País" class="shrink-0 w-[118px] bg-gray-800 border border-gray-700 rounded-xl px-2 py-2.5 text-sm text-white focus:outline-none"></select>
+              <input type="tel" id="authWhatsapp" inputmode="numeric" autocomplete="tel" placeholder="3001234567" class="min-w-0 flex-grow bg-gray-800 border border-gray-700 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500">
+            </div>
+            <p class="mt-1.5 text-[11px] text-gray-400"><i class="fa-solid fa-lock text-emerald-400 mr-1"></i>Solo para identificar tu cuenta y mostrarte los precios en tu moneda. Nada de spam y nunca compartimos tu número.</p>
+          </div>
+        </div>
+
         <div>
           <label class="block text-xs text-gray-400 mb-1">Contraseña</label>
-          <input type="password" id="authPassword" required class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none">
+          <div class="flex gap-2">
+            <input type="password" id="authPassword" required oninput="authFuerza()" class="min-w-0 flex-grow bg-gray-800 border border-gray-700 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500">
+            <button type="button" onclick="const i=document.getElementById('authPassword'); i.type=i.type==='password'?'text':'password'; this.innerHTML=i.type==='password'?'<i class=&quot;fa-solid fa-eye&quot;></i>':'<i class=&quot;fa-solid fa-eye-slash&quot;></i>'" aria-label="Mostrar contraseña" class="shrink-0 w-11 rounded-xl bg-gray-800 border border-gray-700 text-gray-300"><i class="fa-solid fa-eye"></i></button>
+          </div>
+          <div id="authFuerzaCaja" class="hidden">
+            <div class="grid grid-cols-4 gap-1 mt-2"><span data-b class="h-1 rounded bg-gray-700"></span><span data-b class="h-1 rounded bg-gray-700"></span><span data-b class="h-1 rounded bg-gray-700"></span><span data-b class="h-1 rounded bg-gray-700"></span></div>
+            <p id="authFuerzaTxt" class="text-[11px] text-gray-500 mt-1">Escribe una contraseña segura</p>
+            <div class="grid grid-cols-2 gap-x-2 gap-y-0.5 mt-1.5 text-[11px]">
+              <span data-r="len" class="text-gray-400"><i class="fa-regular fa-circle mr-1"></i>8 caracteres o más</span>
+              <span data-r="may" class="text-gray-400"><i class="fa-regular fa-circle mr-1"></i>Una mayúscula</span>
+              <span data-r="num" class="text-gray-400"><i class="fa-regular fa-circle mr-1"></i>Un número</span>
+              <span data-r="sim" class="text-gray-500"><i class="fa-regular fa-circle mr-1"></i>Un símbolo (opcional)</span>
+            </div>
+          </div>
           <div id="grupoAuthRecuperar" class="text-right mt-1.5">
             <button type="button" onclick="recuperarPasswordModal()" class="text-[11px] text-emerald-400 hover:underline">¿Olvidaste tu contraseña?</button>
+          </div>
+        </div>
+
+        <div id="grupoAuthReferido" class="hidden">
+          <button type="button" id="btnAuthReferido" onclick="document.getElementById('cajaAuthReferido').classList.remove('hidden'); this.classList.add('hidden'); document.getElementById('authReferido').focus();" class="text-[12px] text-gray-400"><i class="fa-solid fa-plus mr-1"></i>¿Alguien te recomendó? <span class="underline">Agregar su correo</span></button>
+          <div id="cajaAuthReferido" class="hidden">
+            <label class="block text-xs text-gray-400 mb-1">¿Quién te recomendó? (opcional)</label>
+            <input type="email" id="authReferido" autocomplete="off" placeholder="Correo de quien te invitó" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none">
           </div>
         </div>
 
@@ -4404,19 +4441,6 @@
           <span id="authErrorMsg"></span>
         </div>
 
-        <div id="grupoAuthWhatsapp" class="hidden space-y-3">
-          <div>
-            <label class="block text-xs text-gray-400 mb-1">Número de WhatsApp</label>
-            <div class="flex gap-2">
-              <select id="authPais" onchange="cambioPaisRegistro()" aria-label="País" class="shrink-0 w-[118px] bg-gray-800 border border-gray-700 rounded-xl px-2 py-2 text-sm text-white focus:outline-none"></select>
-              <input type="tel" id="authWhatsapp" inputmode="numeric" placeholder="Ej: 3001234567" class="min-w-0 flex-grow bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none">
-            </div>
-          </div>
-          <div>
-            <label class="block text-xs text-gray-400 mb-1">¿Quién te recomendó? (opcional)</label>
-            <input type="email" id="authReferido" autocomplete="off" placeholder="Correo de quien te invitó" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none">
-          </div>
-        </div>
         <input type="text" id="authSitioWeb" name="sitio_web" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0">
         <div id="grupoAuthCaptcha" class="pt-2 hidden">
           <label class="block text-xs text-gray-400 mb-1">Verificación de Seguridad</label>
@@ -4426,7 +4450,7 @@
           </div>
           <input type="text" id="captchaInput" placeholder="Escribe el código" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none">
         </div>
-        <button type="submit" id="btnSubmitAuth" class="w-full bg-emerald-500 hover:bg-emerald-400 text-black font-bold py-2.5 rounded-xl text-sm transition mt-2">Ingresar</button>
+        <button type="submit" id="btnSubmitAuth" class="w-full bg-emerald-500 hover:bg-emerald-400 text-black font-black py-3 rounded-xl text-[15px] transition mt-1">Ingresar</button>
       </form>
       <div class="mt-4 pt-4 border-t border-gray-800 text-center text-xs text-gray-400">
         <span id="txtToggleAuth">¿No tienes cuenta?</span> 
@@ -4435,7 +4459,8 @@
     </div>
   </div>
 
-  <!-- MODAL: ENTREGA DE CUENTAS -->
+  
+<!-- MODAL: ENTREGA DE CUENTAS -->
   <div id="modalEntrega" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden items-center justify-center p-3 sm:p-4">
     <div class="bg-gray-900 border border-emerald-500/50 rounded-2xl max-w-md w-full shadow-2xl max-h-[92vh] flex flex-col overflow-hidden">
       <div class="shrink-0 flex items-center gap-3 px-4 py-3 border-b border-gray-800">
@@ -16681,7 +16706,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-22a';
+    const VERSION_PAGINA = '2026-10-22b';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261020_ajuste', fecha: '2026-10-20', titulo: 'Se ve mejor en iPhone 📱', mensaje: 'La tienda ahora **se ajusta siempre a tu pantalla**: ya no se agranda al escribir ni se corre hacia los lados. Si la tienes abierta, **recarga la página** para verla así.' },
       { id: 'act_20261020_app', fecha: '2026-10-20', titulo: 'App oficial de Epic Streaming 📲', mensaje: 'Ya tenemos **app oficial**: en la tienda toca **Descargar** (Android), **Instalar** (PC) o **Agregar** (iPhone). Abre más rápido, a pantalla completa, con tu misma cuenta y **se actualiza sola**.' },
@@ -24777,8 +24802,13 @@
       if (errBox) errBox.classList.add('hidden');
 
       const rec = document.getElementById('grupoAuthRecuperar');
+      try { const nl = document.getElementById('navLogoImg'), al = document.getElementById('authLogo'), ai = document.getElementById('authLogoIcono'); if (nl && al && nl.getAttribute('src')) { al.src = nl.src; al.classList.remove('hidden'); if (ai) ai.classList.add('hidden'); } } catch (e) { /* nada */ }
+      { const sub = document.getElementById('modalAuthSub'); if (sub) sub.textContent = modo === 'login' ? 'Entra para ver tu saldo y comprar.' : 'Toma menos de 10 segundos. Sin mensualidad.'; }
+      { const fz = document.getElementById('authFuerzaCaja'); if (fz) fz.classList.toggle('hidden', modo === 'login'); const gr = document.getElementById('grupoAuthReferido'); if (gr) gr.classList.toggle('hidden', modo === 'login');
+        const pw = document.getElementById('authPassword'); if (pw) { pw.placeholder = modo === 'login' ? 'Tu contraseña' : 'Mínimo 8 caracteres'; pw.autocomplete = modo === 'login' ? 'current-password' : 'new-password'; }
+        try { if (modo !== 'login') { const r = document.getElementById('authReferido'); const tiene = !!(r && r.value); document.getElementById('cajaAuthReferido').classList.toggle('hidden', !tiene); document.getElementById('btnAuthReferido').classList.toggle('hidden', tiene); authFuerza(); } } catch (e) { /* nada */ } }
       if (modo === 'login') {
-        document.getElementById('modalAuthTitulo').innerText = 'Iniciar Sesión';
+        document.getElementById('modalAuthTitulo').innerText = 'Bienvenido de nuevo';
         document.getElementById('btnSubmitAuth').innerText = 'Ingresar';
         document.getElementById('txtToggleAuth').innerText = '¿No tienes cuenta?';
         document.getElementById('btnToggleAuth').innerText = 'Regístrate';
@@ -24786,16 +24816,24 @@
         document.getElementById('grupoAuthWhatsapp').classList.add('hidden');
         document.getElementById('grupoAuthCaptcha').classList.add('hidden');
       } else {
-        document.getElementById('modalAuthTitulo').innerText = 'Crear Cuenta';
-        document.getElementById('btnSubmitAuth').innerText = 'Registrarse';
+        document.getElementById('modalAuthTitulo').innerText = 'Crea tu cuenta gratis';
+        document.getElementById('btnSubmitAuth').innerText = 'Crear cuenta y entrar';
         document.getElementById('txtToggleAuth').innerText = '¿Ya tienes cuenta?';
-        document.getElementById('btnToggleAuth').innerText = 'Inicia Sesión';
+        document.getElementById('btnToggleAuth').innerText = 'Inicia sesión';
         if (rec) rec.classList.add('hidden');
         document.getElementById('grupoAuthWhatsapp').classList.remove('hidden');
         authAbiertoEl = Date.now();   // el código de 4 letras ya no se pide (protección invisible)
       }
     }
 
+    function authFuerza() {
+      const p = String((document.getElementById('authPassword') || {}).value || ''), r = portReglas(p);
+      const nivel = (r.len ? 1 : 0) + (r.may ? 1 : 0) + (r.num ? 1 : 0) + (r.sim ? 1 : 0), col = ['bg-gray-700', 'bg-red-400', 'bg-amber-400', 'bg-emerald-400', 'bg-emerald-400'][nivel];
+      document.querySelectorAll('#authFuerzaCaja [data-b]').forEach((b, i) => { b.className = 'h-1 rounded ' + (i < nivel ? col : 'bg-gray-700'); });
+      const t = document.getElementById('authFuerzaTxt');
+      if (t) { const x = !p ? ['Escribe una contraseña segura', 'text-gray-500'] : !(r.len && r.may && r.num) ? ['Débil · cumple los requisitos de abajo', 'text-red-300'] : r.sim ? ['Muy fuerte 💪', 'text-emerald-300'] : ['Buena · agrega un símbolo para que sea muy fuerte', 'text-emerald-300']; t.textContent = x[0]; t.className = 'text-[11px] mt-1 ' + x[1]; }
+      document.querySelectorAll('#authFuerzaCaja [data-r]').forEach(e => { const ok = r[e.dataset.r]; e.className = ok ? 'text-emerald-300' : (e.dataset.r === 'sim' ? 'text-gray-500' : 'text-gray-400'); e.querySelector('i').className = (ok ? 'fa-solid fa-circle-check' : 'fa-regular fa-circle') + ' mr-1'; });
+    }
     function alternarModoAuth() { abrirModalAuth(modoAuth === 'login' ? 'register' : 'login'); }
     function cerrarModalAuth() { document.getElementById('modalAuth').classList.add('hidden'); document.getElementById('modalAuth').style.display = 'none'; }
 
@@ -24830,6 +24868,10 @@
         const digWa = document.getElementById('authWhatsapp').value.replace(/\D/g, '').replace(new RegExp('^' + paisSel[2]), '');
         // Colombia se guarda como siempre (10 dígitos); otros países con su código: +58 4241234567
         const whatsapp = digWa ? (paisSel[0] === 'CO' ? digWa.slice(-10) : '+' + paisSel[2] + ' ' + digWa) : '';
+        { const errBox = document.getElementById('authErrorBox'), errMsg = document.getElementById('authErrorMsg'), falla = m => { if (errBox && errMsg) { errMsg.innerText = m; errBox.classList.remove('hidden'); } else alert(m); };
+          if (digWa.length < 7) { falla('Escribe tu número de WhatsApp: con él te mostramos los precios en tu moneda.'); return; }
+          const rq = portReglas(password); if (!(rq.len && rq.may && rq.num)) { falla('Tu contraseña necesita 8 caracteres o más, una mayúscula y un número.'); return; }
+          if (errBox) errBox.classList.add('hidden'); }
         if (registroPareceRobot()) { alert('No pudimos crear la cuenta. Espera unos segundos e inténtalo de nuevo.'); return; }
         try {
           const cred = await auth.createUserWithEmailAndPassword(email, password);
