@@ -1072,6 +1072,16 @@
               <span id="txtAdminRecargasHoyDet" class="hidden"></span>
               <button type="button" onclick="verRecargasHoy()" class="mt-1.5 w-full py-1 rounded-lg bg-sky-500/20 border border-sky-500/40 text-sky-200 text-[11px] font-black hover:bg-sky-500/30">Ver recargas</button>
             </div>
+            <div class="bg-gray-900 border border-violet-500/40 px-3 py-2 rounded-2xl shadow-lg min-w-0">
+              <span class="text-[9px] text-gray-400 block font-semibold leading-none uppercase flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-violet-400 animate-pulse"></span>Registrados hoy</span>
+              <span id="txtAdminRegHoy" class="block text-sm font-black text-violet-300 leading-tight mt-1">0 clientes</span>
+              <button type="button" onclick="verRegistradosHoy()" class="mt-1.5 w-full py-1 rounded-lg bg-violet-500/20 border border-violet-500/40 text-violet-200 text-[11px] font-black hover:bg-violet-500/30">Ver</button>
+            </div>
+            <div class="bg-gray-900 border border-amber-500/40 px-3 py-2 rounded-2xl shadow-lg min-w-0">
+              <span class="text-[9px] text-gray-400 block font-semibold leading-none uppercase flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>Proveedores hoy</span>
+              <span id="txtAdminProvHoy" class="block text-sm font-black text-amber-300 leading-tight mt-1">0 cuentas</span>
+              <button type="button" onclick="verSubidasProvHoy()" class="mt-1.5 w-full py-1 rounded-lg bg-amber-500/20 border border-amber-500/40 text-amber-200 text-[11px] font-black hover:bg-amber-500/30">Ver</button>
+            </div>
           </div>
         </div>
 
@@ -2613,6 +2623,10 @@
                 <input type="number" id="ajusteAvisoRecargaIntentos" min="0" max="20" step="1" placeholder="3 (0 = no avisar)" class="w-full bg-gray-900 border border-gray-700 rounded-xl px-3 py-2 text-sm text-white">
                 <p class="text-[10px] text-gray-500 mt-1">Te llega su nombre y un botón para escribirle por WhatsApp ofreciendo recarga manual. Máximo un aviso por cliente cada 6 horas.</p>
               </div>
+              <label class="flex items-start justify-between gap-3 p-2.5 rounded-xl bg-gray-900 border border-gray-700 cursor-pointer">
+                <span><span class="block text-[11px] text-gray-300 font-bold">🆕 Avisarme por Telegram cada registro al instante</span><span class="block text-[10px] text-gray-500">Apagado: los ves en la tarjeta <b>Registrados hoy</b> del panel y en el resumen diario. Enciéndelo cuando estés en campaña buscando clientes.</span></span>
+                <input type="checkbox" id="ajusteAvisoRegistroInstante" class="accent-emerald-500 w-5 h-5 shrink-0 mt-0.5">
+              </label>
               </div>
             </div>
 
@@ -5924,8 +5938,54 @@
       const msg = L.length ? `💰 Total: $${tot.toLocaleString('es-CO')} COP\n⚡ ${L.length - man} automáticas · ✍️ ${man} manuales\n\n` + L.map(linea).join('\n\n') : 'Todavía no hay recargas aprobadas hoy.';
       abrirDialogo({ tipo: 'info', titulo: '💵 Recargas de hoy · ' + L.length + (L.length === 1 ? ' recarga' : ' recargas'), mensaje: msg, textoAceptar: 'Cerrar' });
     }
+    // 📅 HOY: registrados y cuentas de proveedores. Se leen directo de Firebase desde el panel: no gastan cupo del servidor
+    var unsubRegHoy = null, registradosHoyCache = [];
+    function escucharRegistradosHoyEnVivo() {
+      if (unsubRegHoy) return;
+      try {
+        const inicioHoy = new Date(); inicioHoy.setHours(0, 0, 0, 0);
+        unsubRegHoy = db.collection('usuarios').where('fechaRegistro', '>=', inicioHoy.toISOString()).onSnapshot(snap => {
+          const hoyStr = obtenerFechaLocalStr(), L = [];
+          snap.forEach(d => { const u = d.data() || {}, f = new Date(u.fechaRegistro); if (isNaN(f.getTime()) || obtenerFechaLocalStr(f) !== hoyStr) return; L.push({ id: d.id, u: u, fecha: f }); });
+          registradosHoyCache = L.sort((a, b) => b.fecha - a.fecha);
+          const t = document.getElementById('txtAdminRegHoy'); if (t) t.textContent = L.length + (L.length === 1 ? ' cliente' : ' clientes');
+        }, () => { unsubRegHoy = null; });
+        const man = new Date(); man.setHours(24, 0, 5, 0);
+        setTimeout(() => { try { if (unsubRegHoy) unsubRegHoy(); } catch (e) { /* nada */ } unsubRegHoy = null; escucharRegistradosHoyEnVivo(); try { actualizarProvHoy(); } catch (e) { /* nada */ } }, Math.max(60000, man - new Date()));
+      } catch (e) { console.warn('Registrados de hoy:', e); }
+    }
+    function subidasProvHoy() {
+      const hoyStr = obtenerFechaLocalStr();
+      return (lotesProveedores || []).filter(l => { const f = new Date(l.creadoEl || l.fecha || 0); return !isNaN(f.getTime()) && obtenerFechaLocalStr(f) === hoyStr; });
+    }
+    function actualizarProvHoy() {
+      const L = subidasProvHoy(), n = L.reduce((a, l) => a + (parseInt(l.cantidadEnviada || l.cantidad, 10) || 0), 0);
+      const t = document.getElementById('txtAdminProvHoy'); if (t) t.textContent = n + (n === 1 ? ' cuenta' : ' cuentas');
+    }
+    function ventanaListaHoy(titulo, html) {
+      let v = document.getElementById('modalListaHoy');
+      if (!v) { v = document.createElement('div'); v.id = 'modalListaHoy'; v.className = 'hidden fixed inset-0 z-[260] bg-black/70 flex items-end sm:items-center justify-center p-3'; v.addEventListener('click', e => { if (e.target === v) v.classList.add('hidden'); }); document.body.appendChild(v); }
+      v.innerHTML = `<div class="w-full max-w-lg max-h-[85vh] overflow-y-auto bg-gray-900 border border-gray-700 rounded-2xl p-4"><div class="flex items-center justify-between mb-3"><h3 class="text-base font-black text-white">${titulo}</h3><button type="button" onclick="document.getElementById('modalListaHoy').classList.add('hidden')" class="w-9 h-9 rounded-xl bg-gray-800 text-gray-300"><i class="fa-solid fa-xmark"></i></button></div>${html}</div>`;
+      v.classList.remove('hidden');
+    }
+    function verRegistradosHoy() {
+      const L = registradosHoyCache || [], hora = d => d.toLocaleTimeString('es-CO', { hour: 'numeric', minute: '2-digit' });
+      const como = u => u.registradoPor === 'whatsapp_invitado' ? 'Compró sin registro por WhatsApp' : (u.registradoPor === 'whatsapp' ? 'Se registró por WhatsApp' : 'En la tienda o creado por ti');
+      const fila = x => { const u = x.u, wa = String(u.whatsapp || '').replace(/\D/g, ''), waL = wa ? (wa.length === 10 ? '57' + wa : wa) : '';
+        return `<div class="p-3 rounded-xl bg-gray-800/70 border border-gray-700 mb-2"><div class="flex items-start justify-between gap-2"><div class="min-w-0"><p class="text-sm font-bold text-white truncate">${escaparHtml(u.nombre || '(sin nombre)')}</p><p class="text-[11px] text-gray-400 truncate">${escaparHtml(u.email || '')}</p><p class="text-[10px] text-gray-500">🕒 ${hora(x.fecha)} · ${como(u)}${u.referidoPorEmail ? ' · 🤝 ' + escaparHtml(u.referidoPorEmail) : ''}</p></div>${waL ? `<a href="https://wa.me/${waL}" target="_blank" rel="noopener" class="shrink-0 px-3 py-2 rounded-xl bg-emerald-500 text-black text-xs font-black"><i class="fa-brands fa-whatsapp"></i> Escribir</a>` : ''}</div></div>`; };
+      ventanaListaHoy('🆕 Registrados hoy · ' + L.length, L.length ? L.map(fila).join('') : '<p class="text-sm text-gray-400 text-center py-6">Todavía no hay registros hoy.</p>');
+    }
+    function verSubidasProvHoy() {
+      const L = subidasProvHoy(), por = {};
+      L.forEach(l => { const k = l.proveedorNombre || l.proveedorEmail || 'Proveedor'; (por[k] = por[k] || []).push(l); });
+      const est = e => e === 'aprobado' ? '✅ aprobado' : (e === 'rechazado' ? '❌ rechazado' : '⏳ por revisar');
+      const html = Object.keys(por).map(k => { const ls = por[k], tot = ls.reduce((a, l) => a + (parseInt(l.cantidadEnviada || l.cantidad, 10) || 0), 0);
+        return `<div class="p-3 rounded-xl bg-gray-800/70 border border-gray-700 mb-2"><p class="text-sm font-black text-white">👤 ${escaparHtml(k)} · ${tot} ${tot === 1 ? 'cuenta' : 'cuentas'}</p>${ls.map(l => `<p class="text-[11px] text-gray-300 mt-1">• ${escaparHtml(l.productoNombre || 'Producto')}: ${parseInt(l.cantidadEnviada || l.cantidad, 10) || 0} · <span class="text-gray-400">${est(l.estado)}</span></p>`).join('')}</div>`; }).join('');
+      ventanaListaHoy('📦 Cuentas de proveedores hoy', html || '<p class="text-sm text-gray-400 text-center py-6">Hoy todavía no han subido cuentas.</p>');
+    }
     function escucharTotalRecaudadoHoyEnVivo() {
       try { escucharRecargasHoyEnVivo(); } catch (e) { /* nada */ }
+      try { escucharRegistradosHoyEnVivo(); } catch (e) { /* nada */ }
       // Solo las compras de hoy (antes se leía todo el historial en cada ingreso del administrador)
       const inicioHoy = new Date(); inicioHoy.setHours(0, 0, 0, 0);
       db.collection('compras').where('fecha', '>=', inicioHoy.toISOString()).onSnapshot(snap => {
@@ -6593,6 +6653,7 @@
       { const e = document.getElementById('ajusteSaldoVenceDias'); if (e) e.value = (ajustesGeneralesConfig.saldoVenceDias === 0 || ajustesGeneralesConfig.saldoVenceDias) ? ajustesGeneralesConfig.saldoVenceDias : 20; }
       { const e = document.getElementById('ajusteRecargaPopular'); if (e) e.value = ajustesGeneralesConfig.recargaPopular || 50000; }
       try { llenarSelectsPortada(); } catch (e) { /* nada */ }
+      { const e = document.getElementById('ajusteAvisoRegistroInstante'); if (e) e.checked = ajustesGeneralesConfig.avisoRegistroInstante === true; }
       { const e = document.getElementById('ajusteAvisoRecargaIntentos'); if (e) e.value = (ajustesGeneralesConfig.avisoRecargaIntentos === 0 || ajustesGeneralesConfig.avisoRecargaIntentos) ? ajustesGeneralesConfig.avisoRecargaIntentos : 3; }
       try { cargarResumenSaldoVence(); } catch (e) { /* nada */ }
       const inpBackend = document.getElementById('ajusteBackendUrl');
@@ -6692,6 +6753,7 @@
         recargaPopular: Math.max(1000, parseInt((document.getElementById('ajusteRecargaPopular') || {}).value, 10) || 50000),
         portadaHot: String((document.getElementById('ajustePortadaHot') || {}).value || ''),
         portadaSegundo: String((document.getElementById('ajustePortadaSegundo') || {}).value || ''),
+        avisoRegistroInstante: !!((document.getElementById('ajusteAvisoRegistroInstante') || {}).checked),
         avisoRecargaIntentos: (function () { const x = parseInt((document.getElementById('ajusteAvisoRecargaIntentos') || {}).value, 10); return isNaN(x) ? 3 : Math.max(0, Math.min(20, x)); })(),
         appAviso: (document.getElementById('ajusteAppAviso') || { checked: ajustesGeneralesConfig.appAviso !== false }).checked,
         excluidosReporteStr: nuevoExcluidos,
@@ -12437,6 +12499,7 @@
           lotesProveedores = [];
           snap.forEach(d => lotesProveedores.push(Object.assign({ id: d.id }, d.data())));
           renderizarAdminProveedores();
+          try { actualizarProvHoy(); } catch (e) { /* nada */ }
           try { escucharProvAuto(); renderProvAuto(); programarProvAuto(); } catch (e) { /* nada */ }
         }, err => console.warn('Lotes de proveedores no disponibles:', err));
       } catch (e) { console.warn(e); }
@@ -16805,7 +16868,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-23f';
+    const VERSION_PAGINA = '2026-10-23i';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261020_ajuste', fecha: '2026-10-20', titulo: 'Se ve mejor en iPhone 📱', mensaje: 'La tienda ahora **se ajusta siempre a tu pantalla**: ya no se agranda al escribir ni se corre hacia los lados. Si la tienes abierta, **recarga la página** para verla así.' },
       { id: 'act_20261020_app', fecha: '2026-10-20', titulo: 'App oficial de Epic Streaming 📲', mensaje: 'Ya tenemos **app oficial**: en la tienda toca **Descargar** (Android), **Instalar** (PC) o **Agregar** (iPhone). Abre más rápido, a pantalla completa, con tu misma cuenta y **se actualiza sola**.' },
@@ -23306,6 +23369,8 @@
           sub.push(fila(tiene('procesarPagosGmail'), 'Lector de pagos Bre-B y Binance (cada minuto)', tiene('procesarPagosGmail') ? 'Activo' : 'No está activo', tiene('procesarPagosGmail') ? '' : falta));
           sub.push(fila(tiene('revisarVencimientos'), 'Tarea cada hora (estados, comprobantes, vencimientos)', tiene('revisarVencimientos') ? 'Activa' : 'No está activa', tiene('revisarVencimientos') ? '' : falta));
           sub.push(fila(tiene('resumenDiario'), 'Tarea diaria (resumen, avisos y plan de marketing)', tiene('resumenDiario') ? 'Activa' : 'No está activa', tiene('resumenDiario') ? '' : falta));
+          if (dosServ && Array.isArray(ping.tareas)) { const tgOk = ping.tareas.indexOf('revisarTelegram') !== -1;
+            sub.push(fila(tgOk, 'Botones de Telegram (cada minuto, en Epic Alex)', tgOk ? 'Activo' : 'Todavía los revisa el servidor de correo', tgOk ? '' : 'Para ahorrar cupo: en el proyecto Epic Alex ejecuta crearActivadorTelegram una vez.')); }
         } else sub.push(fila(null, 'Tareas automáticas', 'Actualiza el servidor para ver este dato'));
         sub.push(fila(!!ping.telegram, 'Telegram (tus avisos)', ping.telegram ? 'Configurado' : 'Sin configurar', ping.telegram ? '' : 'Pon tu token y chat en Ajustes → Telegram.'));
         if (ping.tgClientes) sub.push(fila(ping.tgClientes.token && ping.tgClientes.bot ? true : null, 'Bot de avisos para clientes', ping.tgClientes.token && ping.tgClientes.bot ? '@' + ping.tgClientes.bot : (ping.tgClientes.token ? 'Token guardado: toca "Guardar y probar" en Ajustes' : 'Opcional: sin configurar')));
@@ -25281,7 +25346,7 @@ async function pintarPanelWa() {
       return { cuentas: legado, stock: legado.length || stockPublico };
     }
 
-    const VERSION_SERVIDOR_NECESARIA = '2026-10-21z';   // la versión del servidor que necesita esta página
+    const VERSION_SERVIDOR_NECESARIA = '2026-10-22c';   // la versión del servidor que necesita esta página
     async function llamarBackend(accion, datos) {
       if (mantenimientoActivo() && /^(comprar|recarga|renovar|carrito|preorden|combo)/.test(String(accion || ''))) { avisoMantenimiento(''); throw new Error('Estamos en mantenimiento. Compra por WhatsApp mientras tanto.'); }
       if (modoPruebaCliente) { const rs = backendSimulado(accion, datos || {}); if (rs) return rs; }
