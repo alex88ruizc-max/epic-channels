@@ -40,6 +40,28 @@
     @keyframes skCargaP { 0%,100% { opacity: .35 } 50% { opacity: .85 } }
     .sk-carga { display: inline-block; height: 1em; min-height: 12px; border-radius: 6px; background: rgba(148,163,184,.45); vertical-align: middle; animation: skCargaP 1.2s ease-in-out infinite; }
     @media (prefers-reduced-motion: reduce) { .sk-carga { animation: none; } }
+
+    /* ⚡ Botón "Recargar saldo" de la tienda: color elegible en Ajustes → Apariencia */
+    .btn-recargar-hero { position: relative; overflow: hidden; display: flex; align-items: center; gap: 12px; min-height: 60px; padding: 10px 14px; border-radius: 18px;
+      background: linear-gradient(90deg, var(--rh1, #34d399), var(--rh2, #10b981) 55%, var(--rh3, #059669)); color: var(--rht, #042f2e); box-shadow: 0 12px 28px -14px var(--rh2, #10b981); }
+    .btn-recargar-hero .rh-icono { width: 40px; height: 40px; flex-shrink: 0; border-radius: 9999px; background: rgba(0,0,0,.22); color: #fde047; display: flex; align-items: center; justify-content: center; font-size: 18px; }
+    .btn-recargar-hero .rh-titulo { font-weight: 900; font-size: 17px; line-height: 1.15; }
+    .btn-recargar-hero .rh-sub { font-weight: 700; font-size: 11px; opacity: .85; margin-top: 2px; }
+    .btn-recargar-hero .rh-chip { flex-shrink: 0; background: rgba(0,0,0,.28); color: #fde047; font-weight: 900; font-size: 13px; padding: 5px 10px; border-radius: 9999px; }
+    .btn-recargar-hero .rh-cl { display: none; }
+    /* 🎨 "Clásico": el botón de antes, tal cual (rosado → morado → azul, una línea, sin efectos) */
+    .btn-recargar-hero.rh-clasico { justify-content: center; gap: 8px; min-height: 48px; height: 48px; padding: 0 20px; border-radius: 12px; color: #fff;
+      background: linear-gradient(90deg, #db2777, #9333ea, #2563eb); box-shadow: 0 10px 15px -3px rgba(88,28,135,.4); }
+    .btn-recargar-hero.rh-clasico:hover { background: linear-gradient(90deg, #ec4899, #a855f7, #3b82f6); }
+    .btn-recargar-hero.rh-clasico .rh-cl { display: inline-block; }
+    .btn-recargar-hero.rh-clasico .rh-icono, .btn-recargar-hero.rh-clasico .rh-sub, .btn-recargar-hero.rh-clasico .rh-chip { display: none !important; }
+    .btn-recargar-hero.rh-clasico .rh-texto { flex: 0 1 auto; }
+    .btn-recargar-hero.rh-clasico .rh-titulo { font-size: 15px; }
+    @keyframes rhLatido { 0%,100% { transform: scale(1); } 50% { transform: scale(1.015); } }
+    @keyframes rhBrillo { 0% { left: -60%; } 100% { left: 140%; } }
+    .btn-recargar-hero.rh-anim { animation: rhLatido 2.6s ease-in-out infinite; }
+    .btn-recargar-hero.rh-anim::after { content: ""; position: absolute; top: 0; bottom: 0; left: -60%; width: 35%; background: linear-gradient(90deg, transparent, rgba(255,255,255,.4), transparent); transform: skewX(-20deg); animation: rhBrillo 3.2s ease-in-out infinite; pointer-events: none; }
+    @media (prefers-reduced-motion: reduce) { .btn-recargar-hero.rh-anim, .btn-recargar-hero.rh-anim::after { animation: none !important; } }
 </style>
   <title>Epic Streaming | Cuentas de streaming al por mayor</title>
   
@@ -700,8 +722,12 @@
             <p id="txtCatSubtitulo" class="text-xs text-gray-400 mt-0.5 line-clamp-1">Cuentas streaming y correos electrónicos con entrega directa a tu saldo.</p>
           </div>
         </div>
-        <button onclick="abrirModalRecarga()" class="w-full md:w-72 shrink-0 h-12 px-5 bg-gradient-to-r from-pink-600 via-purple-600 to-blue-600 hover:from-pink-500 hover:via-purple-500 hover:to-blue-500 active:scale-[0.98] text-white font-black text-[15px] rounded-xl shadow-lg shadow-purple-900/40 flex items-center justify-center gap-2.5 transition">
-          <i class="fa-solid fa-wallet text-pink-200 text-lg"></i> <span id="txtBotonRecarga">Recargar Saldo</span> <i class="fa-solid fa-arrow-right text-sm opacity-90"></i>
+        <button id="btnHeroRecargar" type="button" onclick="abrirModalRecarga()" class="btn-recargar-hero rh-anim w-full md:w-80 shrink-0 active:scale-[0.98] transition">
+          <span class="rh-icono"><i class="fa-solid fa-bolt"></i></span>
+          <i class="rh-cl fa-solid fa-wallet text-pink-200 text-lg"></i>
+          <span class="rh-texto flex-1 min-w-0 text-left"><span class="rh-titulo block truncate"><span id="txtBotonRecarga">Recargar Saldo</span></span><span class="rh-sub block truncate">Al instante · Bre-B o Binance</span></span>
+          <i class="rh-cl fa-solid fa-arrow-right text-sm opacity-90"></i>
+          <span id="rhChip" class="rh-chip hidden"></span>
         </button>
       </div>
 
@@ -1606,6 +1632,13 @@
 
       <!-- TAB 4: APARIENCIA Y LOGO DEL CATÁLOGO -->
       <div id="adminSecApariencia" class="hidden space-y-6">
+        <div class="p-4 rounded-2xl bg-gray-900 border border-emerald-500/30 max-w-3xl space-y-3">
+          <p class="text-sm font-black text-white">⚡ Color del botón "Recargar saldo"</p>
+          <div id="selColorRecarga" class="grid grid-cols-3 gap-3"></div>
+          <label class="flex items-center gap-3 text-[12px] text-gray-200"><b>Otro color:</b><input type="color" id="colorRecargaOtro" value="#10b981" onchange="elegirColorRecarga(this.value)" class="w-14 h-9 rounded-lg bg-transparent border border-gray-600 cursor-pointer"><span class="text-[11px] text-gray-500">elige cualquiera; las letras se ajustan solas para leerse bien</span></label>
+          <label class="flex items-center justify-between gap-3 text-[12px] text-gray-200 cursor-pointer"><span>✨ Destello y latido</span><input type="checkbox" id="animRecarga" checked onchange="guardarBotonRecarga({ animRecarga: this.checked })" class="accent-emerald-500 w-5 h-5"></label>
+          <p class="text-[11px] text-gray-500">El cambio se ve al instante en la tienda, para todos los clientes. El +% sale de tu bono de recarga (sin bono, no aparece). "Clásico" es el botón de antes, tal cual (sin destello ni etiqueta).</p>
+        </div>
         <div class="p-3 rounded-2xl bg-gray-900 border border-gray-800 max-w-3xl space-y-2"><p class="text-xs text-white"><b>🗂 Vista de productos predeterminada</b><span class="block text-[11px] text-gray-400">La que ve cada cliente la primera vez. Él puede cambiarla con los íconos ☰ / ▦ y se le recuerda.</span></p>
           <label class="flex items-center justify-between gap-3"><span class="text-[12px] text-gray-200">📱 En celular</span><select id="selVistaCel" onchange="guardarVistaPredeterminada('cel', this.value)" class="bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"><option value="compacta">▦ 2 columnas</option><option value="detallada">☰ Detallada</option></select></label>
           <label class="flex items-center justify-between gap-3"><span class="text-[12px] text-gray-200">💻 En computador</span><select id="selVistaPc" onchange="guardarVistaPredeterminada('pc', this.value)" class="bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"><option value="detallada">☰ Detallada</option><option value="compacta">▦ 2 columnas (4 por fila)</option></select></label></div>
@@ -8943,8 +8976,9 @@
         if (doc.exists && !TIENDA_SLUG) {
           aparienciaConfig = { ...aparienciaConfig, ...doc.data() };
         }
-        if (TIENDA_SLUG) { try { aplicarMarcaTienda(); } catch (e) { /* nada */ } return; }
+        if (TIENDA_SLUG) { try { aplicarMarcaTienda(); } catch (e) { /* nada */ } try { pintarBotonRecargaHero(); } catch (e) { /* nada */ } return; }
         renderizarApariencia();
+        try { pintarBotonRecargaHero(); } catch (e) { /* nada */ }
       });
       if (TIENDA_SLUG) iniciarModoTienda(); else db.collection('inventario').onSnapshot(snap => {
         snapshotInventario = {};
@@ -16893,7 +16927,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-23s';
+    const VERSION_PAGINA = '2026-10-23u';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261020_ajuste', fecha: '2026-10-20', titulo: 'Se ve mejor en iPhone 📱', mensaje: 'La tienda ahora **se ajusta siempre a tu pantalla**: ya no se agranda al escribir ni se corre hacia los lados. Si la tienes abierta, **recarga la página** para verla así.' },
       { id: 'act_20261020_app', fecha: '2026-10-20', titulo: 'App oficial de Epic Streaming 📲', mensaje: 'Ya tenemos **app oficial**: en la tienda toca **Descargar** (Android), **Instalar** (PC) o **Agregar** (iPhone). Abre más rápido, a pantalla completa, con tu misma cuenta y **se actualiza sola**.' },
@@ -20990,10 +21024,51 @@
     function bonoPara(monto) { let pct = 0; bonoRecargaVigente().forEach(e => { if (monto >= Number(e.desde) && Number(e.pct) > pct) pct = Number(e.pct); }); return pct ? Math.round(monto * pct / 100) : 0; }
     // ==================== 🎁 BONO BRE-B AUTOMÁTICO ====================
     var cfgBonoBreb = null;
+    // ⚡ Botón "Recargar saldo": color elegido en Ajustes → Apariencia (colorRecarga / animRecarga)
+    const COLORES_RECARGA = {
+      verde: ['#34d399', '#10b981', '#059669', '#042f2e'], dorado: ['#fde047', '#f59e0b', '#d97706', '#422006'],
+      degradado: ['#db2777', '#9333ea', '#3b82f6', '#ffffff'], azul: ['#38bdf8', '#3b82f6', '#2563eb', '#ffffff'],
+      rojo: ['#f87171', '#ef4444', '#dc2626', '#ffffff'], morado: ['#c084fc', '#a855f7', '#7c3aed', '#ffffff']
+    };
+    function mezclarHex(h, con, p) { const a = parseInt(h.slice(1), 16), b = parseInt(con.slice(1), 16); const c = [16, 8, 0].map(sh => Math.round(((a >> sh) & 255) * (1 - p) + ((b >> sh) & 255) * p)); return '#' + c.map(x => x.toString(16).padStart(2, '0')).join(''); }
+    function paletaRecarga(v) {
+      if (COLORES_RECARGA[v]) return COLORES_RECARGA[v];
+      if (/^#[0-9a-f]{6}$/i.test(String(v || ''))) { const n = parseInt(v.slice(1), 16), lum = (0.299 * ((n >> 16) & 255) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255)) / 255;
+        return [mezclarHex(v, '#ffffff', 0.25), v, mezclarHex(v, '#000000', 0.2), lum > 0.6 ? '#0b1220' : '#ffffff']; }
+      return COLORES_RECARGA.verde;
+    }
+    function pintarBotonRecargaHero() {
+      const b = document.getElementById('btnHeroRecargar'); if (!b) return;
+      const cfg = (typeof aparienciaConfig === 'object' && aparienciaConfig) || {}, p = paletaRecarga(cfg.colorRecarga || 'verde');
+      b.style.setProperty('--rh1', p[0]); b.style.setProperty('--rh2', p[1]); b.style.setProperty('--rh3', p[2]); b.style.setProperty('--rht', p[3]);
+      const clasico = cfg.colorRecarga === 'clasico';
+      b.classList.toggle('rh-clasico', clasico);
+      b.classList.toggle('rh-anim', !clasico && cfg.animRecarga !== false);
+      let pct = 0; try { pct = pctBonoBreb() || 0; } catch (e) { pct = 0; }
+      if (!pct) { try { bonoRecargaVigente().forEach(e => { if (Number(e.pct) > pct) pct = Number(e.pct); }); } catch (e) { /* nada */ } }
+      const chip = document.getElementById('rhChip'); if (chip) { chip.textContent = pct ? '+' + pct + '%' : ''; chip.classList.toggle('hidden', !pct); }
+      try { pintarSelectorColorRecarga(); } catch (e) { /* nada */ }
+    }
+    function pintarSelectorColorRecarga() {
+      const box = document.getElementById('selColorRecarga'); if (!box) return;
+      const cfg = (typeof aparienciaConfig === 'object' && aparienciaConfig) || {}, act = cfg.colorRecarga || 'verde';
+      const nombres = { verde: 'Verde', dorado: 'Dorado', degradado: 'Tu degradado', azul: 'Azul', rojo: 'Rojo', morado: 'Morado' };
+      box.innerHTML = `<button type="button" onclick="elegirColorRecarga('clasico')" class="text-left"><span class="flex items-center justify-center gap-1.5 h-12 rounded-xl text-white text-[11px] font-black ${act === 'clasico' ? 'ring-4 ring-white' : 'ring-1 ring-gray-700'}" style="background:linear-gradient(90deg,#db2777,#9333ea,#2563eb)"><i class="fa-solid fa-wallet"></i> Recargar →</span><span class="block text-[11px] font-bold text-gray-200 mt-1">${act === 'clasico' ? '✓ ' : ''}Clásico (el de antes)</span></button>` + Object.keys(COLORES_RECARGA).map(k => { const p = COLORES_RECARGA[k];
+        return `<button type="button" onclick="elegirColorRecarga('${k}')" class="text-left"><span class="block h-12 rounded-xl ${act === k ? 'ring-4 ring-white' : 'ring-1 ring-gray-700'}" style="background:linear-gradient(90deg,${p[0]},${p[1]} 55%,${p[2]})"></span><span class="block text-[11px] font-bold text-gray-200 mt-1">${act === k ? '✓ ' : ''}${nombres[k]}</span></button>`; }).join('');
+      const inp = document.getElementById('colorRecargaOtro'); if (inp && document.activeElement !== inp) inp.value = /^#[0-9a-f]{6}$/i.test(act) ? act : COLORES_RECARGA[act] ? COLORES_RECARGA[act][1] : '#10b981';
+      const an0 = document.getElementById('animRecarga'); if (an0) { an0.disabled = act === 'clasico'; an0.closest('label').style.opacity = act === 'clasico' ? '.5' : ''; }
+      const an = document.getElementById('animRecarga'); if (an) an.checked = cfg.animRecarga !== false;
+    }
+    async function guardarBotonRecarga(cambios) {
+      try { aparienciaConfig = Object.assign({}, aparienciaConfig || {}, cambios); pintarBotonRecargaHero();
+        await db.collection('configuracion').doc('apariencia').set(cambios, { merge: true }); mostrarToast('Botón de recarga actualizado'); }
+      catch (e) { alert('No se pudo guardar: ' + (e.message || e)); }
+    }
+    function elegirColorRecarga(v) { guardarBotonRecarga({ colorRecarga: v }); }
     function pctBonoBreb() { const c = cfgBonoBreb; if (!c || c.activo !== true) return 0; const pct = Number(c.pct) || 0; if (!(pct > 0 && pct <= 50)) return 0;
       if (c.vigencia === 'mes' && c.mes && c.mes !== obtenerFechaLocalStr().slice(0, 7)) return 0; if (c.vigencia === 'fecha' && c.hasta && Date.parse(c.hasta) <= Date.now()) return 0; return pct; }
     function textoVigenciaBreb(c) { return c.vigencia === 'siempre' ? 'Siempre tienes' : (c.vigencia === 'fecha' && c.hasta ? 'Hasta el ' + new Date(c.hasta).toLocaleDateString('es-CO', { day: '2-digit', month: '2-digit' }) + ' tienes' : 'Este mes tienes'); }
-    function cargarCfgBonoBreb() { try { db.collection('configuracion').doc('bono_breb').onSnapshot(d => { cfgBonoBreb = d.exists ? d.data() : null; try { pintarBannerBonoRecarga(); pintarCfgBonoBreb(); } catch (e) { /* nada */ } }, () => {}); } catch (e) { /* nada */ } }
+    function cargarCfgBonoBreb() { try { db.collection('configuracion').doc('bono_breb').onSnapshot(d => { cfgBonoBreb = d.exists ? d.data() : null; try { pintarBotonRecargaHero(); } catch (e) { /* nada */ } try { pintarBannerBonoRecarga(); pintarCfgBonoBreb(); } catch (e) { /* nada */ } }, () => {}); } catch (e) { /* nada */ } }
     function pintarCfgBonoBreb() {
       const c = cfgBonoBreb || {}, set = (id, v) => { const e = document.getElementById(id); if (e) { if (e.type === 'checkbox') e.checked = !!v; else e.value = v; } };
       if (document.activeElement && /^bb/.test(document.activeElement.id || '')) return;
