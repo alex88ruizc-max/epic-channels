@@ -3645,7 +3645,7 @@
   </div>
 
   <!-- MODAL: RECARGAR SALDO -->
-  <div id="modalRecarga" onclick="if (event.target === this) cerrarModalRecarga()" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+  <div id="modalRecarga" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
     <div id="modalRecargaCaja" class="bg-gray-900 border border-gray-800 rounded-2xl max-w-md w-full p-6 relative max-h-[90vh] overflow-y-auto transition-all">
       <button onclick="cerrarModalRecarga()" class="absolute top-4 right-4 text-gray-400 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
       <h3 class="text-xl font-bold text-white mb-1 flex items-center gap-2"><i class="fa-solid fa-wallet text-emerald-400"></i> Recargar Saldo</h3>
@@ -11473,8 +11473,22 @@
     function pintarMontosRecarga() {
       const g = document.getElementById('recargaMontos'); if (!g) return;
       { const avC = document.getElementById('avisoCompraTrasRecarga'), desdeCompra = !!(compraTrasRecarga && compraTrasRecarga.falta && Date.now() < compraTrasRecarga.expira && avC && !avC.classList.contains('hidden')), t1 = document.getElementById('recargaTituloMontos'), t2 = document.getElementById('recargaSubMontos');
-        if (t1) t1.textContent = desdeCompra ? 'O elige otro monto' : '¿Cuánto quieres recargar?';
-        if (t2) t2.textContent = desdeCompra ? 'Lo que sobre queda en tu saldo.' : 'Toca un monto y listo. Se acredita solo en 1 o 2 minutos.'; }
+        if (t1) t1.textContent = desdeCompra ? '¿Vas a comprar más veces? Recarga una sola vez' : '¿Cuánto quieres recargar?';
+        if (t2) t2.textContent = desdeCompra ? 'Así no tienes que recargar en cada compra.' : 'Toca un monto y listo. Se acredita solo en 1 o 2 minutos.';
+        const mn = document.getElementById('recargaAutoMin'); if (mn) mn.classList.toggle('hidden', desdeCompra);
+        if (desdeCompra) {
+          const pB = (typeof pctBonoBreb === 'function' ? pctBonoBreb() : 0) || 0, pop = montoPopularRecarga(), c = compraTrasRecarga, saldo = Math.max(0, Number(userSaldo) || 0);
+          const cands = [...new Set([20000, 50000, 100000, pop, 200000])].sort((a, b) => a - b);
+          const ops = cands.map(v => ({ v, n: Math.floor((saldo + v + Math.round(v * pB / 100)) / (c.total || 1)) })).filter(o => o.v > c.falta && o.n >= 2).slice(0, 3);
+          g.className = 'flex flex-col gap-2 mb-2';
+          g.innerHTML = ops.map(o => `<button type="button" onclick="recargaTocarMonto(this, ${o.v}, false)" class="flex items-center justify-between gap-3 p-3 rounded-2xl text-left border ${o.v === pop ? 'border-emerald-400/70 bg-emerald-500/10' : 'border-gray-700 bg-gray-800/70'} hover:bg-gray-700/70">
+              <span><span class="flex items-center gap-1.5 text-base font-black text-white">${formatoCOP(o.v)}${o.v === pop ? '<span class="text-[9px] px-1.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-black uppercase">popular</span>' : ''}</span>
+              <span class="block text-[12px] text-gray-400">Te alcanza para <b class="text-white">${o.n} compras</b> como esta</span></span><i class="fa-solid fa-chevron-right text-gray-500"></i></button>`).join('')
+            + (pB ? `<p class="text-[11px] text-emerald-300 text-center">🎁 Con el bono de +${pB}% recibes un poco más en cada recarga</p>` : '')
+            + `<button type="button" onclick="document.getElementById('recargaOtroMonto').classList.toggle('hidden'); document.getElementById('recargaAutoMonto').focus();" class="text-[11px] text-gray-400 underline underline-offset-2">Recargar otro monto</button>`;
+          return;
+        }
+        g.className = 'grid grid-cols-2 gap-2 mb-2'; }
       const pop = montoPopularRecarga(), pB = (typeof pctBonoBreb === 'function' ? pctBonoBreb() : 0) || 0;
       const base = [10000, 20000, 50000, 100000]; if (base.indexOf(pop) === -1) base.splice(2, 0, pop);
       const montos = base.filter(v => v >= (recargaAutoCfg.minimo || 0)).slice(0, 4);
@@ -11553,7 +11567,7 @@
 
     async function recargaAutoCancelar() {
       if (!pedidoRecargaActivo) return;
-      if (!await confirmarModal('¿Cancelar este pedido? Si ya pagaste, no lo canceles: espera a que se acredite.', { textoAceptar: 'Sí, cancelar' })) return;
+      if (!await confirmarModal('¿Cancelar? No se comprará nada. Si ya pagaste, la plata queda en tu saldo.', { textoAceptar: 'Sí, cancelar' })) return;
       if (modoPruebaCliente && pedidoRecargaActivo && pedidoRecargaActivo.simulado) {
         if (timerRecargaSim) { clearTimeout(timerRecargaSim); timerRecargaSim = null; }
         pedidoRecargaActivo = null; recargaAutoEstadoTxt(''); renderizarRecargaAuto(); return;
@@ -11561,7 +11575,7 @@
       try {
         const r = await llamarBackend('recarga_cancelar', { id: pedidoRecargaActivo.id });
         if (!r.ok) { alert(r.error || 'No se pudo cancelar.'); return; }
-        pedidoRecargaActivo = null;
+        pedidoRecargaActivo = null; compraTrasRecarga = null; { const avC = document.getElementById('avisoCompraTrasRecarga'); if (avC) { avC.classList.add('hidden'); avC.style.display = ''; } }
         recargaAutoEstadoTxt('');
         renderizarRecargaAuto();
       } catch (e) { alert(e.message); }
@@ -16590,7 +16604,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-21t';
+    const VERSION_PAGINA = '2026-10-21w';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261020_ajuste', fecha: '2026-10-20', titulo: 'Se ve mejor en iPhone 📱', mensaje: 'La tienda ahora **se ajusta siempre a tu pantalla**: ya no se agranda al escribir ni se corre hacia los lados. Si la tienes abierta, **recarga la página** para verla así.' },
       { id: 'act_20261020_app', fecha: '2026-10-20', titulo: 'App oficial de Epic Streaming 📲', mensaje: 'Ya tenemos **app oficial**: en la tienda toca **Descargar** (Android), **Instalar** (PC) o **Agregar** (iPhone). Abre más rápido, a pantalla completa, con tu misma cuenta y **se actualiza sola**.' },
@@ -18676,18 +18690,16 @@
         const recibe = v => pB ? `<span class="block text-[10px] font-bold opacity-80">recibes ${formatoCOP(v + Math.round(v * pB / 100))}</span>` : '';
         const aviso = document.getElementById('avisoCompraTrasRecarga');
         if (aviso) {
-          aviso.className = 'mb-3 p-3.5 rounded-2xl bg-emerald-500/10 border border-emerald-400/50 text-emerald-50';
-          aviso.innerHTML = `<p class="text-sm font-black text-white mb-2"><i class="fa-solid fa-cart-shopping text-emerald-300 mr-1"></i>Completa tu compra</p>
-            <div class="text-[12px] space-y-1">
-              <div class="flex justify-between gap-2"><span class="truncate">${it.cantidad} × ${escaparHtml(prod.nombre)}</span><b class="text-white">${formatoCOP(total)}</b></div>
-              <div class="flex justify-between gap-2 text-emerald-200/70"><span>Tu saldo</span><span>− ${formatoCOP(Math.max(0, Number(userSaldo) || 0))}</span></div>
-              <div class="flex justify-between gap-2 pt-1.5 mt-1 border-t border-emerald-400/20 text-[13px]"><span class="font-bold">Te faltan</span><b class="text-white">${formatoCOP(exacto)}</b></div>
+          aviso.className = 'mb-4 p-4 rounded-2xl text-[#e8f0ff]';
+          aviso.style.background = '#13284d'; aviso.style.border = '1px solid #2f5ea8';
+          aviso.innerHTML = `<p class="text-[15px] font-black text-amber-400"><i class="fa-solid fa-triangle-exclamation mr-1"></i>Tu saldo no alcanza para esta compra</p>
+            <div class="text-[13px] mt-2.5 space-y-1">
+              <div class="flex justify-between gap-2"><span class="text-[#c7d7f5] truncate">Vas a comprar ${it.cantidad} ${escaparHtml(prod.nombre)}</span><b class="text-white shrink-0">${formatoCOP(total)}</b></div>
+              <div class="flex justify-between gap-2"><span class="text-[#c7d7f5]">Tienes de saldo</span><b class="text-white">${formatoCOP(Math.max(0, Number(userSaldo) || 0))}</b></div>
+              <div class="flex justify-between items-baseline gap-2 pt-2 mt-1.5" style="border-top:1px solid #2f5ea8"><span class="font-black text-[15px] text-white">Te faltan</span><b class="text-2xl font-black text-amber-400">${formatoCOP(exacto)}</b></div>
             </div>
-            <div class="grid grid-cols-2 gap-2 mt-3">
-              <button type="button" onclick="recargaTocarMonto(this, ${exacto}, false)" class="p-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black text-left"><span class="block text-[10px] font-black uppercase opacity-70">Lo exacto</span><span class="block text-base font-black">${formatoCOP(exacto)}</span>${recibe(exacto)}</button>
-              <button type="button" onclick="recargaTocarMonto(this, ${sugerido}, false)" class="p-2.5 rounded-xl bg-gray-800 border border-emerald-400/40 hover:bg-gray-700 text-white text-left"><span class="block text-[10px] font-black uppercase text-emerald-300">Sugerido</span><span class="block text-base font-black">${formatoCOP(sugerido)}</span><span class="block text-[10px] text-gray-400">te sobran ${formatoCOP(sugerido - exacto)}</span></button>
-            </div>
-            <p class="text-[10px] text-emerald-200/70 mt-2 text-center">Cuando entre tu pago te pregunto si completo la compra. O elige otro monto abajo 👇</p>`;
+            <button type="button" onclick="recargaTocarMonto(this, ${exacto}, false)" class="mt-3.5 w-full py-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black text-[15px] font-black">Recargar los ${formatoCOP(exacto)} que faltan</button>
+            <p class="text-[11px] text-[#93c5fd] mt-2 text-center">Al llegar tu pago, la compra se completa sola y recibes tus cuentas</p>`;
         }
         try { pintarMontosRecarga(); } catch (e) { /* nada */ }
       }, 50);
@@ -18700,11 +18712,9 @@
       compraTrasRecarga = null;
       const av = document.getElementById('avisoCompraTrasRecarga'); if (av) av.classList.add('hidden');
       try { cerrarModalRecarga(true); } catch (e) { /* nada */ }
-      // 🛑 Nunca compra sola: pregunta primero (si el cliente dice que no, no pasa nada)
+      // ✅ El cliente ya tocó Comprar y recargó para eso: la compra se completa sola apenas entra el pago
       setTimeout(async () => {
-        let ok = false;
-        try { ok = await confirmarModal('¿Completo tu compra de ' + c.cantidad + ' ' + c.nombre + ' por ' + formatoCOP(c.total) + '? Si dices que no, tu saldo queda guardado.', { titulo: '💚 ¡Recarga lista!', tipo: 'pregunta' }); } catch (e) { ok = false; }
-        if (!ok) { mostrarToast('Listo, tu saldo queda guardado. Compra cuando quieras.'); return; }
+        mostrarToast('✅ Llegó tu pago. Completando tu compra de ' + c.cantidad + ' ' + c.nombre + '…');
         if (!document.getElementById('cant_' + c.docId)) { try { categoriaActiva = 'todas'; renderizarCatalogo(); } catch (e) { /* nada */ } }
         const inp = document.getElementById('cant_' + c.docId); if (inp) inp.value = String(c.cantidad);
         comprarProducto(c.docId);
@@ -24797,13 +24807,14 @@
       if (sinCancelar) return;
       // Cerrar = empezar de cero la próxima vez. Si ya pagó, el pago igual se acredita solo (el pedido queda protegido 24 h).
       try {
+        if (compraTrasRecarga) { compraTrasRecarga = null; const avC = document.getElementById('avisoCompraTrasRecarga'); if (avC) { avC.classList.add('hidden'); avC.style.display = ''; } }   // cerrar = no se compra nada
         const p = pedidoRecargaActivo; if (!p || p.estado === 'acreditado') return;
         pedidoRecargaActivo = null; recargaAutoEstadoTxt('');
         if (relojRecargaTimer) { clearInterval(relojRecargaTimer); relojRecargaTimer = null; }
         if (p.simulado) { if (timerRecargaSim) { clearTimeout(timerRecargaSim); timerRecargaSim = null; } }
         else llamarBackend('recarga_cancelar', { id: p.id }).catch(() => {});
         renderizarRecargaAuto();
-        mostrarToast('Pedido cerrado. Si ya pagaste, igual se acredita solo ✅');
+        mostrarToast('Cancelado: no se compró nada. Si ya pagaste, la plata queda en tu saldo ✅');
       } catch (e) { /* nada */ }
     }
     function cerrarModalEntrega() {
