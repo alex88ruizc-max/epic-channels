@@ -11377,13 +11377,27 @@
       if (det && et) et.textContent = det.open ? 'Ocultar' : 'Mostrar';
     }
 
+    // Al tocar un monto: respuesta inmediata (la tarjeta se ilumina con "Preparando tu pago…") mientras el servidor responde
+    async function recargaTocarMonto(btn, valor, usd) {
+      const grid = btn && btn.parentElement; if (grid && grid.dataset.ocupado === '1') return;
+      if (grid) { grid.dataset.ocupado = '1'; Array.from(grid.children).forEach(b => { if (b !== btn) b.classList.add('opacity-40', 'pointer-events-none'); }); }
+      const antes = btn ? btn.innerHTML : '';
+      if (btn) { btn.classList.add('ring-2', usd ? 'ring-yellow-400' : 'ring-emerald-400'); btn.innerHTML = `<span class="flex items-center gap-2 text-base font-black text-white"><i class="fa-solid fa-spinner fa-spin ${usd ? 'text-yellow-300' : 'text-emerald-300'}"></i>${usd ? valor + ' USDT' : formatoCOP(valor)}</span><span class="block text-[11px] ${usd ? 'text-yellow-200' : 'text-emerald-200'}">Preparando tu pago…</span>`; }
+      try {
+        if (usd) { const i = document.getElementById('recargaBinanceUsdt'); if (i) i.value = valor; await recargaBinanceCrear(); }
+        else { recargaAutoElegir(valor); await recargaAutoCrear(); }
+      } finally {
+        if (btn && document.body.contains(btn)) { btn.innerHTML = antes; btn.classList.remove('ring-2', 'ring-yellow-400', 'ring-emerald-400'); }
+        if (grid) { grid.dataset.ocupado = ''; Array.from(grid.children).forEach(b => b.classList.remove('opacity-40', 'pointer-events-none')); }
+      }
+    }
     function montoPopularRecarga() { const v = parseInt((ajustesGeneralesConfig || {}).recargaPopular, 10); return v > 0 ? v : 50000; }
     function pintarMontosRecarga() {
       const g = document.getElementById('recargaMontos'); if (!g) return;
       const pop = montoPopularRecarga(), pB = (typeof pctBonoBreb === 'function' ? pctBonoBreb() : 0) || 0;
       const base = [10000, 20000, 50000, 100000]; if (base.indexOf(pop) === -1) base.splice(2, 0, pop);
       const montos = base.filter(v => v >= (recargaAutoCfg.minimo || 0)).slice(0, 4);
-      g.innerHTML = montos.map(v => `<button type="button" onclick="recargaAutoElegir(${v}); recargaAutoCrear();" class="text-left p-3 rounded-2xl border ${v === pop ? 'border-emerald-400/70 bg-emerald-500/10 ring-1 ring-emerald-400/30' : 'border-gray-700 bg-gray-800/70'} hover:bg-gray-700/70 transition">
+      g.innerHTML = montos.map(v => `<button type="button" onclick="recargaTocarMonto(this, ${v}, false)" class="text-left p-3 rounded-2xl border ${v === pop ? 'border-emerald-400/70 bg-emerald-500/10 ring-1 ring-emerald-400/30' : 'border-gray-700 bg-gray-800/70'} hover:bg-gray-700/70 transition">
           <span class="flex items-center gap-1.5 text-base font-black text-white">${formatoCOP(v)}${v === pop ? '<span class="text-[9px] px-1.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-black uppercase">popular</span>' : ''}</span>
           <span class="block text-[11px] ${pB ? 'text-emerald-300' : 'text-gray-500'}">${pB ? 'recibes ' + formatoCOP(v + Math.round(v * pB / 100)) : 'se acredita solo'}</span></button>`).join('')
         + `<button type="button" onclick="document.getElementById('recargaOtroMonto').classList.toggle('hidden'); document.getElementById('recargaAutoMonto').focus();" class="col-span-2 py-2 rounded-xl border border-dashed border-gray-600 text-[12px] font-bold text-gray-300 hover:bg-gray-800/60">Otro monto <span class="text-gray-500 font-normal">· desde ${formatoCOP(recargaAutoCfg.minimo || 10000)}</span></button>`;
@@ -11392,7 +11406,7 @@
       const g = document.getElementById('recargaMontosUsd'); if (!g) return;
       const min = recargaAutoCfg.binanceMinimo || 5, lista = [10, 20, 50].filter(u => u >= min);
       const tasa = (tasaBinanceCache && tasaBinanceCache.v) || 0;
-      g.innerHTML = lista.map(u => `<button type="button" onclick="document.getElementById('recargaBinanceUsdt').value=${u}; recargaBinanceCrear();" class="text-left p-3 rounded-2xl border ${u === 20 ? 'border-yellow-400/70 bg-yellow-500/10 ring-1 ring-yellow-400/30' : 'border-gray-700 bg-gray-800/70'} hover:bg-gray-700/70 transition">
+      g.innerHTML = lista.map(u => `<button type="button" onclick="recargaTocarMonto(this, ${u}, true)" class="text-left p-3 rounded-2xl border ${u === 20 ? 'border-yellow-400/70 bg-yellow-500/10 ring-1 ring-yellow-400/30' : 'border-gray-700 bg-gray-800/70'} hover:bg-gray-700/70 transition">
           <span class="flex items-center gap-1.5 text-base font-black text-white">${u} USDT${u === 20 ? '<span class="text-[9px] px-1.5 py-0.5 rounded-full bg-yellow-500/20 text-yellow-300 font-black uppercase">popular</span>' : ''}</span>
           <span class="block text-[11px] text-gray-400">${tasa ? '≈ ' + formatoCOP(Math.round(u * tasa)) + ' de saldo' : 'saldo en pesos, tasa de hoy'}</span></button>`).join('')
         + `<button type="button" onclick="document.getElementById('recargaOtroUsd').classList.toggle('hidden'); document.getElementById('recargaBinanceUsdt').focus();" class="col-span-2 py-2 rounded-xl border border-dashed border-gray-600 text-[12px] font-bold text-gray-300 hover:bg-gray-800/60">Otro monto <span class="text-gray-500 font-normal">· desde ${min} USDT</span></button>`;
@@ -16487,7 +16501,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-21j';
+    const VERSION_PAGINA = '2026-10-21k';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261020_ajuste', fecha: '2026-10-20', titulo: 'Se ve mejor en iPhone 📱', mensaje: 'La tienda ahora **se ajusta siempre a tu pantalla**: ya no se agranda al escribir ni se corre hacia los lados. Si la tienes abierta, **recarga la página** para verla así.' },
       { id: 'act_20261020_app', fecha: '2026-10-20', titulo: 'App oficial de Epic Streaming 📲', mensaje: 'Ya tenemos **app oficial**: en la tienda toca **Descargar** (Android), **Instalar** (PC) o **Agregar** (iPhone). Abre más rápido, a pantalla completa, con tu misma cuenta y **se actualiza sola**.' },
