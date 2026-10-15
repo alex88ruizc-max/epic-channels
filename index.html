@@ -1570,9 +1570,10 @@
               <label for="txtStockCostoUnitario" class="block text-xs text-gray-400 mb-1">Costo unitario de compra (lo que te costó cada cuenta)</label>
               <div class="relative">
                 <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm font-bold">$</span>
-                <input type="number" id="txtStockCostoUnitario" min="0" step="any" inputmode="numeric" oninput="actualizarResumenInversionStock()" placeholder="Costo unitario COP (Opcional, vacío = $0)" class="w-full bg-gray-800 border border-gray-700 rounded-xl pl-7 pr-3 py-2 text-sm text-white focus:outline-none">
+                <input type="number" id="txtStockCostoUnitario" autocomplete="off" min="0" step="any" inputmode="numeric" oninput="actualizarResumenInversionStock()" placeholder="Costo unitario COP (Opcional, vacío = $0)" class="w-full bg-gray-800 border border-gray-700 rounded-xl pl-7 pr-3 py-2 text-sm text-white focus:outline-none">
               </div>
               <p class="text-[10px] text-gray-500 mt-1">Se guarda en cada cuenta. Al venderse, su costo se descuenta para calcular tu ganancia neta real.</p>
+              <button type="button" onclick="abrirRevisarCostos()" class="mt-2 px-3 py-1.5 rounded-lg bg-gray-800 border border-gray-700 text-[11px] font-bold text-emerald-300"><i class="fa-solid fa-receipt mr-1"></i>Revisar costos del stock</button>
             </div>
             <div>
               <label for="txtStockClaveAcceso" class="block text-xs text-gray-400 mb-1">Contraseña de acceso de estas cuentas (opcional)</label>
@@ -6299,6 +6300,55 @@
       }
     }
 
+
+    // ==================== 🧾 REVISAR COSTOS DEL STOCK ====================
+    function costoDeCuenta(c) { const n = (c && typeof c === 'object') ? parseFloat(c.costo) : 0; return isNaN(n) || n < 0 ? 0 : n; }
+    function origenDeCuenta(c) { return (c && typeof c === 'object' && c.aportadoNombre) ? String(c.aportadoNombre) : 'Tuyas'; }
+    function gruposCostoProducto(p) {
+      const r = resolverCuentasYStock(p.docId, snapshotInventario[p.docId] || {}), G = {};
+      (r.cuentas || []).forEach(c => { const k = costoDeCuenta(c) + '|' + origenDeCuenta(c); (G[k] = G[k] || { costo: costoDeCuenta(c), origen: origenDeCuenta(c), n: 0, desde: '' }).n++; const f = c && c.subidoEl; if (f && (!G[k].desde || f < G[k].desde)) G[k].desde = f; });
+      const L = Object.values(G).sort((a, b) => a.costo - b.costo);
+      const noCero = L.filter(g => g.costo > 0).map(g => g.costo).sort((a, b) => a - b), med = noCero.length ? noCero[Math.floor(noCero.length / 2)] : 0, precio = Number(p.precio) || 0;
+      L.forEach(g => { g.raro = g.costo > 0 && ((precio > 0 && g.costo >= precio) || (med > 0 && g.costo > med * 3)); });
+      return { total: r.cuentas.length, grupos: L };
+    }
+    function abrirRevisarCostos() {
+      let m = document.getElementById('modalRevisarCostos');
+      if (!m) { m = document.createElement('div'); m.id = 'modalRevisarCostos'; m.className = 'fixed inset-0 z-[96] flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm'; document.body.appendChild(m); }
+      const prods = (catalogoUnificado || []).filter(p => !p.esCombo).map(p => Object.assign({ p }, gruposCostoProducto(p))).filter(x => x.total > 0)
+        .sort((a, b) => (b.grupos.some(g => g.raro) - a.grupos.some(g => g.raro)) || String(a.p.nombre).localeCompare(String(b.p.nombre), 'es'));
+      const fecha = f => f ? new Date(f).toLocaleDateString('es-CO', { day: '2-digit', month: '2-digit' }) : '';
+      m.innerHTML = `<div class="w-full max-w-lg max-h-[88vh] overflow-y-auto rounded-3xl bg-gray-900 border border-gray-700 p-5 relative">
+        <button type="button" onclick="document.getElementById('modalRevisarCostos').remove()" class="absolute top-4 right-4 text-gray-400"><i class="fa-solid fa-xmark text-lg"></i></button>
+        <p class="text-base font-black text-white"><i class="fa-solid fa-receipt text-emerald-400 mr-1"></i> Costos del stock</p>
+        <p class="text-[11px] text-gray-400 mb-3">Las cuentas de cada producto agrupadas por lo que costaron. En amarillo, los costos raros (iguales o más altos que el precio de venta, o muy distintos a los demás).</p>
+        <div class="space-y-2.5">${prods.map(x => `<div class="p-3 rounded-2xl bg-gray-800/50 border border-gray-700/60">
+          <p class="text-[13px] font-black text-white mb-1.5">${escaparHtml(x.p.nombre)} <span class="text-gray-400 font-bold">· ${x.total} cuentas · vende a ${formatoCOP(Number(x.p.precio) || 0)}</span></p>
+          ${x.grupos.map(g => `<div class="flex items-center justify-between gap-2 text-[12px] px-2 py-1.5 rounded-lg ${g.raro ? 'bg-amber-500/15 text-amber-200' : 'text-gray-200'}">
+            <span>${g.raro ? '<i class="fa-solid fa-triangle-exclamation mr-1"></i>' : ''}<b>${formatoCOP(g.costo)}</b> <span class="${g.raro ? '' : 'text-gray-400'}">· ${escaparHtml(g.origen)}${g.desde ? ' · desde el ' + fecha(g.desde) : ''}</span></span>
+            <span class="shrink-0">${g.n} ${g.n === 1 ? 'cuenta' : 'cuentas'} <button type="button" onclick="corregirCostoGrupo('${escaparJsAttr(x.p.docId)}', ${g.costo}, '${escaparJsAttr(g.origen)}', ${g.n})" class="ml-1 underline font-bold ${g.raro ? 'text-amber-100' : 'text-emerald-300'}">Corregir</button></span></div>`).join('')}
+        </div>`).join('') || '<p class="text-xs text-gray-500 text-center py-6">No hay cuentas en stock.</p>'}</div></div>`;
+    }
+    async function corregirCostoGrupo(docId, costo, origen, n) {
+      const v = await pedirTextoModal(`Nuevo costo por cuenta para ${n} ${n === 1 ? 'cuenta' : 'cuentas'} (${origen}, hoy a ${formatoCOP(costo)}). Escribe 0 si no te costaron:`, String(costo));
+      if (v === null || v === undefined || String(v).trim() === '') return;
+      const nuevo = Math.max(0, Math.round(parseFloat(String(v).replace(/[^\d.,]/g, '').replace(',', '.')) || 0));
+      try {
+        await modificarCuentasProducto(docId, L => L.map(c => (costoDeCuenta(c) === costo && origenDeCuenta(c) === origen) ? Object.assign({}, (c && typeof c === 'object') ? c : parseCredencialObj(c), { costo: nuevo }) : c));
+        mostrarToast(`✅ Costo actualizado a ${formatoCOP(nuevo)} en ${n} ${n === 1 ? 'cuenta' : 'cuentas'}`);
+        setTimeout(abrirRevisarCostos, 900);
+      } catch (e) { alert('No se pudo actualizar: ' + (e.message || e)); }
+    }
+    // Corregir el costo de una venta ya hecha (el reporte y la ganancia se recalculan solos)
+    async function hvGuardarCosto(id) {
+      const v = hvVentas.find(x => x.id === id), inp = document.getElementById('hvCosto_' + id); if (!v || !inp) return;
+      const n = Math.max(0, Math.round(parseFloat(String(inp.value || '0').replace(/[^\d.]/g, '')) || 0)), total = Number(v.total) || 0;
+      try {
+        await db.collection('compras').doc(id).update({ costoTotal: n, gananciaNeta: total - n, costoAnterior: Number(v.costoTotal) || 0, costoCorregidoEl: new Date().toISOString(), costoCorregidoPor: (currentUser && currentUser.email) || '' });
+        v.costoAnterior = Number(v.costoTotal) || 0; v.costoTotal = n; v.gananciaNeta = total - n; hvPintar();
+        mostrarToast('✅ Costo corregido. El reporte se actualiza al consultar.');
+      } catch (e) { alert('No se pudo guardar: ' + (e.message || e)); }
+    }
     // ==================== HISTORIAL DE VENTAS (tarjetas por día) ====================
     let hvVentas = [], hvUltimoDoc = null, hvPer = 'hoy', hvNombres = {}, hvAbiertas = {};
     function hvDesde(p) { const d = new Date(); d.setHours(0, 0, 0, 0); if (p === '7d') d.setDate(d.getDate() - 6); else if (p === 'mes') d.setDate(1); else if (p === 'todo') return null; return d.toISOString(); }
@@ -6371,6 +6421,11 @@
                   ${v.costoTotal !== undefined ? `<p class="shrink-0 text-[10px] ${gan >= 0 ? 'text-sky-300' : 'text-rose-300'}">ganancia ${formatoCOP(gan)}</p>` : ''}
                 </div>
                 ${canal ? `<span class="inline-block mt-1.5 text-[10px] font-bold px-2 py-0.5 rounded-full ${canal[1]}">${canal[0]}</span>` : ''}
+                ${esAdminSesionActual() ? `<div class="mt-2 flex items-center gap-1.5 flex-wrap text-[11px]">
+                  <span class="${(Number(v.costoTotal) || 0) > (Number(v.total) || 0) ? 'text-amber-300 font-bold' : 'text-gray-400'}">Costo: ${formatoCOP(Number(v.costoTotal) || 0)}${(Number(v.costoTotal) || 0) > (Number(v.total) || 0) ? ' ⚠️ más que la venta' : ''}${v.costoCorregidoEl ? ' · corregido' : ''}</span>
+                  <input id="hvCosto_${id}" type="number" min="0" inputmode="numeric" placeholder="Costo real" class="w-24 bg-gray-900 border border-gray-700 rounded-lg px-2 py-1 text-[11px] text-white">
+                  <button type="button" onclick="hvGuardarCosto('${id}')" class="px-2 py-1 rounded-lg bg-emerald-500 text-black font-black">Guardar</button>
+                </div>` : ''}
               </div>
             </div>
             ${creds.length ? `<div class="mt-2.5 pt-2 border-t border-gray-700/60">
@@ -11066,6 +11121,7 @@
       } catch (e) { console.warn('Revisión de repetidas:', e); }
 
       const costoUnitario = leerCostoUnitarioStock();
+      if (costoUnitario > 0 && !await confirmarModal(`Vas a cargar ${lineas.length} ${lineas.length === 1 ? 'cuenta' : 'cuentas'} con un costo de ${formatoCOP(costoUnitario)} CADA UNA (total ${formatoCOP(costoUnitario * lineas.length)}).\n\nSi son tuyas y no te costaron, cancela y deja el costo vacío.`, { titulo: '💵 Confirma el costo', textoAceptar: 'Sí, ese es el costo' })) return;
       const claveAccesoLote = ((document.getElementById('txtStockClaveAcceso') || {}).value || '').trim();
       const ahoraSubida = new Date().toISOString();
       const aporteCarga = esAdminSesionActual() ? aportanteElegido() : null;
@@ -16731,7 +16787,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-22i';
+    const VERSION_PAGINA = '2026-10-22j';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261020_ajuste', fecha: '2026-10-20', titulo: 'Se ve mejor en iPhone 📱', mensaje: 'La tienda ahora **se ajusta siempre a tu pantalla**: ya no se agranda al escribir ni se corre hacia los lados. Si la tienes abierta, **recarga la página** para verla así.' },
       { id: 'act_20261020_app', fecha: '2026-10-20', titulo: 'App oficial de Epic Streaming 📲', mensaje: 'Ya tenemos **app oficial**: en la tienda toca **Descargar** (Android), **Instalar** (PC) o **Agregar** (iPhone). Abre más rápido, a pantalla completa, con tu misma cuenta y **se actualiza sola**.' },
