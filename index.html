@@ -16706,7 +16706,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-22b';
+    const VERSION_PAGINA = '2026-10-22c';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261020_ajuste', fecha: '2026-10-20', titulo: 'Se ve mejor en iPhone 📱', mensaje: 'La tienda ahora **se ajusta siempre a tu pantalla**: ya no se agranda al escribir ni se corre hacia los lados. Si la tienes abierta, **recarga la página** para verla así.' },
       { id: 'act_20261020_app', fecha: '2026-10-20', titulo: 'App oficial de Epic Streaming 📲', mensaje: 'Ya tenemos **app oficial**: en la tienda toca **Descargar** (Android), **Instalar** (PC) o **Agregar** (iPhone). Abre más rápido, a pantalla completa, con tu misma cuenta y **se actualiza sola**.' },
@@ -25020,6 +25020,7 @@
       const vb = document.getElementById('vistaBloqueada'); if (!vb || vb.style.display === 'none' || currentUser) return;
       if (!portAbiertaEl) portAbiertaEl = Date.now();
       portLlenarPaises();
+      if (!usdDeCop(1000) && !window.__portEsperaTasa) { window.__portEsperaTasa = true; setTimeout(() => { window.__portEsperaTasa = false; try { pintarPortadaVisitante(); } catch (e) { /* nada */ } }, 4000); }
       const L = (catalogoUnificado || []).filter(p => p.activo !== false && !p.esCombo && Number(p.precio) > 0 && !(typeof esProductoVip === 'function' && esProductoVip(p)));
       // Precio gancho: Prime Video (o el más barato con stock)
       const g = L.find(p => /^prime\s*video$/i.test(String(p.nombre || '').trim())) || L.filter(p => Number(p.stock) > 0).sort((a, b) => Number(a.precio) - Number(b.precio))[0];
@@ -25028,7 +25029,7 @@
           ${(g.iconoTarjeta || g.imagenUrl) ? `<img src="${escaparHtml(g.iconoTarjeta || g.imagenUrl)}" class="w-14 h-14 rounded-2xl object-cover shrink-0" alt="">` : '<span class="w-14 h-14 rounded-2xl bg-sky-500/15 text-sky-300 text-2xl flex items-center justify-center shrink-0"><i class="fa-solid fa-tv"></i></span>'}
           <span class="min-w-0 flex-1"><span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-400/15 text-amber-300 text-[10px] font-black"><i class="fa-solid fa-fire"></i> EN PROMOCIÓN</span>
             <span class="block text-sm font-black text-white mt-1">${escaparHtml(g.nombre)}</span>
-            <span class="flex items-baseline gap-1.5"><span class="text-2xl font-black text-white">${formatoCOP(Number(g.precio))}</span><span class="text-xs text-gray-400">por cuenta</span></span>
+            <span class="flex items-baseline gap-1.5 flex-wrap"><span class="text-2xl font-black text-white">${formatoCOP(Number(g.precio))}</span>${usdDeCop(Number(g.precio)) ? `<span class="text-sm font-black text-emerald-300">· ${usdDeCop(Number(g.precio))} USD</span>` : ''}<span class="text-xs text-gray-400">por cuenta</span></span>
             <span class="block text-[11px] text-amber-300">Precio de promoción por tiempo limitado</span></span></button>` : '';
       const orden = L.slice().sort((a, b) => (Number(b.stock) > 0) - (Number(a.stock) > 0) || (Number(b.stock) || 0) - (Number(a.stock) || 0)).filter(p => p !== g);
       const porId = id => id ? orden.find(p => p.docId === id) : null;
@@ -25041,7 +25042,7 @@
           <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black ${esHot ? 'bg-red-500/15 text-red-300' : est[2]}">${esHot ? '<i class="fa-solid fa-fire"></i> MÁS VENDIDO' : est[3]}</span>
           ${img ? `<img src="${escaparHtml(img)}" class="mt-2.5 w-11 h-11 rounded-xl object-cover" alt="">` : `<span class="mt-2.5 w-11 h-11 rounded-xl bg-gray-800 text-white text-lg font-black flex items-center justify-center">${escaparHtml(ini)}</span>`}
           <span class="block mt-2 text-sm font-black text-white leading-tight">${escaparHtml(p.nombre)}</span>
-          <span class="block text-[13px] text-gray-400 mt-0.5">desde ${formatoCOP(Number(p.precio))}</span>
+          <span class="block text-[13px] text-gray-400 mt-0.5">desde ${formatoCOP(Number(p.precio))}${usdDeCop(Number(p.precio)) ? ` <span class="text-emerald-300 font-bold">· ${usdDeCop(Number(p.precio))} USD</span>` : ''}</span>
           <span class="block text-[11px] font-bold mt-1 ${est[1]}">${est[0]}</span></button>`; };
       if (cc) cc.innerHTML = tarjeta(hot, true) + tarjeta(seg, false);
       const pm = document.getElementById('portMas'); if (pm) pm.textContent = 'Y muchos más dentro de la tienda · stock en vivo';
