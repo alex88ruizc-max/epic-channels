@@ -2286,6 +2286,7 @@
           <p class="text-xs text-gray-400">Aprueba lo que suben, ponles el costo por cuenta y márcalos como saldados cuando les pagues (el pago lo haces por aparte).</p>
           <p class="text-[11px] text-gray-500 mt-2">Para crear un proveedor: <b class="text-gray-300">Usuarios Registrados → Crear usuario</b> con el rol "Proveedor", y luego, con su botón <b class="text-gray-300">Editar</b>, marca qué productos puede subir.</p>
         </div>
+        <div id="misDominiosCaja" class="solo-admin p-4 bg-gray-900 border border-violet-500/40 rounded-2xl"></div>
         <div id="provCuposCaja" class="solo-admin p-4 bg-gray-900 border border-sky-500/40 rounded-2xl"></div>
         <div id="provAutoCaja" class="solo-admin p-4 bg-gray-900 border border-emerald-500/40 rounded-2xl"></div>
         <div class="solo-admin bg-gray-900 border border-yellow-400/40 rounded-2xl overflow-hidden">
@@ -12616,7 +12617,51 @@
       } catch (e) { console.warn('Autorización automática:', e); }
       finally { provAutoCorriendo = false; }
     }
-    // ⏰ Horario y cupo de correos de proveedores (se guarda en Ajustes; 0 o vacío = ilimitado)
+    // 🌐 Mis dominios de correo (rotación + descanso inteligente)
+    var misDominiosCfg = null;
+    async function cargarMisDominios() {
+      if (!esAdminSesionActual()) return;
+      try { const r = await llamarBackend('dominios_ver', {}); if (r && r.ok) { misDominiosCfg = r.cfg; pintarMisDominios(); } } catch (e) { /* nada */ }
+    }
+    function pintarMisDominios() {
+      const c = document.getElementById('misDominiosCaja'); if (!c || !esAdminSesionActual()) return;
+      const lista = (misDominiosCfg && Array.isArray(misDominiosCfg.lista)) ? misDominiosCfg.lista : [];
+      const badge = e => e === 'activo' ? '<span class="text-emerald-300">🟢 Activo</span>' : (e === 'descanso' ? '<span class="text-amber-300">😴 Descansando</span>' : '<span class="text-gray-500">⛔ Apagado</span>');
+      const base = (window.DOMINIO_BASE || 'epicstreaming.vip');
+      c.innerHTML = `<p class="text-sm font-black text-white">🌐 Mis dominios de correo</p>
+        <p class="text-[11px] text-gray-400 mb-3">Los correos nuevos se reparten entre los <b>activos</b>. Un dominio pasa a <b>descanso</b> solo si 4 cuentas suyas se caen limpias el mismo día (sin compras); vuelve cuando tú lo actives.</p>
+        <div class="space-y-2 mb-3">${lista.map((x, i) => `
+          <div class="flex items-center gap-2 p-2 rounded-xl bg-gray-800/70 border border-gray-700">
+            <span class="flex-1 min-w-0 text-[12px] font-mono text-white truncate">${escaparHtml(x.d)}${x.d === base ? ' <span class=\"text-[9px] text-gray-500\">(principal)</span>' : ''}</span>
+            <span class="text-[11px] font-bold shrink-0">${badge(x.estado)}</span>
+            <select data-dom-i="${i}" class="shrink-0 bg-gray-900 border border-gray-700 rounded-lg text-[11px] text-white px-1.5 py-1">
+              <option value="activo" ${x.estado === 'activo' ? 'selected' : ''}>Activar</option>
+              <option value="descanso" ${x.estado === 'descanso' ? 'selected' : ''}>Descansar</option>
+              <option value="apagado" ${x.estado === 'apagado' ? 'selected' : ''}>Apagar</option>
+            </select>
+            ${x.d === base ? '' : `<button type="button" onclick="quitarDominio(${i})" class="shrink-0 w-7 h-7 rounded-lg bg-gray-800 text-red-300 border border-gray-700" title="Quitar">×</button>`}
+          </div>`).join('')}</div>
+        <div class="flex gap-2 mb-3"><input id="nuevoDominio" type="text" placeholder="ej: epicchannels.quest" class="flex-1 min-w-0 bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white font-mono"><button type="button" onclick="agregarDominio()" class="shrink-0 px-3 py-2 rounded-xl bg-violet-500/20 border border-violet-500/50 text-violet-200 font-bold text-xs">+ Agregar</button></div>
+        <p class="text-[10px] text-gray-500 mb-2">Primero conéctalo en Cloudflare (Email Routing → catch-all → tu buzón). Aquí solo lo registras para que el sistema lo use.</p>
+        <button type="button" onclick="guardarMisDominios(this)" class="w-full py-2 rounded-xl bg-violet-500 hover:bg-violet-400 text-white font-black text-xs">Guardar dominios</button>`;
+    }
+    function dominiosDesdeUI() {
+      const lista = []; document.querySelectorAll('#misDominiosCaja [data-dom-i]').forEach(sel => { const i = +sel.getAttribute('data-dom-i'); const d = (misDominiosCfg.lista[i] || {}).d; if (d) lista.push({ d, estado: sel.value }); }); return lista;
+    }
+    function agregarDominio() {
+      const inp = document.getElementById('nuevoDominio'); let d = String(inp ? inp.value : '').trim().toLowerCase().replace(/^https?:\/\//, '').replace(/\/.*$/, '');
+      if (!/^[a-z0-9.-]+\.[a-z]{2,}$/.test(d)) { alert('Escribe un dominio válido, por ejemplo: epicchannels.quest'); return; }
+      misDominiosCfg = misDominiosCfg || { lista: [] }; if (!misDominiosCfg.lista.some(x => x.d === d)) misDominiosCfg.lista.push({ d, estado: 'activo' }); if (inp) inp.value = ''; pintarMisDominios();
+    }
+    function quitarDominio(i) { if (!misDominiosCfg) return; misDominiosCfg.lista.splice(i, 1); pintarMisDominios(); }
+    async function guardarMisDominios(btn) {
+      const lista = dominiosDesdeUI().length ? dominiosDesdeUI() : (misDominiosCfg ? misDominiosCfg.lista : []);
+      if (btn) btn.disabled = true;
+      try { const r = await llamarBackend('dominios_guardar', { lista }); if (r && r.ok) { misDominiosCfg = r.cfg; pintarMisDominios(); mostrarToast('Dominios guardados'); } else alert((r && r.error) || 'No se pudo.'); }
+      catch (e) { alert(e.message); } finally { if (btn) btn.disabled = false; }
+    }
+
+        // ⏰ Horario y cupo de correos de proveedores (se guarda en Ajustes; 0 o vacío = ilimitado)
     function pintarCuposProv() {
       const c = document.getElementById('provCuposCaja'); if (!c || !esAdminSesionActual()) return;
       const a = ajustesGeneralesConfig || {}, cupos = a.provCupos || {};
@@ -12644,6 +12689,7 @@
     }
     function renderProvAuto() {
       try { pintarCuposProv(); } catch (e) { /* nada */ }
+      try { if (!misDominiosCfg) cargarMisDominios(); else pintarMisDominios(); } catch (e) { /* nada */ }
       const c = document.getElementById('provAutoCaja'); if (!c || !esAdminSesionActual()) return;
       const cfg = provAutoCfg || {}, provs = {}; lotesProveedores.forEach(l => { if (l.proveedorUid) provs[l.proveedorUid] = l.proveedorNombre || l.proveedorEmail || l.proveedorUid; });
       // también los proveedores que todavía no han subido ningún lote (antes no salían en la lista)
@@ -13713,6 +13759,8 @@
               <p class="text-xs font-bold text-white break-all"><i class="fa-solid fa-ticket mr-1 ${resuelto ? 'text-gray-500' : 'text-amber-400'}"></i>${escaparHtml(t.cuenta || '')}</p>
               <p class="text-[11px] text-gray-300">${escaparHtml(t.motivo || '')}${t.detalle ? ' · ' + escaparHtml(t.detalle) : ''}</p>
               <p class="text-[10px] text-gray-400">${t.origen === 'cliente' ? '<span class="px-1.5 py-0.5 rounded bg-sky-500/20 text-sky-300 text-[9px] font-black mr-1">CLIENTE</span>' : ''}${escaparHtml(t.productoNombre || 'Producto no identificado')} · ${asignado} · ${fecha}${t.clienteEmail ? ' · cliente ' + escaparHtml(t.clienteEmail) : ''}</p>
+              ${t.usoCompra ? `<div class="mt-1 p-2 rounded-lg bg-amber-500/10 border border-amber-400/50"><p class="text-[11px] font-black text-amber-200">⚠️ Posible mal uso: compra con la cuenta antes de caerse</p><p class="text-[10px] text-amber-100/90 break-all">"${escaparHtml(t.usoCompraAsunto || '')}"${t.usoCompraEl ? ' · ' + new Date(t.usoCompraEl).toLocaleString('es-CO', { day: '2-digit', month: '2-digit', hour: 'numeric', minute: '2-digit' }) : ''}</p><p class="text-[10px] text-gray-400 mt-0.5">Si se hizo una compra o suscripción con la cuenta, no entra por garantía (lo decides tú).</p></div>` : ''}
+              ${(t.proveedorUid && t.estado !== 'resuelto') ? `<p class="text-[10px] mt-0.5 font-bold ${t.provGarantiaVigente ? 'text-emerald-300' : 'text-amber-300'}">${t.provGarantiaVigente ? '🟢 Garantía del proveedor vigente (48 h): se la puedes cobrar a él' : '🟠 Pasaron las 48 h del proveedor: la asumes tú'}</p>` : ''}
               ${textoGarantiaTicket(t)}
               ${t.fotoPorWhatsapp && t.estado !== 'resuelto' ? '<p class="text-[10px] font-bold text-sky-300 mt-0.5"><i class="fa-brands fa-whatsapp mr-1"></i>El cliente envió una foto por WhatsApp: revísala en el chat</p>' : ''}
               ${(() => { const L = dobleVentaMapa && dobleVentaMapa.get(String(t.cuenta || '').trim().toLowerCase()); if (!L) return ''; const f = x => x.fecha ? new Date(x.fecha).toLocaleDateString('es-CO', { day: '2-digit', month: '2-digit' }) : ''; return `<p class="text-[10px] mt-1 px-2 py-1 rounded-lg bg-rose-500/15 border border-rose-500/40 text-rose-200"><b>⚠️ Vendida ${L.length} veces:</b> ${L.map((x, k) => (k + 1) + 'ª ' + f(x) + ' · ' + escaparHtml(x.cliente)).join(' · ')}. Repónsela a quien la compró de último.</p>`; })()}
@@ -16979,7 +17027,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-24o';
+    const VERSION_PAGINA = '2026-10-24r';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261020_ajuste', fecha: '2026-10-20', titulo: 'Se ve mejor en iPhone 📱', mensaje: 'La tienda ahora **se ajusta siempre a tu pantalla**: ya no se agranda al escribir ni se corre hacia los lados. Si la tienes abierta, **recarga la página** para verla así.' },
       { id: 'act_20261020_app', fecha: '2026-10-20', titulo: 'App oficial de Epic Streaming 📲', mensaje: 'Ya tenemos **app oficial**: en la tienda toca **Descargar** (Android), **Instalar** (PC) o **Agregar** (iPhone). Abre más rápido, a pantalla completa, con tu misma cuenta y **se actualiza sola**.' },
@@ -23491,7 +23539,7 @@
       } catch (e) { items.push(fila(null, 'Página (GitHub)', `Esta: ${VERSION_PAGINA} · no pude revisar la publicada`)); }
       // 2) Servidor
       let ping = null;
-      try { ping = await llamarBackend('ping', {}); } catch (e) { ping = { ok: false, error: e.message }; }
+      try { ping = await llamarBackend('ping', {}); if (ping && ping.dominioBase) window.DOMINIO_BASE = ping.dominioBase; } catch (e) { ping = { ok: false, error: e.message }; }
       const dosServ = !!(ajustesGeneralesConfig.backendUrlCorreo && String(ajustesGeneralesConfig.backendUrlCorreo).trim() !== String(ajustesGeneralesConfig.backendUrl || '').trim());
       const nomPag = dosServ ? 'Servidor de la página (Epic Alex)' : 'Servidor (Apps Script)';
       let pingC = null;
@@ -25506,7 +25554,7 @@ async function pintarPanelWa() {
       return { cuentas: legado, stock: legado.length || stockPublico };
     }
 
-    const VERSION_SERVIDOR_NECESARIA = '2026-10-22y';   // la versión del servidor que necesita esta página
+    const VERSION_SERVIDOR_NECESARIA = '2026-10-23c';   // la versión del servidor que necesita esta página
     async function llamarBackend(accion, datos) {
       if (mantenimientoActivo() && /^(comprar|recarga|renovar|carrito|preorden|combo)/.test(String(accion || ''))) { avisoMantenimiento(''); throw new Error('Estamos en mantenimiento. Compra por WhatsApp mientras tanto.'); }
       if (modoPruebaCliente) { const rs = backendSimulado(accion, datos || {}); if (rs) return rs; }
