@@ -12206,6 +12206,10 @@
     }
     // 🌐 Dominio para un correo nuevo: usa los activos que manda el servidor (rota uno por uno). Nunca uno apagado.
     var _domRotIdx = 0;
+    async function asegurarDominiosActivos() {
+      if (window.DOMINIOS_ACTIVOS && window.DOMINIOS_ACTIVOS.length) return;
+      try { const r = await llamarBackend('prov_correos', { op: 'lista' }); if (r && r.ok && r.dominiosActivos) window.DOMINIOS_ACTIVOS = r.dominiosActivos; } catch (e) { /* nada */ }
+    }
     function dominioActivoLocal() {
       const act = (window.DOMINIOS_ACTIVOS && window.DOMINIOS_ACTIVOS.length) ? window.DOMINIOS_ACTIVOS : (window.DOMINIO_BASE ? [window.DOMINIO_BASE] : ['epicstreaming.vip']);
       const d = act[_domRotIdx % act.length]; _domRotIdx++; return d;
@@ -12355,6 +12359,7 @@
     document.addEventListener('visibilitychange', () => { try { if (listaCorreosPropiosVisible() && esAdminSesionActual()) cargarCorreosPropios(); } catch (e) { /* nada */ } });
     async function generarCorreoPropio() {
       poblarDestinoPropio();
+      await asegurarDominiosActivos();
       const sel = document.getElementById('correoPropioDestino'), destino = sel ? sel.value : '', prop = correoNaturalLocal();
       const fila = { correo: prop, creadoEl: new Date().toISOString(), destino: destino, propio: true };
       correosPropios.unshift(fila); pintarCorreosPropios(); copiarTexto(prop, '📧 Correo copiado · clave: epic2828');
@@ -12437,6 +12442,7 @@
       el.className = 'mt-3 text-[11px] font-bold text-center px-2 py-1.5 rounded-xl border ' + ((rg.lleno || !rg.dentro) ? 'bg-amber-500/15 border-amber-400/50 text-amber-200' : 'bg-gray-800/70 border-gray-700/60 text-gray-300');
     }
     async function provDominioNuevo() {
+      await asegurarDominiosActivos();
       const prop = correoNaturalLocal(), fila = { correo: prop, creadoEl: new Date().toISOString(), reservando: true };
       provDominioCorreos.unshift(fila); pintarProvDominio(); copiarTexto(prop, '📧 Correo nuevo copiado: créale la cuenta');
       try { const r = await llamarBackend('prov_correos', { op: 'nuevo', correo: prop });
@@ -17075,7 +17081,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-25a';
+    const VERSION_PAGINA = '2026-10-25b';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261020_ajuste', fecha: '2026-10-20', titulo: 'Se ve mejor en iPhone 📱', mensaje: 'La tienda ahora **se ajusta siempre a tu pantalla**: ya no se agranda al escribir ni se corre hacia los lados. Si la tienes abierta, **recarga la página** para verla así.' },
       { id: 'act_20261020_app', fecha: '2026-10-20', titulo: 'App oficial de Epic Streaming 📲', mensaje: 'Ya tenemos **app oficial**: en la tienda toca **Descargar** (Android), **Instalar** (PC) o **Agregar** (iPhone). Abre más rápido, a pantalla completa, con tu misma cuenta y **se actualiza sola**.' },
