@@ -12373,27 +12373,57 @@
         if (b) b.innerHTML = `<span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-sky-500/15 text-sky-300 border border-sky-500/30">Generados hoy ${genHoy}</span><span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">Subidas ${subidas}</span>`;
       } catch (e) { /* nada */ }
       l.innerHTML = correosPropios.map((c, i) => ({ c, i })).filter(o => !esSubida(o.c)).slice(0, 12).map(({ c, i }) => {
+        if (c.reservando) return `<div class="p-2 rounded-lg bg-gray-900/70 border border-gray-700"><span class="font-mono text-[11px] text-gray-400"><i class="fa-solid fa-spinner fa-spin mr-1"></i>Generando correo…</span></div>`;
         const p = (catalogoUnificado || []).find(x => x.docId === c.destino), prime = !c.destino || esProdPrime(p), listo = c.confirmadoEl || (prime && c.primeActivoEl && c.destino !== 'libre');
         const estado = c.asignadoA ? '<span class="text-[10px] text-sky-300 font-bold">👤 asignado</span>' : listo ? '<span class="text-[10px] text-emerald-300 font-bold">✅ en stock</span>' : c.destino === 'libre' ? '<span class="text-[10px] text-gray-400 font-bold">🆓 libre</span>' : prime ? '<span class="text-[10px] text-amber-300 font-bold">⏳ esperando bienvenida</span>' : `<button type="button" onclick="confirmarCorreoPropio(${i}, this)" class="px-2 py-1 rounded-lg bg-emerald-500 text-black text-[10px] font-black">✅ Confirmar</button>`;
         return `<div class="p-2 rounded-lg bg-gray-900/70 border border-gray-700"><div class="flex items-center gap-1.5"><span class="font-mono text-[11px] text-white truncate flex-1">${escaparHtml(c.correo)}</span><button type="button" onclick="copiarTexto('${escaparHtml(c.correo)}','Correo copiado')" class="px-1.5 py-1 rounded bg-gray-700 text-gray-200 text-[10px]"><i class="fa-solid fa-copy"></i></button><button type="button" onclick="codigoCorreoPropio(${i})" class="px-1.5 py-1 rounded bg-gray-700 text-gray-200 text-[10px] font-bold">🔑</button>${estado}</div><p class="text-[10px] text-gray-500 mt-0.5">${escaparHtml(nombreDestino(c.destino))}</p><div id="cpCod_${i}" class="hidden text-[11px] mt-1"></div></div>`;
       }).join('');
     }
-    async function cargarCorreosPropios() { try { const r = await llamarBackend('prov_correos', { op: 'lista' }); if (r && r.ok) { if (r.dominiosActivos) window.DOMINIOS_ACTIVOS = r.dominiosActivos; correosPropios = (r.correos || []).filter(x => x.propio); pintarCorreosPropios(); } } catch (e) { /* nada */ } }
+    async function cargarCorreosPropios() { try { const r = await llamarBackend('prov_correos', { op: 'lista' }); if (r && r.ok) { if (r.dominiosActivos) window.DOMINIOS_ACTIVOS = r.dominiosActivos; correosPropios = (r.correos || []).filter(x => x.propio); pintarCorreosPropios(); llenarBolsa('adm'); } } catch (e) { /* nada */ } }
     // 🔄 La lista de tus correos se pone al día sola (cada 45 s mientras la tienes abierta y al volver a la pestaña): así "esperando bienvenida" cambia a "en stock" sin recargar
     function listaCorreosPropiosVisible() { const l = document.getElementById('correosPropiosLista'); return !!(l && l.offsetParent !== null && document.visibilityState === 'visible'); }
     setInterval(() => { try { if (listaCorreosPropiosVisible() && esAdminSesionActual()) cargarCorreosPropios(); } catch (e) { /* nada */ } }, 45000);
     document.addEventListener('visibilitychange', () => { try { if (listaCorreosPropiosVisible() && esAdminSesionActual()) cargarCorreosPropios(); } catch (e) { /* nada */ } });
-    async function generarCorreoPropio() {
+    // 🎒 Bolsa de correos listos (3): el servidor los crea y guarda antes; al tocar Generar / +Nuevo salen al instante
+    var _bolsaAdm = [], _bolsaProv = [], _bolsaCargando = { adm: false, prov: false };
+    async function llenarBolsa(tipo) {
+      const k = tipo === 'adm' ? 'adm' : 'prov'; if (_bolsaCargando[k]) return; const arr = k === 'adm' ? _bolsaAdm : _bolsaProv; if (arr.length >= 3) return;
+      _bolsaCargando[k] = true;
+      try { const r = await llamarBackend('prov_correos', { op: 'bolsa', n: 3 });
+        if (r && r.ok && Array.isArray(r.correos)) { r.correos.forEach(c => { if (c && arr.indexOf(c) === -1) arr.push(c); }); }
+        else if (r && r.reglas) { try { pintarReglasProv(r.reglas); } catch (e) { /* nada */ } }
+      } catch (e) { /* sin bolsa: el botón cae al modo normal (espera al servidor) */ }
+      finally { _bolsaCargando[k] = false; }
+    }
+
+        async function generarCorreoPropio() {
       poblarDestinoPropio();
-      await asegurarDominiosActivos();
-      const sel = document.getElementById('correoPropioDestino'), destino = sel ? sel.value : '', prop = correoNaturalLocal();
-      const fila = { correo: prop, creadoEl: new Date().toISOString(), destino: destino, propio: true };
-      correosPropios.unshift(fila); pintarCorreosPropios(); copiarTexto(prop, '📧 Correo copiado · clave: epic2828');
-      try { const l = document.getElementById('correosPropiosLista'), f = l && l.firstElementChild;
-        if (f) { f.classList.add('ring-2', 'ring-emerald-400'); f.scrollIntoView({ behavior: 'smooth', block: 'center' }); setTimeout(() => f.classList.remove('ring-2', 'ring-emerald-400'), 4000); } } catch (e) { /* nada */ }
-      try { const r = await llamarBackend('prov_correos', { op: 'propio', correo: prop, destino: destino });
+      const sel = document.getElementById('correoPropioDestino'), destino = sel ? sel.value : '';
+      // 🎒 Si hay un correo listo en la bolsa, sale al instante (ya está guardado en el servidor)
+      if (_bolsaAdm.length) {
+        const correo = _bolsaAdm.shift(), fila = { correo: correo, creadoEl: new Date().toISOString(), destino: destino, propio: true };
+        correosPropios.unshift(fila); pintarCorreosPropios(); copiarTexto(correo, '📧 Correo copiado · clave: epic2828');
+        try { const l = document.getElementById('correosPropiosLista'), f = l && l.firstElementChild;
+          if (f) { f.classList.add('ring-2', 'ring-emerald-400'); f.scrollIntoView({ behavior: 'smooth', block: 'center' }); setTimeout(() => f.classList.remove('ring-2', 'ring-emerald-400'), 4000); } } catch (e) { /* nada */ }
+        llamarBackend('prov_correos', { op: 'sacar', correo: correo, destino: destino }).then(r => {
+          if (!r || !r.ok) { correosPropios = correosPropios.filter(x => x !== fila); pintarCorreosPropios(); alert((r && r.error) || 'Ese correo ya no servía. Genera otro.'); }
+        }).catch(() => { /* el correo sigue reservado para ti en el servidor; si falla la red, igual es tuyo */ });
+        llenarBolsa('adm');
+        return;
+      }
+      // sin bolsa (primera vez o sin red): modo normal, espera al servidor
+      const prop = '';
+      const fila = { correo: prop, creadoEl: new Date().toISOString(), destino: destino, propio: true, reservando: true };
+      correosPropios.unshift(fila); pintarCorreosPropios();   // "Generando correo…" hasta que el servidor confirme cuál quedó guardado
+      try { const r = await llamarBackend('prov_correos', { op: 'propio', correo: '', destino: destino });   // 🔒 el servidor elige y guarda el correo
         if (!r || !r.ok) { correosPropios = correosPropios.filter(x => x !== fila); pintarCorreosPropios(); alert((r && r.error) || 'No se pudo reservar el correo.'); return; }
-        if (r.correo !== prop) { fila.correo = r.correo; pintarCorreosPropios(); copiarTexto(r.correo, '⚠️ Ese ya existía: usa este otro (copiado)'); } } catch (e) { /* queda en pantalla */ }
+        if (!r.correo) { correosPropios = correosPropios.filter(x => x !== fila); pintarCorreosPropios(); alert('No se pudo generar el correo. Intenta otra vez.'); return; }
+        fila.reservando = false; fila.correo = r.correo;   // ✅ SOLO el correo que guardó el servidor
+        pintarCorreosPropios(); copiarTexto(fila.correo, '📧 Correo copiado · clave: epic2828');
+        try { const l = document.getElementById('correosPropiosLista'), f = l && l.firstElementChild;
+          if (f) { f.classList.add('ring-2', 'ring-emerald-400'); f.scrollIntoView({ behavior: 'smooth', block: 'center' }); setTimeout(() => f.classList.remove('ring-2', 'ring-emerald-400'), 4000); } } catch (e) { /* nada */ }
+        llenarBolsa('adm');
+      } catch (e) { correosPropios = correosPropios.filter(x => x !== fila); pintarCorreosPropios(); alert('No se pudo generar el correo: ' + (e.message || e) + '. Intenta otra vez.'); }   // nunca dejar en pantalla un correo que no quedó guardado
     }
     async function confirmarCorreoPropio(i, btn) {
       const c = correosPropios[i]; if (!c) return; if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>'; }
@@ -12445,7 +12475,7 @@
     }
     async function provDominioCargar() {
       provDomMezclar([]); pintarProvDominio();
-      try { const r = await llamarBackend('prov_correos', { op: 'lista' }); if (r && r.ok) { if (r.dominiosActivos) window.DOMINIOS_ACTIVOS = r.dominiosActivos; provDomMezclar(r.correos || []); pintarProvDominio(); provDomGuardarLocal(); pintarReglasProv(r.reglas); } } catch (e) { /* nada: quedan los guardados en el celular */ }
+      try { const r = await llamarBackend('prov_correos', { op: 'lista' }); if (r && r.ok) { if (r.dominiosActivos) window.DOMINIOS_ACTIVOS = r.dominiosActivos; provDomMezclar(r.correos || []); pintarProvDominio(); provDomGuardarLocal(); pintarReglasProv(r.reglas); if (!(r.reglas && (r.reglas.lleno || !r.reglas.dentro))) llenarBolsa('prov'); } } catch (e) { /* nada: quedan los guardados en el celular */ }
     }
     // 🔎 Buscar el código de un correo escrito a mano (por si se borró de la lista)
     function provDominioBuscar() {
@@ -12468,13 +12498,23 @@
       el.className = 'mt-3 text-[11px] font-bold text-center px-2 py-1.5 rounded-xl border ' + ((rg.lleno || !rg.dentro) ? 'bg-amber-500/15 border-amber-400/50 text-amber-200' : 'bg-gray-800/70 border-gray-700/60 text-gray-300');
     }
     async function provDominioNuevo() {
-      await asegurarDominiosActivos();
-      const prop = correoNaturalLocal(), fila = { correo: prop, creadoEl: new Date().toISOString(), reservando: true };
-      provDominioCorreos.unshift(fila); pintarProvDominio();   // se muestra "reservando…" hasta que el servidor confirme el correo real
-      try { const r = await llamarBackend('prov_correos', { op: 'nuevo', correo: prop });
+      // 🎒 Si hay un correo listo en la bolsa, sale al instante (ya está guardado en el servidor a tu nombre)
+      if (_bolsaProv.length) {
+        const correo = _bolsaProv.shift(), fila = { correo: correo, creadoEl: new Date().toISOString() };
+        provDominioCorreos.unshift(fila); pintarProvDominio(); copiarTexto(correo, '📧 Correo copiado: créale la cuenta'); provDomGuardarLocal();
+        llamarBackend('prov_correos', { op: 'sacar', correo: correo }).then(r => {
+          if (!r || !r.ok) { provDominioCorreos = provDominioCorreos.filter(x => x !== fila); pintarProvDominio(); if (r && r.reglas) pintarReglasProv(r.reglas); alert((r && r.error) || 'Ese correo ya no servía. Pide otro.'); }
+        }).catch(() => { /* sigue reservado a su nombre en el servidor */ });
+        llenarBolsa('prov');
+        return;
+      }
+      const prop = '', fila = { correo: prop, creadoEl: new Date().toISOString(), reservando: true };
+      provDominioCorreos.unshift(fila); pintarProvDominio();   // se muestra "Generando…" hasta que el servidor confirme el correo real
+      try { const r = await llamarBackend('prov_correos', { op: 'nuevo', correo: '' });   // 🔒 el servidor elige y guarda el correo
         if (!r || !r.ok) { provDominioCorreos = provDominioCorreos.filter(x => x !== fila); pintarProvDominio(); if (r && r.reglas) pintarReglasProv(r.reglas); alert((r && r.error) || 'No se pudo.'); return; }
-        fila.reservando = false; fila.correo = r.correo || prop;   // ✅ SIEMPRE el correo que guardó el servidor (así "Ver código" lo reconoce)
-        pintarProvDominio(); copiarTexto(fila.correo, '📧 Correo copiado: créale la cuenta'); provDomGuardarLocal(); }
+        if (!r.correo) { provDominioCorreos = provDominioCorreos.filter(x => x !== fila); pintarProvDominio(); alert('No se pudo generar el correo. Intenta otra vez.'); return; }
+        fila.reservando = false; fila.correo = r.correo;   // ✅ SOLO el correo que guardó el servidor (así "Ver código" lo reconoce)
+        pintarProvDominio(); copiarTexto(fila.correo, '📧 Correo copiado: créale la cuenta'); provDomGuardarLocal(); llenarBolsa('prov'); }
       catch (e) { provDominioCorreos = provDominioCorreos.filter(x => x !== fila); pintarProvDominio(); alert(e.message); }
     }
     async function provDominioCodigo(i) {
@@ -17108,7 +17148,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-25f';
+    const VERSION_PAGINA = '2026-10-25i';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261020_ajuste', fecha: '2026-10-20', titulo: 'Se ve mejor en iPhone 📱', mensaje: 'La tienda ahora **se ajusta siempre a tu pantalla**: ya no se agranda al escribir ni se corre hacia los lados. Si la tienes abierta, **recarga la página** para verla así.' },
       { id: 'act_20261020_app', fecha: '2026-10-20', titulo: 'App oficial de Epic Streaming 📲', mensaje: 'Ya tenemos **app oficial**: en la tienda toca **Descargar** (Android), **Instalar** (PC) o **Agregar** (iPhone). Abre más rápido, a pantalla completa, con tu misma cuenta y **se actualiza sola**.' },
@@ -25635,7 +25675,7 @@ async function pintarPanelWa() {
       return { cuentas: legado, stock: legado.length || stockPublico };
     }
 
-    const VERSION_SERVIDOR_NECESARIA = '2026-10-23l';   // la versión del servidor que necesita esta página
+    const VERSION_SERVIDOR_NECESARIA = '2026-10-23m';   // la versión del servidor que necesita esta página
     async function llamarBackend(accion, datos) {
       if (mantenimientoActivo() && /^(comprar|recarga|renovar|carrito|preorden|combo)/.test(String(accion || ''))) { avisoMantenimiento(''); throw new Error('Estamos en mantenimiento. Compra por WhatsApp mientras tanto.'); }
       if (modoPruebaCliente) { const rs = backendSimulado(accion, datos || {}); if (rs) return rs; }
