@@ -17200,7 +17200,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-25w';
+    const VERSION_PAGINA = '2026-10-25x';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261020_ajuste', fecha: '2026-10-20', titulo: 'Se ve mejor en iPhone 📱', mensaje: 'La tienda ahora **se ajusta siempre a tu pantalla**: ya no se agranda al escribir ni se corre hacia los lados. Si la tienes abierta, **recarga la página** para verla así.' },
       { id: 'act_20261020_app', fecha: '2026-10-20', titulo: 'App oficial de Epic Streaming 📲', mensaje: 'Ya tenemos **app oficial**: en la tienda toca **Descargar** (Android), **Instalar** (PC) o **Agregar** (iPhone). Abre más rápido, a pantalla completa, con tu misma cuenta y **se actualiza sola**.' },
@@ -17319,6 +17319,15 @@
       try { for (const a of pend.slice().reverse()) await guardarNovedadDePlantilla(a); mostrarToast('¡Listo! Se difundieron ' + pend.length + ' novedades.'); } catch (err) { alert('No se pudo difundir: ' + err.message); }
     }
 
+    // ----- Comparar versiones sin errores: primero la fecha, luego la letra (a < z < aa < ab…) -----
+    function cmpVersion(a, b) {
+      const pa = /^(\d{4}-\d{2}-\d{2})([a-z]*)$/.exec(String(a || '')), pb = /^(\d{4}-\d{2}-\d{2})([a-z]*)$/.exec(String(b || ''));
+      if (!pa || !pb) return String(a || '') < String(b || '') ? -1 : (String(a || '') > String(b || '') ? 1 : 0);
+      if (pa[1] !== pb[1]) return pa[1] < pb[1] ? -1 : 1;
+      if (pa[2].length !== pb[2].length) return pa[2].length < pb[2].length ? -1 : 1;
+      return pa[2] < pb[2] ? -1 : (pa[2] > pb[2] ? 1 : 0);
+    }
+
     // ----- ¿Hay una versión más nueva publicada? -----
     async function leerVersionPublicada() {
       const base = /^https?:/.test(location.origin || '') ? location.origin + location.pathname : '';
@@ -17336,7 +17345,7 @@
       if (manual && btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i>Comprobando...'; }
       try {
         const publicada = await leerVersionPublicada();
-        const hayNueva = !!publicada && publicada > VERSION_PAGINA;
+        const hayNueva = !!publicada && cmpVersion(publicada, VERSION_PAGINA) > 0; if (hayNueva) window._verPublicada = publicada;
         if (hayNueva) { const a = document.getElementById('avisoVersionNueva'); if (a) a.classList.remove('hidden'); }
         if (manual && caja) {
           caja.classList.remove('hidden');
@@ -17358,9 +17367,52 @@
       try { location.replace(location.pathname + '?v=' + Date.now() + location.hash); } catch (e) { location.reload(); }
     }
 
-    // Revisión automática: al abrir y cada 30 minutos (todos los usuarios)
-    setTimeout(() => { comprobarActualizacionPagina(false); }, 15000);
-    setInterval(() => { comprobarActualizacionPagina(false); }, 30 * 60000);
+    // ----- Revisión liviana: solo pide la "huella" del archivo (casi 0 KB). Si cambia, confirma con el número de versión. -----
+    var _verHuella = null, _verUltRev = 0, _verUltCompleta = 0, _verConfirmada = false;
+    async function huellaPagina() {
+      const base = /^https?:/.test(location.origin || '') ? location.origin + location.pathname : ''; if (!base) return null;
+      const r = await fetch(base, { method: 'HEAD', cache: 'no-store' }); if (!r.ok) return null;
+      return r.headers.get('etag') || r.headers.get('last-modified') || null;
+    }
+    async function revisarVersionLiviana(forzar) {
+      if (_verConfirmada) { intentarActualizarSola(); return; }
+      const ahoraV = Date.now(); if (!forzar && ahoraV - _verUltRev < 5 * 60000) return;   // mínimo 5 min entre revisiones
+      _verUltRev = ahoraV;
+      let h = null; try { h = await huellaPagina(); } catch (e) { h = null; }
+      // sin cambios en la huella: no se descarga nada
+      if (h && _verHuella && h === _verHuella) return;
+      // sin huella disponible: revisión completa, pero como mucho cada 30 min (como antes)
+      if (!h && !forzar && ahoraV - _verUltCompleta < 30 * 60000) return;
+      _verUltCompleta = ahoraV;
+      const hay = await comprobarActualizacionPagina(false);   // confirma con el número (evita falsos avisos por Cloudflare)
+      if (h) _verHuella = h;
+      if (hay) { _verConfirmada = true; intentarActualizarSola(); }
+    }
+    // ----- Actualizarse sola, solo en un momento seguro: con la app en segundo plano y nada a medias -----
+    window._llamadasEnCurso = window._llamadasEnCurso || 0;
+    function momentoSeguroParaRecargar() {
+      try {
+        if (document.visibilityState !== 'hidden') return false;          // solo cuando el cliente salió de la app
+        if ((window._llamadasEnCurso || 0) > 0) return false;              // compra, pago o guardado en curso
+        const ae = document.activeElement; if (ae && /^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName) && String(ae.value || '').trim()) return false;   // escribiendo algo
+        const abiertas = Array.from(document.querySelectorAll('[id^="modal"]')).some(m => m.getClientRects().length > 0);   // realmente visible (también cuenta si su ventana padre está abierta)
+        if (abiertas) return false;                                         // ventana abierta (compra, recarga, entrega, edición…)
+        return true;
+      } catch (e) { return false; }
+    }
+    function intentarActualizarSola() {
+      if (!_verConfirmada || !momentoSeguroParaRecargar()) return;
+      const clave = 'autoRecarga_' + (window._verPublicada || '');
+      try { if (sessionStorage.getItem(clave)) return; sessionStorage.setItem(clave, '1'); } catch (e) { return; }   // una sola vez por versión: nunca en bucle
+      recargarVersionNueva();
+    }
+    // Al abrir (como antes), cada 30 min (ahora liviano), al volver a la app y al recuperar internet
+    setTimeout(() => { revisarVersionLiviana(true); }, 15000);
+    setInterval(() => { revisarVersionLiviana(false); }, 30 * 60000);
+    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') revisarVersionLiviana(false); else intentarActualizarSola(); });
+    window.addEventListener('online', () => { revisarVersionLiviana(false); });
+    // Limpia el "?v=..." de la dirección después de actualizar (para que no quede en favoritos)
+    try { const qs = new URLSearchParams(location.search); if (qs.has('v') || qs.has('comprobar')) { qs.delete('v'); qs.delete('comprobar'); const q = qs.toString(); history.replaceState(history.state, '', location.pathname + (q ? '?' + q : '') + location.hash); } } catch (e) { /* nada */ }
 
 
     // ==================== REGALO PARA REVENDEDORES (configuración) ====================
@@ -23707,7 +23759,7 @@
         const pub = (html.match(/const VERSION_PAGINA = '([^']+)'/) || [])[1] || '';
         if (!pub) items.push(fila(null, 'Página (GitHub)', `Esta: ${VERSION_PAGINA} · no pude leer la publicada`));
         else if (pub === VERSION_PAGINA) items.push(fila(true, 'Página (GitHub)', `Esta: ${VERSION_PAGINA} · publicada: ${pub}`));
-        else if (pub > VERSION_PAGINA) items.push(fila(false, 'Página (GitHub)', `Esta: ${VERSION_PAGINA} · publicada: ${pub}`, 'Hay una versión más nueva publicada: recarga la página.'));
+        else if (cmpVersion(pub, VERSION_PAGINA) > 0) items.push(fila(false, 'Página (GitHub)', `Esta: ${VERSION_PAGINA} · publicada: ${pub}`, 'Hay una versión más nueva publicada: recarga la página.'));
         else items.push(fila(false, 'Página (GitHub)', `Esta: ${VERSION_PAGINA} · publicada: ${pub}`, 'La publicada es más vieja: sube el index.html nuevo a GitHub.'));
       } catch (e) { items.push(fila(null, 'Página (GitHub)', `Esta: ${VERSION_PAGINA} · no pude revisar la publicada`)); }
       // 2) Servidor
@@ -23721,12 +23773,12 @@
       }
       if (!ping || !ping.ok) items.push(fila(false, nomPag, 'No responde', (ping && ping.error) || 'Revisa la URL del servidor en Ajustes.'));
       else {
-        const viejo = !ping.version || String(ping.version) < VERSION_SERVIDOR_NECESARIA;
+        const viejo = !ping.version || cmpVersion(String(ping.version), VERSION_SERVIDOR_NECESARIA) < 0;
         items.push(fila(!viejo, nomPag, `Versión del servidor: ${ping.version || 'antigua'}`, viejo ? `Esta página necesita la ${VERSION_SERVIDOR_NECESARIA}: publica el servidor nuevo (Implementar → Gestionar implementaciones → lápiz → Nueva versión).` : ''));
       }
       if (dosServ) {
         if (!pingC || !pingC.ok) items.push(fila(false, 'Servidor de correo (codigos@)', 'No responde', (pingC && pingC.error) || 'Si dice "demasiadas veces", es el cupo diario: se libera solo.'));
-        else { const vC = !pingC.version || String(pingC.version) < VERSION_SERVIDOR_NECESARIA, igual = ping && ping.version && pingC.version === ping.version;
+        else { const vC = !pingC.version || cmpVersion(String(pingC.version), VERSION_SERVIDOR_NECESARIA) < 0, igual = ping && ping.version && pingC.version === ping.version;
           items.push(fila(!vC && (igual || !ping), 'Servidor de correo (codigos@)', `Versión: ${pingC.version || 'antigua'}${ping && ping.version && !igual ? ' · distinta a la de la página (' + ping.version + ')' : ''}`, (!vC && igual) ? '' : 'Pega el mismo servidor en los dos proyectos y publica nueva versión en ambos.')); }
       }
       // 3) Reglas de Firebase (marca de versión)
@@ -25731,6 +25783,10 @@ async function pintarPanelWa() {
 
     const VERSION_SERVIDOR_NECESARIA = '2026-10-23y';   // la versión del servidor que necesita esta página
     async function llamarBackend(accion, datos) {
+      window._llamadasEnCurso = (window._llamadasEnCurso || 0) + 1;
+      try { return await llamarBackendBase(accion, datos); } finally { window._llamadasEnCurso = Math.max(0, (window._llamadasEnCurso || 1) - 1); }
+    }
+    async function llamarBackendBase(accion, datos) {
       if (mantenimientoActivo() && /^(comprar|recarga|renovar|carrito|preorden|combo)/.test(String(accion || ''))) { avisoMantenimiento(''); throw new Error('Estamos en mantenimiento. Compra por WhatsApp mientras tanto.'); }
       if (modoPruebaCliente) { const rs = backendSimulado(accion, datos || {}); if (rs) return rs; }
       const aCorreo = !!(datos && datos.__servidor === 'correo'); if (aCorreo) { datos = Object.assign({}, datos); delete datos.__servidor; }
@@ -25902,7 +25958,7 @@ async function pintarPanelWa() {
         if (r && r.ok) {
           capsServidor = Array.isArray(r.capacidades) ? r.capacidades.map(String) : []; capsServidorEn = Date.now();
           const faltan = Object.keys(FUNCIONES_SERVIDOR).filter(f => capsServidor.indexOf(f) === -1);
-          const viejo = !r.version || String(r.version) < VERSION_SERVIDOR_NECESARIA;
+          const viejo = !r.version || cmpVersion(String(r.version), VERSION_SERVIDOR_NECESARIA) < 0;
           const estado = viejo ? `\n⚠️ Servidor DESACTUALIZADO: tienes ${r.version || 'una versión antigua'} y esta página necesita ${VERSION_SERVIDOR_NECESARIA}. Publica el archivo nuevo en Apps Script (Implementar → Gestionar implementaciones → lápiz → Nueva versión → Implementar).`
             : !faltan.length ? '\nServidor: actualizado' + (r.version ? ' (' + r.version + ')' : '')
             : '\nServidor: versión anterior. Todavía no tiene: ' + faltan.map(f => FUNCIONES_SERVIDOR[f]).join('; ') + '.';
