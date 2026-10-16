@@ -6884,6 +6884,7 @@
       ajustesPublicosRaw = data || {};
       const stockAntes = ajustesGeneralesConfig.mostrarStockClientes;
       ajustesGeneralesConfig = { ...ajustesGeneralesConfig, ...data };
+      try { pintarCuposProv(); } catch (e) { /* nada */ }
       try { mostrarStockClientes(); } catch (e) { /* nada */ }   // 📦 el cuerpo toma la clase stock-oculto al instante
       // 📦 si cambió "mostrar cantidad de stock", las tarjetas ya dibujadas se vuelven a pintar
       try { if (stockAntes !== ajustesGeneralesConfig.mostrarStockClientes) { renderizarCatalogo(); pintarCintaStock(); } } catch (e) { /* nada */ }
@@ -12619,7 +12620,11 @@
     function pintarCuposProv() {
       const c = document.getElementById('provCuposCaja'); if (!c || !esAdminSesionActual()) return;
       const a = ajustesGeneralesConfig || {}, cupos = a.provCupos || {};
-      const provs = (window.usuariosAdminLista || []).filter(u => u && u.rol === 'proveedor').sort((x, y) => String(x.nombre || x.email).localeCompare(String(y.nombre || y.email), 'es'));
+      // proveedores: de la lista de usuarios si ya cargó; si no, de los lotes que han subido (así la caja nunca sale vacía)
+      const mapaP = {};
+      (window.usuariosAdminLista || []).forEach(u => { if (u && u.rol === 'proveedor' && u.uid) mapaP[u.uid] = { uid: u.uid, nombre: u.nombre, email: u.email }; });
+      (lotesProveedores || []).forEach(l => { if (l.proveedorUid && !mapaP[l.proveedorUid]) mapaP[l.proveedorUid] = { uid: l.proveedorUid, nombre: l.proveedorNombre, email: l.proveedorEmail }; });
+      const provs = Object.keys(mapaP).map(k => mapaP[k]).sort((x, y) => String(x.nombre || x.email).localeCompare(String(y.nombre || y.email), 'es'));
       const inp = 'bg-gray-800 border border-gray-700 rounded-lg px-2 py-1.5 text-xs text-white';
       c.innerHTML = `<p class="text-sm font-black text-white">⏰ Horario y cupo de correos</p>
         <p class="text-[11px] text-gray-400 mb-3">Aplica a las dos formas de sacar correo (generar con "+ Nuevo" y pedir). Sus códigos los siguen viendo siempre.</p>
@@ -12638,6 +12643,7 @@
       catch (e) { alert('No se pudo guardar: ' + (e.message || e)); } finally { if (btn) btn.disabled = false; }
     }
     function renderProvAuto() {
+      try { pintarCuposProv(); } catch (e) { /* nada */ }
       const c = document.getElementById('provAutoCaja'); if (!c || !esAdminSesionActual()) return;
       const cfg = provAutoCfg || {}, provs = {}; lotesProveedores.forEach(l => { if (l.proveedorUid) provs[l.proveedorUid] = l.proveedorNombre || l.proveedorEmail || l.proveedorUid; });
       // también los proveedores que todavía no han subido ningún lote (antes no salían en la lista)
@@ -16973,7 +16979,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-24n';
+    const VERSION_PAGINA = '2026-10-24o';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261020_ajuste', fecha: '2026-10-20', titulo: 'Se ve mejor en iPhone 📱', mensaje: 'La tienda ahora **se ajusta siempre a tu pantalla**: ya no se agranda al escribir ni se corre hacia los lados. Si la tienes abierta, **recarga la página** para verla así.' },
       { id: 'act_20261020_app', fecha: '2026-10-20', titulo: 'App oficial de Epic Streaming 📲', mensaje: 'Ya tenemos **app oficial**: en la tienda toca **Descargar** (Android), **Instalar** (PC) o **Agregar** (iPhone). Abre más rápido, a pantalla completa, con tu misma cuenta y **se actualiza sola**.' },
