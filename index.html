@@ -12202,7 +12202,13 @@
         const largo = b.replace('.', '').length; if (largo >= 5 && largo <= 12) base = b;
       }
       if (!base) base = 'ana' + r(A).slice(0, 6);
-      return base + '@epicstreaming.vip';
+      return base + '@' + dominioActivoLocal();
+    }
+    // 🌐 Dominio para un correo nuevo: usa los activos que manda el servidor (rota uno por uno). Nunca uno apagado.
+    var _domRotIdx = 0;
+    function dominioActivoLocal() {
+      const act = (window.DOMINIOS_ACTIVOS && window.DOMINIOS_ACTIVOS.length) ? window.DOMINIOS_ACTIVOS : (window.DOMINIO_BASE ? [window.DOMINIO_BASE] : ['epicstreaming.vip']);
+      const d = act[_domRotIdx % act.length]; _domRotIdx++; return d;
     }
     async function revisarBienvenidasAhora(btn) {
       const t0 = btn ? btn.innerHTML : ''; if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Revisando'; }
@@ -12342,7 +12348,7 @@
         return `<div class="p-2 rounded-lg bg-gray-900/70 border border-gray-700"><div class="flex items-center gap-1.5"><span class="font-mono text-[11px] text-white truncate flex-1">${escaparHtml(c.correo)}</span><button type="button" onclick="copiarTexto('${escaparHtml(c.correo)}','Correo copiado')" class="px-1.5 py-1 rounded bg-gray-700 text-gray-200 text-[10px]"><i class="fa-solid fa-copy"></i></button><button type="button" onclick="codigoCorreoPropio(${i})" class="px-1.5 py-1 rounded bg-gray-700 text-gray-200 text-[10px] font-bold">🔑</button>${estado}</div><p class="text-[10px] text-gray-500 mt-0.5">${escaparHtml(nombreDestino(c.destino))}</p><div id="cpCod_${i}" class="hidden text-[11px] mt-1"></div></div>`;
       }).join('');
     }
-    async function cargarCorreosPropios() { try { const r = await llamarBackend('prov_correos', { op: 'lista' }); if (r && r.ok) { correosPropios = (r.correos || []).filter(x => x.propio); pintarCorreosPropios(); } } catch (e) { /* nada */ } }
+    async function cargarCorreosPropios() { try { const r = await llamarBackend('prov_correos', { op: 'lista' }); if (r && r.ok) { if (r.dominiosActivos) window.DOMINIOS_ACTIVOS = r.dominiosActivos; correosPropios = (r.correos || []).filter(x => x.propio); pintarCorreosPropios(); } } catch (e) { /* nada */ } }
     // 🔄 La lista de tus correos se pone al día sola (cada 45 s mientras la tienes abierta y al volver a la pestaña): así "esperando bienvenida" cambia a "en stock" sin recargar
     function listaCorreosPropiosVisible() { const l = document.getElementById('correosPropiosLista'); return !!(l && l.offsetParent !== null && document.visibilityState === 'visible'); }
     setInterval(() => { try { if (listaCorreosPropiosVisible() && esAdminSesionActual()) cargarCorreosPropios(); } catch (e) { /* nada */ } }, 45000);
@@ -12408,7 +12414,7 @@
     }
     async function provDominioCargar() {
       provDomMezclar([]); pintarProvDominio();
-      try { const r = await llamarBackend('prov_correos', { op: 'lista' }); if (r && r.ok) { provDomMezclar(r.correos || []); pintarProvDominio(); provDomGuardarLocal(); pintarReglasProv(r.reglas); } } catch (e) { /* nada: quedan los guardados en el celular */ }
+      try { const r = await llamarBackend('prov_correos', { op: 'lista' }); if (r && r.ok) { if (r.dominiosActivos) window.DOMINIOS_ACTIVOS = r.dominiosActivos; provDomMezclar(r.correos || []); pintarProvDominio(); provDomGuardarLocal(); pintarReglasProv(r.reglas); } } catch (e) { /* nada: quedan los guardados en el celular */ }
     }
     // 🔎 Buscar el código de un correo escrito a mano (por si se borró de la lista)
     function provDominioBuscar() {
@@ -17069,7 +17075,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-24z';
+    const VERSION_PAGINA = '2026-10-25a';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261020_ajuste', fecha: '2026-10-20', titulo: 'Se ve mejor en iPhone 📱', mensaje: 'La tienda ahora **se ajusta siempre a tu pantalla**: ya no se agranda al escribir ni se corre hacia los lados. Si la tienes abierta, **recarga la página** para verla así.' },
       { id: 'act_20261020_app', fecha: '2026-10-20', titulo: 'App oficial de Epic Streaming 📲', mensaje: 'Ya tenemos **app oficial**: en la tienda toca **Descargar** (Android), **Instalar** (PC) o **Agregar** (iPhone). Abre más rápido, a pantalla completa, con tu misma cuenta y **se actualiza sola**.' },
@@ -23581,7 +23587,7 @@
       } catch (e) { items.push(fila(null, 'Página (GitHub)', `Esta: ${VERSION_PAGINA} · no pude revisar la publicada`)); }
       // 2) Servidor
       let ping = null;
-      try { ping = await llamarBackend('ping', {}); if (ping && ping.dominioBase) window.DOMINIO_BASE = ping.dominioBase; } catch (e) { ping = { ok: false, error: e.message }; }
+      try { ping = await llamarBackend('ping', {}); if (ping && ping.dominioBase) window.DOMINIO_BASE = ping.dominioBase; if (ping && ping.dominiosActivos) window.DOMINIOS_ACTIVOS = ping.dominiosActivos; } catch (e) { ping = { ok: false, error: e.message }; }
       const dosServ = !!(ajustesGeneralesConfig.backendUrlCorreo && String(ajustesGeneralesConfig.backendUrlCorreo).trim() !== String(ajustesGeneralesConfig.backendUrl || '').trim());
       const nomPag = dosServ ? 'Servidor de la página (Epic Alex)' : 'Servidor (Apps Script)';
       let pingC = null;
@@ -25596,7 +25602,7 @@ async function pintarPanelWa() {
       return { cuentas: legado, stock: legado.length || stockPublico };
     }
 
-    const VERSION_SERVIDOR_NECESARIA = '2026-10-23j';   // la versión del servidor que necesita esta página
+    const VERSION_SERVIDOR_NECESARIA = '2026-10-23k';   // la versión del servidor que necesita esta página
     async function llamarBackend(accion, datos) {
       if (mantenimientoActivo() && /^(comprar|recarga|renovar|carrito|preorden|combo)/.test(String(accion || ''))) { avisoMantenimiento(''); throw new Error('Estamos en mantenimiento. Compra por WhatsApp mientras tanto.'); }
       if (modoPruebaCliente) { const rs = backendSimulado(accion, datos || {}); if (rs) return rs; }
