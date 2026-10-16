@@ -10082,6 +10082,7 @@
         if (ex.combo && Array.isArray(ex.combo.cuentas) && ex.combo.cuentas.length) html += htmlEntregaCombo(ex.combo.cuentas, ex.combo.info || {}, fila);
         if (Array.isArray(ex.partes)) ex.partes.forEach(pt => { html += htmlEntregaCombo(pt.cuentas, pt.info || {}, fila, 'Incluido en tu combo'); });
         if (ex.bono && Array.isArray(ex.bono.cuentas) && ex.bono.cuentas.length) html += htmlEntregaCombo(ex.bono.cuentas, ex.bono.info || {}, fila, '👑 Regalo Dealer');
+        if (esEntregaPrime(prodInfo)) html += `<p class="text-[10px] text-gray-500 leading-snug px-1">ℹ️ Tienes hasta 30 días para pasar cada cuenta a tu propio correo.</p>`;
         { const ind = String(prodInfo.indicacionesEntrega || (((catalogoUnificado || []).find(p => p.docId === (prodInfo.docId || prodInfo.productoId)) || {}).indicacionesEntrega) || '').trim();
           if (ind) html += `<div class="p-3 rounded-xl bg-amber-500/10 border border-amber-500/40"><p class="text-[11px] font-black text-amber-200 mb-1">📋 Importante</p><p class="text-[11px] text-amber-100 whitespace-pre-line">${escaparHtml(ind.replace(/\*/g, ''))}</p></div>`; }
         cont.innerHTML = html;
@@ -10092,7 +10093,9 @@
     }
 
     // Muestra la ventana de entrega: tarjetas + el mensaje completo para pegar
+    function esEntregaPrime(p) { const n = String((p && (p.nombre || p.productoNombre)) || ''); return /prime/i.test(n) && !/free/i.test(n); }
     function mostrarEntregaCompleta(texto, cuentas, prodInfo, extras) {
+      if (esEntregaPrime(prodInfo) && String(texto || '').indexOf('30 días para pasar') === -1) texto = String(texto || '') + '\n\n_ℹ️ Tienes hasta 30 días para pasar cada cuenta a tu propio correo._';
       textoEntregaActual = texto;
       document.getElementById('txtEntregaCredenciales').innerText = texto;
       pintarEntregaVisual(cuentas, prodInfo, extras);
@@ -13910,7 +13913,7 @@
         const reporte = new Date(t.creadoEl).getTime();
         const vence = t.garantiaVence ? new Date(t.garantiaVence).getTime() : venceGarantia(new Date(t.fechaCompra).getTime(), parseGarantia(t.garantia));
         const dentro = reporte <= vence;
-        const enMargen = !dentro && reporte <= vence + MARGEN_REPORTE_HORAS * 3600000;
+        const enMargen = !dentro && margenReporteMs(t.garantia) > 0 && reporte <= vence + margenReporteMs(t.garantia);
         const color = dentro ? 'text-emerald-300' : (enMargen ? 'text-amber-300' : 'text-red-300');
         const veredicto = dentro ? 'reportada DENTRO del plazo' : (enMargen ? `reportada ${MARGEN_REPORTE_HORAS} h después de vencer (margen interno)` : 'reportada FUERA del plazo');
         return `<p class="text-[10px] mt-0.5 ${color}"><i class="fa-solid fa-shield-halved mr-1"></i>Compra del ${compra} · garantía ${textoGarantia(t.garantia)}: ${veredicto}</p>`;
@@ -17148,7 +17151,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-25j';
+    const VERSION_PAGINA = '2026-10-25r';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261020_ajuste', fecha: '2026-10-20', titulo: 'Se ve mejor en iPhone 📱', mensaje: 'La tienda ahora **se ajusta siempre a tu pantalla**: ya no se agranda al escribir ni se corre hacia los lados. Si la tienes abierta, **recarga la página** para verla así.' },
       { id: 'act_20261020_app', fecha: '2026-10-20', titulo: 'App oficial de Epic Streaming 📲', mensaje: 'Ya tenemos **app oficial**: en la tienda toca **Descargar** (Android), **Instalar** (PC) o **Agregar** (iPhone). Abre más rápido, a pantalla completa, con tu misma cuenta y **se actualiza sola**.' },
@@ -24935,6 +24938,8 @@ async function pintarPanelWa() {
 
     // Margen interno: se acepta el reporte hasta 4 horas después de que venza la garantía. El cliente no lo ve.
     const MARGEN_REPORTE_HORAS = 4;
+    // Solo las garantías de 24 h (la normal de Prime) llevan las 4 h extra. Si la cambias a 48 h u otra, vence exacto, sin margen.
+    function margenReporteMs(tipo) { const g = parseGarantia(tipo); return g && ((g.u === 'h' && g.n === 24) || (g.u === 'd' && g.n === 1)) ? MARGEN_REPORTE_HORAS * 3600000 : 0; }
 
     function reiniciosDeCompra(c) { return Array.isArray(c && c.reinicios) ? c.reinicios : []; }
 
@@ -24962,7 +24967,7 @@ async function pintarPanelWa() {
       const vence = new Date(venceGarantia(desde, gar));
       const totalMs = vence.getTime() - desde;
       const restanteMs = vence.getTime() - Date.now();
-      const margenMs = MARGEN_REPORTE_HORAS * 3600000;
+      const margenMs = margenReporteMs(tipo);
       return {
         estado: restanteMs > 0 ? 'vigente' : 'vencida', tipo, inferida, desde: new Date(desde), vence, restanteMs, totalMs, reiniciada,
         puedeReportar: restanteMs + margenMs > 0, enMargen: restanteMs <= 0 && restanteMs + margenMs > 0
@@ -24993,7 +24998,7 @@ async function pintarPanelWa() {
       const totalMs = vence.getTime() - desde;
       const restanteMs = vence.getTime() - Date.now();
       // Durante el margen interno se sigue mostrando como vigente (con "menos de 1 hora"), para que el cliente no lo note
-      if (restanteMs <= 0 && restanteMs + MARGEN_REPORTE_HORAS * 3600000 > 0) {
+      if (restanteMs <= 0 && restanteMs + margenReporteMs(tipo) > 0) {
         return { estado: 'vigente', tipo, inferida, vence, restanteMs: 59 * 60000, totalMs, pct: 1, enMargen: true };
       }
       return {
@@ -25675,7 +25680,7 @@ async function pintarPanelWa() {
       return { cuentas: legado, stock: legado.length || stockPublico };
     }
 
-    const VERSION_SERVIDOR_NECESARIA = '2026-10-23n';   // la versión del servidor que necesita esta página
+    const VERSION_SERVIDOR_NECESARIA = '2026-10-23u';   // la versión del servidor que necesita esta página
     async function llamarBackend(accion, datos) {
       if (mantenimientoActivo() && /^(comprar|recarga|renovar|carrito|preorden|combo)/.test(String(accion || ''))) { avisoMantenimiento(''); throw new Error('Estamos en mantenimiento. Compra por WhatsApp mientras tanto.'); }
       if (modoPruebaCliente) { const rs = backendSimulado(accion, datos || {}); if (rs) return rs; }
