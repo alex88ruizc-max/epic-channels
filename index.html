@@ -10487,7 +10487,7 @@
 
           const ahora = new Date().getTime();
           let html = '';
-          try { const us = []; snap.forEach(dd => us.push(Object.assign({ uid: dd.id }, dd.data() || {}))); window.usuariosAdminLista = us; try { renderProvAuto(); } catch (e) { /* nada */ } try { pintarCuposProv(); } catch (e) { /* nada */ } renderizarCreditosPendientes(us); setTimeout(() => asegurarIdsClientes(us), 1500); escucharIdPendientes(); } catch (e) { console.warn(e); }
+          try { const us = []; snap.forEach(dd => us.push(Object.assign({ uid: dd.id }, dd.data() || {}))); window.usuariosAdminLista = us; try { renderProvAuto(); } catch (e) { /* nada */ } try { pintarCuposProv(); } catch (e) { /* nada */ } setTimeout(() => { try { pintarVencesSaldo(); } catch (e) { /* nada */ } }, 50); renderizarCreditosPendientes(us); setTimeout(() => asegurarIdsClientes(us), 1500); escucharIdPendientes(); } catch (e) { console.warn(e); }
 
           snap.forEach(doc => {
             const u = doc.data();
@@ -10542,7 +10542,7 @@
                         <p class="text-[11px] text-gray-400 font-mono truncate">${escaparHtml(u.email || uid)}</p>
                         <div class="flex flex-wrap items-center gap-1.5 mt-1">${esInvitadoU(u, uid) ? '<span class="px-1.5 py-0.5 rounded bg-gray-700 text-gray-300 text-[9px] font-black">🛒 INVITADO · SIN REGISTRO</span>' : ''}${(() => { const et = etiquetaTipoCuenta(u.rol, u.tipoCuenta); return et ? `<span class="px-1.5 py-0.5 rounded ${et[1]} text-[9px] font-black">${et[0]}</span>` : ''; })()}${chipId}${chipWa}${u.appUso ? `<span class="px-1.5 py-0.5 rounded bg-emerald-500/15 border border-emerald-500/40 text-emerald-300 text-[9px] font-black" title="Último uso: ${escaparHtml(u.appUltimoUso ? new Date(u.appUltimoUso).toLocaleString('es-CO') : '')}">📲 App ${u.appUso === 'pc' ? 'PC' : (u.appUso === 'iphone' ? 'iPhone' : 'Android')}</span>` : (u.appDescargaEl ? '<span class="px-1.5 py-0.5 rounded bg-gray-700/60 text-gray-300 text-[9px] font-black">⬇️ Descargó la app</span>' : '')}<span data-nivel-uid="${uid}"></span>${deudaU > 0 ? `<span class="px-1.5 py-0.5 rounded bg-violet-500/20 text-violet-200 text-[9px] font-black">DEBE ${formatoCOP(deudaU)}</span>` : ''}</div>
                       </div>
-                      <div class="shrink-0 text-right"><p class="text-[10px] text-gray-500">Saldo</p><p class="text-base font-black text-emerald-400">${formatoCOP(u.saldo || 0)}</p>${htmlVenceSaldoU(u)}</div>
+                      <div class="shrink-0 text-right"><p class="text-[10px] text-gray-500">Saldo</p><p class="text-base font-black text-emerald-400">${formatoCOP(u.saldo || 0)}</p>${htmlVenceSaldoU(Object.assign({ uid: uid }, u))}</div>
                     </div>
                     <div class="grid grid-cols-3 gap-1.5 mt-3 text-center">
                       <div class="rounded-lg bg-gray-800/60 py-1.5"><p class="text-[9px] text-gray-500 uppercase">Registro</p><p class="text-[11px] text-gray-200 font-bold">${fechaRegStr}</p></div>
@@ -10569,7 +10569,7 @@
                 <td class="hidden md:table-cell px-4 py-3 text-xs text-gray-400">${u.whatsapp || 'Sin WhatsApp'}</td>
                 <td class="hidden md:table-cell px-4 py-3">
                   <div class="flex items-center gap-2">
-                    <span class="font-bold text-emerald-400">$${(u.saldo || 0).toLocaleString('es-CO')}${htmlVenceSaldoU(u)}</span>
+                    <span class="font-bold text-emerald-400">$${(u.saldo || 0).toLocaleString('es-CO')}${htmlVenceSaldoU(Object.assign({ uid: uid }, u))}</span>
                     <div class="flex items-center gap-1">
                       <input type="number" id="inputSaldo_${uid}" placeholder="$ Monto" class="w-20 bg-gray-800 border border-gray-700 rounded px-1.5 py-1 text-xs text-white">
                       <button onclick="adminCargarSaldo('${uid}')" class="px-2 py-1 bg-emerald-500 hover:bg-emerald-400 text-black font-bold rounded text-xs" title="Sumar Saldo">+</button>
@@ -10947,7 +10947,20 @@
         return Math.ceil((mov + dias * 86400000 - Date.now()) / 86400000);
       } catch (e) { return null; }
     }
-    function htmlVenceSaldoU(u) {
+    var _saldoDesdeCargado = false, _saldoDesdePidiendo = false;
+    async function asegurarSaldoReglaDesde() {
+      if (_saldoDesdeCargado || _saldoDesdePidiendo || !esAdminSesionActual()) return;
+      _saldoDesdePidiendo = true;
+      try { const r = await llamarBackend('saldo_regla_desde', {}); if (r && r.ok && r.desde) { ajustesGeneralesConfig.saldoReglaDesde = r.desde; _saldoDesdeCargado = true; pintarVencesSaldo(); } }
+      catch (e) { /* sin dato: no se muestra nada (mejor que mostrar mal) */ } finally { _saldoDesdePidiendo = false; }
+    }
+    function pintarVencesSaldo() {
+      if (!_saldoDesdeCargado) { asegurarSaldoReglaDesde(); return; }
+      const lista = window.usuariosAdminLista || [];
+      document.querySelectorAll('[data-vence-uid]').forEach(el => { const u = lista.find(x => x.uid === el.getAttribute('data-vence-uid')); el.innerHTML = u ? htmlVenceSaldoU(u, true) : ''; });
+    }
+    function htmlVenceSaldoU(u, real) {
+      if (!real) return `<span data-vence-uid="${escaparHtml(u.uid || '')}"></span>`;   // se llena con pintarVencesSaldo()
       const d = diasVenceSaldoU(u); if (d === null) return '';
       const col = d <= 0 ? 'text-red-300' : (d <= 3 ? 'text-amber-300' : 'text-gray-400');
       return `<p class="text-[10px] ${col} leading-tight mt-0.5">${d <= 0 ? '⏳ vence hoy' : '⏳ vence en ' + d + (d === 1 ? ' día' : ' días')}</p>`;
@@ -17187,7 +17200,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-25t';
+    const VERSION_PAGINA = '2026-10-25u';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261020_ajuste', fecha: '2026-10-20', titulo: 'Se ve mejor en iPhone 📱', mensaje: 'La tienda ahora **se ajusta siempre a tu pantalla**: ya no se agranda al escribir ni se corre hacia los lados. Si la tienes abierta, **recarga la página** para verla así.' },
       { id: 'act_20261020_app', fecha: '2026-10-20', titulo: 'App oficial de Epic Streaming 📲', mensaje: 'Ya tenemos **app oficial**: en la tienda toca **Descargar** (Android), **Instalar** (PC) o **Agregar** (iPhone). Abre más rápido, a pantalla completa, con tu misma cuenta y **se actualiza sola**.' },
@@ -25696,7 +25709,7 @@ async function pintarPanelWa() {
 
     // 📶 Dos servidores: el de la PÁGINA (su propio cupo de Google) y el de CORREO (codigos@: lee pagos y códigos).
     // Las acciones que necesitan el correo van al servidor de correo; el resto, al de la página. Sin el segundo, todo va al único que haya.
-    const ACCIONES_SERVIDOR_CORREO = new Set(['otp', 'recarga_crear', 'recarga_binance_crear', 'recarga_cancelar', 'recarga_verificar', 'recarga_diagnostico', 'recarga_comprobante', 'pago_reportar', 'prov_correos', 'prov_comprobar', 'codigo_dominio', 'amz_otp', 'amz_otp_link', 'amz_salud', 'amz_revisada', 'amz_enlace_crear', 'codigo_enlace_obtener', 'salud', 'cupo', 'saldo_vence_resumen', 'saldo_vence_revertir', 'embudo_registro', 'embudo_registro_ver', 'wa_codigo', 'wa_codigo_admin', 'binance_tasa', 'wa_grupos_log', 'wa_seguimiento_ahora']);   // tg_revisar va al servidor de la página: ahí se revisan los botones de Telegram
+    const ACCIONES_SERVIDOR_CORREO = new Set(['saldo_regla_desde', 'otp', 'recarga_crear', 'recarga_binance_crear', 'recarga_cancelar', 'recarga_verificar', 'recarga_diagnostico', 'recarga_comprobante', 'pago_reportar', 'prov_correos', 'prov_comprobar', 'codigo_dominio', 'amz_otp', 'amz_otp_link', 'amz_salud', 'amz_revisada', 'amz_enlace_crear', 'codigo_enlace_obtener', 'salud', 'cupo', 'saldo_vence_resumen', 'saldo_vence_revertir', 'embudo_registro', 'embudo_registro_ver', 'wa_codigo', 'wa_codigo_admin', 'binance_tasa', 'wa_grupos_log', 'wa_seguimiento_ahora']);   // tg_revisar va al servidor de la página: ahí se revisan los botones de Telegram
     function obtenerBackendUrl(accion) {
       const pag = String((ajustesGeneralesConfig && ajustesGeneralesConfig.backendUrl) || '').trim();
       const cor = String((ajustesGeneralesConfig && ajustesGeneralesConfig.backendUrlCorreo) || '').trim();
@@ -25716,7 +25729,7 @@ async function pintarPanelWa() {
       return { cuentas: legado, stock: legado.length || stockPublico };
     }
 
-    const VERSION_SERVIDOR_NECESARIA = '2026-10-23v';   // la versión del servidor que necesita esta página
+    const VERSION_SERVIDOR_NECESARIA = '2026-10-23w';   // la versión del servidor que necesita esta página
     async function llamarBackend(accion, datos) {
       if (mantenimientoActivo() && /^(comprar|recarga|renovar|carrito|preorden|combo)/.test(String(accion || ''))) { avisoMantenimiento(''); throw new Error('Estamos en mantenimiento. Compra por WhatsApp mientras tanto.'); }
       if (modoPruebaCliente) { const rs = backendSimulado(accion, datos || {}); if (rs) return rs; }
