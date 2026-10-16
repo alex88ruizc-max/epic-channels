@@ -782,6 +782,7 @@
           <input id="provDomBuscar" type="email" inputmode="email" autocomplete="off" placeholder="Pega un correo tuyo" class="flex-1 min-w-0 bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-[12px] text-white font-mono" onkeydown="if(event.key==='Enter'){event.preventDefault();provDominioBuscar();}">
           <button type="button" onclick="provDominioBuscar()" class="shrink-0 px-3 py-2 rounded-xl bg-gray-700 hover:bg-gray-600 text-white font-bold text-[11px]"><i class="fa-solid fa-key mr-1"></i>Buscar código</button>
         </div>
+        <div id="provDomInsignias" class="mt-3 flex gap-1.5"></div>
         <div id="provAutoResumen" class="hidden mt-3 p-2.5 rounded-xl bg-emerald-500/15 border border-emerald-400/50 text-[12px] text-emerald-100"></div>
         <div id="provDominioLista" class="mt-3 space-y-2"></div>
       </div>
@@ -1581,7 +1582,7 @@
           </h3>
           <p class="text-xs text-gray-400 mb-4">Pega una cuenta por cada renglón (correo:clave).</p>
           <div class="solo-admin mb-4 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/40">
-            <div class="flex items-center gap-2"><p class="text-[11px] font-black text-emerald-200 flex-1">📧 Correo de tu dominio</p><button type="button" onclick="revisarBienvenidasAhora(this)" class="px-2.5 py-1.5 rounded-lg bg-gray-800 border border-emerald-500/40 text-emerald-200 font-bold text-[11px]">🔄 Revisar</button></div>
+            <div class="flex items-center gap-2"><p class="text-[11px] font-black text-emerald-200">📧 Correo de tu dominio</p><span id="correosPropiosInsignias" class="flex gap-1.5 flex-1"></span><button type="button" onclick="revisarBienvenidasAhora(this)" class="px-2.5 py-1.5 rounded-lg bg-gray-800 border border-emerald-500/40 text-emerald-200 font-bold text-[11px]">🔄 Revisar</button></div>
             <div class="mt-2 flex gap-2"><select id="correoPropioDestino" class="flex-1 min-w-0 bg-gray-900 border border-gray-700 rounded-lg px-2 py-1.5 text-[12px] text-white"></select><button type="button" onclick="generarCorreoPropio()" class="shrink-0 px-3 py-1.5 rounded-lg bg-emerald-500 text-black font-black text-[11px]"><i class="fa-solid fa-wand-magic-sparkles"></i> Generar</button></div>
             <p class="text-[10px] text-gray-400 mt-1.5">Clave: <b class="font-mono">epic2828</b> · <b>Prime</b>: sube solo con "Bienvenido a Prime" · <b>Otro producto</b> (ej. Amazon Free): toca <b>Confirmar</b> cuando la crees · <b>Libre</b>: queda guardado para asignarlo a un cliente. Todos se vigilan por suspensión.</p>
             <div class="mt-2 flex flex-wrap gap-2">
@@ -12327,7 +12328,15 @@
     function nombreDestino(d) { if (d === 'libre') return '🆓 Libre'; const p = (catalogoUnificado || []).find(x => x.docId === d); return p ? p.nombre : (d ? d : 'Prime Local'); }
     function pintarCorreosPropios() {
       const l = document.getElementById('correosPropiosLista'); if (!l) return;
-      l.innerHTML = correosPropios.slice(0, 12).map((c, i) => {
+      // 🔢 Insignias: generados hoy · ya subidas. Las subidas se ocultan de la lista.
+      const esSubida = c => { const p = (catalogoUnificado || []).find(x => x.docId === c.destino), prime = !c.destino || esProdPrime(p); return !!(c.confirmadoEl || (prime && c.primeActivoEl && c.destino !== 'libre') || c.asignadoA); };
+      try { const hoyD = new Date().toDateString();
+        const genHoy = correosPropios.filter(c => new Date(Date.parse(c.creadoEl || 0)).toDateString() === hoyD).length;
+        const subidas = correosPropios.filter(esSubida).length;
+        const b = document.getElementById('correosPropiosInsignias');
+        if (b) b.innerHTML = `<span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-sky-500/15 text-sky-300 border border-sky-500/30">Generados hoy ${genHoy}</span><span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">Subidas ${subidas}</span>`;
+      } catch (e) { /* nada */ }
+      l.innerHTML = correosPropios.map((c, i) => ({ c, i })).filter(o => !esSubida(o.c)).slice(0, 12).map(({ c, i }) => {
         const p = (catalogoUnificado || []).find(x => x.docId === c.destino), prime = !c.destino || esProdPrime(p), listo = c.confirmadoEl || (prime && c.primeActivoEl && c.destino !== 'libre');
         const estado = c.asignadoA ? '<span class="text-[10px] text-sky-300 font-bold">👤 asignado</span>' : listo ? '<span class="text-[10px] text-emerald-300 font-bold">✅ en stock</span>' : c.destino === 'libre' ? '<span class="text-[10px] text-gray-400 font-bold">🆓 libre</span>' : prime ? '<span class="text-[10px] text-amber-300 font-bold">⏳ esperando bienvenida</span>' : `<button type="button" onclick="confirmarCorreoPropio(${i}, this)" class="px-2 py-1 rounded-lg bg-emerald-500 text-black text-[10px] font-black">✅ Confirmar</button>`;
         return `<div class="p-2 rounded-lg bg-gray-900/70 border border-gray-700"><div class="flex items-center gap-1.5"><span class="font-mono text-[11px] text-white truncate flex-1">${escaparHtml(c.correo)}</span><button type="button" onclick="copiarTexto('${escaparHtml(c.correo)}','Correo copiado')" class="px-1.5 py-1 rounded bg-gray-700 text-gray-200 text-[10px]"><i class="fa-solid fa-copy"></i></button><button type="button" onclick="codigoCorreoPropio(${i})" class="px-1.5 py-1 rounded bg-gray-700 text-gray-200 text-[10px] font-bold">🔑</button>${estado}</div><p class="text-[10px] text-gray-500 mt-0.5">${escaparHtml(nombreDestino(c.destino))}</p><div id="cpCod_${i}" class="hidden text-[11px] mt-1"></div></div>`;
@@ -12374,7 +12383,15 @@
           caja.innerHTML = hoyL.length ? `📥 <b>Hoy llevas ${hoyL.length} ${hoyL.length === 1 ? 'cuenta subida' : 'cuentas subidas'} automáticamente</b>${prod ? ' a ' + escaparHtml(prod) : ''}.<br><span class="text-[10px] text-emerald-200/80">Llegó la bienvenida de Prime y se subieron solas a tu lote del día: quedan en revisión para que te las aprueben. No tienes que subirlas.</span>` : ''; }
       } catch (e) { /* nada */ }
       const l = document.getElementById('provDominioLista'); if (!l) return;
-      l.innerHTML = provDominioCorreos.length ? provDominioCorreos.slice(0, 8).map((c, i) => c.primeActivoEl ? `<div class="p-2.5 rounded-xl bg-emerald-500/15 border border-emerald-400/60 flex items-center gap-2"><span class="font-mono text-[12px] text-white truncate flex-1">${escaparHtml(c.correo)}</span><span class="text-[10px] font-black text-emerald-300 shrink-0">${c.autoSubidaEl ? '✅ Subida sola · en revisión' : '✅ Prime activo · súbela'}</span><button type="button" onclick="copiarTexto('${escaparHtml(c.correo)}','Correo copiado')" class="px-2 py-1 rounded-lg bg-gray-700 text-gray-200 text-[10px] font-bold"><i class="fa-solid fa-copy"></i></button></div>` : `<div class="p-2.5 rounded-xl bg-gray-800/70 border ${c.codigoVistoEl ? 'border-gray-700' : 'border-emerald-500/40'}">
+      // 🔢 Insignias: generados hoy · ya subidas (las subidas se ocultan de la lista para no llenar la pantalla)
+      try { const hoyD = new Date().toDateString();
+        const genHoy = provDominioCorreos.filter(c => new Date(Date.parse(c.creadoEl || 0)).toDateString() === hoyD).length;
+        const subidas = provDominioCorreos.filter(c => c.primeActivoEl || c.autoSubidaEl).length;
+        const b = document.getElementById('provDomInsignias');
+        if (b) b.innerHTML = `<span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-sky-500/15 text-sky-300 border border-sky-500/30">Generados hoy ${genHoy}</span><span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">Subidas ${subidas}</span>`;
+      } catch (e) { /* nada */ }
+      const porMostrar = provDominioCorreos.map((c, idx) => ({ c, idx })).filter(o => !(o.c.primeActivoEl || o.c.autoSubidaEl));   // solo los que esperan bienvenida, con su índice real
+      l.innerHTML = porMostrar.length ? porMostrar.slice(0, 8).map(({ c, idx: i }) => c.primeActivoEl ? `<div class="p-2.5 rounded-xl bg-emerald-500/15 border border-emerald-400/60 flex items-center gap-2"><span class="font-mono text-[12px] text-white truncate flex-1">${escaparHtml(c.correo)}</span><span class="text-[10px] font-black text-emerald-300 shrink-0">${c.autoSubidaEl ? '✅ Subida sola · en revisión' : '✅ Prime activo · súbela'}</span><button type="button" onclick="copiarTexto('${escaparHtml(c.correo)}','Correo copiado')" class="px-2 py-1 rounded-lg bg-gray-700 text-gray-200 text-[10px] font-bold"><i class="fa-solid fa-copy"></i></button></div>` : `<div class="p-2.5 rounded-xl bg-gray-800/70 border ${c.codigoVistoEl ? 'border-gray-700' : 'border-emerald-500/40'}">
           <div class="flex items-center gap-2"><span class="font-mono text-[12px] text-white truncate flex-1">${escaparHtml(c.correo)}</span>
             <button type="button" onclick="copiarTexto('${escaparHtml(c.correo)}','Correo copiado')" class="px-2 py-1 rounded-lg bg-gray-700 text-gray-200 text-[10px] font-bold"><i class="fa-solid fa-copy"></i></button>
             <button type="button" onclick="provDominioCodigo(${i})" class="px-2.5 py-1 rounded-lg bg-emerald-500 text-black text-[10px] font-black">🔑 Ver código</button></div>
@@ -17052,7 +17069,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-24x';
+    const VERSION_PAGINA = '2026-10-24z';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261020_ajuste', fecha: '2026-10-20', titulo: 'Se ve mejor en iPhone 📱', mensaje: 'La tienda ahora **se ajusta siempre a tu pantalla**: ya no se agranda al escribir ni se corre hacia los lados. Si la tienes abierta, **recarga la página** para verla así.' },
       { id: 'act_20261020_app', fecha: '2026-10-20', titulo: 'App oficial de Epic Streaming 📲', mensaje: 'Ya tenemos **app oficial**: en la tienda toca **Descargar** (Android), **Instalar** (PC) o **Agregar** (iPhone). Abre más rápido, a pantalla completa, con tu misma cuenta y **se actualiza sola**.' },
@@ -25579,7 +25596,7 @@ async function pintarPanelWa() {
       return { cuentas: legado, stock: legado.length || stockPublico };
     }
 
-    const VERSION_SERVIDOR_NECESARIA = '2026-10-23i';   // la versión del servidor que necesita esta página
+    const VERSION_SERVIDOR_NECESARIA = '2026-10-23j';   // la versión del servidor que necesita esta página
     async function llamarBackend(accion, datos) {
       if (mantenimientoActivo() && /^(comprar|recarga|renovar|carrito|preorden|combo)/.test(String(accion || ''))) { avisoMantenimiento(''); throw new Error('Estamos en mantenimiento. Compra por WhatsApp mientras tanto.'); }
       if (modoPruebaCliente) { const rs = backendSimulado(accion, datos || {}); if (rs) return rs; }
