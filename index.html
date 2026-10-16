@@ -777,6 +777,7 @@
           <div class="rounded-xl bg-gray-800/70 border border-gray-700/60 p-2.5 text-center"><p id="provHoySubidas" class="text-xl font-black text-white">0</p><p class="text-[10px] text-gray-400">subidas hoy</p></div>
           <div class="rounded-xl bg-gray-800/70 border border-gray-700/60 p-2.5 text-center"><p id="provHoyAprobadas" class="text-xl font-black text-emerald-300">0</p><p class="text-[10px] text-gray-400">aprobadas hoy</p></div>
         </div>
+        <p id="provDomReglas" class="hidden mt-3 text-[11px] font-bold text-center px-2 py-1.5 rounded-xl bg-gray-800/70 border border-gray-700/60 text-gray-300"></p>
         <div class="mt-3 flex gap-2">
           <input id="provDomBuscar" type="email" inputmode="email" autocomplete="off" placeholder="Pega un correo tuyo" class="flex-1 min-w-0 bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-[12px] text-white font-mono" onkeydown="if(event.key==='Enter'){event.preventDefault();provDominioBuscar();}">
           <button type="button" onclick="provDominioBuscar()" class="shrink-0 px-3 py-2 rounded-xl bg-gray-700 hover:bg-gray-600 text-white font-bold text-[11px]"><i class="fa-solid fa-key mr-1"></i>Buscar código</button>
@@ -2285,6 +2286,7 @@
           <p class="text-xs text-gray-400">Aprueba lo que suben, ponles el costo por cuenta y márcalos como saldados cuando les pagues (el pago lo haces por aparte).</p>
           <p class="text-[11px] text-gray-500 mt-2">Para crear un proveedor: <b class="text-gray-300">Usuarios Registrados → Crear usuario</b> con el rol "Proveedor", y luego, con su botón <b class="text-gray-300">Editar</b>, marca qué productos puede subir.</p>
         </div>
+        <div id="provCuposCaja" class="solo-admin p-4 bg-gray-900 border border-sky-500/40 rounded-2xl"></div>
         <div id="provAutoCaja" class="solo-admin p-4 bg-gray-900 border border-emerald-500/40 rounded-2xl"></div>
         <div class="solo-admin bg-gray-900 border border-yellow-400/40 rounded-2xl overflow-hidden">
           <button type="button" onclick="document.getElementById('prCuerpo').classList.toggle('hidden')" class="w-full text-left p-4 flex items-center gap-3">
@@ -10470,7 +10472,7 @@
 
           const ahora = new Date().getTime();
           let html = '';
-          try { const us = []; snap.forEach(dd => us.push(Object.assign({ uid: dd.id }, dd.data() || {}))); window.usuariosAdminLista = us; try { renderProvAuto(); } catch (e) { /* nada */ } renderizarCreditosPendientes(us); setTimeout(() => asegurarIdsClientes(us), 1500); escucharIdPendientes(); } catch (e) { console.warn(e); }
+          try { const us = []; snap.forEach(dd => us.push(Object.assign({ uid: dd.id }, dd.data() || {}))); window.usuariosAdminLista = us; try { renderProvAuto(); } catch (e) { /* nada */ } try { pintarCuposProv(); } catch (e) { /* nada */ } renderizarCreditosPendientes(us); setTimeout(() => asegurarIdsClientes(us), 1500); escucharIdPendientes(); } catch (e) { console.warn(e); }
 
           snap.forEach(doc => {
             const u = doc.data();
@@ -12386,7 +12388,7 @@
     }
     async function provDominioCargar() {
       provDomMezclar([]); pintarProvDominio();
-      try { const r = await llamarBackend('prov_correos', { op: 'lista' }); if (r && r.ok) { provDomMezclar(r.correos || []); pintarProvDominio(); provDomGuardarLocal(); } } catch (e) { /* nada: quedan los guardados en el celular */ }
+      try { const r = await llamarBackend('prov_correos', { op: 'lista' }); if (r && r.ok) { provDomMezclar(r.correos || []); pintarProvDominio(); provDomGuardarLocal(); pintarReglasProv(r.reglas); } } catch (e) { /* nada: quedan los guardados en el celular */ }
     }
     // 🔎 Buscar el código de un correo escrito a mano (por si se borró de la lista)
     function provDominioBuscar() {
@@ -12398,11 +12400,21 @@
       pintarProvDominio(); provDomGuardarLocal(); if (inp) inp.value = '';
       provDominioCodigo(i);
     }
+    // ⏰ "Hoy: 18 de 30 · Horario 8:00 a. m. – 6:00 p. m." en el panel del proveedor
+    function pintarReglasProv(rg) {
+      const el = document.getElementById('provDomReglas'); if (!el) return;
+      if (!rg || (!rg.limite && !rg.conHorario)) { el.classList.add('hidden'); return; }
+      const partes = [];
+      if (rg.limite) partes.push((rg.lleno ? '✅ Cupo de hoy terminado · ' : '📧 Correos hoy: ') + rg.hoy + ' de ' + rg.limite);
+      if (rg.conHorario) partes.push('⏰ ' + rg.desdeTxt + ' – ' + rg.hastaTxt + (rg.dentro ? '' : ' (fuera de horario)'));
+      el.textContent = partes.join(' · '); el.classList.remove('hidden');
+      el.className = 'mt-3 text-[11px] font-bold text-center px-2 py-1.5 rounded-xl border ' + ((rg.lleno || !rg.dentro) ? 'bg-amber-500/15 border-amber-400/50 text-amber-200' : 'bg-gray-800/70 border-gray-700/60 text-gray-300');
+    }
     async function provDominioNuevo() {
       const prop = correoNaturalLocal(), fila = { correo: prop, creadoEl: new Date().toISOString(), reservando: true };
       provDominioCorreos.unshift(fila); pintarProvDominio(); copiarTexto(prop, '📧 Correo nuevo copiado: créale la cuenta');
       try { const r = await llamarBackend('prov_correos', { op: 'nuevo', correo: prop });
-        if (!r || !r.ok) { provDominioCorreos = provDominioCorreos.filter(x => x !== fila); pintarProvDominio(); alert((r && r.error) || 'No se pudo.'); return; }
+        if (!r || !r.ok) { provDominioCorreos = provDominioCorreos.filter(x => x !== fila); pintarProvDominio(); if (r && r.reglas) pintarReglasProv(r.reglas); alert((r && r.error) || 'No se pudo.'); return; }
         fila.reservando = false; if (r.correo !== prop) { fila.correo = r.correo; pintarProvDominio(); copiarTexto(r.correo, '⚠️ Ese ya existía: usa este otro (copiado)'); } provDomGuardarLocal(); }
       catch (e) { provDominioCorreos = provDominioCorreos.filter(x => x !== fila); pintarProvDominio(); alert(e.message); }
     }
@@ -12602,6 +12614,28 @@
         for (const l of pend) { const m = motivoAutoLote(l); if (!m.ok) continue; l.estado = 'procesando'; await aprobarLoteProveedor({ auto: true, lote: Object.assign({}, l, { estado: 'pendiente' }), costo: m.costo }); }
       } catch (e) { console.warn('Autorización automática:', e); }
       finally { provAutoCorriendo = false; }
+    }
+    // ⏰ Horario y cupo de correos de proveedores (se guarda en Ajustes; 0 o vacío = ilimitado)
+    function pintarCuposProv() {
+      const c = document.getElementById('provCuposCaja'); if (!c || !esAdminSesionActual()) return;
+      const a = ajustesGeneralesConfig || {}, cupos = a.provCupos || {};
+      const provs = (window.usuariosAdminLista || []).filter(u => u && u.rol === 'proveedor').sort((x, y) => String(x.nombre || x.email).localeCompare(String(y.nombre || y.email), 'es'));
+      const inp = 'bg-gray-800 border border-gray-700 rounded-lg px-2 py-1.5 text-xs text-white';
+      c.innerHTML = `<p class="text-sm font-black text-white">⏰ Horario y cupo de correos</p>
+        <p class="text-[11px] text-gray-400 mb-3">Aplica a las dos formas de sacar correo (generar con "+ Nuevo" y pedir). Sus códigos los siguen viendo siempre.</p>
+        <label class="flex items-center justify-between gap-3 text-[12px] text-gray-200 mb-2"><span>Usar horario</span><input type="checkbox" id="pcHorario" ${a.provHorarioActivo === true ? 'checked' : ''} class="accent-sky-500 w-5 h-5"></label>
+        <div class="flex items-center gap-2 mb-3 text-[12px] text-gray-300">De <input type="time" id="pcDesde" value="${escaparHtml(a.provHorarioDesde || '08:00')}" class="${inp}"> a <input type="time" id="pcHasta" value="${escaparHtml(a.provHorarioHasta || '18:00')}" class="${inp}"></div>
+        <label class="flex items-center justify-between gap-3 text-[12px] text-gray-200 mb-3"><span>Máximo de correos por día <span class="text-gray-500">(0 = ilimitado)</span></span><input type="number" id="pcCupo" min="0" step="1" value="${Number(a.provCupoDia) || 0}" class="${inp} w-20 text-right"></label>
+        ${provs.length ? `<p class="text-[11px] font-black text-gray-300 mb-1.5">Por proveedor <span class="text-gray-500 font-normal">(vacío = el general)</span></p><div class="space-y-1.5 mb-3">${provs.map(u => `<label class="flex items-center justify-between gap-3 text-[12px] text-gray-200"><span class="truncate">${escaparHtml(u.nombre || u.email)}</span><input type="number" min="0" step="1" data-pc-uid="${escaparHtml(u.uid)}" value="${Number(cupos[u.uid]) > 0 ? Number(cupos[u.uid]) : ''}" placeholder="general" class="${inp} w-20 text-right"></label>`).join('')}</div>` : ''}
+        <button type="button" onclick="guardarCuposProv(this)" class="w-full py-2 rounded-xl bg-sky-500 hover:bg-sky-400 text-black font-black text-xs">Guardar horario y cupos</button>`;
+    }
+    async function guardarCuposProv(btn) {
+      const v = id => document.getElementById(id), cupos = {};
+      document.querySelectorAll('[data-pc-uid]').forEach(i => { const n = parseInt(i.value, 10); if (n > 0) cupos[i.getAttribute('data-pc-uid')] = n; });
+      const datos = { provHorarioActivo: !!(v('pcHorario') && v('pcHorario').checked), provHorarioDesde: (v('pcDesde') || {}).value || '08:00', provHorarioHasta: (v('pcHasta') || {}).value || '18:00', provCupoDia: Math.max(0, parseInt((v('pcCupo') || {}).value, 10) || 0), provCupos: cupos };
+      if (btn) btn.disabled = true;
+      try { await db.collection('configuracion').doc('ajustes').set(datos, { merge: true }); Object.assign(ajustesGeneralesConfig, datos); mostrarToast('Horario y cupos guardados'); }
+      catch (e) { alert('No se pudo guardar: ' + (e.message || e)); } finally { if (btn) btn.disabled = false; }
     }
     function renderProvAuto() {
       const c = document.getElementById('provAutoCaja'); if (!c || !esAdminSesionActual()) return;
@@ -16939,7 +16973,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-24m';
+    const VERSION_PAGINA = '2026-10-24n';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261020_ajuste', fecha: '2026-10-20', titulo: 'Se ve mejor en iPhone 📱', mensaje: 'La tienda ahora **se ajusta siempre a tu pantalla**: ya no se agranda al escribir ni se corre hacia los lados. Si la tienes abierta, **recarga la página** para verla así.' },
       { id: 'act_20261020_app', fecha: '2026-10-20', titulo: 'App oficial de Epic Streaming 📲', mensaje: 'Ya tenemos **app oficial**: en la tienda toca **Descargar** (Android), **Instalar** (PC) o **Agregar** (iPhone). Abre más rápido, a pantalla completa, con tu misma cuenta y **se actualiza sola**.' },
@@ -25466,7 +25500,7 @@ async function pintarPanelWa() {
       return { cuentas: legado, stock: legado.length || stockPublico };
     }
 
-    const VERSION_SERVIDOR_NECESARIA = '2026-10-22x';   // la versión del servidor que necesita esta página
+    const VERSION_SERVIDOR_NECESARIA = '2026-10-22y';   // la versión del servidor que necesita esta página
     async function llamarBackend(accion, datos) {
       if (mantenimientoActivo() && /^(comprar|recarga|renovar|carrito|preorden|combo)/.test(String(accion || ''))) { avisoMantenimiento(''); throw new Error('Estamos en mantenimiento. Compra por WhatsApp mientras tanto.'); }
       if (modoPruebaCliente) { const rs = backendSimulado(accion, datos || {}); if (rs) return rs; }
