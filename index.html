@@ -2289,6 +2289,7 @@
         <div id="misDominiosCaja" class="solo-admin p-4 bg-gray-900 border border-violet-500/40 rounded-2xl"></div>
         <div id="provCuposCaja" class="solo-admin p-4 bg-gray-900 border border-sky-500/40 rounded-2xl"></div>
         <div id="provAutoCaja" class="solo-admin p-4 bg-gray-900 border border-emerald-500/40 rounded-2xl"></div>
+        <div id="codReporteCaja" class="solo-admin p-4 bg-gray-900 border border-amber-500/40 rounded-2xl"></div>
         <div class="solo-admin bg-gray-900 border border-yellow-400/40 rounded-2xl overflow-hidden">
           <button type="button" onclick="document.getElementById('prCuerpo').classList.toggle('hidden')" class="w-full text-left p-4 flex items-center gap-3">
             <span class="w-9 h-9 shrink-0 rounded-xl bg-yellow-400/15 text-yellow-300 flex items-center justify-center"><i class="fa-solid fa-crown"></i></span>
@@ -12617,7 +12618,26 @@
       } catch (e) { console.warn('Autorización automática:', e); }
       finally { provAutoCorriendo = false; }
     }
-    // 🌐 Mis dominios de correo (rotación + descanso inteligente)
+    // 📩 Solicitudes de código de Amazon: proveedores vs clientes (día/semana/mes)
+    async function cargarReporteCodigos() {
+      const c = document.getElementById('codReporteCaja'); if (!c || !esAdminSesionActual()) return;
+      c.innerHTML = `<p class="text-sm font-black text-white">📩 Solicitudes de código de Amazon</p><p class="text-[11px] text-gray-400 mb-3">Cuántas veces se pidió un código. <b class="text-emerald-300">Proveedores</b> = qué tan activos crean cuentas. <b class="text-sky-300">Clientes</b> = cuánto usan la página de códigos.</p><p class="text-[11px] text-gray-500">Cargando…</p>`;
+      let r = null; try { r = await llamarBackend('codigos_reporte', {}); } catch (e) { r = null; }
+      if (!r || !r.ok) { c.innerHTML = `<p class="text-sm font-black text-white">📩 Solicitudes de código de Amazon</p><p class="text-[11px] text-gray-500 mt-2">No se pudo cargar ahora.</p><button type="button" onclick="cargarReporteCodigos()" class="mt-2 px-3 py-1.5 rounded-lg bg-gray-800 border border-gray-700 text-xs text-gray-200">Reintentar</button>`; return; }
+      const col = (titulo, cls, o) => `<div class="flex-1 min-w-0 p-3 rounded-xl bg-gray-800/60 border ${cls}">
+          <p class="text-[11px] font-black mb-2">${titulo}</p>
+          <div class="grid grid-cols-3 gap-1 text-center">
+            <div><p class="text-lg font-black text-white leading-none">${o.dia}</p><p class="text-[9px] text-gray-400 mt-1">HOY</p></div>
+            <div><p class="text-lg font-black text-white leading-none">${o.semana}</p><p class="text-[9px] text-gray-400 mt-1">SEMANA</p></div>
+            <div><p class="text-lg font-black text-white leading-none">${o.mes}</p><p class="text-[9px] text-gray-400 mt-1">MES</p></div>
+          </div></div>`;
+      c.innerHTML = `<div class="flex items-center justify-between gap-2 mb-1"><p class="text-sm font-black text-white">📩 Solicitudes de código de Amazon</p><button type="button" onclick="cargarReporteCodigos()" class="shrink-0 w-8 h-8 rounded-lg bg-gray-800 border border-gray-700 text-gray-300" title="Actualizar"><i class="fa-solid fa-rotate"></i></button></div>
+        <p class="text-[11px] text-gray-400 mb-3"><b class="text-emerald-300">Proveedores</b> = qué tan activos crean cuentas · <b class="text-sky-300">Clientes</b> = cuánto usan la página de códigos.</p>
+        <div class="flex gap-2">${col('🚚 Proveedores', 'border-emerald-500/40', r.prov)}${col('🙋 Clientes', 'border-sky-500/40', r.cli)}</div>
+        <p class="text-[10px] text-gray-500 mt-2">Cuenta desde que se activó; no incluye lo anterior.</p>`;
+    }
+
+        // 🌐 Mis dominios de correo (rotación + descanso inteligente)
     var misDominiosCfg = null;
     async function cargarMisDominios() {
       if (!esAdminSesionActual()) return;
@@ -12694,6 +12714,7 @@
     function renderProvAuto() {
       try { pintarCuposProv(); } catch (e) { /* nada */ }
       try { if (!misDominiosCfg) cargarMisDominios(); else pintarMisDominios(); } catch (e) { /* nada */ }
+      try { cargarReporteCodigos(); } catch (e) { /* nada */ }
       const c = document.getElementById('provAutoCaja'); if (!c || !esAdminSesionActual()) return;
       const cfg = provAutoCfg || {}, provs = {}; lotesProveedores.forEach(l => { if (l.proveedorUid) provs[l.proveedorUid] = l.proveedorNombre || l.proveedorEmail || l.proveedorUid; });
       // también los proveedores que todavía no han subido ningún lote (antes no salían en la lista)
@@ -17031,7 +17052,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-24u';
+    const VERSION_PAGINA = '2026-10-24x';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261020_ajuste', fecha: '2026-10-20', titulo: 'Se ve mejor en iPhone 📱', mensaje: 'La tienda ahora **se ajusta siempre a tu pantalla**: ya no se agranda al escribir ni se corre hacia los lados. Si la tienes abierta, **recarga la página** para verla así.' },
       { id: 'act_20261020_app', fecha: '2026-10-20', titulo: 'App oficial de Epic Streaming 📲', mensaje: 'Ya tenemos **app oficial**: en la tienda toca **Descargar** (Android), **Instalar** (PC) o **Agregar** (iPhone). Abre más rápido, a pantalla completa, con tu misma cuenta y **se actualiza sola**.' },
@@ -25558,7 +25579,7 @@ async function pintarPanelWa() {
       return { cuentas: legado, stock: legado.length || stockPublico };
     }
 
-    const VERSION_SERVIDOR_NECESARIA = '2026-10-23f';   // la versión del servidor que necesita esta página
+    const VERSION_SERVIDOR_NECESARIA = '2026-10-23i';   // la versión del servidor que necesita esta página
     async function llamarBackend(accion, datos) {
       if (mantenimientoActivo() && /^(comprar|recarga|renovar|carrito|preorden|combo)/.test(String(accion || ''))) { avisoMantenimiento(''); throw new Error('Estamos en mantenimiento. Compra por WhatsApp mientras tanto.'); }
       if (modoPruebaCliente) { const rs = backendSimulado(accion, datos || {}); if (rs) return rs; }
