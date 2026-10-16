@@ -12630,6 +12630,7 @@
       const base = (window.DOMINIO_BASE || 'epicstreaming.vip');
       c.innerHTML = `<p class="text-sm font-black text-white">🌐 Mis dominios de correo</p>
         <p class="text-[11px] text-gray-400 mb-3">Los correos nuevos se reparten entre los <b>activos</b>. Un dominio pasa a <b>descanso</b> solo si 4 cuentas suyas se caen limpias el mismo día (sin compras); vuelve cuando tú lo actives.</p>
+        <label class="flex items-center justify-between gap-3 text-[12px] text-gray-200 mb-3 p-2 rounded-xl bg-gray-800/60 border border-gray-700"><span>🔁 Cambiar de dominio cada <span class="text-gray-500">(1 = uno y uno)</span></span><span class="flex items-center gap-1 shrink-0"><input type="number" id="provRotarCada" min="1" max="100" step="1" value="${(misDominiosCfg && misDominiosCfg.rotarCada) ? misDominiosCfg.rotarCada : 5}" class="bg-gray-900 border border-gray-700 rounded-lg px-2 py-1.5 text-xs text-white w-16 text-right"><span class="text-gray-500 text-[11px]">correos</span></span></label>
         <div class="space-y-2 mb-3">${lista.map((x, i) => `
           <div class="flex items-center gap-2 p-2 rounded-xl bg-gray-800/70 border border-gray-700">
             <span class="flex-1 min-w-0 text-[12px] font-mono text-white truncate">${escaparHtml(x.d)}${x.d === base ? ' <span class=\"text-[9px] text-gray-500\">(principal)</span>' : ''}</span>
@@ -12643,6 +12644,7 @@
           </div>`).join('')}</div>
         <div class="flex gap-2 mb-3"><input id="nuevoDominio" type="text" placeholder="ej: epicchannels.quest" class="flex-1 min-w-0 bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white font-mono"><button type="button" onclick="agregarDominio()" class="shrink-0 px-3 py-2 rounded-xl bg-violet-500/20 border border-violet-500/50 text-violet-200 font-bold text-xs">+ Agregar</button></div>
         <p class="text-[10px] text-gray-500 mb-2">Primero conéctalo en Cloudflare (Email Routing → catch-all → tu buzón). Aquí solo lo registras para que el sistema lo use.</p>
+        <label class="flex items-center justify-between gap-3 text-[12px] text-gray-200 mb-3 p-2 rounded-xl bg-gray-800/60 border border-gray-700"><span>🔄 Reactivar solo <span class="text-gray-500">(los que descansaron por salud vuelven a los 2 días)</span></span><input type="checkbox" id="provReactAuto" ${(ajustesGeneralesConfig && ajustesGeneralesConfig.provReactivarAuto === false) ? '' : 'checked'} class="accent-violet-500 w-5 h-5 shrink-0"></label>
         <button type="button" onclick="guardarMisDominios(this)" class="w-full py-2 rounded-xl bg-violet-500 hover:bg-violet-400 text-white font-black text-xs">Guardar dominios</button>`;
     }
     function dominiosDesdeUI() {
@@ -12657,7 +12659,9 @@
     async function guardarMisDominios(btn) {
       const lista = dominiosDesdeUI().length ? dominiosDesdeUI() : (misDominiosCfg ? misDominiosCfg.lista : []);
       if (btn) btn.disabled = true;
-      try { const r = await llamarBackend('dominios_guardar', { lista }); if (r && r.ok) { misDominiosCfg = r.cfg; pintarMisDominios(); mostrarToast('Dominios guardados'); } else alert((r && r.error) || 'No se pudo.'); }
+      const reactEl = document.getElementById('provReactAuto'); const reactAuto = reactEl ? !!reactEl.checked : true;
+      const rcEl = document.getElementById('provRotarCada'); const rotarCada = rcEl ? Math.min(100, Math.max(1, parseInt(rcEl.value, 10) || 5)) : 5;
+      try { const r = await llamarBackend('dominios_guardar', { lista, rotarCada }); if (r && r.ok) { misDominiosCfg = r.cfg; try { await db.collection('configuracion').doc('ajustes').set({ provReactivarAuto: reactAuto }, { merge: true }); ajustesGeneralesConfig.provReactivarAuto = reactAuto; } catch (e) { /* nada */ } pintarMisDominios(); mostrarToast('Dominios guardados'); } else alert((r && r.error) || 'No se pudo.'); }
       catch (e) { alert(e.message); } finally { if (btn) btn.disabled = false; }
     }
 
@@ -17027,7 +17031,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-24r';
+    const VERSION_PAGINA = '2026-10-24u';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261020_ajuste', fecha: '2026-10-20', titulo: 'Se ve mejor en iPhone 📱', mensaje: 'La tienda ahora **se ajusta siempre a tu pantalla**: ya no se agranda al escribir ni se corre hacia los lados. Si la tienes abierta, **recarga la página** para verla así.' },
       { id: 'act_20261020_app', fecha: '2026-10-20', titulo: 'App oficial de Epic Streaming 📲', mensaje: 'Ya tenemos **app oficial**: en la tienda toca **Descargar** (Android), **Instalar** (PC) o **Agregar** (iPhone). Abre más rápido, a pantalla completa, con tu misma cuenta y **se actualiza sola**.' },
@@ -25554,7 +25558,7 @@ async function pintarPanelWa() {
       return { cuentas: legado, stock: legado.length || stockPublico };
     }
 
-    const VERSION_SERVIDOR_NECESARIA = '2026-10-23c';   // la versión del servidor que necesita esta página
+    const VERSION_SERVIDOR_NECESARIA = '2026-10-23f';   // la versión del servidor que necesita esta página
     async function llamarBackend(accion, datos) {
       if (mantenimientoActivo() && /^(comprar|recarga|renovar|carrito|preorden|combo)/.test(String(accion || ''))) { avisoMantenimiento(''); throw new Error('Estamos en mantenimiento. Compra por WhatsApp mientras tanto.'); }
       if (modoPruebaCliente) { const rs = backendSimulado(accion, datos || {}); if (rs) return rs; }
