@@ -5984,7 +5984,7 @@
         const inicioHoy = new Date(); inicioHoy.setHours(0, 0, 0, 0);
         unsubRegHoy = db.collection('usuarios').where('fechaRegistro', '>=', inicioHoy.toISOString()).onSnapshot(snap => {
           const hoyStr = obtenerFechaLocalStr(), L = [];
-          snap.forEach(d => { const u = d.data() || {}, f = new Date(u.fechaRegistro); if (isNaN(f.getTime()) || obtenerFechaLocalStr(f) !== hoyStr) return; L.push({ id: d.id, u: u, fecha: f }); });
+          snap.forEach(d => { const u = d.data() || {}, f = new Date(u.fechaRegistro); if (isNaN(f.getTime()) || obtenerFechaLocalStr(f) !== hoyStr || esInvitadoU(u, d.id)) return; L.push({ id: d.id, u: u, fecha: f }); });
           registradosHoyCache = L.sort((a, b) => b.fecha - a.fecha);
           document.querySelectorAll('.js-reg-hoy').forEach(t => { t.textContent = L.length + (L.length === 1 ? ' cliente' : ' clientes'); });
         }, () => { unsubRegHoy = null; });
@@ -7113,7 +7113,8 @@
       if (conteo && res) {
         const input = document.getElementById('txtBuscarUsuariosAdmin');
         const hayFiltro = input && input.value.trim() !== '';
-        conteo.innerText = hayFiltro ? `(${res.visibles} de ${res.total})` : `(${res.total})`;
+        const nInv = document.querySelectorAll('#tablaAdminUsuarios tr[data-invitado="1"]').length, totalR = Math.max(0, res.total - nInv);
+        conteo.innerText = (hayFiltro ? `(${res.visibles} de ${totalR})` : `(${totalR})`) + (nInv ? ` · ${nInv} invitado${nInv === 1 ? '' : 's'}` : '');
       }
     }
 
@@ -10514,7 +10515,7 @@
             const deudaU = Number(u.deuda) || 0;
             const waU = String(u.whatsapp || '').replace(/\D/g, '');
             html += `
-              <tr data-buscar="${textoBusqueda}" class="hover:bg-gray-800/40 border-b border-gray-800">
+              <tr data-buscar="${textoBusqueda}"${esInvitadoU(u, uid) ? ' data-invitado="1"' : ''} class="hover:bg-gray-800/40 border-b border-gray-800">
                 <td colspan="7" class="md:hidden p-0">
                   <div class="p-3.5">
                     <div class="flex items-start gap-3">
@@ -10522,7 +10523,7 @@
                       <div class="min-w-0 flex-grow">
                         <p class="text-sm font-black text-white truncate">${escaparHtml(u.nombre || u.email || 'Ficha incompleta')}</p>
                         <p class="text-[11px] text-gray-400 font-mono truncate">${escaparHtml(u.email || uid)}</p>
-                        <div class="flex flex-wrap items-center gap-1.5 mt-1">${(() => { const et = etiquetaTipoCuenta(u.rol, u.tipoCuenta); return et ? `<span class="px-1.5 py-0.5 rounded ${et[1]} text-[9px] font-black">${et[0]}</span>` : ''; })()}${chipId}${chipWa}${u.appUso ? `<span class="px-1.5 py-0.5 rounded bg-emerald-500/15 border border-emerald-500/40 text-emerald-300 text-[9px] font-black" title="Último uso: ${escaparHtml(u.appUltimoUso ? new Date(u.appUltimoUso).toLocaleString('es-CO') : '')}">📲 App ${u.appUso === 'pc' ? 'PC' : (u.appUso === 'iphone' ? 'iPhone' : 'Android')}</span>` : (u.appDescargaEl ? '<span class="px-1.5 py-0.5 rounded bg-gray-700/60 text-gray-300 text-[9px] font-black">⬇️ Descargó la app</span>' : '')}<span data-nivel-uid="${uid}"></span>${deudaU > 0 ? `<span class="px-1.5 py-0.5 rounded bg-violet-500/20 text-violet-200 text-[9px] font-black">DEBE ${formatoCOP(deudaU)}</span>` : ''}</div>
+                        <div class="flex flex-wrap items-center gap-1.5 mt-1">${esInvitadoU(u, uid) ? '<span class="px-1.5 py-0.5 rounded bg-gray-700 text-gray-300 text-[9px] font-black">🛒 INVITADO · SIN REGISTRO</span>' : ''}${(() => { const et = etiquetaTipoCuenta(u.rol, u.tipoCuenta); return et ? `<span class="px-1.5 py-0.5 rounded ${et[1]} text-[9px] font-black">${et[0]}</span>` : ''; })()}${chipId}${chipWa}${u.appUso ? `<span class="px-1.5 py-0.5 rounded bg-emerald-500/15 border border-emerald-500/40 text-emerald-300 text-[9px] font-black" title="Último uso: ${escaparHtml(u.appUltimoUso ? new Date(u.appUltimoUso).toLocaleString('es-CO') : '')}">📲 App ${u.appUso === 'pc' ? 'PC' : (u.appUso === 'iphone' ? 'iPhone' : 'Android')}</span>` : (u.appDescargaEl ? '<span class="px-1.5 py-0.5 rounded bg-gray-700/60 text-gray-300 text-[9px] font-black">⬇️ Descargó la app</span>' : '')}<span data-nivel-uid="${uid}"></span>${deudaU > 0 ? `<span class="px-1.5 py-0.5 rounded bg-violet-500/20 text-violet-200 text-[9px] font-black">DEBE ${formatoCOP(deudaU)}</span>` : ''}</div>
                       </div>
                       <div class="shrink-0 text-right"><p class="text-[10px] text-gray-500">Saldo</p><p class="text-base font-black text-emerald-400">${formatoCOP(u.saldo || 0)}</p></div>
                     </div>
@@ -10543,7 +10544,7 @@
                 </td>
                 <td class="hidden md:table-cell px-4 py-3">
                   ${nombreCliente}${chipId}${chipWa}
-                  ${(() => { const et = etiquetaTipoCuenta(u.rol, u.tipoCuenta); return et ? `<span class="inline-block mt-1 px-1.5 py-0.5 rounded ${et[1]} text-[9px] font-black">${et[0]}</span>` : ''; })()}
+                  ${esInvitadoU(u, uid) ? '<span class="inline-block mt-1 mr-1 px-1.5 py-0.5 rounded bg-gray-700 text-gray-300 text-[9px] font-black">🛒 INVITADO · SIN REGISTRO</span>' : ''}${(() => { const et = etiquetaTipoCuenta(u.rol, u.tipoCuenta); return et ? `<span class="inline-block mt-1 px-1.5 py-0.5 rounded ${et[1]} text-[9px] font-black">${et[0]}</span>` : ''; })()}
                   <span data-nivel-uid="${uid}" class="block mt-1"></span>
                   <button onclick="abrirModalEditarCliente('${uid}', '${escaparJsAttr(u.email)}', '${escaparJsAttr(u.nombre)}')" class="mt-1 text-[10px] bg-gray-800 hover:bg-gray-700 text-emerald-400 px-2 py-0.5 rounded"><i class="fa-solid fa-pen mr-1"></i> Editar perfil</button>
                   <button onclick="verRecargasCliente('${uid}', '${escaparJsAttr(u.nombre || u.email || '')}')" class="mt-1 text-[10px] bg-gray-800 hover:bg-gray-700 text-sky-300 px-2 py-0.5 rounded"><i class="fa-solid fa-receipt mr-1"></i> Recargas</button>
@@ -10908,6 +10909,7 @@
       const k = Object.keys(TIPOS_CUENTA_SELECT).find(x => TIPOS_CUENTA_SELECT[x][0] === rol && TIPOS_CUENTA_SELECT[x][1] === tipo);
       return k || rol;
     }
+    function esInvitadoU(u, uid) { return !!(u && (u.invitado === true || u.registradoPor === 'whatsapp_invitado')) || /^inv_/.test(String(uid || '')); }   // 🛒 compró por WhatsApp sin registrarse
     function etiquetaTipoCuenta(rol, tipo) {
       if (rol === 'proveedor') return tipo === 'externo' ? ['PROVEEDOR EXTERNO', 'bg-orange-500/20 text-orange-300'] : (tipo === 'reseller' ? ['SUPER RESELLER', 'bg-yellow-400/20 text-yellow-200'] : ['PROVEEDOR', 'bg-amber-500/20 text-amber-300']);
       if (rol === 'moderador') return ['MODERADOR', 'bg-sky-500/20 text-sky-300'];
@@ -16935,7 +16937,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-24a';
+    const VERSION_PAGINA = '2026-10-24d';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261020_ajuste', fecha: '2026-10-20', titulo: 'Se ve mejor en iPhone 📱', mensaje: 'La tienda ahora **se ajusta siempre a tu pantalla**: ya no se agranda al escribir ni se corre hacia los lados. Si la tienes abierta, **recarga la página** para verla así.' },
       { id: 'act_20261020_app', fecha: '2026-10-20', titulo: 'App oficial de Epic Streaming 📲', mensaje: 'Ya tenemos **app oficial**: en la tienda toca **Descargar** (Android), **Instalar** (PC) o **Agregar** (iPhone). Abre más rápido, a pantalla completa, con tu misma cuenta y **se actualiza sola**.' },
@@ -23756,6 +23758,7 @@ async function pintarPanelWa() {
             <summary class="p-3 cursor-pointer select-none flex items-center gap-2 list-none"><span class="text-[12px] font-black text-white">🎯 Modo cazador en grupos</span><span class="text-[10px] text-gray-400">nuevos clientes a tu WhatsApp</span><i class="fa-solid fa-chevron-down text-gray-500 text-xs ml-auto"></i></summary>
             <div class="px-3 pb-3 space-y-2 border-t border-gray-700/60 pt-2">
               <label class="flex items-center justify-between gap-3 p-2.5 rounded-xl bg-gray-800/60 border border-gray-700/60 cursor-pointer"><span class="text-[11px] text-gray-300">Si alguien <b class="text-white">pide</b> Amazon o Prime Video en un grupo ("¿quién con Prime video?"), el bot responde "Si hay" con tu WhatsApp para que te escriba al interno, y te avisa por Telegram. No responde a anuncios de otros vendedores; a cada persona, una vez cada 6 h. Funciona aunque la publicación en grupos esté apagada.</span><input type="checkbox" id="waCazador" ${k.cazadorActivo !== false ? 'checked' : ''} class="w-5 h-5 accent-amber-500 shrink-0"></label>
+              <label class="block text-[10px] text-gray-400">🚫 No responder si el mensaje dice <span class="text-gray-500">(separa con comas; ya ignora "6 meses", "3 meses", "anual")</span><input id="waCazadorExcluir" maxlength="300" value="${escaparHtml(k.cazadorExcluir || '')}" placeholder="ej: familiar, renovable, 4k" class="${inp} mt-1"></label>
               <label class="block text-[10px] text-gray-400">Tu WhatsApp para nuevos clientes<input id="waCazadorNumero" maxlength="15" value="${escaparHtml(k.cazadorNumero || '3043956726')}" class="${inp} mt-1"></label>
               <label class="block text-[10px] text-gray-400">Respuesta en el grupo <span class="text-gray-500">({wa} = tu enlace de WhatsApp; vacío = "Si hay 🙌 Escríbeme al interno 👉 {wa}")</span><input id="waCazadorTexto" maxlength="200" value="${escaparHtml(k.cazadorTexto || '')}" placeholder="Si hay 🙌 Escríbeme al interno 👉 {wa}" class="${inp} mt-1"></label>
             </div>
@@ -23851,7 +23854,7 @@ async function pintarPanelWa() {
         if (com && !/^https:\/\/(chat\.whatsapp\.com|whatsapp\.com\/channel)\/[A-Za-z0-9]+/.test(com)) { alert('El enlace de la comunidad debe empezar por https://chat.whatsapp.com/ o https://whatsapp.com/channel/'); return; }
         datos.comunidad = com.slice(0, 120);
         datos.gruposActivo = !!(v('waGrupos') && v('waGrupos').checked);
-        datos.cazadorActivo = !!(v('waCazador') && v('waCazador').checked); datos.cazadorNumero = String((v('waCazadorNumero') || {}).value || '').replace(/\D/g, '').slice(0, 13); datos.cazadorTexto = String((v('waCazadorTexto') || {}).value || '').trim().slice(0, 200);
+        datos.cazadorActivo = !!(v('waCazador') && v('waCazador').checked); datos.cazadorExcluir = String((v('waCazadorExcluir') || {}).value || '').trim().slice(0, 300); datos.cazadorNumero = String((v('waCazadorNumero') || {}).value || '').replace(/\D/g, '').slice(0, 13); datos.cazadorTexto = String((v('waCazadorTexto') || {}).value || '').trim().slice(0, 200);
         datos.seguimientoActivo = !!(v('waSeguimiento') && v('waSeguimiento').checked); datos.seguimientoDias = Math.max(1, Math.min(30, parseInt((v('waSeguimientoDias') || {}).value, 10) || 3));
         datos.gruposMensaje = String((v('waGruposMensaje') || {}).value || '').trim().slice(0, 1500);
         datos.gruposModo = (document.querySelector('input[name="waGruposModo"]:checked') || {}).value === 'horario' ? 'horario' : 'mencion';
@@ -25239,6 +25242,8 @@ async function pintarPanelWa() {
           });
           cerrarModalAuth();
           setTimeout(() => { try { mostrarToast('🎉 ¡Bienvenido! Ya eres cliente VIP de epicstreaming.vip 👑'); } catch (e) { /* nada */ } }, 600);
+          // 🔗 Si antes compró por WhatsApp como invitado desde este mismo número, sus compras y saldo pasan a esta cuenta (1 sola consulta)
+          if (whatsapp && obtenerBackendUrl()) setTimeout(() => { llamarBackend('vincular_invitado', {}).then(r => { if (r && r.unido) mostrarToast('🔗 Tus compras por WhatsApp ya están en tu cuenta'); }).catch(() => {}); }, 2500);
         } catch (err) { alert(err.message); }
       } else {
         const bAuth = document.getElementById('btnSubmitAuth'); if (bAuth) { if (bAuth.disabled) return; bAuth.disabled = true; bAuth.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i> Entrando…'; }
@@ -25457,7 +25462,7 @@ async function pintarPanelWa() {
       return { cuentas: legado, stock: legado.length || stockPublico };
     }
 
-    const VERSION_SERVIDOR_NECESARIA = '2026-10-22p';   // la versión del servidor que necesita esta página
+    const VERSION_SERVIDOR_NECESARIA = '2026-10-22s';   // la versión del servidor que necesita esta página
     async function llamarBackend(accion, datos) {
       if (mantenimientoActivo() && /^(comprar|recarga|renovar|carrito|preorden|combo)/.test(String(accion || ''))) { avisoMantenimiento(''); throw new Error('Estamos en mantenimiento. Compra por WhatsApp mientras tanto.'); }
       if (modoPruebaCliente) { const rs = backendSimulado(accion, datos || {}); if (rs) return rs; }
