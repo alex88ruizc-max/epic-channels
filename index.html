@@ -3556,6 +3556,11 @@
           </div>
           <p id="editClienteReferidos" class="text-[11px] text-gray-400">Cargando sus referidos...</p>
         </div>
+        <div id="editClienteBloqueVip" class="solo-admin hidden">
+          <label class="block text-xs text-gray-400 mb-1">⭐ Productos VIP que puede ver y comprar</label>
+          <div id="editClienteListaVip" class="max-h-44 overflow-y-auto space-y-1.5 bg-gray-800/60 p-2.5 rounded-xl border border-yellow-500/30"></div>
+          <p class="text-[10px] text-gray-500 mt-1">Sirve para cualquier cliente: Cliente, Cliente normal o Dealer.</p>
+        </div>
         <div id="editClienteBloqueCategorias" class="solo-admin hidden">
           <label class="block text-xs text-gray-400 mb-1">Categorías que puede ver (además de Netflix y VIP)</label>
           <div id="editClienteListaCategorias" class="max-h-44 overflow-y-auto space-y-1.5 bg-gray-800/60 p-2.5 rounded-xl border border-gray-700/60"></div>
@@ -10667,6 +10672,7 @@
         const selRolEd = document.getElementById('editClienteRol');
         editClienteOriginal.tipoCuenta = String(d.tipoCuenta || '');
         editClienteOriginal.categoriasPermitidas = Array.isArray(d.categoriasPermitidas) ? d.categoriasPermitidas : [];
+        editClienteOriginal.permitidosVip = Array.isArray(d.productos_permitidos) ? d.productos_permitidos : [];
         if (selRolEd) selRolEd.value = valorSelectTipoCuenta(editClienteOriginal.proveedorVende ? 'cliente' : editClienteOriginal.rol, editClienteOriginal.tipoCuenta);
         try { const chkPV0 = document.getElementById('editClienteProvVende'); if (chkPV0) chkPV0.checked = editClienteOriginal.proveedorVende; editClienteCambioRol(); } catch (e) { /* nada */ }
         if (esAdminSesionActual()) cargarCreditoEditar(uid, d);
@@ -10794,6 +10800,14 @@
               cambios.referidoPorEmail = refNuevo; cambios.referidoPorUid = refUid; cambios.referidoProcesado = true;
             }
           }
+          try { const lvG = document.getElementById('editClienteListaVip');
+            if (lvG && orig.cargado && !document.getElementById('editClienteBloqueVip').classList.contains('hidden')) {
+              const vipIds = catalogoUnificado.filter(p => p.esVip === true || PRODUCTOS_VIP_EXCLUSIVOS.includes(p.id) || PRODUCTOS_VIP_EXCLUSIVOS.includes(p.docId)).reduce((a, p) => a.concat([p.docId, p.id]), []);
+              const otros = (orig.permitidosVip || []).filter(x => vipIds.indexOf(x) === -1);   // permitidos que no son VIP: se conservan
+              const marcadosV = Array.from(lvG.querySelectorAll('.chk-vip-editar:checked')).map(c => c.value);
+              const nuevoP = otros.concat(marcadosV);
+              if (JSON.stringify(nuevoP.slice().sort()) !== JSON.stringify((orig.permitidosVip || []).slice().sort())) cambios.productos_permitidos = nuevoP;
+            } } catch (e) { /* nada */ }
           if (tipoNuevo === 'normal') {
             const cats = Array.from(document.querySelectorAll('.chk-categoria-editar:checked')).map(c => c.value).sort();
             if (JSON.stringify(cats) !== JSON.stringify((orig.categoriasPermitidas || []).slice().sort())) cambios.categoriasPermitidas = cats;
@@ -10935,6 +10949,11 @@
       const caja = document.getElementById('editClienteProvVendeCaja'), chkPV = document.getElementById('editClienteProvVende');
       const esClienteTipo = (v === 'cliente' || v === 'cliente_normal' || v === 'revendedor');
       if (caja) caja.classList.toggle('hidden', !esClienteTipo);
+      try { const bv = document.getElementById('editClienteBloqueVip'), lv = document.getElementById('editClienteListaVip');
+        if (bv) bv.classList.toggle('hidden', !esClienteTipo);
+        if (lv && esClienteTipo) { const marc = (editClienteOriginal && editClienteOriginal.permitidosVip) || [];
+          const vips = catalogoUnificado.filter(p => p.esVip === true || PRODUCTOS_VIP_EXCLUSIVOS.includes(p.id) || PRODUCTOS_VIP_EXCLUSIVOS.includes(p.docId));
+          lv.innerHTML = vips.map(p => `<label class="flex items-center gap-2 text-xs text-white cursor-pointer"><input type="checkbox" class="chk-vip-editar accent-yellow-400" value="${escaparHtml(p.docId)}" ${(marc.indexOf(p.docId) !== -1 || marc.indexOf(p.id) !== -1) ? 'checked' : ''}> ${escaparHtml(p.nombre)}</label>`).join('') || '<p class="text-[11px] text-gray-500">No tienes productos VIP creados.</p>'; } } catch (e) { /* nada */ }
       const provVende = esClienteTipo && chkPV && chkPV.checked;
       const bloque = document.getElementById('editClienteBloqueStock');
       if (bloque) bloque.classList.toggle('hidden', !(v === 'proveedor' || v === 'proveedor_externo' || v === 'reseller' || provVende));
@@ -17151,7 +17170,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-25r';
+    const VERSION_PAGINA = '2026-10-25s';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261020_ajuste', fecha: '2026-10-20', titulo: 'Se ve mejor en iPhone 📱', mensaje: 'La tienda ahora **se ajusta siempre a tu pantalla**: ya no se agranda al escribir ni se corre hacia los lados. Si la tienes abierta, **recarga la página** para verla así.' },
       { id: 'act_20261020_app', fecha: '2026-10-20', titulo: 'App oficial de Epic Streaming 📲', mensaje: 'Ya tenemos **app oficial**: en la tienda toca **Descargar** (Android), **Instalar** (PC) o **Agregar** (iPhone). Abre más rápido, a pantalla completa, con tu misma cuenta y **se actualiza sola**.' },
