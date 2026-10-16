@@ -784,6 +784,8 @@
         </div>
         <div id="provDomInsignias" class="mt-3 flex gap-1.5"></div>
         <div id="provAutoResumen" class="hidden mt-3 p-2.5 rounded-xl bg-emerald-500/15 border border-emerald-400/50 text-[12px] text-emerald-100"></div>
+        <div class="mt-3 relative"><i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-xs"></i><input type="search" id="buscarGeneradosInput" oninput="buscarGeneradosEnVivo()" placeholder="Buscar un correo generado (o quién lo generó)…" autocomplete="off" class="w-full bg-gray-800 border border-gray-700 rounded-xl pl-9 pr-3 py-2 text-[12px] text-white"></div>
+        <div id="buscarGeneradosRes" class="mt-2 space-y-1.5"></div>
         <div id="provDominioLista" class="mt-3 space-y-2"></div>
       </div>
       <div id="provCorreosCaja" class="bg-gray-900 border border-violet-500/40 rounded-2xl overflow-hidden">
@@ -12336,7 +12338,30 @@
       sel.value = prev && [...sel.options].some(o => o.value === prev) ? prev : (local ? local.docId : 'libre');
     }
     function nombreDestino(d) { if (d === 'libre') return '🆓 Libre'; const p = (catalogoUnificado || []).find(x => x.docId === d); return p ? p.nombre : (d ? d : 'Prime Local'); }
-    function pintarCorreosPropios() {
+    // 🔎 Buscar entre TODOS los correos generados (proveedores + tuyos), por correo o por quién lo generó
+    var _bgTimer = null;
+    function buscarGeneradosEnVivo() {
+      const inp = document.getElementById('buscarGeneradosInput'), res = document.getElementById('buscarGeneradosRes'); if (!inp || !res) return;
+      const q = inp.value.trim();
+      clearTimeout(_bgTimer);
+      if (q.length < 2) { res.innerHTML = ''; return; }
+      res.innerHTML = '<p class="text-[11px] text-gray-500 py-1"><i class="fa-solid fa-spinner fa-spin"></i> Buscando…</p>';
+      _bgTimer = setTimeout(async () => {
+        let r = null; try { r = await llamarBackend('buscar_generados', { q }); } catch (e) { r = null; }
+        if (!r || !r.ok) { res.innerHTML = '<p class="text-[11px] text-gray-500 py-1">No se pudo buscar.</p>'; return; }
+        if (!r.correos.length) { res.innerHTML = '<p class="text-[11px] text-gray-500 py-1">Sin resultados para "' + escaparHtml(q) + '".</p>'; return; }
+        const col = e => e === 'subida' ? 'text-emerald-300' : e === 'usada' ? 'text-sky-300' : 'text-amber-300';
+        res.innerHTML = (r.total > r.correos.length ? '<p class="text-[10px] text-gray-500 mb-1">Mostrando ' + r.correos.length + ' de ' + r.total + '</p>' : '') +
+          r.correos.map(c => `<div class="p-2 rounded-lg bg-gray-900/70 border border-gray-700 flex items-center gap-2">
+            <span class="font-mono text-[11px] text-white truncate flex-1">${escaparHtml(c.correo)}</span>
+            <span class="text-[10px] text-gray-400 shrink-0">${escaparHtml(c.quien || '—')}</span>
+            <span class="text-[10px] font-bold shrink-0 ${col(c.estado)}">${c.estado}</span>
+            <button type="button" onclick="copiarTexto('${escaparHtml(c.correo)}','Correo copiado')" class="shrink-0 px-2 py-1 rounded bg-gray-700 text-gray-200 text-[10px]"><i class="fa-solid fa-copy"></i></button>
+          </div>`).join('');
+      }, 350);
+    }
+
+        function pintarCorreosPropios() {
       const l = document.getElementById('correosPropiosLista'); if (!l) return;
       // 🔢 Insignias: generados hoy · ya subidas. Las subidas se ocultan de la lista.
       const esSubida = c => { const p = (catalogoUnificado || []).find(x => x.docId === c.destino), prime = !c.destino || esProdPrime(p); return !!(c.confirmadoEl || (prime && c.primeActivoEl && c.destino !== 'libre') || c.asignadoA); };
@@ -17081,7 +17106,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-25b';
+    const VERSION_PAGINA = '2026-10-25c';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261020_ajuste', fecha: '2026-10-20', titulo: 'Se ve mejor en iPhone 📱', mensaje: 'La tienda ahora **se ajusta siempre a tu pantalla**: ya no se agranda al escribir ni se corre hacia los lados. Si la tienes abierta, **recarga la página** para verla así.' },
       { id: 'act_20261020_app', fecha: '2026-10-20', titulo: 'App oficial de Epic Streaming 📲', mensaje: 'Ya tenemos **app oficial**: en la tienda toca **Descargar** (Android), **Instalar** (PC) o **Agregar** (iPhone). Abre más rápido, a pantalla completa, con tu misma cuenta y **se actualiza sola**.' },
@@ -25608,7 +25633,7 @@ async function pintarPanelWa() {
       return { cuentas: legado, stock: legado.length || stockPublico };
     }
 
-    const VERSION_SERVIDOR_NECESARIA = '2026-10-23k';   // la versión del servidor que necesita esta página
+    const VERSION_SERVIDOR_NECESARIA = '2026-10-23l';   // la versión del servidor que necesita esta página
     async function llamarBackend(accion, datos) {
       if (mantenimientoActivo() && /^(comprar|recarga|renovar|carrito|preorden|combo)/.test(String(accion || ''))) { avisoMantenimiento(''); throw new Error('Estamos en mantenimiento. Compra por WhatsApp mientras tanto.'); }
       if (modoPruebaCliente) { const rs = backendSimulado(accion, datos || {}); if (rs) return rs; }
