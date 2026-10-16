@@ -10470,7 +10470,7 @@
 
           const ahora = new Date().getTime();
           let html = '';
-          try { const us = []; snap.forEach(dd => us.push(Object.assign({ uid: dd.id }, dd.data() || {}))); window.usuariosAdminLista = us; renderizarCreditosPendientes(us); setTimeout(() => asegurarIdsClientes(us), 1500); escucharIdPendientes(); } catch (e) { console.warn(e); }
+          try { const us = []; snap.forEach(dd => us.push(Object.assign({ uid: dd.id }, dd.data() || {}))); window.usuariosAdminLista = us; try { renderProvAuto(); } catch (e) { /* nada */ } renderizarCreditosPendientes(us); setTimeout(() => asegurarIdsClientes(us), 1500); escucharIdPendientes(); } catch (e) { console.warn(e); }
 
           snap.forEach(doc => {
             const u = doc.data();
@@ -12606,6 +12606,8 @@
     function renderProvAuto() {
       const c = document.getElementById('provAutoCaja'); if (!c || !esAdminSesionActual()) return;
       const cfg = provAutoCfg || {}, provs = {}; lotesProveedores.forEach(l => { if (l.proveedorUid) provs[l.proveedorUid] = l.proveedorNombre || l.proveedorEmail || l.proveedorUid; });
+      // también los proveedores que todavía no han subido ningún lote (antes no salían en la lista)
+      (window.usuariosAdminLista || []).forEach(u => { if (u && u.rol === 'proveedor' && u.uid && !provs[u.uid]) provs[u.uid] = u.nombre || u.email || u.uid; });
       const prods = catalogoUnificado.filter(p => !p.esCombo).sort((x, y) => String(x.nombre).localeCompare(String(y.nombre), 'es'));
       const chip = (grupo, id, nombre, on) => `<label class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-full border ${on ? 'border-emerald-400 bg-emerald-500/15 text-emerald-200' : 'border-gray-700 bg-gray-800 text-gray-300'} text-[11px] mr-1.5 mb-1.5 cursor-pointer"><input type="checkbox" data-pa="${grupo}" value="${escaparHtml(id)}" ${on ? 'checked' : ''} class="accent-emerald-500">${escaparHtml(nombre)}</label>`;
       const pend = lotesProveedores.filter(l => l.estado === 'pendiente'), quedan = pend.map(l => ({ l, m: motivoAutoLote(l) })).filter(x => !x.m.ok && x.m.motivo);
@@ -16937,7 +16939,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-24i';
+    const VERSION_PAGINA = '2026-10-24j';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261020_ajuste', fecha: '2026-10-20', titulo: 'Se ve mejor en iPhone 📱', mensaje: 'La tienda ahora **se ajusta siempre a tu pantalla**: ya no se agranda al escribir ni se corre hacia los lados. Si la tienes abierta, **recarga la página** para verla así.' },
       { id: 'act_20261020_app', fecha: '2026-10-20', titulo: 'App oficial de Epic Streaming 📲', mensaje: 'Ya tenemos **app oficial**: en la tienda toca **Descargar** (Android), **Instalar** (PC) o **Agregar** (iPhone). Abre más rápido, a pantalla completa, con tu misma cuenta y **se actualiza sola**.' },
