@@ -12428,7 +12428,7 @@
         if (b) b.innerHTML = `<span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-sky-500/15 text-sky-300 border border-sky-500/30">Generados hoy ${genHoy}</span><span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">Subidas ${subidas}</span>`;
       } catch (e) { /* nada */ }
       const porMostrar = provDominioCorreos.map((c, idx) => ({ c, idx })).filter(o => !(o.c.primeActivoEl || o.c.autoSubidaEl));   // solo los que esperan bienvenida, con su índice real
-      l.innerHTML = porMostrar.length ? porMostrar.slice(0, 8).map(({ c, idx: i }) => c.primeActivoEl ? `<div class="p-2.5 rounded-xl bg-emerald-500/15 border border-emerald-400/60 flex items-center gap-2"><span class="font-mono text-[12px] text-white truncate flex-1">${escaparHtml(c.correo)}</span><span class="text-[10px] font-black text-emerald-300 shrink-0">${c.autoSubidaEl ? '✅ Subida sola · en revisión' : '✅ Prime activo · súbela'}</span><button type="button" onclick="copiarTexto('${escaparHtml(c.correo)}','Correo copiado')" class="px-2 py-1 rounded-lg bg-gray-700 text-gray-200 text-[10px] font-bold"><i class="fa-solid fa-copy"></i></button></div>` : `<div class="p-2.5 rounded-xl bg-gray-800/70 border ${c.codigoVistoEl ? 'border-gray-700' : 'border-emerald-500/40'}">
+      l.innerHTML = porMostrar.length ? porMostrar.slice(0, 8).map(({ c, idx: i }) => c.reservando ? `<div class="p-2.5 rounded-xl bg-gray-800/60 border border-gray-700 flex items-center gap-2"><span class="font-mono text-[12px] text-gray-400 truncate flex-1"><i class="fa-solid fa-spinner fa-spin mr-1"></i>Generando correo…</span></div>` : c.primeActivoEl ? `<div class="p-2.5 rounded-xl bg-emerald-500/15 border border-emerald-400/60 flex items-center gap-2"><span class="font-mono text-[12px] text-white truncate flex-1">${escaparHtml(c.correo)}</span><span class="text-[10px] font-black text-emerald-300 shrink-0">${c.autoSubidaEl ? '✅ Subida sola · en revisión' : '✅ Prime activo · súbela'}</span><button type="button" onclick="copiarTexto('${escaparHtml(c.correo)}','Correo copiado')" class="px-2 py-1 rounded-lg bg-gray-700 text-gray-200 text-[10px] font-bold"><i class="fa-solid fa-copy"></i></button></div>` : `<div class="p-2.5 rounded-xl bg-gray-800/70 border ${c.codigoVistoEl ? 'border-gray-700' : 'border-emerald-500/40'}">
           <div class="flex items-center gap-2"><span class="font-mono text-[12px] text-white truncate flex-1">${escaparHtml(c.correo)}</span>
             <button type="button" onclick="copiarTexto('${escaparHtml(c.correo)}','Correo copiado')" class="px-2 py-1 rounded-lg bg-gray-700 text-gray-200 text-[10px] font-bold"><i class="fa-solid fa-copy"></i></button>
             <button type="button" onclick="provDominioCodigo(${i})" class="px-2.5 py-1 rounded-lg bg-emerald-500 text-black text-[10px] font-black">🔑 Ver código</button></div>
@@ -12470,10 +12470,11 @@
     async function provDominioNuevo() {
       await asegurarDominiosActivos();
       const prop = correoNaturalLocal(), fila = { correo: prop, creadoEl: new Date().toISOString(), reservando: true };
-      provDominioCorreos.unshift(fila); pintarProvDominio(); copiarTexto(prop, '📧 Correo nuevo copiado: créale la cuenta');
+      provDominioCorreos.unshift(fila); pintarProvDominio();   // se muestra "reservando…" hasta que el servidor confirme el correo real
       try { const r = await llamarBackend('prov_correos', { op: 'nuevo', correo: prop });
         if (!r || !r.ok) { provDominioCorreos = provDominioCorreos.filter(x => x !== fila); pintarProvDominio(); if (r && r.reglas) pintarReglasProv(r.reglas); alert((r && r.error) || 'No se pudo.'); return; }
-        fila.reservando = false; if (r.correo !== prop) { fila.correo = r.correo; pintarProvDominio(); copiarTexto(r.correo, '⚠️ Ese ya existía: usa este otro (copiado)'); } provDomGuardarLocal(); }
+        fila.reservando = false; fila.correo = r.correo || prop;   // ✅ SIEMPRE el correo que guardó el servidor (así "Ver código" lo reconoce)
+        pintarProvDominio(); copiarTexto(fila.correo, '📧 Correo copiado: créale la cuenta'); provDomGuardarLocal(); }
       catch (e) { provDominioCorreos = provDominioCorreos.filter(x => x !== fila); pintarProvDominio(); alert(e.message); }
     }
     async function provDominioCodigo(i) {
@@ -17107,7 +17108,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-25e';
+    const VERSION_PAGINA = '2026-10-25f';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261020_ajuste', fecha: '2026-10-20', titulo: 'Se ve mejor en iPhone 📱', mensaje: 'La tienda ahora **se ajusta siempre a tu pantalla**: ya no se agranda al escribir ni se corre hacia los lados. Si la tienes abierta, **recarga la página** para verla así.' },
       { id: 'act_20261020_app', fecha: '2026-10-20', titulo: 'App oficial de Epic Streaming 📲', mensaje: 'Ya tenemos **app oficial**: en la tienda toca **Descargar** (Android), **Instalar** (PC) o **Agregar** (iPhone). Abre más rápido, a pantalla completa, con tu misma cuenta y **se actualiza sola**.' },
