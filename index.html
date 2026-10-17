@@ -15217,8 +15217,14 @@
         const sel = prods.map(p => `<option value="${escaparHtml(p.docId)}" ${String(p.nombre || '') === r.producto ? 'selected' : ''}>${escaparHtml(p.nombre || p.docId)}</option>`).join('');
         h += `<div class="p-4 bg-gray-900 border border-red-500/30 rounded-2xl"><p class="text-[11px] font-black uppercase tracking-wide text-red-300 mb-2"><i class="fa-solid fa-box-archive mr-1.5"></i>Retirada del stock</p>
           <p class="text-xs text-gray-300">De <b>${escaparHtml(r.producto)}</b> · ${escaparHtml(f(r.retiradaEl))}<br>Motivo: ${escaparHtml(r.motivo)}</p>
-          ${esAdminSesionActual() ? `<div class="flex gap-2 mt-3"><select id="bcDevProd" class="flex-1 min-w-0 bg-gray-800 border border-gray-700 rounded-lg px-2 py-1.5 text-xs text-white">${sel}</select><button type="button" onclick="bcDevolverStock('${escaparJsAttr(q)}')" class="px-3 py-1.5 rounded-lg text-[11px] font-black bg-emerald-500 hover:bg-emerald-400 text-black">Devolver al stock</button></div><p class="text-[10px] text-gray-500 mt-1.5">Hazlo solo si estás seguro de que no la tiene ningún cliente.</p>` : ''}</div>`; }
+          ${esAdminSesionActual() && !r.caida ? `<div class="flex gap-2 mt-3"><select id="bcDevProd" class="flex-1 min-w-0 bg-gray-800 border border-gray-700 rounded-lg px-2 py-1.5 text-xs text-white">${sel}</select><button type="button" onclick="bcDevolverStock('${escaparJsAttr(q)}')" class="px-3 py-1.5 rounded-lg text-[11px] font-black bg-emerald-500 hover:bg-emerald-400 text-black">Devolver al stock</button></div><p class="text-[10px] text-gray-500 mt-1.5">Hazlo solo si estás seguro de que no la tiene ningún cliente.</p>` : ''}</div>`; }
       return h;
+    }
+    async function bcRecuperarLote(loteId) {
+      if (!await confirmarModal('¿Recuperar las cuentas de este lote que NUNCA se vendieron y ya no están en el stock?\n\nLas que sí se vendieron (a un cliente o como reposición) no se tocan.', { textoAceptar: 'Sí, recuperar' })) return;
+      try { const r = await llamarBackend('lote_recuperar', { loteId: loteId }); if (!r || !r.ok) throw new Error((r && r.error) || 'No se pudo.');
+        await confirmarModal(r.recuperadas ? `✅ Volvieron al stock ${r.recuperadas} cuenta(s).${r.vendidas ? `\n${r.vendidas} sí estaban vendidas y no se tocaron.` : ''}${r.caidas ? `\n${r.caidas} se habían caído (suspendidas) y no se devolvieron.` : ''}\nStock ahora: ${r.stock}` : `No había cuentas para recuperar.${r.vendidas ? ` ${r.vendidas} sí estaban vendidas.` : ''}`, { textoAceptar: 'Listo', soloAceptar: true });
+        buscarCuentaAdmin(); } catch (e) { alert(e.message); }
     }
     async function bcDevolverStock(correo) {
       const pid = (document.getElementById('bcDevProd') || {}).value || '';
@@ -15283,7 +15289,7 @@
         const estado = { pendiente: 'En revisión', aprobado: 'Aprobado', rechazado: 'Rechazado' }[l.estado] || l.estado;
         html += tarjeta('Lote de proveedor', 'fa-truck-ramp-box', 'text-purple-400',
           fila('Proveedor', escaparHtml(l.proveedorNombre || l.proveedorEmail || '')) + fila('Producto', escaparHtml(l.productoNombre || '')) + fila('Estado del lote', escaparHtml(estado)) +
-          fila('Enviado', escaparHtml(bcFecha(l.creadoEl))) + (l.aprobadoEl ? fila('Aprobado (subido al stock)', escaparHtml(bcFecha(l.aprobadoEl))) : '') + (l.estado === 'aprobado' ? fila('Costo', escaparHtml(formatoCOP(l.costoUnitario || 0)) + (l.pagado ? ' · pagado' : ' · por pagar')) : ''));
+          fila('Enviado', escaparHtml(bcFecha(l.creadoEl))) + (l.aprobadoEl ? fila('Aprobado (subido al stock)', escaparHtml(bcFecha(l.aprobadoEl))) : '') + (l.estado === 'aprobado' ? fila('Costo', escaparHtml(formatoCOP(l.costoUnitario || 0)) + (l.pagado ? ' · pagado' : ' · por pagar')) : '') + (l.estado === 'aprobado' && esAdminSesionActual() ? `<button type="button" onclick="bcRecuperarLote('${escaparJsAttr(l.id)}')" class="mt-3 px-3 py-1.5 rounded-lg text-[11px] font-black bg-emerald-500 hover:bg-emerald-400 text-black"><i class="fa-solid fa-rotate-left mr-1"></i>Recuperar las que no se vendieron</button>` : ''));
       });
 
       local.alquileres.slice(0, 15).forEach(a => {
@@ -17327,7 +17333,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-26n';
+    const VERSION_PAGINA = '2026-10-26p';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261020_ajuste', fecha: '2026-10-20', titulo: 'Se ve mejor en iPhone 📱', mensaje: 'La tienda ahora **se ajusta siempre a tu pantalla**: ya no se agranda al escribir ni se corre hacia los lados. Si la tienes abierta, **recarga la página** para verla así.' },
       { id: 'act_20261020_app', fecha: '2026-10-20', titulo: 'App oficial de Epic Streaming 📲', mensaje: 'Ya tenemos **app oficial**: en la tienda toca **Descargar** (Android), **Instalar** (PC) o **Agregar** (iPhone). Abre más rápido, a pantalla completa, con tu misma cuenta y **se actualiza sola**.' },
@@ -25908,7 +25914,7 @@ async function pintarPanelWa() {
       return { cuentas: legado, stock: legado.length || stockPublico };
     }
 
-    const VERSION_SERVIDOR_NECESARIA = '2026-10-24l';   // la versión del servidor que necesita esta página
+    const VERSION_SERVIDOR_NECESARIA = '2026-10-24n';   // la versión del servidor que necesita esta página
     async function llamarBackend(accion, datos) {
       window._llamadasEnCurso = (window._llamadasEnCurso || 0) + 1;
       try { return await llamarBackendBase(accion, datos); } finally { window._llamadasEnCurso = Math.max(0, (window._llamadasEnCurso || 1) - 1); }
