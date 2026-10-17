@@ -11664,7 +11664,9 @@
         });
         let enviada = false, fuera = false;
         // 📸 el pantallazo te llega a Telegram como foto con ✅ Aprobar / ❌ Rechazar
-        if (obtenerBackendUrl()) { try { const rr = await llamarBackend('recarga_comprobante', { recargaId: refRec.id, foto: fotoRec }); enviada = !!(rr && rr.ok); fuera = !!(rr && rr.fueraHorario); } catch (e) { enviada = false; } }
+        if (obtenerBackendUrl()) { try { const rr = await llamarBackend('recarga_comprobante', { recargaId: refRec.id, foto: fotoRec });
+          if (rr && rr.yaAcreditada) { cerrarModalRecarga(); try { document.getElementById('recargaFoto').value = ''; } catch (e) { /* nada */ } mostrarToast('✅ Ese pago ya se te acreditó solo' + (rr.hora ? ' a las ' + new Date(rr.hora).toLocaleTimeString('es-CO', { hour: 'numeric', minute: '2-digit' }) : '') + '. No hace falta enviar el pantallazo.'); return; }
+          enviada = !!(rr && rr.ok); fuera = !!(rr && rr.fueraHorario); } catch (e) { enviada = false; } }
         if (!enviada) {
           await enviarNotificacionRecargaTelegram({ cliente: currentUser.email, monto: monto, fecha: new Date().toLocaleString('es-CO') });
           const numeroAdmin = ajustesGeneralesConfig.whatsappNumero || "573043956726";
@@ -11700,6 +11702,14 @@
     }
 
     async function aprobarRecarga(recargaId, userId, monto) {
+      // 🔒 ¿Ya se le acreditó SOLA una recarga igual por Bre-B? Entonces esta manual es el mismo pago (sería doble)
+      try {
+        const rq = await db.collection('recargas').doc(recargaId).get(), fM = Date.parse((rq.exists && rq.data().fecha) || '') || Date.now();
+        const snapD = await db.collection('recargas').where('usuarioId', '==', userId).get();
+        let dup = null; snapD.forEach(x => { const d = x.data() || {}, f = Date.parse(d.fecha || 0);
+          if (!dup && x.id !== recargaId && d.estado === 'aprobado' && /autom/i.test(String(d.metodo || '')) && (Number(d.monto) === Number(monto) || Number(d.pagado) === Number(monto)) && Math.abs(f - fM) <= 6 * 3600000) dup = d; });
+        if (dup && !await confirmarModal(`⚠️ Esta recarga parece DOBLE.\n\nA este cliente ya se le acreditó SOLA una recarga de ${formatoCOP(Number(dup.monto) || 0)} por Bre-B (${new Date(dup.fecha).toLocaleString('es-CO', { day: '2-digit', month: '2-digit', hour: 'numeric', minute: '2-digit' })}).\n\nSi es el mismo pago, NO la apruebes (recházala). ¿Aprobar de todas formas?`)) return;
+      } catch (e) { /* si no se puede revisar, sigue como siempre */ }
       const userRef = db.collection('usuarios').doc(userId);
       let abonoAprobado = 0;
       await db.runTransaction(async (t) => {
@@ -17280,7 +17290,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-26i';
+    const VERSION_PAGINA = '2026-10-26j';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261020_ajuste', fecha: '2026-10-20', titulo: 'Se ve mejor en iPhone 📱', mensaje: 'La tienda ahora **se ajusta siempre a tu pantalla**: ya no se agranda al escribir ni se corre hacia los lados. Si la tienes abierta, **recarga la página** para verla así.' },
       { id: 'act_20261020_app', fecha: '2026-10-20', titulo: 'App oficial de Epic Streaming 📲', mensaje: 'Ya tenemos **app oficial**: en la tienda toca **Descargar** (Android), **Instalar** (PC) o **Agregar** (iPhone). Abre más rápido, a pantalla completa, con tu misma cuenta y **se actualiza sola**.' },
@@ -25861,7 +25871,7 @@ async function pintarPanelWa() {
       return { cuentas: legado, stock: legado.length || stockPublico };
     }
 
-    const VERSION_SERVIDOR_NECESARIA = '2026-10-24i';   // la versión del servidor que necesita esta página
+    const VERSION_SERVIDOR_NECESARIA = '2026-10-24j';   // la versión del servidor que necesita esta página
     async function llamarBackend(accion, datos) {
       window._llamadasEnCurso = (window._llamadasEnCurso || 0) + 1;
       try { return await llamarBackendBase(accion, datos); } finally { window._llamadasEnCurso = Math.max(0, (window._llamadasEnCurso || 1) - 1); }
