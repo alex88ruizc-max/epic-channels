@@ -15195,6 +15195,8 @@
         const completo = q.indexOf('@') === -1 || /@.+\..+/.test(q);
         const compras = completo ? await bcBuscarCompras(q) : [];
         cont.innerHTML = bcHtmlResultado(q, local, compras, completo);
+        // 🛡 Lo que dice el registro de ventas del servidor (es lo que decide si se puede volver a vender)
+        if (completo && q.indexOf('@') > 0 && obtenerBackendUrl()) { try { const rg = await llamarBackend('cuenta_registro', { correo: q }); if (rg && rg.ok) cont.insertAdjacentHTML('beforeend', bcHtmlRegistro(q, rg)); } catch (e) { /* opcional */ } }
       } catch (err) {
         cont.innerHTML = `<p class="px-2 text-xs text-red-300">No se pudo buscar: ${escaparHtml(err.message)}</p>`;
       } finally {
@@ -15204,6 +15206,26 @@
       return false;
     }
 
+    function bcHtmlRegistro(q, rg) {
+      const f = x => { try { return new Date(x).toLocaleString('es-CO', { day: '2-digit', month: '2-digit', year: 'numeric', hour: 'numeric', minute: '2-digit' }); } catch (e) { return x || ''; } };
+      let h = '';
+      if (rg.vendida) { const v = rg.vendida;
+        h += `<div class="p-4 bg-gray-900 border border-amber-500/30 rounded-2xl"><p class="text-[11px] font-black uppercase tracking-wide text-amber-400 mb-2"><i class="fa-solid fa-shield-halved mr-1.5"></i>Registro de venta</p>
+          <p class="text-xs text-gray-300">${v.ticketId ? 'Entregada como <b>reposición de garantía</b>' : (v.compraId ? (v.compraExiste ? 'Vendida en una compra' : 'Vendida en una compra que <b class="text-red-300">ya no existe</b> (anulada o borrada)') : 'Vendida en un combo')}${v.fecha ? ' · ' + escaparHtml(f(v.fecha)) : ''}${v.cliente ? ' · a <b>' + escaparHtml(v.cliente) + '</b>' : ''}</p></div>`; }
+      else h += `<div class="p-4 bg-gray-900 border border-gray-800 rounded-2xl"><p class="text-[11px] font-black uppercase tracking-wide text-emerald-400"><i class="fa-solid fa-shield-halved mr-1.5"></i>Registro de venta: nunca se ha vendido</p></div>`;
+      if (rg.retirada) { const r = rg.retirada, prods = (catalogoUnificado || []).filter(p => !p.esCombo);
+        const sel = prods.map(p => `<option value="${escaparHtml(p.docId)}" ${String(p.nombre || '') === r.producto ? 'selected' : ''}>${escaparHtml(p.nombre || p.docId)}</option>`).join('');
+        h += `<div class="p-4 bg-gray-900 border border-red-500/30 rounded-2xl"><p class="text-[11px] font-black uppercase tracking-wide text-red-300 mb-2"><i class="fa-solid fa-box-archive mr-1.5"></i>Retirada del stock</p>
+          <p class="text-xs text-gray-300">De <b>${escaparHtml(r.producto)}</b> · ${escaparHtml(f(r.retiradaEl))}<br>Motivo: ${escaparHtml(r.motivo)}</p>
+          ${esAdminSesionActual() ? `<div class="flex gap-2 mt-3"><select id="bcDevProd" class="flex-1 min-w-0 bg-gray-800 border border-gray-700 rounded-lg px-2 py-1.5 text-xs text-white">${sel}</select><button type="button" onclick="bcDevolverStock('${escaparJsAttr(q)}')" class="px-3 py-1.5 rounded-lg text-[11px] font-black bg-emerald-500 hover:bg-emerald-400 text-black">Devolver al stock</button></div><p class="text-[10px] text-gray-500 mt-1.5">Hazlo solo si estás seguro de que no la tiene ningún cliente.</p>` : ''}</div>`; }
+      return h;
+    }
+    async function bcDevolverStock(correo) {
+      const pid = (document.getElementById('bcDevProd') || {}).value || '';
+      if (!pid || !await confirmarModal('¿Devolver esta cuenta al stock? Se borra su registro de venta y se podrá vender otra vez.\n\nHazlo solo si estás seguro de que no la tiene ningún cliente.', { textoAceptar: 'Sí, devolver' })) return;
+      try { const r = await llamarBackend('cuenta_devolver_stock', { correo: correo, productoId: pid }); if (!r || !r.ok) throw new Error((r && r.error) || 'No se pudo.');
+        mostrarToast('✅ Devuelta al stock (ahora hay ' + r.stock + ')'); buscarCuentaAdmin(); } catch (e) { alert(e.message); }
+    }
     function infoCuentaVentaPag(c) {
       const o = { e: String(parseCredencialObj(c).email || '').trim().toLowerCase(), s: String(c.subidoEl || '') };
       if (c.aportadoNombre || c.aportadoPor) { o.a = String(c.aportadoNombre || '').slice(0, 60); o.u = String(c.aportadoPor || ''); }
@@ -17305,7 +17327,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-26m';
+    const VERSION_PAGINA = '2026-10-26n';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261020_ajuste', fecha: '2026-10-20', titulo: 'Se ve mejor en iPhone 📱', mensaje: 'La tienda ahora **se ajusta siempre a tu pantalla**: ya no se agranda al escribir ni se corre hacia los lados. Si la tienes abierta, **recarga la página** para verla así.' },
       { id: 'act_20261020_app', fecha: '2026-10-20', titulo: 'App oficial de Epic Streaming 📲', mensaje: 'Ya tenemos **app oficial**: en la tienda toca **Descargar** (Android), **Instalar** (PC) o **Agregar** (iPhone). Abre más rápido, a pantalla completa, con tu misma cuenta y **se actualiza sola**.' },
@@ -25886,7 +25908,7 @@ async function pintarPanelWa() {
       return { cuentas: legado, stock: legado.length || stockPublico };
     }
 
-    const VERSION_SERVIDOR_NECESARIA = '2026-10-24k';   // la versión del servidor que necesita esta página
+    const VERSION_SERVIDOR_NECESARIA = '2026-10-24l';   // la versión del servidor que necesita esta página
     async function llamarBackend(accion, datos) {
       window._llamadasEnCurso = (window._llamadasEnCurso || 0) + 1;
       try { return await llamarBackendBase(accion, datos); } finally { window._llamadasEnCurso = Math.max(0, (window._llamadasEnCurso || 1) - 1); }
