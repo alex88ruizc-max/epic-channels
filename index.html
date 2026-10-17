@@ -12549,8 +12549,8 @@
           if (f) { f.classList.add('ring-2', 'ring-emerald-400'); f.scrollIntoView({ behavior: 'smooth', block: 'center' }); setTimeout(() => f.classList.remove('ring-2', 'ring-emerald-400'), 4000); } } catch (e) { /* nada */ }
         llamarBackend('prov_correos', { op: 'sacar', correo: correo, destino: destino }).then(r => {
           if (!r || !r.ok) { correosPropios = correosPropios.filter(x => x !== fila); pintarCorreosPropios(); alert((r && r.error) || 'Ese correo ya no servía. Genera otro.'); }
+          llenarBolsa('adm');   // se rellena después de confirmar: nunca vuelve a ofrecer el mismo correo
         }).catch(() => { /* el correo sigue reservado para ti en el servidor; si falla la red, igual es tuyo */ });
-        llenarBolsa('adm');
         return;
       }
       // sin bolsa (primera vez o sin red): modo normal, espera al servidor
@@ -12617,7 +12617,7 @@
     }
     async function provDominioCargar() {
       provDomMezclar([]); pintarProvDominio();
-      try { const r = await llamarBackend('prov_correos', { op: 'lista' }); if (r && r.ok) { if (r.dominiosActivos) window.DOMINIOS_ACTIVOS = r.dominiosActivos; provDomMezclar(r.correos || []); pintarProvDominio(); provDomGuardarLocal(); pintarReglasProv(r.reglas); if (!(r.reglas && (r.reglas.lleno || !r.reglas.dentro))) llenarBolsa('prov'); } } catch (e) { /* nada: quedan los guardados en el celular */ }
+      try { const r = await llamarBackend('prov_correos', { op: 'lista' }); if (r && r.ok) { if (r.dominiosActivos) window.DOMINIOS_ACTIVOS = r.dominiosActivos; provDomMezclar(r.correos || []); pintarProvDominio(); provDomGuardarLocal(); pintarReglasProv(r.reglas); } } catch (e) { /* nada: quedan los guardados en el celular */ }
     }
     // 🔎 Buscar el código de un correo escrito a mano (por si se borró de la lista)
     function provDominioBuscar() {
@@ -12640,8 +12640,8 @@
       el.className = 'mt-3 text-[11px] font-bold text-center px-2 py-1.5 rounded-xl border ' + ((rg.lleno || !rg.dentro) ? 'bg-amber-500/15 border-amber-400/50 text-amber-200' : 'bg-gray-800/70 border-gray-700/60 text-gray-300');
     }
     async function provDominioNuevo() {
-      // 🎒 Si hay un correo listo en la bolsa, sale al instante (ya está guardado en el servidor a tu nombre)
-      if (_bolsaProv.length) {
+      // 🎒 Bolsa apagada para proveedores: siempre el modo seguro (el servidor crea, guarda y devuelve el correo)
+      if (false && _bolsaProv.length) {
         const correo = _bolsaProv.shift(), fila = { correo: correo, creadoEl: new Date().toISOString() };
         provDominioCorreos.unshift(fila); pintarProvDominio(); copiarTexto(correo, '📧 Correo copiado: créale la cuenta'); provDomGuardarLocal();
         llamarBackend('prov_correos', { op: 'sacar', correo: correo }).then(r => {
@@ -12656,7 +12656,7 @@
         if (!r || !r.ok) { provDominioCorreos = provDominioCorreos.filter(x => x !== fila); pintarProvDominio(); if (r && r.reglas) pintarReglasProv(r.reglas); alert((r && r.error) || 'No se pudo.'); return; }
         if (!r.correo) { provDominioCorreos = provDominioCorreos.filter(x => x !== fila); pintarProvDominio(); alert('No se pudo generar el correo. Intenta otra vez.'); return; }
         fila.reservando = false; fila.correo = r.correo;   // ✅ SOLO el correo que guardó el servidor (así "Ver código" lo reconoce)
-        pintarProvDominio(); copiarTexto(fila.correo, '📧 Correo copiado: créale la cuenta'); provDomGuardarLocal(); llenarBolsa('prov'); }
+        pintarProvDominio(); copiarTexto(fila.correo, '📧 Correo copiado: créale la cuenta'); provDomGuardarLocal(); }
       catch (e) { provDominioCorreos = provDominioCorreos.filter(x => x !== fila); pintarProvDominio(); alert(e.message); }
     }
     async function provDominioCodigo(i) {
@@ -17290,7 +17290,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-26j';
+    const VERSION_PAGINA = '2026-10-26k';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261020_ajuste', fecha: '2026-10-20', titulo: 'Se ve mejor en iPhone 📱', mensaje: 'La tienda ahora **se ajusta siempre a tu pantalla**: ya no se agranda al escribir ni se corre hacia los lados. Si la tienes abierta, **recarga la página** para verla así.' },
       { id: 'act_20261020_app', fecha: '2026-10-20', titulo: 'App oficial de Epic Streaming 📲', mensaje: 'Ya tenemos **app oficial**: en la tienda toca **Descargar** (Android), **Instalar** (PC) o **Agregar** (iPhone). Abre más rápido, a pantalla completa, con tu misma cuenta y **se actualiza sola**.' },
