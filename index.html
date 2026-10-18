@@ -993,6 +993,8 @@
             <input id="buscadorMisCuentas" type="search" oninput="buscarMiCuenta()" placeholder="Busca una cuenta: pega el correo" autocomplete="off" class="w-full pl-9 pr-3 py-2.5 rounded-2xl bg-gray-900 border border-gray-800 focus:border-emerald-500 text-sm text-white placeholder-gray-500 focus:outline-none"></div>
           <div id="resultadoMiCuenta" class="mt-2 space-y-2"></div>
         </div>
+        <div id="misProductoBarra" class="hidden mb-3"></div>
+        <div id="misProductosGrid" class="hidden mb-3"></div>
         <details id="radarStock" class="hidden mb-3 rounded-2xl bg-gray-900 border border-gray-800 overflow-hidden">
           <summary class="list-none cursor-pointer flex items-center gap-2 px-3 py-2.5 text-sm select-none"><i class="fa-solid fa-satellite-dish text-sky-300"></i><span class="flex-1 font-bold text-white">Radar de stock</span><span class="flex items-center gap-1 text-[11px] text-gray-400"><span class="punto-vivo"></span><span id="radarStockResumen"></span></span><i class="fa-solid fa-chevron-down text-gray-500 text-xs"></i></summary>
           <div id="radarStockLista"></div>
@@ -1013,8 +1015,6 @@
         </div>
         <div id="misPreordenesCaja" class="hidden mb-3"></div>
         <div id="dealerNegocioCaja" class="hidden mb-3 dealer-banner p-3.5"></div>
-        <div id="misProductosGrid" class="hidden mb-3"></div>
-        <div id="misProductoBarra" class="hidden mb-3"></div>
         <div id="misComprasBloque">
         <h4 class="text-xs font-black text-white mb-2 mt-1 flex items-center gap-2"><i class="fa-solid fa-bag-shopping text-emerald-400"></i> Mis compras</h4>
         <div class="relative mb-3">
@@ -17451,7 +17451,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-27k';
+    const VERSION_PAGINA = '2026-10-27l';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261020_ajuste', fecha: '2026-10-20', titulo: 'Se ve mejor en iPhone 📱', mensaje: 'La tienda ahora **se ajusta siempre a tu pantalla**: ya no se agranda al escribir ni se corre hacia los lados. Si la tienes abierta, **recarga la página** para verla así.' },
       { id: 'act_20261020_app', fecha: '2026-10-20', titulo: 'App oficial de Epic Streaming 📲', mensaje: 'Ya tenemos **app oficial**: en la tienda toca **Descargar** (Android), **Instalar** (PC) o **Agregar** (iPhone). Abre más rápido, a pantalla completa, con tu misma cuenta y **se actualiza sola**.' },
@@ -25667,11 +25667,13 @@ async function pintarPanelWa() {
         if (nNf) h.unshift(tile('__netflix', 'Netflix', nNf, ''));
         grid.innerHTML = `<p class="text-[10px] font-black text-gray-400 uppercase tracking-wider mb-2 px-1">Mis productos</p><div class="grid grid-cols-2 sm:grid-cols-3 gap-2">${h.join('')}</div>`;
         grid.classList.remove('hidden'); barra.classList.add('hidden'); bloque.classList.add('hidden'); if (nf) nf.style.display = 'none';
+        ocultarExtrasMisCuentas(false);
         return;
       }
       grid.classList.add('hidden');
+      ocultarExtrasMisCuentas(true);
       const esNf = misProductoActivo === '__netflix', nom = esNf ? 'Netflix' : misProductoActivo, cant = esNf ? nNf : ((prods[misProductoActivo] || {}).cuentas || 0);
-      barra.innerHTML = `<div class="flex items-center gap-2"><button type="button" onclick="abrirProductoMisCuentas('')" class="px-3 py-1.5 rounded-xl bg-gray-800 border border-gray-700 text-gray-100 text-[11px] font-black"><i class="fa-solid fa-arrow-left mr-1"></i>Mis productos</button><p class="min-w-0 truncate text-sm font-black text-white">${escaparHtml(nom)} <span class="text-gray-400 font-bold">· ${cant} ${cant === 1 ? 'cuenta' : 'cuentas'}</span></p></div>`;
+      barra.innerHTML = `<div class="flex items-center gap-2"><button type="button" onclick="volverMisProductos()" class="shrink-0 px-3.5 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black text-[12px] font-black"><i class="fa-solid fa-arrow-left mr-1"></i>Atrás</button><p class="min-w-0 truncate text-sm font-black text-white">${escaparHtml(nom)} <span class="text-gray-400 font-bold">· ${cant} ${cant === 1 ? 'cuenta' : 'cuentas'}</span></p></div>`;
       barra.classList.remove('hidden');
       if (esNf) { bloque.classList.add('hidden'); if (nf) nf.style.display = ''; return; }
       if (nf) nf.style.display = 'none';
@@ -25680,7 +25682,15 @@ async function pintarPanelWa() {
       Array.from(lista.children).forEach(el => { const p = el.getAttribute && el.getAttribute('data-prod'); const ver = !p || p === misProductoActivo; el.classList.toggle('!hidden', !ver);
         if (ver && el.tagName === 'DETAILS') { el.open = primero; primero = false; } });
     }
-    function abrirProductoMisCuentas(id) { misProductoActivo = id || ''; pintarProductosMisCuentas(); try { (document.getElementById('perfilSecCuentas') || document.body).scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch (e) { /* nada */ } }
+    function volverMisProductos() { try { if (history.state && history.state.misProd) { history.back(); return; } } catch (e) { /* nada */ } abrirProductoMisCuentas('', true); }
+    function ocultarExtrasMisCuentas(si) { ['radarStock', 'misReportesCaja', 'dealerNegocioCaja', 'btnCreaTiendaPerfil'].forEach(id => { const e = document.getElementById(id); if (e) e.style.display = si ? 'none' : ''; }); }
+    function abrirProductoMisCuentas(id, desdeAtras) {
+      const antes = misProductoActivo; misProductoActivo = id || ''; pintarProductosMisCuentas();
+      // ← el botón "atrás" del celular también vuelve a Mis productos
+      try { if (misProductoActivo && !antes && !desdeAtras) history.pushState(Object.assign({}, history.state || {}, { misProd: misProductoActivo }), '', location.href); } catch (e) { /* nada */ }
+      try { (document.getElementById('perfilSecCuentas') || document.body).scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch (e) { /* nada */ }
+    }
+    window.addEventListener('popstate', () => { try { if (misProductoActivo) abrirProductoMisCuentas('', true); } catch (e) { /* nada */ } });
     // 🔎 Buscador de cuentas del cliente: pega el correo y ve esa cuenta con sus detalles
     function buscarMiCuenta() {
       const q = String((document.getElementById('buscadorMisCuentas') || {}).value || '').trim().toLowerCase(), box = document.getElementById('resultadoMiCuenta'); if (!box) return;
