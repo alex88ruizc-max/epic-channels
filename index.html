@@ -3915,11 +3915,8 @@
           <div id="recargaAutoPedido" class="hidden">
           <div id="recAutoDosColumnas" class="lg:grid-cols-[minmax(0,1fr)_220px] lg:gap-5 lg:items-center">
           <div class="min-w-0">
-            <p class="text-xs text-gray-400 text-center">Envía exactamente</p>
-            <div class="text-center my-1"><span id="recAutoMonto" class="text-3xl font-black text-white">$0</span></div>
-            <div id="recAutoExtra" class="text-center text-[11px] text-emerald-200/90 -mt-0.5 mb-2"></div>
-            <button type="button" onclick="recargaAutoCopiarMonto()" class="mx-auto block px-3 py-1 rounded-lg bg-gray-800 hover:bg-gray-700 border border-gray-700 text-[11px] font-bold text-gray-200"><i class="fa-solid fa-copy mr-1"></i> Copiar monto</button>
-            <div class="mt-3 p-3 bg-gray-800/70 rounded-xl flex items-center justify-between gap-2">
+            <p class="text-[11px] font-black text-emerald-300 mb-1">1 · Copia la llave</p>
+            <div class="p-3 bg-gray-800/70 rounded-xl flex items-center justify-between gap-2">
               <div class="min-w-0">
                 <span id="recAutoNombre" class="block text-[10px] text-gray-400 font-bold uppercase tracking-wider">Llave Bre-B</span>
                 <span id="recAutoLlave" class="block font-mono font-black text-white text-xl tracking-wide leading-tight my-0.5 select-all break-all">—</span>
@@ -3930,7 +3927,13 @@
                 <button type="button" id="recAutoQr" onclick="recargaAutoVerQr()" class="hidden lg:!hidden px-2.5 py-1 rounded-lg bg-gray-700 hover:bg-gray-600 text-white text-[11px] font-bold">Ver QR</button>
               </div>
             </div>
+            <p class="text-[11px] font-black text-emerald-300 mt-4 mb-1">2 · Copia el monto</p>
+            <p class="text-xs text-gray-400 text-center">Envía exactamente</p>
+            <div class="text-center my-1"><span id="recAutoMonto" class="text-3xl font-black text-white">$0</span></div>
+            <div id="recAutoExtra" class="text-center text-[11px] text-emerald-200/90 -mt-0.5 mb-2"></div>
+            <button type="button" onclick="recargaAutoCopiarMonto()" class="mx-auto block px-3 py-1 rounded-lg bg-gray-800 hover:bg-gray-700 border border-gray-700 text-[11px] font-bold text-gray-200"><i class="fa-solid fa-copy mr-1"></i> Copiar monto</button>
             <p id="recAutoReloj" class="text-center text-sm font-bold text-amber-300 mt-3"></p>
+            <div id="recAutoEnVivo" class="mt-3"></div>
             <p class="text-[10px] text-amber-200 bg-amber-500/10 border border-amber-500/30 rounded-lg p-2 mt-2 leading-snug"><i class="fa-solid fa-triangle-exclamation mr-1"></i> <span id="recAutoAvisoExacto">Envía <b>exactamente</b> ese valor. Si envías otro (por ejemplo, redondeado), no se acredita solo.</span></p>
             <div class="mt-3 space-y-2">
               <p class="text-center text-[13px] font-black text-white">👇 Cuando hayas enviado el pago, toca aquí</p>
@@ -11925,10 +11928,41 @@
         if (ped) ped.classList.add('hidden');
         const caja = document.getElementById('modalRecargaCaja'); if (caja) caja.classList.remove('lg:max-w-[44rem]');
         if (relojRecargaTimer) { clearInterval(relojRecargaTimer); relojRecargaTimer = null; }
+        try { pintarAvisoRecargaEnCurso(); pintarRecargaEnVivo(); } catch (e) { /* nada */ }
       }
     }
 
+    // 🔴 Estado EN VIVO del pedido (sin gastar cupo de Google: solo escucha el pedido en Firestore)
+    function pintarRecargaEnVivo() {
+      const box = document.getElementById('recAutoEnVivo'), p = pedidoRecargaActivo; if (!box) return;
+      if (!p || pedidoEsBinance(p)) { box.innerHTML = ''; return; }
+      let desde = 0; try { desde = parseInt(sessionStorage.getItem('recBusca_' + p.id) || '0', 10) || 0; } catch (e) { desde = 0; }
+      const mmss = ms => { const t = Math.max(0, Math.floor(ms / 1000)); return Math.floor(t / 60) + ':' + String(t % 60).padStart(2, '0'); };
+      const paso = (ic, txt, cls) => `<div class="flex items-center gap-2 text-[12px] ${cls}"><span class="w-5 text-center">${ic}</span><span>${txt}</span></div>`;
+      let h = paso('✅', 'Pedido creado · <b>' + escaparHtml(formatoCOP(Math.max(Number(p.monto) || 0, Number(p.base) || 0))) + '</b>', 'text-emerald-300');
+      if (!desde) h += paso('⏳', 'Esperando tu transferencia · cuando pagues toca <b>Ya pagué</b>', 'text-gray-300');
+      else { const t = Date.now() - desde;
+        h += paso('<i class="fa-solid fa-magnifying-glass fa-beat-fade"></i>', 'Buscando tu pago en el banco · <b>' + mmss(t) + '</b>', 'text-sky-300');
+        h += `<p class="text-[11px] text-gray-500 ml-7">Revisamos el banco cada minuto. Se acredita solo: puedes cerrar esta ventana.</p>`;
+        if (t > 3 * 60000) h += `<p class="mt-2 p-2 rounded-lg bg-gray-800 border border-gray-700 text-[11px] text-gray-300">A veces el banco tarda en avisar. Seguimos revisando solos; no pagues otra vez.</p>`;
+        if (t > 10 * 60000) h += `<button type="button" onclick="abrirReportePago()" class="mt-2 w-full px-3 py-2 rounded-xl text-[12px] font-black bg-amber-500 hover:bg-amber-400 text-black">📎 Ya pagué y no aparece · subir comprobante</button>`; }
+      if (p.pagoDistinto && Number(p.pagoDistinto.monto) > 0) h += `<p class="mt-2 p-2 rounded-lg bg-amber-500/10 border border-amber-400/50 text-[12px] text-amber-200">💬 Recibimos un pago tuyo de <b>${escaparHtml(formatoCOP(Number(p.pagoDistinto.monto)))}</b>, distinto a este pedido. Ya lo estamos revisando: no pagues otra vez.</p>`;
+      box.innerHTML = `<div class="p-3 rounded-xl bg-gray-900 border border-gray-800 space-y-1.5">${h}</div>`;
+    }
+    // 🏷 Aviso en la tienda mientras hay una recarga en curso (aunque haya cerrado la ventana)
+    function pintarAvisoRecargaEnCurso() {
+      try { const p = pedidoRecargaActivo, modal = document.getElementById('modalRecarga'), abierto = modal && !modal.classList.contains('hidden');
+        let b = document.getElementById('avisoRecargaEnCurso');
+        if (!p || abierto || modoPruebaCliente) { if (b) b.remove(); return; }
+        if (!b) { b = document.createElement('button'); b.id = 'avisoRecargaEnCurso'; b.type = 'button'; b.onclick = () => abrirModalRecarga();
+          b.className = 'fixed left-1/2 -translate-x-1/2 z-[230] w-[calc(100%-1.5rem)] max-w-md px-4 py-2.5 rounded-2xl bg-sky-500/15 border border-sky-400/50 text-sky-100 text-[12px] font-bold backdrop-blur flex items-center gap-2';
+          b.style.top = 'calc(env(safe-area-inset-top, 0px) + 5.25rem)'; document.body.appendChild(b); }
+        const busca = (() => { try { return !!sessionStorage.getItem('recBusca_' + p.id); } catch (e) { return false; } })();
+        b.innerHTML = `<i class="fa-solid ${busca ? 'fa-magnifying-glass fa-beat-fade' : 'fa-hourglass-half'}"></i><span class="flex-1 text-left">${busca ? 'Buscando tu pago' : 'Tienes una recarga pendiente'} · ${escaparHtml(formatoCOP(Math.max(Number(p.monto) || 0, Number(p.base) || 0)))}</span><span class="underline">Ver</span>`;
+      } catch (e) { /* nada */ }
+    }
     function actualizarRelojRecarga() {
+      try { pintarRecargaEnVivo(); pintarAvisoRecargaEnCurso(); } catch (e) { /* nada */ }
       const el = document.getElementById('recAutoReloj');
       if (!el || !pedidoRecargaActivo) return;
       const resta = Date.parse(pedidoRecargaActivo.venceEl) - Date.now();
@@ -12052,11 +12086,12 @@
       const btn = document.getElementById('btnRecargaAutoYaPague');
       if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Comprobando...'; }
       recargaAutoEstadoTxt('Comprobando tu pago...');
+      try { const kB = 'recBusca_' + pedidoRecargaActivo.id; if (!sessionStorage.getItem(kB)) sessionStorage.setItem(kB, String(Date.now())); } catch (e) { /* nada */ }
       try {
         const r = await llamarBackend('recarga_verificar', { id: pedidoRecargaActivo.id });
         if (!r.ok) { recargaAutoEstadoTxt(r.error || 'No se pudo revisar.'); return; }
         if (r.estado === 'acreditado') { recargaAutoAcreditada(Object.assign({}, pedidoRecargaActivo, { monto: r.acreditado || pedidoRecargaActivo.monto })); return; }
-        if (r.estado === 'pendiente') recargaAutoEstadoTxt('Todavía no vemos tu pago. Puede tardar 1 o 2 minutos desde que pagas. Deja esta ventana abierta: se acredita sola.');
+        if (r.estado === 'pendiente') recargaAutoEstadoTxt('');
         else recargaAutoEstadoTxt('Este pedido ya no está activo. Genera uno nuevo.');
       } catch (e) {
         recargaAutoEstadoTxt(e.message);
@@ -12092,6 +12127,18 @@
       const abono = Number(p.abonoCredito) || 0;
       const acred = Math.max(Number(p.monto) || 0, Number(p.base) || 0);   // con descuento se acredita el valor redondo
       mostrarToast(abono > 0 ? `¡Recarga acreditada! ${formatoCOP(abono)} pagaron tu crédito y ${formatoCOP(acred - abono)} van a tu saldo.` : `¡Recarga acreditada! +${formatoCOP(acred)} COP`);
+      // 🎉 Celebración: vibra, muestra el saldo nuevo y lleva a comprar; si tenía regalo de recarga, también se lo dice
+      try { if (navigator.vibrate) navigator.vibrate([60, 40, 120]); } catch (e) { /* nada */ }
+      try { sessionStorage.removeItem('recBusca_' + p.id); } catch (e) { /* nada */ }
+      try { pintarAvisoRecargaEnCurso(); } catch (e) { /* nada */ }
+      setTimeout(async () => {
+        try { const g = window.miRegaloRecarga, regalo = g && g.usado === true && g.usadoEl && (Date.now() - Date.parse(g.usadoEl) < 5 * 60000) ? Number(g.extra) || 0 : 0;
+          const saldoTxt = document.getElementById('txtSaldoHeader') ? document.getElementById('txtSaldoHeader').textContent.trim() : '';
+          if (compraTrasRecarga) return;   // ya hay una compra esperando: sigue su propio flujo
+          const ir = await confirmarModal(`✅ ¡Recarga acreditada!\n\n+${formatoCOP(acred - abono)}${regalo > 0 ? `\n🎁 +${formatoCOP(regalo)} de regalo` : ''}${saldoTxt ? '\nTu saldo: ' + saldoTxt : ''}`, { textoAceptar: 'Ir a comprar', textoCancelar: 'Cerrar' });
+          if (ir) { try { cambiarVista('tienda'); window.scrollTo({ top: 0, behavior: 'smooth' }); } catch (e) { /* nada */ } }
+        } catch (e) { /* nada */ }
+      }, 1800);
     }
 
     function recargaAutoCopiarMonto() { const p = pedidoRecargaActivo; if (!p) return; if (pedidoEsBinance(p)) copiarTexto(String(p.usdt), 'Monto copiado: ' + p.usdt + ' USDT'); else copiarTexto(String(p.monto), 'Monto copiado: ' + formatoCOP(p.monto)); }
@@ -17385,7 +17432,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-26w';
+    const VERSION_PAGINA = '2026-10-26y';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261020_ajuste', fecha: '2026-10-20', titulo: 'Se ve mejor en iPhone 📱', mensaje: 'La tienda ahora **se ajusta siempre a tu pantalla**: ya no se agranda al escribir ni se corre hacia los lados. Si la tienes abierta, **recarga la página** para verla así.' },
       { id: 'act_20261020_app', fecha: '2026-10-20', titulo: 'App oficial de Epic Streaming 📲', mensaje: 'Ya tenemos **app oficial**: en la tienda toca **Descargar** (Android), **Instalar** (PC) o **Agregar** (iPhone). Abre más rápido, a pantalla completa, con tu misma cuenta y **se actualiza sola**.' },
@@ -25978,6 +26025,9 @@ async function pintarPanelWa() {
       try {
         if (compraTrasRecarga) { compraTrasRecarga = null; const avC = document.getElementById('avisoCompraTrasRecarga'); if (avC) { avC.classList.add('hidden'); avC.style.display = ''; } }   // cerrar = no se compra nada
         const p = pedidoRecargaActivo; if (!p || p.estado === 'acreditado') return;
+        // 🔎 Si ya tocó "Ya pagué", cerrar NO cancela: seguimos buscando su pago y se lo mostramos en la tienda
+        let buscando = false; try { buscando = !!sessionStorage.getItem('recBusca_' + p.id); } catch (e) { buscando = false; }
+        if (buscando && !p.simulado) { try { pintarAvisoRecargaEnCurso(); } catch (e) { /* nada */ } mostrarToast('🔎 Seguimos buscando tu pago. Te avisamos aquí apenas entre.'); return; }
         pedidoRecargaActivo = null; recargaAutoEstadoTxt('');
         if (relojRecargaTimer) { clearInterval(relojRecargaTimer); relojRecargaTimer = null; }
         if (p.simulado) { if (timerRecargaSim) { clearTimeout(timerRecargaSim); timerRecargaSim = null; } }
@@ -26026,7 +26076,7 @@ async function pintarPanelWa() {
       return { cuentas: legado, stock: legado.length || stockPublico };
     }
 
-    const VERSION_SERVIDOR_NECESARIA = '2026-10-24r';   // la versión del servidor que necesita esta página
+    const VERSION_SERVIDOR_NECESARIA = '2026-10-24s';   // la versión del servidor que necesita esta página
     async function llamarBackend(accion, datos) {
       window._llamadasEnCurso = (window._llamadasEnCurso || 0) + 1;
       try { return await llamarBackendBase(accion, datos); } finally { window._llamadasEnCurso = Math.max(0, (window._llamadasEnCurso || 1) - 1); }
