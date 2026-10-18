@@ -2360,7 +2360,7 @@
           <p class="text-xs text-gray-400">Aprueba lo que suben, ponles el costo por cuenta y márcalos como saldados cuando les pagues (el pago lo haces por aparte).</p>
           <p class="text-[11px] text-gray-500 mt-2">Para crear un proveedor: <b class="text-gray-300">Usuarios Registrados → Crear usuario</b> con el rol "Proveedor", y luego, con su botón <b class="text-gray-300">Editar</b>, marca qué productos puede subir.</p>
         </div>
-        <div id="misDominiosCaja" class="solo-admin p-4 bg-gray-900 border border-violet-500/40 rounded-2xl"></div>
+        <div id="misDominiosCaja" class="solo-admin p-4 bg-gray-900 border border-violet-500/40 rounded-2xl"><p class="text-sm font-black text-white">🌐 Mis dominios de correo</p><p class="text-[11px] text-gray-400 mt-1"><i class="fa-solid fa-spinner fa-spin mr-1"></i>Cargando tus dominios…</p></div>
         <div id="provCuposCaja" class="solo-admin p-4 bg-gray-900 border border-sky-500/40 rounded-2xl"></div>
         <div id="provAutoCaja" class="solo-admin p-4 bg-gray-900 border border-emerald-500/40 rounded-2xl"></div>
         <div id="codReporteCaja" class="solo-admin p-4 bg-gray-900 border border-amber-500/40 rounded-2xl"></div>
@@ -9012,6 +9012,7 @@
     function irATabAdmin(tab) {
       const habiaRuta = rutaActual;
       cambiarTabAdmin(tab);
+      try { if (tab === 'proveedores') { if (!misDominiosCfg) cargarMisDominios(); else pintarMisDominios(); } } catch (e) { /* nada */ }
       try { const gS = document.getElementById('gridSkinsTema'), gC = document.getElementById('gridColoresTema'); if ((gS && !gS.dataset.listo) || (gC && !gC.dataset.listo)) renderizarSelectorTemas(); } catch (e) { console.warn(e); }
       if (!panelEsMovil()) return;
       try {
@@ -12579,30 +12580,36 @@
     setInterval(() => { try { if (listaCorreosPropiosVisible() && esAdminSesionActual()) cargarCorreosPropios(); } catch (e) { /* nada */ } }, 45000);
     document.addEventListener('visibilitychange', () => { try { if (listaCorreosPropiosVisible() && esAdminSesionActual()) cargarCorreosPropios(); } catch (e) { /* nada */ } });
     // 🎒 Bolsa de correos listos (3): el servidor los crea y guarda antes; al tocar Generar / +Nuevo salen al instante
-    var _bolsaAdm = [], _bolsaProv = [], _bolsaCargando = { adm: false, prov: false };
+    var _bolsaAdm = [], _bolsaProv = [], _bolsaCargando = { adm: false, prov: false }, _bolsaUsados = new Set();   // _bolsaUsados: nunca se ofrece dos veces el mismo correo
     async function llenarBolsa(tipo) {
       const k = tipo === 'adm' ? 'adm' : 'prov'; if (_bolsaCargando[k]) return; const arr = k === 'adm' ? _bolsaAdm : _bolsaProv; if (arr.length >= 3) return;
       _bolsaCargando[k] = true;
-      try { const r = await llamarBackend('prov_correos', { op: 'bolsa', n: 3 });
-        if (r && r.ok && Array.isArray(r.correos)) { r.correos.forEach(c => { if (c && arr.indexOf(c) === -1) arr.push(c); }); }
+      try { const r = await llamarBackend('prov_correos', { op: 'bolsa', n: 5 });
+        if (r && r.ok && Array.isArray(r.correos)) { r.correos.forEach(c => { if (c && arr.indexOf(c) === -1 && !_bolsaUsados.has(c) && !correosPropios.some(x => x.correo === c)) arr.push(c); }); }
         else if (r && r.reglas) { try { pintarReglasProv(r.reglas); } catch (e) { /* nada */ } }
       } catch (e) { /* sin bolsa: el botón cae al modo normal (espera al servidor) */ }
       finally { _bolsaCargando[k] = false; }
     }
 
-        async function generarCorreoPropio() {
+        function copiarCorreoGenerado(correo) {
+      const ok = () => mostrarToast('📧 Copiado: ' + correo + ' · clave: epic2828');
+      const pedirToque = () => mostrarToast('👆 Toca el botón 📋 de ' + correo + ' para copiarlo');   // el celular no deja copiar sin un toque
+      try { if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(correo).then(ok).catch(pedirToque); else pedirToque(); } catch (e) { pedirToque(); }
+    }
+    async function generarCorreoPropio() {
       poblarDestinoPropio();
       const sel = document.getElementById('correoPropioDestino'), destino = sel ? sel.value : '';
       // 🎒 Si hay un correo listo en la bolsa, sale al instante (ya está guardado en el servidor)
+      while (_bolsaAdm.length && (_bolsaUsados.has(_bolsaAdm[0]) || correosPropios.some(x => x.correo === _bolsaAdm[0]))) _bolsaAdm.shift();   // jamás el mismo dos veces
       if (_bolsaAdm.length) {
         const correo = _bolsaAdm.shift(), fila = { correo: correo, creadoEl: new Date().toISOString(), destino: destino, propio: true };
-        correosPropios.unshift(fila); pintarCorreosPropios(); copiarTexto(correo, '📧 Correo copiado · clave: epic2828');
+        _bolsaUsados.add(correo);
+        correosPropios.unshift(fila); pintarCorreosPropios(); copiarCorreoGenerado(correo);
         try { const l = document.getElementById('correosPropiosLista'), f = l && l.firstElementChild;
           if (f) { f.classList.add('ring-2', 'ring-emerald-400'); f.scrollIntoView({ behavior: 'smooth', block: 'center' }); setTimeout(() => f.classList.remove('ring-2', 'ring-emerald-400'), 4000); } } catch (e) { /* nada */ }
-        llamarBackend('prov_correos', { op: 'sacar', correo: correo, destino: destino }).then(r => {
+        fila.sacando = llamarBackend('prov_correos', { op: 'sacar', correo: correo, destino: destino }).then(r => {
           if (!r || !r.ok) { correosPropios = correosPropios.filter(x => x !== fila); pintarCorreosPropios(); alert((r && r.error) || 'Ese correo ya no servía. Genera otro.'); }
-          llenarBolsa('adm');   // se rellena después de confirmar: nunca vuelve a ofrecer el mismo correo
-        }).catch(() => { /* el correo sigue reservado para ti en el servidor; si falla la red, igual es tuyo */ });
+        }).catch(() => { /* el correo sigue reservado para ti en el servidor; si falla la red, igual es tuyo */ }).finally(() => { fila.sacando = null; llenarBolsa('adm'); });
         return;
       }
       // sin bolsa (primera vez o sin red): modo normal, espera al servidor
@@ -12612,8 +12619,8 @@
       try { const r = await llamarBackend('prov_correos', { op: 'propio', correo: '', destino: destino });   // 🔒 el servidor elige y guarda el correo
         if (!r || !r.ok) { correosPropios = correosPropios.filter(x => x !== fila); pintarCorreosPropios(); alert((r && r.error) || 'No se pudo reservar el correo.'); return; }
         if (!r.correo) { correosPropios = correosPropios.filter(x => x !== fila); pintarCorreosPropios(); alert('No se pudo generar el correo. Intenta otra vez.'); return; }
-        fila.reservando = false; fila.correo = r.correo;   // ✅ SOLO el correo que guardó el servidor
-        pintarCorreosPropios(); copiarTexto(fila.correo, '📧 Correo copiado · clave: epic2828');
+        fila.reservando = false; fila.correo = r.correo; _bolsaUsados.add(r.correo);   // ✅ SOLO el correo que guardó el servidor
+        pintarCorreosPropios(); copiarCorreoGenerado(fila.correo);
         try { const l = document.getElementById('correosPropiosLista'), f = l && l.firstElementChild;
           if (f) { f.classList.add('ring-2', 'ring-emerald-400'); f.scrollIntoView({ behavior: 'smooth', block: 'center' }); setTimeout(() => f.classList.remove('ring-2', 'ring-emerald-400'), 4000); } } catch (e) { /* nada */ }
         llenarBolsa('adm');
@@ -12621,7 +12628,11 @@
     }
     async function confirmarCorreoPropio(i, btn) {
       const c = correosPropios[i]; if (!c) return; if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>'; }
-      try { const r = await llamarBackend('prov_correos', { op: 'confirmar_propio', correo: c.correo });
+      try { if (c.sacando) { try { await c.sacando; } catch (e) { /* sigue */ } }
+        const r = await Promise.race([
+          llamarBackend('prov_correos', { op: 'confirmar_propio', correo: c.correo, destino: c.destino || '' }),
+          new Promise((_, no) => setTimeout(() => no(new Error('El servidor tardó en responder. Revisa con "Comprobar cuáles se subieron": puede que ya haya quedado subida.')), 25000))
+        ]);
         if (!r || !r.ok) { alert((r && r.error) || 'No se pudo.'); if (btn) { btn.disabled = false; btn.textContent = '✅ Confirmar'; } return; }
         c.confirmadoEl = new Date().toISOString(); pintarCorreosPropios(); mostrarToast(r.yaEstaba ? 'Esa cuenta ya estaba en el stock o vendida' : '📥 Subida a ' + (r.nombre || 'el stock'));
       } catch (e) { alert(e.message); if (btn) { btn.disabled = false; btn.textContent = '✅ Confirmar'; } }
@@ -12931,7 +12942,11 @@
     var misDominiosCfg = null;
     async function cargarMisDominios() {
       if (!esAdminSesionActual()) return;
-      try { const r = await llamarBackend('dominios_ver', {}); if (r && r.ok) { misDominiosCfg = r.cfg; try { misDominiosCfg.reactivarAuto = !(ajustesGeneralesConfig && ajustesGeneralesConfig.provReactivarAuto === false); } catch (e) {} pintarMisDominios(); } } catch (e) { /* nada */ }
+      let r = null; try { r = await llamarBackend('dominios_ver', {}); } catch (e) { r = null; }
+      if (r && r.ok) { misDominiosCfg = r.cfg; try { misDominiosCfg.reactivarAuto = !(ajustesGeneralesConfig && ajustesGeneralesConfig.provReactivarAuto === false); } catch (e) {} pintarMisDominios(); return; }
+      // ⚠️ Nunca queda vacía: si el servidor no respondió, se dice y se puede reintentar
+      const c = document.getElementById('misDominiosCaja');
+      if (c && !misDominiosCfg) c.innerHTML = '<p class="text-sm font-black text-white">🌐 Mis dominios de correo</p><p class="text-[11px] text-amber-300 mt-1">No pude cargar tus dominios (el servidor no respondió).</p><button type="button" onclick="cargarMisDominios()" class="mt-2 px-3 py-1.5 rounded-lg text-[11px] font-black bg-violet-500 hover:bg-violet-400 text-white">Reintentar</button>';
     }
     function pintarMisDominios() {
       const c = document.getElementById('misDominiosCaja'); if (!c || !esAdminSesionActual()) return;
@@ -17370,7 +17385,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-26u';
+    const VERSION_PAGINA = '2026-10-26w';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261020_ajuste', fecha: '2026-10-20', titulo: 'Se ve mejor en iPhone 📱', mensaje: 'La tienda ahora **se ajusta siempre a tu pantalla**: ya no se agranda al escribir ni se corre hacia los lados. Si la tienes abierta, **recarga la página** para verla así.' },
       { id: 'act_20261020_app', fecha: '2026-10-20', titulo: 'App oficial de Epic Streaming 📲', mensaje: 'Ya tenemos **app oficial**: en la tienda toca **Descargar** (Android), **Instalar** (PC) o **Agregar** (iPhone). Abre más rápido, a pantalla completa, con tu misma cuenta y **se actualiza sola**.' },
