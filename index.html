@@ -17333,7 +17333,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-26p';
+    const VERSION_PAGINA = '2026-10-26r';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261020_ajuste', fecha: '2026-10-20', titulo: 'Se ve mejor en iPhone 📱', mensaje: 'La tienda ahora **se ajusta siempre a tu pantalla**: ya no se agranda al escribir ni se corre hacia los lados. Si la tienes abierta, **recarga la página** para verla así.' },
       { id: 'act_20261020_app', fecha: '2026-10-20', titulo: 'App oficial de Epic Streaming 📲', mensaje: 'Ya tenemos **app oficial**: en la tienda toca **Descargar** (Android), **Instalar** (PC) o **Agregar** (iPhone). Abre más rápido, a pantalla completa, con tu misma cuenta y **se actualiza sola**.' },
@@ -20742,6 +20742,14 @@
         if (enUso.has(e)) { repetidas.push({ linea: l, email: e, motivo: enUso.get(e) }); return; }
         unicas.push(l);
       });
+      // 👮 Cruce con el registro de ventas del servidor (ve combos y reposiciones que el buscador local no ve): no entran ni se pagan
+      if (unicas.length && obtenerBackendUrl()) {
+        try { const r = await llamarBackend('cuentas_ya_vendidas', { correos: unicas.map(correoDeCuenta).filter(Boolean) });
+          if (r && r.ok && r.vendidas && Object.keys(r.vendidas).length) {
+            const quedan = []; unicas.forEach(l => { const e = correoDeCuenta(l); if (e && r.vendidas[e]) repetidas.push({ linea: l, email: e, motivo: r.vendidas[e] }); else quedan.push(l); });
+            return { unicas: quedan, repetidas: repetidas };
+          } } catch (e) { /* si el servidor no responde, queda la revisión local */ }
+      }
       return { unicas: unicas, repetidas: repetidas };
     }
     function textoRepetidas(rep) { return rep.slice(0, 8).map(r => `• ${r.email}: ${r.motivo}`).join('\n') + (rep.length > 8 ? `\n…y ${rep.length - 8} más` : ''); }
@@ -25914,7 +25922,7 @@ async function pintarPanelWa() {
       return { cuentas: legado, stock: legado.length || stockPublico };
     }
 
-    const VERSION_SERVIDOR_NECESARIA = '2026-10-24n';   // la versión del servidor que necesita esta página
+    const VERSION_SERVIDOR_NECESARIA = '2026-10-24p';   // la versión del servidor que necesita esta página
     async function llamarBackend(accion, datos) {
       window._llamadasEnCurso = (window._llamadasEnCurso || 0) + 1;
       try { return await llamarBackendBase(accion, datos); } finally { window._llamadasEnCurso = Math.max(0, (window._llamadasEnCurso || 1) - 1); }
