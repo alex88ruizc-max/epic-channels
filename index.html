@@ -12998,6 +12998,11 @@
       const c = document.getElementById('misDominiosCaja');
       if (c && !misDominiosCfg) c.innerHTML = '<p class="text-sm font-black text-white">🌐 Mis dominios de correo</p><p class="text-[11px] text-amber-300 mt-1">No pude cargar tus dominios (el servidor no respondió).</p><button type="button" onclick="cargarMisDominios()" class="mt-2 px-3 py-1.5 rounded-lg text-[11px] font-black bg-violet-500 hover:bg-violet-400 text-white">Reintentar</button>';
     }
+    async function guardarPropiasFalsaAlarma(on) {
+      try { await db.collection('configuracion').doc('ajustes').set({ propiasNoDescanso: !!on }, { merge: true }); if (ajustesGeneralesConfig) ajustesGeneralesConfig.propiasNoDescanso = !!on;
+        mostrarToast(on ? '🧪 Listo: tus cuentas ya no cuentan para dormir el dominio' : 'Tus cuentas vuelven a contar para el descanso'); }
+      catch (e) { alert('No se pudo guardar: ' + e.message); const c = document.getElementById('chkPropiasFalsaAlarma'); if (c) c.checked = !on; }
+    }
     function pintarMisDominios() {
       const c = document.getElementById('misDominiosCaja'); if (!c || !esAdminSesionActual()) return;
       const lista = (misDominiosCfg && Array.isArray(misDominiosCfg.lista)) ? misDominiosCfg.lista : [];
@@ -13020,6 +13025,7 @@
         <div class="flex gap-2 mb-3"><input id="nuevoDominio" type="text" placeholder="ej: epicchannels.quest" class="flex-1 min-w-0 bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white font-mono"><button type="button" onclick="agregarDominio()" class="shrink-0 px-3 py-2 rounded-xl bg-violet-500/20 border border-violet-500/50 text-violet-200 font-bold text-xs">+ Agregar</button></div>
         <p class="text-[10px] text-gray-500 mb-2">Primero conéctalo en Cloudflare (Email Routing → catch-all → tu buzón). Aquí solo lo registras para que el sistema lo use.</p>
         <label class="flex items-center justify-between gap-3 text-[12px] text-gray-200 mb-3 p-2 rounded-xl bg-gray-800/60 border border-gray-700"><span>🔄 Reactivar solo <span class="text-gray-500">(los que descansaron por salud vuelven a los 2 días)</span></span><input type="checkbox" id="provReactAuto" ${(ajustesGeneralesConfig && ajustesGeneralesConfig.provReactivarAuto === false) ? '' : 'checked'} class="accent-violet-500 w-5 h-5 shrink-0"></label>
+        <label class="mt-3 flex items-start justify-between gap-3 p-3 rounded-xl bg-gray-800/60 border border-gray-700 cursor-pointer"><span class="text-xs text-gray-200">🧪 <b>Mis cuentas no cuentan para dormir el dominio</b><br><span class="text-[10.5px] text-gray-400">Las suspensiones de cuentas que creaste tú (tus pruebas) no suman para mandar el dominio a descanso. El aviso y el stock siguen igual.</span></span><input type="checkbox" id="chkPropiasFalsaAlarma" onchange="guardarPropiasFalsaAlarma(this.checked)" ${(ajustesGeneralesConfig && ajustesGeneralesConfig.propiasNoDescanso === true) ? 'checked' : ''} class="mt-1 w-4 h-4 accent-violet-500 shrink-0"></label>
         <button type="button" onclick="guardarMisDominios(this)" class="w-full py-2 rounded-xl bg-violet-500 hover:bg-violet-400 text-white font-black text-xs">Guardar dominios</button>`;
     }
     function dominiosDesdeUI() {
@@ -17435,7 +17441,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-27a';
+    const VERSION_PAGINA = '2026-10-27h';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261020_ajuste', fecha: '2026-10-20', titulo: 'Se ve mejor en iPhone 📱', mensaje: 'La tienda ahora **se ajusta siempre a tu pantalla**: ya no se agranda al escribir ni se corre hacia los lados. Si la tienes abierta, **recarga la página** para verla así.' },
       { id: 'act_20261020_app', fecha: '2026-10-20', titulo: 'App oficial de Epic Streaming 📲', mensaje: 'Ya tenemos **app oficial**: en la tienda toca **Descargar** (Android), **Instalar** (PC) o **Agregar** (iPhone). Abre más rápido, a pantalla completa, con tu misma cuenta y **se actualiza sola**.' },
@@ -25586,6 +25592,43 @@ async function pintarPanelWa() {
     }
 
     // Se conserva el nombre: cambiarVista('mis-cuentas') la sigue llamando
+    // ⚠️ Compras o suscripciones detectadas dentro de las cuentas del cliente (con el correo completo como prueba)
+    let _avisosCuentaCache = null;
+    async function pintarAvisosCuentas() {
+      if (modoPruebaCliente || !currentUser || !obtenerBackendUrl()) return;
+      const cont = document.getElementById('listaMisCuentas'); if (!cont) return;
+      let r = null; try { r = await llamarBackend('mis_avisos_cuenta', {}); } catch (e) { return; }
+      if (!r || !r.ok || !Array.isArray(r.avisos) || !r.avisos.length) return;
+      _avisosCuentaCache = r.avisos;
+      const f = x => { try { return new Date(x).toLocaleString('es-CO', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }); } catch (e) { return ''; } };
+      const banner = a => `<div class="aviso-uso-cuenta mt-3 p-3 rounded-xl bg-red-500/10 border border-red-400/50" data-aviso="${escaparHtml(a.id)}">
+          <p class="text-[12px] font-black text-red-200">⚠️ Compra o suscripción detectada en tu cuenta</p>
+          <p class="text-[10.5px] text-gray-400 mt-0.5">${escaparHtml(a.correo)} · ${escaparHtml(f(a.fecha))}</p>
+          <p class="text-[11px] italic text-gray-200 mt-1">"${escaparHtml(a.asunto)}"</p>
+          <p class="text-[10.5px] text-gray-300 mt-1 leading-snug">Comprar o suscribirse dentro de la cuenta va contra las condiciones y puede hacer que se suspenda. En ese caso la garantía no cubre.</p>
+          <button type="button" onclick="verCorreoAvisoCuenta('${escaparJsAttr(a.id)}')" class="mt-2 px-3 py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 border border-gray-600 text-white text-[11px] font-black"><i class="fa-solid fa-envelope-open-text mr-1"></i>Ver correo</button>
+        </div>`;
+      cont.querySelectorAll('.aviso-uso-cuenta, #avisosUsoCuentasTop').forEach(x => x.remove());
+      const sueltos = [];
+      r.avisos.forEach(a => {
+        // se pone dentro de la tarjeta de la compra que tiene esa cuenta; si no la encuentra, va arriba
+        let tarjeta = null;
+        cont.querySelectorAll('*').forEach(el => { if (!tarjeta && el.children.length === 0 && String(el.textContent || '').toLowerCase().includes(String(a.correo).toLowerCase())) tarjeta = el.closest('.rounded-2xl') || el.parentElement; });
+        if (tarjeta) tarjeta.insertAdjacentHTML('beforeend', banner(a)); else sueltos.push(a);
+      });
+      if (sueltos.length) cont.insertAdjacentHTML('afterbegin', `<div id="avisosUsoCuentasTop" class="mb-3">${sueltos.map(banner).join('')}</div>`);
+    }
+    async function verCorreoAvisoCuenta(id) {
+      try { const r = await llamarBackend('aviso_cuenta_ver', { id: id }); if (!r || !r.ok) throw new Error((r && r.error) || 'No se pudo abrir el correo.');
+        let m = document.getElementById('modalCorreoAviso');
+        if (!m) { m = document.createElement('div'); m.id = 'modalCorreoAviso'; m.className = 'fixed inset-0 z-[300] bg-black/80 flex items-center justify-center p-3'; m.onclick = e => { if (e.target === m) m.remove(); }; document.body.appendChild(m); }
+        const f = (() => { try { return new Date(r.fecha).toLocaleString('es-CO', { day: 'numeric', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit' }); } catch (e) { return ''; } })();
+        m.innerHTML = `<div class="w-full max-w-lg max-h-[90vh] bg-gray-900 border border-gray-700 rounded-2xl overflow-hidden flex flex-col">
+          <div class="p-3 border-b border-gray-800 flex items-start gap-2"><div class="min-w-0 flex-1 text-[11px] text-gray-400 leading-relaxed"><p class="text-sm font-black text-white mb-1">${escaparHtml(r.asunto || '')}</p><b class="text-gray-200">De:</b> ${escaparHtml(r.de || '')}<br><b class="text-gray-200">Para:</b> ${escaparHtml(r.para || '')}<br><b class="text-gray-200">Fecha:</b> ${escaparHtml(f)}</div><button type="button" onclick="document.getElementById('modalCorreoAviso').remove()" class="w-8 h-8 shrink-0 rounded-lg bg-gray-800 text-gray-300"><i class="fa-solid fa-xmark"></i></button></div>
+          <iframe id="iframeCorreoAviso" sandbox="" class="w-full flex-1 bg-white" style="min-height:60vh;border:0"></iframe></div>`;
+        const ifr = document.getElementById('iframeCorreoAviso'); if (ifr) ifr.srcdoc = r.html || '<p style="font-family:sans-serif;padding:16px">Este correo no tiene contenido para mostrar.</p>';
+      } catch (e) { alert(e.message); }
+    }
     async function cargarMisCuentas() {
       if (!currentUser) return;
       const contenedor = document.getElementById('listaMisCuentas');
@@ -25706,6 +25749,7 @@ async function pintarPanelWa() {
         });
 
         contenedor.innerHTML = agruparHtmlCompras(cortesCompras, html);
+        setTimeout(() => { try { pintarAvisosCuentas(); } catch (e) { /* opcional */ } }, 50);
         pintarBotonesReporte();
         renderFiltrosGarantiaPerfil();
         try { pintarPerfilVentas(); } catch (e) { console.warn(e); }
@@ -26079,7 +26123,7 @@ async function pintarPanelWa() {
       return { cuentas: legado, stock: legado.length || stockPublico };
     }
 
-    const VERSION_SERVIDOR_NECESARIA = '2026-10-24s';   // la versión del servidor que necesita esta página
+    const VERSION_SERVIDOR_NECESARIA = '2026-10-24z';   // la versión del servidor que necesita esta página
     async function llamarBackend(accion, datos) {
       window._llamadasEnCurso = (window._llamadasEnCurso || 0) + 1;
       try { return await llamarBackendBase(accion, datos); } finally { window._llamadasEnCurso = Math.max(0, (window._llamadasEnCurso || 1) - 1); }
