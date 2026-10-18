@@ -12103,16 +12103,17 @@
     }
 
     async function recargaAutoCancelar() {
-      if (!pedidoRecargaActivo) return;
+      const ped = pedidoRecargaActivo; if (!ped) return;   // se guarda ANTES de preguntar: mientras confirma, la pantalla puede actualizarse
       if (!await confirmarModal('¿Cancelar? No se comprará nada. Si ya pagaste, la plata queda en tu saldo.', { textoAceptar: 'Sí, cancelar' })) return;
-      if (modoPruebaCliente && pedidoRecargaActivo && pedidoRecargaActivo.simulado) {
+      if (modoPruebaCliente && ped.simulado) {
         if (timerRecargaSim) { clearTimeout(timerRecargaSim); timerRecargaSim = null; }
         pedidoRecargaActivo = null; recargaAutoEstadoTxt(''); renderizarRecargaAuto(); return;
       }
       try {
-        const r = await llamarBackend('recarga_cancelar', { id: pedidoRecargaActivo.id });
+        try { sessionStorage.removeItem('recBusca_' + ped.id); } catch (e) { /* nada */ }
+        const r = await llamarBackend('recarga_cancelar', { id: ped.id });
         if (!r.ok) { alert(r.error || 'No se pudo cancelar.'); return; }
-        pedidoRecargaActivo = null; compraTrasRecarga = null; { const avC = document.getElementById('avisoCompraTrasRecarga'); if (avC) { avC.classList.add('hidden'); avC.style.display = ''; } }
+        pedidoRecargaActivo = null; compraTrasRecarga = null; try { pintarAvisoRecargaEnCurso(); } catch (e) { /* nada */ } { const avC = document.getElementById('avisoCompraTrasRecarga'); if (avC) { avC.classList.add('hidden'); avC.style.display = ''; } }
         recargaAutoEstadoTxt('');
         renderizarRecargaAuto();
       } catch (e) { alert(e.message); }
@@ -17434,7 +17435,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-26z';
+    const VERSION_PAGINA = '2026-10-27a';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261020_ajuste', fecha: '2026-10-20', titulo: 'Se ve mejor en iPhone 📱', mensaje: 'La tienda ahora **se ajusta siempre a tu pantalla**: ya no se agranda al escribir ni se corre hacia los lados. Si la tienes abierta, **recarga la página** para verla así.' },
       { id: 'act_20261020_app', fecha: '2026-10-20', titulo: 'App oficial de Epic Streaming 📲', mensaje: 'Ya tenemos **app oficial**: en la tienda toca **Descargar** (Android), **Instalar** (PC) o **Agregar** (iPhone). Abre más rápido, a pantalla completa, con tu misma cuenta y **se actualiza sola**.' },
