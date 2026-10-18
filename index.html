@@ -1013,6 +1013,9 @@
         </div>
         <div id="misPreordenesCaja" class="hidden mb-3"></div>
         <div id="dealerNegocioCaja" class="hidden mb-3 dealer-banner p-3.5"></div>
+        <div id="misProductosGrid" class="hidden mb-3"></div>
+        <div id="misProductoBarra" class="hidden mb-3"></div>
+        <div id="misComprasBloque">
         <h4 class="text-xs font-black text-white mb-2 mt-1 flex items-center gap-2"><i class="fa-solid fa-bag-shopping text-emerald-400"></i> Mis compras</h4>
         <div class="relative mb-3">
           <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-xs"></i>
@@ -1021,6 +1024,7 @@
         <div id="perfilFiltrosGarantia" class="flex gap-2 overflow-x-auto pb-1 mb-3 text-xs"></div>
         <div id="listaMisCuentas" class="space-y-3">
           <p class="text-gray-500 text-center py-8">No has adquirido cuentas todavía.</p>
+        </div>
         </div>
       </div>
 
@@ -17447,7 +17451,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-27j';
+    const VERSION_PAGINA = '2026-10-27k';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261020_ajuste', fecha: '2026-10-20', titulo: 'Se ve mejor en iPhone 📱', mensaje: 'La tienda ahora **se ajusta siempre a tu pantalla**: ya no se agranda al escribir ni se corre hacia los lados. Si la tienes abierta, **recarga la página** para verla así.' },
       { id: 'act_20261020_app', fecha: '2026-10-20', titulo: 'App oficial de Epic Streaming 📲', mensaje: 'Ya tenemos **app oficial**: en la tienda toca **Descargar** (Android), **Instalar** (PC) o **Agregar** (iPhone). Abre más rápido, a pantalla completa, con tu misma cuenta y **se actualiza sola**.' },
@@ -23082,7 +23086,7 @@
           // cada entrega con su botón "Copiar estas" (así copia solo lo nuevo), y arriba "Copiar todas"
           const hora = f => { const d = new Date(f); return isNaN(d) ? '' : String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth() + 1).padStart(2, '0') + ' ' + d.toLocaleTimeString('es-CO', { hour: 'numeric', minute: '2-digit' }); };
           const listaUna = `<div class="mx-1 p-2.5 rounded-xl bg-gray-950/70 border border-gray-800"><p class="text-[11px] font-black text-emerald-300 mb-1.5">📋 ${esPedido ? 'Tu pedido' : 'Tus cuentas'} · ${lineasT.length} ${lineasT.length === 1 ? 'cuenta' : 'cuentas'}</p>${bloques.map((bq, n) => `<div class="${n ? 'mt-2 pt-2 border-t border-gray-800' : ''}">${bloques.length > 1 ? `<div class="flex items-center justify-between gap-2 mb-1"><span class="text-[10px] font-bold ${bq.tipo === 'sp' ? 'text-amber-300' : 'text-gray-400'}">${bq.tipo === 'ya' ? '⚡ Entregadas al comprar' : '🆕 Nuevas · llegaron sobre pedido'} · ${bq.ls.length} · ${bq.tipo === 'sp' ? 'la última ' : ''}${hora(bq.f)}</span><button type="button" onclick="copiarTexto(decodeURIComponent('${encodeURIComponent(bq.ls.join('\n'))}'), '${bq.ls.length === 1 ? 'Cuenta copiada' : bq.ls.length + ' cuentas copiadas'}')" class="px-2 py-0.5 rounded-lg bg-gray-800 border border-gray-700 text-emerald-300 text-[10px] font-bold"><i class="fa-solid fa-copy mr-1"></i>Copiar ${bq.ls.length === 1 ? 'esta' : 'estas ' + bq.ls.length}</button></div>` : ''}<div class="font-mono text-[11px] text-gray-200 leading-relaxed break-all">${bq.ls.map((l, j) => `<div>${bq.tipo === 'sp' && bloques.length > 1 ? '<span class="inline-block mr-1 px-1 rounded bg-emerald-500 text-black text-[9px] font-black font-sans align-middle">NEW</span>' : ''}${bq.desde + j + 1}. ${escaparHtml(l)}</div>`).join('')}</div></div>`).join('')}</div>`;
-          out += `<details class="grupo-compras rounded-2xl bg-gray-900 border border-gray-800 overflow-hidden"${esPedido ? ' open' : ''}>
+          out += `<details data-prod="${escaparHtml(c.productoNombre || 'Otros')}" class="grupo-compras rounded-2xl bg-gray-900 border border-gray-800 overflow-hidden"${esPedido ? ' open' : ''}>
             <summary class="list-none cursor-pointer p-3 flex items-center gap-3">
               <span class="w-10 h-10 shrink-0 rounded-xl bg-gray-800 flex items-center justify-center text-[11px] font-black text-gray-300">×${miembros.length}</span>
               <span class="flex-1 min-w-0"><span class="block text-sm font-black text-white truncate">${escaparHtml(c.productoNombre || '')}</span><span class="block text-[11px] text-gray-400">${fecha} · ${esPedido ? '📦 un pedido · llegó en ' + miembros.length + ' partes' : miembros.length + ' compras'} · ${cuentas} ${cuentas === 1 ? 'cuenta' : 'cuentas'}${vig ? ` · <span class="text-emerald-300">garantía vigente</span>` : ''}</span></span>
@@ -25637,6 +25641,46 @@ async function pintarPanelWa() {
         const ifr = document.getElementById('iframeCorreoAviso'); if (ifr) ifr.srcdoc = r.html || '<p style="font-family:sans-serif;padding:16px">Este correo no tiene contenido para mostrar.</p>';
       } catch (e) { alert(e.message); }
     }
+    // 🗂 Mis cuentas por producto: un botón por producto; al tocarlo se ven sus compras (agrupadas por compra, con su listado)
+    let misProductoActivo = '';
+    const ICONO_PROD = n => { const t = String(n || '').toLowerCase();
+      if (/prime|amazon/.test(t)) return ['#0a73ff', 'fa-brands fa-amazon']; if (/netflix/.test(t)) return ['#b91c1c', 'fa-solid fa-n']; if (/youtube/.test(t)) return ['#dc2626', 'fa-brands fa-youtube'];
+      if (/spotify/.test(t)) return ['#16a34a', 'fa-brands fa-spotify']; if (/gemini|google/.test(t)) return ['#7c3aed', 'fa-solid fa-star']; if (/hotmail|correo|outlook|gmail/.test(t)) return ['#334155', 'fa-solid fa-envelope'];
+      if (/disney/.test(t)) return ['#1e3a8a', 'fa-solid fa-wand-magic-sparkles']; if (/max|hbo/.test(t)) return ['#4c1d95', 'fa-solid fa-film']; return ['#374151', 'fa-solid fa-box']; };
+    function pintarProductosMisCuentas() {
+      const grid = document.getElementById('misProductosGrid'), barra = document.getElementById('misProductoBarra'), bloque = document.getElementById('misComprasBloque'), lista = document.getElementById('listaMisCuentas'), nf = document.getElementById('perfilNetflixCaja');
+      if (!grid || !barra || !bloque || !lista) return;
+      const prods = {}, orden = [];
+      (misComprasPerfilCache || []).forEach(c => { const n = c.productoNombre || 'Otros'; if (!prods[n]) { prods[n] = { n: n, cuentas: 0, correos: [] }; orden.push(n); }
+        const ls = String(c.credenciales || '').split('\n').map(l => l.trim()).filter(Boolean); prods[n].cuentas += ls.length; ls.forEach(l => prods[n].correos.push(l.split(/[:|;]/)[0].toLowerCase())); });
+      const nfLista = document.getElementById('perfilNetflixLista'), nNf = nfLista ? nfLista.children.length : 0;
+      const hayAlgo = orden.length + (nNf ? 1 : 0);
+      if (!hayAlgo) { grid.classList.add('hidden'); barra.classList.add('hidden'); bloque.classList.remove('hidden'); return; }
+      const avisos = (_avisosCuentaCache || []);
+      if (!misProductoActivo) {
+        const tile = (id, nombre, cant, badge) => { const [col, ic] = ICONO_PROD(nombre);
+          return `<button type="button" onclick="abrirProductoMisCuentas('${escaparJsAttr(id)}')" class="relative text-left p-3 rounded-2xl bg-gray-900 border border-gray-800 hover:border-emerald-500/60 transition">
+            ${badge || ''}<span class="w-8 h-8 rounded-xl flex items-center justify-center text-white text-sm mb-2" style="background:${col}"><i class="${ic}"></i></span>
+            <span class="block text-[12.5px] font-black text-white leading-tight truncate">${escaparHtml(nombre)}</span><span class="block text-[10.5px] text-gray-400">${cant} ${cant === 1 ? 'cuenta' : 'cuentas'}</span></button>`; };
+        let h = orden.map(n => { const nAv = avisos.filter(a => prods[n].correos.includes(String(a.correo).toLowerCase())).length;
+          return tile(n, n, prods[n].cuentas, nAv ? `<span class="absolute top-2 right-2 px-1.5 py-0.5 rounded-full text-[9px] font-black bg-red-500/15 text-red-300 border border-red-400/40">${nAv} aviso${nAv === 1 ? '' : 's'}</span>` : ''); });
+        if (nNf) h.unshift(tile('__netflix', 'Netflix', nNf, ''));
+        grid.innerHTML = `<p class="text-[10px] font-black text-gray-400 uppercase tracking-wider mb-2 px-1">Mis productos</p><div class="grid grid-cols-2 sm:grid-cols-3 gap-2">${h.join('')}</div>`;
+        grid.classList.remove('hidden'); barra.classList.add('hidden'); bloque.classList.add('hidden'); if (nf) nf.style.display = 'none';
+        return;
+      }
+      grid.classList.add('hidden');
+      const esNf = misProductoActivo === '__netflix', nom = esNf ? 'Netflix' : misProductoActivo, cant = esNf ? nNf : ((prods[misProductoActivo] || {}).cuentas || 0);
+      barra.innerHTML = `<div class="flex items-center gap-2"><button type="button" onclick="abrirProductoMisCuentas('')" class="px-3 py-1.5 rounded-xl bg-gray-800 border border-gray-700 text-gray-100 text-[11px] font-black"><i class="fa-solid fa-arrow-left mr-1"></i>Mis productos</button><p class="min-w-0 truncate text-sm font-black text-white">${escaparHtml(nom)} <span class="text-gray-400 font-bold">· ${cant} ${cant === 1 ? 'cuenta' : 'cuentas'}</span></p></div>`;
+      barra.classList.remove('hidden');
+      if (esNf) { bloque.classList.add('hidden'); if (nf) nf.style.display = ''; return; }
+      if (nf) nf.style.display = 'none';
+      bloque.classList.remove('hidden');
+      let primero = true;
+      Array.from(lista.children).forEach(el => { const p = el.getAttribute && el.getAttribute('data-prod'); const ver = !p || p === misProductoActivo; el.classList.toggle('!hidden', !ver);
+        if (ver && el.tagName === 'DETAILS') { el.open = primero; primero = false; } });
+    }
+    function abrirProductoMisCuentas(id) { misProductoActivo = id || ''; pintarProductosMisCuentas(); try { (document.getElementById('perfilSecCuentas') || document.body).scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch (e) { /* nada */ } }
     // 🔎 Buscador de cuentas del cliente: pega el correo y ve esa cuenta con sus detalles
     function buscarMiCuenta() {
       const q = String((document.getElementById('buscadorMisCuentas') || {}).value || '').trim().toLowerCase(), box = document.getElementById('resultadoMiCuenta'); if (!box) return;
@@ -25661,6 +25705,8 @@ async function pintarPanelWa() {
       const q = String(texto || '').toLowerCase(); let el = null;
       document.querySelectorAll('#perfilSecCuentas *').forEach(x => { if (!el && x.children.length === 0 && String(x.textContent || '').toLowerCase().includes(q) && !x.closest('#resultadoMiCuenta')) el = x; });
       if (!el) { mostrarToast('No la encontré en la lista'); return; }
+      try { const conProd = el.closest('[data-prod]'), enNf = el.closest('#perfilNetflixCaja'); const dest = enNf ? '__netflix' : (conProd ? conProd.getAttribute('data-prod') : '');
+        if (dest && dest !== misProductoActivo) { misProductoActivo = dest; pintarProductosMisCuentas(); } } catch (e) { /* nada */ }
       const tarjeta = el.closest('.rounded-2xl') || el;
       try { const det = el.closest('details'); if (det) det.open = true; } catch (e) { /* nada */ }
       tarjeta.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -25754,7 +25800,7 @@ async function pintarPanelWa() {
           const estadoGar = estadoGarantiaCompra(c).estado;
 
           html += `
-            <div data-buscar="${construirAtributoBusqueda(c.productoNombre, c.categoria, c.credenciales)}" data-estado="${estadoGar}" class="p-4 bg-gray-900 border border-gray-800 rounded-2xl flex flex-col gap-3">
+            <div data-prod="${escaparHtml(c.productoNombre || 'Otros')}" data-buscar="${construirAtributoBusqueda(c.productoNombre, c.categoria, c.credenciales)}" data-estado="${estadoGar}" class="p-4 bg-gray-900 border border-gray-800 rounded-2xl flex flex-col gap-3">
               <div class="flex items-start justify-between gap-3">
                 <div class="min-w-0 flex items-start gap-2.5">${iconoCompraPerfil(c)}<div class="min-w-0">
                   <span class="text-[10px] bg-gray-800 text-emerald-400 px-2 py-0.5 rounded font-semibold">${escaparHtml(c.categoria || 'Producto')}</span>${c.regalo ? '<span class="ml-1 text-[10px] font-black px-2 py-0.5 rounded bg-gradient-to-r from-pink-500 to-fuchsia-500 text-white">🎁 Obsequio</span>' : ''}
@@ -25787,6 +25833,7 @@ async function pintarPanelWa() {
 
         contenedor.innerHTML = agruparHtmlCompras(cortesCompras, html);
         setTimeout(() => { try { pintarAvisosCuentas(); } catch (e) { /* opcional */ } }, 50);
+        setTimeout(() => { try { pintarProductosMisCuentas(); } catch (e) { /* opcional */ } }, 80); setTimeout(() => { try { pintarProductosMisCuentas(); } catch (e) { /* opcional */ } }, 1500);
         pintarBotonesReporte();
         renderFiltrosGarantiaPerfil();
         try { pintarPerfilVentas(); } catch (e) { console.warn(e); }
