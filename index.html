@@ -14064,6 +14064,13 @@
           motivo: document.getElementById('rpMotivo').value,
           detalle: document.getElementById('rpDetalle').value.trim(), foto: foto
         });
+        if (r && r.noProcede) {   // ⛔ mal uso comprobado: se le muestra la prueba
+          cerrarReporteCuenta();
+          const f = (() => { try { return new Date(r.fecha).toLocaleString('es-CO', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }); } catch (e) { return ''; } })();
+          const ver = await confirmarModal(`⛔ Este reporte no procede por garantía.\n\nLa cuenta se usó para compras o suscripciones dentro de Amazon, y eso hace que se suspenda.\n\n"${r.asunto || ''}"${f ? ' · ' + f : ''}`, { textoAceptar: 'Ver correo', textoCancelar: 'Cerrar' });
+          if (ver && r.avisoId) verCorreoAvisoCuenta(r.avisoId);
+          return;
+        }
         if (!r.ok) { alert(r.error || 'No se pudo enviar el reporte.'); return; }
         cerrarReporteCuenta();
         mostrarToast('Reporte enviado. Lo revisaremos y te avisaremos aquí.');
@@ -15314,6 +15321,7 @@
         cont.innerHTML = bcHtmlResultado(q, local, compras, completo);
         // 🛡 Lo que dice el registro de ventas del servidor (es lo que decide si se puede volver a vender)
         if (completo && q.indexOf('@') > 0 && obtenerBackendUrl()) { try { const rg = await llamarBackend('cuenta_registro', { correo: q }); if (rg && rg.ok) cont.insertAdjacentHTML('beforeend', bcHtmlRegistro(q, rg)); } catch (e) { /* opcional */ } }
+        if (completo && q.indexOf('@') > 0 && obtenerBackendUrl() && esAdminSesionActual()) { try { const ra = await llamarBackend('avisos_de_cuenta', { correo: q }); if (ra && ra.ok && ra.avisos && ra.avisos.length) cont.insertAdjacentHTML('beforeend', bcHtmlAvisos(ra.avisos)); } catch (e) { /* opcional */ } }
       } catch (err) {
         cont.innerHTML = `<p class="px-2 text-xs text-red-300">No se pudo buscar: ${escaparHtml(err.message)}</p>`;
       } finally {
@@ -15342,6 +15350,20 @@
       try { const r = await llamarBackend('lote_recuperar', { loteId: loteId }); if (!r || !r.ok) throw new Error((r && r.error) || 'No se pudo.');
         await confirmarModal(r.recuperadas ? `✅ Volvieron al stock ${r.recuperadas} cuenta(s).${r.vendidas ? `\n${r.vendidas} sí estaban vendidas y no se tocaron.` : ''}${r.caidas ? `\n${r.caidas} se habían caído (suspendidas) y no se devolvieron.` : ''}\nStock ahora: ${r.stock}` : `No había cuentas para recuperar.${r.vendidas ? ` ${r.vendidas} sí estaban vendidas.` : ''}`, { textoAceptar: 'Listo', soloAceptar: true });
         buscarCuentaAdmin(); } catch (e) { alert(e.message); }
+    }
+    function bcHtmlAvisos(avisos) {
+      const f = x => { try { return new Date(x).toLocaleString('es-CO', { day: '2-digit', month: '2-digit', hour: 'numeric', minute: '2-digit' }); } catch (e) { return ''; } };
+      return `<div class="p-4 bg-gray-900 border border-red-500/30 rounded-2xl"><p class="text-[11px] font-black uppercase tracking-wide text-red-300 mb-2"><i class="fa-solid fa-cart-shopping mr-1.5"></i>Uso dentro de la cuenta</p>${avisos.map(a => `
+        <div class="py-2 border-t border-gray-800 first:border-0">
+          <p class="text-xs text-gray-200">${a.tipo === 'carrito' ? '🛍 Carrito (interno)' : '🛒 Compra'} · ${escaparHtml(f(a.fecha))}</p>
+          <p class="text-[11px] italic text-gray-400">"${escaparHtml(a.asunto || '')}"</p>
+          ${a.tipo === 'compra' ? `<div class="flex gap-2 mt-1.5"><button type="button" onclick="verCorreoAvisoCuenta('${escaparJsAttr(a.id)}')" class="px-2.5 py-1 rounded-lg bg-gray-800 border border-gray-700 text-white text-[11px] font-black">Ver correo</button>
+            <button type="button" onclick="bcPermitirAviso('${escaparJsAttr(a.id)}', ${a.permitido ? 'false' : 'true'})" class="px-2.5 py-1 rounded-lg text-[11px] font-black ${a.permitido ? 'bg-gray-800 border border-gray-700 text-amber-300' : 'bg-emerald-500 text-black'}">${a.permitido ? 'Volver a bloquear reportes' : 'Permitir reporte'}</button></div>
+            <p class="text-[10px] text-gray-500 mt-1">${a.permitido ? '✅ Permitido: el cliente sí puede reportar esta cuenta.' : '⛔ Por este correo, el cliente no puede reportar esta cuenta.'}</p>` : ''}
+        </div>`).join('')}</div>`;
+    }
+    async function bcPermitirAviso(id, si) {
+      try { const r = await llamarBackend('aviso_permitir', { id: id, si: si }); if (!r || !r.ok) throw new Error((r && r.error) || 'No se pudo.'); mostrarToast(si ? '✅ Listo: el cliente ya puede reportar esa cuenta' : 'Bloqueado otra vez'); buscarCuentaAdmin(); } catch (e) { alert(e.message); }
     }
     async function bcDevolverStock(correo) {
       const pid = (document.getElementById('bcDevProd') || {}).value || '';
@@ -17451,7 +17473,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-27l';
+    const VERSION_PAGINA = '2026-10-27n';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261020_ajuste', fecha: '2026-10-20', titulo: 'Se ve mejor en iPhone 📱', mensaje: 'La tienda ahora **se ajusta siempre a tu pantalla**: ya no se agranda al escribir ni se corre hacia los lados. Si la tienes abierta, **recarga la página** para verla así.' },
       { id: 'act_20261020_app', fecha: '2026-10-20', titulo: 'App oficial de Epic Streaming 📲', mensaje: 'Ya tenemos **app oficial**: en la tienda toca **Descargar** (Android), **Instalar** (PC) o **Agregar** (iPhone). Abre más rápido, a pantalla completa, con tu misma cuenta y **se actualiza sola**.' },
@@ -26217,7 +26239,7 @@ async function pintarPanelWa() {
       return { cuentas: legado, stock: legado.length || stockPublico };
     }
 
-    const VERSION_SERVIDOR_NECESARIA = '2026-10-24z';   // la versión del servidor que necesita esta página
+    const VERSION_SERVIDOR_NECESARIA = '2026-10-25b';   // la versión del servidor que necesita esta página
     async function llamarBackend(accion, datos) {
       window._llamadasEnCurso = (window._llamadasEnCurso || 0) + 1;
       try { return await llamarBackendBase(accion, datos); } finally { window._llamadasEnCurso = Math.max(0, (window._llamadasEnCurso || 1) - 1); }
