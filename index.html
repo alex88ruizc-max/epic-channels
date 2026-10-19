@@ -4732,7 +4732,7 @@
         <button onclick="cerrarModalEntrega()" class="bg-gray-800 hover:bg-gray-700 text-gray-100 font-bold py-2.5 rounded-xl text-xs border border-gray-700 transition">
           🛒 Seguir comprando
         </button>
-        <button onclick="cerrarModalEntrega(); irAMisCompras();" class="col-span-2 bg-gradient-to-r from-amber-500 to-red-500 text-white font-black py-2.5 rounded-xl text-xs transition">
+        <button onclick="cerrarModalEntrega(); irAMisCompras();" class="col-span-2 font-black py-2.5 rounded-xl text-xs transition" style="background:linear-gradient(135deg,#f5d97a,#c9a227);color:#1a1405">
           📦 Ver en Mis compras
         </button>
       </div>
@@ -9583,6 +9583,13 @@
     }
     window.addEventListener('DOMContentLoaded', () => { try { pintarAvisoApp(); } catch (e) { /* nada */ } });
     // 🏪 MODO TIENDA: la tienda sale de la dirección (nombre.epicstreaming.vip) o de ?tienda=nombre (para probar). ?tienda=0 vuelve a Epic.
+    // 📧 ¿El correo es de TUS dominios? (epicstreaming.vip, ruizepic.vip, epicstrem.dev…): no se da su clave, se da el link del código.
+    // Cuenta como tuyo todo correo que NO sea de un proveedor público (Gmail, Hotmail, Outlook…), más los de tu lista de dominios.
+    function esCorreoMiDominio(email) {
+      const e = String(email || '').trim().toLowerCase(), d = e.split('@')[1] || ''; if (!d) return false;
+      try { if (window.misDominiosCfg && misDominiosCfg.lista && misDominiosCfg.lista.some(x => String(x.d || '').toLowerCase() === d)) return true; } catch (er) { /* nada */ }
+      return !/^(gmail|googlemail|hotmail|outlook|live|msn|yahoo|ymail|icloud|me|mac|aol|proton|protonmail|pm|gmx|mail|zoho|yandex|tutanota)\./.test(d);
+    }
     var TIENDA_SLUG = (function () {
       try {
         const h = location.hostname.toLowerCase(), m = h.match(/^([a-z0-9-]{2,40})\.epicstreaming\.vip$/);
@@ -17536,7 +17543,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-27as';
+    const VERSION_PAGINA = '2026-10-27au';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261020_ajuste', fecha: '2026-10-20', titulo: 'Se ve mejor en iPhone 📱', mensaje: 'La tienda ahora **se ajusta siempre a tu pantalla**: ya no se agranda al escribir ni se corre hacia los lados. Si la tienes abierta, **recarga la página** para verla así.' },
       { id: 'act_20261020_app', fecha: '2026-10-20', titulo: 'App oficial de Epic Streaming 📲', mensaje: 'Ya tenemos **app oficial**: en la tienda toca **Descargar** (Android), **Instalar** (PC) o **Agregar** (iPhone). Abre más rápido, a pantalla completa, con tu misma cuenta y **se actualiza sola**.' },
@@ -18416,7 +18423,7 @@
       const filas = [], vistos = new Set(); const platPorCuenta = [];
       cuentas.forEach(raw => {
         const c = parseCredencialObj(raw), email = String(c.email || '').trim(); if (!email || vistos.has(email.toLowerCase())) return; vistos.add(email.toLowerCase());
-        const dom = /@epicstreaming\.vip$/i.test(email);   // correo de tu dominio: su clave ES la de la plataforma
+        const dom = esCorreoMiDominio(email);   // correo de tu dominio: su clave ES la de la plataforma
         const plat = String(c.claveAcceso || (dom ? limpiarClaveEntrega(c.pass) : '') || (prime ? obtenerClaveMaster() : '') || '').trim();
         filas.push({ email: email, clave: limpiarClaveEntrega(c.pass), plat: plat }); platPorCuenta.push(plat);
       });
@@ -18427,7 +18434,7 @@
       // Formato limpio para WhatsApp: sin bloques de código (meten espacios y letra rara)
       let t = `✨ *${nombre || 'Tu compra'}*${filas.length > 1 ? ' · ' + filas.length + ' cuentas' : ''}\n`;
       const extraPlat = f => (f.plat && f.plat !== comun ? ' · ' + (prime ? 'Prime' : 'Plataforma') + ': ' + f.plat : '');
-      const esDom = f => /@epicstreaming\.vip$/i.test(f.email), hayDom = filas.some(esDom), hayHot = filas.some(f => !esDom(f));
+      const esDom = f => esCorreoMiDominio(f.email), hayDom = filas.some(esDom), hayHot = filas.some(f => !esDom(f));
       if (filas.length === 1) {
         const f = filas[0];
         t += `📧 ${f.email}` + (esDom(f) ? '' : '\n' + ((prime || comun) ? `✉️ Clave del correo: ${f.clave}` : `🔑 Clave: ${f.clave}`)) + extraPlat(f);
@@ -18448,7 +18455,7 @@
       return textoListaCuentasWa(prod.nombre, cuentas, esProductoPrime(prod), prod.tipoGarantia, Date.now(), { vip: true, enlaceAmz: enlaceAmz || '' });
     }
     async function enlaceAmzDe(cuentas) {   // 📩 enlace de códigos para las cuentas de tu dominio (si las hay)
-      const cs = cuentas.map(x => String(parseCredencialObj(x).email || '').toLowerCase()).filter(e => /@epicstreaming\.vip$/.test(e)); if (!cs.length) return '';
+      const cs = cuentas.map(x => String(parseCredencialObj(x).email || '').toLowerCase()).filter(e => esCorreoMiDominio(e)); if (!cs.length) return '';
       try { const r = await llamarBackend('amz_enlace_crear', { correos: cs }); return r && r.ok ? r.url : ''; } catch (e) { return ''; }
     }
 
@@ -26085,7 +26092,8 @@ async function pintarPanelWa() {
       const vt = document.getElementById('vistaTienda'), vm = document.getElementById('vistaMisCuentas');
       const enM = mcAbierta(), enT = vt && !vt.classList.contains('hidden') && !enM, esProv = (typeof rolActual !== 'undefined' && rolActual === 'proveedor' && !esAdminSesionActual()), ver = !!currentUser && (enT || enM) && !esProv;   // clientes y tú (admin); los proveedores no
       { const tb = document.getElementById('btnTopMisCompras'), tbB = document.getElementById('badgeTopMC'), nn = nuevasMC(); if (tb) tb.classList.toggle('hidden', !(!!currentUser && !esProv)); if (tbB) { tbB.textContent = String(nn); tbB.classList.toggle('hidden', !nn); } }
-      if (!ver) { if (b) b.style.display = 'none'; return; }
+      const hayModal = Array.from(document.querySelectorAll('.fixed.inset-0')).some(el => el.id !== 'vistaMisCompras' && !el.classList.contains('hidden') && getComputedStyle(el).display !== 'none' && getComputedStyle(el).visibility !== 'hidden');
+      if (!ver || hayModal) { if (b) b.style.display = 'none'; return; }
       if (!b) { b = document.createElement('button'); b.id = 'fabMisCompras'; b.type = 'button'; b.className = 'fab-mc'; b.onclick = clickFabMC; document.body.appendChild(b); }
       b.style.display = ''; const n = nuevasMC();
       b.classList.toggle('tienda', enM);
