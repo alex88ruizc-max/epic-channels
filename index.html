@@ -2794,9 +2794,16 @@
                   <div class="flex flex-wrap gap-2"><button type="button" onclick="conectarTgVentas()" class="px-3 py-1.5 rounded-lg bg-sky-500 text-black text-[11px] font-black">Conectar bot</button><button type="button" onclick="estadoTgVentas()" class="px-3 py-1.5 rounded-lg bg-gray-900 border border-gray-700 text-gray-200 text-[11px] font-bold">Revisar conexión</button><button type="button" onclick="desconectarTgVentas()" class="px-3 py-1.5 rounded-lg bg-gray-900 border border-gray-700 text-red-300 text-[11px] font-bold">Desconectar</button></div>
                   <label class="flex items-center gap-2 text-xs text-gray-200"><input type="checkbox" id="cnTgOn" class="accent-sky-500"> Mostrar el botón de Telegram</label>
                   <div class="flex flex-wrap gap-3"><label class="flex items-center gap-1.5 text-[11px] text-gray-300"><input type="checkbox" id="cnTgPort" class="accent-sky-500"> En la portada</label><label class="flex items-center gap-1.5 text-[11px] text-gray-300"><input type="checkbox" id="cnTgTienda" class="accent-sky-500"> En la tienda (encima de Ayuda)</label></div>
+                  <div class="flex flex-wrap items-center gap-2 text-[11px] text-gray-300 rounded-lg bg-gray-900/60 border border-gray-700 px-2.5 py-2"><label class="flex items-center gap-1.5"><input type="checkbox" id="cnTgPrimOn" class="accent-sky-500"> 🎁 Cupón para la primera compra de cada ID nuevo:</label>
+                    <input id="cnTgPrimPct" type="number" min="1" max="30" class="w-14 bg-gray-900 border border-gray-700 rounded-lg px-1.5 py-1 text-xs text-white"> % por <input id="cnTgPrimDias" type="number" min="1" max="60" class="w-14 bg-gray-900 border border-gray-700 rounded-lg px-1.5 py-1 text-xs text-white"> días</div>
                   <label class="block text-[10px] text-gray-400">Link de tu canal o comunidad (botón "📢 Novedades y stock")<input id="cnTgCanal" placeholder="https://t.me/tucanal o https://chat.whatsapp.com/…" class="mt-1 w-full bg-gray-900 border border-gray-700 rounded-lg px-2.5 py-1.5 text-xs text-white font-mono"></label>
                   <label class="block text-[10px] text-gray-400">Descripción del bot ("¿Qué puede hacer este bot?", máx. 512)<textarea id="cnTgDesc" rows="7" maxlength="512" class="mt-1 w-full bg-gray-900 border border-gray-700 rounded-lg px-2.5 py-1.5 text-xs text-white"></textarea></label>
                   <label class="block text-[10px] text-gray-400">Descripción corta del perfil (máx. 120)<input id="cnTgCorta" maxlength="120" class="mt-1 w-full bg-gray-900 border border-gray-700 rounded-lg px-2.5 py-1.5 text-xs text-white"></label>
+                  <details class="rounded-lg bg-gray-900/60 border border-amber-500/30"><summary class="px-3 py-2 cursor-pointer text-[11px] font-bold text-amber-300 list-none">🎡 Giro sorpresa (ruleta para clientes)</summary>
+                    <div class="px-3 pb-3 space-y-2"><label class="flex items-center gap-2 text-xs text-gray-200"><input type="checkbox" id="cnRuOn" class="accent-amber-500"> Activar el giro sorpresa</label>
+                      <label class="flex items-center gap-2 text-xs text-gray-200"><input type="checkbox" id="cnRuVis" class="accent-amber-500"> También a visitantes sin cuenta (giran y reclaman al registrarse)</label>
+                      <p class="text-[10px] text-gray-500">Sale a cada cliente registrado máximo 1 vez al mes, en un día al azar. Si tiene un cupón vigente, espera. El premio vence en 48 h. Probabilidad de cada premio, en %. Deben sumar 100%:</p>
+                      <div id="cnRuPesos" class="grid grid-cols-2 gap-1.5"></div></div></details>
                   <details class="rounded-lg bg-gray-900/60 border border-gray-700"><summary class="px-3 py-2 cursor-pointer text-[11px] font-bold text-gray-300 list-none">🗂 Nombres e íconos de las categorías del bot</summary>
                     <div id="cnTgCats" class="px-3 pb-3 space-y-1.5"></div></details>
                   <button type="button" onclick="aplicarDescTg()" class="px-3 py-1.5 rounded-lg bg-gray-900 border border-sky-500/50 text-sky-200 text-[11px] font-black">Aplicar descripción al bot</button>
@@ -7792,7 +7799,7 @@
             setTimeout(() => { try { revisarCompraTrasRecarga(); } catch (e) { /* nada */ } }, 0);
             if (ticketsAvisadosCuenta === null) { ticketsAvisadosCuenta = Array.isArray(dataU.ticketsAvisados) ? dataU.ticketsAvisados : []; setTimeout(() => { try { revisarTicketsClienteUI(); } catch (e) { /* nada */ } }, 0); }
             try { window.miRegaloRecarga = dataU.bonoRecarga || null; if (!dataU.bienvenidaDada && !window._bvPedida && obtenerBackendUrl()) { window._bvPedida = true; llamarBackend('bienvenida_reclamar', {}).catch(() => {}); } } catch (e) { /* nada */ }
-          try { const antes = JSON.stringify(miCupon || null); miCupon = dataU.cupon || null; if (antes !== JSON.stringify(miCupon) || window._rgAntes !== JSON.stringify(window.miRegaloRecarga || null)) { window._rgAntes = JSON.stringify(window.miRegaloRecarga || null); setTimeout(() => { try { pintarBannerCupon(); renderizarCatalogo(); } catch (e) { /* nada */ } }, 0); } } catch (e) { /* nada */ }
+          try { const antes = JSON.stringify(miCupon || null) + JSON.stringify(window.miBonoRuleta || null); miCupon = dataU.cupon || null; window.miBonoRuleta = dataU.bonoRuleta || null; if (antes !== JSON.stringify(miCupon) + JSON.stringify(window.miBonoRuleta || null) || window._rgAntes !== JSON.stringify(window.miRegaloRecarga || null)) { window._rgAntes = JSON.stringify(window.miRegaloRecarga || null); setTimeout(() => { try { pintarBannerCupon(); renderizarCatalogo(); } catch (e) { /* nada */ } }, 0); } } catch (e) { /* nada */ }
             if (regalosVistosCuenta === null) { regalosVistosCuenta = Array.isArray(dataU.regalosVistos) ? dataU.regalosVistos : []; setTimeout(() => { try { revisarRegalosNuevos(); } catch (e) { /* nada */ } }, 2500); }
             else { try { const ult = (dataU.notificaciones || [])[0]; if (ult && /regalo/i.test(String(ult.titulo || '')) && ult.id !== window.__ultNotifRegalo) { window.__ultNotifRegalo = ult.id; setTimeout(revisarRegalosNuevos, 800); } } catch (e) { /* nada */ } }
             try { if (dataU.vistaPanel) recibirVistaPanelDeCuenta(dataU.vistaPanel); } catch (e) { /* nada */ }
@@ -10955,6 +10962,7 @@
         { tipo: nuevoSaldo === 0 ? 'peligro' : 'pregunta', textoAceptar: 'Sí, cambiar saldo' }
       )) return;
 
+      try { if (wa && wa !== String(orig.whatsapp || '')) { const lb = await llamarBackend('wa_libre', { wa: wa, uid: uid }); if (lb && lb.otro && !(await confirmarModal('📱 Ese WhatsApp ya está en otra cuenta.\n\n¿Guardarlo de todos modos? (queda como excepción)', { textoAceptar: 'Guardar igual' }))) return; } } catch (e) { /* sigue */ }
       const btn = document.getElementById('btnGuardarEdicionCliente');
       if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Guardando...'; }
       try {
@@ -17528,7 +17536,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-27ao';
+    const VERSION_PAGINA = '2026-10-27as';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261020_ajuste', fecha: '2026-10-20', titulo: 'Se ve mejor en iPhone 📱', mensaje: 'La tienda ahora **se ajusta siempre a tu pantalla**: ya no se agranda al escribir ni se corre hacia los lados. Si la tienes abierta, **recarga la página** para verla así.' },
       { id: 'act_20261020_app', fecha: '2026-10-20', titulo: 'App oficial de Epic Streaming 📲', mensaje: 'Ya tenemos **app oficial**: en la tienda toca **Descargar** (Android), **Instalar** (PC) o **Agregar** (iPhone). Abre más rápido, a pantalla completa, con tu misma cuenta y **se actualiza sola**.' },
@@ -21720,8 +21728,22 @@
         b.innerHTML = `<span class="w-10 h-10 shrink-0 rounded-xl bg-pink-500 text-white flex items-center justify-center text-lg">🎁</span><div class="min-w-0 flex-1"><p class="text-sm font-black text-white">Tu próxima recarga trae ${txt} de regalo</p><p class="text-[11px] text-pink-200">Se suma solo al acreditarse · vence en ${dias} día${dias === 1 ? '' : 's'}${g.motivo === 'bienvenida' ? ' · <span class="opacity-70">Aplican términos y condiciones</span>' : ''}</p></div>`;
       } catch (e) { /* nada */ }
     }
+    // 🎡 Premios del giro sorpresa que no son % (garantía extra o saldo extra al recargar)
+    function pintarBannerPremioRuleta() {
+      const ancla = document.getElementById('bannerDealer') || document.getElementById('catalogoContainer'); let b = document.getElementById('bannerRuleta');
+      const c = miCupon, gV = c && c.usado !== true && Number(c.garDias) > 0 && c.vence && Date.parse(c.vence) > Date.now();
+      const r = window.miBonoRuleta, rV = r && r.usado !== true && Number(r.monto) > 0 && r.vence && Date.parse(r.vence) > Date.now();
+      if (!(gV || rV) || !ancla) { if (b) b.remove(); return; }
+      if (!b) { b = document.createElement('div'); b.id = 'bannerRuleta'; ancla.parentElement.insertBefore(b, ancla); }
+      const titulo = gV ? `+${Number(c.garDias)} días de garantía` : `+${formatoCOP(Number(r.monto))} en tu próxima recarga`;
+      const sub = gV ? 'En tu próxima compra' : `Al recargar ${formatoCOP(Number(r.minimo || 0))} o más por Bre-B`;
+      b.className = 'mb-4 p-3 rounded-2xl flex items-center gap-3'; b.style.cssText = 'background:linear-gradient(90deg,rgba(201,162,39,.14),rgba(201,162,39,.03));border:1px solid rgba(201,162,39,.5)';
+      b.innerHTML = `<span class="w-10 h-10 shrink-0 rounded-xl flex items-center justify-center text-lg" style="background:linear-gradient(135deg,#f5d97a,#c9a227)">🎡</span><div class="min-w-0 flex-1"><p class="text-sm font-black text-white">Ganaste ${escaparHtml(titulo)}</p><p class="text-[11px]" style="color:#f5d97a">${escaparHtml(sub)} · vence en <span class="cuenta-regresiva font-bold" data-hasta="${escaparHtml(gV ? c.vence : r.vence)}"></span></p></div>`;
+      try { actualizarCuentasRegresivas(); } catch (e) { /* nada */ }
+    }
     function pintarBannerCupon() {
       try { pintarBannerRegaloRecarga(); } catch (e) { /* nada */ }
+      try { pintarBannerPremioRuleta(); } catch (e) { /* nada */ }
       const pct = cuponVigenteCliente(); let b = document.getElementById('bannerCupon');
       const ancla = document.getElementById('bannerDealer') || document.getElementById('catalogoContainer');
       if (!pct || !ancla) { if (b) b.remove(); return; }
@@ -24303,6 +24325,9 @@
       set('cnTgCanal', cc.tgCanal || ''); set('cnTgCorta', cc.tgCorta || '⚡ Tienda 24/7 · Entrega al instante · Garantía · Bre-B y Binance');
       set('cnTgDesc', cc.tgDesc || ('🛒 ' + tienda + '\nTu tienda automática 24/7 de cuentas de streaming. Entrega al instante y garantía en cada compra. 🤖\n\n🔥 Destacados:\n• Prime Video\n• Netflix\n• YouTube Premium\n• Spotify\n• Gemini Pro\n• ¡y más!\n\n💳 Pagas con Bre-B (COP) o Binance (USDT)\n👑 +' + (((ajustesGeneralesConfig || {}).portadaClientes) || '3.000') + ' clientes desde 2014\n\nToca INICIAR 👇'));
       pintarPromos();
+      try { const p1 = document.getElementById('cnTgPrimOn'), p2 = document.getElementById('cnTgPrimPct'), p3 = document.getElementById('cnTgPrimDias'); if (p1) p1.checked = cc.tgPrimeraOn !== false; if (p2) p2.value = cc.tgPrimeraPct || 5; if (p3) p3.value = cc.tgPrimeraDias || 7; } catch (e) { /* nada */ }
+      try { const ru = cc.ruleta || {}, on = document.getElementById('cnRuOn'), bp = document.getElementById('cnRuPesos'); if (on) on.checked = ru.on === true; const vis = document.getElementById('cnRuVis'); if (vis) vis.checked = ru.visitantes === true;
+        if (bp) { bp.innerHTML = RU_PREMIOS.map(x => `<label class="flex items-center gap-1.5 text-[11px] text-gray-300"><span class="relative"><input type="number" min="0" max="100" data-ru="${x[0]}" oninput="ruSumaPct()" value="${ru[x[0]] != null ? ru[x[0]] : x[2]}" class="w-16 bg-gray-900 border border-gray-700 rounded-lg pl-1.5 pr-5 py-1 text-xs text-white"><span class="absolute right-1.5 top-1/2 -translate-y-1/2 text-gray-500 text-[10px]">%</span></span> ${x[1]}</label>`).join('') + '<p id="cnRuTotal" class="col-span-2"></p>'; ruSumaPct(); } } catch (e) { /* nada */ }
       const tc = cc.tgCats || {}, boxC = document.getElementById('cnTgCats');
       if (boxC) boxC.innerHTML = TG_CATS_DEF.map(x => `<div class="flex items-center gap-2"><input data-cat-emoji="${x[0]}" value="${escaparHtml((tc[x[0]] || {}).emoji || x[1])}" maxlength="8" class="w-12 text-center bg-gray-900 border border-gray-700 rounded-lg px-1 py-1 text-sm"><input data-cat-nombre="${x[0]}" value="${escaparHtml((tc[x[0]] || {}).nombre || x[2])}" maxlength="28" class="flex-grow bg-gray-900 border border-gray-700 rounded-lg px-2 py-1 text-xs text-white"></div>`).join('') + '<p class="text-[10px] text-gray-500">Se aplican al tocar Guardar canales. Solo aparecen en el bot las categorías que tengan stock.</p>';
       estadoTgVentas();
@@ -24310,9 +24335,101 @@
     async function guardarCfgCanales() {
       const g = id => document.getElementById(id), num = String(g('cnWaNum').value || '').replace(/\D/g, '');
       if (g('cnWaOn').checked && num.length < 10) return alert('Escribe el número del bot de WhatsApp con indicativo (ej: 573001234567).');
-      const canales = Object.assign({}, (aparienciaConfig && aparienciaConfig.canales) || {}, { waOn: g('cnWaOn').checked, waNumero: num, waMensaje: String(g('cnWaMsg').value || '').trim().slice(0, 80) || 'Hola 👋 vengo de la tienda', waPortada: g('cnWaPort').checked, waTienda: g('cnWaTienda').checked, asesorWa: g('cnAsesor').value, tgOn: g('cnTgOn').checked, tgPortada: g('cnTgPort').checked, tgTienda: g('cnTgTienda').checked, tgCats: (() => { const o = {}; TG_CATS_DEF.forEach(x => { const e = document.querySelector('[data-cat-emoji="' + x[0] + '"]'), n = document.querySelector('[data-cat-nombre="' + x[0] + '"]'); if (e && n && (e.value.trim() !== x[1] || n.value.trim() !== x[2])) o[x[0]] = { emoji: e.value.trim() || x[1], nombre: n.value.trim() || x[2] }; }); return o; })(), tgCanal: String(g('cnTgCanal').value || '').trim(), tgDesc: String(g('cnTgDesc').value || '').slice(0, 512), tgCorta: String(g('cnTgCorta').value || '').slice(0, 120) });
+      const canales = Object.assign({}, (aparienciaConfig && aparienciaConfig.canales) || {}, { waOn: g('cnWaOn').checked, waNumero: num, waMensaje: String(g('cnWaMsg').value || '').trim().slice(0, 80) || 'Hola 👋 vengo de la tienda', waPortada: g('cnWaPort').checked, waTienda: g('cnWaTienda').checked, asesorWa: g('cnAsesor').value, tgOn: g('cnTgOn').checked, tgPortada: g('cnTgPort').checked, tgTienda: g('cnTgTienda').checked, tgPrimeraOn: !!(document.getElementById('cnTgPrimOn') || {}).checked, tgPrimeraPct: Math.max(1, Math.min(30, parseInt((document.getElementById('cnTgPrimPct') || {}).value, 10) || 5)), tgPrimeraDias: Math.max(1, Math.min(60, parseInt((document.getElementById('cnTgPrimDias') || {}).value, 10) || 7)), ruleta: (() => { const o = { on: !!(document.getElementById('cnRuOn') || {}).checked, visitantes: !!(document.getElementById('cnRuVis') || {}).checked }; document.querySelectorAll('[data-ru]').forEach(e => { const n = parseInt(e.value, 10); o[e.getAttribute('data-ru')] = isFinite(n) && n >= 0 ? Math.min(100, n) : 0; }); return o; })(), tgCats: (() => { const o = {}; TG_CATS_DEF.forEach(x => { const e = document.querySelector('[data-cat-emoji="' + x[0] + '"]'), n = document.querySelector('[data-cat-nombre="' + x[0] + '"]'); if (e && n && (e.value.trim() !== x[1] || n.value.trim() !== x[2])) o[x[0]] = { emoji: e.value.trim() || x[1], nombre: n.value.trim() || x[2] }; }); return o; })(), tgCanal: String(g('cnTgCanal').value || '').trim(), tgDesc: String(g('cnTgDesc').value || '').slice(0, 512), tgCorta: String(g('cnTgCorta').value || '').slice(0, 120) });
       try { await db.collection('configuracion').doc('apariencia').set({ canales: canales }, { merge: true }); mostrarToast('✅ Canales guardados'); } catch (e) { alert('No se pudo guardar: ' + e.message); }
     }
+    const RU_PREMIOS = [['p3', '3%', 30], ['p5', '5%', 30], ['p10', '10%', 10], ['r1', '+$1.000 recarga', 15], ['r2', '+$2.000 recarga', 5], ['g3', '+3 días garantía', 5], ['otra', '¡Otra!', 5]];
+    function ruSumaPct() { let t = 0; document.querySelectorAll('[data-ru]').forEach(e => { t += Math.max(0, parseInt(e.value, 10) || 0); }); const el = document.getElementById('cnRuTotal'); if (el) { el.textContent = 'Total: ' + t + '%' + (t === 100 ? ' ✓' : ' · debe sumar 100%'); el.className = 'text-[11px] font-black ' + (t === 100 ? 'text-emerald-400' : 'text-amber-400'); } }
+    // =================== 🎡 GIRO SORPRESA ===================
+    const RU_SEG = [['5%', '#141a24', '#f5d97a'], ['+$1.000', '#c9a227', '#1a1405'], ['¡Otra!', '#0b0f17', '#9ca3af'], ['10%', '#7a5c0f', '#ffffff'], ['3%', '#141a24', '#f5d97a'], ['+3 días', '#10b981', '#04130d'], ['5%', '#c9a227', '#1a1405'], ['+$2.000', '#0b0f17', '#f5d97a']];
+    let ruRot = 0, ruOcupada = false;
+    function ruletaSvg() { const N = RU_SEG.length, A = 360 / N; let h = '<circle r="124" fill="#0b0f17" stroke="#c9a227" stroke-width="3"/>';
+      RU_SEG.forEach((sg, i) => { const a0 = (i * A - 90 - A / 2) * Math.PI / 180, a1 = ((i + 1) * A - 90 - A / 2) * Math.PI / 180, r = 116, m = (i * A - 90) * Math.PI / 180, tx = 78 * Math.cos(m), ty = 78 * Math.sin(m);
+        h += `<path d="M0 0 L${r * Math.cos(a0)} ${r * Math.sin(a0)} A${r} ${r} 0 0 1 ${r * Math.cos(a1)} ${r * Math.sin(a1)} Z" fill="${sg[1]}" stroke="#c9a227" stroke-width="1.2"/><text x="${tx}" y="${ty}" fill="${sg[2]}" font-size="14" font-weight="800" text-anchor="middle" dominant-baseline="middle" transform="rotate(${i * A} ${tx} ${ty})">${sg[0]}</text>`; });
+      for (let i = 0; i < 16; i++) { const m = i * 22.5 * Math.PI / 180; h += `<circle cx="${120 * Math.cos(m)}" cy="${120 * Math.sin(m)}" r="2.2" fill="${i % 2 ? '#f5d97a' : '#fff'}"/>`; }
+      return h; }
+    let ruModo = 'cliente';
+    function abrirRuleta(modo) {
+      if (document.getElementById('ruletaModal')) return; ruModo = modo === 'visita' ? 'visita' : 'cliente';
+      const m = document.createElement('div'); m.id = 'ruletaModal'; m.className = 'fixed inset-0 z-[80] flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm';
+      m.innerHTML = `<div class="relative w-full max-w-sm text-center rounded-3xl px-5 pt-6 pb-5" style="background:radial-gradient(120% 80% at 50% 0%,#1d1708 0%,#0b0f17 55%,#05070d 100%);border:1px solid #c9a227;box-shadow:0 0 0 1px rgba(201,162,39,.15),0 20px 50px rgba(0,0,0,.6)">
+        <button type="button" onclick="cerrarRuleta()" aria-label="Cerrar" class="absolute top-3 right-3 w-8 h-8 rounded-full bg-white/5 border border-white/10 text-gray-400"><i class="fa-solid fa-xmark"></i></button>
+        <span class="inline-flex items-center gap-1.5 text-[11px] font-black tracking-widest px-3 py-1 rounded-full" style="color:#f5d97a;border:1px solid rgba(201,162,39,.45);background:rgba(201,162,39,.08)">✦ GIRO SORPRESA ✦</span>
+        <p class="text-xl font-black text-white mt-3">¡Gira y gana!</p><p class="text-xs text-gray-400">${ruModo === 'visita' ? 'Gira gratis, sin registrarte' : 'Un premio para tu próxima compra'}</p>
+        <div class="relative mx-auto my-4" style="width:260px;height:260px"><div class="absolute left-1/2 -translate-x-1/2 z-10" style="top:-6px;width:0;height:0;border-left:12px solid transparent;border-right:12px solid transparent;border-top:22px solid #f5d97a;filter:drop-shadow(0 2px 3px rgba(0,0,0,.6))"></div>
+          <svg id="ruletaRueda" viewBox="-125 -125 250 250" width="260" height="260" style="transition:transform 4.2s cubic-bezier(.17,.89,.2,1)">${ruletaSvg()}</svg>
+          <button type="button" onclick="girarRuleta()" class="absolute inset-0 m-auto w-[70px] h-[70px] rounded-full font-black text-xs" style="background:linear-gradient(135deg,#f5d97a,#c9a227);color:#1a1405;border:3px solid #0b0f17;box-shadow:0 0 0 2px #c9a227">GIRAR</button></div>
+        <button type="button" id="ruletaBtn" onclick="girarRuleta()" class="w-full py-3 rounded-2xl font-black text-sm" style="background:linear-gradient(135deg,#f5d97a,#c9a227);color:#1a1405;box-shadow:0 8px 20px rgba(201,162,39,.25)">✦ Girar ahora</button>
+        <button type="button" id="ruletaNo" onclick="cerrarRuleta()" class="mt-2 text-[11px] text-gray-500">Ahora no</button>
+        <div id="ruletaRes" class="hidden mt-2 rounded-2xl p-3 text-left" style="background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.4)"></div>
+        <p class="text-[10px] text-gray-500 mt-3">El premio vence en 48 h · no se acumula con otros cupones</p></div>`;
+      document.body.appendChild(m); ruRot = 0;
+    }
+    function cerrarRuleta() { const m = document.getElementById('ruletaModal'); if (m && !ruOcupada) m.remove(); try { if (ruModo === 'visita') sessionStorage.setItem('ruVisNo', '1'); } catch (e) { /* nada */ } }
+    function ruVid() { try { let v = localStorage.getItem('ruVid'); if (!v) { v = (Date.now().toString(36) + Math.random().toString(36).slice(2, 12)); localStorage.setItem('ruVid', v); } return v; } catch (e) { return 'x' + Date.now(); } }
+    // 🎉 confeti dorado
+    function confetiDorado() { try { const c = ['#f5d97a', '#c9a227', '#ffffff', '#10b981', '#fbbf24'], box = document.createElement('div'); box.style.cssText = 'position:fixed;inset:0;pointer-events:none;z-index:90;overflow:hidden';
+      for (let i = 0; i < 90; i++) { const p = document.createElement('i'), x = Math.random() * 100, d = 1.6 + Math.random() * 1.6, r = Math.random() * 720;
+        p.style.cssText = `position:absolute;top:-12px;left:${x}%;width:${6 + Math.random() * 6}px;height:${8 + Math.random() * 8}px;background:${c[i % c.length]};border-radius:2px;opacity:.95;transform:rotate(${r}deg);transition:transform ${d}s cubic-bezier(.2,.6,.3,1),top ${d}s cubic-bezier(.2,.6,.3,1),opacity ${d}s`;
+        box.appendChild(p); setTimeout(() => { p.style.top = (70 + Math.random() * 40) + '%'; p.style.transform = `translateX(${(Math.random() - .5) * 200}px) rotate(${r + 540}deg)`; p.style.opacity = '0'; }, 30); }
+      document.body.appendChild(box); setTimeout(() => box.remove(), 3600); } catch (e) { /* nada */ } }
+    function ruIrComprar() { cerrarRuleta(); try { const c = document.getElementById('catalogoContainer'); if (c) c.scrollIntoView({ behavior: 'smooth', block: 'start' }); mostrarToast('🎁 Tu premio se aplica solo en tu próxima compra'); } catch (e) { /* nada */ } }
+    function ruIrRecargar(min) { cerrarRuleta(); try { abrirModalRecarga(); mostrarToast('💳 Recarga ' + formatoCOP(min) + ' o más por Bre-B y recibe tu premio'); } catch (e) { /* nada */ } }
+    function ruBotonesPremio(texto) { const rec = /recargar/i.test(texto || ''), min = /20\.000/.test(texto || '') ? 20000 : 10000;
+      return `<div class="flex flex-col gap-2 mt-3">${rec ? `<button type="button" onclick="ruIrRecargar(${min})" class="w-full py-3 rounded-xl text-sm font-black" style="background:linear-gradient(135deg,#f5d97a,#c9a227);color:#1a1405">💳 Recargar ahora</button>` : `<button type="button" onclick="ruIrComprar()" class="w-full py-3 rounded-xl text-sm font-black" style="background:linear-gradient(135deg,#f5d97a,#c9a227);color:#1a1405">🛒 Ir a comprar</button>`}
+        <button type="button" onclick="cerrarRuleta()" class="text-[11px] text-gray-400 underline">Lo uso después</button></div>`; }
+    async function girarRuleta() {
+      if (ruOcupada) return; ruOcupada = true; const b = document.getElementById('ruletaBtn'), no = document.getElementById('ruletaNo'); if (b) { b.disabled = true; b.style.opacity = '.6'; } if (no) no.classList.add('hidden');
+      let r;
+      if (ruModo === 'visita') { try { const url = obtenerBackendUrl('ruleta_visita'); const resp = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ accion: 'ruleta_visita', vid: ruVid() }) }); r = await resp.json(); } catch (e) { r = { ok: false, error: 'No se pudo girar.' }; } }
+      else { try { r = await llamarBackend('ruleta_girar', {}); } catch (e) { r = { ok: false, error: e.message }; } }
+      if (!r || !r.ok) { ruOcupada = false; alert((r && r.error) || 'No se pudo girar.'); const m = document.getElementById('ruletaModal'); if (m) m.remove(); return; }
+      const N = RU_SEG.length, A = 360 / N, w = document.getElementById('ruletaRueda');
+      ruRot += 360 * 5 + (360 - (r.idx * A) % 360) - (ruRot % 360); if (w) w.style.transform = `rotate(${ruRot}deg)`;
+      setTimeout(() => { ruOcupada = false;
+        if (r.otra) { if (b) { b.disabled = false; b.style.opacity = '1'; b.textContent = '✦ Girar otra vez'; } return; }
+        if (b) b.classList.add('hidden');
+        const res = document.getElementById('ruletaRes'); if (res) { res.classList.remove('hidden');
+          if (ruModo === 'visita') {
+            try { localStorage.setItem('ruToken', r.token); localStorage.setItem('ruVisto', '1'); } catch (e) { /* nada */ }
+            res.innerHTML = `<p class="text-[11px] font-black tracking-widest" style="color:#f5d97a">🎉 ¡GANASTE!</p><p class="text-lg font-black text-white leading-snug mt-1">${escaparHtml(r.texto || '')}</p><p class="text-[11px] text-gray-400 mt-1">🎁 Reclámalo creando tu cuenta gratis o entrando a la tuya.</p>
+              <div class="flex flex-col gap-2 mt-3"><button type="button" onclick="cerrarRuleta(); abrirModalAuth('register')" class="w-full py-3 rounded-xl text-sm font-black" style="background:linear-gradient(135deg,#f5d97a,#c9a227);color:#1a1405">🎁 Crear cuenta y reclamar</button>
+              <button type="button" onclick="cerrarRuleta(); abrirModalAuth('login')" class="w-full py-2.5 rounded-xl bg-white/5 border border-white/10 text-white text-xs font-bold">Ya tengo cuenta · Iniciar sesión</button></div>`;
+          } else {
+            res.innerHTML = `<p class="text-[11px] font-black tracking-widest" style="color:#f5d97a">🎉 ¡GANASTE!</p><p class="text-lg font-black text-white leading-snug mt-1">${escaparHtml(r.texto || '')}</p><p class="text-[11px] text-gray-400 mt-1">Ya está en tu cuenta · vence en <span class="cuenta-regresiva font-bold" data-hasta="${escaparHtml(r.vence || '')}"></span></p>` + ruBotonesPremio(r.texto);
+            try { actualizarCuentasRegresivas(); } catch (e) { /* nada */ }
+          } }
+        confetiDorado();
+      }, 4300);
+    }
+    // 🎡 Visitante sin cuenta: le sale en la portada (1 vez por dispositivo; si dice "Ahora no", vuelve otro día)
+    setInterval(() => { try {
+      if (currentUser || document.getElementById('ruletaModal')) return; const ru = (aparienciaConfig && aparienciaConfig.canales && aparienciaConfig.canales.ruleta) || {};
+      if (!(ru.on === true && ru.visitantes === true) || localStorage.getItem('ruVisto') || sessionStorage.getItem('ruVisNo') || !obtenerBackendUrl('ruleta_visita')) return;
+      if (document.querySelector('.fixed.inset-0:not(.hidden)')) return;
+      if (!window._ruVisT) window._ruVisT = Date.now(); if (Date.now() - window._ruVisT < 6000) return;
+      abrirRuleta('visita');
+    } catch (e) { /* nada */ } }, 2000);
+    // 🎁 Al registrarse o entrar con un premio guardado: se lo entrega
+    setInterval(async () => { try {
+      if (!currentUser || !obtenerBackendUrl() || window._ruReclamando) return; const t = localStorage.getItem('ruToken'); if (!t) return;
+      window._ruReclamando = true; let r; try { r = await llamarBackend('ruleta_reclamar', { token: t }); } catch (e) { r = null; }
+      if (r && (r.ok || r.error)) localStorage.removeItem('ruToken');
+      if (r && r.ok) { confetiDorado(); await confirmarModal('🎁 ¡Listo! Tu premio ya está en tu cuenta:\n\n' + r.texto + '\n\nVence en 48 horas.', { textoAceptar: 'Genial', soloAceptar: true }); }
+      else if (r && r.error) { try { mostrarToast(r.error); } catch (e) { /* nada */ } }
+      window._ruReclamando = false;
+    } catch (e) { window._ruReclamando = false; } }, 3000);
+    // Revisa con el servidor si hoy le toca (una vez por sesión, ya en la tienda y sin otras ventanas abiertas)
+    (function () { let hecho = false;
+      setInterval(async () => {
+        try { if (hecho || !currentUser || !obtenerBackendUrl()) return; const vt = document.getElementById('vistaTienda'); if (!vt || vt.classList.contains('hidden')) return;
+          if (document.querySelector('.fixed.inset-0:not(.hidden):not(#vistaMisCompras)')) return;
+          const k = 'ruChk_' + currentUser.uid + '_' + new Date().toISOString().slice(0, 10); if (sessionStorage.getItem(k)) { hecho = true; return; }
+          hecho = true; sessionStorage.setItem(k, '1');
+          const r = await llamarBackend('ruleta_estado', {}); if (r && r.mostrar) setTimeout(abrirRuleta, 1500);
+        } catch (e) { /* nada */ }
+      }, 5000);
+    })();
     const TG_CATS_DEF = [['prime', '🎬', 'Prime Video'], ['netflix', '🍿', 'Netflix'], ['youtube', '📺', 'YouTube Premium'], ['spotify', '🎧', 'Spotify'], ['gemini', '🤖', 'Gemini Pro'], ['amazon', '🆓', 'Amazon Free'], ['correos', '✉️', 'Correos Hotmail'], ['disney', '🏰', 'Disney+'], ['max', '🟣', 'Max'], ['chatgpt', '🧠', 'ChatGPT'], ['canva', '🎨', 'Canva'], ['capcut', '✂️', 'CapCut'], ['duolingo', '🦉', 'Duolingo'], ['paramount', '⛰️', 'Paramount+'], ['crunchy', '🍥', 'Crunchyroll'], ['apple', '🍎', 'Apple'], ['otros', '📦', 'Otros']];
     async function aplicarDescTg() {
       const g = id => String((document.getElementById(id) || {}).value || '');
@@ -26271,6 +26388,31 @@ async function pintarPanelWa() {
       }
     }
 
+    // =================== 📱 1 WHATSAPP = 1 CLIENTE ===================
+    async function waYaRegistrado(wa) { try { const url = obtenerBackendUrl('wa_existe'); if (!url) return false; const r = await (await fetch(url, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ accion: 'wa_existe', wa: wa, vid: ruVid() }) })).json(); return !!(r && r.existe); } catch (e) { return false; } }
+    function abrirWaRepetido(wa) {
+      const m = document.createElement('div'); m.id = 'modalWaRepetido'; m.className = 'fixed inset-0 z-[85] flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm';
+      const linkWa = 'https://wa.me/' + cfgCanales().waNumero + '?text=' + encodeURIComponent('Hola, quiero recuperar mi cuenta');
+      m.innerHTML = `<div class="w-full max-w-sm rounded-3xl p-5 bg-gray-950 border border-gray-700 text-center">
+        <p class="text-3xl">📱</p><p class="text-lg font-black text-white mt-2">Ese WhatsApp ya está registrado</p><p class="text-xs text-gray-400 mt-1">Si es tuyo, recupera tu contraseña.</p>
+        <div id="waRecPaso1"><button type="button" onclick="document.getElementById('waRecPaso1').classList.add('hidden');document.getElementById('waRecPaso2').classList.remove('hidden')" class="mt-4 w-full py-3 rounded-xl bg-emerald-500 text-black font-black text-sm">🔑 Recuperar contraseña</button></div>
+        <div id="waRecPaso2" class="hidden mt-4 text-left"><label class="text-[11px] text-gray-400">Escribe el correo con el que te registraste<input id="waRecCorreo" type="email" class="mt-1 w-full bg-gray-900 border border-gray-700 rounded-xl px-3 py-2.5 text-sm text-white"></label>
+          <p id="waRecMsg" class="hidden text-xs mt-2"></p><button type="button" id="waRecBtn" onclick="waRecuperarCuenta('${escaparJsAttr(wa)}')" class="mt-3 w-full py-3 rounded-xl bg-emerald-500 text-black font-black text-sm">Enviarme el enlace</button></div>
+        <a href="${escaparHtml(linkWa)}" target="_blank" rel="noopener" class="block mt-4 text-[11px] text-gray-400 underline">¿No recuerdas tu correo? Escríbenos desde ese WhatsApp</a>
+        <button type="button" onclick="document.getElementById('modalWaRepetido').remove()" class="mt-3 text-xs text-gray-500">Cerrar</button></div>`;
+      document.body.appendChild(m);
+    }
+    async function waRecuperarCuenta(wa) {
+      const em = String((document.getElementById('waRecCorreo') || {}).value || '').trim().toLowerCase(), msg = document.getElementById('waRecMsg'), b = document.getElementById('waRecBtn');
+      const ver = (t, ok) => { if (msg) { msg.textContent = t; msg.className = 'text-xs mt-2 ' + (ok ? 'text-emerald-400' : 'text-red-400'); } };
+      if (!em) return ver('Escribe tu correo.');
+      if (b) { b.disabled = true; b.textContent = 'Revisando…'; }
+      try { const url = obtenerBackendUrl('wa_recuperar'); const r = await (await fetch(url, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ accion: 'wa_recuperar', wa: wa, email: em, vid: ruVid() }) })).json();
+        if (!r || !r.ok) { ver((r && r.error) || 'Ese correo no corresponde a ese WhatsApp.'); }
+        else { await auth.sendPasswordResetEmail(em); ver('📧 Listo. Te enviamos un enlace a tu correo para crear una contraseña nueva.', true); if (b) b.classList.add('hidden'); return; } }
+      catch (e) { ver('No se pudo. Intenta de nuevo.'); }
+      if (b) { b.disabled = false; b.textContent = 'Enviarme el enlace'; }
+    }
     async function procesarAuth(e) {
       e.preventDefault();
       const email = document.getElementById('authEmail').value.trim();
@@ -26287,6 +26429,7 @@ async function pintarPanelWa() {
           const rq = portReglas(password); if (!(rq.len && rq.may && rq.num)) { falla('Tu contraseña necesita 8 caracteres o más, una mayúscula y un número.'); return; }
           if (errBox) errBox.classList.add('hidden'); }
         if (registroPareceRobot()) { alert('No pudimos crear la cuenta. Espera unos segundos e inténtalo de nuevo.'); return; }
+        if (whatsapp && await waYaRegistrado(whatsapp)) { abrirWaRepetido(whatsapp); return; }   // 📱 1 WhatsApp = 1 cliente
         try {
           const cred = await auth.createUserWithEmailAndPassword(email, password);
           await db.collection('usuarios').doc(cred.user.uid).set({ 
@@ -26528,7 +26671,7 @@ async function pintarPanelWa() {
       return { cuentas: legado, stock: legado.length || stockPublico };
     }
 
-    const VERSION_SERVIDOR_NECESARIA = '2026-10-25v';   // la versión del servidor que necesita esta página
+    const VERSION_SERVIDOR_NECESARIA = '2026-10-25z';   // la versión del servidor que necesita esta página
     async function llamarBackend(accion, datos) {
       window._llamadasEnCurso = (window._llamadasEnCurso || 0) + 1;
       try { return await llamarBackendBase(accion, datos); } finally { window._llamadasEnCurso = Math.max(0, (window._llamadasEnCurso || 1) - 1); }
