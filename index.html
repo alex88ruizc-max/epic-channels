@@ -2787,6 +2787,18 @@
                   <div class="flex flex-wrap gap-2"><button type="button" onclick="conectarTgVentas()" class="px-3 py-1.5 rounded-lg bg-sky-500 text-black text-[11px] font-black">Conectar bot</button><button type="button" onclick="estadoTgVentas()" class="px-3 py-1.5 rounded-lg bg-gray-900 border border-gray-700 text-gray-200 text-[11px] font-bold">Revisar conexión</button><button type="button" onclick="desconectarTgVentas()" class="px-3 py-1.5 rounded-lg bg-gray-900 border border-gray-700 text-red-300 text-[11px] font-bold">Desconectar</button></div>
                   <label class="flex items-center gap-2 text-xs text-gray-200"><input type="checkbox" id="cnTgOn" class="accent-sky-500"> Mostrar el botón de Telegram</label>
                   <div class="flex flex-wrap gap-3"><label class="flex items-center gap-1.5 text-[11px] text-gray-300"><input type="checkbox" id="cnTgPort" class="accent-sky-500"> En la portada</label><label class="flex items-center gap-1.5 text-[11px] text-gray-300"><input type="checkbox" id="cnTgTienda" class="accent-sky-500"> En la tienda (encima de Ayuda)</label></div>
+                  <label class="block text-[10px] text-gray-400">Link de tu canal o comunidad (botón "📢 Novedades y stock")<input id="cnTgCanal" placeholder="https://t.me/tucanal o https://chat.whatsapp.com/…" class="mt-1 w-full bg-gray-900 border border-gray-700 rounded-lg px-2.5 py-1.5 text-xs text-white font-mono"></label>
+                  <label class="block text-[10px] text-gray-400">Descripción del bot ("¿Qué puede hacer este bot?", máx. 512)<textarea id="cnTgDesc" rows="7" maxlength="512" class="mt-1 w-full bg-gray-900 border border-gray-700 rounded-lg px-2.5 py-1.5 text-xs text-white"></textarea></label>
+                  <label class="block text-[10px] text-gray-400">Descripción corta del perfil (máx. 120)<input id="cnTgCorta" maxlength="120" class="mt-1 w-full bg-gray-900 border border-gray-700 rounded-lg px-2.5 py-1.5 text-xs text-white"></label>
+                  <button type="button" onclick="aplicarDescTg()" class="px-3 py-1.5 rounded-lg bg-gray-900 border border-sky-500/50 text-sky-200 text-[11px] font-black">Aplicar descripción al bot</button>
+                  <div class="pt-2 border-t border-gray-700/70 space-y-2">
+                    <p class="text-[11px] font-black text-amber-300">🎁 Códigos promocionales</p>
+                    <div class="grid grid-cols-2 gap-2"><input id="cpCodigo" placeholder="CÓDIGO (ej: EPIC10)" class="bg-gray-900 border border-gray-700 rounded-lg px-2.5 py-1.5 text-xs text-white uppercase font-mono"><input id="cpPct" type="number" min="1" max="50" placeholder="% descuento" class="bg-gray-900 border border-gray-700 rounded-lg px-2.5 py-1.5 text-xs text-white"><input id="cpDias" type="number" min="1" max="90" placeholder="Días para usarlo (7)" class="bg-gray-900 border border-gray-700 rounded-lg px-2.5 py-1.5 text-xs text-white"><input id="cpMax" type="number" min="0" placeholder="Usos máx. (0 = sin límite)" class="bg-gray-900 border border-gray-700 rounded-lg px-2.5 py-1.5 text-xs text-white"></div>
+                    <label class="block text-[10px] text-gray-400">El código vence el (opcional)<input id="cpVence" type="date" class="mt-1 w-full bg-gray-900 border border-gray-700 rounded-lg px-2.5 py-1.5 text-xs text-white"></label>
+                    <button type="button" onclick="guardarPromo()" class="px-3 py-1.5 rounded-lg bg-amber-400 text-black text-[11px] font-black">Crear o actualizar código</button>
+                    <div id="cpLista" class="space-y-1.5"></div>
+                    <p class="text-[10px] text-gray-500">El cliente lo escribe en el bot (🎁 Código promocional) y le queda un cupón con ese % para su próxima compra. Cada cliente puede usar cada código una vez. Los códigos no se pueden ver desde la página.</p>
+                  </div>
                   <p class="text-[10px] text-gray-500">El bot de Telegram funciona solo con botones (sin asistente ni asesor): Tienda → producto → cantidad → pagar con saldo o Bre-B → entrega al instante. Si paga por Bre-B, apenas llega el pago le entrega solo.</p>
                 </div>
                 <button type="button" onclick="guardarCfgCanales()" class="w-full py-2 rounded-xl bg-emerald-500 text-black text-xs font-black">Guardar canales</button>
@@ -17502,7 +17514,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-27x';
+    const VERSION_PAGINA = '2026-10-27aa';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261020_ajuste', fecha: '2026-10-20', titulo: 'Se ve mejor en iPhone 📱', mensaje: 'La tienda ahora **se ajusta siempre a tu pantalla**: ya no se agranda al escribir ni se corre hacia los lados. Si la tienes abierta, **recarga la página** para verla así.' },
       { id: 'act_20261020_app', fecha: '2026-10-20', titulo: 'App oficial de Epic Streaming 📲', mensaje: 'Ya tenemos **app oficial**: en la tienda toca **Descargar** (Android), **Instalar** (PC) o **Agregar** (iPhone). Abre más rápido, a pantalla completa, con tu misma cuenta y **se actualiza sola**.' },
@@ -24256,14 +24268,36 @@
       const c = cfgCanales(), set = (id, v) => { const e = document.getElementById(id); if (!e) return; if (e.type === 'checkbox') e.checked = !!v; else e.value = v; };
       set('cnWaOn', c.waOn); set('cnWaNum', String(((aparienciaConfig || {}).canales || {}).waNumero || numeroWhatsappTienda())); set('cnWaMsg', c.waMensaje); set('cnWaPort', c.waPortada); set('cnWaTienda', c.waTienda); set('cnAsesor', c.asesorWa);
       set('cnTgOn', ((aparienciaConfig || {}).canales || {}).tgOn !== false); set('cnTgPort', c.tgPortada); set('cnTgTienda', c.tgTienda);
+      const cc = (aparienciaConfig || {}).canales || {}, tienda = String((aparienciaConfig && (aparienciaConfig.nombreTienda || aparienciaConfig.titulo)) || 'EPIC STREAMING');
+      set('cnTgCanal', cc.tgCanal || ''); set('cnTgCorta', cc.tgCorta || '⚡ Tienda 24/7 · Entrega al instante · Garantía · Bre-B y Binance');
+      set('cnTgDesc', cc.tgDesc || ('🛒 ' + tienda + '\nTu tienda automática 24/7 de cuentas de streaming. Entrega al instante y garantía en cada compra. 🤖\n\n🔥 Destacados:\n• Prime Video\n• Netflix\n• YouTube Premium\n• Spotify\n• Gemini Pro\n• ¡y más!\n\n💳 Pagas con Bre-B (COP) o Binance (USDT)\n👑 +' + (((ajustesGeneralesConfig || {}).portadaClientes) || '3.000') + ' clientes desde 2014\n\nToca INICIAR 👇'));
+      pintarPromos();
       estadoTgVentas();
     }
     async function guardarCfgCanales() {
       const g = id => document.getElementById(id), num = String(g('cnWaNum').value || '').replace(/\D/g, '');
       if (g('cnWaOn').checked && num.length < 10) return alert('Escribe el número del bot de WhatsApp con indicativo (ej: 573001234567).');
-      const canales = Object.assign({}, (aparienciaConfig && aparienciaConfig.canales) || {}, { waOn: g('cnWaOn').checked, waNumero: num, waMensaje: String(g('cnWaMsg').value || '').trim().slice(0, 80) || 'Hola 👋 vengo de la tienda', waPortada: g('cnWaPort').checked, waTienda: g('cnWaTienda').checked, asesorWa: g('cnAsesor').value, tgOn: g('cnTgOn').checked, tgPortada: g('cnTgPort').checked, tgTienda: g('cnTgTienda').checked });
+      const canales = Object.assign({}, (aparienciaConfig && aparienciaConfig.canales) || {}, { waOn: g('cnWaOn').checked, waNumero: num, waMensaje: String(g('cnWaMsg').value || '').trim().slice(0, 80) || 'Hola 👋 vengo de la tienda', waPortada: g('cnWaPort').checked, waTienda: g('cnWaTienda').checked, asesorWa: g('cnAsesor').value, tgOn: g('cnTgOn').checked, tgPortada: g('cnTgPort').checked, tgTienda: g('cnTgTienda').checked, tgCanal: String(g('cnTgCanal').value || '').trim(), tgDesc: String(g('cnTgDesc').value || '').slice(0, 512), tgCorta: String(g('cnTgCorta').value || '').slice(0, 120) });
       try { await db.collection('configuracion').doc('apariencia').set({ canales: canales }, { merge: true }); mostrarToast('✅ Canales guardados'); } catch (e) { alert('No se pudo guardar: ' + e.message); }
     }
+    async function aplicarDescTg() {
+      const g = id => String((document.getElementById(id) || {}).value || '');
+      try { const r = await llamarBackend('tg_ventas_desc', { texto: g('cnTgDesc'), corta: g('cnTgCorta') }); if (!r || !r.ok) throw new Error((r && r.error) || 'No se pudo.');
+        await guardarCfgCanales(); mostrarToast('✅ Descripción aplicada al bot'); } catch (e) { alert(e.message); }
+    }
+    async function pintarPromos() {
+      const box = document.getElementById('cpLista'); if (!box || !obtenerBackendUrl()) return;
+      try { const r = await llamarBackend('promo_listar', {}); if (!r || !r.ok) return;
+        box.innerHTML = (r.codigos || []).length ? r.codigos.map(c => `<div class="flex items-center gap-2 p-2 rounded-lg bg-gray-900 border border-gray-700"><span class="font-mono text-xs font-black ${c.activo === false ? 'text-gray-500 line-through' : 'text-amber-300'}">${escaparHtml(c.codigo)}</span><span class="text-[10.5px] text-gray-300 flex-grow">${c.pct}% · ${c.dias} días · usado ${c.usos || 0}${c.max ? '/' + c.max : ''}${c.vence ? ' · vence ' + escaparHtml(c.vence) : ''}</span>
+          <button type="button" onclick="pausarPromo('${escaparJsAttr(c.codigo)}', ${c.activo === false ? 'true' : 'false'}, ${c.pct}, ${c.dias}, ${c.max || 0}, '${escaparJsAttr(c.vence || '')}')" class="text-[10px] font-black ${c.activo === false ? 'text-emerald-300' : 'text-gray-300'}">${c.activo === false ? 'Activar' : 'Pausar'}</button><button type="button" onclick="borrarPromo('${escaparJsAttr(c.codigo)}')" class="text-[10px] font-black text-red-300">Borrar</button></div>`).join('') : '<p class="text-[10.5px] text-gray-500">Aún no tienes códigos.</p>'; } catch (e) { /* nada */ }
+    }
+    async function guardarPromo() {
+      const g = id => String((document.getElementById(id) || {}).value || '').trim();
+      try { const r = await llamarBackend('promo_guardar', { codigo: g('cpCodigo'), pct: g('cpPct'), dias: g('cpDias') || 7, max: g('cpMax') || 0, vence: g('cpVence'), activo: true }); if (!r || !r.ok) throw new Error((r && r.error) || 'No se pudo.');
+        ['cpCodigo', 'cpPct', 'cpDias', 'cpMax', 'cpVence'].forEach(id => { const e = document.getElementById(id); if (e) e.value = ''; }); mostrarToast('🎁 Código guardado'); pintarPromos(); } catch (e) { alert(e.message); }
+    }
+    async function pausarPromo(codigo, activo, pct, dias, max, vence) { try { const r = await llamarBackend('promo_guardar', { codigo, pct, dias, max, vence, activo }); if (!r || !r.ok) throw new Error((r && r.error) || 'No se pudo.'); pintarPromos(); } catch (e) { alert(e.message); } }
+    async function borrarPromo(codigo) { if (!await confirmarModal('¿Borrar el código ' + codigo + '?', { textoAceptar: 'Sí, borrar' })) return; try { const r = await llamarBackend('promo_borrar', { codigo }); if (!r || !r.ok) throw new Error((r && r.error) || 'No se pudo.'); pintarPromos(); } catch (e) { alert(e.message); } }
     async function conectarTgVentas() {
       const tk = String((document.getElementById('cnTgToken') || {}).value || '').trim(), url = String((ajustesGeneralesConfig && ajustesGeneralesConfig.backendUrl) || '').trim();
       if (!tk) return alert('Pega el token que te dio @BotFather.');
@@ -24290,6 +24324,37 @@
         estadoTgVentas(); mostrarToast('Bot de Telegram desconectado'); } catch (e) { alert(e.message); }
     }
     function numeroWhatsappTienda() { return String((ajustesGeneralesConfig && ajustesGeneralesConfig.whatsappNumero) || '573043956726').replace(/\D/g, ''); }
+    // ✈️ Comprar por Telegram con la MISMA cuenta de la página (saldo y compras)
+    function pintarTgVentasCliente() {
+      const sec = document.getElementById('perfilSecDatos'); if (!sec || !currentUser || esStaffSesion()) return;
+      const c = (typeof cfgCanales === 'function') ? cfgCanales() : {}; let box = document.getElementById('tgVentasCaja');
+      if (!c.tgBot) { if (box) box.remove(); return; }
+      if (!box) { box = document.createElement('div'); box.id = 'tgVentasCaja'; box.className = 'mt-4 p-4 rounded-2xl bg-gray-900 border border-sky-500/30'; sec.appendChild(box); }
+      box.innerHTML = `<div class="flex items-center gap-3"><span class="w-10 h-10 shrink-0 rounded-xl bg-[#229ED9] text-white flex items-center justify-center text-xl"><i class="fa-brands fa-telegram"></i></span>
+        <div class="min-w-0"><p class="text-sm font-black text-white">Compra por Telegram</p><p class="text-[11px] text-gray-400">Usa tu misma cuenta: mismo saldo, compras y garantías.</p></div></div>
+        <button type="button" onclick="usarCuentaEnTelegram()" class="mt-3 w-full py-2.5 rounded-xl bg-[#229ED9] text-white text-sm font-black"><i class="fa-brands fa-telegram mr-1"></i>Usar mi cuenta en Telegram</button>`;
+    }
+    async function usarCuentaEnTelegram() {
+      const w = window.open('', '_blank');
+      try { const r = await llamarBackend('tgv_codigo_web', {}); if (!r || !r.ok) throw new Error((r && r.error) || 'No se pudo.');
+        if (w) w.location.href = r.link; else location.href = r.link; mostrarToast('✈️ Toca "Iniciar" en Telegram y listo'); }
+      catch (e) { try { if (w) w.close(); } catch (e2) { /* nada */ } alert(e.message); }
+    }
+    // 🔗 Llegó desde el bot (#tgvincular=CODIGO): cuando tenga sesión, le pide confirmar
+    (function () {
+      const m = /tgvincular=([A-Za-z0-9]{6,20})/.exec(location.hash || ''); if (!m) return;
+      const codigo = m[1]; try { history.replaceState(null, '', location.pathname + location.search); } catch (e) { /* nada */ }
+      let n = 0, avisado = false;
+      const t = setInterval(async () => {
+        n++; if (n > 600) { clearInterval(t); return; }
+        if (!currentUser || !obtenerBackendUrl()) { if (n === 8 && !avisado) { avisado = true; try { mostrarToast('Inicia sesión para vincular tu cuenta con Telegram'); } catch (e) { /* nada */ } } return; }
+        clearInterval(t);
+        if (!await confirmarModal('🔗 ¿Vincular esta cuenta con tu Telegram?\n\nEn el bot verás tu mismo saldo y tus compras.', { textoAceptar: 'Confirmar' })) return;
+        try { const r = await llamarBackend('tgv_confirmar_web', { codigo: codigo }); if (!r || !r.ok) throw new Error((r && r.error) || 'No se pudo vincular.');
+          await confirmarModal('✅ ¡Listo! Tu cuenta quedó vinculada.\n\nVuelve a Telegram: el bot ya te muestra tu saldo y tus compras.', { textoAceptar: 'Entendido', soloAceptar: true }); }
+        catch (e) { alert(e.message); }
+      }, 1000);
+    })();
     function pintarWaCliente() {
       const sec = document.getElementById('perfilSecDatos'); if (!sec || !currentUser || esStaffSesion()) return;
       let c = document.getElementById('waClienteCaja');
@@ -25243,7 +25308,7 @@ async function pintarPanelWa() {
 
     function cambiarTabPerfil(tab) {
       if (tab === 'recargas' && !esStaffSesion()) tab = 'cuentas';   // 🙈 el historial de recargas no se le muestra al cliente
-      setTimeout(() => { try { renderizarCreditoCliente(); } catch (e) { /* nada */ } try { if (tab === 'datos') { iniciarTgCliente(); pintarTgCliente(); pintarWaCliente(); } } catch (e) { /* nada */ } }, 0);
+      setTimeout(() => { try { renderizarCreditoCliente(); } catch (e) { /* nada */ } try { if (tab === 'datos') { iniciarTgCliente(); pintarTgCliente(); pintarWaCliente(); pintarTgVentasCliente(); } } catch (e) { /* nada */ } }, 0);
       try {
         ['cuentas', 'recargas', 'credito', 'datos', 'seguridad'].forEach(t => {
           const nombre = t.charAt(0).toUpperCase() + t.slice(1);
@@ -26324,7 +26389,7 @@ async function pintarPanelWa() {
       return { cuentas: legado, stock: legado.length || stockPublico };
     }
 
-    const VERSION_SERVIDOR_NECESARIA = '2026-10-25l';   // la versión del servidor que necesita esta página
+    const VERSION_SERVIDOR_NECESARIA = '2026-10-25o';   // la versión del servidor que necesita esta página
     async function llamarBackend(accion, datos) {
       window._llamadasEnCurso = (window._llamadasEnCurso || 0) + 1;
       try { return await llamarBackendBase(accion, datos); } finally { window._llamadasEnCurso = Math.max(0, (window._llamadasEnCurso || 1) - 1); }
