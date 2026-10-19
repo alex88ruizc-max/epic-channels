@@ -3162,7 +3162,7 @@
           <button type="button" onclick="cerrarSaludoAsistente()" aria-label="Cerrar saludo" class="text-gray-400 hover:text-gray-700 shrink-0"><i class="fa-solid fa-xmark text-xs"></i></button>
         </div>
         <div id="flotanteCanales" class="hidden flex flex-col items-end gap-2"></div>
-        <button id="btnAsistente" type="button" onclick="alternarAsistente()" aria-label="Abrir asistente de ayuda" aria-expanded="false" aria-controls="asistentePanel" class="asistente-fab bg-emerald-500 text-black relative">
+        <button id="btnAsistente" type="button" onclick="clickAyuda()" aria-label="Abrir asistente de ayuda" aria-expanded="false" aria-controls="asistentePanel" class="asistente-fab bg-emerald-500 text-black relative">
           <span id="asistenteBadgeNov" class="asistente-badge-nov hidden">1</span>
           <span class="asistente-fab-icono"><i class="fa-solid fa-comment-dots"></i><span class="asistente-punto"></span></span>
           <span class="text-sm">Ayuda</span>
@@ -4716,7 +4716,10 @@
           <i class="fa-solid fa-copy"></i> Copiar cuentas
         </button>
         <button onclick="cerrarModalEntrega()" class="bg-gray-800 hover:bg-gray-700 text-gray-100 font-bold py-2.5 rounded-xl text-xs border border-gray-700 transition">
-          Entendido
+          🛒 Seguir comprando
+        </button>
+        <button onclick="cerrarModalEntrega(); irAMisCompras();" class="col-span-2 bg-gradient-to-r from-amber-500 to-red-500 text-white font-black py-2.5 rounded-xl text-xs transition">
+          📦 Ver en Mis compras
         </button>
       </div>
     </div>
@@ -10148,6 +10151,7 @@
           const partes = r.partes.map(pt => ({ cuentas: Array.isArray(pt.cuentas) ? pt.cuentas : [], info: Object.assign({}, catalogoUnificado.find(p => p.docId === pt.productoId) || {}, { nombre: pt.productoNombre, tipoGarantia: pt.tipoGarantia }) }));
           mostrarEntregaCompleta(textoComboArmado(prodInfo, partes, Number(r.total) || 0), [], prodInfo, { total: Number(r.total) || 0, saldo: Number(r.saldo) || 0, partes: partes });
           verificarSubidaNivel(partes.reduce((t, x) => t + x.cuentas.length, 0));
+          try { marcarCompraNueva(); } catch (e) { /* nada */ }
           return;
         }
         const cuentasEntregadas = Array.isArray(r.cuentas) ? r.cuentas : [];
@@ -10171,6 +10175,7 @@
         let textoEntregaFinal = construirFormatoEntrega(cuentasEntregadas, prodInfo, { total: totalPagar, saldo: nuevoSaldoUsuario, cliente: currentUser.email });
         if (comboR) textoEntregaFinal = textoConCombo(textoEntregaFinal, comboR.cuentas, comboInfo);
         mostrarEntregaCompleta(textoEntregaFinal, cuentasEntregadas, prodInfo, { total: totalPagar, saldo: nuevoSaldoUsuario, combo: comboR ? { cuentas: comboR.cuentas, info: comboInfo } : null });
+        try { marcarCompraNueva(); } catch (e) { /* nada */ }
         if (comboR) { comboElegido[docId] = false; }
         if (userTipoCuenta === 'revendedor') setTimeout(cargarProgresoDealer, 800);
         if (r.bono && Array.isArray(r.bono.cuentas) && r.bono.cuentas.length) {
@@ -17516,7 +17521,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-27ah';
+    const VERSION_PAGINA = '2026-10-27aj';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261020_ajuste', fecha: '2026-10-20', titulo: 'Se ve mejor en iPhone 📱', mensaje: 'La tienda ahora **se ajusta siempre a tu pantalla**: ya no se agranda al escribir ni se corre hacia los lados. Si la tienes abierta, **recarga la página** para verla así.' },
       { id: 'act_20261020_app', fecha: '2026-10-20', titulo: 'App oficial de Epic Streaming 📲', mensaje: 'Ya tenemos **app oficial**: en la tienda toca **Descargar** (Android), **Instalar** (PC) o **Agregar** (iPhone). Abre más rápido, a pantalla completa, con tu misma cuenta y **se actualiza sola**.' },
@@ -24253,6 +24258,23 @@
         tgOn: c.tgOn !== false && !!c.tgBot, tgBot: String(c.tgBot || '').replace(/^@/, ''), tgPortada: c.tgPortada !== false, tgTienda: c.tgTienda !== false, asesorWa: c.asesorWa || 'siempre' }; }
     function linkWaCanal() { const c = cfgCanales(); return 'https://wa.me/' + c.waNumero + '?text=' + encodeURIComponent(c.waMensaje); }
     function linkTgCanal() { const c = cfgCanales(); return 'https://t.me/' + c.tgBot + '?start=tienda'; }
+    // 💬 Botón Ayuda: si hay WhatsApp o Telegram para la tienda, abre un menú con las 3 opciones; si no, abre el asistente como siempre
+    function opcionesAyuda() { const c = cfgCanales(), L = [];
+      if (c.tgOn && c.tgTienda) L.push({ t: '✈️ Telegram', href: linkTgCanal(), cls: 'background:#229ED9;color:#fff' });
+      if (c.waOn && c.waTienda && c.waNumero.length >= 10) L.push({ t: '💬 WhatsApp', href: linkWaCanal(), cls: 'background:#25D366;color:#000' });
+      return L; }
+    function cerrarDialAyuda() { const d = document.getElementById('ayudaDial'); if (d) d.remove(); }
+    function clickAyuda() {
+      const L = opcionesAyuda(); if (!L.length) { cerrarDialAyuda(); return alternarAsistente(); }
+      if (document.getElementById('ayudaDial')) return cerrarDialAyuda();
+      const btn = document.getElementById('btnAsistente'), r = btn.getBoundingClientRect(), d = document.createElement('div');
+      d.id = 'ayudaDial'; d.style.cssText = 'position:fixed;right:' + Math.max(8, window.innerWidth - r.right) + 'px;bottom:' + (window.innerHeight - r.top + 10) + 'px;z-index:70;display:flex;flex-direction:column;align-items:flex-end;gap:8px';
+      const pill = 'display:inline-flex;align-items:center;gap:6px;padding:10px 16px;border-radius:999px;font-weight:900;font-size:14px;box-shadow:0 8px 20px rgba(0,0,0,.35);text-decoration:none;';
+      d.innerHTML = L.map(o => `<a href="${escaparHtml(o.href)}" target="_blank" rel="noopener" onclick="cerrarDialAyuda()" style="${pill}${o.cls}">${o.t}</a>`).join('')
+        + `<button type="button" onclick="cerrarDialAyuda(); alternarAsistente();" style="${pill}background:#1f2937;color:#fff;border:1px solid #374151">🤖 Asistente</button>`;
+      document.body.appendChild(d);
+      setTimeout(() => document.addEventListener('click', function f(e) { if (!e.target.closest('#ayudaDial') && !e.target.closest('#btnAsistente')) { cerrarDialAyuda(); document.removeEventListener('click', f); } }), 0);
+    }
     function pintarCanales() {
       const c = cfgCanales(), wa = c.waOn && c.waNumero.length >= 10, tg = c.tgOn;
       const port = document.getElementById('portCanales');
@@ -24261,8 +24283,8 @@
         port.innerHTML = (bW || bT) ? `<div class="rounded-3xl bg-gray-900 border border-gray-800 p-4"><p class="text-sm font-black text-white">¿Prefieres comprar por chat?</p><p class="text-[11px] text-gray-400 mb-3">Sin registrarte en la página: el bot te muestra precios, cobras y te entrega al instante.</p>
           <div class="grid ${bW && bT ? 'grid-cols-2' : 'grid-cols-1'} gap-2">${bW ? `<a href="${escaparHtml(linkWaCanal())}" target="_blank" rel="noopener" onclick="try{portEmbudo('whatsapp_bot')}catch(e){}" class="flex items-center justify-center gap-2 py-3 rounded-2xl bg-[#25D366] text-black text-sm font-black"><i class="fa-brands fa-whatsapp text-lg"></i>WhatsApp</a>` : ''}${bT ? `<a href="${escaparHtml(linkTgCanal())}" target="_blank" rel="noopener" onclick="try{portEmbudo('telegram_bot')}catch(e){}" class="flex items-center justify-center gap-2 py-3 rounded-2xl bg-[#229ED9] text-white text-sm font-black"><i class="fa-brands fa-telegram text-lg"></i>Telegram</a>` : ''}</div></div>` : ''; }
       const fl = document.getElementById('flotanteCanales');
-      if (fl) { const fW = wa && c.waTienda, fT = tg && c.tgTienda;
-        fl.classList.toggle('hidden', !(fW || fT));
+      if (fl) { const fW = false, fT = false;   // 💬 ahora van dentro del botón Ayuda (clickAyuda)
+        fl.classList.toggle('hidden', true);
         fl.innerHTML = (fT ? `<a href="${escaparHtml(linkTgCanal())}" target="_blank" rel="noopener" aria-label="Comprar por Telegram" class="w-12 h-12 rounded-full bg-[#229ED9] text-white flex items-center justify-center text-2xl shadow-lg shadow-black/40"><i class="fa-brands fa-telegram"></i></a>` : '')
           + (fW ? `<a href="${escaparHtml(linkWaCanal())}" target="_blank" rel="noopener" aria-label="Comprar por WhatsApp" class="w-12 h-12 rounded-full bg-[#25D366] text-black flex items-center justify-center text-2xl shadow-lg shadow-black/40"><i class="fa-brands fa-whatsapp"></i></a>` : ''); }
     }
@@ -25824,33 +25846,54 @@ async function pintarPanelWa() {
       if (/prime|amazon/.test(t)) return ['#0a73ff', 'fa-brands fa-amazon']; if (/netflix/.test(t)) return ['#b91c1c', 'fa-solid fa-n']; if (/youtube/.test(t)) return ['#dc2626', 'fa-brands fa-youtube'];
       if (/spotify/.test(t)) return ['#16a34a', 'fa-brands fa-spotify']; if (/gemini|google/.test(t)) return ['#7c3aed', 'fa-solid fa-star']; if (/hotmail|correo|outlook|gmail/.test(t)) return ['#334155', 'fa-solid fa-envelope'];
       if (/disney/.test(t)) return ['#1e3a8a', 'fa-solid fa-wand-magic-sparkles']; if (/max|hbo/.test(t)) return ['#4c1d95', 'fa-solid fa-film']; return ['#374151', 'fa-solid fa-box']; };
+    function esEscritorioMC() { return window.innerWidth >= 1024; }
+    function asegurarPanelMC() {
+      if (document.getElementById('mcPanel')) return;
+      const grid = document.getElementById('misProductosGrid'), bloque = document.getElementById('misComprasBloque'); if (!grid || !bloque) return;
+      if (!document.getElementById('mcPanelCss')) { const st = document.createElement('style'); st.id = 'mcPanelCss';
+        st.textContent = '@media (min-width:1024px){#mcPanel.dos{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.7fr);gap:16px;align-items:start}#mcPanel.dos #misProductosGrid{position:sticky;top:12px}}'
+          + '.fab-mc{position:fixed;left:16px;bottom:calc(env(safe-area-inset-bottom,0px) + 18px);z-index:60;display:flex;align-items:center;gap:8px;padding:12px 16px;border-radius:999px;font-weight:900;font-size:14px;color:#fff;background:linear-gradient(90deg,#f59e0b,#ef4444);box-shadow:0 8px 24px rgba(239,68,68,.35);transition:all .2s}'
+          + '.fab-mc.tienda{background:#1f2937;border:1px solid #374151;box-shadow:0 8px 24px rgba(0,0,0,.4)}.fab-mc .txt{white-space:nowrap}.fab-mc.mini{padding:12px}.fab-mc.mini .txt{display:none}'
+          + '.fab-mc .bdg{background:#fff;color:#ef4444;border-radius:999px;padding:0 7px;font-size:11px}.fab-mc.mini .bdg{position:absolute;top:-4px;right:-4px}'
+          + '.fab-mc.brilla{animation:mcBrilla 1.2s ease-in-out 3}@keyframes mcBrilla{0%,100%{box-shadow:0 0 0 0 rgba(245,158,11,.7)}50%{box-shadow:0 0 0 14px rgba(245,158,11,0)}}'
+          + '.asistente-fab.mini span.text-sm{display:none}';
+        document.head.appendChild(st); }
+      const panel = document.createElement('div'); panel.id = 'mcPanel'; grid.parentNode.insertBefore(panel, grid); panel.appendChild(grid); panel.appendChild(bloque);
+    }
     function pintarProductosMisCuentas() {
-      const grid = document.getElementById('misProductosGrid'), barra = document.getElementById('misProductoBarra'), bloque = document.getElementById('misComprasBloque'), lista = document.getElementById('listaMisCuentas'), nf = document.getElementById('perfilNetflixCaja');
+      asegurarPanelMC();
+      const grid = document.getElementById('misProductosGrid'), barra = document.getElementById('misProductoBarra'), bloque = document.getElementById('misComprasBloque'), lista = document.getElementById('listaMisCuentas'), nf = document.getElementById('perfilNetflixCaja'), panel = document.getElementById('mcPanel');
       if (!grid || !barra || !bloque || !lista) return;
       const prods = {}, orden = [];
-      (misComprasPerfilCache || []).forEach(c => { const n = c.productoNombre || 'Otros'; if (!prods[n]) { prods[n] = { n: n, cuentas: 0, correos: [] }; orden.push(n); }
-        const ls = String(c.credenciales || '').split('\n').map(l => l.trim()).filter(Boolean); prods[n].cuentas += ls.length; ls.forEach(l => prods[n].correos.push(l.split(/[:|;]/)[0].toLowerCase())); });
+      (misComprasPerfilCache || []).forEach(c => { const n = c.productoNombre || 'Otros'; if (!prods[n]) { prods[n] = { n: n, cuentas: 0, correos: [], ult: '' }; orden.push(n); }
+        const ls = String(c.credenciales || '').split('\n').map(l => l.trim()).filter(Boolean); prods[n].cuentas += ls.length; ls.forEach(l => prods[n].correos.push(l.split(/[:|;]/)[0].toLowerCase()));
+        if (String(c.fecha || '') > prods[n].ult) prods[n].ult = String(c.fecha || ''); });
+      orden.sort((a, b) => prods[b].ult.localeCompare(prods[a].ult));
       const nfLista = document.getElementById('perfilNetflixLista'), nNf = nfLista ? nfLista.children.length : 0;
-      const hayAlgo = orden.length + (nNf ? 1 : 0);
+      const hayAlgo = orden.length + (nNf ? 1 : 0), dos = esEscritorioMC() && hayAlgo > 0;
+      if (panel) panel.classList.toggle('dos', dos);
       if (!hayAlgo) { grid.classList.add('hidden'); barra.classList.add('hidden'); bloque.classList.remove('hidden'); return; }
-      const avisos = (_avisosCuentaCache || []);
+      if (dos && !misProductoActivo) misProductoActivo = orden[0] || (nNf ? '__netflix' : '');   // en computadora, la derecha nunca queda vacía
+      const avisos = (_avisosCuentaCache || []), ahora = Date.now();
+      const fFecha = x => { try { const d = new Date(x), h = new Date(); return d.toDateString() === h.toDateString() ? 'hoy' : d.toLocaleDateString('es-CO', { day: 'numeric', month: 'short' }); } catch (e) { return ''; } };
+      const fila = (id, nombre, cant, ult, badgeAv) => { const [col, ic] = ICONO_PROD(nombre), on = id === misProductoActivo, nueva = ult && ahora - Date.parse(ult) < 24 * 3600000;
+        return `<button type="button" onclick="abrirProductoMisCuentas('${escaparJsAttr(id)}')" class="w-full flex items-center gap-3 p-3 rounded-2xl text-left transition border ${on ? 'border-emerald-500/60 bg-emerald-500/10' : 'border-gray-800 bg-gray-900 hover:bg-gray-800/70'}">
+          <span class="w-10 h-10 shrink-0 rounded-xl flex items-center justify-center text-white text-base" style="background:${col}"><i class="${ic}"></i></span>
+          <span class="min-w-0 flex-grow"><span class="block text-[13px] font-black text-white truncate">${escaparHtml(nombre)}</span><span class="block text-[11px] text-gray-400">${cant} ${cant === 1 ? 'cuenta' : 'cuentas'}${ult ? ' · ' + escaparHtml(fFecha(ult)) : ''}</span></span>
+          ${badgeAv || ''}${nueva ? '<span class="shrink-0 px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-500 text-black">NUEVA</span>' : '<i class="fa-solid fa-chevron-right text-gray-600 text-xs"></i>'}</button>`; };
+      let h = orden.map(n => { const nAv = avisos.filter(a => prods[n].correos.includes(String(a.correo).toLowerCase())).length;
+        return fila(n, n, prods[n].cuentas, prods[n].ult, nAv ? `<span class="shrink-0 px-1.5 py-0.5 rounded-full text-[9px] font-black bg-red-500/15 text-red-300 border border-red-400/40">${nAv} aviso${nAv === 1 ? '' : 's'}</span>` : ''); });
+      if (nNf) h.unshift(fila('__netflix', 'Netflix', nNf, '', ''));
+      grid.innerHTML = `<p class="text-[10px] font-black text-gray-400 uppercase tracking-wider mb-2 px-1">Mis productos</p><div class="flex flex-col gap-2">${h.join('')}</div>`;
       if (!misProductoActivo) {
-        const tile = (id, nombre, cant, badge) => { const [col, ic] = ICONO_PROD(nombre);
-          return `<button type="button" onclick="abrirProductoMisCuentas('${escaparJsAttr(id)}')" class="relative text-left p-3 rounded-2xl bg-gray-900 border border-gray-800 hover:border-emerald-500/60 transition">
-            ${badge || ''}<span class="w-8 h-8 rounded-xl flex items-center justify-center text-white text-sm mb-2" style="background:${col}"><i class="${ic}"></i></span>
-            <span class="block text-[12.5px] font-black text-white leading-tight truncate">${escaparHtml(nombre)}</span><span class="block text-[10.5px] text-gray-400">${cant} ${cant === 1 ? 'cuenta' : 'cuentas'}</span></button>`; };
-        let h = orden.map(n => { const nAv = avisos.filter(a => prods[n].correos.includes(String(a.correo).toLowerCase())).length;
-          return tile(n, n, prods[n].cuentas, nAv ? `<span class="absolute top-2 right-2 px-1.5 py-0.5 rounded-full text-[9px] font-black bg-red-500/15 text-red-300 border border-red-400/40">${nAv} aviso${nAv === 1 ? '' : 's'}</span>` : ''); });
-        if (nNf) h.unshift(tile('__netflix', 'Netflix', nNf, ''));
-        grid.innerHTML = `<p class="text-[10px] font-black text-gray-400 uppercase tracking-wider mb-2 px-1">Mis productos</p><div class="grid grid-cols-2 sm:grid-cols-3 gap-2">${h.join('')}</div>`;
         grid.classList.remove('hidden'); barra.classList.add('hidden'); bloque.classList.add('hidden'); if (nf) nf.style.display = 'none';
         ocultarExtrasMisCuentas(false);
         return;
       }
-      grid.classList.add('hidden');
+      grid.classList.toggle('hidden', !dos);
       ocultarExtrasMisCuentas(true);
       const esNf = misProductoActivo === '__netflix', nom = esNf ? 'Netflix' : misProductoActivo, cant = esNf ? nNf : ((prods[misProductoActivo] || {}).cuentas || 0);
-      barra.innerHTML = `<div class="flex items-center gap-2"><button type="button" onclick="volverMisProductos()" class="shrink-0 px-3.5 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black text-[12px] font-black"><i class="fa-solid fa-arrow-left mr-1"></i>Atrás</button><p class="min-w-0 truncate text-sm font-black text-white">${escaparHtml(nom)} <span class="text-gray-400 font-bold">· ${cant} ${cant === 1 ? 'cuenta' : 'cuentas'}</span></p></div>`;
+      barra.innerHTML = `<div class="flex items-center gap-2">${dos ? '' : `<button type="button" onclick="volverMisProductos()" class="shrink-0 px-3.5 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black text-[12px] font-black"><i class="fa-solid fa-arrow-left mr-1"></i>Atrás</button>`}<p class="min-w-0 truncate text-sm font-black text-white">${escaparHtml(nom)} <span class="text-gray-400 font-bold">· ${cant} ${cant === 1 ? 'cuenta' : 'cuentas'}</span></p></div>`;
       barra.classList.remove('hidden');
       if (esNf) { bloque.classList.add('hidden'); if (nf) nf.style.display = ''; return; }
       if (nf) nf.style.display = 'none';
@@ -25859,6 +25902,40 @@ async function pintarPanelWa() {
       Array.from(lista.children).forEach(el => { const p = el.getAttribute && el.getAttribute('data-prod'); const ver = !p || p === misProductoActivo; el.classList.toggle('!hidden', !ver);
         if (ver && el.tagName === 'DETAILS') { el.open = primero; primero = false; } });
     }
+    window.addEventListener('resize', () => { try { if (!document.getElementById('vistaMisCuentas').classList.contains('hidden')) pintarProductosMisCuentas(); } catch (e) { /* nada */ } });
+    // =================== 📦 BOTÓN FLOTANTE "MIS COMPRAS" ===================
+    function nuevasMC() { try { return parseInt(localStorage.getItem('mc_nuevas_' + (currentUser && currentUser.uid)) || '0', 10) || 0; } catch (e) { return 0; } }
+    function guardarNuevasMC(n) { try { localStorage.setItem('mc_nuevas_' + (currentUser && currentUser.uid), String(n)); } catch (e) { /* nada */ } }
+    function irAMisCompras() { guardarNuevasMC(0); misProductoActivo = ''; cambiarVista('mis-cuentas'); setTimeout(() => { try { cambiarTabPerfil('cuentas'); (document.getElementById('perfilSecCuentas') || document.body).scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch (e) { /* nada */ } }, 60); pintarFabMC(); }
+    function clickFabMC() { const enMC = !document.getElementById('vistaMisCuentas').classList.contains('hidden'); if (enMC) { cambiarVista('tienda'); try { window.scrollTo({ top: 0, behavior: 'smooth' }); } catch (e) { /* nada */ } } else irAMisCompras(); setTimeout(pintarFabMC, 80); }
+    function pintarFabMC() {
+      asegurarPanelMC();
+      let b = document.getElementById('fabMisCompras');
+      const vt = document.getElementById('vistaTienda'), vm = document.getElementById('vistaMisCuentas');
+      const enT = vt && !vt.classList.contains('hidden'), enM = vm && !vm.classList.contains('hidden'), ver = !!currentUser && !modoPruebaCliente && (enT || enM) && !esStaffSesion();
+      if (!ver) { if (b) b.style.display = 'none'; return; }
+      if (!b) { b = document.createElement('button'); b.id = 'fabMisCompras'; b.type = 'button'; b.className = 'fab-mc'; b.onclick = clickFabMC; document.body.appendChild(b); }
+      b.style.display = ''; const n = nuevasMC();
+      b.classList.toggle('tienda', enM);
+      const html = enM ? '🛒 <span class="txt">Tienda</span>' : '📦 <span class="txt">Mis compras</span>' + (n ? `<span class="bdg">${n}</span>` : '');
+      if (b.dataset.h !== html) { b.innerHTML = html; b.dataset.h = html; }
+      b.setAttribute('aria-label', enM ? 'Volver a la tienda' : 'Ver mis compras');
+    }
+    // Al comprar: suma 1, brilla y avisa dónde quedó
+    function marcarCompraNueva() {
+      guardarNuevasMC(nuevasMC() + 1); pintarFabMC();
+      const b = document.getElementById('fabMisCompras'); if (b) { b.classList.remove('mini'); b.classList.remove('brilla'); void b.offsetWidth; b.classList.add('brilla'); }
+      setTimeout(() => { try { mostrarToast('🎉 ¡Compra lista! Tus cuentas quedan en 📦 Mis compras'); } catch (e) { /* nada */ } }, 600);
+    }
+    // Al bajar por el catálogo, Mis compras y Ayuda se encogen (no tapan precios); al subir o detenerse vuelven
+    (function () { let yA = 0, t = null;
+      window.addEventListener('scroll', () => { const y = window.scrollY || 0, baja = y > yA && y > 160; yA = y;
+        const b = document.getElementById('fabMisCompras'), a = document.getElementById('btnAsistente');
+        [b, a].forEach(x => { if (x) x.classList.toggle('mini', baja); });
+        clearTimeout(t); t = setTimeout(() => [b, a].forEach(x => { if (x) x.classList.remove('mini'); }), 900); }, { passive: true });
+      setInterval(() => { try { pintarFabMC(); } catch (e) { /* nada */ } }, 500);
+    })();
+
     function volverMisProductos() { try { if (history.state && history.state.misProd) { history.back(); return; } } catch (e) { /* nada */ } abrirProductoMisCuentas('', true); }
     function ocultarExtrasMisCuentas(si) { ['radarStock', 'misReportesCaja', 'dealerNegocioCaja', 'btnCreaTiendaPerfil'].forEach(id => { const e = document.getElementById(id); if (e) e.style.display = si ? 'none' : ''; }); }
     function abrirProductoMisCuentas(id, desdeAtras) {
