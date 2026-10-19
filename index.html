@@ -7799,7 +7799,7 @@
             setTimeout(() => { try { revisarCompraTrasRecarga(); } catch (e) { /* nada */ } }, 0);
             if (ticketsAvisadosCuenta === null) { ticketsAvisadosCuenta = Array.isArray(dataU.ticketsAvisados) ? dataU.ticketsAvisados : []; setTimeout(() => { try { revisarTicketsClienteUI(); } catch (e) { /* nada */ } }, 0); }
             try { window.miRegaloRecarga = dataU.bonoRecarga || null; if (!dataU.bienvenidaDada && !window._bvPedida && obtenerBackendUrl()) { window._bvPedida = true; llamarBackend('bienvenida_reclamar', {}).catch(() => {}); } } catch (e) { /* nada */ }
-          try { const antes = JSON.stringify(miCupon || null) + JSON.stringify(window.miBonoRuleta || null); miCupon = dataU.cupon || null; window.miBonoRuleta = dataU.bonoRuleta || null; if (antes !== JSON.stringify(miCupon) + JSON.stringify(window.miBonoRuleta || null) || window._rgAntes !== JSON.stringify(window.miRegaloRecarga || null)) { window._rgAntes = JSON.stringify(window.miRegaloRecarga || null); setTimeout(() => { try { pintarBannerCupon(); renderizarCatalogo(); } catch (e) { /* nada */ } }, 0); } } catch (e) { /* nada */ }
+          try { const antes = JSON.stringify(miCupon || null) + JSON.stringify(window.miBonoRuleta || null); miCupon = dataU.cupon || null; window.miBonoRuleta = dataU.bonoRuleta || null; window.miRuleta = dataU.ruleta || null; window.miFechaReg = dataU.fechaRegistro || dataU.creadoEl || ''; if (antes !== JSON.stringify(miCupon) + JSON.stringify(window.miBonoRuleta || null) || window._rgAntes !== JSON.stringify(window.miRegaloRecarga || null)) { window._rgAntes = JSON.stringify(window.miRegaloRecarga || null); setTimeout(() => { try { pintarBannerCupon(); renderizarCatalogo(); } catch (e) { /* nada */ } }, 0); } } catch (e) { /* nada */ }
             if (regalosVistosCuenta === null) { regalosVistosCuenta = Array.isArray(dataU.regalosVistos) ? dataU.regalosVistos : []; setTimeout(() => { try { revisarRegalosNuevos(); } catch (e) { /* nada */ } }, 2500); }
             else { try { const ult = (dataU.notificaciones || [])[0]; if (ult && /regalo/i.test(String(ult.titulo || '')) && ult.id !== window.__ultNotifRegalo) { window.__ultNotifRegalo = ult.id; setTimeout(revisarRegalosNuevos, 800); } } catch (e) { /* nada */ } }
             try { if (dataU.vistaPanel) recibirVistaPanelDeCuenta(dataU.vistaPanel); } catch (e) { /* nada */ }
@@ -12807,9 +12807,58 @@
       provDominioCorreos.forEach(x => { if (!m[x.correo]) m[x.correo] = x; });
       provDominioCorreos = Object.values(m).sort((a, b) => String(b.creadoEl || '').localeCompare(String(a.creadoEl || '')));
     }
+    // 🔴 Al proveedor: sus cuentas que Amazon suspendió (últimos 60 días)
+    function pintarCaidasProv(L) {
+      const ref = document.getElementById('provAutoResumen'); if (!ref) return; let b = document.getElementById('provCaidasCaja');
+      if (!L.length) { if (b) b.remove(); return; }
+      if (!b) { b = document.createElement('div'); b.id = 'provCaidasCaja'; ref.parentNode.insertBefore(b, ref); }
+      b.className = 'mb-3 p-3 rounded-2xl bg-red-500/10 border border-red-500/40';
+      b.innerHTML = `<p class="text-sm font-black text-red-300">⚠️ Tienes ${L.length} ${L.length === 1 ? 'cuenta suspendida' : 'cuentas suspendidas'}</p><p class="text-[11px] text-gray-400 mb-2">Amazon las suspendió. Revísalas.</p>`
+        + L.slice(0, 50).map(c => `<div class="flex items-start gap-2 py-1.5 border-t border-red-500/20"><span class="text-[10px] font-black text-red-300 shrink-0 mt-0.5">🔴 Suspendida</span><div class="min-w-0"><p class="text-xs font-mono text-white break-all">${escaparHtml(c.correo)}</p><p class="text-[10px] text-gray-400">${escaparHtml(new Date(c.el).toLocaleDateString('es-CO', { day: '2-digit', month: '2-digit' }))} · ${escaparHtml(String(c.motivo || '').slice(0, 90))}</p></div></div>`).join('');
+    }
+    // =================== 🌐 TARJETA DOMINIOS (admin) ===================
+    let pdDias = 30;
+    async function abrirPanelDominios(fresco) {
+      let v = document.getElementById('panelDominios');
+      if (!v) { v = document.createElement('div'); v.id = 'panelDominios'; v.className = 'fixed inset-0 z-[56] bg-gray-950 overflow-y-auto';
+        v.innerHTML = `<div class="sticky top-0 z-10 bg-gray-950/90 backdrop-blur-md border-b border-white/5" style="padding-top:env(safe-area-inset-top,0px)"><div class="max-w-6xl mx-auto px-4 py-3 flex items-center gap-3">
+          <button type="button" onclick="cerrarPanelDominios()" class="w-10 h-10 lg:w-auto lg:px-3.5 rounded-full bg-white/5 border border-white/10 text-gray-200 text-xs font-bold flex items-center justify-center gap-2"><i class="fa-solid fa-arrow-left"></i><span class="hidden lg:inline">Volver</span></button>
+          <div class="flex-1 min-w-0"><p class="text-base font-black text-white">🌐 Dominios</p><p id="pdSub" class="text-[11px] text-gray-400"></p></div>
+          <select id="pdDias" onchange="pdDias=Number(this.value);abrirPanelDominios()" class="bg-gray-900 border border-gray-700 rounded-lg px-2 py-1.5 text-xs text-white"><option value="7">7 días</option><option value="30" selected>30 días</option><option value="90">90 días</option></select>
+          <button type="button" onclick="abrirPanelDominios(true)" title="Actualizar" class="w-9 h-9 rounded-lg bg-white/5 border border-white/10 text-gray-300"><i class="fa-solid fa-rotate"></i></button></div></div>
+          <div class="max-w-6xl mx-auto px-4 pt-4 pb-24 space-y-3"><div id="pdCuerpo"></div><div id="pdDescanso"></div></div>`;
+        document.body.appendChild(v); }
+      v.classList.remove('hidden'); document.body.style.overflow = 'hidden';
+      const d = document.getElementById('pdDescanso'), caja = document.getElementById('misDominiosCaja');
+      if (d && caja && caja.parentNode !== d) { d.appendChild(caja); try { cargarMisDominios(); } catch (e) { /* nada */ } }   // 😴 el descanso vive aquí ahora
+      const cu = document.getElementById('pdCuerpo'); cu.innerHTML = '<p class="text-center text-gray-400 text-sm py-10"><i class="fa-solid fa-spinner fa-spin mr-1"></i> Cargando…</p>';
+      let r; try { r = await llamarBackend('dominios_panel', { dias: pdDias, fresco: !!fresco }); } catch (e) { r = null; }
+      if (!r || !r.ok) { cu.innerHTML = '<p class="text-center text-red-400 text-sm py-10">No se pudo cargar. Toca 🔄.</p>'; return; }
+      window._pd = r; pintarPanelDominios();
+    }
+    function cerrarPanelDominios() { const v = document.getElementById('panelDominios'); if (v) v.classList.add('hidden'); document.body.style.overflow = ''; }
+    function pdCopiar(lista) { try { navigator.clipboard.writeText(((window._pd || {})[lista] || []).map(x => x.e).join('\n')); mostrarToast('📋 Lista copiada'); } catch (e) { /* nada */ } }
+    function pintarPanelDominios() {
+      const r = window._pd, cu = document.getElementById('pdCuerpo'); if (!r || !cu) return;
+      const sub = document.getElementById('pdSub'); if (sub) sub.textContent = 'Últimos ' + r.dias + ' días · actualizado ' + new Date(r.generadoEl).toLocaleTimeString('es-CO', { hour: 'numeric', minute: '2-digit' });
+      const tarj = (t, h) => `<div class="rounded-2xl bg-gray-900/70 border border-gray-800 p-4"><p class="text-sm font-black text-white mb-2">${t}</p>${h}</div>`;
+      const fdia = x => { try { const n = Math.floor((Date.now() - Date.parse(x)) / 86400000); return n <= 0 ? 'hoy' : n === 1 ? 'ayer' : 'hace ' + n + ' días'; } catch (e) { return ''; } };
+      const col = p => p >= 10 ? '#f87171' : p >= 5 ? '#fbbf24' : '#34d399';
+      const doms = (r.dominios || []).map(d => { const p = d.cuentas ? Math.round(d.caidas * 100 / d.cuentas) : 0;
+        return `<tr class="border-t border-gray-800"><td class="py-2 pr-2 font-mono text-[12px] text-white">${escaparHtml(d.d)}</td><td class="py-2 pr-2"><span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${/activo/.test(d.estado) ? 'bg-emerald-500/15 text-emerald-300' : 'bg-amber-500/15 text-amber-300'}">${escaparHtml(d.estado === 'activo' ? 'Activo' : d.estado)}</span></td><td class="py-2 pr-2 text-right">${d.cuentas}</td><td class="py-2 pr-2 text-right">${d.caidas}</td><td class="py-2 text-right"><span class="inline-block w-14 h-1.5 rounded-full bg-gray-800 align-middle mr-1.5 overflow-hidden"><i class="block h-full" style="width:${Math.min(100, p * 5)}%;background:${col(p)}"></i></span><b style="color:${col(p)}">${p}%</b></td></tr>`; }).join('');
+      const rk = (L, f) => (L || []).map((x, i) => `<div class="flex items-center gap-2 py-1.5 border-t border-gray-800 text-xs"><b class="w-5" style="color:#f5d97a">${i + 1}</b><span class="flex-1 text-white truncate">${escaparHtml(x.nombre)}</span><span class="text-gray-400">${f(x)}</span></div>`).join('') || '<p class="text-xs text-gray-500">Sin datos todavía.</p>';
+      const lista = (L, key, prime) => `<div class="flex items-center justify-between mb-1"><span class="text-[11px] text-gray-400">${L.length} cuentas</span>${L.length ? `<button type="button" onclick="pdCopiar('${key}')" class="text-[11px] px-2.5 py-1 rounded-lg bg-white/5 border border-white/10 text-gray-200">📋 Copiar lista</button>` : ''}</div>
+        <div class="max-h-72 overflow-y-auto">${L.map(x => `<div class="flex items-center gap-2 py-1.5 border-t border-gray-800 text-xs"><span class="flex-1 min-w-0 font-mono text-white truncate">${escaparHtml(x.e)}</span><span class="text-gray-400 shrink-0">${escaparHtml(x.quien)} · ${prime ? 'Prime ' + fdia(x.primeEl) : 'creado ' + fdia(x.creadoEl)}</span></div>`).join('') || '<p class="text-xs text-gray-500 py-2">Ninguna 🎉</p>'}</div>`;
+      const cp = (r.caidasProv || []).map((p, i) => `<details class="border-t border-gray-800"><summary class="flex items-center gap-2 py-2 cursor-pointer list-none text-xs"><span class="flex-1 text-white font-bold">${escaparHtml(p.nombre)}</span><span class="text-red-300 font-black">${p.cuentas.length} caídas</span><i class="fa-solid fa-chevron-down text-gray-500 text-[10px]"></i></summary>
+        <div class="pb-2">${p.cuentas.map(c => `<div class="pl-2 py-1 text-[11px] border-l-2 border-red-500/40 mb-1"><span class="font-mono text-white">${escaparHtml(c.e)}</span> <span class="text-gray-500">· ${escaparHtml(c.estado === 'vendida' ? 'vendida' : c.estado === 'stock' ? 'retirada del stock' : 'fuera del stock')} · ${escaparHtml(new Date(c.el).toLocaleDateString('es-CO', { day: '2-digit', month: '2-digit' }))}</span><br><span class="text-gray-400">${escaparHtml(String(c.motivo || '').slice(0, 110))}</span></div>`).join('')}</div></details>`).join('') || '<p class="text-xs text-gray-500">Sin caídas en este período 🎉</p>';
+      cu.innerHTML = tarj('🌐 Mis dominios', `<div class="overflow-x-auto"><table class="w-full text-xs text-gray-300"><thead><tr class="text-[10px] text-gray-500 text-left"><th class="pb-1">Dominio</th><th class="pb-1">Estado</th><th class="pb-1 text-right">Cuentas</th><th class="pb-1 text-right">Caídas</th><th class="pb-1 text-right">% caída</th></tr></thead><tbody>${doms}</tbody></table></div>`)
+        + `<div class="grid lg:grid-cols-2 gap-3 mt-3">` + tarj('🏗 Quién creó más', rk(r.creadores, x => x.n + ' · ' + (x.n ? Math.round(x.caidas * 100 / x.n) : 0) + '% caídas')) + tarj('📩 Quién pide más códigos', rk(r.codigos, x => x.n + ' · ' + x.cuentas + ' cuentas')) + `</div>`
+        + `<div class="grid lg:grid-cols-2 gap-3 mt-3">` + tarj('🎬 Con Prime y fuera del stock', lista(r.fueraPrime || [], 'fueraPrime', true)) + tarj('📭 Sin Prime y fuera del stock', lista(r.fueraNoPrime || [], 'fueraNoPrime', false)) + `</div>`
+        + `<div class="mt-3">` + tarj('🚨 Caídas por proveedor', cp) + `</div>`;
+    }
     async function provDominioCargar() {
       provDomMezclar([]); pintarProvDominio();
-      try { const r = await llamarBackend('prov_correos', { op: 'lista' }); if (r && r.ok) { if (r.dominiosActivos) window.DOMINIOS_ACTIVOS = r.dominiosActivos; provDomMezclar(r.correos || []); pintarProvDominio(); provDomGuardarLocal(); pintarReglasProv(r.reglas); } } catch (e) { /* nada: quedan los guardados en el celular */ }
+      try { const r = await llamarBackend('prov_correos', { op: 'lista' }); if (r && r.ok) { if (r.dominiosActivos) window.DOMINIOS_ACTIVOS = r.dominiosActivos; provDomMezclar(r.correos || []); pintarProvDominio(); provDomGuardarLocal(); pintarReglasProv(r.reglas); try { pintarCaidasProv(r.caidas || []); } catch (e) { /* nada */ } } } catch (e) { /* nada: quedan los guardados en el celular */ }
     }
     // 🔎 Buscar el código de un correo escrito a mano (por si se borró de la lista)
     function provDominioBuscar() {
@@ -15693,9 +15742,9 @@
       const acc = [['tickets', 'fa-ticket', 'Tickets'], ['recargas', 'fa-money-bill-transfer', 'Recargas'], ['stock', 'fa-key', 'Cargar stock'], ['buscar', 'fa-magnifying-glass', 'Buscar cuenta'], ['usuarios', 'fa-users', 'Usuarios']];
       if (admin) acc.splice(1, 0, ['proveedores', 'fa-truck-ramp-box', 'Proveedores']);
       acc.push(admin ? ['reporte', 'fa-chart-line', 'Reporte'] : ['productos', 'fa-boxes-stacked', 'Productos']);
-      if (admin) { acc.push(['netflix', 'fa-tv', 'Alquileres'], ['ajustes', 'fa-gear', 'Ajustes']); }
+      if (admin) { acc.push(['netflix', 'fa-tv', 'Alquileres'], ['ajustes', 'fa-gear', 'Ajustes'], ['dominios', 'fa-globe', 'Dominios']); }
       const ca = document.getElementById('perfilAdminAcciones');
-      if (ca) ca.innerHTML = acc.map(a => `<button type="button" onclick="irAPanelAdmin('${a[0]}')" class="flex flex-col items-center justify-center gap-1 py-2.5 rounded-xl bg-gray-900/70 border border-gray-700 hover:border-emerald-500/50 hover:bg-gray-800 text-gray-200 text-[10px] font-bold transition"><i class="fa-solid ${a[1]} text-sm text-emerald-400"></i><span class="text-center leading-tight">${a[2]}</span></button>`).join('');
+      if (ca) ca.innerHTML = acc.map(a => `<button type="button" onclick="${a[0] === 'dominios' ? 'abrirPanelDominios()' : `irAPanelAdmin('${a[0]}')`}" class="flex flex-col items-center justify-center gap-1 py-2.5 rounded-xl bg-gray-900/70 border border-gray-700 hover:border-emerald-500/50 hover:bg-gray-800 text-gray-200 text-[10px] font-bold transition"><i class="fa-solid ${a[1]} text-sm text-emerald-400"></i><span class="text-center leading-tight">${a[2]}</span></button>`).join('');
     }
 
 
@@ -17543,7 +17592,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-27au';
+    const VERSION_PAGINA = '2026-10-27ax';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261020_ajuste', fecha: '2026-10-20', titulo: 'Se ve mejor en iPhone 📱', mensaje: 'La tienda ahora **se ajusta siempre a tu pantalla**: ya no se agranda al escribir ni se corre hacia los lados. Si la tienes abierta, **recarga la página** para verla así.' },
       { id: 'act_20261020_app', fecha: '2026-10-20', titulo: 'App oficial de Epic Streaming 📲', mensaje: 'Ya tenemos **app oficial**: en la tienda toca **Descargar** (Android), **Instalar** (PC) o **Agregar** (iPhone). Abre más rápido, a pantalla completa, con tu misma cuenta y **se actualiza sola**.' },
@@ -24349,6 +24398,21 @@
     function ruSumaPct() { let t = 0; document.querySelectorAll('[data-ru]').forEach(e => { t += Math.max(0, parseInt(e.value, 10) || 0); }); const el = document.getElementById('cnRuTotal'); if (el) { el.textContent = 'Total: ' + t + '%' + (t === 100 ? ' ✓' : ' · debe sumar 100%'); el.className = 'text-[11px] font-black ' + (t === 100 ? 'text-emerald-400' : 'text-amber-400'); } }
     // =================== 🎡 GIRO SORPRESA ===================
     const RU_SEG = [['5%', '#141a24', '#f5d97a'], ['+$1.000', '#c9a227', '#1a1405'], ['¡Otra!', '#0b0f17', '#9ca3af'], ['10%', '#7a5c0f', '#ffffff'], ['3%', '#141a24', '#f5d97a'], ['+3 días', '#10b981', '#04130d'], ['5%', '#c9a227', '#1a1405'], ['+$2.000', '#0b0f17', '#f5d97a']];
+    // 🎡 Mismo cálculo que el servidor: solo se le pregunta el día que de verdad le podría tocar
+    function ruPuedeLocal() {
+      try {
+        const ru = (aparienciaConfig && aparienciaConfig.canales && aparienciaConfig.canales.ruleta) || {}; if (ru.on !== true || !currentUser) return false;
+        if (typeof rolActual !== 'undefined' && rolActual === 'proveedor') return false;
+        const hoy = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Bogota', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date()), mes = hoy.slice(0, 7), dia = parseInt(hoy.slice(8, 10), 10);
+        const r = window.miRuleta || {}; if (r.mes === mes && r.hecho === true) return false;
+        let h = 7; const s0 = String(currentUser.uid) + mes; for (let i = 0; i < s0.length; i++) h = (h * 31 + s0.charCodeAt(i)) >>> 0;
+        if (dia < 1 + (h % 26)) return false;
+        const reg = Date.parse(window.miFechaReg || '') || 0; if (reg && Date.now() - reg < 3 * 86400000) return false;
+        const c = miCupon; if (c && c.usado !== true && c.vence && Date.parse(c.vence) > Date.now() && (Number(c.pct) > 0 || Number(c.garDias) > 0)) return false;
+        const b = window.miBonoRuleta; if (b && b.usado !== true && Date.parse(b.vence) > Date.now()) return false;
+        return true;
+      } catch (e) { return true; }   // si algo falla, que decida el servidor
+    }
     let ruRot = 0, ruOcupada = false;
     function ruletaSvg() { const N = RU_SEG.length, A = 360 / N; let h = '<circle r="124" fill="#0b0f17" stroke="#c9a227" stroke-width="3"/>';
       RU_SEG.forEach((sg, i) => { const a0 = (i * A - 90 - A / 2) * Math.PI / 180, a1 = ((i + 1) * A - 90 - A / 2) * Math.PI / 180, r = 116, m = (i * A - 90) * Math.PI / 180, tx = 78 * Math.cos(m), ty = 78 * Math.sin(m);
@@ -24433,6 +24497,7 @@
           if (document.querySelector('.fixed.inset-0:not(.hidden):not(#vistaMisCompras)')) return;
           const k = 'ruChk_' + currentUser.uid + '_' + new Date().toISOString().slice(0, 10); if (sessionStorage.getItem(k)) { hecho = true; return; }
           hecho = true; sessionStorage.setItem(k, '1');
+          if (!ruPuedeLocal()) return;   // 📶 la página ya sabe si hoy NO le toca: no gasta llamada
           const r = await llamarBackend('ruleta_estado', {}); if (r && r.mostrar) setTimeout(abrirRuleta, 1500);
         } catch (e) { /* nada */ }
       }, 5000);
@@ -26679,7 +26744,7 @@ async function pintarPanelWa() {
       return { cuentas: legado, stock: legado.length || stockPublico };
     }
 
-    const VERSION_SERVIDOR_NECESARIA = '2026-10-25z';   // la versión del servidor que necesita esta página
+    const VERSION_SERVIDOR_NECESARIA = '2026-10-26b';   // la versión del servidor que necesita esta página
     async function llamarBackend(accion, datos) {
       window._llamadasEnCurso = (window._llamadasEnCurso || 0) + 1;
       try { return await llamarBackendBase(accion, datos); } finally { window._llamadasEnCurso = Math.max(0, (window._llamadasEnCurso || 1) - 1); }
