@@ -2790,6 +2790,8 @@
                   <label class="block text-[10px] text-gray-400">Link de tu canal o comunidad (botón "📢 Novedades y stock")<input id="cnTgCanal" placeholder="https://t.me/tucanal o https://chat.whatsapp.com/…" class="mt-1 w-full bg-gray-900 border border-gray-700 rounded-lg px-2.5 py-1.5 text-xs text-white font-mono"></label>
                   <label class="block text-[10px] text-gray-400">Descripción del bot ("¿Qué puede hacer este bot?", máx. 512)<textarea id="cnTgDesc" rows="7" maxlength="512" class="mt-1 w-full bg-gray-900 border border-gray-700 rounded-lg px-2.5 py-1.5 text-xs text-white"></textarea></label>
                   <label class="block text-[10px] text-gray-400">Descripción corta del perfil (máx. 120)<input id="cnTgCorta" maxlength="120" class="mt-1 w-full bg-gray-900 border border-gray-700 rounded-lg px-2.5 py-1.5 text-xs text-white"></label>
+                  <details class="rounded-lg bg-gray-900/60 border border-gray-700"><summary class="px-3 py-2 cursor-pointer text-[11px] font-bold text-gray-300 list-none">🗂 Nombres e íconos de las categorías del bot</summary>
+                    <div id="cnTgCats" class="px-3 pb-3 space-y-1.5"></div></details>
                   <button type="button" onclick="aplicarDescTg()" class="px-3 py-1.5 rounded-lg bg-gray-900 border border-sky-500/50 text-sky-200 text-[11px] font-black">Aplicar descripción al bot</button>
                   <div class="pt-2 border-t border-gray-700/70 space-y-2">
                     <p class="text-[11px] font-black text-amber-300">🎁 Códigos promocionales</p>
@@ -17514,7 +17516,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-27aa';
+    const VERSION_PAGINA = '2026-10-27ab';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261020_ajuste', fecha: '2026-10-20', titulo: 'Se ve mejor en iPhone 📱', mensaje: 'La tienda ahora **se ajusta siempre a tu pantalla**: ya no se agranda al escribir ni se corre hacia los lados. Si la tienes abierta, **recarga la página** para verla así.' },
       { id: 'act_20261020_app', fecha: '2026-10-20', titulo: 'App oficial de Epic Streaming 📲', mensaje: 'Ya tenemos **app oficial**: en la tienda toca **Descargar** (Android), **Instalar** (PC) o **Agregar** (iPhone). Abre más rápido, a pantalla completa, con tu misma cuenta y **se actualiza sola**.' },
@@ -24272,14 +24274,17 @@
       set('cnTgCanal', cc.tgCanal || ''); set('cnTgCorta', cc.tgCorta || '⚡ Tienda 24/7 · Entrega al instante · Garantía · Bre-B y Binance');
       set('cnTgDesc', cc.tgDesc || ('🛒 ' + tienda + '\nTu tienda automática 24/7 de cuentas de streaming. Entrega al instante y garantía en cada compra. 🤖\n\n🔥 Destacados:\n• Prime Video\n• Netflix\n• YouTube Premium\n• Spotify\n• Gemini Pro\n• ¡y más!\n\n💳 Pagas con Bre-B (COP) o Binance (USDT)\n👑 +' + (((ajustesGeneralesConfig || {}).portadaClientes) || '3.000') + ' clientes desde 2014\n\nToca INICIAR 👇'));
       pintarPromos();
+      const tc = cc.tgCats || {}, boxC = document.getElementById('cnTgCats');
+      if (boxC) boxC.innerHTML = TG_CATS_DEF.map(x => `<div class="flex items-center gap-2"><input data-cat-emoji="${x[0]}" value="${escaparHtml((tc[x[0]] || {}).emoji || x[1])}" maxlength="8" class="w-12 text-center bg-gray-900 border border-gray-700 rounded-lg px-1 py-1 text-sm"><input data-cat-nombre="${x[0]}" value="${escaparHtml((tc[x[0]] || {}).nombre || x[2])}" maxlength="28" class="flex-grow bg-gray-900 border border-gray-700 rounded-lg px-2 py-1 text-xs text-white"></div>`).join('') + '<p class="text-[10px] text-gray-500">Se aplican al tocar Guardar canales. Solo aparecen en el bot las categorías que tengan stock.</p>';
       estadoTgVentas();
     }
     async function guardarCfgCanales() {
       const g = id => document.getElementById(id), num = String(g('cnWaNum').value || '').replace(/\D/g, '');
       if (g('cnWaOn').checked && num.length < 10) return alert('Escribe el número del bot de WhatsApp con indicativo (ej: 573001234567).');
-      const canales = Object.assign({}, (aparienciaConfig && aparienciaConfig.canales) || {}, { waOn: g('cnWaOn').checked, waNumero: num, waMensaje: String(g('cnWaMsg').value || '').trim().slice(0, 80) || 'Hola 👋 vengo de la tienda', waPortada: g('cnWaPort').checked, waTienda: g('cnWaTienda').checked, asesorWa: g('cnAsesor').value, tgOn: g('cnTgOn').checked, tgPortada: g('cnTgPort').checked, tgTienda: g('cnTgTienda').checked, tgCanal: String(g('cnTgCanal').value || '').trim(), tgDesc: String(g('cnTgDesc').value || '').slice(0, 512), tgCorta: String(g('cnTgCorta').value || '').slice(0, 120) });
+      const canales = Object.assign({}, (aparienciaConfig && aparienciaConfig.canales) || {}, { waOn: g('cnWaOn').checked, waNumero: num, waMensaje: String(g('cnWaMsg').value || '').trim().slice(0, 80) || 'Hola 👋 vengo de la tienda', waPortada: g('cnWaPort').checked, waTienda: g('cnWaTienda').checked, asesorWa: g('cnAsesor').value, tgOn: g('cnTgOn').checked, tgPortada: g('cnTgPort').checked, tgTienda: g('cnTgTienda').checked, tgCats: (() => { const o = {}; TG_CATS_DEF.forEach(x => { const e = document.querySelector('[data-cat-emoji="' + x[0] + '"]'), n = document.querySelector('[data-cat-nombre="' + x[0] + '"]'); if (e && n && (e.value.trim() !== x[1] || n.value.trim() !== x[2])) o[x[0]] = { emoji: e.value.trim() || x[1], nombre: n.value.trim() || x[2] }; }); return o; })(), tgCanal: String(g('cnTgCanal').value || '').trim(), tgDesc: String(g('cnTgDesc').value || '').slice(0, 512), tgCorta: String(g('cnTgCorta').value || '').slice(0, 120) });
       try { await db.collection('configuracion').doc('apariencia').set({ canales: canales }, { merge: true }); mostrarToast('✅ Canales guardados'); } catch (e) { alert('No se pudo guardar: ' + e.message); }
     }
+    const TG_CATS_DEF = [['prime', '🎬', 'Prime Video'], ['netflix', '🍿', 'Netflix'], ['youtube', '📺', 'YouTube Premium'], ['spotify', '🎧', 'Spotify'], ['gemini', '🤖', 'Gemini Pro'], ['amazon', '🆓', 'Amazon Free'], ['correos', '✉️', 'Correos Hotmail'], ['disney', '🏰', 'Disney+'], ['max', '🟣', 'Max'], ['chatgpt', '🧠', 'ChatGPT'], ['canva', '🎨', 'Canva'], ['capcut', '✂️', 'CapCut'], ['duolingo', '🦉', 'Duolingo'], ['paramount', '⛰️', 'Paramount+'], ['crunchy', '🍥', 'Crunchyroll'], ['apple', '🍎', 'Apple'], ['otros', '📦', 'Otros']];
     async function aplicarDescTg() {
       const g = id => String((document.getElementById(id) || {}).value || '');
       try { const r = await llamarBackend('tg_ventas_desc', { texto: g('cnTgDesc'), corta: g('cnTgCorta') }); if (!r || !r.ok) throw new Error((r && r.error) || 'No se pudo.');
@@ -26389,7 +26394,7 @@ async function pintarPanelWa() {
       return { cuentas: legado, stock: legado.length || stockPublico };
     }
 
-    const VERSION_SERVIDOR_NECESARIA = '2026-10-25o';   // la versión del servidor que necesita esta página
+    const VERSION_SERVIDOR_NECESARIA = '2026-10-25p';   // la versión del servidor que necesita esta página
     async function llamarBackend(accion, datos) {
       window._llamadasEnCurso = (window._llamadasEnCurso || 0) + 1;
       try { return await llamarBackendBase(accion, datos); } finally { window._llamadasEnCurso = Math.max(0, (window._llamadasEnCurso || 1) - 1); }
