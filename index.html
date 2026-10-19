@@ -17521,7 +17521,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-27al';
+    const VERSION_PAGINA = '2026-10-27am';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261020_ajuste', fecha: '2026-10-20', titulo: 'Se ve mejor en iPhone 📱', mensaje: 'La tienda ahora **se ajusta siempre a tu pantalla**: ya no se agranda al escribir ni se corre hacia los lados. Si la tienes abierta, **recarga la página** para verla así.' },
       { id: 'act_20261020_app', fecha: '2026-10-20', titulo: 'App oficial de Epic Streaming 📲', mensaje: 'Ya tenemos **app oficial**: en la tienda toca **Descargar** (Android), **Instalar** (PC) o **Agregar** (iPhone). Abre más rápido, a pantalla completa, con tu misma cuenta y **se actualiza sola**.' },
@@ -25902,17 +25902,43 @@ async function pintarPanelWa() {
       Array.from(lista.children).forEach(el => { const p = el.getAttribute && el.getAttribute('data-prod'); const ver = !p || p === misProductoActivo; el.classList.toggle('!hidden', !ver);
         if (ver && el.tagName === 'DETAILS') { el.open = primero; primero = false; } });
     }
-    window.addEventListener('resize', () => { try { if (!document.getElementById('vistaMisCuentas').classList.contains('hidden')) pintarProductosMisCuentas(); } catch (e) { /* nada */ } });
+    window.addEventListener('resize', () => { try { if (mcAbierta() || !document.getElementById('vistaMisCuentas').classList.contains('hidden')) pintarProductosMisCuentas(); } catch (e) { /* nada */ } });
     // =================== 📦 BOTÓN FLOTANTE "MIS COMPRAS" ===================
     function nuevasMC() { try { return parseInt(localStorage.getItem('mc_nuevas_' + (currentUser && currentUser.uid)) || '0', 10) || 0; } catch (e) { return 0; } }
     function guardarNuevasMC(n) { try { localStorage.setItem('mc_nuevas_' + (currentUser && currentUser.uid), String(n)); } catch (e) { /* nada */ } }
-    function irAMisCompras() { guardarNuevasMC(0); misProductoActivo = ''; cambiarVista('mis-cuentas'); setTimeout(() => { try { cambiarTabPerfil('cuentas'); (document.getElementById('perfilSecCuentas') || document.body).scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch (e) { /* nada */ } }, 60); pintarFabMC(); }
-    function clickFabMC() { const enMC = !document.getElementById('vistaMisCuentas').classList.contains('hidden'); if (enMC) { cambiarVista('tienda'); try { window.scrollTo({ top: 0, behavior: 'smooth' }); } catch (e) { /* nada */ } } else irAMisCompras(); setTimeout(pintarFabMC, 80); }
+    // 📦 MIS COMPRAS es una vista APARTE (no el perfil): usa las mismas piezas de "Mis cuentas" y las devuelve al cerrar
+    function mcAbierta() { const v = document.getElementById('vistaMisCompras'); return !!(v && !v.classList.contains('hidden')); }
+    async function irAMisCompras() {
+      guardarNuevasMC(0); misProductoActivo = ''; asegurarPanelMC();
+      let v = document.getElementById('vistaMisCompras');
+      if (!v) { v = document.createElement('div'); v.id = 'vistaMisCompras'; v.className = 'hidden fixed inset-0 z-[55] bg-gray-950 overflow-y-auto';
+        v.innerHTML = `<div class="sticky top-0 z-10 bg-gray-950/95 backdrop-blur border-b border-gray-800" style="padding-top:env(safe-area-inset-top,0px)"><div class="max-w-5xl mx-auto px-4 py-3 flex items-center gap-3">
+          <button type="button" onclick="cerrarMisCompras()" class="shrink-0 px-3.5 py-2 rounded-full bg-gray-800 border border-gray-700 text-white text-sm font-black"><i class="fa-solid fa-arrow-left mr-1"></i>Tienda</button>
+          <div class="min-w-0"><p class="text-lg font-black text-white leading-tight">📦 Mis compras</p><p id="mcSub" class="text-[11px] text-gray-400"></p></div></div></div>
+          <div id="mcCuerpo" class="max-w-5xl mx-auto px-4 pt-4 pb-28"></div>`;
+        document.body.appendChild(v); }
+      const cuerpo = document.getElementById('mcCuerpo'), piezas = [document.getElementById('buscadorMisCuentas') && document.getElementById('buscadorMisCuentas').closest('.mb-3'), document.getElementById('misProductoBarra'), document.getElementById('mcPanel'), document.getElementById('perfilNetflixCaja')].filter(Boolean);
+      piezas.forEach(p => { if (p.parentNode === cuerpo) return; const m = document.createComment('mc:' + (p.id || 'buscador')); p.parentNode.insertBefore(m, p); p._mcMarca = m; cuerpo.appendChild(p); });
+      v._mcPiezas = piezas; v.classList.remove('hidden'); document.body.style.overflow = 'hidden'; v.scrollTop = 0;
+      try { history.pushState(Object.assign({}, history.state || {}, { mcVista: true }), '', location.href); } catch (e) { /* nada */ }
+      try { await cargarMisCuentas(); } catch (e) { /* nada */ }
+      setTimeout(() => { try { pintarProductosMisCuentas(); const n = (misComprasPerfilCache || []).reduce((t, c) => t + String(c.credenciales || '').split('\n').filter(x => x.trim()).length, 0); const sub = document.getElementById('mcSub'); if (sub) sub.textContent = n ? n + (n === 1 ? ' cuenta' : ' cuentas') : ''; } catch (e) { /* nada */ } }, 120);
+      pintarFabMC();
+    }
+    function cerrarMisCompras(desdeAtras) {
+      const v = document.getElementById('vistaMisCompras'); if (!v || v.classList.contains('hidden')) return;
+      (v._mcPiezas || []).forEach(p => { if (p._mcMarca && p._mcMarca.parentNode) { p._mcMarca.parentNode.insertBefore(p, p._mcMarca); p._mcMarca.remove(); p._mcMarca = null; } });
+      v.classList.add('hidden'); document.body.style.overflow = ''; misProductoActivo = '';
+      try { if (!desdeAtras && history.state && history.state.mcVista) history.back(); } catch (e) { /* nada */ }
+      pintarFabMC();
+    }
+    window.addEventListener('popstate', () => { try { if (mcAbierta() && !(history.state && history.state.mcVista)) cerrarMisCompras(true); } catch (e) { /* nada */ } });   // atrás desde un producto vuelve a la lista; atrás desde la lista vuelve a la tienda
+    function clickFabMC() { if (mcAbierta()) cerrarMisCompras(); else irAMisCompras(); setTimeout(pintarFabMC, 80); }
     function pintarFabMC() {
       asegurarPanelMC();
       let b = document.getElementById('fabMisCompras');
       const vt = document.getElementById('vistaTienda'), vm = document.getElementById('vistaMisCuentas');
-      const enT = vt && !vt.classList.contains('hidden'), enM = vm && !vm.classList.contains('hidden'), esProv = (typeof rolActual !== 'undefined' && rolActual === 'proveedor' && !esAdminSesionActual()), ver = !!currentUser && (enT || enM) && !esProv;   // clientes y tú (admin); los proveedores no
+      const enM = mcAbierta(), enT = vt && !vt.classList.contains('hidden') && !enM, esProv = (typeof rolActual !== 'undefined' && rolActual === 'proveedor' && !esAdminSesionActual()), ver = !!currentUser && (enT || enM) && !esProv;   // clientes y tú (admin); los proveedores no
       if (!ver) { if (b) b.style.display = 'none'; return; }
       if (!b) { b = document.createElement('button'); b.id = 'fabMisCompras'; b.type = 'button'; b.className = 'fab-mc'; b.onclick = clickFabMC; document.body.appendChild(b); }
       b.style.display = ''; const n = nuevasMC();
