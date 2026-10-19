@@ -12818,7 +12818,17 @@
       if (!b) { b = document.createElement('div'); b.id = 'provCaidasCaja'; ref.parentNode.insertBefore(b, ref); }
       b.className = 'mb-3 p-3 rounded-2xl bg-red-500/10 border border-red-500/40';
       b.innerHTML = `<p class="text-sm font-black text-red-300">⚠️ Tienes ${L.length} ${L.length === 1 ? 'cuenta suspendida' : 'cuentas suspendidas'}</p><p class="text-[11px] text-gray-400 mb-2">Amazon las suspendió. Revísalas.</p>`
-        + L.slice(0, 50).map(c => `<div class="flex items-start gap-2 py-1.5 border-t border-red-500/20"><span class="text-[10px] font-black text-red-300 shrink-0 mt-0.5">🔴 Suspendida</span><div class="min-w-0"><p class="text-xs font-mono text-white break-all">${escaparHtml(c.correo)}</p><p class="text-[10px] text-gray-400">${escaparHtml(new Date(c.el).toLocaleDateString('es-CO', { day: '2-digit', month: '2-digit' }))} · ${escaparHtml(String(c.motivo || '').slice(0, 90))}</p></div></div>`).join('');
+        + L.slice(0, 50).map(c => `<div class="flex items-start gap-2 py-1.5 border-t border-red-500/20"><span class="text-[10px] font-black text-red-300 shrink-0 mt-0.5">🔴 Suspendida</span><div class="min-w-0"><p class="text-xs font-mono text-white break-all">${escaparHtml(c.correo)}</p><p class="text-[10px] text-gray-400">${escaparHtml(new Date(c.el).toLocaleDateString('es-CO', { day: '2-digit', month: '2-digit' }))} · ${escaparHtml(motivoAmazonEs(c.motivo))}</p></div></div>`).join('');
+    }
+    function motivoAmazonEs(t) {
+      const x = String(t || '').toLowerCase();
+      if (!x) return '';
+      if (/suspens|suspend|suspendid/.test(x)) return 'Amazon suspendió la cuenta';
+      if (/on hold|em espera|en espera|retenid|bloquead|blocked|locked|bloqueada/.test(x)) return 'Amazon puso la cuenta en espera (bloqueo temporal)';
+      if (/verif|confirm|identity|identidad|documento/.test(x)) return 'Amazon pide verificar la cuenta';
+      if (/password|contrase|senha|reset/.test(x)) return 'Amazon pide cambiar la contraseña';
+      if (/sign in|inicia|inicie|faça login|acceso|access|resolve|resolver|ação necessária|action required|acción requerida/.test(x)) return 'Amazon pide iniciar sesión para resolver un problema';
+      return String(t).slice(0, 110);
     }
     // =================== 🌐 TARJETA DOMINIOS (admin) ===================
     let pdDias = 30;
@@ -12854,7 +12864,7 @@
       const lista = (L, key, prime) => `<div class="flex items-center justify-between mb-1"><span class="text-[11px] text-gray-400">${L.length} cuentas</span>${L.length ? `<button type="button" onclick="pdCopiar('${key}')" class="text-[11px] px-2.5 py-1 rounded-lg bg-white/5 border border-white/10 text-gray-200">📋 Copiar lista</button>` : ''}</div>
         <div class="max-h-72 overflow-y-auto">${L.map(x => `<div class="flex items-center gap-2 py-1.5 border-t border-gray-800 text-xs"><span class="flex-1 min-w-0 font-mono text-white truncate">${escaparHtml(x.e)}</span><span class="text-gray-400 shrink-0">${escaparHtml(x.quien)} · ${prime ? 'Prime ' + fdia(x.primeEl) : 'creado ' + fdia(x.creadoEl)}</span></div>`).join('') || '<p class="text-xs text-gray-500 py-2">Ninguna 🎉</p>'}</div>`;
       const cp = (r.caidasProv || []).map((p, i) => `<details class="border-t border-gray-800"><summary class="flex items-center gap-2 py-2 cursor-pointer list-none text-xs"><span class="flex-1 text-white font-bold">${escaparHtml(p.nombre)}</span><span class="text-red-300 font-black">${p.cuentas.length} caídas</span><i class="fa-solid fa-chevron-down text-gray-500 text-[10px]"></i></summary>
-        <div class="pb-2">${p.cuentas.map(c => `<div class="pl-2 py-1 text-[11px] border-l-2 border-red-500/40 mb-1"><span class="font-mono text-white">${escaparHtml(c.e)}</span> <span class="text-gray-500">· ${escaparHtml(c.estado === 'vendida' ? 'vendida' : c.estado === 'stock' ? 'retirada del stock' : 'fuera del stock')} · ${escaparHtml(new Date(c.el).toLocaleDateString('es-CO', { day: '2-digit', month: '2-digit' }))}</span><br><span class="text-gray-400">${escaparHtml(String(c.motivo || '').slice(0, 110))}</span></div>`).join('')}</div></details>`).join('') || '<p class="text-xs text-gray-500">Sin caídas en este período 🎉</p>';
+        <div class="pb-2">${p.cuentas.map(c => `<div class="pl-2 py-1 text-[11px] border-l-2 border-red-500/40 mb-1"><span class="font-mono text-white">${escaparHtml(c.e)}</span> <span class="text-gray-500">· ${escaparHtml(c.estado === 'vendida' ? 'vendida' : c.estado === 'stock' ? 'retirada del stock' : 'fuera del stock')} · ${escaparHtml(new Date(c.el).toLocaleDateString('es-CO', { day: '2-digit', month: '2-digit' }))}</span><br><span class="text-gray-400">${escaparHtml(motivoAmazonEs(c.motivo))}</span></div>`).join('')}</div></details>`).join('') || '<p class="text-xs text-gray-500">Sin caídas en este período 🎉</p>';
       cu.innerHTML = tarj('🌐 Mis dominios', `<div class="overflow-x-auto"><table class="w-full text-xs text-gray-300"><thead><tr class="text-[10px] text-gray-500 text-left"><th class="pb-1">Dominio</th><th class="pb-1">Estado</th><th class="pb-1 text-right">Cuentas</th><th class="pb-1 text-right">Caídas</th><th class="pb-1 text-right">% caída</th></tr></thead><tbody>${doms}</tbody></table></div>`)
         + `<div class="grid lg:grid-cols-2 gap-3 mt-3">` + tarj('🏗 Quién creó más', rk(r.creadores, x => x.n + ' · ' + (x.n ? Math.round(x.caidas * 100 / x.n) : 0) + '% caídas')) + tarj('📩 Quién pide más códigos', rk(r.codigos, x => x.n + ' · ' + x.cuentas + ' cuentas')) + `</div>`
         + `<div class="grid lg:grid-cols-2 gap-3 mt-3">` + tarj('🎬 Con Prime y fuera del stock', lista(r.fueraPrime || [], 'fueraPrime', true)) + tarj('📭 Sin Prime y fuera del stock', lista(r.fueraNoPrime || [], 'fueraNoPrime', false)) + `</div>`
@@ -17399,7 +17409,7 @@
 
     // ==================== VISTA DEL PANEL (menú configurable) ====================
     const TABS_MENU_INFO = {
-      netflix: ['Alquileres', '#f87171'], tiendas: ['Tiendas', '#22d3ee'], productos: ['Productos', '#34d399'], reporte: ['Reporte de Ventas', '#60a5fa'], actividad: ['Actividad', '#22d3ee'], campanas: ['Campañas', '#fb7185'], dealers: ['Dealers', '#f7d774'], usuarios: ['Usuarios Registrados', '#a78bfa'],
+      dominios: ['Dominios', '#a78bfa'], netflix: ['Alquileres', '#f87171'], tiendas: ['Tiendas', '#22d3ee'], productos: ['Productos', '#34d399'], reporte: ['Reporte de Ventas', '#60a5fa'], actividad: ['Actividad', '#22d3ee'], campanas: ['Campañas', '#fb7185'], dealers: ['Dealers', '#f7d774'], usuarios: ['Usuarios Registrados', '#a78bfa'],
       tickets: ['Tickets', '#fbbf24'], recargas: ['Solicitudes de Saldo', '#34d399'], stock: ['Cargar Cuentas (Stock)', '#facc15'], historial: ['Historial de Ventas', '#94a3b8'],
       cortes: ['Cortes', '#f87171'], buscar: ['Buscar cuenta', '#38bdf8'], proveedores: ['Proveedores', '#fb923c'], promociones: ['Promociones', '#f472b6'],
       novedades: ['Novedades', '#38bdf8'], marketing: ['Marketing', '#e879f9'], categorias: ['Categorías & Colores', '#c084fc'], apariencia: ['Apariencia y Logo', '#f472b6'], pagos: ['Métodos de Pago & QR', '#2dd4bf'],
@@ -17432,6 +17442,7 @@
       let cache = null;
       try { cache = JSON.parse(localStorage.getItem('vistaPanel') || 'null'); } catch (e) { /* nada */ }
       vistaPanel = sanearVistaPanel(vistaPanelGuardada || cache);
+      try { if (vistaPanel && Array.isArray(vistaPanel.orden) && vistaPanel.orden.indexOf('dominios') === -1) { const ia = vistaPanel.orden.indexOf('ajustes'); if (ia === -1) vistaPanel.orden.push('dominios'); else vistaPanel.orden.splice(ia, 0, 'dominios'); } } catch (e) { /* nada */ }   // 🌐 Dominios: abajo, antes de Ajustes
       return vistaPanel;
     }
     function seccionInicioPanel() {
@@ -17596,7 +17607,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-27az';
+    const VERSION_PAGINA = '2026-10-27ba';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261021_miscompras', fecha: '2026-10-21', titulo: 'Nuevo: 📦 Mis compras', mensaje: 'Ahora tus compras tienen **su propio botón dorado 📦 Mis compras** (abajo a la izquierda y arriba junto a la campana). Ahí ves **todas tus cuentas ordenadas por producto**, lo que acabas de comprar marcado como **NUEVA**, su **garantía** y el botón para **copiar**. Y al terminar una compra te lleva directo a ellas.' },
       { id: 'act_20261021_telegram', fecha: '2026-10-21', titulo: 'Compra por Telegram ✈️', mensaje: 'Ya puedes comprar desde nuestro **bot de Telegram**, 24/7 y con entrega al instante. Usa **tu misma cuenta**: en la tienda ve a **Mis datos → Usar mi cuenta en Telegram** y verás ahí tu **mismo saldo y tus compras**. Si eres nuevo en Telegram, tu **primera compra tiene descuento** 🎁.' },
@@ -20250,7 +20261,7 @@
     const GRUPOS_MENU = [
       ['Ventas', ['reporte', 'actividad', 'campanas', 'dealers', 'historial', 'recargas', 'promociones', 'marketing', 'tiendas']],
       ['Clientes', ['usuarios', 'tickets', 'novedades', 'asistente', 'whatsapp']],
-      ['Inventario', ['productos', 'stock', 'proveedores', 'buscar', 'cortes']],
+      ['Inventario', ['productos', 'stock', 'proveedores', 'buscar', 'cortes', 'dominios']],
       ['Configuración', ['categorias', 'apariencia', 'pagos', 'vista', 'ajustes']]
     ];
     function armarMenuGrupos(v) {
@@ -20260,7 +20271,7 @@
       // El destacado (Alquileres) va arriba, grande
       if (v.destacado && v.destacado !== 'ninguno') { const d = btn(v.destacado); if (d) grid.appendChild(d); }
       GRUPOS_MENU.forEach(([titulo, tabs]) => {
-        const lista = tabs.filter(t => t !== v.destacado).sort((a, b) => v.orden.indexOf(a) - v.orden.indexOf(b));
+        const pos = t => { const i = v.orden.indexOf(t); return i === -1 ? 999 : i; }; const lista = tabs.filter(t => t !== v.destacado).sort((a, b) => pos(a) - pos(b));   // las nuevas van al final
         const g = document.createElement('div'); g.className = 'menu-grupo';
         g.innerHTML = `<p class="menu-grupo-titulo">${titulo}</p><div class="menu-grupo-caja"></div>`;
         const caja = g.lastElementChild;
@@ -26753,7 +26764,7 @@ async function pintarPanelWa() {
       return { cuentas: legado, stock: legado.length || stockPublico };
     }
 
-    const VERSION_SERVIDOR_NECESARIA = '2026-10-26b';   // la versión del servidor que necesita esta página
+    const VERSION_SERVIDOR_NECESARIA = '2026-10-26c';   // la versión del servidor que necesita esta página
     async function llamarBackend(accion, datos) {
       window._llamadasEnCurso = (window._llamadasEnCurso || 0) + 1;
       try { return await llamarBackendBase(accion, datos); } finally { window._llamadasEnCurso = Math.max(0, (window._llamadasEnCurso || 1) - 1); }
