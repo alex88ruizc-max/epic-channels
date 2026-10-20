@@ -17717,7 +17717,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-27cb';
+    const VERSION_PAGINA = '2026-10-27cc';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261021_miscompras', fecha: '2026-10-21', titulo: 'Nuevo: 📦 Mis compras', mensaje: 'Ahora tus compras tienen **su propio botón dorado 📦 Mis compras** (abajo a la izquierda y arriba junto a la campana). Ahí ves **todas tus cuentas ordenadas por producto**, lo que acabas de comprar marcado como **NUEVA**, su **garantía** y el botón para **copiar**. Y al terminar una compra te lleva directo a ellas.' },
       { id: 'act_20261021_telegram', fecha: '2026-10-21', titulo: 'Compra por Telegram ✈️', mensaje: 'Ya puedes comprar desde nuestro **bot de Telegram**, 24/7 y con entrega al instante. Usa **tu misma cuenta**: en la tienda ve a **Mis datos → Usar mi cuenta en Telegram** y verás ahí tu **mismo saldo y tus compras**. Si eres nuevo en Telegram, tu **primera compra tiene descuento** 🎁.' },
@@ -24406,7 +24406,9 @@
             const rc = await (await fetch(u, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ accion: 'cupo' }), signal: ctl.signal })).json();
             if (rc && rc.ok && rc.codigoHoy && (rc.codigoHoy.consultas || rc.codigoHoy.estricto)) { const ch = rc.codigoHoy;
               items.push(fila(!ch.estricto && ch.inventados < 5, '🛡 Página /codigo hoy', ch.consultas + ' consulta' + (ch.consultas === 1 ? '' : 's') + ' · ' + ch.inventados + ' de correos que no existen' + (ch.estricto ? ' · 🔒 modo estricto (posible escaneo)' : ''), ch.estricto ? 'Alguien probó correos inventados: la página solo responde por correos que existen durante 1 hora.' : '')); }
-            if (rc && rc.ok) items.push(fila(!rc.agotado && rc.hoy < rc.limite * 0.75, tit, (rc.agotado ? 'AGOTADO ahora · este servidor falla hasta que se libere · ' : '') + Number(rc.hoy || 0).toLocaleString('es-CO') + ' llamadas contadas hoy' + (rc.errores ? ' · ' + rc.errores + ' rechazadas por Google' : '') + ((rc.porOrigen || []).length ? ' · más gastan: ' + rc.porOrigen.map(x => x[0] + ' ' + Number(x[1]).toLocaleString('es-CO')).join(', ') : ''), rc.agotado ? 'Mándame captura de esta línea.' : ''));
+            if (rc && rc.ok) { const u24 = Number(rc.ultimas24 != null ? rc.ultimas24 : rc.hoy) || 0, p24 = Math.round(u24 * 100 / (rc.limite || 20000)); items.push(fila(!rc.agotado && p24 < 60, tit, (rc.agotado ? 'AGOTADO ahora · este servidor falla hasta que se libere · ' : '') + u24.toLocaleString('es-CO') + ' en las últimas 24 h (' + p24 + '%)' + ' · hoy desde medianoche: ' + Number(rc.hoy || 0).toLocaleString('es-CO') + (rc.errores ? ' · ' + rc.errores + ' rechazadas por Google' : '') + ((rc.porOrigen || []).length ? ' · más gastan: ' + rc.porOrigen.map(x => x[0] + ' ' + Number(x[1]).toLocaleString('es-CO')).join(', ') : ''), rc.agotado ? 'Mándame captura de esta línea.' : ''));
+              if (rc.ultimoError) items.push(fila(false, '⛔ Último freno de Google', rc.ultimoError, 'Mándame captura de esto: dice el motivo exacto.'));
+              try { const ph = rc.porHora || {}, hs = Object.keys(ph).map(Number).sort((a, b) => a - b).slice(-8); if (hs.length) { const txt = hs.map(h => { const d = new Date(h * 3600000); return d.toLocaleTimeString('es-CO', { hour: 'numeric' }) + ':' + Number(ph[h]).toLocaleString('es-CO'); }).join(' · '); items.push(fila(null, '🕐 Por hora (últimas)', txt, '')); } } catch (e) { /* nada */ } }
             else if (rc && rc.ok === undefined) items.push(fila(null, tit, 'Publica el servidor nuevo para verlo')); } } catch (e) { items.push(fila(null, tit, 'No se pudo leer: ' + (e.message || 'sin respuesta'))); }
       }
       // 5) Prueba de compra simulada (no cobra) y vigilancia automática del servidor
@@ -26918,7 +26920,7 @@ async function pintarPanelWa() {
       return { cuentas: legado, stock: legado.length || stockPublico };
     }
 
-    const VERSION_SERVIDOR_NECESARIA = '2026-10-26y';   // la versión del servidor que necesita esta página
+    const VERSION_SERVIDOR_NECESARIA = '2026-10-26z';   // la versión del servidor que necesita esta página
     async function llamarBackend(accion, datos) {
       window._llamadasEnCurso = (window._llamadasEnCurso || 0) + 1;
       try { return await llamarBackendBase(accion, datos); } finally { window._llamadasEnCurso = Math.max(0, (window._llamadasEnCurso || 1) - 1); }
