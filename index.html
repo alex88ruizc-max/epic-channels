@@ -12888,7 +12888,12 @@
       catch (e) { mostrarToast(e.message); }
       finally { if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-rotate mr-1"></i>Refrescar Prime'; } }
     }
-    function ldCopiar(btn, c) { try { navigator.clipboard.writeText(c); btn.textContent = '✓ Copiado'; btn.classList.add('opacity-70'); setTimeout(() => { btn.textContent = 'Copiar'; btn.classList.remove('opacity-70'); }, 1500); } catch (e) { /* nada */ } }
+    function ldCopiar(btn, c) {
+      try { navigator.clipboard.writeText(c); } catch (e) { /* nada */ }
+      try { mostrarToast('📋 Copiado · queda "En uso"'); } catch (e) { /* nada */ }
+      try { const it = (window._ld && window._ld.items || []).filter(x => x.correo === c)[0]; if (it && it.estado === 'libre') { it.estado = 'enuso'; try { localStorage.setItem('provDiaria_' + currentUser.uid, JSON.stringify({ t: Date.now(), r: window._ld })); } catch (e) { /* nada */ } pintarListaDiaria(window._ld); } } catch (e) { /* nada */ }
+      try { llamarBackend('prov_correos', { op: 'usar', correo: c }).catch(() => {}); } catch (e) { /* nada */ }
+    }
     function pintarListaDiaria(r) {
       window._ld = r; const ref = document.getElementById('provAutoResumen'); if (!ref || !r) return;
       // 📋 Una sola lista: se oculta lo de antes (+ Nuevo, insignias, buscador de generados y lista vieja). "Buscar código" se queda.
@@ -12896,11 +12901,11 @@
         const t = document.getElementById('provDomTitulo'), st = document.getElementById('provDomSub'); if (t) t.textContent = 'Tus correos para crear cuentas'; if (st) st.textContent = 'Copia uno de tu lista de hoy, crea la cuenta y toca 🔑 Código para verificarla.';
         pintarProvDominio(); } catch (e) { /* nada */ }
       let b = document.getElementById('provDiariaCaja'); if (!b) { b = document.createElement('div'); b.id = 'provDiariaCaja'; ref.parentNode.insertBefore(b, document.getElementById('provCaidasCaja') || ref); }
-      const it = r.items || [], cnt = e => it.filter(x => e === 'usado' ? /usado|prime|subida/.test(x.estado) : x.estado === e).length;
+      const it = r.items || [], cnt = e => it.filter(x => e === 'usado' ? /usado|prime|subida|enuso/.test(x.estado) : x.estado === e).length;
       const usados = cnt('usado') + cnt('suspendida'), total = it.length, pct = total ? Math.round(usados * 100 / total) : 0, susp = it.filter(x => x.estado === 'suspendida');
       const fecha = (() => { try { const [y, m, d] = String(r.dia).split('-'); return d + '/' + m; } catch (e) { return ''; } })();
-      const est = { libre: ['Libre', 'bg-gray-800 text-gray-300'], usado: ['✓ Usado', 'bg-emerald-500/15 text-emerald-300'], prime: ['✓ Prime activo', 'bg-emerald-500/15 text-emerald-300'], subida: ['📦 Subida', 'bg-sky-500/15 text-sky-300'], suspendida: ['🔴 Suspendida', 'bg-red-500/15 text-red-300'] };
-      const vis = it.filter(x => ldFiltro === 'libre' ? x.estado === 'libre' : ldFiltro === 'usado' ? /usado|prime|subida/.test(x.estado) : x.estado === 'suspendida');
+      const est = { enuso: ['📋 En uso', 'bg-amber-500/15 text-amber-300'], libre: ['Libre', 'bg-gray-800 text-gray-300'], usado: ['✓ Usado', 'bg-emerald-500/15 text-emerald-300'], prime: ['✓ Prime activo', 'bg-emerald-500/15 text-emerald-300'], subida: ['📦 Subida', 'bg-sky-500/15 text-sky-300'], suspendida: ['🔴 Suspendida', 'bg-red-500/15 text-red-300'] };
+      const vis = it.filter(x => ldFiltro === 'libre' ? x.estado === 'libre' : ldFiltro === 'usado' ? /usado|prime|subida|enuso/.test(x.estado) : x.estado === 'suspendida');
       const chip = (id, txt, n) => `<button type="button" onclick="ldFiltro='${id}';pintarListaDiaria(window._ld)" class="px-3 py-1 rounded-full text-[11px] font-bold ${ldFiltro === id ? 'bg-emerald-500 text-black' : 'bg-gray-800 text-gray-300 border border-gray-700'}">${txt} ${n}</button>`;
       b.className = 'mb-3 rounded-2xl bg-gray-900/70 border border-gray-700 p-3';
       b.innerHTML = `<div class="flex items-center gap-2"><p class="text-sm font-black text-white">📋 Tus correos de hoy</p><span class="text-[11px] text-gray-400">${escaparHtml(fecha)}${r.dia !== r.hoy ? ' · la nueva sale a las ' + escaparHtml(r.salidaTxt || '') : ''}</span>
@@ -17754,7 +17759,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-27cp';
+    const VERSION_PAGINA = '2026-10-27cq';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261021_miscompras', fecha: '2026-10-21', titulo: 'Nuevo: 📦 Mis compras', mensaje: 'Ahora tus compras tienen **su propio botón dorado 📦 Mis compras** (abajo a la izquierda y arriba junto a la campana). Ahí ves **todas tus cuentas ordenadas por producto**, lo que acabas de comprar marcado como **NUEVA**, su **garantía** y el botón para **copiar**. Y al terminar una compra te lleva directo a ellas.' },
       { id: 'act_20261021_telegram', fecha: '2026-10-21', titulo: 'Compra por Telegram ✈️', mensaje: 'Ya puedes comprar desde nuestro **bot de Telegram**, 24/7 y con entrega al instante. Usa **tu misma cuenta**: en la tienda ve a **Mis datos → Usar mi cuenta en Telegram** y verás ahí tu **mismo saldo y tus compras**. Si eres nuevo en Telegram, tu **primera compra tiene descuento** 🎁.' },
@@ -26965,7 +26970,7 @@ async function pintarPanelWa() {
       return { cuentas: legado, stock: legado.length || stockPublico };
     }
 
-    const VERSION_SERVIDOR_NECESARIA = '2026-10-27k';   // la versión del servidor que necesita esta página
+    const VERSION_SERVIDOR_NECESARIA = '2026-10-27l';   // la versión del servidor que necesita esta página
     async function llamarBackend(accion, datos) {
       window._llamadasEnCurso = (window._llamadasEnCurso || 0) + 1;
       try { return await llamarBackendBase(accion, datos); } finally { window._llamadasEnCurso = Math.max(0, (window._llamadasEnCurso || 1) - 1); }
