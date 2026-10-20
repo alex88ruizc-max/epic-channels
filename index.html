@@ -2675,7 +2675,9 @@
                   <p class="text-[12px] font-black text-sky-200">✈️ Bot de avisos para clientes</p>
                   <p class="text-[11px] text-gray-400">Un bot APARTE del tuyo (créalo en @BotFather). Tus clientes lo conectan en su perfil → Mis datos y reciben sus compras, recargas y stock nuevo. Nunca se envían contraseñas.</p>
                   <input type="password" id="ajusteTgClientesToken" autocomplete="off" placeholder="Token del bot de clientes" class="w-full bg-gray-900 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white font-mono focus:outline-none">
-                  <button type="button" onclick="guardarYProbarTgClientes()" class="w-full py-2 rounded-xl bg-sky-500 hover:bg-sky-400 text-black font-black text-xs">Guardar y probar</button>
+                  <div class="flex gap-2"><button type="button" onclick="guardarYProbarTgClientes()" class="flex-1 py-2 rounded-xl bg-sky-500 hover:bg-sky-400 text-black font-black text-xs">Guardar y probar</button>
+                  <button type="button" onclick="desconectarTgClientes()" class="px-3 py-2 rounded-xl bg-red-500/20 border border-red-500/50 text-red-300 font-black text-xs">🔌 Desconectar</button></div>
+                  <p class="text-[10px] text-gray-500">Desconectar apaga los avisos de "llegó stock" y ofertas relámpago a tus clientes. No toca tu bot de ventas ni tus notificaciones.</p>
                   <p id="tgClientesEstado" class="text-[11px] text-gray-400"></p>
                 </div>
                 <div>
@@ -17717,7 +17719,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-27cc';
+    const VERSION_PAGINA = '2026-10-27cd';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261021_miscompras', fecha: '2026-10-21', titulo: 'Nuevo: 📦 Mis compras', mensaje: 'Ahora tus compras tienen **su propio botón dorado 📦 Mis compras** (abajo a la izquierda y arriba junto a la campana). Ahí ves **todas tus cuentas ordenadas por producto**, lo que acabas de comprar marcado como **NUEVA**, su **garantía** y el botón para **copiar**. Y al terminar una compra te lleva directo a ellas.' },
       { id: 'act_20261021_telegram', fecha: '2026-10-21', titulo: 'Compra por Telegram ✈️', mensaje: 'Ya puedes comprar desde nuestro **bot de Telegram**, 24/7 y con entrega al instante. Usa **tu misma cuenta**: en la tienda ve a **Mis datos → Usar mi cuenta en Telegram** y verás ahí tu **mismo saldo y tus compras**. Si eres nuevo en Telegram, tu **primera compra tiene descuento** 🎁.' },
@@ -23989,6 +23991,14 @@
       setTimeout(() => mostrarToast('✈️ ¿Quieres este aviso en Telegram? Conéctalo en tu perfil → Mis datos.'), 1800);
     }
     // ---- Panel: token del bot de clientes ----
+    async function desconectarTgClientes() {
+      if (!await confirmarModal('🔌 ¿Apagar el bot de avisos a clientes (Epic Channels)?\n\nDejará de mandar "llegó stock" y ofertas relámpago. Tu bot de ventas y tus notificaciones siguen igual.', { textoAceptar: 'Sí, apagar' })) return;
+      const est = document.getElementById('tgClientesEstado'); if (est) est.textContent = 'Apagando…';
+      try { await db.collection('secretos').doc('ajustes').set({ telegramClientesToken: '', actualizadoEl: new Date().toISOString() }, { merge: true });
+        const t = document.getElementById('ajusteTgClientesToken'); if (t) t.value = '';
+        if (est) est.innerHTML = '<span class="text-amber-300">🔌 Bot de avisos a clientes apagado. Ya no manda stock ni ofertas.</span>'; mostrarToast('🔌 Avisos a clientes apagados'); }
+      catch (e) { if (est) est.textContent = 'No se pudo: ' + (e.message || e); }
+    }
     async function guardarYProbarTgClientes() {
       const v = String((document.getElementById('ajusteTgClientesToken') || {}).value || '').trim(), est = document.getElementById('tgClientesEstado');
       try {
