@@ -17703,7 +17703,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-27bt';
+    const VERSION_PAGINA = '2026-10-27bv';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261021_miscompras', fecha: '2026-10-21', titulo: 'Nuevo: 📦 Mis compras', mensaje: 'Ahora tus compras tienen **su propio botón dorado 📦 Mis compras** (abajo a la izquierda y arriba junto a la campana). Ahí ves **todas tus cuentas ordenadas por producto**, lo que acabas de comprar marcado como **NUEVA**, su **garantía** y el botón para **copiar**. Y al terminar una compra te lleva directo a ellas.' },
       { id: 'act_20261021_telegram', fecha: '2026-10-21', titulo: 'Compra por Telegram ✈️', mensaje: 'Ya puedes comprar desde nuestro **bot de Telegram**, 24/7 y con entrega al instante. Usa **tu misma cuenta**: en la tienda ve a **Mis datos → Usar mi cuenta en Telegram** y verás ahí tu **mismo saldo y tus compras**. Si eres nuevo en Telegram, tu **primera compra tiene descuento** 🎁.' },
@@ -24498,6 +24498,9 @@
       set('cnTgDesc', cc.tgDesc || ('🛒 ' + tienda + '\nTu tienda automática 24/7 de cuentas de streaming. Entrega al instante y garantía en cada compra. 🤖\n\n🔥 Destacados:\n• Prime Video\n• Netflix\n• YouTube Premium\n• Spotify\n• Gemini Pro\n• ¡y más!\n\n💳 Pagas con Bre-B (COP) o Binance (USDT)\n👑 +' + (((ajustesGeneralesConfig || {}).portadaClientes) || '3.000') + ' clientes desde 2014\n\nToca INICIAR 👇'));
       pintarPromos();
       try { const p1 = document.getElementById('cnTgPrimOn'), p2 = document.getElementById('cnTgPrimPct'), p3 = document.getElementById('cnTgPrimDias'); if (p1) p1.checked = cc.tgPrimeraOn !== false; if (p2) p2.value = cc.tgPrimeraPct || 5; if (p3) p3.value = cc.tgPrimeraDias || 7; } catch (e) { /* nada */ }
+      // ⚡ Estado de los botones al instante: se lee al abrir, para que siempre sepas si está activo
+      try { db.collection('secretos').doc('ajustes').get().then(d => { const x = d.exists ? d.data() : {}, el = document.getElementById('tgWhEstado'); if (!el) return;
+        el.innerHTML = x.tgWebhookActivo === true ? '<span class="text-emerald-400 font-black">✅ Activo</span>' + (x.tgWebhookEl ? ' desde el ' + escaparHtml(new Date(x.tgWebhookEl).toLocaleString('es-CO', { day: '2-digit', month: '2-digit', hour: 'numeric', minute: '2-digit' })) : '') + ' · ya no gasta llamadas preguntando.' : '<span class="text-gray-300 font-bold">⚪ Apagado</span> · el servidor pregunta a Telegram cada pocos segundos. Toca Activar.'; }).catch(() => {}); } catch (e) { /* nada */ }
       try { const ru = cc.ruleta || {}, on = document.getElementById('cnRuOn'), bp = document.getElementById('cnRuPesos'); if (on) on.checked = ru.on === true; const vis = document.getElementById('cnRuVis'); if (vis) vis.checked = ru.visitantes === true;
         if (bp) { bp.innerHTML = RU_PREMIOS.map(x => `<label class="flex items-center gap-1.5 text-[11px] text-gray-300"><span class="relative"><input type="number" min="0" max="100" data-ru="${x[0]}" oninput="ruSumaPct()" value="${ru[x[0]] != null ? ru[x[0]] : x[2]}" class="w-16 bg-gray-900 border border-gray-700 rounded-lg pl-1.5 pr-5 py-1 text-xs text-white"><span class="absolute right-1.5 top-1/2 -translate-y-1/2 text-gray-500 text-[10px]">%</span></span> ${x[1]}</label>`).join('') + '<p id="cnRuTotal" class="col-span-2"></p>'; ruSumaPct(); } } catch (e) { /* nada */ }
       const tc = cc.tgCats || {}, boxC = document.getElementById('cnTgCats');
@@ -24639,7 +24642,7 @@
     }
     async function tgWebhooks(apagar) {
       const el = document.getElementById('tgWhEstado'); if (el) el.textContent = 'Conectando…';
-      try { const r = await llamarBackend('tg_webhooks', { apagar: !!apagar }); if (!r || !r.ok) throw new Error((r && r.error) || 'No se pudo.');
+      try { const r = await llamarBackend('tg_webhooks', { apagar: !!apagar, urlServidor: obtenerBackendUrl() }); if (!r || !r.ok) throw new Error((r && r.error) || 'No se pudo.');
         if (el) el.innerHTML = r.apagado ? 'Volvió a lo de antes (el servidor pregunta cada pocos segundos).' : '✅ Activo. ' + (r.detalle || []).map(escaparHtml).join(' · ') + '<br>Toca un botón en tu Telegram para probar.'; mostrarToast(r.apagado ? 'Telegram: como antes' : '⚡ Botones de Telegram al instante'); }
       catch (e) { if (el) el.textContent = '❌ ' + e.message; }
     }
@@ -26901,7 +26904,7 @@ async function pintarPanelWa() {
       return { cuentas: legado, stock: legado.length || stockPublico };
     }
 
-    const VERSION_SERVIDOR_NECESARIA = '2026-10-26t';   // la versión del servidor que necesita esta página
+    const VERSION_SERVIDOR_NECESARIA = '2026-10-26v';   // la versión del servidor que necesita esta página
     async function llamarBackend(accion, datos) {
       window._llamadasEnCurso = (window._llamadasEnCurso || 0) + 1;
       try { return await llamarBackendBase(accion, datos); } finally { window._llamadasEnCurso = Math.max(0, (window._llamadasEnCurso || 1) - 1); }
