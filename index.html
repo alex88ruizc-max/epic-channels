@@ -12883,13 +12883,19 @@
       const vis = it.filter(x => ldFiltro === 'libre' ? x.estado === 'libre' : ldFiltro === 'usado' ? /usado|prime|subida/.test(x.estado) : x.estado === 'suspendida');
       const chip = (id, txt, n) => `<button type="button" onclick="ldFiltro='${id}';pintarListaDiaria(window._ld)" class="px-3 py-1 rounded-full text-[11px] font-bold ${ldFiltro === id ? 'bg-emerald-500 text-black' : 'bg-gray-800 text-gray-300 border border-gray-700'}">${txt} ${n}</button>`;
       b.className = 'mb-3 rounded-2xl bg-gray-900/70 border border-gray-700 p-3';
-      b.innerHTML = `<div class="p-3 rounded-xl bg-sky-500/10 border border-sky-500/30 text-[12px] leading-relaxed text-sky-100 mb-3">📬 <b class="text-white">Tus correos de hoy se cargan solos</b> cada mañana${r.salidaTxt ? ' (' + escaparHtml(r.salidaTxt) + ')' : ''}: no tienes que pedirlos ni recargar.<br>1️⃣ Copia un correo <b>libre</b> · 2️⃣ crea la cuenta de Amazon con él · 3️⃣ súbela como siempre.<br>Los que no uses hoy se liberan mañana y te llegan nuevos.</div>
-        <div class="flex items-center gap-2 mb-2"><button type="button" onclick="ldRefrescar(this)" class="px-3 py-1.5 rounded-lg bg-sky-500 text-black text-[11px] font-black"><i class="fa-solid fa-rotate mr-1"></i>Refrescar Prime</button><span class="text-[10px] text-gray-500">El Prime se revisa solo cada 1 h 30 min. Si acabas de crear una cuenta, toca Refrescar.</span></div>
-        <div class="flex items-center gap-2"><p class="text-sm font-black text-white">📋 Tus correos de hoy</p><span class="ml-auto text-[11px] text-gray-400">${escaparHtml(fecha)}${r.dia !== r.hoy ? ' · la nueva sale a las ' + escaparHtml(r.salidaTxt || '') : ''}</span></div>
-        <p class="text-[11px] text-gray-400 mt-1">${usados} de ${total} usados</p><div class="h-1.5 rounded-full bg-gray-800 overflow-hidden mt-1 mb-3"><i class="block h-full bg-emerald-500" style="width:${pct}%"></i></div>
+      b.innerHTML = `<div class="flex items-center gap-2"><p class="text-sm font-black text-white">📋 Tus correos de hoy</p><span class="text-[11px] text-gray-400">${escaparHtml(fecha)}${r.dia !== r.hoy ? ' · la nueva sale a las ' + escaparHtml(r.salidaTxt || '') : ''}</span>
+          <button type="button" onclick="ldRefrescar(this)" class="ml-auto shrink-0 px-2.5 py-1.5 rounded-lg bg-sky-500 text-black text-[11px] font-black"><i class="fa-solid fa-rotate mr-1"></i>Refrescar Prime</button></div>
+        <div class="mt-2 p-3 rounded-xl bg-sky-500/10 border border-sky-500/30 text-[12px] text-sky-100 space-y-1">
+          <p class="font-black text-white">📬 Se cargan solos cada mañana${r.salidaTxt ? ' (' + escaparHtml(r.salidaTxt) + ')' : ''}</p>
+          <p>1️⃣ Copia un correo <b>libre</b></p>
+          <p>2️⃣ Crea la cuenta de Amazon con él</p>
+          <p>3️⃣ Súbela como siempre</p>
+          <p class="text-[11px] text-sky-200/70 pt-1">Los que no uses hoy se liberan mañana. El Prime se revisa solo cada 1 h 30 min: si acabas de crear una cuenta, toca <b>Refrescar Prime</b>.</p>
+        </div>
+        <p class="text-[11px] text-gray-400 mt-3">${usados} de ${total} usados</p><div class="h-1.5 rounded-full bg-gray-800 overflow-hidden mt-1 mb-3"><i class="block h-full bg-emerald-500" style="width:${pct}%"></i></div>
         ${susp.length ? `<div class="p-2.5 rounded-xl bg-red-500/10 border border-red-500/40 text-[12px] text-red-200 mb-3">⚠️ <b>${susp.length} ${susp.length === 1 ? 'cuenta de tu lista fue suspendida' : 'cuentas de tu lista fueron suspendidas'} por Amazon:</b> ${susp.slice(0, 3).map(x => escaparHtml(x.correo)).join(', ')}${susp.length > 3 ? '…' : ''}</div>` : ''}
         <div class="flex gap-1.5 mb-2 flex-wrap">${chip('libre', 'Libres', cnt('libre'))}${chip('usado', 'Usados', cnt('usado'))}${chip('suspendida', 'Suspendidos', cnt('suspendida'))}</div>
-        <div class="max-h-80 overflow-y-auto space-y-1">${vis.map(x => `<div class="flex items-center gap-2 px-2.5 py-2 rounded-lg bg-gray-950/60 border border-gray-800"><span class="flex-1 min-w-0 font-mono text-[12px] text-white truncate">${escaparHtml(x.correo)}</span><span class="shrink-0 px-2 py-0.5 rounded-full text-[10px] font-bold ${est[x.estado][1]}">${est[x.estado][0]}</span>${x.estado === 'libre' ? `<button type="button" onclick="ldCopiar(this,'${escaparJsAttr(x.correo)}')" class="shrink-0 px-2.5 py-1 rounded-lg bg-emerald-500 text-black text-[11px] font-black">Copiar</button>` : ''}</div>`).join('') || `<p class="text-[12px] text-gray-500 text-center py-4">${ldFiltro === 'libre' ? 'Ya usaste todos los de hoy 🎉' : 'Ninguno'}</p>`}</div>
+        <div class="overflow-y-auto space-y-1" style="max-height:65vh">${vis.map(x => `<div class="flex items-center gap-2 px-2.5 py-2 rounded-lg bg-gray-950/60 border border-gray-800"><span class="flex-1 min-w-0 font-mono text-[12px] text-white truncate">${escaparHtml(x.correo)}</span><span class="shrink-0 px-2 py-0.5 rounded-full text-[10px] font-bold ${est[x.estado][1]}">${est[x.estado][0]}</span>${x.estado === 'libre' ? `<button type="button" onclick="ldCopiar(this,'${escaparJsAttr(x.correo)}')" class="shrink-0 px-2.5 py-1 rounded-lg bg-emerald-500 text-black text-[11px] font-black">Copiar</button>` : ''}</div>`).join('') || `<p class="text-[12px] text-gray-500 text-center py-4">${ldFiltro === 'libre' ? 'Ya usaste todos los de hoy 🎉' : 'Ninguno'}</p>`}</div>
         ${r.dia === r.hoy ? (r.puedePedir ? `<button type="button" onclick="ldPedirMas(this)" class="mt-3 w-full py-2.5 rounded-xl border border-dashed border-gray-600 text-gray-200 text-[12px] font-bold">＋ Pedir 10 más</button>` : `<p class="mt-3 text-center text-[11px] text-gray-500">＋ Pedir 10 más · disponible en tu horario${r.horarioTxt ? ' (' + escaparHtml(r.horarioTxt) + ')' : ''}</p>`) : ''}`;
     }
     setInterval(() => { try { if (document.getElementById('provDiariaCaja') && document.visibilityState === 'visible') cargarListaDiaria(); } catch (e) { /* nada */ } }, 5 * 60000);
@@ -17727,7 +17733,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-27ch';
+    const VERSION_PAGINA = '2026-10-27ci';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261021_miscompras', fecha: '2026-10-21', titulo: 'Nuevo: 📦 Mis compras', mensaje: 'Ahora tus compras tienen **su propio botón dorado 📦 Mis compras** (abajo a la izquierda y arriba junto a la campana). Ahí ves **todas tus cuentas ordenadas por producto**, lo que acabas de comprar marcado como **NUEVA**, su **garantía** y el botón para **copiar**. Y al terminar una compra te lleva directo a ellas.' },
       { id: 'act_20261021_telegram', fecha: '2026-10-21', titulo: 'Compra por Telegram ✈️', mensaje: 'Ya puedes comprar desde nuestro **bot de Telegram**, 24/7 y con entrega al instante. Usa **tu misma cuenta**: en la tienda ve a **Mis datos → Usar mi cuenta en Telegram** y verás ahí tu **mismo saldo y tus compras**. Si eres nuevo en Telegram, tu **primera compra tiene descuento** 🎁.' },
@@ -26938,7 +26944,7 @@ async function pintarPanelWa() {
       return { cuentas: legado, stock: legado.length || stockPublico };
     }
 
-    const VERSION_SERVIDOR_NECESARIA = '2026-10-27d';   // la versión del servidor que necesita esta página
+    const VERSION_SERVIDOR_NECESARIA = '2026-10-27e';   // la versión del servidor que necesita esta página
     async function llamarBackend(accion, datos) {
       window._llamadasEnCurso = (window._llamadasEnCurso || 0) + 1;
       try { return await llamarBackendBase(accion, datos); } finally { window._llamadasEnCurso = Math.max(0, (window._llamadasEnCurso || 1) - 1); }
