@@ -8604,6 +8604,17 @@
       document.getElementById('nuevoProdTipoGarantia').value = ''; garantiaHaciaUI('nuevoProd', '', 'compra'); encargoHaciaUI('nuevoProd', null); tarjetaHaciaUI('nuevoProd', null); duracionHaciaUI('nuevoProd', null);
     }
 
+    // 📝 Desde Telegram ("Posible registro nuevo" → ➕ Crear su usuario): abre la ventana con el correo y el WhatsApp ya puestos
+    (function () {
+      const m = /crearusuario=([^&]+)(?:&wa=(\d+))?(?:&n=([^&]+))?/.exec(location.hash || ''); if (!m) return;
+      try { history.replaceState(null, '', location.pathname + location.search); } catch (e) { /* nada */ }
+      let n = 0; const t = setInterval(() => { n++; if (n > 120) { clearInterval(t); return; }
+        try { if (!currentUser || !esAdminSesionActual() || !document.getElementById('modalNuevoCliente')) return; clearInterval(t);
+          abrirModalNuevoCliente();
+          const em = document.getElementById('expEmail'), wa = document.getElementById('expWhatsapp'), nm = document.getElementById('expNombre');
+          if (em) em.value = decodeURIComponent(m[1]); if (wa && m[2]) { let w = m[2]; if (w.length === 12 && /^57/.test(w)) w = w.slice(2); wa.value = w; } if (nm && m[3]) nm.value = decodeURIComponent(m[3]);
+        } catch (e) { /* nada */ } }, 1000);
+    })();
     function abrirModalNuevoCliente() {
       const m = document.getElementById('modalNuevoCliente');
       m.classList.remove('hidden');
@@ -17628,7 +17639,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-27bc';
+    const VERSION_PAGINA = '2026-10-27bg';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261021_miscompras', fecha: '2026-10-21', titulo: 'Nuevo: 📦 Mis compras', mensaje: 'Ahora tus compras tienen **su propio botón dorado 📦 Mis compras** (abajo a la izquierda y arriba junto a la campana). Ahí ves **todas tus cuentas ordenadas por producto**, lo que acabas de comprar marcado como **NUEVA**, su **garantía** y el botón para **copiar**. Y al terminar una compra te lleva directo a ellas.' },
       { id: 'act_20261021_telegram', fecha: '2026-10-21', titulo: 'Compra por Telegram ✈️', mensaje: 'Ya puedes comprar desde nuestro **bot de Telegram**, 24/7 y con entrega al instante. Usa **tu misma cuenta**: en la tienda ve a **Mis datos → Usar mi cuenta en Telegram** y verás ahí tu **mismo saldo y tus compras**. Si eres nuevo en Telegram, tu **primera compra tiene descuento** 🎁.' },
@@ -26785,7 +26796,7 @@ async function pintarPanelWa() {
       return { cuentas: legado, stock: legado.length || stockPublico };
     }
 
-    const VERSION_SERVIDOR_NECESARIA = '2026-10-26d';   // la versión del servidor que necesita esta página
+    const VERSION_SERVIDOR_NECESARIA = '2026-10-26h';   // la versión del servidor que necesita esta página
     async function llamarBackend(accion, datos) {
       window._llamadasEnCurso = (window._llamadasEnCurso || 0) + 1;
       try { return await llamarBackendBase(accion, datos); } finally { window._llamadasEnCurso = Math.max(0, (window._llamadasEnCurso || 1) - 1); }
