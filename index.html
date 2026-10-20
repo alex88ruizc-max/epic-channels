@@ -17639,7 +17639,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-27bm';
+    const VERSION_PAGINA = '2026-10-27bn';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261021_miscompras', fecha: '2026-10-21', titulo: 'Nuevo: 📦 Mis compras', mensaje: 'Ahora tus compras tienen **su propio botón dorado 📦 Mis compras** (abajo a la izquierda y arriba junto a la campana). Ahí ves **todas tus cuentas ordenadas por producto**, lo que acabas de comprar marcado como **NUEVA**, su **garantía** y el botón para **copiar**. Y al terminar una compra te lleva directo a ellas.' },
       { id: 'act_20261021_telegram', fecha: '2026-10-21', titulo: 'Compra por Telegram ✈️', mensaje: 'Ya puedes comprar desde nuestro **bot de Telegram**, 24/7 y con entrega al instante. Usa **tu misma cuenta**: en la tienda ve a **Mis datos → Usar mi cuenta en Telegram** y verás ahí tu **mismo saldo y tus compras**. Si eres nuevo en Telegram, tu **primera compra tiene descuento** 🎁.' },
@@ -24888,6 +24888,10 @@ async function pintarPanelWa() {
           <div class="mt-2 p-2.5 rounded-xl bg-violet-500/5 border border-violet-500/30">
             <div class="flex items-center justify-between gap-3"><span><span class="block text-[12px] font-black text-white">🤖 Aprender solo con IA (Gemini)</span><span class="block text-[10px] text-gray-400">Si el bot no entiende algo, la IA solo elige qué quiso decir (saludo, precios, reclamo…). <b class="text-gray-300">Nunca escribe respuestas ni conoce tus precios</b>: responde el bot con sus textos. Si está segura, la frase queda aprendida (🤖). Máximo 300 consultas al día.</span></span><input type="checkbox" id="waIa" ${k.iaAprender !== false ? 'checked' : ''} class="accent-violet-500 w-6 h-6 shrink-0"></div>
             <div class="flex gap-1.5 mt-2"><input type="password" id="waGeminiKey" autocomplete="off" placeholder="Clave de Gemini (AQ.… o AIza…)" class="${inp}"><button type="button" onclick="guardarClaveGemini()" class="px-3 rounded-lg bg-violet-600 text-white font-bold text-[11px]">Guardar</button></div>
+            <div class="mt-2 p-2.5 rounded-lg bg-gray-900/60 border border-violet-500/30"><p class="text-[11px] font-bold text-violet-200 mb-1.5">📊 Cupos de Gemini por día</p>
+              <div class="grid grid-cols-2 gap-2"><label class="text-[10px] text-gray-400">🧠 Para entender<input id="waCupoEnt" type="number" min="50" max="5000" placeholder="500" class="${inp} mt-1"></label><label class="text-[10px] text-gray-400">🗣 Tu estilo y vendedor<input id="waCupoEst" type="number" min="0" max="5000" placeholder="300" class="${inp} mt-1"></label></div>
+              <div class="flex items-center gap-2 mt-2"><button type="button" onclick="guardarCuposIa()" class="px-3 py-1.5 rounded-lg bg-violet-600 text-white font-bold text-[11px]">Guardar cupos</button><button type="button" onclick="verUsoIa()" class="px-3 py-1.5 rounded-lg bg-gray-800 border border-gray-700 text-gray-200 font-bold text-[11px]">Ver consumo de hoy</button></div>
+              <p id="waIaUso" class="text-[11px] text-gray-400 mt-1.5">Entender siempre tiene su propio cupo: aunque se acabe el de tu estilo, el bot sigue entendiendo.</p></div>
             <p id="waGeminiEstado" class="text-[10px] text-gray-500 mt-1">Sácala gratis en aistudio.google.com → "Get API key".</p>
             <div class="flex gap-1.5 mt-2"><input type="text" id="waIaPrueba" maxlength="200" placeholder="Frase de prueba: quiubo, qué hay pa hoy" class="${inp}"><button type="button" onclick="probarIaWa()" class="px-3 rounded-lg bg-gray-800 border border-violet-500/50 text-violet-200 font-bold text-[11px] shrink-0">🧪 Probar IA</button></div>
             <p id="waIaResultado" class="text-[11px] mt-1.5"></p>
@@ -25499,6 +25503,19 @@ async function pintarPanelWa() {
       catch (e) { alert(e.message); }
     }
     async function descartarNoEntendidoWa(id) { try { await db.collection('wa_no_entendidos').doc(id).delete(); cargarNoEntendidosWa(); } catch (e) { alert(e.message); } }
+    async function guardarCuposIa() {
+      const n = id => Math.max(0, Math.min(5000, parseInt((document.getElementById(id) || {}).value, 10) || 0)), e = n('waCupoEnt'), st = n('waCupoEst'), dat = {};
+      if (e) dat.iaCupoEntender = Math.max(50, e); if (st || (document.getElementById('waCupoEst') || {}).value === '0') dat.iaCupoEstilo = st;
+      if (!Object.keys(dat).length) { alert('Escribe al menos un cupo.'); return; }
+      try { await db.collection('secretos').doc('ajustes').set(dat, { merge: true }); mostrarToast('🤖 Cupos de Gemini guardados'); verUsoIa(); } catch (er) { alert(er.message); }
+    }
+    async function verUsoIa() {
+      const el = document.getElementById('waIaUso'); if (el) el.textContent = 'Consultando…';
+      try { const r = await llamarBackend('ia_uso', {}); if (!r || !r.ok) throw new Error('No se pudo leer.');
+        const ce = document.getElementById('waCupoEnt'), cs = document.getElementById('waCupoEst'); if (ce && !ce.value) ce.value = r.topeEntender; if (cs && !cs.value) cs.value = r.topeEstilo;
+        if (el) el.innerHTML = `Hoy: 🧠 <b>${r.entender}</b> de ${r.topeEntender} para entender · 🗣 <b>${r.estilo}</b> de ${r.topeEstilo} para tu estilo` + (r.entender >= r.topeEntender ? ' · <span class="text-red-300 font-bold">cupo de entender agotado</span>' : '') + '<br><span class="text-gray-500">Es por proyecto: tu otro servidor tiene su propio cupo.</span>'; }
+      catch (e) { if (el) el.textContent = e.message; }
+    }
     async function guardarClaveGemini() {
       const v = String((document.getElementById('waGeminiKey') || {}).value || '').trim(), est = document.getElementById('waGeminiEstado');
       if (v && !/^(AIza[0-9A-Za-z_-]{30,}|AQ\.[0-9A-Za-z._-]{20,})$/.test(v)) { alert('Esa clave no parece de Gemini: debe empezar por "AIza" o por "AQ." (cópiala con el ícono 📋 junto a "Clave de API").'); return; }
@@ -26796,7 +26813,7 @@ async function pintarPanelWa() {
       return { cuentas: legado, stock: legado.length || stockPublico };
     }
 
-    const VERSION_SERVIDOR_NECESARIA = '2026-10-26n';   // la versión del servidor que necesita esta página
+    const VERSION_SERVIDOR_NECESARIA = '2026-10-26o';   // la versión del servidor que necesita esta página
     async function llamarBackend(accion, datos) {
       window._llamadasEnCurso = (window._llamadasEnCurso || 0) + 1;
       try { return await llamarBackendBase(accion, datos); } finally { window._llamadasEnCurso = Math.max(0, (window._llamadasEnCurso || 1) - 1); }
