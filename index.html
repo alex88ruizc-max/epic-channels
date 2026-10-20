@@ -12852,8 +12852,13 @@
       let c = null; try { c = JSON.parse(localStorage.getItem(k) || 'null'); } catch (e) { c = null; }
       if (c && c.r && !forzar) { pintarListaDiaria(c.r); if (c.r.hoy === ldHoy() && c.r.dia === ldHoy() && Date.now() - c.t < 20 * 60000) return; }   // se carga sola: solo pregunta al servidor si cambió el día o pasaron 20 min
       ldCargando = true;
-      try { const r = await llamarBackend('prov_correos', { op: 'diaria' }); if (r && r.ok) { try { localStorage.setItem(k, JSON.stringify({ t: Date.now(), r: r })); } catch (e) { /* nada */ } pintarListaDiaria(r); } }
-      catch (e) { /* nada */ } finally { ldCargando = false; }
+      try { const r = await llamarBackend('prov_correos', { op: 'diaria' }); if (r && r.ok) { try { localStorage.setItem(k, JSON.stringify({ t: Date.now(), r: r })); } catch (e) { /* nada */ } pintarListaDiaria(r); } else ldError((r && r.error) || 'el servidor no respondió'); }
+      catch (e) { ldError(e.message || 'sin conexión'); } finally { ldCargando = false; }
+    }
+    function ldError(msj) {   // 🧯 si la lista no carga, se ve el motivo (y un botón para reintentar) en vez de no mostrar nada
+      const ref = document.getElementById('provAutoResumen'); if (!ref || window._ld) return;
+      let b = document.getElementById('provDiariaCaja'); if (!b) { b = document.createElement('div'); b.id = 'provDiariaCaja'; ref.parentNode.insertBefore(b, ref); }
+      b.innerHTML = '<div class="mt-3 p-3 rounded-xl bg-amber-500/10 border border-amber-500/40"><p class="text-sm font-black text-amber-200">📬 Tus correos de hoy</p><p class="text-[11px] text-amber-100/80 mt-1">No se pudo cargar tu lista: ' + escaparHtml(String(msj).slice(0, 160)) + '</p><button type="button" onclick="cargarListaDiaria(true)" class="mt-2 px-3 py-1.5 rounded-lg bg-amber-400 text-black text-[11px] font-black">Reintentar</button></div>';
     }
     async function ldPedirMas(btn) {
       if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i>Pidiendo…'; }
@@ -17719,7 +17724,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-27cf';
+    const VERSION_PAGINA = '2026-10-27cg';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261021_miscompras', fecha: '2026-10-21', titulo: 'Nuevo: 📦 Mis compras', mensaje: 'Ahora tus compras tienen **su propio botón dorado 📦 Mis compras** (abajo a la izquierda y arriba junto a la campana). Ahí ves **todas tus cuentas ordenadas por producto**, lo que acabas de comprar marcado como **NUEVA**, su **garantía** y el botón para **copiar**. Y al terminar una compra te lleva directo a ellas.' },
       { id: 'act_20261021_telegram', fecha: '2026-10-21', titulo: 'Compra por Telegram ✈️', mensaje: 'Ya puedes comprar desde nuestro **bot de Telegram**, 24/7 y con entrega al instante. Usa **tu misma cuenta**: en la tienda ve a **Mis datos → Usar mi cuenta en Telegram** y verás ahí tu **mismo saldo y tus compras**. Si eres nuevo en Telegram, tu **primera compra tiene descuento** 🎁.' },
