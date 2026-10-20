@@ -10637,12 +10637,23 @@
       try {
         const objetivo = JSON.stringify((prod.cuentas || [])[index]);
         let quitada = null;
-        const nuevasCuentas = await modificarCuentasProducto(docId, (lista) => {
-          const idx = (JSON.stringify(lista[index]) === objetivo) ? index : lista.findIndex(c => JSON.stringify(c) === objetivo);
+        const quitarDe = (id) => modificarCuentasProducto(id, (lista) => {
+          let idx = (JSON.stringify(lista[index]) === objetivo) ? index : lista.findIndex(c => JSON.stringify(c) === objetivo);
+          if (idx < 0) {   // misma cuenta guardada con otro formato (texto vs. objeto, campos en otro orden): se busca por su correo
+            const em = String((parseCredencialObj((prod.cuentas || [])[index]) || {}).email || '').trim().toLowerCase();
+            if (em) idx = lista.findIndex(c => String((parseCredencialObj(c) || {}).email || '').trim().toLowerCase() === em);
+          }
           if (idx < 0) throw new Error('La cuenta ya no está en el inventario (pudo venderse). Recarga la lista.');
           quitada = lista.splice(idx, 1)[0];
           return lista;
         });
+        let nuevasCuentas;
+        try { nuevasCuentas = await quitarDe(docId); }
+        catch (e1) {   // 🔗 el producto toma cuentas de otro (stock compartido): la cuenta vive allá
+          const fuente = prod.stockDe || (catalogoUnificado.find(p => p.docId === docId) || {}).stockDe;
+          if (!fuente || fuente === docId || !/ya no está/.test(e1.message)) throw e1;
+          await quitarDe(fuente); nuevasCuentas = (prod.cuentas || []).filter((c, k) => k !== index);
+        }
         await liberarAlquileresDeCuentas([quitada]);
         prod.cuentas = nuevasCuentas;
         verDetalleCuentas(docId);
@@ -17639,7 +17650,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-27bn';
+    const VERSION_PAGINA = '2026-10-27bo';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261021_miscompras', fecha: '2026-10-21', titulo: 'Nuevo: 📦 Mis compras', mensaje: 'Ahora tus compras tienen **su propio botón dorado 📦 Mis compras** (abajo a la izquierda y arriba junto a la campana). Ahí ves **todas tus cuentas ordenadas por producto**, lo que acabas de comprar marcado como **NUEVA**, su **garantía** y el botón para **copiar**. Y al terminar una compra te lleva directo a ellas.' },
       { id: 'act_20261021_telegram', fecha: '2026-10-21', titulo: 'Compra por Telegram ✈️', mensaje: 'Ya puedes comprar desde nuestro **bot de Telegram**, 24/7 y con entrega al instante. Usa **tu misma cuenta**: en la tienda ve a **Mis datos → Usar mi cuenta en Telegram** y verás ahí tu **mismo saldo y tus compras**. Si eres nuevo en Telegram, tu **primera compra tiene descuento** 🎁.' },
