@@ -9110,7 +9110,7 @@
     function irATabAdmin(tab) {
       const habiaRuta = rutaActual;
       cambiarTabAdmin(tab);
-      try { if (tab === 'proveedores') { if (!misDominiosCfg) cargarMisDominios(); else pintarMisDominios(); } } catch (e) { /* nada */ }
+      try { if (tab === 'proveedores') { if (!misDominiosCfg) mdSinCargar(); else pintarMisDominios(); } } catch (e) { /* nada */ }
       try { const gS = document.getElementById('gridSkinsTema'), gC = document.getElementById('gridColoresTema'); if ((gS && !gS.dataset.listo) || (gC && !gC.dataset.listo)) renderizarSelectorTemas(); } catch (e) { console.warn(e); }
       if (!panelEsMovil()) return;
       try {
@@ -9158,7 +9158,7 @@
       if (tab === 'categorias') renderizarAdminCategoriasColores();
       if (tab === 'usuarios') { cargarUsuariosAdmin(); cargarRegaloRevendedor(); }
       if (tab === 'proveedores') { try { cargarPanelReferidos(); } catch (e) { /* nada */ } }
-      if (tab === 'stock') { try { const sc = document.getElementById('saludCuentasResultado'); if (sc && !sc.innerHTML) cargarSaludCuentas(); } catch (e) {} poblarSelectStock(); cargarAportantesStock(); prepararVentaManual(); iniciarPreordenesAdmin(); renderizarPreordenesAdmin(); }
+      if (tab === 'stock') { try { const sc = document.getElementById('saludCuentasResultado'); if (sc && !sc.innerHTML) sc.innerHTML = '<p class="text-[11px] text-gray-500">Toca el botón de arriba para revisar la salud de las cuentas (así no gasta llamadas mientras no lo miras).</p>'; } catch (e) {} poblarSelectStock(); cargarAportantesStock(); prepararVentaManual(); iniciarPreordenesAdmin(); renderizarPreordenesAdmin(); }
       if (tab === 'apariencia') cargarDatosAparienciaAdmin();
       if (tab === 'pagos') cargarMetodosPagoAdmin();
       if (tab === 'recargas') cargarRecargasAdmin();
@@ -13205,10 +13205,18 @@
     }
 
         // 🌐 Mis dominios de correo (rotación + descanso inteligente)
+    // 📶 Mis dominios ya no se carga solo al abrir Proveedores: solo con "Actualizar" (o al abrir la tarjeta 🌐 Dominios)
+    function mdSinCargar() {
+      const c = document.getElementById('misDominiosCaja'); if (!c || c.dataset.ph === '1') return; c.dataset.ph = '1';
+      const p = document.createElement('div'); p.id = 'mdPlaceholder'; p.className = 'p-3 rounded-xl bg-gray-900/60 border border-gray-700 flex items-center justify-between gap-2';
+      p.innerHTML = '<div><p class="text-sm font-black text-white">🌐 Mis dominios de correo</p><p class="text-[11px] text-gray-500">Toca Actualizar para verlos (así no gasta llamadas mientras no lo miras).</p></div><button type="button" onclick="this.disabled=true;cargarMisDominios()" class="shrink-0 px-3 py-1.5 rounded-lg bg-emerald-500 text-black text-[11px] font-black"><i class="fa-solid fa-rotate mr-1"></i>Actualizar</button>';
+      c.prepend(p);
+    }
     var misDominiosCfg = null;
     async function cargarMisDominios() {
       if (!esAdminSesionActual()) return;
       let r = null; try { r = await llamarBackend('dominios_ver', {}); } catch (e) { r = null; }
+      try { const ph = document.getElementById('mdPlaceholder'); if (ph) ph.remove(); } catch (e) { /* nada */ }
       if (r && r.ok) { misDominiosCfg = r.cfg; try { misDominiosCfg.reactivarAuto = !(ajustesGeneralesConfig && ajustesGeneralesConfig.provReactivarAuto === false); } catch (e) {} pintarMisDominios(); return; }
       // ⚠️ Nunca queda vacía: si el servidor no respondió, se dice y se puede reintentar
       const c = document.getElementById('misDominiosCaja');
@@ -13290,7 +13298,7 @@
     }
     function renderProvAuto() {
       try { pintarCuposProv(); } catch (e) { /* nada */ }
-      try { if (!misDominiosCfg) cargarMisDominios(); else pintarMisDominios(); } catch (e) { /* nada */ }
+      try { if (!misDominiosCfg) mdSinCargar(); else pintarMisDominios(); } catch (e) { /* nada */ }
       try { cargarReporteCodigosSuave(); } catch (e) { /* nada */ }
       const c = document.getElementById('provAutoCaja'); if (!c || !esAdminSesionActual()) return;
       const cfg = provAutoCfg || {}, provs = {}; lotesProveedores.forEach(l => { if (l.proveedorUid) provs[l.proveedorUid] = l.proveedorNombre || l.proveedorEmail || l.proveedorUid; });
@@ -17702,7 +17710,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-27bw';
+    const VERSION_PAGINA = '2026-10-27ca';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261021_miscompras', fecha: '2026-10-21', titulo: 'Nuevo: 📦 Mis compras', mensaje: 'Ahora tus compras tienen **su propio botón dorado 📦 Mis compras** (abajo a la izquierda y arriba junto a la campana). Ahí ves **todas tus cuentas ordenadas por producto**, lo que acabas de comprar marcado como **NUEVA**, su **garantía** y el botón para **copiar**. Y al terminar una compra te lleva directo a ellas.' },
       { id: 'act_20261021_telegram', fecha: '2026-10-21', titulo: 'Compra por Telegram ✈️', mensaje: 'Ya puedes comprar desde nuestro **bot de Telegram**, 24/7 y con entrega al instante. Usa **tu misma cuenta**: en la tienda ve a **Mis datos → Usar mi cuenta en Telegram** y verás ahí tu **mismo saldo y tus compras**. Si eres nuevo en Telegram, tu **primera compra tiene descuento** 🎁.' },
@@ -22522,7 +22530,7 @@
       if (unsubIdPend || !esAdminSesionActual()) return;
       try { unsubIdPend = db.collection('wa_id_pendientes').where('estado', '==', 'pendiente').onSnapshot(sn => {
         const L = []; sn.forEach(d => L.push(Object.assign({ id: d.id }, d.data()))); const out = document.getElementById('vigIdPendientes'); if (!out) return;
-        try { clearInterval(window.__tgRapidoT); if (L.length) { let k = 0; window.__tgRapidoT = setInterval(() => { if (++k > 40 || document.hidden) { if (k > 40) clearInterval(window.__tgRapidoT); return; } llamarBackend('tg_revisar', {}).catch(() => {}); }, 15000); } } catch (e) { /* nada */ }
+        // (antes repasaba Telegram cada 15 s mientras hubiera pendientes; con los botones al instante ⚡ ya no hace falta)
         out.innerHTML = L.length ? '<p class="text-[11px] font-bold text-violet-200">🔑 Esperan tu autorización para identificarse</p>' + L.map(x => `<div class="p-2 rounded-lg bg-violet-500/10 border border-violet-500/30 flex items-center justify-between gap-2"><span class="min-w-0"><span class="block text-[11px] text-white truncate">📱 ${escaparHtml(x.nombreChat || '')}</span><span class="block text-[10px] text-gray-400 truncate">👤 ${escaparHtml(x.nombre || '')} · ${escaparHtml(x.email || '')}</span></span><span class="flex gap-1 shrink-0"><button type="button" onclick="resolverIdPendiente('${escaparJsAttr(x.id)}',true)" class="px-2 py-1 rounded-lg bg-emerald-500 text-black text-[10px] font-black">Aceptar</button><button type="button" onclick="resolverIdPendiente('${escaparJsAttr(x.id)}',false)" class="px-2 py-1 rounded-lg bg-gray-800 border border-gray-700 text-gray-200 text-[10px] font-bold">Rechazar</button></span></div>`).join('') : '';
       }, () => {}); } catch (e) { /* sin permiso aún */ }
     }
@@ -26903,7 +26911,7 @@ async function pintarPanelWa() {
       return { cuentas: legado, stock: legado.length || stockPublico };
     }
 
-    const VERSION_SERVIDOR_NECESARIA = '2026-10-26v';   // la versión del servidor que necesita esta página
+    const VERSION_SERVIDOR_NECESARIA = '2026-10-26x';   // la versión del servidor que necesita esta página
     async function llamarBackend(accion, datos) {
       window._llamadasEnCurso = (window._llamadasEnCurso || 0) + 1;
       try { return await llamarBackendBase(accion, datos); } finally { window._llamadasEnCurso = Math.max(0, (window._llamadasEnCurso || 1) - 1); }
