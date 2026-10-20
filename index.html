@@ -12847,7 +12847,7 @@
       provDominioCorreos = Object.values(m).sort((a, b) => String(b.creadoEl || '').localeCompare(String(a.creadoEl || '')));
     }
     // =================== 📬 LISTA DIARIA DE CORREOS (proveedor) ===================
-    let ldFiltro = 'libre', ldCargando = false;
+    let ldFiltro = 'todos', ldCargando = false;
     function ldHoy() { return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Bogota', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date()); }
     async function cargarListaDiaria(forzar) {
       if (!currentUser || ldCargando) return; ldCargando = true;   // 🔒 una sola petición a la vez (si no, el servidor podría crear la lista dos veces)
@@ -12879,7 +12879,7 @@
     }
     async function ldPedirMas(btn) {
       if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i>Pidiendo…'; }
-      try { const r = await llamarBackend('prov_correos', { op: 'mas10' }); if (!r || !r.ok) throw new Error((r && r.error) || 'No se pudo.'); try { localStorage.setItem('provDiaria_' + currentUser.uid, JSON.stringify({ t: Date.now(), r: r })); } catch (e) { /* nada */ } ldFiltro = 'libre'; pintarListaDiaria(r); mostrarToast('📬 10 correos más listos'); }
+      try { const r = await llamarBackend('prov_correos', { op: 'mas10' }); if (!r || !r.ok) throw new Error((r && r.error) || 'No se pudo.'); try { localStorage.setItem('provDiaria_' + currentUser.uid, JSON.stringify({ t: Date.now(), r: r })); } catch (e) { /* nada */ } ldFiltro = 'todos'; pintarListaDiaria(r); mostrarToast('📬 10 correos más listos'); }
       catch (e) { alert(e.message); if (btn) { btn.disabled = false; btn.innerHTML = '＋ Pedir 10 más'; } }
     }
     async function ldRefrescar(btn) {
@@ -12905,7 +12905,7 @@
       const usados = cnt('usado') + cnt('suspendida'), total = it.length, pct = total ? Math.round(usados * 100 / total) : 0, susp = it.filter(x => x.estado === 'suspendida');
       const fecha = (() => { try { const [y, m, d] = String(r.dia).split('-'); return d + '/' + m; } catch (e) { return ''; } })();
       const est = { enuso: ['📋 En uso', 'bg-amber-500/15 text-amber-300'], libre: ['Libre', 'bg-gray-800 text-gray-300'], usado: ['✓ Usado', 'bg-emerald-500/15 text-emerald-300'], prime: ['✓ Prime activo', 'bg-emerald-500/15 text-emerald-300'], subida: ['📦 Subida', 'bg-sky-500/15 text-sky-300'], suspendida: ['🔴 Suspendida', 'bg-red-500/15 text-red-300'] };
-      const vis = it.filter(x => ldFiltro === 'libre' ? x.estado === 'libre' : ldFiltro === 'usado' ? /usado|prime|subida|enuso/.test(x.estado) : x.estado === 'suspendida');
+      const vis = it.filter(x => ldFiltro === 'todos' ? true : ldFiltro === 'libre' ? x.estado === 'libre' : ldFiltro === 'usado' ? /usado|prime|subida|enuso/.test(x.estado) : x.estado === 'suspendida');
       const chip = (id, txt, n) => `<button type="button" onclick="ldFiltro='${id}';pintarListaDiaria(window._ld)" class="px-3 py-1 rounded-full text-[11px] font-bold ${ldFiltro === id ? 'bg-emerald-500 text-black' : 'bg-gray-800 text-gray-300 border border-gray-700'}">${txt} ${n}</button>`;
       b.className = 'mb-3 rounded-2xl bg-gray-900/70 border border-gray-700 p-3';
       b.innerHTML = `<div class="flex items-center gap-2"><p class="text-sm font-black text-white">📋 Tus correos de hoy</p><span class="text-[11px] text-gray-400">${escaparHtml(fecha)}${r.dia !== r.hoy ? ' · la nueva sale a las ' + escaparHtml(r.salidaTxt || '') : ''}</span>
@@ -12919,8 +12919,8 @@
         </div>
         <p class="text-[11px] text-gray-400 mt-3">${usados} de ${total} usados</p><div class="h-1.5 rounded-full bg-gray-800 overflow-hidden mt-1 mb-3"><i class="block h-full bg-emerald-500" style="width:${pct}%"></i></div>
         ${susp.length ? `<div class="p-2.5 rounded-xl bg-red-500/10 border border-red-500/40 text-[12px] text-red-200 mb-3">⚠️ <b>${susp.length} ${susp.length === 1 ? 'cuenta de tu lista fue suspendida' : 'cuentas de tu lista fueron suspendidas'} por Amazon:</b> ${susp.slice(0, 3).map(x => escaparHtml(x.correo)).join(', ')}${susp.length > 3 ? '…' : ''}</div>` : ''}
-        <div class="flex gap-1.5 mb-2 flex-wrap">${chip('libre', 'Libres', cnt('libre'))}${chip('usado', 'Usados', cnt('usado'))}${chip('suspendida', 'Suspendidos', cnt('suspendida'))}</div>
-        <div class="overflow-y-auto space-y-1" style="max-height:65vh">${vis.map(x => `<div class="flex items-center gap-2 px-2.5 py-2 rounded-lg bg-gray-950/60 border border-gray-800"><span class="flex-1 min-w-0 font-mono text-[12px] text-white truncate">${escaparHtml(x.correo)}</span><span class="shrink-0 px-2 py-0.5 rounded-full text-[10px] font-bold ${est[x.estado][1]}">${est[x.estado][0]}</span>${x.estado === 'libre' ? `<button type="button" onclick="ldCopiar(this,'${escaparJsAttr(x.correo)}')" class="shrink-0 px-2.5 py-1 rounded-lg bg-emerald-500 text-black text-[11px] font-black">Copiar</button>` : ''}<button type="button" onclick="ldCodigo(this,'${escaparJsAttr(x.correo)}')" class="shrink-0 px-2.5 py-1 rounded-lg bg-gray-700 text-white text-[11px] font-black">🔑 Código</button></div>`).join('') || `<p class="text-[12px] text-gray-500 text-center py-4">${ldFiltro === 'libre' ? 'Ya usaste todos los de hoy 🎉' : 'Ninguno'}</p>`}</div>
+        <div class="flex gap-1.5 mb-2 flex-wrap">${chip('todos', 'Todos', it.length)}${chip('libre', 'Libres', cnt('libre'))}${chip('usado', 'Usados', cnt('usado'))}${chip('suspendida', 'Suspendidos', cnt('suspendida'))}</div>
+        <div class="space-y-1">${vis.map(x => `<div class="flex items-center gap-2 px-2.5 py-2 rounded-lg bg-gray-950/60 border border-gray-800"><span class="flex-1 min-w-0 font-mono text-[12px] text-white truncate">${escaparHtml(x.correo)}</span><span class="shrink-0 px-2 py-0.5 rounded-full text-[10px] font-bold ${est[x.estado][1]}">${est[x.estado][0]}</span>${x.estado === 'libre' ? `<button type="button" onclick="ldCopiar(this,'${escaparJsAttr(x.correo)}')" class="shrink-0 px-2.5 py-1 rounded-lg bg-emerald-500 text-black text-[11px] font-black">Copiar</button>` : ''}<button type="button" onclick="ldCodigo(this,'${escaparJsAttr(x.correo)}')" class="shrink-0 px-2.5 py-1 rounded-lg bg-gray-700 text-white text-[11px] font-black">🔑 Código</button></div>`).join('') || `<p class="text-[12px] text-gray-500 text-center py-4">${ldFiltro === 'libre' ? 'Ya usaste todos los de hoy 🎉' : 'Ninguno'}</p>`}</div>
         ${r.dia === r.hoy ? (r.puedePedir ? `<button type="button" onclick="ldPedirMas(this)" class="mt-3 w-full py-2.5 rounded-xl border border-dashed border-gray-600 text-gray-200 text-[12px] font-bold">＋ Pedir 10 más</button>` : `<p class="mt-3 text-center text-[11px] text-gray-500">＋ Pedir 10 más · disponible en tu horario${r.horarioTxt ? ' (' + escaparHtml(r.horarioTxt) + ')' : ''}</p>`) : ''}`;
     }
     setInterval(() => { try { if (document.getElementById('provDiariaCaja') && document.visibilityState === 'visible') cargarListaDiaria(); } catch (e) { /* nada */ } }, 5 * 60000);
@@ -17759,7 +17759,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-27cr';
+    const VERSION_PAGINA = '2026-10-27cs';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261021_miscompras', fecha: '2026-10-21', titulo: 'Nuevo: 📦 Mis compras', mensaje: 'Ahora tus compras tienen **su propio botón dorado 📦 Mis compras** (abajo a la izquierda y arriba junto a la campana). Ahí ves **todas tus cuentas ordenadas por producto**, lo que acabas de comprar marcado como **NUEVA**, su **garantía** y el botón para **copiar**. Y al terminar una compra te lleva directo a ellas.' },
       { id: 'act_20261021_telegram', fecha: '2026-10-21', titulo: 'Compra por Telegram ✈️', mensaje: 'Ya puedes comprar desde nuestro **bot de Telegram**, 24/7 y con entrega al instante. Usa **tu misma cuenta**: en la tienda ve a **Mis datos → Usar mi cuenta en Telegram** y verás ahí tu **mismo saldo y tus compras**. Si eres nuevo en Telegram, tu **primera compra tiene descuento** 🎁.' },
