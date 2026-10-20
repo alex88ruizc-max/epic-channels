@@ -12858,6 +12858,12 @@
       try { const r = await llamarBackend('prov_correos', { op: 'mas10' }); if (!r || !r.ok) throw new Error((r && r.error) || 'No se pudo.'); try { localStorage.setItem('provDiaria_' + currentUser.uid, JSON.stringify({ t: Date.now(), r: r })); } catch (e) { /* nada */ } ldFiltro = 'libre'; pintarListaDiaria(r); mostrarToast('📬 10 correos más listos'); }
       catch (e) { alert(e.message); if (btn) { btn.disabled = false; btn.innerHTML = '＋ Pedir 10 más'; } }
     }
+    async function ldRefrescar(btn) {
+      if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i>Revisando…'; }
+      try { const r = await llamarBackend('prov_correos', { op: 'refrescar' }); if (!r || !r.ok) throw new Error((r && r.error) || 'No se pudo.'); mostrarToast('✅ Revisado: si llegó el Prime, ya aparece'); await cargarListaDiaria(true); }
+      catch (e) { mostrarToast(e.message); }
+      finally { if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-rotate mr-1"></i>Refrescar Prime'; } }
+    }
     function ldCopiar(btn, c) { try { navigator.clipboard.writeText(c); btn.textContent = '✓ Copiado'; btn.classList.add('opacity-70'); setTimeout(() => { btn.textContent = 'Copiar'; btn.classList.remove('opacity-70'); }, 1500); } catch (e) { /* nada */ } }
     function pintarListaDiaria(r) {
       window._ld = r; const ref = document.getElementById('provAutoResumen'); if (!ref || !r) return;
@@ -12870,6 +12876,7 @@
       const chip = (id, txt, n) => `<button type="button" onclick="ldFiltro='${id}';pintarListaDiaria(window._ld)" class="px-3 py-1 rounded-full text-[11px] font-bold ${ldFiltro === id ? 'bg-emerald-500 text-black' : 'bg-gray-800 text-gray-300 border border-gray-700'}">${txt} ${n}</button>`;
       b.className = 'mb-3 rounded-2xl bg-gray-900/70 border border-gray-700 p-3';
       b.innerHTML = `<div class="p-3 rounded-xl bg-sky-500/10 border border-sky-500/30 text-[12px] leading-relaxed text-sky-100 mb-3">📬 <b class="text-white">Tus correos de hoy se cargan solos</b> cada mañana${r.salidaTxt ? ' (' + escaparHtml(r.salidaTxt) + ')' : ''}: no tienes que pedirlos ni recargar.<br>1️⃣ Copia un correo <b>libre</b> · 2️⃣ crea la cuenta de Amazon con él · 3️⃣ súbela como siempre.<br>Los que no uses hoy se liberan mañana y te llegan nuevos.</div>
+        <div class="flex items-center gap-2 mb-2"><button type="button" onclick="ldRefrescar(this)" class="px-3 py-1.5 rounded-lg bg-sky-500 text-black text-[11px] font-black"><i class="fa-solid fa-rotate mr-1"></i>Refrescar Prime</button><span class="text-[10px] text-gray-500">El Prime se revisa solo cada 1 h 30 min. Si acabas de crear una cuenta, toca Refrescar.</span></div>
         <div class="flex items-center gap-2"><p class="text-sm font-black text-white">📋 Tus correos de hoy</p><span class="ml-auto text-[11px] text-gray-400">${escaparHtml(fecha)}${r.dia !== r.hoy ? ' · la nueva sale a las ' + escaparHtml(r.salidaTxt || '') : ''}</span></div>
         <p class="text-[11px] text-gray-400 mt-1">${usados} de ${total} usados</p><div class="h-1.5 rounded-full bg-gray-800 overflow-hidden mt-1 mb-3"><i class="block h-full bg-emerald-500" style="width:${pct}%"></i></div>
         ${susp.length ? `<div class="p-2.5 rounded-xl bg-red-500/10 border border-red-500/40 text-[12px] text-red-200 mb-3">⚠️ <b>${susp.length} ${susp.length === 1 ? 'cuenta de tu lista fue suspendida' : 'cuentas de tu lista fueron suspendidas'} por Amazon:</b> ${susp.slice(0, 3).map(x => escaparHtml(x.correo)).join(', ')}${susp.length > 3 ? '…' : ''}</div>` : ''}
@@ -17710,7 +17717,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-27ca';
+    const VERSION_PAGINA = '2026-10-27cb';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261021_miscompras', fecha: '2026-10-21', titulo: 'Nuevo: 📦 Mis compras', mensaje: 'Ahora tus compras tienen **su propio botón dorado 📦 Mis compras** (abajo a la izquierda y arriba junto a la campana). Ahí ves **todas tus cuentas ordenadas por producto**, lo que acabas de comprar marcado como **NUEVA**, su **garantía** y el botón para **copiar**. Y al terminar una compra te lleva directo a ellas.' },
       { id: 'act_20261021_telegram', fecha: '2026-10-21', titulo: 'Compra por Telegram ✈️', mensaje: 'Ya puedes comprar desde nuestro **bot de Telegram**, 24/7 y con entrega al instante. Usa **tu misma cuenta**: en la tienda ve a **Mis datos → Usar mi cuenta en Telegram** y verás ahí tu **mismo saldo y tus compras**. Si eres nuevo en Telegram, tu **primera compra tiene descuento** 🎁.' },
@@ -26911,7 +26918,7 @@ async function pintarPanelWa() {
       return { cuentas: legado, stock: legado.length || stockPublico };
     }
 
-    const VERSION_SERVIDOR_NECESARIA = '2026-10-26x';   // la versión del servidor que necesita esta página
+    const VERSION_SERVIDOR_NECESARIA = '2026-10-26y';   // la versión del servidor que necesita esta página
     async function llamarBackend(accion, datos) {
       window._llamadasEnCurso = (window._llamadasEnCurso || 0) + 1;
       try { return await llamarBackendBase(accion, datos); } finally { window._llamadasEnCurso = Math.max(0, (window._llamadasEnCurso || 1) - 1); }
