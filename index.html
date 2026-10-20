@@ -2798,6 +2798,13 @@
                   <div class="flex flex-wrap gap-2"><button type="button" onclick="conectarTgVentas()" class="px-3 py-1.5 rounded-lg bg-sky-500 text-black text-[11px] font-black">Conectar bot</button><button type="button" onclick="estadoTgVentas()" class="px-3 py-1.5 rounded-lg bg-gray-900 border border-gray-700 text-gray-200 text-[11px] font-bold">Revisar conexión</button><button type="button" onclick="desconectarTgVentas()" class="px-3 py-1.5 rounded-lg bg-gray-900 border border-gray-700 text-red-300 text-[11px] font-bold">Desconectar</button></div>
                   <label class="flex items-center gap-2 text-xs text-gray-200"><input type="checkbox" id="cnTgOn" class="accent-sky-500"> Mostrar el botón de Telegram</label>
                   <div class="flex flex-wrap gap-3"><label class="flex items-center gap-1.5 text-[11px] text-gray-300"><input type="checkbox" id="cnTgPort" class="accent-sky-500"> En la portada</label><label class="flex items-center gap-1.5 text-[11px] text-gray-300"><input type="checkbox" id="cnTgTienda" class="accent-sky-500"> En la tienda (encima de Ayuda)</label></div>
+                  <div class="rounded-lg bg-red-500/10 border border-red-500/40 px-2.5 py-2 space-y-1.5"><p class="text-[11px] font-black text-red-200">🚨 Aviso oficial a los usuarios del bot</p>
+                    <p class="text-[10px] text-gray-400">Le llega a todos los que usaron el bot en los últimos 60 días, con tu imagen y los botones 💰 Recargar saldo · 🛒 Ir a la tienda. Usa *asteriscos* para negrita.</p>
+                    <input id="tgDifTitulo" class="w-full bg-gray-900 border border-gray-700 rounded-lg px-2 py-1.5 text-xs text-white" value="Aviso Oficial de la Administración">
+                    <textarea id="tgDifTexto" rows="7" class="w-full bg-gray-900 border border-gray-700 rounded-lg px-2 py-1.5 text-xs text-white" placeholder="Escribe el aviso…"></textarea>
+                    <label class="block text-[10px] text-gray-400">Imagen (opcional)<input id="tgDifImg" type="file" accept="image/*" class="block mt-1 text-[11px] text-gray-300"></label>
+                    <div class="flex flex-wrap gap-1.5"><button type="button" onclick="tgDifTutorial()" class="px-2.5 py-1.5 rounded-lg bg-gray-800 border border-gray-700 text-gray-200 font-bold text-[11px]">📖 Usar tutorial de recarga</button><input id="tgDifPrueba" placeholder="Tu ID de Telegram" class="w-32 bg-gray-900 border border-gray-700 rounded-lg px-2 py-1 text-[11px] text-white"><button type="button" onclick="tgDifundir(true)" class="px-2.5 py-1.5 rounded-lg bg-gray-800 border border-gray-700 text-gray-200 font-bold text-[11px]">Probar conmigo</button><button type="button" onclick="tgDifundir(false)" class="px-2.5 py-1.5 rounded-lg bg-red-500 text-white font-black text-[11px]">Enviar a todos</button></div>
+                    <p id="tgDifEstado" class="text-[10px] text-gray-400"></p></div>
                   <div class="rounded-lg bg-amber-500/10 border border-amber-500/40 px-2.5 py-2"><p class="text-[11px] font-black text-amber-200">⚡ Botones de tus bots de avisos al instante</p><p class="text-[10px] text-gray-400 mt-0.5">Telegram le avisa al servidor solo cuando tocas un botón, en vez de preguntar cada pocos segundos. Ahorra unas 6.700 llamadas al día. Los botones funcionan igual.</p>
                     <div class="flex gap-2 mt-2"><button type="button" onclick="tgWebhooks(false)" class="px-3 py-1.5 rounded-lg bg-amber-500 text-black font-black text-[11px]">Activar</button><button type="button" onclick="tgWebhooks(true)" class="px-3 py-1.5 rounded-lg bg-gray-800 border border-gray-700 text-gray-300 font-bold text-[11px]">Volver a lo de antes</button></div><p id="tgWhEstado" class="text-[10px] text-gray-400 mt-1.5"></p></div>
                   <div class="flex flex-wrap items-center gap-2 text-[11px] text-gray-300 rounded-lg bg-gray-900/60 border border-gray-700 px-2.5 py-2"><label class="flex items-center gap-1.5"><input type="checkbox" id="cnTgPrimOn" class="accent-sky-500"> 🎁 Cupón para la primera compra de cada ID nuevo:</label>
@@ -12734,7 +12741,7 @@
     async function cargarCorreosPropios() { try { const r = await llamarBackend('prov_correos', { op: 'lista' }); if (r && r.ok) { if (r.dominiosActivos) window.DOMINIOS_ACTIVOS = r.dominiosActivos; correosPropios = (r.correos || []).filter(x => x.propio); pintarCorreosPropios(); llenarBolsa('adm'); } } catch (e) { /* nada */ } }
     // 🔄 La lista de tus correos se pone al día sola (cada 45 s mientras la tienes abierta y al volver a la pestaña): así "esperando bienvenida" cambia a "en stock" sin recargar
     function listaCorreosPropiosVisible() { const l = document.getElementById('correosPropiosLista'); return !!(l && l.offsetParent !== null && document.visibilityState === 'visible'); }
-    setInterval(() => { try { if (listaCorreosPropiosVisible() && esAdminSesionActual()) cargarCorreosPropios(); } catch (e) { /* nada */ } }, 45000);
+    setInterval(() => { try { if (listaCorreosPropiosVisible() && esAdminSesionActual()) cargarCorreosPropios(); } catch (e) { /* nada */ } }, 5 * 60000);
     document.addEventListener('visibilitychange', () => { try { if (listaCorreosPropiosVisible() && esAdminSesionActual()) cargarCorreosPropios(); } catch (e) { /* nada */ } });
     // 🎒 Bolsa de correos listos (3): el servidor los crea y guarda antes; al tocar Generar / +Nuevo salen al instante
     var _bolsaAdm = [], _bolsaProv = [], _bolsaCargando = { adm: false, prov: false }, _bolsaUsados = new Set();   // _bolsaUsados: nunca se ofrece dos veces el mismo correo
@@ -13172,7 +13179,15 @@
       finally { provAutoCorriendo = false; }
     }
     // 📩 Solicitudes de código de Amazon: proveedores vs clientes (día/semana/mes)
+    let _codRepUlt = 0;
+    function cargarReporteCodigosSuave() {   // 📶 solo si se está viendo y pasaron 5 min (el botón 🔄 sigue cargando al instante)
+      const c = document.getElementById('codReporteCaja') || document.querySelector('[id^="codRe"]');
+      if (!c || c.offsetParent === null || document.visibilityState !== 'visible') return;
+      if (Date.now() - _codRepUlt < 5 * 60000) return; cargarReporteCodigos();
+    }
+    document.addEventListener('visibilitychange', () => { try { cargarReporteCodigosSuave(); } catch (e) { /* nada */ } });
     async function cargarReporteCodigos() {
+      _codRepUlt = Date.now();
       const c = document.getElementById('codReporteCaja'); if (!c || !esAdminSesionActual()) return;
       c.innerHTML = `<p class="text-sm font-black text-white">📩 Solicitudes de código de Amazon</p><p class="text-[11px] text-gray-400 mb-3">Cuántas veces se pidió un código. <b class="text-emerald-300">Proveedores</b> = qué tan activos crean cuentas. <b class="text-sky-300">Clientes</b> = cuánto usan la página de códigos.</p><p class="text-[11px] text-gray-500">Cargando…</p>`;
       let r = null; try { r = await llamarBackend('codigos_reporte', {}); } catch (e) { r = null; }
@@ -13277,7 +13292,7 @@
     function renderProvAuto() {
       try { pintarCuposProv(); } catch (e) { /* nada */ }
       try { if (!misDominiosCfg) cargarMisDominios(); else pintarMisDominios(); } catch (e) { /* nada */ }
-      try { cargarReporteCodigos(); } catch (e) { /* nada */ }
+      try { cargarReporteCodigosSuave(); } catch (e) { /* nada */ }
       const c = document.getElementById('provAutoCaja'); if (!c || !esAdminSesionActual()) return;
       const cfg = provAutoCfg || {}, provs = {}; lotesProveedores.forEach(l => { if (l.proveedorUid) provs[l.proveedorUid] = l.proveedorNombre || l.proveedorEmail || l.proveedorUid; });
       // también los proveedores que todavía no han subido ningún lote (antes no salían en la lista)
@@ -17688,7 +17703,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-27bq';
+    const VERSION_PAGINA = '2026-10-27bt';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261021_miscompras', fecha: '2026-10-21', titulo: 'Nuevo: 📦 Mis compras', mensaje: 'Ahora tus compras tienen **su propio botón dorado 📦 Mis compras** (abajo a la izquierda y arriba junto a la campana). Ahí ves **todas tus cuentas ordenadas por producto**, lo que acabas de comprar marcado como **NUEVA**, su **garantía** y el botón para **copiar**. Y al terminar una compra te lleva directo a ellas.' },
       { id: 'act_20261021_telegram', fecha: '2026-10-21', titulo: 'Compra por Telegram ✈️', mensaje: 'Ya puedes comprar desde nuestro **bot de Telegram**, 24/7 y con entrega al instante. Usa **tu misma cuenta**: en la tienda ve a **Mis datos → Usar mi cuenta en Telegram** y verás ahí tu **mismo saldo y tus compras**. Si eres nuevo en Telegram, tu **primera compra tiene descuento** 🎁.' },
@@ -24604,6 +24619,24 @@
       }, 5000);
     })();
     const TG_CATS_DEF = [['prime', '🎬', 'Prime Video'], ['netflix', '🍿', 'Netflix'], ['youtube', '📺', 'YouTube Premium'], ['spotify', '🎧', 'Spotify'], ['gemini', '🤖', 'Gemini Pro'], ['amazon', '🆓', 'Amazon Free'], ['correos', '✉️', 'Correos Hotmail'], ['disney', '🏰', 'Disney+'], ['max', '🟣', 'Max'], ['chatgpt', '🧠', 'ChatGPT'], ['canva', '🎨', 'Canva'], ['capcut', '✂️', 'CapCut'], ['duolingo', '🦉', 'Duolingo'], ['paramount', '⛰️', 'Paramount+'], ['crunchy', '🍥', 'Crunchyroll'], ['apple', '🍎', 'Apple'], ['otros', '📦', 'Otros']];
+    function tgDifTutorial() {
+      const bot = (cfgCanales().tgBot || 'EpicVentas_bot');
+      document.getElementById('tgDifTitulo').value = 'Aviso Oficial de la Administración';
+      document.getElementById('tgDifTexto').value = '📖 *Tutorial de Recarga con Binance Pay* 📣\n\n1️⃣ Abre Binance Pay y selecciona *Enviar* (Send)\n2️⃣ Ingresa el Binance ID / Pay ID: *984868095*\n3️⃣ Verifica que el nombre sea *EPIC VIP*\n4️⃣ En el bot toca *💰 Recargar saldo* y envía el *valor exacto* que te indica, en *USDT*\n5️⃣ ¡Listo! Tu saldo se acredita *solo, en segundos* 🤖\n\n🤖 Bot: @' + bot;
+    }
+    async function tgDifundir(prueba) {
+      const el = document.getElementById('tgDifEstado'), texto = String(document.getElementById('tgDifTexto').value || '').trim(), titulo = String(document.getElementById('tgDifTitulo').value || '').trim();
+      if (!texto) { alert('Escribe el aviso.'); return; }
+      const idP = String(document.getElementById('tgDifPrueba').value || '').replace(/\D/g, '');
+      if (prueba && !idP) { alert('Escribe tu ID de Telegram (el que sale en la bienvenida del bot).'); return; }
+      if (!prueba && !(await confirmarModal('¿Enviar este aviso a todos los usuarios del bot de Telegram?', { textoAceptar: 'Enviar a todos' }))) return;
+      let imagen = ''; const f = (document.getElementById('tgDifImg').files || [])[0];
+      if (f) { try { imagen = await prepararFotoReporte(f); } catch (e) { imagen = ''; } }
+      if (el) el.textContent = prueba ? 'Enviando prueba…' : 'Enviando a todos… (puede tardar un par de minutos)';
+      try { const r = await llamarBackend('tgv_difundir', { texto: texto, titulo: titulo, imagen: imagen, prueba: prueba ? idP : '' }); if (!r || !r.ok) throw new Error((r && r.error) || 'No se pudo.');
+        if (el) el.textContent = prueba ? '✅ Prueba enviada: revisa tu Telegram.' : `✅ Enviado a ${r.enviados} de ${r.total} usuarios${r.fallos ? ' · ' + r.fallos + ' no lo recibieron (bloquearon el bot)' : ''}.`; }
+      catch (e) { if (el) el.textContent = '❌ ' + e.message; }
+    }
     async function tgWebhooks(apagar) {
       const el = document.getElementById('tgWhEstado'); if (el) el.textContent = 'Conectando…';
       try { const r = await llamarBackend('tg_webhooks', { apagar: !!apagar }); if (!r || !r.ok) throw new Error((r && r.error) || 'No se pudo.');
@@ -26868,7 +26901,7 @@ async function pintarPanelWa() {
       return { cuentas: legado, stock: legado.length || stockPublico };
     }
 
-    const VERSION_SERVIDOR_NECESARIA = '2026-10-26r';   // la versión del servidor que necesita esta página
+    const VERSION_SERVIDOR_NECESARIA = '2026-10-26t';   // la versión del servidor que necesita esta página
     async function llamarBackend(accion, datos) {
       window._llamadasEnCurso = (window._llamadasEnCurso || 0) + 1;
       try { return await llamarBackendBase(accion, datos); } finally { window._llamadasEnCurso = Math.max(0, (window._llamadasEnCurso || 1) - 1); }
