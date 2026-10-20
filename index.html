@@ -7496,7 +7496,8 @@
     function construirFormatoEntrega(cuentas, prodInfo, extras, overrides) {
       const base = construirFormatoEntregaBase(cuentas, prodInfo, extras, overrides);
       const ind = String((prodInfo && (prodInfo.indicacionesEntrega || (((catalogoUnificado || []).find(p => p.docId === (prodInfo.docId || prodInfo.productoId)) || {}).indicacionesEntrega))) || '').trim();
-      return ind && base.indexOf(ind.slice(0, 40)) === -1 ? base + '\n\n' + ind : base;
+      const pk = /prime|amazon/i.test(String((prodInfo && (prodInfo.nombre || prodInfo.productoNombre)) || '')) ? '\n\n⚠️ No actives "Add a passkey" en Amazon: la cuenta se cae y la garantía no cubre.' : '';
+      return (ind && base.indexOf(ind.slice(0, 40)) === -1 ? base + '\n\n' + ind : base) + pk;
     }
     function construirFormatoEntregaBase(cuentas, prodInfo, extras, overrides) {
       // Netflix se entrega sin contraseña y con el paso a paso para entrar por código
@@ -12713,7 +12714,7 @@
       }, 350);
     }
 
-      function copiarCorreoPropioUso(i) {   // 📋 copia y queda "En uso" (se guarda en el servidor; no se mueve de lugar)
+      function copiarCorreoPropioUso(i) {   // (ver pintarBolsaAdm)   // 📋 copia y queda "En uso" (se guarda en el servidor; no se mueve de lugar)
       const c = correosPropios[i]; if (!c) return; copiarTexto(c.correo, '📋 Copiado · queda "En uso"');
       if (!c.enUsoEl) { c.enUsoEl = new Date().toISOString(); pintarCorreosPropios(); try { llamarBackend('prov_correos', { op: 'usar', correo: c.correo, propio: true }).catch(() => {}); } catch (e) { /* nada */ } }
     }
@@ -12725,7 +12726,7 @@
         const genHoy = correosPropios.filter(c => new Date(Date.parse(c.creadoEl || 0)).toDateString() === hoyD).length;
         const subidas = correosPropios.filter(esSubida).length;
         const b = document.getElementById('correosPropiosInsignias');
-        if (b) b.innerHTML = `<span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-sky-500/15 text-sky-300 border border-sky-500/30">Generados hoy ${genHoy}</span><span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">Subidas ${subidas}</span>`;
+        if (b) b.innerHTML = `<span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-sky-500/15 text-sky-300 border border-sky-500/30">Generados hoy ${genHoy}</span><span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">Subidas ${subidas}</span>`; try { pintarBolsaAdm(); } catch (e) { /* nada */ }
       } catch (e) { /* nada */ }
       l.innerHTML = correosPropios.map((c, i) => ({ c, i })).filter(o => !esSubida(o.c)).slice(0, 12).map(({ c, i }) => {
         if (c.reservando) return `<div class="p-2 rounded-lg bg-gray-900/70 border border-gray-700"><span class="font-mono text-[11px] text-gray-400"><i class="fa-solid fa-spinner fa-spin mr-1"></i>Generando correo…</span></div>`;
@@ -12741,14 +12742,26 @@
     document.addEventListener('visibilitychange', () => { try { if (listaCorreosPropiosVisible() && esAdminSesionActual()) cargarCorreosPropios(); } catch (e) { /* nada */ } });
     // 🎒 Bolsa de correos listos (3): el servidor los crea y guarda antes; al tocar Generar / +Nuevo salen al instante
     var _bolsaAdm = [], _bolsaProv = [], _bolsaCargando = { adm: false, prov: false }, _bolsaUsados = new Set();   // _bolsaUsados: nunca se ofrece dos veces el mismo correo
+    var _bolsaReint = 0;
+    function pintarBolsaAdm(fallo) {   // 🎒 "N listos" junto a tus insignias: si dice 0, el próximo Generar espera al servidor
+      try { const b = document.getElementById('correosPropiosInsignias'); if (!b) return; let el = document.getElementById('bolsaAdmCont');
+        if (!el) { el = document.createElement('span'); el.id = 'bolsaAdmCont'; b.appendChild(el); }
+        const n = _bolsaAdm.length; el.className = 'text-[10px] font-bold px-2 py-0.5 rounded-full border ' + (fallo ? 'bg-red-500/15 text-red-300 border-red-500/30' : n ? 'bg-amber-500/15 text-amber-300 border-amber-500/30' : 'bg-gray-800 text-gray-400 border-gray-700');
+        el.textContent = fallo ? '🎒 sin bolsa' : (_bolsaCargando.adm && !n ? '🎒 llenando…' : '🎒 ' + n + ' listo' + (n === 1 ? '' : 's')); } catch (e) { /* nada */ }
+    }
     async function llenarBolsa(tipo) {
       const k = tipo === 'adm' ? 'adm' : 'prov'; if (_bolsaCargando[k]) return; const arr = k === 'adm' ? _bolsaAdm : _bolsaProv, meta = k === 'adm' ? 15 : 3; if (arr.length >= meta) return;   // 👑 tu bolsa: 15 listos
-      _bolsaCargando[k] = true;
-      try { const r = await llamarBackend('prov_correos', { op: 'bolsa', n: k === 'adm' ? 15 : 3 });
-        if (r && r.ok && Array.isArray(r.correos)) { r.correos.forEach(c => { if (c && arr.indexOf(c) === -1 && !_bolsaUsados.has(c) && !correosPropios.some(x => x.correo === c)) arr.push(c); }); }
-        else if (r && r.reglas) { try { pintarReglasProv(r.reglas); } catch (e) { /* nada */ } }
-      } catch (e) { /* sin bolsa: el botón cae al modo normal (espera al servidor) */ }
+      _bolsaCargando[k] = true; let fallo = '';
+      try { for (let v = 0; v < 4 && arr.length < meta; v++) {   // 🎒 de a 5 por llamada (15 de una podía pasar el tiempo de espera y fallar en silencio)
+          const r = await llamarBackend('prov_correos', { op: 'bolsa', n: k === 'adm' ? Math.min(5, meta - arr.length) : 3 });
+          if (r && r.ok && Array.isArray(r.correos)) { const antes = arr.length; r.correos.forEach(c => { if (c && arr.indexOf(c) === -1 && !_bolsaUsados.has(c) && !correosPropios.some(x => x.correo === c)) arr.push(c); }); if (k === 'adm') pintarBolsaAdm(); if (arr.length === antes) break; }
+          else { if (r && r.reglas) { try { pintarReglasProv(r.reglas); } catch (e) { /* nada */ } } fallo = (r && r.error) || 'el servidor no respondió'; break; }
+          if (k !== 'adm') break; }
+      } catch (e) { fallo = e.message || 'sin conexión'; }
       finally { _bolsaCargando[k] = false; }
+      if (k === 'adm') { pintarBolsaAdm(fallo);
+        if (fallo && (_bolsaReint = (_bolsaReint || 0) + 1) <= 3) { try { mostrarToast('🎒 La bolsa no se llenó: ' + fallo + ' · reintento en 20 s'); } catch (e) { /* nada */ } setTimeout(() => llenarBolsa('adm'), 20000); }
+        else if (!fallo) _bolsaReint = 0; }
     }
 
         function copiarCorreoGenerado(correo) {
@@ -17752,7 +17765,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-27cu';
+    const VERSION_PAGINA = '2026-10-27cv';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261021_miscompras', fecha: '2026-10-21', titulo: 'Nuevo: 📦 Mis compras', mensaje: 'Ahora tus compras tienen **su propio botón dorado 📦 Mis compras** (abajo a la izquierda y arriba junto a la campana). Ahí ves **todas tus cuentas ordenadas por producto**, lo que acabas de comprar marcado como **NUEVA**, su **garantía** y el botón para **copiar**. Y al terminar una compra te lleva directo a ellas.' },
       { id: 'act_20261021_telegram', fecha: '2026-10-21', titulo: 'Compra por Telegram ✈️', mensaje: 'Ya puedes comprar desde nuestro **bot de Telegram**, 24/7 y con entrega al instante. Usa **tu misma cuenta**: en la tienda ve a **Mis datos → Usar mi cuenta en Telegram** y verás ahí tu **mismo saldo y tus compras**. Si eres nuevo en Telegram, tu **primera compra tiene descuento** 🎁.' },
@@ -25008,6 +25021,11 @@ async function pintarPanelWa() {
           <div id="waFranjas" class="space-y-1.5 mt-0.5"></div>
           <button type="button" onclick="agregarFranjaWa()" class="mt-1.5 px-3 py-1.5 rounded-lg bg-gray-800 border border-gray-700 text-gray-100 font-bold text-[11px]">＋ Agregar franja</button>
           <label class="flex items-center gap-2 text-[10px] text-gray-300 mt-2 cursor-pointer"><input type="checkbox" id="waGruposRotar" ${k.gruposRotar !== false ? 'checked' : ''} class="accent-emerald-500 w-4 h-4">Rotar: el grupo que recibió descansa la franja siguiente</label>
+          <div class="grid grid-cols-2 gap-2 mt-2">
+            <label class="text-[10px] text-gray-300">Publicaciones por grupo al día<input type="number" id="waGruposPorDia" min="1" max="4" value="${parseInt(k.gruposPorDia, 10) || 2}" class="mt-1 w-full bg-gray-900 border border-gray-700 rounded-lg px-2 py-1.5 text-xs text-white"></label>
+            <label class="text-[10px] text-gray-300">Horas mínimas entre ellas (mismo grupo)<input type="number" id="waGruposHorasMin" min="1" max="24" value="${parseInt(k.gruposHorasMin, 10) || 7}" class="mt-1 w-full bg-gray-900 border border-gray-700 rounded-lg px-2 py-1.5 text-xs text-white"></label>
+          </div>
+          <p class="text-[10px] text-gray-500 mt-1">Se le suma de 0 a 60 minutos al azar, para que no se vea programado.</p>
           <p class="text-[10px] text-gray-500 mt-1">En cada franja publica una vez por grupo, apenas alguien escriba en ese grupo (la app solo responde cuando llega un mensaje). <b class="text-gray-300">Grupos vacío o 0 = sin límite.</b> Fuera de las franjas no publica. Las menciones siguen funcionando.</p>
           <label class="block text-[11px] text-gray-400 mt-2">Palabras que cuentan como mención (separadas por coma). <b class="text-gray-300">@todos</b> = cuando mencionan a todo el grupo<input type="text" id="waGruposMenciones" maxlength="200" value="${escaparHtml(k.gruposMenciones !== undefined ? k.gruposMenciones : '@todos')}" placeholder="@todos, @Alex, @Epic Channels" class="${inp} mt-1"></label>
           <label class="flex items-center justify-between gap-2 text-[11px] text-gray-400 mt-2">Responder máximo una vez cada (horas, por grupo)<input type="number" id="waGruposHoras" min="1" max="72" value="${Math.max(1, Math.min(72, parseInt(k.gruposHoras, 10) || 6))}" class="w-20 bg-gray-800 border border-gray-700 rounded-lg px-2 py-1.5 text-xs text-white text-right focus:outline-none"></label>
@@ -25089,6 +25107,7 @@ async function pintarPanelWa() {
         datos.gruposMensaje = String((v('waGruposMensaje') || {}).value || '').trim().slice(0, 1500);
         datos.gruposModo = (document.querySelector('input[name="waGruposModo"]:checked') || {}).value === 'horario' ? 'horario' : 'mencion';
         datos.gruposRotar = !!(v('waGruposRotar') && v('waGruposRotar').checked);
+        datos.gruposPorDia = Math.max(1, Math.min(4, parseInt((v('waGruposPorDia') || {}).value, 10) || 2)); datos.gruposHorasMin = Math.max(1, Math.min(24, parseInt((v('waGruposHorasMin') || {}).value, 10) || 7));
         datos.ignorarChats = String((v('waIgnorar') || {}).value || '').trim().slice(0, 2000);
         datos.historial = !!(v('waHistorial') && v('waHistorial').checked);
         datos.benefVincular = String((v('waBenefVinc') || {}).value || '').trim().slice(0, 600);
@@ -26963,7 +26982,7 @@ async function pintarPanelWa() {
       return { cuentas: legado, stock: legado.length || stockPublico };
     }
 
-    const VERSION_SERVIDOR_NECESARIA = '2026-10-27o';   // la versión del servidor que necesita esta página
+    const VERSION_SERVIDOR_NECESARIA = '2026-10-27p';   // la versión del servidor que necesita esta página
     async function llamarBackend(accion, datos) {
       window._llamadasEnCurso = (window._llamadasEnCurso || 0) + 1;
       try { return await llamarBackendBase(accion, datos); } finally { window._llamadasEnCurso = Math.max(0, (window._llamadasEnCurso || 1) - 1); }
