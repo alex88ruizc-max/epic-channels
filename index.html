@@ -13180,12 +13180,11 @@
     }
     // 📩 Solicitudes de código de Amazon: proveedores vs clientes (día/semana/mes)
     let _codRepUlt = 0;
-    function cargarReporteCodigosSuave() {   // 📶 solo si se está viendo y pasaron 5 min (el botón 🔄 sigue cargando al instante)
-      const c = document.getElementById('codReporteCaja') || document.querySelector('[id^="codRe"]');
-      if (!c || c.offsetParent === null || document.visibilityState !== 'visible') return;
-      if (Date.now() - _codRepUlt < 5 * 60000) return; cargarReporteCodigos();
+    function cargarReporteCodigosSuave() {   // 📶 ya no se carga solo: solo con el botón "Actualizar" (0 llamadas mientras no lo toques)
+      const c = document.getElementById('codReporteCaja'); if (!c || !esAdminSesionActual() || _codRepUlt) return;
+      if (c.dataset.vacio === '1') return; c.dataset.vacio = '1';
+      c.innerHTML = `<div class="flex items-center justify-between gap-2"><p class="text-sm font-black text-white">📩 Solicitudes de código de Amazon</p><button type="button" onclick="cargarReporteCodigos()" class="px-3 py-1.5 rounded-lg bg-emerald-500 text-black text-[11px] font-black"><i class="fa-solid fa-rotate mr-1"></i>Actualizar</button></div><p class="text-[11px] text-gray-500 mt-1.5">Toca <b>Actualizar</b> para ver el reporte (así no gasta llamadas mientras no lo miras).</p>`;
     }
-    document.addEventListener('visibilitychange', () => { try { cargarReporteCodigosSuave(); } catch (e) { /* nada */ } });
     async function cargarReporteCodigos() {
       _codRepUlt = Date.now();
       const c = document.getElementById('codReporteCaja'); if (!c || !esAdminSesionActual()) return;
@@ -17703,7 +17702,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-27bv';
+    const VERSION_PAGINA = '2026-10-27bw';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261021_miscompras', fecha: '2026-10-21', titulo: 'Nuevo: 📦 Mis compras', mensaje: 'Ahora tus compras tienen **su propio botón dorado 📦 Mis compras** (abajo a la izquierda y arriba junto a la campana). Ahí ves **todas tus cuentas ordenadas por producto**, lo que acabas de comprar marcado como **NUEVA**, su **garantía** y el botón para **copiar**. Y al terminar una compra te lleva directo a ellas.' },
       { id: 'act_20261021_telegram', fecha: '2026-10-21', titulo: 'Compra por Telegram ✈️', mensaje: 'Ya puedes comprar desde nuestro **bot de Telegram**, 24/7 y con entrega al instante. Usa **tu misma cuenta**: en la tienda ve a **Mis datos → Usar mi cuenta en Telegram** y verás ahí tu **mismo saldo y tus compras**. Si eres nuevo en Telegram, tu **primera compra tiene descuento** 🎁.' },
