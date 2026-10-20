@@ -13722,7 +13722,8 @@
       cont.innerHTML = (pagosProveedoresLista.some(p => p.ciclo) ? `<p class="text-[11px] text-sky-200 p-2 rounded-lg bg-sky-500/10 border border-sky-500/30">📸 Comprobantes guardados: <b>${enCiclo}</b> de ${CICLO_COMPROBANTES} cuentas. Al llegar a ${CICLO_COMPROBANTES} se borran las fotos de los anteriores (tus pagos siguen registrados).</p>` : '') + pagosProveedoresLista.slice(0, 10).map(p => {
         const fecha = new Date(p.fecha).toLocaleDateString('es-CO', { day: '2-digit', month: '2-digit', year: 'numeric' });
         return `<div class="p-3 rounded-xl bg-gray-800/50 border border-gray-700/60">
-          <div class="flex items-center justify-between gap-2"><p class="text-sm font-black text-white">${formatoCOP(p.monto || 0)}</p><p class="text-[10px] text-gray-400">${fecha}${p.medio ? ' · ' + etiquetaMedioPago(p.medio) : ''}</p></div>
+          <div class="flex items-center justify-between gap-2"><p class="text-sm font-black text-white">${p.parcial ? '✅ Abono recibido: ' : ''}${formatoCOP(p.monto || 0)}</p><p class="text-[10px] text-gray-400">${fecha}${p.medio ? ' · ' + etiquetaMedioPago(p.medio) : ''}</p></div>
+          ${p.parcial ? `<p class="text-[11px] text-amber-300 mt-0.5">⏳ Quedó pendiente: ${formatoCOP(p.pendienteDespues || 0)}</p>` : ''}
           <div class="mt-1.5">${botonComprobante(p)}</div>
         </div>`;
       }).join('');
@@ -13787,6 +13788,9 @@
       document.getElementById('pagarNombre').textContent = nombre;
       document.getElementById('pagarMonto').textContent = formatoCOP(total);
       document.getElementById('pagarDetalle').textContent = `${lotes.length} ${lotes.length === 1 ? 'lote' : 'lotes'} · ${cuentas} ${cuentas === 1 ? 'cuenta' : 'cuentas'}`;
+      try { let ab = document.getElementById('pagarAbonoCaja'); if (!ab) { ab = document.createElement('div'); ab.id = 'pagarAbonoCaja'; ab.className = 'mt-3'; document.getElementById('pagarDetalle').parentElement.insertAdjacentElement('afterend', ab); }
+        ab.innerHTML = `<label class="block text-xs text-gray-400 mb-1">¿Cuánto le pagaste?</label><input id="pagarCuanto" type="text" inputmode="numeric" value="${total}" oninput="pagarAbonoTexto()" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2.5 text-base font-black text-white"><p id="pagarAbonoInfo" class="text-[11px] mt-1 text-gray-400"></p>`;
+        pagarAbonoTexto(); } catch (e) { /* nada */ }
       document.getElementById('pagarMetodos').innerHTML = '<p class="text-[11px] text-gray-500">Cargando sus datos de pago...</p>';
       document.getElementById('pagarFoto').value = '';
       const pv = document.getElementById('pagarPreview'); pv.src = ''; pv.classList.add('hidden');
@@ -13852,6 +13856,13 @@
     }
     function cambioPaisRegistro() { const sel = document.getElementById('authPais'), inp = document.getElementById('authWhatsapp'); const x = PAISES_WA.find(y => y[0] === (sel && sel.value)) || PAISES_WA[0]; if (inp) inp.placeholder = 'Ej: ' + x[4]; }
     document.addEventListener('DOMContentLoaded', () => { try { llenarPaisesRegistro(); const sp = document.getElementById('authPais'); if (sp) { sp.value = paisPorZonaHoraria(); cambioPaisRegistro(); } } catch (e) { /* nada */ } });
+    function pagarCuantoValor() { return parseInt(String((document.getElementById('pagarCuanto') || {}).value || '').replace(/\D/g, ''), 10) || 0; }
+    function pagarAbonoTexto() {
+      const pc = pagoEnCurso, el = document.getElementById('pagarAbonoInfo'); if (!pc || !el) return; const v = pagarCuantoValor();
+      if (!v) { el.textContent = 'Escribe cuánto le pagaste.'; el.className = 'text-[11px] mt-1 text-amber-300'; return; }
+      if (v >= pc.total) { el.textContent = '✅ Pago completo: queda en $0.'; el.className = 'text-[11px] mt-1 text-emerald-400'; return; }
+      el.innerHTML = `💸 Abono: pagas <b>${formatoCOP(v)}</b> · quedan pendientes <b>${formatoCOP(pc.total - v)}</b>`; el.className = 'text-[11px] mt-1 text-amber-300';
+    }
     async function confirmarPagoProveedor() {
       if (!esAdminSesionActual() || !pagoEnCurso) return;
       const pc = pagoEnCurso;
@@ -13865,13 +13876,23 @@
         const foto = archivo ? await prepararFotoReporte(archivo) : '';
         const ahora = new Date().toISOString();
         const expira = Date.now() + 3650 * 86400000;   // se guarda: se borra por ciclos de 200 cuentas, no por horas
-        const cuentasPago = lotes.reduce((s, l) => s + (parseInt(l.cantidad, 10) || 0), 0);
         const pagoRef = db.collection('pagos_proveedores').doc();
         const lote = db.batch();
-        lotes.forEach(l => lote.update(db.collection('stock_pendiente').doc(l.id), { pagado: true, pagadoEl: ahora, pagadoPor: currentUser.email }));
+        const cuanto = Math.min(pagarCuantoValor() || pc.total, pc.total), parcial = cuanto < pc.total;
+        if (cuanto <= 0) throw new Error('Escribe cuánto le pagaste.');
+        let pagadosIds = pc.ids, abonados = [], cuentasPago = lotes.reduce((s, l) => s + (parseInt(l.cantidad, 10) || 0), 0);
+        if (!parcial) lotes.forEach(l => lote.update(db.collection('stock_pendiente').doc(l.id), { pagado: true, pagadoEl: ahora, pagadoPor: currentUser.email }));
+        else {   // 💸 ABONO: el dinero (más los descuentos de tickets) cubre primero los lotes más viejos
+          let dinero = cuanto + (pc.total < 0 ? 0 : (lotes.reduce((t, l) => t + (Number(l.monto) || 0), 0) - pc.total));
+          const orden = lotes.slice().sort((a, b) => String(a.fecha || a.creadoEl || '').localeCompare(String(b.fecha || b.creadoEl || '')));
+          pagadosIds = []; cuentasPago = 0;
+          orden.forEach(l => { const debe = Number(l.monto) || 0; if (dinero <= 0) return;
+            if (dinero >= debe) { lote.update(db.collection('stock_pendiente').doc(l.id), { pagado: true, pagadoEl: ahora, pagadoPor: currentUser.email }); pagadosIds.push(l.id); cuentasPago += parseInt(l.cantidad, 10) || 0; dinero -= debe; }
+            else { const resta = debe - dinero; lote.update(db.collection('stock_pendiente').doc(l.id), { monto: resta, montoOriginal: Number(l.montoOriginal) || debe, abonado: (Number(l.abonado) || 0) + dinero, ultimoAbonoEl: ahora }); abonados.push({ id: l.id, abono: dinero, falta: resta }); dinero = 0; } });
+        }
         (pc.descIds || []).forEach(id => lote.update(db.collection('descuentos_proveedor').doc(id), { aplicado: true, aplicadoEl: ahora, pagoId: pagoRef.id }));
         lote.set(pagoRef, {
-          proveedorUid: pc.uid, proveedorNombre: pc.nombre, monto: pc.total, lotes: pc.ids, cantidadLotes: pc.ids.length,
+          proveedorUid: pc.uid, proveedorNombre: pc.nombre, monto: cuanto, lotes: pagadosIds, cantidadLotes: pagadosIds.length, parcial: parcial, pendienteDespues: parcial ? pc.total - cuanto : 0, lotesAbonados: abonados,
           fecha: ahora, por: currentUser.email, medio: document.getElementById('pagarMedio').value || 'otro',
           comprobante: !!foto, comprobanteExpiraMs: foto ? expira : 0, cuentas: cuentasPago, ciclo: 'abierto'
         });
@@ -13880,7 +13901,7 @@
         cerrarPagarProveedor();
         let cicloTxt = '';
         try { const r = await cicloComprobantesProveedor(pc.uid, pagoRef.id); cicloTxt = r.cerrado ? ` 🧹 Llegó a ${r.total} cuentas: borré ${r.borrados} comprobante${r.borrados === 1 ? '' : 's'} anterior${r.borrados === 1 ? '' : 'es'} y el contador empezó de nuevo.` : ` 📸 Comprobantes guardados: ${r.total} de ${CICLO_COMPROBANTES} cuentas.`; } catch (e) { console.warn('Ciclo de comprobantes:', e); }
-        mostrarToast(`Pago registrado: ${formatoCOP(pc.total)} a ${pc.nombre}.${cicloTxt}`);
+        mostrarToast(parcial ? `💸 Abono registrado: ${formatoCOP(cuanto)} a ${pc.nombre}. Quedan pendientes ${formatoCOP(pc.total - cuanto)}.${cicloTxt}` : `Pago registrado: ${formatoCOP(pc.total)} a ${pc.nombre}.${cicloTxt}`);
       } catch (err) {
         alert('No se pudo registrar el pago: ' + err.message);
       } finally {
@@ -17607,7 +17628,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-27ba';
+    const VERSION_PAGINA = '2026-10-27bc';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261021_miscompras', fecha: '2026-10-21', titulo: 'Nuevo: 📦 Mis compras', mensaje: 'Ahora tus compras tienen **su propio botón dorado 📦 Mis compras** (abajo a la izquierda y arriba junto a la campana). Ahí ves **todas tus cuentas ordenadas por producto**, lo que acabas de comprar marcado como **NUEVA**, su **garantía** y el botón para **copiar**. Y al terminar una compra te lleva directo a ellas.' },
       { id: 'act_20261021_telegram', fecha: '2026-10-21', titulo: 'Compra por Telegram ✈️', mensaje: 'Ya puedes comprar desde nuestro **bot de Telegram**, 24/7 y con entrega al instante. Usa **tu misma cuenta**: en la tienda ve a **Mis datos → Usar mi cuenta en Telegram** y verás ahí tu **mismo saldo y tus compras**. Si eres nuevo en Telegram, tu **primera compra tiene descuento** 🎁.' },
@@ -26764,7 +26785,7 @@ async function pintarPanelWa() {
       return { cuentas: legado, stock: legado.length || stockPublico };
     }
 
-    const VERSION_SERVIDOR_NECESARIA = '2026-10-26c';   // la versión del servidor que necesita esta página
+    const VERSION_SERVIDOR_NECESARIA = '2026-10-26d';   // la versión del servidor que necesita esta página
     async function llamarBackend(accion, datos) {
       window._llamadasEnCurso = (window._llamadasEnCurso || 0) + 1;
       try { return await llamarBackendBase(accion, datos); } finally { window._llamadasEnCurso = Math.max(0, (window._llamadasEnCurso || 1) - 1); }
