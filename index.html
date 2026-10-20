@@ -2720,14 +2720,6 @@
                   </div>
                   <p class="text-[10px] text-gray-500 mt-1">Cada pedido se entrega todo junto (un mensaje, una lista). Si pasan esas horas sin completarse, recibe lo que haya en bloques. Con 0 horas, entrega por bloques de una vez.</p>
                 </div>
-                <div class="mb-3 hidden">
-                  <label class="block text-xs font-bold text-gray-300 mb-1">📧 Correos de proveedores (Correo para crear cuenta)</label>
-                  <div class="grid grid-cols-2 gap-2">
-                    <div><input type="number" id="ajusteProvCorreosSinUsar" min="1" max="100" placeholder="3" class="w-full bg-gray-900 border border-gray-700 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500"><p class="text-[10px] text-gray-500 mt-1">Máximo sin usar a la vez</p></div>
-                    <div><input type="number" id="ajusteProvCorreosDia" min="1" max="500" placeholder="40" class="w-full bg-gray-900 border border-gray-700 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500"><p class="text-[10px] text-gray-500 mt-1">Máximo por día</p></div>
-                  </div>
-                  <p class="text-[10px] text-gray-500 mt-1">Sube los números para que tus proveedores hagan más cuentas; bájalos para que hagan menos.</p>
-                </div>
                 <div>
                   <label class="block text-[11px] text-gray-400 mb-1">WhatsApp Soporte (con código país)</label>
                   <input type="text" id="ajusteWhatsappNumero" placeholder="Ej: 573043956726" class="w-full bg-gray-900 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white font-mono focus:outline-none">
@@ -6905,7 +6897,6 @@
       { const e = document.getElementById('ajusteDominioTienda'); if (e) e.value = dominioActual(); }
       { const e = document.getElementById('ajusteMaxSobrePedido'); if (e) e.value = maxSobrePedidoCliente(); }
       { const e = document.getElementById('ajusteSpEspera'), b = document.getElementById('ajusteSpBloque'), a = ajustesGeneralesConfig || {}; if (e) e.value = a.sobrePedidoEsperaH !== undefined && a.sobrePedidoEsperaH !== '' ? a.sobrePedidoEsperaH : 4; if (b) b.value = a.sobrePedidoBloque || 5; }
-        { const e1 = document.getElementById('ajusteProvCorreosSinUsar'), e2 = document.getElementById('ajusteProvCorreosDia'); if (e1) e1.value = parseInt(ajustesGeneralesConfig.provCorreosSinUsar, 10) || 3; if (e2) e2.value = parseInt(ajustesGeneralesConfig.provCorreosDia, 10) || 40; }
       document.getElementById('ajusteClaveAmazon').value = ajustesGeneralesConfig.claveAmazon || '';
       document.getElementById('ajusteMinRecarga').value = ajustesGeneralesConfig.minRecarga || 5000;
       const inpPuntos = document.getElementById('ajustePuntosPorCuenta');
@@ -7008,8 +6999,6 @@
         maxSobrePedido: Math.max(1, Math.min(1000, parseInt((document.getElementById('ajusteMaxSobrePedido') || {}).value, 10) || 50)),
         sobrePedidoEsperaH: (v => isNaN(v) ? 4 : Math.max(0, Math.min(72, v)))(parseInt((document.getElementById('ajusteSpEspera') || {}).value, 10)),
         sobrePedidoBloque: Math.max(1, Math.min(100, parseInt((document.getElementById('ajusteSpBloque') || {}).value, 10) || 5)),
-          provCorreosSinUsar: Math.max(1, Math.min(100, parseInt((document.getElementById('ajusteProvCorreosSinUsar') || {}).value, 10) || 3)),
-          provCorreosDia: Math.max(1, Math.min(500, parseInt((document.getElementById('ajusteProvCorreosDia') || {}).value, 10) || 40)),
         dominioTienda: String((document.getElementById('ajusteDominioTienda') || {}).value || '').replace(/^https?:\/\//, '').replace(/\/.*$/, '').trim().toLowerCase() || dominioActual(),
         minRecarga: nuevoMinRec,
         adminEmailsStr: nuevoAdminEmails,
@@ -12724,7 +12713,11 @@
       }, 350);
     }
 
-        function pintarCorreosPropios() {
+      function copiarCorreoPropioUso(i) {   // 📋 copia y queda "En uso" (se guarda en el servidor; no se mueve de lugar)
+      const c = correosPropios[i]; if (!c) return; copiarTexto(c.correo, '📋 Copiado · queda "En uso"');
+      if (!c.enUsoEl) { c.enUsoEl = new Date().toISOString(); pintarCorreosPropios(); try { llamarBackend('prov_correos', { op: 'usar', correo: c.correo, propio: true }).catch(() => {}); } catch (e) { /* nada */ } }
+    }
+      function pintarCorreosPropios() {
       const l = document.getElementById('correosPropiosLista'); if (!l) return;
       // 🔢 Insignias: generados hoy · ya subidas. Las subidas se ocultan de la lista.
       const esSubida = c => { const p = (catalogoUnificado || []).find(x => x.docId === c.destino), prime = !c.destino || esProdPrime(p); return !!(c.confirmadoEl || (prime && c.primeActivoEl && c.destino !== 'libre') || c.asignadoA); };
@@ -12738,7 +12731,7 @@
         if (c.reservando) return `<div class="p-2 rounded-lg bg-gray-900/70 border border-gray-700"><span class="font-mono text-[11px] text-gray-400"><i class="fa-solid fa-spinner fa-spin mr-1"></i>Generando correo…</span></div>`;
         const p = (catalogoUnificado || []).find(x => x.docId === c.destino), prime = !c.destino || esProdPrime(p), listo = c.confirmadoEl || (prime && c.primeActivoEl && c.destino !== 'libre');
         const estado = c.asignadoA ? '<span class="text-[10px] text-sky-300 font-bold">👤 asignado</span>' : listo ? '<span class="text-[10px] text-emerald-300 font-bold">✅ en stock</span>' : c.destino === 'libre' ? '<span class="text-[10px] text-gray-400 font-bold">🆓 libre</span>' : prime ? '<span class="text-[10px] text-amber-300 font-bold">⏳ esperando bienvenida</span>' : `<button type="button" onclick="confirmarCorreoPropio(${i}, this)" class="px-2 py-1 rounded-lg bg-emerald-500 text-black text-[10px] font-black">✅ Confirmar</button>`;
-        return `<div class="p-2 rounded-lg bg-gray-900/70 border border-gray-700"><div class="flex items-center gap-1.5"><span class="font-mono text-[11px] text-white truncate flex-1">${escaparHtml(c.correo)}</span><button type="button" onclick="copiarTexto('${escaparHtml(c.correo)}','Correo copiado')" class="px-1.5 py-1 rounded bg-gray-700 text-gray-200 text-[10px]"><i class="fa-solid fa-copy"></i></button><button type="button" onclick="codigoCorreoPropio(${i})" class="px-1.5 py-1 rounded bg-gray-700 text-gray-200 text-[10px] font-bold">🔑</button>${estado}</div><p class="text-[10px] text-gray-500 mt-0.5">${escaparHtml(nombreDestino(c.destino))}</p><div id="cpCod_${i}" class="hidden text-[11px] mt-1"></div></div>`;
+        return `<div class="p-2 rounded-lg bg-gray-900/70 border border-gray-700"><div class="flex items-center gap-1.5"><span class="font-mono text-[11px] text-white truncate flex-1">${escaparHtml(c.correo)}</span><button type="button" onclick="copiarCorreoPropioUso(${i})" class="px-1.5 py-1 rounded bg-gray-700 text-gray-200 text-[10px]"><i class="fa-solid fa-copy"></i></button><button type="button" onclick="codigoCorreoPropio(${i})" class="px-1.5 py-1 rounded bg-gray-700 text-gray-200 text-[10px] font-bold">🔑</button>${listo || c.asignadoA ? '' : c.codigoVistoEl ? '<span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-300">✓ Usado</span>' : c.enUsoEl ? '<span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-300">📋 En uso</span>' : ''}${estado}</div><p class="text-[10px] text-gray-500 mt-0.5">${escaparHtml(nombreDestino(c.destino))}</p><div id="cpCod_${i}" class="hidden text-[11px] mt-1"></div></div>`;
       }).join('');
     }
     async function cargarCorreosPropios() { try { const r = await llamarBackend('prov_correos', { op: 'lista' }); if (r && r.ok) { if (r.dominiosActivos) window.DOMINIOS_ACTIVOS = r.dominiosActivos; correosPropios = (r.correos || []).filter(x => x.propio); pintarCorreosPropios(); llenarBolsa('adm'); } } catch (e) { /* nada */ } }
@@ -12749,9 +12742,9 @@
     // 🎒 Bolsa de correos listos (3): el servidor los crea y guarda antes; al tocar Generar / +Nuevo salen al instante
     var _bolsaAdm = [], _bolsaProv = [], _bolsaCargando = { adm: false, prov: false }, _bolsaUsados = new Set();   // _bolsaUsados: nunca se ofrece dos veces el mismo correo
     async function llenarBolsa(tipo) {
-      const k = tipo === 'adm' ? 'adm' : 'prov'; if (_bolsaCargando[k]) return; const arr = k === 'adm' ? _bolsaAdm : _bolsaProv; if (arr.length >= 3) return;
+      const k = tipo === 'adm' ? 'adm' : 'prov'; if (_bolsaCargando[k]) return; const arr = k === 'adm' ? _bolsaAdm : _bolsaProv, meta = k === 'adm' ? 15 : 3; if (arr.length >= meta) return;   // 👑 tu bolsa: 15 listos
       _bolsaCargando[k] = true;
-      try { const r = await llamarBackend('prov_correos', { op: 'bolsa', n: 5 });
+      try { const r = await llamarBackend('prov_correos', { op: 'bolsa', n: k === 'adm' ? 15 : 3 });
         if (r && r.ok && Array.isArray(r.correos)) { r.correos.forEach(c => { if (c && arr.indexOf(c) === -1 && !_bolsaUsados.has(c) && !correosPropios.some(x => x.correo === c)) arr.push(c); }); }
         else if (r && r.reglas) { try { pintarReglasProv(r.reglas); } catch (e) { /* nada */ } }
       } catch (e) { /* sin bolsa: el botón cae al modo normal (espera al servidor) */ }
@@ -17759,7 +17752,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-27ct';
+    const VERSION_PAGINA = '2026-10-27cu';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261021_miscompras', fecha: '2026-10-21', titulo: 'Nuevo: 📦 Mis compras', mensaje: 'Ahora tus compras tienen **su propio botón dorado 📦 Mis compras** (abajo a la izquierda y arriba junto a la campana). Ahí ves **todas tus cuentas ordenadas por producto**, lo que acabas de comprar marcado como **NUEVA**, su **garantía** y el botón para **copiar**. Y al terminar una compra te lleva directo a ellas.' },
       { id: 'act_20261021_telegram', fecha: '2026-10-21', titulo: 'Compra por Telegram ✈️', mensaje: 'Ya puedes comprar desde nuestro **bot de Telegram**, 24/7 y con entrega al instante. Usa **tu misma cuenta**: en la tienda ve a **Mis datos → Usar mi cuenta en Telegram** y verás ahí tu **mismo saldo y tus compras**. Si eres nuevo en Telegram, tu **primera compra tiene descuento** 🎁.' },
@@ -26970,7 +26963,7 @@ async function pintarPanelWa() {
       return { cuentas: legado, stock: legado.length || stockPublico };
     }
 
-    const VERSION_SERVIDOR_NECESARIA = '2026-10-27n';   // la versión del servidor que necesita esta página
+    const VERSION_SERVIDOR_NECESARIA = '2026-10-27o';   // la versión del servidor que necesita esta página
     async function llamarBackend(accion, datos) {
       window._llamadasEnCurso = (window._llamadasEnCurso || 0) + 1;
       try { return await llamarBackendBase(accion, datos); } finally { window._llamadasEnCurso = Math.max(0, (window._llamadasEnCurso || 1) - 1); }
@@ -26980,7 +26973,7 @@ async function pintarPanelWa() {
       if (modoPruebaCliente) { const rs = backendSimulado(accion, datos || {}); if (rs) return rs; }
       const aCorreo = !!(datos && datos.__servidor === 'correo'); if (aCorreo) { datos = Object.assign({}, datos); delete datos.__servidor; }
       // 📧 Correos del dominio: solo "codigo" y "revisar_bienvenidas" necesitan leer el correo; la lista y lo demás van al servidor de la página
-      const provSinCorreo = accion === 'prov_correos' && datos && ['codigo', 'revisar_bienvenidas'].indexOf(String(datos.op || '')) === -1;
+      const provSinCorreo = accion === 'prov_correos' && datos && ['codigo', 'revisar_bienvenidas', 'refrescar'].indexOf(String(datos.op || '')) === -1;   // 🔄 'refrescar' lee el Gmail de codigos@: va al servidor de correo
       const url = aCorreo ? obtenerBackendUrl('*correo') : (provSinCorreo ? obtenerBackendUrl('comprar') : obtenerBackendUrl(accion));
       if (!url) throw new Error('El servidor seguro no está configurado.');
       if (!currentUser) throw new Error('Debes iniciar sesión.');
