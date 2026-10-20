@@ -816,8 +816,8 @@
       <div id="provDominioCaja" class="bg-gray-900 border border-emerald-500/40 rounded-2xl p-4">
         <div class="flex items-center gap-3">
           <span class="w-10 h-10 shrink-0 rounded-xl bg-emerald-500/15 text-emerald-300 flex items-center justify-center"><i class="fa-solid fa-at"></i></span>
-          <div class="min-w-0 flex-grow"><p class="text-sm font-black text-white">Correo para crear cuenta</p><p class="text-[10px] text-gray-500">Pide uno, crea la cuenta y toca "Ver código" para verificarla.</p></div>
-          <button type="button" onclick="provDominioNuevo()" class="shrink-0 px-3 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-black text-[11px]"><i class="fa-solid fa-plus"></i> Nuevo</button>
+          <div class="min-w-0 flex-grow"><p id="provDomTitulo" class="text-sm font-black text-white">Correo para crear cuenta</p><p id="provDomSub" class="text-[10px] text-gray-500">Pide uno, crea la cuenta y toca "Ver código" para verificarla.</p></div>
+          <button type="button" id="provDomNuevoBtn" onclick="provDominioNuevo()" class="shrink-0 px-3 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-black text-[11px]"><i class="fa-solid fa-plus"></i> Nuevo</button>
         </div>
         <div class="mt-3 grid grid-cols-2 gap-2">
           <div class="rounded-xl bg-gray-800/70 border border-gray-700/60 p-2.5 text-center"><p id="provHoySubidas" class="text-xl font-black text-white">0</p><p class="text-[10px] text-gray-400">subidas hoy</p></div>
@@ -831,7 +831,7 @@
         <div id="provDomInsignias" class="mt-3 flex gap-1.5"></div>
         <div id="provAutoResumen" class="hidden mt-3 p-2.5 rounded-xl bg-emerald-500/15 border border-emerald-400/50 text-[12px] text-emerald-100"></div>
         <p class="mt-2 text-[10px] text-gray-600">Versión de la página: <span id="provVerPag"></span></p>
-        <div class="mt-3 relative"><i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-xs"></i><input type="search" id="buscarGeneradosInput" oninput="buscarGeneradosEnVivo()" placeholder="Buscar un correo generado (o quién lo generó)…" autocomplete="off" class="w-full bg-gray-800 border border-gray-700 rounded-xl pl-9 pr-3 py-2 text-[12px] text-white"></div>
+        <div id="provDomBuscaGen" class="mt-3 relative"><i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-xs"></i><input type="search" id="buscarGeneradosInput" oninput="buscarGeneradosEnVivo()" placeholder="Buscar un correo generado (o quién lo generó)…" autocomplete="off" class="w-full bg-gray-800 border border-gray-700 rounded-xl pl-9 pr-3 py-2 text-[12px] text-white"></div>
         <div id="buscarGeneradosRes" class="mt-2 space-y-1.5"></div>
         <div id="provDominioLista" class="mt-3 space-y-2"></div>
       </div>
@@ -12829,7 +12829,8 @@
         const b = document.getElementById('provDomInsignias');
         if (b) b.innerHTML = `<span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-sky-500/15 text-sky-300 border border-sky-500/30">Generados hoy ${genHoy}</span><span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">Subidas ${subidas}</span>`;
       } catch (e) { /* nada */ }
-      const porMostrar = provDominioCorreos.map((c, idx) => ({ c, idx })).filter(o => !(o.c.primeActivoEl || o.c.autoSubidaEl));   // solo los que esperan bienvenida, con su índice real
+      const porMostrar = provDominioCorreos.map((c, idx) => ({ c, idx })).filter(o => window._ld ? o.c.buscado === true : !(o.c.primeActivoEl || o.c.autoSubidaEl));   // 📋 con la lista de hoy: solo los buscados a mano   // solo los que esperan bienvenida, con su índice real
+      if (window._ld && !porMostrar.length) { l.innerHTML = ''; return; }
       l.innerHTML = porMostrar.length ? porMostrar.slice(0, 8).map(({ c, idx: i }) => c.reservando ? `<div class="p-2.5 rounded-xl bg-gray-800/60 border border-gray-700 flex items-center gap-2"><span class="font-mono text-[12px] text-gray-400 truncate flex-1"><i class="fa-solid fa-spinner fa-spin mr-1"></i>Generando correo…</span></div>` : c.primeActivoEl ? `<div class="p-2.5 rounded-xl bg-emerald-500/15 border border-emerald-400/60 flex items-center gap-2"><span class="font-mono text-[12px] text-white truncate flex-1">${escaparHtml(c.correo)}</span><span class="text-[10px] font-black text-emerald-300 shrink-0">${c.autoSubidaEl ? '✅ Subida sola · en revisión' : '✅ Prime activo · súbela'}</span><button type="button" onclick="copiarTexto('${escaparHtml(c.correo)}','Correo copiado')" class="px-2 py-1 rounded-lg bg-gray-700 text-gray-200 text-[10px] font-bold"><i class="fa-solid fa-copy"></i></button></div>` : `<div class="p-2.5 rounded-xl bg-gray-800/70 border ${c.codigoVistoEl ? 'border-gray-700' : 'border-emerald-500/40'}">
           <div class="flex items-center gap-2"><span class="font-mono text-[12px] text-white truncate flex-1">${escaparHtml(c.correo)}</span>
             <button type="button" onclick="copiarTexto('${escaparHtml(c.correo)}','Correo copiado')" class="px-2 py-1 rounded-lg bg-gray-700 text-gray-200 text-[10px] font-bold"><i class="fa-solid fa-copy"></i></button>
@@ -12849,15 +12850,30 @@
     let ldFiltro = 'libre', ldCargando = false;
     function ldHoy() { return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Bogota', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date()); }
     async function cargarListaDiaria(forzar) {
-      if (!currentUser || ldCargando) return; const k = 'provDiaria_' + currentUser.uid;
-      let c = null; try { c = JSON.parse(localStorage.getItem(k) || 'null'); } catch (e) { c = null; }
-      if (c && c.r && !forzar) { pintarListaDiaria(c.r); if (c.r.hoy === ldHoy() && c.r.dia === ldHoy() && Date.now() - c.t < 20 * 60000) return; }   // se carga sola: solo pregunta al servidor si cambió el día o pasaron 20 min
-      ldCargando = true;
-      try { const r = await llamarBackend('prov_correos', { op: 'diaria' }); if (r && r.ok) { try { localStorage.setItem(k, JSON.stringify({ t: Date.now(), r: r })); } catch (e) { /* nada */ } pintarListaDiaria(r); } else ldError((r && r.error) || 'el servidor no respondió'); }
-      catch (e) { ldError(e.message || 'sin conexión'); } finally { ldCargando = false; }
+      if (!currentUser || ldCargando) return; ldCargando = true;   // 🔒 una sola petición a la vez (si no, el servidor podría crear la lista dos veces)
+      const k = 'provDiaria_' + currentUser.uid;
+      try {
+        for (let w = 0; w < 40 && !obtenerBackendUrl('prov_correos'); w++) await new Promise(res => setTimeout(res, 500));   // ⏳ espera los ajustes (hasta 20 s)
+        let c = null; try { c = JSON.parse(localStorage.getItem(k) || 'null'); } catch (e) { c = null; }
+        if (c && c.r && !forzar) { pintarListaDiaria(c.r); if (c.r.hoy === ldHoy() && c.r.dia === ldHoy() && Date.now() - c.t < 20 * 60000) return; }   // se carga sola: solo pregunta al servidor si cambió el día o pasaron 20 min
+        const r = await llamarBackend('prov_correos', { op: 'diaria' }); if (r && r.ok) { try { localStorage.setItem(k, JSON.stringify({ t: Date.now(), r: r })); } catch (e) { /* nada */ } pintarListaDiaria(r); } else ldError((r && r.error) || 'el servidor no respondió');
+      } catch (e) { ldError(e.message || 'sin conexión'); } finally { ldCargando = false; }
     }
+    async function ldCodigo(btn, correo) {
+      const fila = btn.closest('div'); if (!fila) return; let box = fila.nextElementSibling;
+      if (!box || !box.classList.contains('ld-cod')) { box = document.createElement('div'); box.className = 'ld-cod px-2.5 pb-2 text-[11px]'; fila.after(box); }
+      box.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Buscando el código…';
+      try { const r = await llamarBackend('prov_correos', { op: 'codigo', correo: correo });
+        if (!r || !r.ok) { box.innerHTML = '<span class="text-amber-300">' + escaparHtml((r && r.error) || 'No se pudo.') + '</span>'; return; }
+        const L = (r.resultados || []).filter(x => x.codigo || x.aprobar);
+        if (!L.length) { box.innerHTML = '<span class="text-gray-400">Aún no llega ningún código. Pídelo en Amazon y toca de nuevo en unos segundos.</span>'; return; }
+        box.innerHTML = L.map(x => x.codigo ? `<div class="flex items-center gap-2 mt-1"><span class="font-mono font-black text-xl tracking-[0.25em] text-emerald-400">${escaparHtml(x.codigo)}</span><span class="text-[10px] text-gray-500">${escaparHtml(x.plataforma || '')} · ${new Date(x.fecha).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })}</span><button type="button" onclick="copiarTexto('${escaparHtml(x.codigo)}','Código copiado')" class="ml-auto px-2 py-1 rounded-lg bg-gray-700 text-gray-200 text-[10px] font-bold">Copiar</button></div>` : `<p class="text-amber-200 mt-1">📩 ${escaparHtml(x.plataforma || 'La plataforma')} pide aprobar el inicio de sesión desde el correo.</p>`).join('');
+      } catch (e) { box.innerHTML = '<span class="text-amber-300">' + escaparHtml(e.message || 'Error') + '</span>'; }
+    }
+    var _ldReint = 0;
     function ldError(msj) {   // 🧯 si la lista no carga, se ve el motivo (y un botón para reintentar) en vez de no mostrar nada
       const ref = document.getElementById('provAutoResumen'); if (!ref || window._ld) return;
+      if (_ldReint < 3) { _ldReint++; setTimeout(() => { try { cargarListaDiaria(true); } catch (e) { /* nada */ } }, 3000); }   // 🔁 reintenta sola 3 veces
       let b = document.getElementById('provDiariaCaja'); if (!b) { b = document.createElement('div'); b.id = 'provDiariaCaja'; ref.parentNode.insertBefore(b, ref); }
       b.innerHTML = '<div class="mt-3 p-3 rounded-xl bg-amber-500/10 border border-amber-500/40"><p class="text-sm font-black text-amber-200">📬 Tus correos de hoy</p><p class="text-[11px] text-amber-100/80 mt-1">No se pudo cargar tu lista: ' + escaparHtml(String(msj).slice(0, 160)) + '</p><button type="button" onclick="cargarListaDiaria(true)" class="mt-2 px-3 py-1.5 rounded-lg bg-amber-400 text-black text-[11px] font-black">Reintentar</button></div>';
     }
@@ -12875,6 +12891,10 @@
     function ldCopiar(btn, c) { try { navigator.clipboard.writeText(c); btn.textContent = '✓ Copiado'; btn.classList.add('opacity-70'); setTimeout(() => { btn.textContent = 'Copiar'; btn.classList.remove('opacity-70'); }, 1500); } catch (e) { /* nada */ } }
     function pintarListaDiaria(r) {
       window._ld = r; const ref = document.getElementById('provAutoResumen'); if (!ref || !r) return;
+      // 📋 Una sola lista: se oculta lo de antes (+ Nuevo, insignias, buscador de generados y lista vieja). "Buscar código" se queda.
+      try { ['provDomNuevoBtn', 'provDomInsignias', 'provDomBuscaGen', 'buscarGeneradosRes'].forEach(id => { const e = document.getElementById(id); if (e) e.classList.add('hidden'); });
+        const t = document.getElementById('provDomTitulo'), st = document.getElementById('provDomSub'); if (t) t.textContent = 'Tus correos para crear cuentas'; if (st) st.textContent = 'Copia uno de tu lista de hoy, crea la cuenta y toca 🔑 Código para verificarla.';
+        pintarProvDominio(); } catch (e) { /* nada */ }
       let b = document.getElementById('provDiariaCaja'); if (!b) { b = document.createElement('div'); b.id = 'provDiariaCaja'; ref.parentNode.insertBefore(b, document.getElementById('provCaidasCaja') || ref); }
       const it = r.items || [], cnt = e => it.filter(x => e === 'usado' ? /usado|prime|subida/.test(x.estado) : x.estado === e).length;
       const usados = cnt('usado') + cnt('suspendida'), total = it.length, pct = total ? Math.round(usados * 100 / total) : 0, susp = it.filter(x => x.estado === 'suspendida');
@@ -12895,7 +12915,7 @@
         <p class="text-[11px] text-gray-400 mt-3">${usados} de ${total} usados</p><div class="h-1.5 rounded-full bg-gray-800 overflow-hidden mt-1 mb-3"><i class="block h-full bg-emerald-500" style="width:${pct}%"></i></div>
         ${susp.length ? `<div class="p-2.5 rounded-xl bg-red-500/10 border border-red-500/40 text-[12px] text-red-200 mb-3">⚠️ <b>${susp.length} ${susp.length === 1 ? 'cuenta de tu lista fue suspendida' : 'cuentas de tu lista fueron suspendidas'} por Amazon:</b> ${susp.slice(0, 3).map(x => escaparHtml(x.correo)).join(', ')}${susp.length > 3 ? '…' : ''}</div>` : ''}
         <div class="flex gap-1.5 mb-2 flex-wrap">${chip('libre', 'Libres', cnt('libre'))}${chip('usado', 'Usados', cnt('usado'))}${chip('suspendida', 'Suspendidos', cnt('suspendida'))}</div>
-        <div class="overflow-y-auto space-y-1" style="max-height:65vh">${vis.map(x => `<div class="flex items-center gap-2 px-2.5 py-2 rounded-lg bg-gray-950/60 border border-gray-800"><span class="flex-1 min-w-0 font-mono text-[12px] text-white truncate">${escaparHtml(x.correo)}</span><span class="shrink-0 px-2 py-0.5 rounded-full text-[10px] font-bold ${est[x.estado][1]}">${est[x.estado][0]}</span>${x.estado === 'libre' ? `<button type="button" onclick="ldCopiar(this,'${escaparJsAttr(x.correo)}')" class="shrink-0 px-2.5 py-1 rounded-lg bg-emerald-500 text-black text-[11px] font-black">Copiar</button>` : ''}</div>`).join('') || `<p class="text-[12px] text-gray-500 text-center py-4">${ldFiltro === 'libre' ? 'Ya usaste todos los de hoy 🎉' : 'Ninguno'}</p>`}</div>
+        <div class="overflow-y-auto space-y-1" style="max-height:65vh">${vis.map(x => `<div class="flex items-center gap-2 px-2.5 py-2 rounded-lg bg-gray-950/60 border border-gray-800"><span class="flex-1 min-w-0 font-mono text-[12px] text-white truncate">${escaparHtml(x.correo)}</span><span class="shrink-0 px-2 py-0.5 rounded-full text-[10px] font-bold ${est[x.estado][1]}">${est[x.estado][0]}</span>${x.estado === 'libre' ? `<button type="button" onclick="ldCopiar(this,'${escaparJsAttr(x.correo)}')" class="shrink-0 px-2.5 py-1 rounded-lg bg-emerald-500 text-black text-[11px] font-black">Copiar</button>` : ''}<button type="button" onclick="ldCodigo(this,'${escaparJsAttr(x.correo)}')" class="shrink-0 px-2.5 py-1 rounded-lg bg-gray-700 text-white text-[11px] font-black">🔑 Código</button></div>`).join('') || `<p class="text-[12px] text-gray-500 text-center py-4">${ldFiltro === 'libre' ? 'Ya usaste todos los de hoy 🎉' : 'Ninguno'}</p>`}</div>
         ${r.dia === r.hoy ? (r.puedePedir ? `<button type="button" onclick="ldPedirMas(this)" class="mt-3 w-full py-2.5 rounded-xl border border-dashed border-gray-600 text-gray-200 text-[12px] font-bold">＋ Pedir 10 más</button>` : `<p class="mt-3 text-center text-[11px] text-gray-500">＋ Pedir 10 más · disponible en tu horario${r.horarioTxt ? ' (' + escaparHtml(r.horarioTxt) + ')' : ''}</p>`) : ''}`;
     }
     setInterval(() => { try { if (document.getElementById('provDiariaCaja') && document.visibilityState === 'visible') cargarListaDiaria(); } catch (e) { /* nada */ } }, 5 * 60000);
@@ -12969,6 +12989,7 @@
       let i = provDominioCorreos.findIndex(x => String(x.correo).toLowerCase() === c);
       if (i === -1) { provDominioCorreos.unshift({ correo: c, creadoEl: new Date().toISOString() }); i = 0; }
       else if (i > 7) { const x = provDominioCorreos.splice(i, 1)[0]; provDominioCorreos.unshift(x); i = 0; }
+      try { provDominioCorreos[i].buscado = true; } catch (e) { /* nada */ }
       pintarProvDominio(); provDomGuardarLocal(); if (inp) inp.value = '';
       provDominioCodigo(i);
     }
@@ -17733,7 +17754,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-27ci';
+    const VERSION_PAGINA = '2026-10-27cj';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261021_miscompras', fecha: '2026-10-21', titulo: 'Nuevo: 📦 Mis compras', mensaje: 'Ahora tus compras tienen **su propio botón dorado 📦 Mis compras** (abajo a la izquierda y arriba junto a la campana). Ahí ves **todas tus cuentas ordenadas por producto**, lo que acabas de comprar marcado como **NUEVA**, su **garantía** y el botón para **copiar**. Y al terminar una compra te lleva directo a ellas.' },
       { id: 'act_20261021_telegram', fecha: '2026-10-21', titulo: 'Compra por Telegram ✈️', mensaje: 'Ya puedes comprar desde nuestro **bot de Telegram**, 24/7 y con entrega al instante. Usa **tu misma cuenta**: en la tienda ve a **Mis datos → Usar mi cuenta en Telegram** y verás ahí tu **mismo saldo y tus compras**. Si eres nuevo en Telegram, tu **primera compra tiene descuento** 🎁.' },
