@@ -25,6 +25,10 @@
       #vistaAdmin.menu-vuelve #navPanelAdmin { animation: panEntraIzquierda .25s ease-out; }
       #vistaAdmin { overflow-x: clip; }
     }
+    @media (min-width: 1024px) {
+      #navPanelAdmin { position: sticky; top: 76px; max-height: calc(100vh - 92px); overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: #374151 transparent; }
+      #navPanelAdmin::-webkit-scrollbar { width: 6px; } #navPanelAdmin::-webkit-scrollbar-thumb { background: #374151; border-radius: 6px; } #navPanelAdmin::-webkit-scrollbar-thumb:hover { background: #10b981; }
+    }
     @media (min-width: 1024px) { #barraSeccionMovil { display: none !important; } }
 
     /* 💚 Botón "Ya pagué": late y lo cruza un destello para que el cliente lo vea */
@@ -12965,6 +12969,54 @@
     }
     // =================== 🌐 TARJETA DOMINIOS (admin) ===================
     let pdDias = 30;
+    // 📊 Gestión por proveedor (incluyéndote): usados · subidos · suspendidos sin subir · efectividad
+    function pgFecha(d) { const z = n => String(n).padStart(2, '0'); return d.getFullYear() + '-' + z(d.getMonth() + 1) + '-' + z(d.getDate()); }
+    function pgPintarFiltro() {
+      const c = document.getElementById('pdGestion'); if (!c) return; const hoy = pgFecha(new Date());
+      c.innerHTML = `<div class="rounded-2xl bg-gray-900 border border-gray-800 p-3.5">
+        <div class="flex flex-wrap items-center gap-2"><p class="text-sm font-black text-white mr-auto">📊 Gestión por proveedor</p>
+          <button type="button" onclick="pgRapido('hoy')" class="pg-chip px-2.5 py-1 rounded-full text-[11px] font-bold bg-gray-800 border border-gray-700 text-gray-200">Hoy</button>
+          <button type="button" onclick="pgRapido('mes')" class="pg-chip px-2.5 py-1 rounded-full text-[11px] font-bold bg-gray-800 border border-gray-700 text-gray-200">Este mes</button>
+          <button type="button" onclick="pgRapido('anio')" class="pg-chip px-2.5 py-1 rounded-full text-[11px] font-bold bg-gray-800 border border-gray-700 text-gray-200">Este año</button></div>
+        <div class="mt-2.5 flex flex-wrap items-end gap-2">
+          <label class="text-[10px] text-gray-400">Desde<input type="date" id="pgDesde" value="${hoy}" max="${hoy}" class="block mt-0.5 bg-gray-800 border border-gray-700 rounded-lg px-2 py-1.5 text-xs text-white"></label>
+          <label class="text-[10px] text-gray-400">Hasta<input type="date" id="pgHasta" value="${hoy}" max="${hoy}" class="block mt-0.5 bg-gray-800 border border-gray-700 rounded-lg px-2 py-1.5 text-xs text-white"></label>
+          <button type="button" onclick="pgCargar()" class="px-3 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-black text-xs font-black">Ver</button>
+          <button type="button" onclick="pgSinSubir()" class="px-3 py-1.5 rounded-lg bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/40 text-amber-200 text-xs font-black">🔑 Un código y sin subir</button></div>
+        <div id="pgTabla" class="mt-3"><p class="text-[11px] text-gray-500">Elige el rango y toca <b>Ver</b>.</p></div>
+        <div id="pgSinSubir" class="mt-3"></div></div>`;
+    }
+    // 🔑 Correos que recibieron UN solo código de Amazon y nunca se subieron al stock (en el rango elegido)
+    async function pgSinSubir() {
+      const t = document.getElementById('pgSinSubir'), d = (document.getElementById('pgDesde') || {}).value, a = (document.getElementById('pgHasta') || {}).value; if (!t) return;
+      if (!d || !a || d > a) { t.innerHTML = '<p class="text-[11px] text-red-300">Elige un rango válido.</p>'; return; }
+      t.innerHTML = '<p class="text-[11px] text-gray-400"><i class="fa-solid fa-spinner fa-spin mr-1"></i>Revisando los correos de código de Amazon…</p>';
+      let r; try { r = await llamarBackend('codigos_sin_subir', { desde: d, hasta: a }); } catch (e) { r = null; }
+      if (!r || !r.ok) { t.innerHTML = `<p class="text-[11px] text-red-300">${escaparHtml((r && r.error) || 'No se pudo revisar.')}</p>`; return; }
+      if (!r.lista.length) { t.innerHTML = '<p class="text-[11px] text-emerald-300">✅ Ningún correo con un solo código sin subir en ese rango.</p>'; return; }
+      window._pgSin = r.lista.map(x => x.correo).join('\n');
+      const f = x => { try { return new Date(x).toLocaleString('es-CO', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }); } catch (e) { return ''; } };
+      t.innerHTML = `<div class="rounded-xl border border-amber-500/30 bg-amber-500/5 p-2.5"><div class="flex items-center gap-2 mb-2"><p class="text-[12px] font-black text-amber-200 mr-auto">🔑 ${r.total} con un solo código y sin subir</p>
+        <button type="button" onclick="try{navigator.clipboard.writeText(window._pgSin);mostrarToast('Lista copiada')}catch(e){}" class="px-2.5 py-1 rounded-lg bg-gray-800 border border-gray-700 text-[11px] font-bold text-white">Copiar todos</button></div>
+        <div class="space-y-1 max-h-80 overflow-y-auto">${r.lista.map(x => `<div class="flex items-center gap-2 text-[11.5px]"><span class="font-mono text-white truncate flex-1 min-w-0">${escaparHtml(x.correo)}</span><span class="text-gray-400 shrink-0">${escaparHtml(x.de)}</span><span class="text-gray-500 shrink-0 tabular-nums">${escaparHtml(f(x.el))}</span></div>`).join('')}</div>
+        <p class="mt-2 text-[10px] text-gray-500">Empezaron a crear la cuenta (llegó 1 código de Amazon) y nunca llegó al stock.</p></div>`;
+    }
+    function pgRapido(t) { const h = new Date(), d = document.getElementById('pgDesde'), a = document.getElementById('pgHasta'); if (!d || !a) return;
+      a.value = pgFecha(h); d.value = t === 'hoy' ? pgFecha(h) : t === 'mes' ? pgFecha(new Date(h.getFullYear(), h.getMonth(), 1)) : pgFecha(new Date(h.getFullYear(), 0, 1)); pgCargar(); }
+    async function pgCargar() {
+      const t = document.getElementById('pgTabla'), d = (document.getElementById('pgDesde') || {}).value, a = (document.getElementById('pgHasta') || {}).value; if (!t) return;
+      if (!d || !a || d > a) { t.innerHTML = '<p class="text-[11px] text-red-300">Elige un rango válido (Desde no puede ser después de Hasta).</p>'; return; }
+      t.innerHTML = '<p class="text-[11px] text-gray-400"><i class="fa-solid fa-spinner fa-spin mr-1"></i>Calculando…</p>';
+      let r; try { r = await llamarBackend('dominios_gestion', { desde: d, hasta: a }); } catch (e) { r = null; }
+      if (!r || !r.ok) { t.innerHTML = `<p class="text-[11px] text-red-300">${escaparHtml((r && r.error) || 'No se pudo cargar.')}</p>`; return; }
+      if (!r.filas.length) { t.innerHTML = '<p class="text-[11px] text-gray-400">No hay correos generados en ese rango.</p>'; return; }
+      const tot = r.filas.reduce((o, f) => { o.u += f.usados; o.s += f.subidos; o.x += f.suspSinSubir; return o; }, { u: 0, s: 0, x: 0 });
+      const col = p => p >= 85 ? 'text-emerald-300' : p >= 65 ? 'text-amber-300' : 'text-red-300';
+      t.innerHTML = `<div class="overflow-x-auto"><table class="w-full text-[11.5px]"><thead><tr class="text-gray-400 text-left"><th class="py-1.5 pr-2 font-bold">Proveedor</th><th class="py-1.5 px-2 font-bold text-right">Usados</th><th class="py-1.5 px-2 font-bold text-right">Subidos</th><th class="py-1.5 px-2 font-bold text-right">Susp. sin subir</th><th class="py-1.5 pl-2 font-bold text-right">Efectividad</th></tr></thead><tbody>
+        ${r.filas.map(f => `<tr class="border-t border-gray-800 ${f.esYo ? 'bg-emerald-500/5' : ''}"><td class="py-1.5 pr-2 text-white font-bold">${escaparHtml(f.nombre)}</td><td class="py-1.5 px-2 text-right text-gray-200">${f.usados}</td><td class="py-1.5 px-2 text-right text-emerald-300">${f.subidos}</td><td class="py-1.5 px-2 text-right ${f.suspSinSubir ? 'text-red-300' : 'text-gray-500'}">${f.suspSinSubir}</td><td class="py-1.5 pl-2 text-right font-black ${col(f.efectividad)}">${f.usados ? f.efectividad + ' %' : '—'}</td></tr>`).join('')}
+        <tr class="border-t border-gray-700"><td class="py-1.5 pr-2 text-gray-300 font-black">Total</td><td class="py-1.5 px-2 text-right text-white font-black">${tot.u}</td><td class="py-1.5 px-2 text-right text-emerald-300 font-black">${tot.s}</td><td class="py-1.5 px-2 text-right text-red-300 font-black">${tot.x}</td><td class="py-1.5 pl-2 text-right font-black ${col(tot.u ? Math.round(tot.s * 100 / tot.u) : 0)}">${tot.u ? Math.round(tot.s * 100 / tot.u) + ' %' : '—'}</td></tr></tbody></table></div>
+        <p class="mt-2 text-[10px] text-gray-500">Usados = copió, pidió código, llegó Prime o se subió · Efectividad = subidos ÷ usados${r.limite ? ' · ⚠️ rango muy grande: puede estar incompleto, achícalo' : ''}.</p>`;
+    }
     async function abrirPanelDominios(fresco) {
       let v = document.getElementById('panelDominios');
       if (!v) { v = document.createElement('div'); v.id = 'panelDominios'; v.className = 'fixed inset-0 z-[56] bg-gray-950 overflow-y-auto';
@@ -12973,7 +13025,7 @@
           <div class="flex-1 min-w-0"><p class="text-base font-black text-white">🌐 Dominios</p><p id="pdSub" class="text-[11px] text-gray-400"></p></div>
           <select id="pdDias" onchange="pdDias=Number(this.value);abrirPanelDominios()" class="bg-gray-900 border border-gray-700 rounded-lg px-2 py-1.5 text-xs text-white"><option value="7">7 días</option><option value="30" selected>30 días</option><option value="90">90 días</option></select>
           <button type="button" onclick="abrirPanelDominios(true)" title="Actualizar" class="w-9 h-9 rounded-lg bg-white/5 border border-white/10 text-gray-300"><i class="fa-solid fa-rotate"></i></button></div></div>
-          <div class="max-w-6xl mx-auto px-4 pt-4 pb-24 space-y-3"><div id="pdCuerpo"></div><div id="pdDescanso"></div></div>`;
+          <div class="max-w-6xl mx-auto px-4 pt-4 pb-24 space-y-3"><div id="pdGestion"></div><div id="pdCuerpo"></div><div id="pdDescanso"></div></div>`;
         document.body.appendChild(v); }
       v.classList.remove('hidden'); document.body.style.overflow = 'hidden';
       const d = document.getElementById('pdDescanso'), caja = document.getElementById('misDominiosCaja');
@@ -12982,6 +13034,7 @@
       let r; try { r = await llamarBackend('dominios_panel', { dias: pdDias, fresco: !!fresco }); } catch (e) { r = null; }
       if (!r || !r.ok) { cu.innerHTML = '<p class="text-center text-red-400 text-sm py-10">No se pudo cargar. Toca 🔄.</p>'; return; }
       window._pd = r; pintarPanelDominios();
+      try { if (!document.getElementById('pgDesde')) pgPintarFiltro(); } catch (e) { /* nada */ }
     }
     function cerrarPanelDominios() { const v = document.getElementById('panelDominios'); if (v) v.classList.add('hidden'); document.body.style.overflow = ''; }
     function pdCopiar(lista) { try { navigator.clipboard.writeText(((window._pd || {})[lista] || []).map(x => x.e).join('\n')); mostrarToast('📋 Lista copiada'); } catch (e) { /* nada */ } }
@@ -17792,7 +17845,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-27cz';
+    const VERSION_PAGINA = '2026-10-27dc';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261021_miscompras', fecha: '2026-10-21', titulo: 'Nuevo: 📦 Mis compras', mensaje: 'Ahora tus compras tienen **su propio botón dorado 📦 Mis compras** (abajo a la izquierda y arriba junto a la campana). Ahí ves **todas tus cuentas ordenadas por producto**, lo que acabas de comprar marcado como **NUEVA**, su **garantía** y el botón para **copiar**. Y al terminar una compra te lleva directo a ellas.' },
       { id: 'act_20261021_telegram', fecha: '2026-10-21', titulo: 'Compra por Telegram ✈️', mensaje: 'Ya puedes comprar desde nuestro **bot de Telegram**, 24/7 y con entrega al instante. Usa **tu misma cuenta**: en la tienda ve a **Mis datos → Usar mi cuenta en Telegram** y verás ahí tu **mismo saldo y tus compras**. Si eres nuevo en Telegram, tu **primera compra tiene descuento** 🎁.' },
@@ -26990,7 +27043,7 @@ async function pintarPanelWa() {
 
     // 📶 Dos servidores: el de la PÁGINA (su propio cupo de Google) y el de CORREO (codigos@: lee pagos y códigos).
     // Las acciones que necesitan el correo van al servidor de correo; el resto, al de la página. Sin el segundo, todo va al único que haya.
-    const ACCIONES_SERVIDOR_CORREO = new Set(['saldo_regla_desde', 'otp', 'recarga_crear', 'recarga_binance_crear', 'recarga_cancelar', 'recarga_verificar', 'recarga_diagnostico', 'recarga_comprobante', 'pago_reportar', 'prov_correos', 'prov_comprobar', 'codigo_dominio', 'amz_otp', 'amz_otp_link', 'amz_salud', 'amz_revisada', 'amz_enlace_crear', 'codigo_enlace_obtener', 'salud', 'cupo', 'saldo_vence_resumen', 'saldo_vence_revertir', 'embudo_registro', 'embudo_registro_ver', 'wa_codigo', 'wa_codigo_admin', 'binance_tasa', 'wa_grupos_log', 'wa_seguimiento_ahora']);   // tg_revisar va al servidor de la página: ahí se revisan los botones de Telegram
+    const ACCIONES_SERVIDOR_CORREO = new Set(['codigos_sin_subir', 'saldo_regla_desde', 'otp', 'recarga_crear', 'recarga_binance_crear', 'recarga_cancelar', 'recarga_verificar', 'recarga_diagnostico', 'recarga_comprobante', 'pago_reportar', 'prov_correos', 'prov_comprobar', 'codigo_dominio', 'amz_otp', 'amz_otp_link', 'amz_salud', 'amz_revisada', 'amz_enlace_crear', 'codigo_enlace_obtener', 'salud', 'cupo', 'saldo_vence_resumen', 'saldo_vence_revertir', 'embudo_registro', 'embudo_registro_ver', 'wa_codigo', 'wa_codigo_admin', 'binance_tasa', 'wa_grupos_log', 'wa_seguimiento_ahora']);   // tg_revisar va al servidor de la página: ahí se revisan los botones de Telegram
     function obtenerBackendUrl(accion) {
       const pag = String((ajustesGeneralesConfig && ajustesGeneralesConfig.backendUrl) || '').trim();
       const cor = String((ajustesGeneralesConfig && ajustesGeneralesConfig.backendUrlCorreo) || '').trim();
@@ -27010,7 +27063,7 @@ async function pintarPanelWa() {
       return { cuentas: legado, stock: legado.length || stockPublico };
     }
 
-    const VERSION_SERVIDOR_NECESARIA = '2026-10-27s';   // la versión del servidor que necesita esta página
+    const VERSION_SERVIDOR_NECESARIA = '2026-10-27v';   // la versión del servidor que necesita esta página
     async function llamarBackend(accion, datos) {
       window._llamadasEnCurso = (window._llamadasEnCurso || 0) + 1;
       try { return await llamarBackendBase(accion, datos); } finally { window._llamadasEnCurso = Math.max(0, (window._llamadasEnCurso || 1) - 1); }
