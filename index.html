@@ -13375,7 +13375,12 @@
           </div>`).join('')}</div>
         <div class="flex gap-2 mb-3"><input id="nuevoDominio" type="text" placeholder="ej: epicchannels.quest" class="flex-1 min-w-0 bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white font-mono"><button type="button" onclick="agregarDominio()" class="shrink-0 px-3 py-2 rounded-xl bg-violet-500/20 border border-violet-500/50 text-violet-200 font-bold text-xs">+ Agregar</button></div>
         <p class="text-[10px] text-gray-500 mb-2">Primero conéctalo en Cloudflare (Email Routing → catch-all → tu buzón). Aquí solo lo registras para que el sistema lo use.</p>
-        <label class="flex items-center justify-between gap-3 text-[12px] text-gray-200 mb-3 p-2 rounded-xl bg-gray-800/60 border border-gray-700"><span>🔄 Reactivar solo <span class="text-gray-500">(los que descansaron por salud vuelven a los 2 días)</span></span><input type="checkbox" id="provReactAuto" ${(ajustesGeneralesConfig && ajustesGeneralesConfig.provReactivarAuto === false) ? '' : 'checked'} class="accent-violet-500 w-5 h-5 shrink-0"></label>
+        <label class="flex items-center justify-between gap-3 text-[12px] text-gray-200 mb-3 p-2 rounded-xl bg-gray-800/60 border border-gray-700"><span>🔄 Reactivar solo <span class="text-gray-500">(<b>Descansar</b> vuelve solo a los 2 días, lo pongas tú o el sistema · <b>Apagar</b> no vuelve)</span></span><input type="checkbox" id="provReactAuto" ${(ajustesGeneralesConfig && ajustesGeneralesConfig.provReactivarAuto === false) ? '' : 'checked'} class="accent-violet-500 w-5 h-5 shrink-0"></label>
+        <div class="mb-3 p-2.5 rounded-xl bg-gray-800/60 border border-gray-700 text-[12px] text-gray-200">😴 <b>Mandar a descanso automático</b> cuando en el día:
+          <div class="mt-2 grid grid-cols-2 gap-2">
+            <label class="text-[10.5px] text-gray-400">Suspendidas limpias (0 = no usar)<input type="number" id="domDescN" min="0" max="50" value="${(ajustesGeneralesConfig && ajustesGeneralesConfig.domDescansoN !== undefined && ajustesGeneralesConfig.domDescansoN !== '') ? escaparHtml(String(ajustesGeneralesConfig.domDescansoN)) : 4}" class="mt-1 w-full bg-gray-900 border border-gray-700 rounded-lg px-2 py-1.5 text-xs text-white"></label>
+            <label class="text-[10.5px] text-gray-400">O % de las trabajadas hoy (0 = no usar)<input type="number" id="domDescPct" min="0" max="100" value="${escaparHtml(String((ajustesGeneralesConfig && ajustesGeneralesConfig.domDescansoPct) || 0))}" class="mt-1 w-full bg-gray-900 border border-gray-700 rounded-lg px-2 py-1.5 text-xs text-white"></label></div>
+          <p class="mt-1.5 text-[10px] text-gray-500">Solo cuentan las suspensiones que llegan hoy. Se guarda con <b>Guardar dominios</b>.</p></div>
         <label class="mt-3 flex items-start justify-between gap-3 p-3 rounded-xl bg-gray-800/60 border border-gray-700 cursor-pointer"><span class="text-xs text-gray-200">🧪 <b>Mis cuentas no cuentan para dormir el dominio</b><br><span class="text-[10.5px] text-gray-400">Las suspensiones de cuentas que creaste tú (tus pruebas) no suman para mandar el dominio a descanso. El aviso y el stock siguen igual.</span></span><input type="checkbox" id="chkPropiasFalsaAlarma" onchange="guardarPropiasFalsaAlarma(this.checked)" ${(ajustesGeneralesConfig && ajustesGeneralesConfig.propiasNoDescanso === true) ? 'checked' : ''} class="mt-1 w-4 h-4 accent-violet-500 shrink-0"></label>
         <button type="button" onclick="guardarMisDominios(this)" class="w-full py-2 rounded-xl bg-violet-500 hover:bg-violet-400 text-white font-black text-xs">Guardar dominios</button>`;
     }
@@ -13393,7 +13398,7 @@
       if (btn) btn.disabled = true;
       const reactEl = document.getElementById('provReactAuto'); const reactAuto = reactEl ? !!reactEl.checked : true;
       const rcEl = document.getElementById('provRotarCada'); const rotarCada = rcEl ? Math.min(100, Math.max(1, parseInt(rcEl.value, 10) || 5)) : 5;
-      try { const r = await llamarBackend('dominios_guardar', { lista, rotarCada }); if (r && r.ok) { misDominiosCfg = r.cfg; try { await db.collection('configuracion').doc('ajustes').set({ provReactivarAuto: reactAuto }, { merge: true }); ajustesGeneralesConfig.provReactivarAuto = reactAuto; } catch (e) { /* nada */ } pintarMisDominios(); mostrarToast('Dominios guardados'); } else alert((r && r.error) || 'No se pudo.'); }
+      try { const r = await llamarBackend('dominios_guardar', { lista, rotarCada }); if (r && r.ok) { misDominiosCfg = r.cfg; try { const dN = Math.max(0, Math.min(50, parseInt((document.getElementById('domDescN') || {}).value, 10) || 0)), dP = Math.max(0, Math.min(100, parseInt((document.getElementById('domDescPct') || {}).value, 10) || 0)); await db.collection('configuracion').doc('ajustes').set({ provReactivarAuto: reactAuto, domDescansoN: dN, domDescansoPct: dP }, { merge: true }); ajustesGeneralesConfig.provReactivarAuto = reactAuto; ajustesGeneralesConfig.domDescansoN = dN; ajustesGeneralesConfig.domDescansoPct = dP; } catch (e) { /* nada */ } pintarMisDominios(); mostrarToast('Dominios guardados'); } else alert((r && r.error) || 'No se pudo.'); }
       catch (e) { alert(e.message); } finally { if (btn) btn.disabled = false; }
     }
 
@@ -17845,7 +17850,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-27de';
+    const VERSION_PAGINA = '2026-10-28a';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261021_miscompras', fecha: '2026-10-21', titulo: 'Nuevo: 📦 Mis compras', mensaje: 'Ahora tus compras tienen **su propio botón dorado 📦 Mis compras** (abajo a la izquierda y arriba junto a la campana). Ahí ves **todas tus cuentas ordenadas por producto**, lo que acabas de comprar marcado como **NUEVA**, su **garantía** y el botón para **copiar**. Y al terminar una compra te lleva directo a ellas.' },
       { id: 'act_20261021_telegram', fecha: '2026-10-21', titulo: 'Compra por Telegram ✈️', mensaje: 'Ya puedes comprar desde nuestro **bot de Telegram**, 24/7 y con entrega al instante. Usa **tu misma cuenta**: en la tienda ve a **Mis datos → Usar mi cuenta en Telegram** y verás ahí tu **mismo saldo y tus compras**. Si eres nuevo en Telegram, tu **primera compra tiene descuento** 🎁.' },
@@ -27075,7 +27080,7 @@ async function pintarPanelWa() {
       return { cuentas: legado, stock: legado.length || stockPublico };
     }
 
-    const VERSION_SERVIDOR_NECESARIA = '2026-10-27v';   // la versión del servidor que necesita esta página
+    const VERSION_SERVIDOR_NECESARIA = '2026-10-28a';   // la versión del servidor que necesita esta página
     async function llamarBackend(accion, datos) {
       window._llamadasEnCurso = (window._llamadasEnCurso || 0) + 1;
       try { return await llamarBackendBase(accion, datos); } finally { window._llamadasEnCurso = Math.max(0, (window._llamadasEnCurso || 1) - 1); }
