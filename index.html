@@ -847,6 +847,7 @@
       <div class="p-5 bg-gradient-to-br from-emerald-900/40 to-gray-900 border border-emerald-500/40 rounded-2xl shadow-xl">
         <p class="text-[11px] font-bold text-emerald-300 uppercase tracking-wider">Se te debe</p>
         <p id="provDebe" class="text-4xl font-black text-white mt-1">$0</p>
+        <p id="provDebePend" class="hidden mt-1 text-[12px] font-bold text-amber-200"></p>
         <p id="provAvisoPago" class="hidden mt-2 text-[11px] font-bold text-amber-300 bg-amber-500/10 border border-amber-500/30 rounded-lg px-2.5 py-1.5"><i class="fa-solid fa-triangle-exclamation mr-1"></i>Agrega tu Nequi o tu DaviPlata más abajo para que podamos pagarte.</p>
         <div class="grid grid-cols-3 gap-2 mt-4 text-center">
           <div class="p-2 rounded-xl bg-gray-900/70 border border-gray-800"><p id="provEnRevision" class="text-base font-black text-amber-300">0</p><p class="text-[10px] text-gray-400 leading-tight">cuentas en revisión</p></div>
@@ -13122,6 +13123,11 @@
       const set = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v; };
       set('provDebe', formatoCOP(debe));
       set('provEnRevision', String(suma(lotes.filter(l => l.estado === 'pendiente'), l => l.cantidad)));
+      // ⏳ Plata en camino: cuentas ya subidas (con Prime) que esperan aprobación, al precio del último lote aprobado de ese producto
+      try { const ultCosto = {}; aprobados.slice().sort((a, b) => String(a.aprobadoEl || a.creadoEl).localeCompare(String(b.aprobadoEl || b.creadoEl))).forEach(l => { if (Number(l.costoUnitario) > 0) ultCosto[l.productoId] = Number(l.costoUnitario); });
+        const pend = lotes.filter(l => l.estado === 'pendiente' && !l.esAbono), nPend = suma(pend, l => l.cantidad), estPend = suma(pend, l => (Number(l.cantidad) || 0) * (ultCosto[l.productoId] || 0));
+        const eP = document.getElementById('provDebePend');
+        if (eP) { eP.classList.toggle('hidden', !nPend); eP.textContent = nPend ? '⏳ + ' + (estPend ? formatoCOP(estPend) + ' ' : '') + 'en camino · ' + nPend + ' cuenta' + (nPend === 1 ? '' : 's') + ' por aprobar' : ''; } } catch (e) { /* nada */ }
       set('provAprobadas', String(suma(aprobados, l => l.cantidad)));
       { const hoy = new Date().toLocaleDateString('es-CO'), esHoy = f => !!f && new Date(f).toLocaleDateString('es-CO') === hoy, reales = lotes.filter(l => !l.esAbono);
         set('provHoySubidas', String(suma(reales.filter(l => esHoy(l.creadoEl)), l => l.cantidadEnviada || l.cantidad)));
@@ -17786,7 +17792,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-27cy';
+    const VERSION_PAGINA = '2026-10-27cz';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261021_miscompras', fecha: '2026-10-21', titulo: 'Nuevo: 📦 Mis compras', mensaje: 'Ahora tus compras tienen **su propio botón dorado 📦 Mis compras** (abajo a la izquierda y arriba junto a la campana). Ahí ves **todas tus cuentas ordenadas por producto**, lo que acabas de comprar marcado como **NUEVA**, su **garantía** y el botón para **copiar**. Y al terminar una compra te lleva directo a ellas.' },
       { id: 'act_20261021_telegram', fecha: '2026-10-21', titulo: 'Compra por Telegram ✈️', mensaje: 'Ya puedes comprar desde nuestro **bot de Telegram**, 24/7 y con entrega al instante. Usa **tu misma cuenta**: en la tienda ve a **Mis datos → Usar mi cuenta en Telegram** y verás ahí tu **mismo saldo y tus compras**. Si eres nuevo en Telegram, tu **primera compra tiene descuento** 🎁.' },
