@@ -13366,7 +13366,7 @@
           <div class="flex items-center gap-2 p-2 rounded-xl bg-gray-800/70 border border-gray-700">
             <span class="flex-1 min-w-0 text-[12px] font-mono text-white truncate">${escaparHtml(x.d)}${x.d === base ? ' <span class=\"text-[9px] text-gray-500\">(principal)</span>' : ''}</span>
             <span class="text-[11px] font-bold shrink-0">${badge(x.estado)}</span>
-            <select data-dom-i="${i}" class="shrink-0 bg-gray-900 border border-gray-700 rounded-lg text-[11px] text-white px-1.5 py-1">
+            <select data-dom-i="${i}" data-dos-toques class="shrink-0 bg-gray-900 border border-gray-700 rounded-lg text-[11px] text-white px-1.5 py-1">
               <option value="activo" ${x.estado === 'activo' ? 'selected' : ''}>Activar</option>
               <option value="descanso" ${x.estado === 'descanso' ? 'selected' : ''}>Descansar</option>
               <option value="apagado" ${x.estado === 'apagado' ? 'selected' : ''}>Apagar</option>
@@ -17845,7 +17845,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-27dc';
+    const VERSION_PAGINA = '2026-10-27de';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261021_miscompras', fecha: '2026-10-21', titulo: 'Nuevo: 📦 Mis compras', mensaje: 'Ahora tus compras tienen **su propio botón dorado 📦 Mis compras** (abajo a la izquierda y arriba junto a la campana). Ahí ves **todas tus cuentas ordenadas por producto**, lo que acabas de comprar marcado como **NUEVA**, su **garantía** y el botón para **copiar**. Y al terminar una compra te lleva directo a ellas.' },
       { id: 'act_20261021_telegram', fecha: '2026-10-21', titulo: 'Compra por Telegram ✈️', mensaje: 'Ya puedes comprar desde nuestro **bot de Telegram**, 24/7 y con entrega al instante. Usa **tu misma cuenta**: en la tienda ve a **Mis datos → Usar mi cuenta en Telegram** y verás ahí tu **mismo saldo y tus compras**. Si eres nuevo en Telegram, tu **primera compra tiene descuento** 🎁.' },
@@ -22356,10 +22356,22 @@
     }
     function cerrarSelectorPropio() { const m = document.getElementById('selPropio'); if (m) { m.classList.remove('abierto'); m.innerHTML = ''; } selPropioActual = null; }
     (function () {
+      // 👆 Si el dedo se movió (estabas bajando la pantalla) NO se abre la lista
+      let toqueIni = null;
+      document.addEventListener('touchstart', ev => { try { const t = ev.touches[0]; toqueIni = { x: t.clientX, y: t.clientY, t: Date.now() }; } catch (e) { toqueIni = null; } }, { capture: true, passive: true });
       const interceptar = ev => {
         const sel = ev.target && ev.target.closest ? ev.target.closest('select') : null;
         if (!sel || sel.multiple || sel.disabled || sel.dataset.nativo !== undefined || !usarSelectorPropio()) return;
+        if (ev.type === 'touchend') { try { const t = ev.changedTouches[0]; if (toqueIni && (Math.abs(t.clientX - toqueIni.x) > 10 || Math.abs(t.clientY - toqueIni.y) > 10 || Date.now() - toqueIni.t > 700)) { ev.preventDefault(); return; } } catch (e) { /* nada */ } }
         ev.preventDefault(); ev.stopPropagation(); try { sel.blur(); } catch (e) { /* nada */ }
+        // ✌️ Listas delicadas (data-dos-toques): el 1.er toque solo la marca; el 2.º (antes de 3 s) la abre
+        // en TODO el panel del equipo: cualquier lista que cambia algo al instante (las de formularios siguen con 1 toque)
+        let dosT = sel.dataset.dosToques !== undefined; try { if (!dosT && sel.hasAttribute('onchange') && esStaffSesion() && !modoPruebaCliente) dosT = true; } catch (e) { /* nada */ }
+        if (dosT && ev.type !== 'keydown') { const ya = Number(sel.dataset.armado || 0);
+          if (!ya || Date.now() - ya > 3000) { sel.dataset.armado = String(Date.now()); sel.classList.add('ring-2', 'ring-amber-400');
+            try { mostrarToast('Toca otra vez para cambiar'); } catch (e) { /* nada */ }
+            setTimeout(() => { try { if (Date.now() - Number(sel.dataset.armado || 0) >= 2900) { sel.dataset.armado = ''; sel.classList.remove('ring-2', 'ring-amber-400'); } } catch (e) { /* nada */ } }, 3000); return; }
+          sel.dataset.armado = ''; sel.classList.remove('ring-2', 'ring-amber-400'); }
         if (ev.type === 'mousedown' || ev.type === 'touchend' || ev.type === 'click' || ev.type === 'keydown') { if (!document.getElementById('selPropio') || !document.getElementById('selPropio').classList.contains('abierto')) abrirSelectorPropio(sel); }
       };
       document.addEventListener('mousedown', interceptar, true);
