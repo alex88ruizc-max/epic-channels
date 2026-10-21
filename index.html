@@ -6608,7 +6608,7 @@
             htmlTabla += `
               <tr class="hover:bg-gray-800/40">
                 <td class="px-3 py-2 text-gray-400 whitespace-nowrap">${h.fecha}</td>
-                <td class="px-3 py-2 font-semibold text-emerald-300">${h.email}</td>
+                <td class="px-3 py-2 font-semibold text-emerald-300">${escaparHtml(h.email)}</td>
                 <td class="px-3 py-2 text-white">${h.producto}</td>
                 <td class="px-3 py-2 text-center text-gray-300">${h.cantidad}</td>
                 <td class="px-3 py-2 text-right font-bold text-emerald-400 whitespace-nowrap">${formatoCOP(h.total)} COP</td>
@@ -7279,6 +7279,10 @@
       return String(valor || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '&quot;').replace(/\n/g, ' ');
     }
 
+    // ✍️ Nombres de registrados: solo letras (con tildes, ñ, ü) y espacios. Los nombres viejos no se tocan; se valida al cambiarlos.
+    function limpiarEspaciosNombre(v) { return String(v || '').replace(/\s+/g, ' ').trim(); }
+    function nombreSoloLetrasOk(v) { return /^[A-Za-zÁÉÍÓÚáéíóúÑñÜü ]{2,60}$/.test(limpiarEspaciosNombre(v)); }
+    const MSG_NOMBRE_LETRAS = 'El nombre solo puede tener letras y espacios (sin números ni símbolos). Ejemplo: Juan Pérez';
     function escaparHtml(valor) {
       return String(valor || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
     }
@@ -10615,7 +10619,7 @@
           const subida = (raw && typeof raw === 'object' && raw.subidoEl) ? formatearFechaHoraCorta(new Date(raw.subidoEl)) : '';
           return `
             <div class="flex items-center justify-between gap-2 p-1.5 bg-gray-800/60 rounded-lg border border-gray-700/50 mb-1">
-              <div class="min-w-0"><div class="truncate"><span class="text-gray-500 mr-1.5">${i + 1}.</span>${c.email} : ${c.pass}${c.costo > 0 ? `<span class="ml-2 text-[10px] text-amber-400 font-sans">(costo ${formatoCOP(c.costo)})</span>` : ''}</div>
+              <div class="min-w-0"><div class="truncate"><span class="text-gray-500 mr-1.5">${i + 1}.</span>${escaparHtml(c.email)} : ${escaparHtml(c.pass)}${c.costo > 0 ? `<span class="ml-2 text-[10px] text-amber-400 font-sans">(costo ${formatoCOP(c.costo)})</span>` : ''}</div>
               <div class="text-[10px] font-sans mt-0.5 ${subida ? 'text-sky-300' : 'text-gray-500'}"><i class="fa-regular fa-calendar mr-1"></i>${subida ? 'Subida el ' + subida : 'Sin fecha de subida registrada'}</div></div>
               <button onclick="eliminarCuentaIndividual('${docId}', ${i})" title="Eliminar esta cuenta" class="px-2 py-1 bg-red-500/20 hover:bg-red-500/40 text-red-400 rounded text-xs transition shrink-0">
                 <i class="fa-solid fa-trash-can"></i>
@@ -10730,7 +10734,7 @@
             const uid = doc.id;
             const permitidos = u.productos_permitidos || [];
             const bloqueados = u.productos_bloqueados || [];
-            const nombreCliente = u.nombre ? `<span class="font-bold text-white block">${u.nombre}</span><span class="text-[11px] text-gray-400 font-mono">${u.email || ''}</span>` : (u.email ? `<span class="font-bold text-white block">${u.email}</span>` : `<span class="font-bold text-amber-300 block"><i class="fa-solid fa-triangle-exclamation mr-1"></i>Ficha incompleta (sin correo)</span><span class="text-[10px] text-gray-500 font-mono block">${uid}</span>`);
+            const nombreCliente = u.nombre ? `<span class="font-bold text-white block">${escaparHtml(u.nombre)}</span><span class="text-[11px] text-gray-400 font-mono">${escaparHtml(u.email || '')}</span>` : (u.email ? `<span class="font-bold text-white block">${escaparHtml(u.email)}</span>` : `<span class="font-bold text-amber-300 block"><i class="fa-solid fa-triangle-exclamation mr-1"></i>Ficha incompleta (sin correo)</span><span class="text-[10px] text-gray-500 font-mono block">${uid}</span>`);
             const chipId = esIdEpic(u.idEpic) ? `<button type="button" onclick="event.stopPropagation();copiarIdContacto('${escaparJsAttr(u.idEpic)}','${escaparJsAttr(u.nombre || '')}')" title="Copiar nombre para el contacto de WhatsApp" class="mt-0.5 inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-violet-500/15 border border-violet-500/30 text-violet-200 text-[10px] font-mono">🔑 ${escaparHtml(u.idEpic)}</button>` : '';
             // 🟢 WhatsApp conectado al bot (solo lo ve el administrador)
             const chipWa = !esAdminSesionActual() ? '' : (u.waVinculadoEl
@@ -10802,7 +10806,7 @@
                   <button onclick="abrirModalEditarCliente('${uid}', '${escaparJsAttr(u.email)}', '${escaparJsAttr(u.nombre)}')" class="mt-1 text-[10px] bg-gray-800 hover:bg-gray-700 text-emerald-400 px-2 py-0.5 rounded"><i class="fa-solid fa-pen mr-1"></i> Editar perfil</button>
                   <button onclick="verRecargasCliente('${uid}', '${escaparJsAttr(u.nombre || u.email || '')}')" class="mt-1 text-[10px] bg-gray-800 hover:bg-gray-700 text-sky-300 px-2 py-0.5 rounded"><i class="fa-solid fa-receipt mr-1"></i> Recargas</button>
                 </td>
-                <td class="hidden md:table-cell px-4 py-3 text-xs text-gray-400">${u.whatsapp || 'Sin WhatsApp'}</td>
+                <td class="hidden md:table-cell px-4 py-3 text-xs text-gray-400">${escaparHtml(u.whatsapp || 'Sin WhatsApp')}</td>
                 <td class="hidden md:table-cell px-4 py-3">
                   <div class="flex items-center gap-2">
                     <span class="font-bold text-emerald-400">$${(u.saldo || 0).toLocaleString('es-CO')}${htmlVenceSaldoU(Object.assign({ uid: uid }, u))}</span>
@@ -10970,6 +10974,7 @@
       const saldoTxt = val('editClienteSaldo');
 
       if (!nuevoEmail) { alert('El correo de acceso no puede quedar vacío.'); return; }
+      if (nombre && limpiarEspaciosNombre(nombre) !== limpiarEspaciosNombre(orig.nombre) && !nombreSoloLetrasOk(nombre)) { alert(MSG_NOMBRE_LETRAS); return; }
       if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(nuevoEmail)) { alert('El correo no es válido: ' + nuevoEmail); return; }
       if (password && password.length < 6) { alert('La contraseña nueva debe tener al menos 6 caracteres.'); return; }
       // Saldo vacío = $0
@@ -11278,9 +11283,10 @@
     async function crearUsuarioExpress(e) {
       e.preventDefault();
       const email = document.getElementById('expEmail').value.trim();
-      const nombre = document.getElementById('expNombre').value.trim();
-      const whatsapp = document.getElementById('expWhatsapp').value.trim();
+      const nombre = limpiarEspaciosNombre(document.getElementById('expNombre').value);
+      const whatsapp = (function (v) { v = String(v || '').trim(); return (v.charAt(0) === '+' ? '+' : '') + v.replace(/\D/g, ''); })(document.getElementById('expWhatsapp').value);   // 📱 solo números (con + si es de otro país)
       const password = document.getElementById('expPassword').value;
+      if (nombre && !nombreSoloLetrasOk(nombre)) { alert(MSG_NOMBRE_LETRAS); return; }
 
       if (password.length < 6) {
         alert("La contraseña temporal debe tener al menos 6 caracteres.");
@@ -11853,7 +11859,7 @@
         tbody.innerHTML += `
           <tr class="hover:bg-gray-800/40">
             <td class="px-4 py-3 text-xs text-gray-400">${new Date(r.fecha).toLocaleDateString('es-CO', { day: '2-digit', month: '2-digit', year: 'numeric' })}</td>
-            <td class="px-4 py-3 text-white">${r.usuarioEmail}</td>
+            <td class="px-4 py-3 text-white">${escaparHtml(r.usuarioEmail)}</td>
             <td class="px-4 py-3 font-bold text-emerald-400">$${(r.monto || 0).toLocaleString('es-CO')}</td>
             <td class="px-4 py-3 text-right space-x-2">
               <button onclick="aprobarRecarga('${doc.id}', '${r.usuarioId}', ${r.monto})" class="px-3 py-1 bg-emerald-500 hover:bg-emerald-400 text-black font-bold rounded-lg text-xs transition">Aprobar</button>
@@ -12611,9 +12617,10 @@
         const fila = x => `<div><div class="flex justify-between text-[12px]"><span class="text-gray-200 truncate pr-2">${escaparHtml(x.nombre)}</span><span class="${x.pct >= 20 ? 'text-amber-300' : 'text-gray-400'} shrink-0">${x.pct}% · ${x.susp}/${x.total}</span></div><div class="mt-1">${barra(x.vivas, x.susp)}</div></div>`;
         const rev = (r.porRevisar || []);
         cont.innerHTML = `
-          <div class="grid grid-cols-3 gap-2">
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
             <div class="p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-center"><p class="text-[10px] text-gray-400">✅ Vivas</p><p class="text-xl font-black text-emerald-300">${r.vivas}</p></div>
             <div class="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-center"><p class="text-[10px] text-gray-400">⛔ Suspendidas</p><p class="text-xl font-black text-amber-300">${r.suspendidas}</p></div>
+            <div class="p-2.5 rounded-xl bg-sky-500/10 border border-sky-500/30 text-center"><p class="text-[10px] text-gray-400">⏸ Pausadas por Amazon</p><p class="text-xl font-black text-sky-300">${Number(r.pausadas) || 0}</p></div>
             <div class="p-2.5 rounded-xl bg-gray-800 border border-gray-700 text-center"><p class="text-[10px] text-gray-400">💀 Caída</p><p class="text-xl font-black text-white">${r.tasa}%</p></div>
           </div>
           ${r.productos && r.productos.length ? `<div class="space-y-2.5"><p class="text-xs font-black text-gray-300">Por producto · más afectados arriba</p>${r.productos.map(fila).join('')}</div>` : ''}
@@ -15741,6 +15748,42 @@
     async function bcPermitirAviso(id, si) {
       try { const r = await llamarBackend('aviso_permitir', { id: id, si: si }); if (!r || !r.ok) throw new Error((r && r.error) || 'No se pudo.'); mostrarToast(si ? '✅ Listo: el cliente ya puede reportar esa cuenta' : 'Bloqueado otra vez'); buscarCuentaAdmin(); } catch (e) { alert(e.message); }
     }
+    // 🚫 Retirar a mano una cuenta del stock (ventana centrada; solo se cierra con sus botones). Se puede devolver con "Devolver al stock".
+    function bcRetirarStock(correo, producto) {
+      if (!esAdminSesionActual()) return;
+      const ant = document.getElementById('bcRetirarModal'); if (ant) ant.remove();
+      const m = document.createElement('div'); m.id = 'bcRetirarModal';
+      m.className = 'fixed inset-0 z-[9999] bg-black/75 flex items-center justify-center p-4';
+      const chip = (v) => `<button type="button" data-mot="${v}" onclick="bcRetirarMotivo(this)" class="bc-mot px-3 py-1.5 rounded-full text-xs font-black border border-gray-700 bg-gray-800 text-gray-200">${v}</button>`;
+      m.innerHTML = `<div class="bg-gray-900 border border-red-500/40 rounded-2xl max-w-sm w-full p-5 shadow-2xl" role="dialog" aria-modal="true">
+        <div class="flex items-start justify-between gap-3"><p class="text-sm font-black text-white"><i class="fa-solid fa-ban text-red-400 mr-1.5"></i>Retirar del stock</p>
+          <button type="button" onclick="document.getElementById('bcRetirarModal').remove()" aria-label="Cerrar" class="w-8 h-8 shrink-0 rounded-lg bg-gray-800 text-gray-300 hover:bg-gray-700"><i class="fa-solid fa-xmark"></i></button></div>
+        <p class="text-xs text-gray-300 mt-2">¿Retirar <b class="font-mono text-white break-all">${escaparHtml(correo)}</b> de <b class="text-white">${escaparHtml(producto || 'su producto')}</b>?</p>
+        <p class="text-[11px] text-gray-400 mt-3 mb-1.5">Motivo</p>
+        <div class="flex flex-wrap gap-2">${chip('Suspendida')}${chip('Dañada')}${chip('Otro')}</div>
+        <input id="bcRetirarOtro" type="text" maxlength="50" placeholder="Escribe el motivo" class="hidden mt-2 w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-red-400">
+        <p class="text-[10.5px] text-gray-500 mt-3">No se borra: queda en retiradas y la puedes devolver con "Devolver al stock". No le descuenta nada al proveedor.</p>
+        <div class="flex gap-2 mt-4"><button type="button" onclick="document.getElementById('bcRetirarModal').remove()" class="flex-1 py-2 rounded-xl bg-gray-800 border border-gray-700 text-gray-200 text-sm font-bold">Cancelar</button>
+          <button type="button" id="bcRetirarOk" onclick="bcRetirarConfirmar('${escaparJsAttr(correo)}')" class="flex-1 py-2 rounded-xl bg-red-500 hover:bg-red-400 text-white text-sm font-black">Retirar</button></div></div>`;
+      document.body.appendChild(m);
+    }
+    function bcRetirarMotivo(b) {
+      document.querySelectorAll('#bcRetirarModal .bc-mot').forEach(x => { x.classList.remove('bg-red-500', 'text-white', 'border-red-400'); x.classList.add('bg-gray-800', 'text-gray-200', 'border-gray-700'); });
+      b.classList.remove('bg-gray-800', 'text-gray-200', 'border-gray-700'); b.classList.add('bg-red-500', 'text-white', 'border-red-400');
+      const otro = document.getElementById('bcRetirarOtro'); if (otro) { otro.classList.toggle('hidden', b.dataset.mot !== 'Otro'); if (b.dataset.mot === 'Otro') otro.focus(); }
+    }
+    async function bcRetirarConfirmar(correo) {
+      const sel = document.querySelector('#bcRetirarModal .bc-mot.bg-red-500');
+      if (!sel) { mostrarToast('Elige el motivo'); return; }
+      let motivo = sel.dataset.mot;
+      if (motivo === 'Otro') { const t = String((document.getElementById('bcRetirarOtro') || {}).value || '').trim(); if (!t) { mostrarToast('Escribe el motivo'); return; } motivo = t.slice(0, 50); }
+      const btn = document.getElementById('bcRetirarOk'); if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>'; }
+      try { const r = await llamarBackend('cuenta_retirar_stock', { correo: correo, motivo: motivo }); if (!r || !r.ok) throw new Error((r && r.error) || 'No se pudo.');
+        const m = document.getElementById('bcRetirarModal'); if (m) m.remove();
+        mostrarToast('🚫 Retirada de ' + (r.producto || 'el stock') + ' (quedan ' + r.stock + ')');
+        setTimeout(() => { try { buscarCuentaAdmin(); } catch (e) { /* nada */ } }, 1500); }
+      catch (e) { if (btn) { btn.disabled = false; btn.innerHTML = 'Retirar'; } alert(e.message); }
+    }
     async function bcDevolverStock(correo) {
       const pid = (document.getElementById('bcDevProd') || {}).value || '';
       if (!pid || !await confirmarModal('¿Devolver esta cuenta al stock? Se borra su registro de venta y se podrá vender otra vez.\n\nHazlo solo si estás seguro de que no la tiene ningún cliente.', { textoAceptar: 'Sí, devolver' })) return;
@@ -15777,7 +15820,8 @@
         const lote = local.lotes.filter(l => l.lote.estado === 'aprobado' && l.email === x.email)[0];
         const subida = bcFecha(x.subidoEl) || (lote ? bcFecha(lote.lote.aprobadoEl || lote.lote.creadoEl) + ' (según el lote del proveedor)' : '');
         const quienS = bcQuienSubio({ a: x.aportadoNombre, p: x.subidoPor }, lote);
-        html += tarjeta('En stock', 'fa-box', 'text-emerald-400', fila('Producto', escaparHtml(x.producto)) + fila('Subida', subida ? escaparHtml(subida) : '<span class="text-gray-500">sin fecha registrada</span>') + fila('Subida por', quienS ? escaparHtml(quienS) : '<span class="text-gray-500">sin registro (cuenta antigua)</span>') + (x.costo > 0 ? fila('Costo', escaparHtml(formatoCOP(x.costo))) : '') + fila('Estado', 'disponible para vender'));
+        html += tarjeta('En stock', 'fa-box', 'text-emerald-400', fila('Producto', escaparHtml(x.producto)) + fila('Subida', subida ? escaparHtml(subida) : '<span class="text-gray-500">sin fecha registrada</span>') + fila('Subida por', quienS ? escaparHtml(quienS) : '<span class="text-gray-500">sin registro (cuenta antigua)</span>') + (x.costo > 0 ? fila('Costo', escaparHtml(formatoCOP(x.costo))) : '') + fila('Estado', 'disponible para vender')
+          + (esAdminSesionActual() && obtenerBackendUrl() ? `<button type="button" onclick="bcRetirarStock('${escaparJsAttr(x.email)}', '${escaparJsAttr(x.producto)}')" class="mt-3 px-3 py-1.5 rounded-lg text-[11px] font-black bg-red-500/15 border border-red-500/40 text-red-300 hover:bg-red-500/25"><i class="fa-solid fa-ban mr-1"></i>Retirar del stock</button>` : ''));
       });
 
       compras.slice(0, 25).forEach(c => {
@@ -17850,8 +17894,9 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-28a';
+    const VERSION_PAGINA = '2026-10-28b';
     const ACTUALIZACIONES_PAGINA = [
+      { id: 'act_20261021_nombre', fecha: '2026-10-21', titulo: 'Tu nombre, más claro ✍️', mensaje: 'En **Mis datos**, tu nombre ahora se escribe **solo con letras y espacios** (sin números ni símbolos). Así te reconocemos mejor cuando te atendemos. Si ya tienes tu nombre guardado, no tienes que hacer nada.', ir: '' },
       { id: 'act_20261021_miscompras', fecha: '2026-10-21', titulo: 'Nuevo: 📦 Mis compras', mensaje: 'Ahora tus compras tienen **su propio botón dorado 📦 Mis compras** (abajo a la izquierda y arriba junto a la campana). Ahí ves **todas tus cuentas ordenadas por producto**, lo que acabas de comprar marcado como **NUEVA**, su **garantía** y el botón para **copiar**. Y al terminar una compra te lleva directo a ellas.' },
       { id: 'act_20261021_telegram', fecha: '2026-10-21', titulo: 'Compra por Telegram ✈️', mensaje: 'Ya puedes comprar desde nuestro **bot de Telegram**, 24/7 y con entrega al instante. Usa **tu misma cuenta**: en la tienda ve a **Mis datos → Usar mi cuenta en Telegram** y verás ahí tu **mismo saldo y tus compras**. Si eres nuevo en Telegram, tu **primera compra tiene descuento** 🎁.' },
       { id: 'act_20261021_ayuda', fecha: '2026-10-21', titulo: 'Ayuda más a la mano 💬', mensaje: 'El botón **Ayuda** ahora reúne todo: toca y elige **WhatsApp**, **Telegram** o el **Asistente**. Menos botones encima de los productos y todo en un solo lugar.' },
@@ -25960,8 +26005,9 @@ async function pintarPanelWa() {
       e.preventDefault();
       if (!currentUser) return;
       const btn = document.getElementById('btnGuardarPerfil');
-      const nombre = document.getElementById('perfilNombre').value.trim().slice(0, 60);
+      const nombre = limpiarEspaciosNombre(document.getElementById('perfilNombre').value).slice(0, 60);
       const waCrudo = document.getElementById('perfilWhatsapp').value.trim();
+      if (nombre && nombre !== limpiarEspaciosNombre((perfilDatosCache || {}).nombre) && !nombreSoloLetrasOk(nombre)) { alert(MSG_NOMBRE_LETRAS); return; }
       const waDigitos = waCrudo.replace(/\D/g, '');
 
       if (waCrudo && (waDigitos.length < 7 || waDigitos.length > 15)) {
