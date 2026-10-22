@@ -17920,7 +17920,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-29b';
+    const VERSION_PAGINA = '2026-10-29c';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261022_alq_unidos', fecha: '2026-10-22', titulo: 'Tus alquileres, todos en un solo lugar 🔄', mensaje: 'Ahora **todos tus alquileres** están en **Mis alquileres**, también los que compraste en la tienda: ahí ves cuántos días te quedan y los **renuevas con un toque**, siempre al precio actual del producto.', ir: '' },
       { id: 'act_20261022_avisos', fecha: '2026-10-22', titulo: 'Tus recordatorios por WhatsApp 📲', mensaje: 'Al final de cada entrega verás el **número desde el que te avisamos** (vencimientos y recordatorios). **Guárdalo** para que no se te pase ninguna renovación. Es solo de avisos: para comprar o pedir ayuda sigue usando la tienda.', ir: '' },
@@ -25368,6 +25368,24 @@ async function pintarPanelWa() {
           ${sw('owaBotVendedor', k.botVendedor !== false, '🤝 Agente vendedor (antes de decir "no te entendí")')}
           <label class="block text-[10px] text-gray-400">🧪 Modo prueba: números (separados por coma) <span class="text-gray-500">· vacío = todos los clientes</span><input id="owaBotPrueba" inputmode="numeric" maxlength="300" value="${escaparHtml((k.botPrueba || []).join(', '))}" placeholder="3001234567, 3109876543" class="${inp} mt-1"></label>
           <p class="text-[10px] text-gray-500">Audios, fotos y QR necesitan el PC con OpenWA prendido; si está apagado, All Auto Responder sigue con todo el texto. Las fotos nunca entregan cuentas solas: el pago se confirma con el correo de Bre-B. Los cambios llegan al servidor de correo en máximo 30 minutos.</p>`, false)
+        + sec('📣 Stock en tu grupo de WhatsApp', `
+          ${sw('owaGrpActivo', k.grpActivo === true, 'Publicar el stock en mi grupo')}
+          <div class="flex gap-2 items-end">
+            <label class="block flex-1 text-[10px] text-gray-400">Grupo<select id="owaGrpId" class="${inp} mt-1">${k.grpId ? `<option value="${escaparHtml(k.grpId)}" selected>${escaparHtml(k.grpNombre || k.grpId)}</option>` : '<option value="">Toca "Buscar mis grupos"</option>'}</select></label>
+            <button type="button" onclick="owaCargarGrupos()" class="px-3 py-2.5 rounded-xl bg-sky-500/20 border border-sky-500/40 text-sky-200 text-[11px] font-black whitespace-nowrap"><i class="fa-solid fa-magnifying-glass mr-1"></i>Buscar mis grupos</button>
+          </div>
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            <label class="block text-[10px] text-gray-400">Aviso cada (h)<input id="owaGrpCada" type="number" min="1" max="24" value="${escaparHtml(String(k.grpCadaH || 4))}" class="${inp} mt-1"></label>
+            <label class="block text-[10px] text-gray-400">Lista del día<select id="owaGrpHoraDia" class="${inp} mt-1">${horas(k.grpHoraDia !== undefined ? k.grpHoraDia : 9)}</select></label>
+            <label class="block text-[10px] text-gray-400">Desde<select id="owaGrpDesde" class="${inp} mt-1">${horas(k.grpDesde !== undefined ? k.grpDesde : 8)}</select></label>
+            <label class="block text-[10px] text-gray-400">Hasta<select id="owaGrpHasta" class="${inp} mt-1">${horas(k.grpHasta || 22)}</select></label>
+          </div>
+          <p class="text-[10px] text-gray-500">🆕 Cada esas horas sale "¡Nuevo stock subido!" con lo disponible (y cuánto subió desde el aviso anterior). 📊 Una vez al día, a la hora elegida, sale la lista completa: lo disponible y lo que va <b class="text-gray-300">sobre pedido</b>. Nunca VIP ni de noche (fuera de tu horario). Lo envía el número de la tienda por OpenWA.</p>
+          <div class="grid grid-cols-2 gap-2">
+            <button type="button" onclick="owaGrupoPrueba('lista')" class="py-2 rounded-xl bg-gray-800 border border-gray-700 text-gray-200 text-[11px] font-black">🧪 Enviar la lista ya</button>
+            <button type="button" onclick="owaGrupoPrueba('aviso')" class="py-2 rounded-xl bg-gray-800 border border-gray-700 text-gray-200 text-[11px] font-black">🧪 Enviar el aviso ya</button>
+          </div>
+          ${(k.grpLog || []).length ? '<p class="text-[10px] text-gray-400 font-bold mt-1">📜 Últimos envíos al grupo</p>' + k.grpLog.slice(0, 6).map(x => `<p class="text-[10px] ${x.ok ? 'text-gray-400' : 'text-red-300'}">${x.ok ? '✓' : '✗'} ${escaparHtml(new Date(x.el).toLocaleString('es-CO', { day: '2-digit', month: '2-digit', hour: 'numeric', minute: '2-digit' }))} · ${x.tipo === 'lista' ? 'Lista del día' : 'Aviso de stock'}${x.error ? ' · ' + escaparHtml(x.error) : ''}</p>`).join('') : ''}`, false)
         + sec('📲 Número de avisos en las entregas', `
           ${sw('owaLineaActiva', k.lineaActiva === true, 'Mostrar la línea en las entregas (página y bot de WhatsApp)')}
           <label class="block text-[10px] text-gray-400">Número (completo, con el 57, sin espacios)<input id="owaLineaNumero" inputmode="numeric" maxlength="15" value="${escaparHtml(k.lineaNumero || ((ses.find(x => x.nombre.toLowerCase() === String(k.sesRec || 'bot-recordatorio').toLowerCase()) || {}).telefono || ''))}" placeholder="573001697272" class="${inp} mt-1"></label>
@@ -25383,6 +25401,19 @@ async function pintarPanelWa() {
            <p class="text-[10px] text-gray-500 mt-1.5">Los cambios le llegan al servidor de correo en máximo 30 minutos.</p>`
         + (k.fixClave && Array.isArray(k.fixClave.cuentas) ? `<div class="mt-2 p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-[11px] text-emerald-100 leading-snug">🩹 <b>Avisos de contraseña corregidos:</b> ${k.fixClave.cuentas.length ? escaparHtml(k.fixClave.cuentas.join(', ')) + ' ya no cuentan como caídas' + (k.fixClave.etiquetasQuitadas ? ' · etiqueta 🔴 quitada de ' + k.fixClave.etiquetasQuitadas + ' correo(s)' : '') + (k.fixClave.descuentos ? ' · ' + k.fixClave.descuentos + ' descuento(s) al proveedor deshecho(s)' : '') + (k.fixClave.descuentosYaAplicados && k.fixClave.descuentosYaAplicados.length ? ' · <span class="text-amber-300">ya aplicado en un pago (revísalo a mano): ' + escaparHtml(k.fixClave.descuentosYaAplicados.join(', ')) + '</span>' : '') : (k.fixClave.etiquetasQuitadas ? 'etiqueta 🔴 quitada de ' + k.fixClave.etiquetasQuitadas + ' correo(s) que eran avisos normales' : 'no había cuentas marcadas por eso')}.</div>` : '');
       owaGaleriaCargar();
+    }
+    // 📣 Stock en el grupo
+    async function owaCargarGrupos() {
+      const sel = document.getElementById('owaGrpId'); if (!sel) return; const antes = sel.value;
+      sel.innerHTML = '<option value="">Buscando…</option>';
+      try { const r = await llamarBackend('openwa', { op: 'grupos' }); if (!r || !r.ok) throw new Error((r && r.error) || 'No se pudo.');
+        sel.innerHTML = '<option value="">Elige el grupo…</option>' + (r.grupos || []).map(g => `<option value="${escaparHtml(g.id)}" ${g.id === antes ? 'selected' : ''}>${escaparHtml(g.nombre)}</option>`).join('');
+        mostrarToast((r.grupos || []).length + ' grupos encontrados'); }
+      catch (e) { sel.innerHTML = antes ? `<option value="${escaparHtml(antes)}" selected>${escaparHtml(antes)}</option>` : '<option value="">Toca "Buscar mis grupos"</option>'; alert('No pude traer tus grupos: ' + e.message + '\n¿Está el PC prendido con OpenWA?'); }
+    }
+    async function owaGrupoPrueba(tipo) {
+      try { mostrarToast('Enviando al grupo…'); const r = await llamarBackend('openwa', { op: 'grupo_prueba', tipo: tipo }); if (!r || !r.ok) throw new Error((r && r.error) || 'No se pudo.'); mostrarToast('✅ Enviado al grupo'); owaDatos = null; cargarOpenWa(); }
+      catch (e) { alert(e.message); }
     }
     // 🖼️ Galería diaria
     function owaMiniaturaDe(dataUrl, lado) { return new Promise(res => { const i = new Image(); i.onload = () => { try { const e = Math.min(1, lado / Math.max(i.naturalWidth, i.naturalHeight)), c = document.createElement('canvas'); c.width = Math.max(1, Math.round(i.naturalWidth * e)); c.height = Math.max(1, Math.round(i.naturalHeight * e)); c.getContext('2d').drawImage(i, 0, 0, c.width, c.height); res(c.toDataURL('image/jpeg', 0.7)); } catch (x) { res(''); } }; i.onerror = () => res(''); i.src = dataUrl; }); }
@@ -25431,6 +25462,10 @@ async function pintarPanelWa() {
         galActivo: v('owaGalActivo').checked, galPorDia: Math.max(1, Math.min(10, parseInt(v('owaGalPorDia').value, 10) || 3)), galDesde: parseInt(v('owaGalDesde').value, 10), galHasta: parseInt(v('owaGalHasta').value, 10) };
       if (cfg.galHasta <= cfg.galDesde) { alert('En la galería, la hora "Hasta" debe ser después de "Desde".'); return; }
       if (cfg.estHasta <= cfg.estDesde) { alert('En los estados, la hora "Hasta" debe ser después de "Desde".'); return; }
+      { const sg = v('owaGrpId'); Object.assign(cfg, { grpActivo: v('owaGrpActivo').checked, grpId: sg.value, grpNombre: sg.value ? (sg.options[sg.selectedIndex] || {}).text || '' : '',
+          grpCadaH: Math.max(1, Math.min(24, parseInt(v('owaGrpCada').value, 10) || 4)), grpHoraDia: parseInt(v('owaGrpHoraDia').value, 10), grpDesde: parseInt(v('owaGrpDesde').value, 10), grpHasta: parseInt(v('owaGrpHasta').value, 10) });
+        if (cfg.grpActivo && !cfg.grpId) { alert('Elige el grupo donde se publica el stock (toca "Buscar mis grupos").'); return; }
+        if (cfg.grpHasta <= cfg.grpDesde) { alert('En el grupo, la hora "Hasta" debe ser después de "Desde".'); return; } }
       Object.assign(cfg, { botPriv: v('owaBotPriv').value, botGrupos: v('owaBotGrupos').value, botCubrir: v('owaBotCubrir').checked,
         botPausaH: Math.max(0, Math.min(6, parseInt(v('owaBotPausa').value, 10) || 0)), botEspMin: Math.max(0, Math.min(15, parseInt(v('owaBotEspMin').value, 10) || 0)), botEspMax: Math.max(0, Math.min(20, parseInt(v('owaBotEspMax').value, 10) || 0)),
         botAudios: v('owaBotAudios').checked, botFotos: v('owaBotFotos').checked, botVendedor: v('owaBotVendedor').checked, botPrueba: String(v('owaBotPrueba').value || '') });
