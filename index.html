@@ -14170,7 +14170,7 @@
       const plat = plataformaNf(a);
       const cuenta = a.tipo === 'compartida' && a.perfil ? `${plat} (${a.perfil})` : plat;
       const fecha = fechaCortaNetflix(a.proximoPago);
-      const precio = Number(a.precio) > 0 ? ` Renovarla cuesta ${formatoCOP(a.precio)} COP.` : '';
+      const precio = precioRenovAlquiler(a) > 0 ? ` Renovarla cuesta ${formatoCOP(precioRenovAlquiler(a))} COP.` : '';
       let cuerpo;
       if (est.dias < 0) cuerpo = `tu cuenta de ${cuenta} venció el ${fecha}.`;
       else if (est.dias === 0) cuerpo = `tu cuenta de ${cuenta} vence hoy (${fecha}).`;
@@ -17920,8 +17920,9 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-28l';
+    const VERSION_PAGINA = '2026-10-28n';
     const ACTUALIZACIONES_PAGINA = [
+      { id: 'act_20261022_alq_unidos', fecha: '2026-10-22', titulo: 'Tus alquileres, todos en un solo lugar 🔄', mensaje: 'Ahora **todos tus alquileres** están en **Mis alquileres**, también los que compraste en la tienda: ahí ves cuántos días te quedan y los **renuevas con un toque**, siempre al precio actual del producto.', ir: '' },
       { id: 'act_20261022_avisos', fecha: '2026-10-22', titulo: 'Tus recordatorios por WhatsApp 📲', mensaje: 'Al final de cada entrega verás el **número desde el que te avisamos** (vencimientos y recordatorios). **Guárdalo** para que no se te pase ninguna renovación. Es solo de avisos: para comprar o pedir ayuda sigue usando la tienda.', ir: '' },
       { id: 'act_20261021_nombre', fecha: '2026-10-21', titulo: 'Tu nombre, más claro ✍️', mensaje: 'En **Mis datos**, tu nombre ahora se escribe **solo con letras y espacios** (sin números ni símbolos). Así te reconocemos mejor cuando te atendemos. Si ya tienes tu nombre guardado, no tienes que hacer nada.', ir: '' },
       { id: 'act_20261021_miscompras', fecha: '2026-10-21', titulo: 'Nuevo: 📦 Mis compras', mensaje: 'Ahora tus compras tienen **su propio botón dorado 📦 Mis compras** (abajo a la izquierda y arriba junto a la campana). Ahí ves **todas tus cuentas ordenadas por producto**, lo que acabas de comprar marcado como **NUEVA**, su **garantía** y el botón para **copiar**. Y al terminar una compra te lleva directo a ellas.' },
@@ -20991,6 +20992,20 @@
 
     // ==================== ALQUILERES COMO VENTAS ====================
     // El producto de la tienda que corresponde a un alquiler (Netflix u otra plataforma)
+    // 🏷 Un alquiler pertenece a un producto de tipo alquiler: se renueva al precio ACTUAL del producto.
+    //    Si todavía no está amarrado, usa su precio guardado (nada se cae).
+    function productoAlquilerDe(a) { const p = a && a.productoId ? catalogoUnificado.find(x => x.docId === a.productoId) : null; return p && ((p.tipoVenta || ((snapshotInventario || {})[p.docId] || {}).tipoVenta) === 'alquiler') ? p : null; }
+    function precioRenovAlquiler(a) { try { const p = productoAlquilerDe(a); if (p) { const u = precioPorCantidadSinCupon(p, 1); if (u > 0) return u; } } catch (e) { /* usa el guardado */ } return Number(a && a.precio) || 0; }
+    function productosDeAlquilerLista() { return (catalogoUnificado || []).filter(p => !p.esCombo && (p.tipoVenta || ((snapshotInventario || {})[p.docId] || {}).tipoVenta) === 'alquiler'); }
+    // sugerencia: la conexión de esa plataforma con la tienda, o el producto de alquiler cuyo nombre la menciona
+    function sugerirProductoAlquiler(a) {
+      const L = productosDeAlquilerLista(), plat = plataformaNf(a), con = ((typeof alqAutoCfg !== 'undefined' && alqAutoCfg && alqAutoCfg.conexiones) || {})[plat] || ((typeof alqAutoCfg !== 'undefined' && alqAutoCfg && alqAutoCfg.conexiones) || {})[plat.toLowerCase()];
+      if (con && con.productoId && L.some(p => p.docId === con.productoId)) return con.productoId;
+      const re = new RegExp(plat.replace(/[^a-z0-9]/gi, '.?'), 'i'), cand = L.filter(p => re.test(p.nombre || ''));
+      if (!cand.length) return '';
+      const comp = a.tipo === 'compartida'; const mejor = cand.find(p => comp ? /perfil|pantalla|compartid/i.test(p.nombre) : /complet/i.test(p.nombre));
+      return (mejor || (cand.length === 1 ? cand[0] : null) || {}).docId || '';
+    }
     function productoDeAlquiler(a) {
       const plat = String(a.plataforma || 'Netflix');
       const p = catalogoUnificado.find(x => x.docId === a.productoId) || catalogoUnificado.find(x => new RegExp(plat.replace(/[^a-z0-9]/gi, '.?'), 'i').test(x.nombre || ''));
@@ -22325,6 +22340,7 @@
     function productoComprable(id) { const p = catalogoUnificado.find(x => x.docId === id); return p && p.activo !== false && Number(p.precio) > 0 && !p.esCombo && usuarioTienePermisoProducto(p) ? p : null; }
     function textoQuedan(ms) { const d = Math.ceil(ms / 86400000); if (ms <= 0) return 'venció'; if (ms < 86400000) return 'vence hoy'; return d === 1 ? 'queda 1 día' : `quedan ${d} días`; }
     function htmlDuracionCompra(c, idx) {
+      if (c.alquilerSync === true) return '<div class="px-3 py-2 rounded-xl border text-violet-100 border-violet-400/30 bg-violet-500/10 text-[11px]"><i class="fa-solid fa-rotate mr-1"></i>Es un alquiler: su vencimiento y su renovación están en <b>Mis alquileres</b>.</div>';
       const v = venceCuentaCompra(c); if (!v) return '';
       const ms = v - Date.now(), alq = esAlquilerCompra(c), pr = productoComprable(c.productoId);
       const col = ms <= 0 ? 'text-red-300 border-red-500/40 bg-red-500/10' : (ms <= 3 * 86400000 ? 'text-amber-200 border-amber-400/40 bg-amber-500/10' : 'text-violet-100 border-violet-400/30 bg-violet-500/10');
@@ -22353,8 +22369,8 @@
       let caja = document.getElementById('perfilVentasCaja');
       if (!caja) { caja = document.createElement('div'); caja.id = 'perfilVentasCaja'; caja.className = 'space-y-3 mb-3'; const lat = document.getElementById('perfilLateral'); (lat && window.innerWidth >= 1024 ? lat : sec).insertBefore(caja, (lat && window.innerWidth >= 1024 ? lat : sec).firstChild); }
       const ahora = Date.now(), items = [];
-      (misComprasPerfilCache || []).forEach((c, idx) => { if (c.esRenovacion) return; const v = venceCuentaCompra(c); if (!v) return; const ms = v - ahora; if (ms > 3 * 86400000 || ms < -2 * 86400000) return; items.push({ t: v, html: `<div class="flex items-center justify-between gap-2 py-2 border-t border-gray-800 first:border-t-0"><div class="min-w-0"><p class="text-xs font-bold text-white truncate">${escaparHtml(c.productoNombre || '')} × ${parseInt(c.cantidad, 10) || 1}</p><p class="text-[10px] ${ms <= 0 ? 'text-red-300' : 'text-amber-300'}">${textoQuedan(ms)}</p></div>${esAlquilerCompra(c) ? `<button type="button" onclick="renovarCompraPerfil(${idx})" class="shrink-0 px-2.5 py-1.5 rounded-lg bg-violet-500 text-white text-[10px] font-black">🔄 Renovar</button>` : (productoComprable(c.productoId) ? `<button type="button" onclick="abrirCompraRapida('${escaparJsAttr(c.productoId)}', ${parseInt(c.cantidad, 10) || 1})" class="shrink-0 px-2.5 py-1.5 rounded-lg bg-emerald-500 text-black text-[10px] font-black">🛒 Comprar nuevas</button>` : '')}</div>` }); });
-      (misAlquileres || []).forEach(a => { try { const e = estadoNetflix(a); if (!['por_vencer', 'vence_hoy', 'vencida'].includes(e.clave) || (e.dias !== null && e.dias < -2)) return; items.push({ t: Date.parse(a.proximoPago) || 0, html: `<div class="flex items-center justify-between gap-2 py-2 border-t border-gray-800 first:border-t-0"><div class="min-w-0"><p class="text-xs font-bold text-white truncate">${escaparHtml(a.plataforma || 'Alquiler')} · ${escaparHtml(a.correo || '')}</p><p class="text-[10px] ${e.dias < 0 ? 'text-red-300' : 'text-amber-300'}">${e.dias < 0 ? 'venció' : (e.dias === 0 ? 'vence hoy' : 'vence en ' + e.dias + (e.dias === 1 ? ' día' : ' días'))}</p></div>${Number(a.precio) > 0 ? `<button type="button" onclick="renovarNetflix('${escaparJsAttr(a.id)}','c')" class="shrink-0 px-2.5 py-1.5 rounded-lg bg-violet-500 text-white text-[10px] font-black">🔄 Renovar</button>` : ''}</div>` }); } catch (x) { /* nada */ } });
+      (misComprasPerfilCache || []).forEach((c, idx) => { if (c.esRenovacion || c.alquilerSync === true) return; const v = venceCuentaCompra(c); if (!v) return; const ms = v - ahora; if (ms > 3 * 86400000 || ms < -2 * 86400000) return; items.push({ t: v, html: `<div class="flex items-center justify-between gap-2 py-2 border-t border-gray-800 first:border-t-0"><div class="min-w-0"><p class="text-xs font-bold text-white truncate">${escaparHtml(c.productoNombre || '')} × ${parseInt(c.cantidad, 10) || 1}</p><p class="text-[10px] ${ms <= 0 ? 'text-red-300' : 'text-amber-300'}">${textoQuedan(ms)}</p></div>${esAlquilerCompra(c) ? `<button type="button" onclick="renovarCompraPerfil(${idx})" class="shrink-0 px-2.5 py-1.5 rounded-lg bg-violet-500 text-white text-[10px] font-black">🔄 Renovar</button>` : (productoComprable(c.productoId) ? `<button type="button" onclick="abrirCompraRapida('${escaparJsAttr(c.productoId)}', ${parseInt(c.cantidad, 10) || 1})" class="shrink-0 px-2.5 py-1.5 rounded-lg bg-emerald-500 text-black text-[10px] font-black">🛒 Comprar nuevas</button>` : '')}</div>` }); });
+      (misAlquileres || []).forEach(a => { try { const e = estadoNetflix(a); if (!['por_vencer', 'vence_hoy', 'vencida'].includes(e.clave) || (e.dias !== null && e.dias < -2)) return; items.push({ t: Date.parse(a.proximoPago) || 0, html: `<div class="flex items-center justify-between gap-2 py-2 border-t border-gray-800 first:border-t-0"><div class="min-w-0"><p class="text-xs font-bold text-white truncate">${escaparHtml(a.plataforma || 'Alquiler')} · ${escaparHtml(a.correo || '')}</p><p class="text-[10px] ${e.dias < 0 ? 'text-red-300' : 'text-amber-300'}">${e.dias < 0 ? 'venció' : (e.dias === 0 ? 'vence hoy' : 'vence en ' + e.dias + (e.dias === 1 ? ' día' : ' días'))}</p></div>${precioRenovAlquiler(a) > 0 ? `<button type="button" onclick="renovarNetflix('${escaparJsAttr(a.id)}','c')" class="shrink-0 px-2.5 py-1.5 rounded-lg bg-violet-500 text-white text-[10px] font-black">🔄 Renovar</button>` : ''}</div>` }); } catch (x) { /* nada */ } });
       items.sort((a, b) => a.t - b.t);
       // Favoritos: los 3 productos que más compra (que sigan disponibles)
       const cuenta = {}, ultCant = {};
@@ -22535,7 +22551,7 @@
     async function avisarRenovacionWhatsapp(id) {
       const a = (typeof netflixCuentasAdmin !== 'undefined' ? netflixCuentasAdmin : []).find(x => x.id === id); if (!a) return;
       if (!cfgAvisosRen.__cargado) { try { const d = await db.collection('configuracion').doc('avisos_renovacion').get(); if (d.exists) cfgAvisosRen = Object.assign(cfgAvisosRen, d.data()); } catch (e) { /* nada */ } cfgAvisosRen.__cargado = true; }
-      const nom = String(a.clienteNombre || '').split(' ')[0] || '', plat = a.plataforma || 'Netflix', f = esFechaNetflix(a.proximoPago) ? a.proximoPago.split('-').reverse().slice(0, 2).join('/') : '', precio = Number(a.precio) || 0;
+      const nom = String(a.clienteNombre || '').split(' ')[0] || '', plat = a.plataforma || 'Netflix', f = esFechaNetflix(a.proximoPago) ? a.proximoPago.split('-').reverse().slice(0, 2).join('/') : '', precio = precioRenovAlquiler(a);
       const est = estadoNetflix(a), cuando = est.dias === 0 ? 'vence hoy' : (est.dias < 0 ? 'venció el ' + f : 'vence el ' + f);
       const texto = `Hola${nom ? ' ' + nom : ''} 👋 tu ${plat} ${cuando}. ¿Deseas renovarla${precio ? ' por ' + formatoCOP(precio) : ''}?\n\nPuedes renovarla desde tu perfil en ${enlaceMkUrl()} o respondiendo este mensaje. ¡Gracias por tu confianza! 🙌`;
       abrirWhatsappNumero(a.clienteWhatsapp || a.whatsapp, texto, cfgAvisosRen.app !== 'normal');
@@ -25293,8 +25309,14 @@ async function pintarPanelWa() {
             <label class="block text-[10px] text-gray-400">Hasta<select id="owaHasta" class="${inp} mt-1">${horas(k.hasta || 19)}</select></label>
           </div>
           <p class="text-[10px] text-gray-500">Cada día elige una hora al azar en esa franja. Un solo mensaje por cliente con todas sus cuentas (alquileres y productos tipo Alquiler). Si el PC está apagado, reintenta cada 10 min hasta el final de la franja y te avisa por Telegram si no alcanzó.</p>
-          <label class="block text-[10px] text-gray-400">Mensaje <span class="text-gray-500">({nombre} {cuando} {fecha} {cuentas} {total} {llave} {pagina} · *texto* = negrita)</span><textarea id="owaPlantilla" rows="8" maxlength="1500" class="${inp} mt-1 font-mono">${escaparHtml(k.plantilla || r.plantillaDef || '')}</textarea></label>
+          <label class="block text-[10px] text-gray-400">Mensaje <span class="text-gray-500">({nombre} {cuando} {fecha} {cuentas} {tienda} {pagina} · *texto* = negrita)</span><textarea id="owaPlantilla" rows="8" maxlength="1500" class="${inp} mt-1 font-mono">${escaparHtml(k.plantilla || r.plantillaDef || '')}</textarea></label>
           <button type="button" onclick="document.getElementById('owaPlantilla').value = owaDatos.plantillaDef" class="text-[10px] text-sky-300 underline">Volver al mensaje original</button>
+          ${k.plantillaCobra ? '<p class="text-[10px] text-amber-300 font-bold">⚠️ Tu mensaje guardado todavía pide pagar ({llave} o {total}) desde el número de avisos y puede parecer estafa. Toca "Volver al mensaje original" y guarda: así manda al WhatsApp de la tienda.</p>' : ''}
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <label class="block text-[10px] text-gray-400">WhatsApp de la tienda <span class="text-gray-500">({tienda})</span><input id="owaTiendaWa" inputmode="numeric" maxlength="15" value="${escaparHtml(k.tiendaWa || '573043956726')}" class="${inp} mt-1"></label>
+            <label class="block text-[10px] text-gray-400">Mensaje que llega escrito <span class="text-gray-500">({correos})</span><input id="owaTiendaTexto" maxlength="300" value="${escaparHtml(k.tiendaTexto || k.tiendaTextoDef || '')}" class="${inp} mt-1"></label>
+          </div>
+          <p class="text-[10px] text-gray-500">El número de avisos no cobra: el enlace abre el chat de tu tienda con ese mensaje escrito y el cliente sigue ahí con el bot.</p>
           <div class="flex gap-2"><input id="owaPruebaNum" inputmode="numeric" maxlength="15" placeholder="Tu número para la prueba" class="${inp}"><button type="button" onclick="owaPrueba(this)" class="shrink-0 px-3 rounded-xl bg-sky-500/20 border border-sky-500/40 text-sky-200 text-[11px] font-black">🧪 Enviar prueba</button></div>
           <p class="text-[11px] font-black text-white pt-1">👀 Recibirán el ${escaparHtml(fF(r.fechaVista))} <span class="text-gray-500 font-normal">(vence ese día)</span></p>
           ${vista.length ? vista.map(v => `<div class="flex items-center justify-between gap-2 text-[11px] p-2 rounded-lg bg-gray-900/60"><span class="truncate text-gray-200">${escaparHtml(v.nombre)}${v.ok ? '' : ' <span class="text-amber-300">· sin WhatsApp válido</span>'}</span><span class="shrink-0 text-gray-400">${v.n} cuenta${v.n === 1 ? '' : 's'} · ${escaparHtml(formatoCOP(v.total || 0))}</span></div>`).join('') : '<p class="text-[11px] text-gray-500">Nadie vence ese día.</p>'}
@@ -25381,7 +25403,7 @@ async function pintarPanelWa() {
     async function guardarOpenWa(btn) {
       const v = id => document.getElementById(id);
       const cfg = { url: String(v('owaUrl').value || '').trim(), key: String(v('owaKey').value || '').trim(), sesRec: String(v('owaSesRec').value || '').trim(), sesEst: String(v('owaSesEst').value || '').trim(),
-        recActivo: v('owaRecActivo').checked, dias: parseInt(v('owaDias').value, 10) || 0, desde: parseInt(v('owaDesde').value, 10), hasta: parseInt(v('owaHasta').value, 10), plantilla: String(v('owaPlantilla').value || ''),
+        recActivo: v('owaRecActivo').checked, dias: parseInt(v('owaDias').value, 10) || 0, desde: parseInt(v('owaDesde').value, 10), hasta: parseInt(v('owaHasta').value, 10), plantilla: String(v('owaPlantilla').value || ''), tiendaWa: String(v('owaTiendaWa').value || '').replace(/\D/g, ''), tiendaTexto: String(v('owaTiendaTexto').value || '').trim(),
         estActivo: v('owaEstActivo').checked, estMax: Math.max(1, Math.min(10, parseInt(v('owaEstMax').value, 10) || 10)), estDesde: parseInt(v('owaEstDesde').value, 10), estHasta: parseInt(v('owaEstHasta').value, 10), estAntigH: Math.max(1, Math.min(24, parseInt(v('owaEstAntig').value, 10) || 6)), estEnlace: String(v('owaEstEnlace').value || '').trim(),
         galActivo: v('owaGalActivo').checked, galPorDia: Math.max(1, Math.min(10, parseInt(v('owaGalPorDia').value, 10) || 3)), galDesde: parseInt(v('owaGalDesde').value, 10), galHasta: parseInt(v('owaGalHasta').value, 10) };
       if (cfg.galHasta <= cfg.galDesde) { alert('En la galería, la hora "Hasta" debe ser después de "Desde".'); return; }
@@ -27888,7 +27910,7 @@ async function pintarPanelWa() {
       const est = estadoNetflix(a), st = ESTILO_NETFLIX[est.clave] || ESTILO_NETFLIX.sin_fecha;
       const dias = est.dias;
       const plan = parseInt(a.plan, 10) || 1;
-      const precio = Number(a.precio) || 0;
+      const precio = precioRenovAlquiler(a);   // 🏷 precio actual del producto
       const grande = dias === null ? '—' : (dias === 0 ? 'Hoy' : Math.abs(dias));
       let leyenda = '';
       if (dias !== null) {
@@ -28241,7 +28263,7 @@ async function pintarPanelWa() {
       const a = misAlquileres.find(x => x.id === id);
       if (!a) return;
       const plan = parseInt(a.plan, 10) || 1;
-      const precio = Number(a.precio) || 0;
+      const precio = precioRenovAlquiler(a);   // 🏷 precio actual del producto
       if (modoPruebaCliente && a.simulado) {
         if (!await confirmarModal(`(Simulación) ¿Renovar ${a.correo} por ${plan} ${plan === 1 ? 'mes' : 'meses'}?\n\nSe descontarán ${formatoCOP(precio)} COP de tu saldo de prueba.`, { tipo: 'pregunta', textoAceptar: 'Sí, renovar' })) return;
         if (saldoSimulado < precio) { abrirModalSaldoInsuficiente(`(Simulación) Saldo insuficiente. Tienes ${formatoCOP(saldoSimulado)} y la renovación cuesta ${formatoCOP(precio)}.`); return; }
@@ -28355,6 +28377,33 @@ async function pintarPanelWa() {
       sel.value = lista.includes(actual) ? actual : '';
     }
 
+    // 🔗 Paso único: cada alquiler asignado queda amarrado a su producto de tipo alquiler (así se renueva al precio del producto)
+    function pintarAmarrarAlquileres() {
+      const alerta = document.getElementById('alertaNetflixVencidas'); if (!alerta || !esAdminSesionActual()) return;
+      let caja = document.getElementById('amarrarAlqCaja');
+      if (!caja) { caja = document.createElement('div'); caja.id = 'amarrarAlqCaja'; alerta.parentNode.insertBefore(caja, alerta); }
+      const prods = productosDeAlquilerLista(), sin = netflixCuentasAdmin.filter(a => a.estado === 'asignado' && !productoAlquilerDe(a));
+      if (!sin.length) { caja.innerHTML = ''; return; }
+      if (!prods.length) { caja.innerHTML = '<div class="p-3 mb-2 rounded-xl bg-amber-500/10 border border-amber-500/40 text-[11px] text-amber-200">🔗 Para amarrar tus alquileres a un producto, primero crea en la tienda los productos de <b>tipo alquiler</b> (Netflix completa, Netflix perfil…).</div>'; return; }
+      const opts = sel => '<option value="">Elegir producto…</option>' + prods.map(p => `<option value="${escaparHtml(p.docId)}" ${p.docId === sel ? 'selected' : ''}>${escaparHtml(p.nombre)} · ${escaparHtml(formatoCOP(precioPorCantidadSinCupon(p, 1)))}</option>`).join('');
+      caja.innerHTML = `<details class="mb-2 rounded-xl bg-sky-500/10 border border-sky-500/40" open><summary class="cursor-pointer px-3 py-2.5 text-[12px] font-black text-sky-100">🔗 Amarra cada alquiler a su producto (${sin.length}) <span class="font-normal text-sky-300/80">· una sola vez</span></summary>
+        <div class="px-3 pb-3 space-y-1.5">
+          <p class="text-[10px] text-sky-200/80">Al amarrarlo, se renueva al <b>precio actual del producto</b>. Mientras no lo amarres, sigue igual con su precio de antes.</p>
+          ${sin.map(a => { const sg = sugerirProductoAlquiler(a); return `<div class="flex flex-col sm:flex-row sm:items-center gap-1.5 p-2 rounded-lg bg-gray-900/70"><p class="flex-1 min-w-0 text-[11px] text-gray-200 truncate"><b>${escaparHtml(plataformaNf(a))}</b> · ${escaparHtml(a.correo || '')}${a.perfil ? ' · ' + escaparHtml(a.perfil) : ''} <span class="text-gray-500">· ${escaparHtml(a.clienteNombre || a.clienteEmail || '')}</span></p><select data-amarrar="${escaparHtml(a.id)}" class="sm:w-60 bg-gray-800 border border-gray-700 rounded-lg px-2 py-1.5 text-[11px] text-white">${opts(sg)}</select>${sg ? '<span class="text-[10px] text-emerald-300">✓ sugerido</span>' : '<span class="text-[10px] text-amber-300">⚠️ elige</span>'}</div>`; }).join('')}
+          <button type="button" onclick="guardarAmarrarAlquileres()" class="w-full mt-1 py-2 rounded-xl bg-sky-500 hover:bg-sky-400 text-black text-[12px] font-black">Guardar</button>
+        </div></details>`;
+    }
+    async function guardarAmarrarAlquileres() {
+      const sels = Array.from(document.querySelectorAll('#amarrarAlqCaja select[data-amarrar]')).filter(s => s.value);
+      if (!sels.length) { alert('Elige el producto de al menos un alquiler.'); return; }
+      try {
+        const ahora = new Date().toISOString();
+        for (let i = 0; i < sels.length; i += 400) { const lote = db.batch();
+          sels.slice(i, i + 400).forEach(s => { const p = catalogoUnificado.find(x => x.docId === s.value); lote.set(db.collection('alquileres').doc(s.dataset.amarrar), { productoId: s.value, productoNombre: p ? p.nombre : '', actualizadoEl: ahora }, { merge: true }); });
+          await lote.commit(); }
+        mostrarToast('🔗 ' + sels.length + ' ' + (sels.length === 1 ? 'alquiler amarrado' : 'alquileres amarrados') + ' a su producto');
+      } catch (e) { alert('No se pudo guardar: ' + e.message); }
+    }
     function renderizarNetflixAdmin() {
       const cont = document.getElementById('listaNetflixAdmin');
       if (!cont) return;
@@ -28387,6 +28436,7 @@ async function pintarPanelWa() {
         }
       }
 
+      pintarAmarrarAlquileres();
       const lista = filtrarNetflixAdmin();
       if (!netflixCuentasAdmin.length) {
         cont.innerHTML = '<p class="text-gray-500 text-center py-8 text-sm">Aún no hay cuentas. Usa "Agregar cuenta" o "Carga en bloque".</p>';
@@ -28671,7 +28721,8 @@ async function pintarPanelWa() {
           ${lineaUsuario}
           ${a.tipo === 'compartida' ? `<p class="text-[11px] mt-1 text-sky-300"><i class="fa-solid fa-lock mr-1"></i> PIN: <b class="font-mono tracking-widest">${escaparHtml(a.pin || 'sin definir')}</b></p>` : ''}
           ${(a.tipo === 'compartida' && a.pinPendiente === true) ? `<p class="text-[11px] text-yellow-300 mt-1"><i class="fa-solid fa-key mr-1"></i> Pendiente: pon el PIN <b class="font-mono">${escaparHtml(a.pin || '')}</b> en el perfil «${escaparHtml(a.perfil || '')}» dentro de Netflix.</p>` : ''}
-          ${asignada ? `<p class="text-[11px] text-gray-400 mt-1">Plan ${plan} ${plan === 1 ? 'mes' : 'meses'} · ${Number(a.precio) > 0 ? escaparHtml(formatoCOP(a.precio)) : '<span class="text-amber-400">sin precio</span>'} · Pago: <b class="text-gray-200">${fechaCortaNetflix(a.proximoPago)}</b>${diasTxt ? ' · ' + diasTxt : ''}</p>` : ''}
+          ${asignada ? `<p class="text-[10px] mt-1 ${a.origen === 'tienda' ? 'text-emerald-300' : 'text-sky-300'}">${a.origen === 'tienda' ? '🛒 Comprado en la tienda' : '🏷 Asignado por ti'}${productoAlquilerDe(a) ? ' · ' + escaparHtml(productoAlquilerDe(a).nombre) : ' · <span class="text-amber-300">sin producto</span>'}</p>` : ''}
+          ${asignada ? `<p class="text-[11px] text-gray-400 mt-1">Plan ${plan} ${plan === 1 ? 'mes' : 'meses'} · ${precioRenovAlquiler(a) > 0 ? escaparHtml(formatoCOP(precioRenovAlquiler(a))) : '<span class="text-amber-400">sin precio</span>'} · Pago: <b class="text-gray-200">${fechaCortaNetflix(a.proximoPago)}</b>${diasTxt ? ' · ' + diasTxt : ''}</p>` : ''}
           ${a.limpiezaPendiente === true ? '<p class="text-[11px] text-yellow-300 mt-1"><i class="fa-solid fa-broom mr-1"></i> Pendiente: cambiar clave y cerrar sesiones antes de reasignarla.</p>' : ''}
           ${(a.enTienda && !asignada) ? `<p class="text-[11px] mt-1 text-emerald-300"><i class="fa-solid fa-store mr-1"></i> A la venta en la tienda${nombreProductoDe(a.productoTiendaId) ? ': <b>' + escaparHtml(nombreProductoDe(a.productoTiendaId)) + '</b>' : ''} · plan ${parseInt(a.planTienda, 10) || 1} ${(parseInt(a.planTienda, 10) || 1) === 1 ? 'mes' : 'meses'}</p>` : ''}
           ${a.notas ? `<p class="text-[10px] text-gray-500 mt-1">${escaparHtml(a.notas)}</p>` : ''}
@@ -29084,7 +29135,7 @@ async function pintarPanelWa() {
       const a = netflixCuentasAdmin.find(x => x.id === id);
       if (!a || a.estado !== 'asignado') return;
       const plan = parseInt(a.plan, 10) || 1;
-      const precio = Number(a.precio) || 0;
+      const precio = precioRenovAlquiler(a);   // 🏷 precio actual del producto
       const hoy = hoyNetflix();
       let base = esFechaNetflix(a.proximoPago) ? a.proximoPago : hoy;
       if (diasNetflix(base, hoy) > 7) base = hoy;
