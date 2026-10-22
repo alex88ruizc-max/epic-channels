@@ -17915,7 +17915,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-28e';
+    const VERSION_PAGINA = '2026-10-28g';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261021_nombre', fecha: '2026-10-21', titulo: 'Tu nombre, más claro ✍️', mensaje: 'En **Mis datos**, tu nombre ahora se escribe **solo con letras y espacios** (sin números ni símbolos). Así te reconocemos mejor cuando te atendemos. Si ya tienes tu nombre guardado, no tienes que hacer nada.', ir: '' },
       { id: 'act_20261021_miscompras', fecha: '2026-10-21', titulo: 'Nuevo: 📦 Mis compras', mensaje: 'Ahora tus compras tienen **su propio botón dorado 📦 Mis compras** (abajo a la izquierda y arriba junto a la campana). Ahí ves **todas tus cuentas ordenadas por producto**, lo que acabas de comprar marcado como **NUEVA**, su **garantía** y el botón para **copiar**. Y al terminar una compra te lleva directo a ellas.' },
@@ -23877,6 +23877,7 @@
       b.set(db.collection('estados').doc(id), { creadoEl: ahora.toISOString(), expiraEl: new Date(ahora.getTime() + 24 * 3600000).toISOString(), texto: String(texto || '').slice(0, 140), por: currentUser.email, vistasAnonimas: 0, productoId: productoId || '', ...(extra || {}) });
       await b.commit(); estadosImg[id] = dataUrl;
       mostrarToast(extra && extra.auto ? '🤖 Estado automático publicado' : '📲 Estado publicado: se borra solo en 24 horas');
+      try { if (obtenerBackendUrl()) llamarBackend('openwa', { op: 'estado_espejo', id: id }).catch(() => {}); } catch (e) { /* si falla, queda pendiente */ }   // 📢 también en tu WhatsApp, al mismo tiempo
       return id;
     }
     async function subirEstadoArchivo(input) {
@@ -25306,28 +25307,77 @@ async function pintarPanelWa() {
           ${vista.length ? vista.map(v => `<div class="flex items-center justify-between gap-2 text-[11px] p-2 rounded-lg bg-gray-900/60"><span class="truncate text-gray-200">${escaparHtml(v.nombre)}${v.ok ? '' : ' <span class="text-amber-300">· sin WhatsApp válido</span>'}</span><span class="shrink-0 text-gray-400">${v.n} cuenta${v.n === 1 ? '' : 's'} · ${escaparHtml(formatoCOP(v.total || 0))}</span></div>`).join('') : '<p class="text-[11px] text-gray-500">Nadie vence ese día.</p>'}
           <p class="text-[11px] font-black text-white pt-1">📜 Últimos envíos</p>
           ${hist.length ? hist.map(h => `<div class="text-[11px] p-2 rounded-lg bg-gray-900/60"><span class="text-gray-200">${escaparHtml(fF(h.dia))}</span> · <span class="text-emerald-300">${h.ok} de ${h.total} enviados</span>${h.terminado ? '' : ' <span class="text-amber-300">· en curso</span>'}${h.fallos.length ? `<span class="block text-[10px] text-amber-200/80 mt-0.5">${h.fallos.map(escaparHtml).join('<br>')}</span>` : ''}</div>`).join('') : '<p class="text-[11px] text-gray-500">Todavía no hay envíos.</p>'}`, false)
-        + sec('📢 Estados cuando llega stock (número de la tienda)', `
+        + sec('📢 Estados (número de la tienda)', `
           ${sw('owaEstActivo', k.estActivo === true, 'Activar estados')}
-          <div class="grid grid-cols-2 gap-2">
-            <label class="block text-[10px] text-gray-400">Máximo al día<input id="owaEstMax" type="number" min="1" max="6" value="${escaparHtml(String(k.estMax || 3))}" class="${inp} mt-1"></label>
-            <label class="block text-[10px] text-gray-400">Horas entre estados<input id="owaEstGap" type="number" min="1" max="12" value="${escaparHtml(String(k.estGapH || 3))}" class="${inp} mt-1"></label>
-          </div>
-          <p class="text-[10px] text-gray-500">🎨 Publica <b class="text-gray-300">la misma imagen y el mismo texto</b> que tu página sube en sus estados automáticos cuando llega stock (nunca VIP), entre 8 a. m. y 9 p. m. Esos diseños los hace tu panel de admin mientras está abierto, así que los estados automáticos de tu página deben estar activos. Si en 24 h no hay diseño para un producto, no se publica nada.</p>
+          <label class="block text-[10px] text-gray-400">Máximo al día (estados de la página)<input id="owaEstMax" type="number" min="1" max="10" value="${escaparHtml(String(k.estMax || 10))}" class="${inp} mt-1"></label>
+          <p class="text-[10px] text-gray-500">🎨 Cada estado que publica tu página (automáticos y los que subes a mano) sale <b class="text-gray-300">al mismo tiempo</b> en tu WhatsApp, con la misma imagen y texto. Nunca VIP. De 8 a. m. a 9 p. m.: lo que tu página publique de noche sale a las 8 a. m. solo si tiene menos de 6 h; los más viejos y las ofertas que terminan en menos de 30 min se saltan. Si el PC está apagado, sale apenas vuelva (al publicar otro o al abrir tu panel).</p>
           <p class="text-[10px] text-amber-200/80">⚠️ Es una sesión no oficial con el número de la tienda: si WhatsApp la detecta, el riesgo es para ese número. Apágalo aquí cuando quieras.</p>
           <p class="text-[11px] font-black text-white pt-1">📜 Últimos estados</p>
           ${est.length ? est.map(x => `<div class="text-[11px] p-2 rounded-lg bg-gray-900/60 text-gray-200">${escaparHtml(new Date(x.el).toLocaleString('es-CO', { day: '2-digit', month: '2-digit', hour: 'numeric', minute: '2-digit' }))} · ${escaparHtml(x.producto || '')} ${x.ok ? '<span class="text-emerald-300">✓</span>' : `<span class="text-red-300">✗ ${escaparHtml(x.error || '')}</span>`}</div>`).join('') : '<p class="text-[11px] text-gray-500">Todavía no se ha publicado ninguno.</p>'}`, false)
+        + sec('🖼️ Galería diaria (número de la tienda)', `
+          ${sw('owaGalActivo', k.galActivo === true, 'Publicar mi galería todos los días')}
+          <div class="grid grid-cols-3 gap-2">
+            <label class="block text-[10px] text-gray-400">Al día<input id="owaGalPorDia" type="number" min="1" max="10" value="${escaparHtml(String(k.galPorDia || 3))}" class="${inp} mt-1"></label>
+            <label class="block text-[10px] text-gray-400">Desde<select id="owaGalDesde" class="${inp} mt-1">${horas(k.galDesde || 9)}</select></label>
+            <label class="block text-[10px] text-gray-400">Hasta<select id="owaGalHasta" class="${inp} mt-1">${horas(k.galHasta || 20)}</select></label>
+          </div>
+          <p class="text-[10px] text-gray-500">Cada día publica esa cantidad, a horas al azar dentro de la franja, rotando: primero las que llevan más tiempo sin salir. Va aparte del máximo de los estados de la página.</p>
+          <label class="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl bg-sky-500/20 border border-sky-500/40 text-sky-200 text-[11px] font-black cursor-pointer"><i class="fa-solid fa-images"></i> Subir imágenes<input type="file" accept="image/*" multiple class="hidden" onchange="owaGaleriaSubir(this)"></label>
+          <div id="owaGaleria" class="grid grid-cols-2 sm:grid-cols-3 gap-2"><p class="col-span-full text-[11px] text-gray-500"><i class="fa-solid fa-spinner fa-spin mr-1"></i>Cargando tu galería…</p></div>`, false)
         + sec('✉️ Enviar un mensaje (número de respaldo)', `
           <input id="owaMsgNum" inputmode="numeric" maxlength="16" placeholder="Número (ej: 3001234567)" class="${inp}">
           <textarea id="owaMsgTxt" rows="3" maxlength="2000" placeholder="Escribe el mensaje" class="${inp}"></textarea>
           <button type="button" onclick="owaEnviarSuelto(this)" class="w-full py-2 rounded-xl bg-emerald-600/20 border border-emerald-500/40 text-emerald-200 text-[11px] font-black">Enviar</button>`, false)
         + `<button type="button" onclick="guardarOpenWa(this)" class="mt-3 w-full py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-black text-sm">Guardar recordatorios y estados</button>
            <p class="text-[10px] text-gray-500 mt-1.5">Los cambios le llegan al servidor de correo en máximo 30 minutos.</p>`;
+      owaGaleriaCargar();
+    }
+    // 🖼️ Galería diaria
+    function owaMiniaturaDe(dataUrl, lado) { return new Promise(res => { const i = new Image(); i.onload = () => { try { const e = Math.min(1, lado / Math.max(i.naturalWidth, i.naturalHeight)), c = document.createElement('canvas'); c.width = Math.max(1, Math.round(i.naturalWidth * e)); c.height = Math.max(1, Math.round(i.naturalHeight * e)); c.getContext('2d').drawImage(i, 0, 0, c.width, c.height); res(c.toDataURL('image/jpeg', 0.7)); } catch (x) { res(''); } }; i.onerror = () => res(''); i.src = dataUrl; }); }
+    async function owaGaleriaCargar() {
+      const g = document.getElementById('owaGaleria'); if (!g) return;
+      let r = null; try { r = await llamarBackend('openwa', { op: 'galeria_listar' }); } catch (e) { r = null; }
+      if (!r || !r.ok) { g.innerHTML = '<p class="col-span-full text-[11px] text-red-300">No se pudo cargar la galería.</p>'; return; }
+      const L = r.galeria || [];
+      g.innerHTML = L.length ? L.map(x => `<div class="rounded-xl bg-gray-900/70 border ${x.activo ? 'border-gray-700' : 'border-gray-800 opacity-60'} overflow-hidden">
+          ${x.thumb ? `<img src="${escaparHtml(x.thumb)}" alt="" class="w-full h-32 object-cover">` : '<div class="h-32 flex items-center justify-center text-gray-600 text-xs">sin vista previa</div>'}
+          <div class="p-2 space-y-1.5">
+            <input value="${escaparHtml(x.texto)}" maxlength="300" placeholder="Texto (opcional)" onchange="owaGaleriaEditar('${escaparJsAttr(x.id)}', { texto: this.value })" class="w-full bg-gray-800 border border-gray-700 rounded-lg px-2 py-1 text-[10.5px] text-white">
+            <p class="text-[10px] text-gray-500">${x.veces ? 'Publicada ' + x.veces + ' ' + (x.veces === 1 ? 'vez' : 'veces') + (x.ultimaEl ? ' · última ' + escaparHtml(new Date(x.ultimaEl).toLocaleDateString('es-CO', { day: '2-digit', month: '2-digit', year: 'numeric' })) : '') : 'Aún no se publica'}</p>
+            <div class="flex gap-1.5"><button type="button" onclick="owaGaleriaEditar('${escaparJsAttr(x.id)}', { activo: ${x.activo ? 'false' : 'true'} }, true)" class="flex-1 py-1 rounded-lg text-[10px] font-black ${x.activo ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/40' : 'bg-gray-800 text-gray-400 border border-gray-700'}">${x.activo ? '✓ Activa' : 'Pausada'}</button>
+            <button type="button" onclick="owaGaleriaBorrar('${escaparJsAttr(x.id)}')" aria-label="Borrar" class="px-2 py-1 rounded-lg bg-red-500/15 border border-red-500/40 text-red-300 text-[10px]"><i class="fa-solid fa-trash"></i></button></div>
+          </div></div>`).join('') : '<p class="col-span-full text-[11px] text-gray-500">Todavía no subes imágenes.</p>';
+    }
+    async function owaGaleriaSubir(input) {
+      const fs = Array.from(input.files || []); input.value = ''; if (!fs.length) return;
+      let ok = 0, err = '';
+      for (let i = 0; i < fs.length; i++) {
+        mostrarToast('Subiendo ' + (i + 1) + ' de ' + fs.length + '…');
+        try { const img = await comprimirImagenAJpeg(fs[i], 1280, 0.82); if (img.length > 950000) throw new Error('La imagen ' + (i + 1) + ' pesa demasiado aun comprimida.');
+          const thumb = await owaMiniaturaDe(img, 360);
+          const r = await llamarBackend('openwa', { op: 'galeria_subir', imagen: img, thumb: thumb }); if (!r || !r.ok) throw new Error((r && r.error) || 'No se pudo subir.'); ok++; }
+        catch (e) { err = e.message; break; }
+      }
+      if (ok) mostrarToast('🖼️ ' + ok + ' ' + (ok === 1 ? 'imagen subida' : 'imágenes subidas'));
+      if (err) alert(err);
+      owaGaleriaCargar();
+    }
+    async function owaGaleriaEditar(id, cambios, recargar) {
+      try { const r = await llamarBackend('openwa', Object.assign({ op: 'galeria_editar', id: id }, cambios)); if (!r || !r.ok) throw new Error((r && r.error) || 'No se pudo.'); if (recargar) owaGaleriaCargar(); else mostrarToast('Guardado'); }
+      catch (e) { alert(e.message); }
+    }
+    async function owaGaleriaBorrar(id) {
+      if (!await confirmarModal('¿Borrar esta imagen de tu galería? Ya no se volverá a publicar.', { textoAceptar: 'Sí, borrar' })) return;
+      try { const r = await llamarBackend('openwa', { op: 'galeria_borrar', id: id }); if (!r || !r.ok) throw new Error((r && r.error) || 'No se pudo.'); mostrarToast('Imagen borrada'); owaGaleriaCargar(); }
+      catch (e) { alert(e.message); }
     }
     async function guardarOpenWa(btn) {
       const v = id => document.getElementById(id);
       const cfg = { url: String(v('owaUrl').value || '').trim(), key: String(v('owaKey').value || '').trim(), sesRec: String(v('owaSesRec').value || '').trim(), sesEst: String(v('owaSesEst').value || '').trim(),
         recActivo: v('owaRecActivo').checked, dias: parseInt(v('owaDias').value, 10) || 0, desde: parseInt(v('owaDesde').value, 10), hasta: parseInt(v('owaHasta').value, 10), plantilla: String(v('owaPlantilla').value || ''),
-        estActivo: v('owaEstActivo').checked, estMax: parseInt(v('owaEstMax').value, 10) || 3, estGapH: parseInt(v('owaEstGap').value, 10) || 3 };
+        estActivo: v('owaEstActivo').checked, estMax: Math.max(1, Math.min(10, parseInt(v('owaEstMax').value, 10) || 10)),
+        galActivo: v('owaGalActivo').checked, galPorDia: Math.max(1, Math.min(10, parseInt(v('owaGalPorDia').value, 10) || 3)), galDesde: parseInt(v('owaGalDesde').value, 10), galHasta: parseInt(v('owaGalHasta').value, 10) };
+      if (cfg.galHasta <= cfg.galDesde) { alert('En la galería, la hora "Hasta" debe ser después de "Desde".'); return; }
       if (cfg.hasta <= cfg.desde) { alert('La hora "Hasta" debe ser después de "Desde".'); return; }
       if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Guardando…'; }
       try { const r = await llamarBackend('openwa', { op: 'guardar', cfg: cfg }); if (!r || !r.ok) throw new Error((r && r.error) || 'No se pudo.'); mostrarToast('✅ Guardado'); owaDatos = null; await cargarOpenWa(); }
@@ -25773,6 +25823,8 @@ async function pintarPanelWa() {
     }
     setInterval(() => { try { procesarColaEstados(); } catch (e) { /* nada */ } }, 2 * 60000);
     setTimeout(() => { try { procesarColaEstados(); } catch (e) { /* nada */ } }, 20000);
+    const owaReintentarEspejo = () => { try { if (esAdminSesionActual() && obtenerBackendUrl()) llamarBackend('openwa', { op: 'estado_espejo' }).catch(() => {}); } catch (e) { /* nada */ } };
+    setTimeout(owaReintentarEspejo, 30000); setInterval(owaReintentarEspejo, 60 * 60000);   // 📢 estados que quedaron pendientes con el PC apagado
     async function pintarEstadosAuto() {
       const c = document.getElementById('estadosAutoCaja'); if (!c || !esAdminSesionActual()) return;
       let pend = 0, ult = [];
