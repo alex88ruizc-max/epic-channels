@@ -14716,6 +14716,7 @@
         await loteBatch.commit();
         cerrarModalTicket();
         if (cli.uid) avisarClienteTicket(cli.uid, 'Abrimos un ticket por tu cuenta', `Revisaremos ${cuenta}. La respuesta te llega en "Mis reportes", dentro de Mis Cuentas.`);
+        if (cli.uid) llamarBackend('ticket_aviso_wa', { ticketId: refTicket.id }).catch(() => {});   // 📲 aviso por el número de avisos, al instante
         mostrarToast((prov.nombre ? `Ticket creado y asignado a ${prov.nombre}.` : 'Ticket creado (sin proveedor).') + (cli.uid ? ' El cliente ya lo ve en su panel.' : ''));
       } catch (err) {
         alert('No se pudo crear el ticket: ' + err.message);
@@ -14938,6 +14939,7 @@
         if (admin && t.proveedorUid && !enNombre && (resultado === 'arreglada' || resultado === 'reemplazo')) { registrarDescuentoReemplazo(t); msg += ' Se le descontó al proveedor el costo de la cuenta.'; }
         mostrarToast(msg);
         if (t.clienteUid) avisarClienteTicket(t.clienteUid, 'Tu ticket fue resuelto', `Revisa la respuesta sobre ${t.cuenta} en "Mis reportes", dentro de Mis Cuentas.`);
+        if (t.clienteUid) llamarBackend('ticket_aviso_wa', { ticketId: id }).catch(() => {});   // 📲 aviso por el número de avisos, al instante
         delete fotosTicketsCache[id]; delete fotosTicketsCache[id + '_resp'];
         cerrarResolverTicket();
       } catch (err) {
@@ -17932,7 +17934,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-30b';
+    const VERSION_PAGINA = '2026-10-30d';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261022_alq_unidos', fecha: '2026-10-22', titulo: 'Tus alquileres, todos en un solo lugar 🔄', mensaje: 'Ahora **todos tus alquileres** están en **Mis alquileres**, también los que compraste en la tienda: ahí ves cuántos días te quedan y los **renuevas con un toque**, siempre al precio actual del producto.', ir: '' },
       { id: 'act_20261022_avisos', fecha: '2026-10-22', titulo: 'Tus recordatorios por WhatsApp 📲', mensaje: 'Al final de cada entrega verás el **número desde el que te avisamos** (vencimientos y recordatorios). **Guárdalo** para que no se te pase ninguna renovación. Es solo de avisos: para comprar o pedir ayuda sigue usando la tienda.', ir: '' },
@@ -24147,7 +24149,8 @@
     }
     async function aprobarResolucionTicket(id) {
       const t = ticketsCuentas.find(x => x.id === id); if (!t || !esAdminSesionActual()) return;
-      try { await db.collection('tickets_cuentas').doc(id).update({ revisado: 'aprobado', revisadoPor: currentUser.email, revisadoEl: new Date().toISOString() }); mostrarToast('✓ Resolución aprobada: no se descuenta nada'); }
+      try { await db.collection('tickets_cuentas').doc(id).update({ revisado: 'aprobado', revisadoPor: currentUser.email, revisadoEl: new Date().toISOString() }); mostrarToast('✓ Resolución aprobada: no se descuenta nada');
+        if (t.clienteUid) llamarBackend('ticket_aviso_wa', { ticketId: id }).catch(() => {}); }   // 📲 al aprobar, el cliente recibe la solución por el número de avisos
       catch (e) { alert('No se pudo: ' + e.message); }
     }
     async function rechazarResolucionTicket(id) {
