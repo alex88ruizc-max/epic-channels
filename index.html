@@ -17932,7 +17932,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-29f';
+    const VERSION_PAGINA = '2026-10-29g';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261022_alq_unidos', fecha: '2026-10-22', titulo: 'Tus alquileres, todos en un solo lugar 🔄', mensaje: 'Ahora **todos tus alquileres** están en **Mis alquileres**, también los que compraste en la tienda: ahí ves cuántos días te quedan y los **renuevas con un toque**, siempre al precio actual del producto.', ir: '' },
       { id: 'act_20261022_avisos', fecha: '2026-10-22', titulo: 'Tus recordatorios por WhatsApp 📲', mensaje: 'Al final de cada entrega verás el **número desde el que te avisamos** (vencimientos y recordatorios). **Guárdalo** para que no se te pase ninguna renovación. Es solo de avisos: para comprar o pedir ayuda sigue usando la tienda.', ir: '' },
@@ -25333,14 +25333,23 @@ async function pintarPanelWa() {
       const det = document.getElementById('owaDet');
       det.addEventListener('toggle', () => { if (det.open && !owaDatos) cargarOpenWa(); });   // 📶 solo consulta al servidor cuando lo abres
     }
-    async function cargarOpenWa() {
+    let owaEditado = false;
+    async function cargarOpenWa(datos) {
       const b = document.getElementById('owaCuerpo'); if (!b) return;
-      b.innerHTML = '<p class="text-[11px] text-gray-400"><i class="fa-solid fa-spinner fa-spin mr-1"></i>Revisando OpenWA…</p>';
-      let r = null; try { r = await llamarBackend('openwa', { op: 'estado' }); } catch (e) { r = { ok: false, error: e.message }; }
+      let r = datos || null;
+      if (!r) {
+        b.innerHTML = '<p class="text-[11px] text-gray-400"><i class="fa-solid fa-spinner fa-spin mr-1"></i>Cargando…</p>';
+        try { r = await llamarBackend('openwa', { op: 'estado', rapido: true }); } catch (e) { r = { ok: false, error: e.message }; }
+        // ⏳ lo lento (estado de OpenWA y quién recibe recordatorio mañana) llega después; si no editaste nada, se actualiza solo
+        if (r && r.ok) { owaEditado = false; setTimeout(() => { try { b.addEventListener('input', () => { owaEditado = true; }, { once: true }); } catch (e) { /* nada */ } }, 0);
+          llamarBackend('openwa', { op: 'estado_lento' }).then(x => { if (x && x.ok && !owaEditado && document.getElementById('owaCuerpo')) cargarOpenWa(Object.assign({}, r, { sesiones: x.sesiones, vista: x.vista, fechaVista: x.fechaVista, _lentoOk: true })); })
+            .catch(() => { if (!owaEditado && document.getElementById('owaCuerpo')) cargarOpenWa(Object.assign({}, r, { sesiones: { ok: false, error: 'OpenWA no responde (¿PC apagado o túnel caído?)', lista: [] }, _lentoOk: true })); }); }
+      }
       if (!r || !r.ok) { b.innerHTML = `<p class="text-[11px] text-red-300">No se pudo cargar: ${escaparHtml((r && r.error) || 'sin respuesta')}</p><button type="button" onclick="cargarOpenWa()" class="mt-2 px-3 py-1.5 rounded-lg bg-gray-800 border border-gray-700 text-white text-[11px] font-black">Reintentar</button>`; return; }
       owaDatos = r; const k = r.cfg || {};
       const inp = 'w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500';
       const ses = (r.sesiones && r.sesiones.lista) || [], estSes = nom => { const s = ses.find(x => x.nombre.toLowerCase() === String(nom || '').toLowerCase());
+        if (r.sesiones && r.sesiones.cargando) return '<span class="text-gray-400"><i class="fa-solid fa-spinner fa-spin mr-1"></i>Revisando…</span>';
         if (!r.sesiones || !r.sesiones.ok) return `<span class="text-red-300">🔴 ${escaparHtml((r.sesiones && r.sesiones.error) || 'sin conexión')}</span>`;
         if (!s) return '<span class="text-amber-300">⚠️ No existe en OpenWA</span>';
         return /^(ready|connected|working|authenticated|open)$/i.test(s.estado) ? `<span class="text-emerald-300">🟢 Conectada${s.telefono ? ' · ' + escaparHtml(s.telefono) : ''}</span>` : `<span class="text-amber-300">🟡 ${escaparHtml(s.estado || 'desconectada')}</span>`; };
@@ -25374,7 +25383,7 @@ async function pintarPanelWa() {
           <p class="text-[10px] text-gray-500">El número de avisos no cobra: el enlace abre el chat de tu tienda con ese mensaje escrito y el cliente sigue ahí con el bot.</p>
           <div class="flex gap-2"><input id="owaPruebaNum" inputmode="numeric" maxlength="15" placeholder="Tu número para la prueba" class="${inp}"><button type="button" onclick="owaPrueba(this)" class="shrink-0 px-3 rounded-xl bg-sky-500/20 border border-sky-500/40 text-sky-200 text-[11px] font-black">🧪 Enviar prueba</button></div>
           <p class="text-[11px] font-black text-white pt-1">👀 Recibirán el ${escaparHtml(fF(r.fechaVista))} <span class="text-gray-500 font-normal">(vence ese día)</span></p>
-          ${vista.length ? vista.map(v => `<div class="flex items-center justify-between gap-2 text-[11px] p-2 rounded-lg bg-gray-900/60"><span class="truncate text-gray-200">${escaparHtml(v.nombre)}${v.ok ? '' : ' <span class="text-amber-300">· sin WhatsApp válido</span>'}</span><span class="shrink-0 text-gray-400">${v.n} cuenta${v.n === 1 ? '' : 's'} · ${escaparHtml(formatoCOP(v.total || 0))}</span></div>`).join('') : '<p class="text-[11px] text-gray-500">Nadie vence ese día.</p>'}
+          ${vista.length ? vista.map(v => `<div class="flex items-center justify-between gap-2 text-[11px] p-2 rounded-lg bg-gray-900/60"><span class="truncate text-gray-200">${escaparHtml(v.nombre)}${v.ok ? '' : ' <span class="text-amber-300">· sin WhatsApp válido</span>'}</span><span class="shrink-0 text-gray-400">${v.n} cuenta${v.n === 1 ? '' : 's'} · ${escaparHtml(formatoCOP(v.total || 0))}</span></div>`).join('') : (r._lentoOk ? '<p class="text-[11px] text-gray-500">Nadie vence ese día.</p>' : '<p class="text-[11px] text-gray-400"><i class="fa-solid fa-spinner fa-spin mr-1"></i>Calculando…</p>')}
           <p class="text-[11px] font-black text-white pt-1">📜 Últimos envíos</p>
           ${hist.length ? hist.map(h => `<div class="text-[11px] p-2 rounded-lg bg-gray-900/60"><span class="text-gray-200">${escaparHtml(fF(h.dia))}</span> · <span class="text-emerald-300">${h.ok} de ${h.total} enviados</span>${h.terminado ? '' : ' <span class="text-amber-300">· en curso</span>'}${h.fallos.length ? `<span class="block text-[10px] text-amber-200/80 mt-0.5">${h.fallos.map(escaparHtml).join('<br>')}</span>` : ''}</div>`).join('') : '<p class="text-[11px] text-gray-500">Todavía no hay envíos.</p>'}`, false)
         + sec('📢 Estados (número de la tienda)', `
