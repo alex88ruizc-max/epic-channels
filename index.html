@@ -17920,7 +17920,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-28n';
+    const VERSION_PAGINA = '2026-10-29b';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261022_alq_unidos', fecha: '2026-10-22', titulo: 'Tus alquileres, todos en un solo lugar 🔄', mensaje: 'Ahora **todos tus alquileres** están en **Mis alquileres**, también los que compraste en la tienda: ahí ves cuántos días te quedan y los **renuevas con un toque**, siempre al precio actual del producto.', ir: '' },
       { id: 'act_20261022_avisos', fecha: '2026-10-22', titulo: 'Tus recordatorios por WhatsApp 📲', mensaje: 'Al final de cada entrega verás el **número desde el que te avisamos** (vencimientos y recordatorios). **Guárdalo** para que no se te pase ninguna renovación. Es solo de avisos: para comprar o pedir ayuda sigue usando la tienda.', ir: '' },
@@ -25345,6 +25345,29 @@ async function pintarPanelWa() {
           <p class="text-[10px] text-gray-500">Cada día publica esa cantidad, a horas al azar dentro de la franja, rotando: primero las que llevan más tiempo sin salir. Va aparte del máximo de los estados de la página.</p>
           <label class="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl bg-sky-500/20 border border-sky-500/40 text-sky-200 text-[11px] font-black cursor-pointer"><i class="fa-solid fa-images"></i> Subir imágenes<input type="file" accept="image/*" multiple class="hidden" onchange="owaGaleriaSubir(this)"></label>
           <div id="owaGaleria" class="grid grid-cols-2 sm:grid-cols-3 gap-2"><p class="col-span-full text-[11px] text-gray-500"><i class="fa-solid fa-spinner fa-spin mr-1"></i>Cargando tu galería…</p></div>`, false)
+        + sec('🤖 Quién responde (número de la tienda)', `
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <label class="block text-[10px] text-gray-400">Chats privados<select id="owaBotPriv" class="${inp} mt-1">
+              <option value="aar" ${k.botPriv === 'aar' ? 'selected' : ''}>Solo All Auto Responder</option>
+              <option value="dinamico" ${(k.botPriv || 'dinamico') === 'dinamico' ? 'selected' : ''}>Dinámico: texto por All · audios, fotos y QR por OpenWA</option>
+              <option value="openwa" ${k.botPriv === 'openwa' ? 'selected' : ''}>Solo OpenWA</option></select></label>
+            <label class="block text-[10px] text-gray-400">Grupos<select id="owaBotGrupos" class="${inp} mt-1">
+              <option value="aar" ${(k.botGrupos || 'aar') === 'aar' ? 'selected' : ''}>All Auto Responder</option>
+              <option value="openwa" ${k.botGrupos === 'openwa' ? 'selected' : ''}>OpenWA</option>
+              <option value="nadie" ${k.botGrupos === 'nadie' ? 'selected' : ''}>Nadie</option></select></label>
+          </div>
+          ${sw('owaBotCubrir', k.botCubrir !== false, 'Si uno falla, responde el otro')}
+          <div class="grid grid-cols-3 gap-2">
+            <label class="block text-[10px] text-gray-400">Pausa si escribo yo (h)<input id="owaBotPausa" type="number" min="0" max="6" value="${escaparHtml(String(k.botPausaH !== undefined ? k.botPausaH : 2))}" class="${inp} mt-1"></label>
+            <label class="block text-[10px] text-gray-400">Espera mín. (s)<input id="owaBotEspMin" type="number" min="0" max="15" value="${escaparHtml(String(k.botEspMin !== undefined ? k.botEspMin : 4))}" class="${inp} mt-1"></label>
+            <label class="block text-[10px] text-gray-400">Espera máx. (s)<input id="owaBotEspMax" type="number" min="0" max="20" value="${escaparHtml(String(k.botEspMax !== undefined ? k.botEspMax : 7))}" class="${inp} mt-1"></label>
+          </div>
+          <p class="text-[10px] text-gray-500">⏳ Responde entre la espera mínima y la máxima, al azar, como una persona; si el cliente manda varios mensajes seguidos, responde una sola vez a todos. ✋ Si escribes tú en un chat, el bot se calla ahí esas horas (escríbele <b class="text-gray-300">bot</b> al chat para reactivarlo antes).</p>
+          ${sw('owaBotAudios', k.botAudios !== false, '🎧 Escuchar audios (hasta ~2 min)')}
+          ${sw('owaBotFotos', k.botFotos !== false, '📸 Leer fotos (comprobantes y errores)')}
+          ${sw('owaBotVendedor', k.botVendedor !== false, '🤝 Agente vendedor (antes de decir "no te entendí")')}
+          <label class="block text-[10px] text-gray-400">🧪 Modo prueba: números (separados por coma) <span class="text-gray-500">· vacío = todos los clientes</span><input id="owaBotPrueba" inputmode="numeric" maxlength="300" value="${escaparHtml((k.botPrueba || []).join(', '))}" placeholder="3001234567, 3109876543" class="${inp} mt-1"></label>
+          <p class="text-[10px] text-gray-500">Audios, fotos y QR necesitan el PC con OpenWA prendido; si está apagado, All Auto Responder sigue con todo el texto. Las fotos nunca entregan cuentas solas: el pago se confirma con el correo de Bre-B. Los cambios llegan al servidor de correo en máximo 30 minutos.</p>`, false)
         + sec('📲 Número de avisos en las entregas', `
           ${sw('owaLineaActiva', k.lineaActiva === true, 'Mostrar la línea en las entregas (página y bot de WhatsApp)')}
           <label class="block text-[10px] text-gray-400">Número (completo, con el 57, sin espacios)<input id="owaLineaNumero" inputmode="numeric" maxlength="15" value="${escaparHtml(k.lineaNumero || ((ses.find(x => x.nombre.toLowerCase() === String(k.sesRec || 'bot-recordatorio').toLowerCase()) || {}).telefono || ''))}" placeholder="573001697272" class="${inp} mt-1"></label>
@@ -25358,7 +25381,7 @@ async function pintarPanelWa() {
           <button type="button" onclick="owaEnviarSuelto(this)" class="w-full py-2 rounded-xl bg-emerald-600/20 border border-emerald-500/40 text-emerald-200 text-[11px] font-black">Enviar</button>`, false)
         + `<button type="button" onclick="guardarOpenWa(this)" class="mt-3 w-full py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-black text-sm">Guardar recordatorios y estados</button>
            <p class="text-[10px] text-gray-500 mt-1.5">Los cambios le llegan al servidor de correo en máximo 30 minutos.</p>`
-        + (k.fixClave && Array.isArray(k.fixClave.cuentas) ? `<div class="mt-2 p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-[11px] text-emerald-100 leading-snug">🩹 <b>Avisos de contraseña corregidos:</b> ${k.fixClave.cuentas.length ? escaparHtml(k.fixClave.cuentas.join(', ')) + ' ya no cuentan como caídas' + (k.fixClave.descuentos ? ' · ' + k.fixClave.descuentos + ' descuento(s) al proveedor deshecho(s)' : '') + (k.fixClave.descuentosYaAplicados && k.fixClave.descuentosYaAplicados.length ? ' · <span class="text-amber-300">ya aplicado en un pago (revísalo a mano): ' + escaparHtml(k.fixClave.descuentosYaAplicados.join(', ')) + '</span>' : '') : 'no había cuentas marcadas por eso'}.</div>` : '');
+        + (k.fixClave && Array.isArray(k.fixClave.cuentas) ? `<div class="mt-2 p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-[11px] text-emerald-100 leading-snug">🩹 <b>Avisos de contraseña corregidos:</b> ${k.fixClave.cuentas.length ? escaparHtml(k.fixClave.cuentas.join(', ')) + ' ya no cuentan como caídas' + (k.fixClave.etiquetasQuitadas ? ' · etiqueta 🔴 quitada de ' + k.fixClave.etiquetasQuitadas + ' correo(s)' : '') + (k.fixClave.descuentos ? ' · ' + k.fixClave.descuentos + ' descuento(s) al proveedor deshecho(s)' : '') + (k.fixClave.descuentosYaAplicados && k.fixClave.descuentosYaAplicados.length ? ' · <span class="text-amber-300">ya aplicado en un pago (revísalo a mano): ' + escaparHtml(k.fixClave.descuentosYaAplicados.join(', ')) + '</span>' : '') : (k.fixClave.etiquetasQuitadas ? 'etiqueta 🔴 quitada de ' + k.fixClave.etiquetasQuitadas + ' correo(s) que eran avisos normales' : 'no había cuentas marcadas por eso')}.</div>` : '');
       owaGaleriaCargar();
     }
     // 🖼️ Galería diaria
@@ -25408,6 +25431,10 @@ async function pintarPanelWa() {
         galActivo: v('owaGalActivo').checked, galPorDia: Math.max(1, Math.min(10, parseInt(v('owaGalPorDia').value, 10) || 3)), galDesde: parseInt(v('owaGalDesde').value, 10), galHasta: parseInt(v('owaGalHasta').value, 10) };
       if (cfg.galHasta <= cfg.galDesde) { alert('En la galería, la hora "Hasta" debe ser después de "Desde".'); return; }
       if (cfg.estHasta <= cfg.estDesde) { alert('En los estados, la hora "Hasta" debe ser después de "Desde".'); return; }
+      Object.assign(cfg, { botPriv: v('owaBotPriv').value, botGrupos: v('owaBotGrupos').value, botCubrir: v('owaBotCubrir').checked,
+        botPausaH: Math.max(0, Math.min(6, parseInt(v('owaBotPausa').value, 10) || 0)), botEspMin: Math.max(0, Math.min(15, parseInt(v('owaBotEspMin').value, 10) || 0)), botEspMax: Math.max(0, Math.min(20, parseInt(v('owaBotEspMax').value, 10) || 0)),
+        botAudios: v('owaBotAudios').checked, botFotos: v('owaBotFotos').checked, botVendedor: v('owaBotVendedor').checked, botPrueba: String(v('owaBotPrueba').value || '') });
+      if (cfg.botEspMax < cfg.botEspMin) { alert('La espera máxima debe ser mayor o igual a la mínima.'); return; }
       Object.assign(cfg, { lineaActiva: v('owaLineaActiva').checked, lineaNumero: String(v('owaLineaNumero').value || '').replace(/\D/g, ''), lineaTexto: String(v('owaLineaTexto').value || '').trim(), autoActiva: v('owaAutoActiva').checked, autoTexto: String(v('owaAutoTexto').value || '') });
       if (cfg.lineaActiva && !/^[1-9]\d{10,14}$/.test(cfg.lineaNumero)) { alert('Escribe el número completo, con el 57 y sin espacios (ej: 573001697272).'); return; }
       if (cfg.hasta <= cfg.desde) { alert('La hora "Hasta" debe ser después de "Desde".'); return; }
