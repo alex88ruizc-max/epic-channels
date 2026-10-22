@@ -9757,6 +9757,7 @@
       });
 
       catalogoUnificado = Array.from(mapaProds.values());
+      try { sincronizarVipServidor(); } catch (e) { /* nada */ }   // ⭐ el servidor (bot, grupos, avisos) usa EXACTAMENTE la misma lista de VIP que la página
       if (!window.__skStockOk && catalogoUnificado.length) { window.__skStockOk = true; setTimeout(() => { try { renderizarPerfilAdmin(); } catch (e) { /* nada */ } }, 0); }
       try { const vmS = document.getElementById('vmProducto'); if (vmS && (!vmS.options.length || !vmS.value)) { opcionesProductosStock(vmS); vmAgregarLibres(); vmCambioProducto(); } else if (vmS) { vmRefrescarLibres(); vmCalcularTotal(); } } catch (e) { /* nada */ }
       try { const dS = document.getElementById('correoPropioDestino'); if (dS && !dS.options.length) poblarDestinoPropio(); } catch (e) { /* nada */ }
@@ -9771,6 +9772,17 @@
       poblarSelectStock();
     }
 
+    // ⭐ Lista de productos VIP para el servidor: solo el administrador la escribe, y solo cuando cambia
+    let vipServidorUltimo = null;
+    function sincronizarVipServidor() {
+      if (!esAdminSesionActual() || !catalogoUnificado.length) return;
+      const ids = []; catalogoUnificado.filter(esProductoVip).forEach(p => { [p.docId, p.id].concat(p.aliases || []).forEach(x => { if (x && ids.indexOf(String(x)) === -1) ids.push(String(x)); }); });
+      ids.sort(); const firma = ids.join('|'); if (firma === vipServidorUltimo) return; vipServidorUltimo = firma;
+      db.collection('configuracion').doc('productos_vip').get().then(d => {
+        const prev = d.exists && Array.isArray(d.data().ids) ? d.data().ids.slice().sort().join('|') : null;
+        if (prev !== firma) return db.collection('configuracion').doc('productos_vip').set({ ids: ids, actualizadoEl: new Date().toISOString() });
+      }).catch(e => console.warn('Lista VIP para el servidor:', e));
+    }
     function obtenerIconoCategoria(cat) {
       const c = (cat || '').toLowerCase();
       if (c.includes('streaming') || c.includes('video') || c.includes('tv') || c.includes('entretenimiento')) return 'fa-tv';
@@ -17920,7 +17932,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-29d';
+    const VERSION_PAGINA = '2026-10-29f';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261022_alq_unidos', fecha: '2026-10-22', titulo: 'Tus alquileres, todos en un solo lugar 🔄', mensaje: 'Ahora **todos tus alquileres** están en **Mis alquileres**, también los que compraste en la tienda: ahí ves cuántos días te quedan y los **renuevas con un toque**, siempre al precio actual del producto.', ir: '' },
       { id: 'act_20261022_avisos', fecha: '2026-10-22', titulo: 'Tus recordatorios por WhatsApp 📲', mensaje: 'Al final de cada entrega verás el **número desde el que te avisamos** (vencimientos y recordatorios). **Guárdalo** para que no se te pase ninguna renovación. Es solo de avisos: para comprar o pedir ayuda sigue usando la tienda.', ir: '' },
@@ -18723,7 +18735,41 @@
 
     // ==================== SACAR CUENTAS DEL INVENTARIO (transacción) ====================
     // Toma N cuentas libres (sin perfiles de Alquileres) de un producto, en inventario normal o protegido
-    async function sacarCuentasInventario(tx, productoId, cantidad) {
+    // Saca cuentas de uno o varios stocks (el propio y el del que toma) en la MISMA transacción: primero lee todo, después escribe.
+    // Mismo candado que sacarCuentasInventario: nunca entrega una cuenta ya vendida ni repetida.
+    async function sacarCuentasVarias(tx, productoVendido, fuentes, cantidad) {
+      if (!fuentes.length) throw new Error('No encontré de dónde sacar las cuentas.');
+      if (fuentes.length === 1) return sacarCuentasInventario(tx, fuentes[0], cantidad, productoVendido);
+      const docs = [];
+      for (const fid of fuentes) { const invRef = db.collection('inventario').doc(fid), privRef = db.collection('inventario_privado').doc(fid); const invDoc = await tx.get(invRef), privDoc = await tx.get(privRef); if (!invDoc.exists) continue; docs.push({ fid, invRef, privRef, invDoc, privDoc }); }
+      const sacadas = [], purgadas = [], vistos = new Set(), plan = [];
+      for (const d of docs) {
+        const inv = d.invDoc.data() || {}, legado = Array.isArray(inv.cuentas) ? inv.cuentas : [], priv = (d.privDoc.exists && Array.isArray((d.privDoc.data() || {}).cuentas)) ? d.privDoc.data().cuentas : [];
+        const quedan = [], nomP = inv.nombre || d.fid;
+        for (const x of priv.concat(legado)) {
+          if (sacadas.length >= cantidad || (x && typeof x === 'object' && x.alquilerId)) { quedan.push(x); continue; }
+          const e = String(parseCredencialObj(x).email || '').trim().toLowerCase();
+          if (e && !exentaUnica(x, nomP)) {
+            if (vistos.has(e)) { purgadas.push(x); continue; }
+            let ya = false; try { ya = (await tx.get(db.collection('cuentas_vendidas').doc(idVendida(e)))).exists; } catch (err) { ya = false; }
+            if (ya) { purgadas.push(x); continue; }
+            vistos.add(e);
+          }
+          sacadas.push(x);
+        }
+        plan.push({ d, quedan, inv });
+      }
+      if (sacadas.length < cantidad) throw new Error(`Solo hay ${sacadas.length} cuentas libres` + (purgadas.length ? ` (${purgadas.length} ya se habían vendido)` : '') + '.');
+      for (const x of plan) {   // ✍️ ahora sí, las escrituras
+        if (x.d.privDoc.exists || inventarioSeguroActivo()) { tx.set(x.d.privRef, { cuentas: x.quedan }, { merge: true }); tx.set(x.d.invRef, { stock: x.quedan.length, cuentas: firebase.firestore.FieldValue.delete() }, { merge: true }); }
+        else tx.set(x.d.invRef, { cuentas: x.quedan, stock: x.quedan.length }, { merge: true });
+      }
+      const ahoraV = new Date().toISOString();
+      sacadas.forEach(x => { const e = String(parseCredencialObj(x).email || '').trim().toLowerCase(); if (e) tx.set(db.collection('cuentas_vendidas').doc(idVendida(e)), { email: e, fecha: ahoraV, productoId: productoVendido, por: (currentUser && currentUser.email) || '' }); });
+      if (purgadas.length) setTimeout(() => { try { mostrarToast('🛡 ' + purgadas.length + ' cuenta(s) ya vendida(s) salieron del stock y se entregaron otras'); } catch (e) { /* nada */ } }, 300);
+      return { sacadas: sacadas, inv: (plan[0] && plan[0].inv) || {}, purgadas: purgadas };
+    }
+    async function sacarCuentasInventario(tx, productoId, cantidad, productoVendido) {
       const invRef = db.collection('inventario').doc(productoId), privRef = db.collection('inventario_privado').doc(productoId);
       const invDoc = await tx.get(invRef), privDoc = await tx.get(privRef);
       if (!invDoc.exists) throw new Error('No encontré ese producto.');
@@ -18749,7 +18795,7 @@
         tx.set(invRef, { stock: quedan.length, cuentas: firebase.firestore.FieldValue.delete() }, { merge: true });
       } else tx.set(invRef, { cuentas: quedan, stock: quedan.length }, { merge: true });
       const ahoraV = new Date().toISOString();
-      sacadas.forEach(x => { const e = String(parseCredencialObj(x).email || '').trim().toLowerCase(); if (e && !exentaUnica(x, nomP)) tx.set(db.collection('cuentas_vendidas').doc(idVendida(e)), { email: e, fecha: ahoraV, productoId: productoId, por: (currentUser && currentUser.email) || '' }); });
+      sacadas.forEach(x => { const e = String(parseCredencialObj(x).email || '').trim().toLowerCase(); if (e && !exentaUnica(x, nomP)) tx.set(db.collection('cuentas_vendidas').doc(idVendida(e)), { email: e, fecha: ahoraV, productoId: productoVendido || productoId, por: (currentUser && currentUser.email) || '' }); });
       if (purgadas.length) setTimeout(() => { try { mostrarToast('🛡 ' + purgadas.length + ' cuenta(s) ya vendida(s) salieron del stock y se entregaron otras'); } catch (e) { /* nada */ } }, 300);
       return { sacadas: sacadas, inv: inv, purgadas: purgadas };
     }
@@ -18774,10 +18820,19 @@
       if (prev && [...sel.options].some(o => o.value === prev)) sel.value = prev;
       const como = document.getElementById('vmComo'); if (como && !como.options.length) { opcionesProductosStock(como); const af = (catalogoUnificado || []).find(p => /amazon/i.test(p.nombre || '') && /free/i.test(p.nombre || '')); if (af) como.value = af.docId; }
     }
+    // 🔗 Venta manual: si el producto toma cuentas de otro (stock compartido o de respaldo), también cuentan esas
+    function vmFuentes(id) {
+      const p = catalogoUnificado.find(x => x.docId === id); if (!p) return [];
+      const L = []; const modo = p.stockDe ? p.stockModo : '';
+      if (modo !== 'compartido') L.push({ id: id, libres: stockLibreDeProducto(id) });
+      if (p.stockDe && catalogoUnificado.some(x => x.docId === p.stockDe)) L.push({ id: p.stockDe, libres: stockLibreDeProducto(p.stockDe) });
+      return L;
+    }
+    function vmLibres(id) { return vmFuentes(id).reduce((t, f) => t + f.libres, 0); }
     function vmProductoActual() { const v = (document.getElementById('vmProducto') || {}).value || ''; if (/^libre:/.test(v)) { const c = (document.getElementById('vmComo') || {}).value; return { libre: v.slice(6), id: c, p: catalogoUnificado.find(x => x.docId === c) }; } return { libre: '', id: v, p: catalogoUnificado.find(x => x.docId === v) }; }
     function vmRefrescarLibres() {   // el número de libres de cada opción, al día
       const sel = document.getElementById('vmProducto'); if (!sel) return;
-      [...sel.options].forEach(o => { if (/^libre:/.test(o.value)) return; const p = catalogoUnificado.find(x => x.docId === o.value); if (!p) return; let lb = 0; try { lb = stockLibreDeProducto(p.docId); } catch (e) { lb = Number(p.stock) || 0; } const tx = (p.nombre || p.docId) + ' · ' + lb + ' libres'; if (o.textContent !== tx) o.textContent = tx; });
+      [...sel.options].forEach(o => { if (/^libre:/.test(o.value)) return; const p = catalogoUnificado.find(x => x.docId === o.value); if (!p) return; let lb = 0; try { lb = vmLibres(p.docId); } catch (e) { lb = Number(p.stock) || 0; } const tx = (p.nombre || p.docId) + ' · ' + lb + ' libres'; if (o.textContent !== tx) o.textContent = tx; });
     }
     function vmCambioProducto() {
       try { vmRefrescarLibres(); } catch (e) { /* nada */ }
@@ -18796,7 +18851,7 @@
       const unit = Math.round(Number((document.getElementById('vmPrecio') || {}).value) || 0), sugerido = unit * n;
       const t = document.getElementById('vmTotal');
       if (t && !t.dataset.manual) t.value = sugerido || '';
-      const total = Math.round(Number(t && t.value) || 0), libres = ac.libre ? 1 : (p ? stockLibreDeProducto(id) : 0);
+      const total = Math.round(Number(t && t.value) || 0), libres = ac.libre ? 1 : (p ? vmLibres(id) : 0);
       { const sc = document.getElementById('vmSobreCaja'), falta = Math.max(0, n - libres); if (sc) sc.classList.toggle('hidden', !p || !!ac.libre || !falta); const h = document.getElementById('vmHay'); if (h) h.textContent = libres; const fz = document.getElementById('vmFaltan'); if (fz) fz.textContent = falta; }
       const inf = document.getElementById('vmInfo');
       if (inf && p) inf.innerHTML = `${libres} ${libres === 1 ? 'cuenta libre' : 'cuentas libres'}${n > libres ? ' · <b class="text-red-300">no alcanzan</b>' : ''} · precio normal ${formatoCOP(unit)} c/u · sugerido <b class="text-white">${formatoCOP(sugerido)}</b>${t && t.dataset.manual && total !== sugerido ? ` · <span class="text-amber-300">cobrarás ${formatoCOP(total)}${sugerido ? ' (' + (total < sugerido ? '-' : '+') + formatoCOP(Math.abs(sugerido - total)) + ')' : ''}</span> <button type="button" onclick="delete document.getElementById('vmTotal').dataset.manual;vmCalcularTotal()" class="underline text-gray-400">usar sugerido</button>` : ''}${esProductoPrime(p) ? ' · incluye la contraseña de Prime Video' : ''}`;
@@ -18858,7 +18913,7 @@
       const cliente = String(document.getElementById('vmCliente').value || '').trim().slice(0, 80);
       const emCli = String((document.getElementById('vmCuentaCliente') || {}).value || '').trim().toLowerCase();
       if (!prod) { alert('Elige el producto.'); return; }
-      const libres = ac.libre ? 1 : stockLibreDeProducto(id), sobre = !ac.libre && n > libres && !!(document.getElementById('vmSobre') || {}).checked;
+      const libres = ac.libre ? 1 : vmLibres(id), sobre = !ac.libre && n > libres && !!(document.getElementById('vmSobre') || {}).checked;
       if (!ac.libre && n > libres && !sobre) { alert(`Solo hay ${libres} libres. Marca "sobre pedido" para dejar el resto en fila, o baja la cantidad.`); return; }
       if (sobre && !emCli) { alert('Para dejar cuentas sobre pedido escribe el correo de la cuenta del cliente.'); return; }
       // 👤 cuenta del cliente (si la escribiste): la compra queda a su nombre
@@ -18886,7 +18941,7 @@
         } else if (nInm > 0) {
           let res = null; const ref = db.collection('compras').doc(); window.__vmCompraRef = ref;
           await db.runTransaction(async (tx) => {
-            res = await sacarCuentasInventario(tx, id, nInm);
+            res = await sacarCuentasVarias(tx, id, vmFuentes(id).map(f => f.id), nInm);
             const costo = res.sacadas.reduce((t, x) => t + (parseCredencialObj(x).costo || 0), 0);
             tx.set(ref, Object.assign({}, base, { cantidad: nInm, precioUnitario: precio, total: totInm, costoTotal: costo, gananciaNeta: totInm - costo,
               credenciales: res.sacadas.map(x => { const c = parseCredencialObj(x); return c.email + ':' + c.pass; }).join('\n'),
