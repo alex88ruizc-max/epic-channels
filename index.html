@@ -17915,7 +17915,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-28c';
+    const VERSION_PAGINA = '2026-10-28d';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261021_nombre', fecha: '2026-10-21', titulo: 'Tu nombre, más claro ✍️', mensaje: 'En **Mis datos**, tu nombre ahora se escribe **solo con letras y espacios** (sin números ni símbolos). Así te reconocemos mejor cuando te atendemos. Si ya tienes tu nombre guardado, no tienes que hacer nada.', ir: '' },
       { id: 'act_20261021_miscompras', fecha: '2026-10-21', titulo: 'Nuevo: 📦 Mis compras', mensaje: 'Ahora tus compras tienen **su propio botón dorado 📦 Mis compras** (abajo a la izquierda y arriba junto a la campana). Ahí ves **todas tus cuentas ordenadas por producto**, lo que acabas de comprar marcado como **NUEVA**, su **garantía** y el botón para **copiar**. Y al terminar una compra te lleva directo a ellas.' },
@@ -25096,6 +25096,7 @@ async function pintarPanelWa() {
           <p class="text-[10px] text-gray-500 mt-1">Para revisar la URL que tiene la app: cópiala de la regla, pégala en el navegador y agrégale <b class="text-gray-300">&amp;prueba=hola</b> al final. Te dice si la clave es la buena y qué respondería el bot.</p>
           <p class="text-[10px] text-gray-500 mt-1.5">En la app: regla con <b class="text-gray-300">Todo</b> → <b class="text-gray-300">Conectarse a un servidor propio</b> → pega la URL. Key y Value vacíos.</p>
         </div>
+        <div class="${caja} border-sky-500/40"><div id="owaCaja"></div></div>
         <div class="${caja}">
           <p class="text-[12px] font-black text-white">⚙️ Funciones</p>
           <div class="divide-y divide-gray-800">
@@ -25254,6 +25255,103 @@ async function pintarPanelWa() {
       pintarFranjasWa();
       asesoresWaEdit = (Array.isArray(k.asesores) ? k.asesores : []).map(a => ({ nombre: a.nombre || '', numero: String(a.numero || '').replace(/^57(?=3\d{9}$)/, '') })); pintarAsesoresWa();
       pintarAsistenteWa(); pintarWaAdmin();
+      try { owaDatos = null; pintarOpenWa(); } catch (e) { /* nada */ }
+    }
+    // ==================== 📲 OpenWA: recordatorios de alquiler y estados (se configura aquí, nada solo en código) ====================
+    let owaDatos = null;
+    const owaHoraTxt = h => { const n = parseInt(h, 10); return (((n + 11) % 12) + 1) + (n < 12 ? ' a. m.' : ' p. m.'); };
+    function pintarOpenWa() {
+      const c = document.getElementById('owaCaja'); if (!c || !esAdminSesionActual()) return;
+      c.innerHTML = `<details id="owaDet" class="group">
+        <summary class="cursor-pointer select-none flex items-center justify-between gap-3 list-none"><span><span class="block text-sm font-black text-white">📲 Recordatorios y estados (OpenWA)</span><span class="block text-[11px] text-gray-400">Recordatorios de alquiler por tu número de respaldo y estados cuando llega stock</span></span><i class="fa-solid fa-chevron-down text-gray-400 transition group-open:rotate-180"></i></summary>
+        <div id="owaCuerpo" class="pt-3"><p class="text-[11px] text-gray-400"><i class="fa-solid fa-spinner fa-spin mr-1"></i>Cargando…</p></div></details>`;
+      const det = document.getElementById('owaDet');
+      det.addEventListener('toggle', () => { if (det.open && !owaDatos) cargarOpenWa(); });   // 📶 solo consulta al servidor cuando lo abres
+    }
+    async function cargarOpenWa() {
+      const b = document.getElementById('owaCuerpo'); if (!b) return;
+      b.innerHTML = '<p class="text-[11px] text-gray-400"><i class="fa-solid fa-spinner fa-spin mr-1"></i>Revisando OpenWA…</p>';
+      let r = null; try { r = await llamarBackend('openwa', { op: 'estado' }); } catch (e) { r = { ok: false, error: e.message }; }
+      if (!r || !r.ok) { b.innerHTML = `<p class="text-[11px] text-red-300">No se pudo cargar: ${escaparHtml((r && r.error) || 'sin respuesta')}</p><button type="button" onclick="cargarOpenWa()" class="mt-2 px-3 py-1.5 rounded-lg bg-gray-800 border border-gray-700 text-white text-[11px] font-black">Reintentar</button>`; return; }
+      owaDatos = r; const k = r.cfg || {};
+      const inp = 'w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500';
+      const ses = (r.sesiones && r.sesiones.lista) || [], estSes = nom => { const s = ses.find(x => x.nombre.toLowerCase() === String(nom || '').toLowerCase());
+        if (!r.sesiones || !r.sesiones.ok) return `<span class="text-red-300">🔴 ${escaparHtml((r.sesiones && r.sesiones.error) || 'sin conexión')}</span>`;
+        if (!s) return '<span class="text-amber-300">⚠️ No existe en OpenWA</span>';
+        return /^(ready|connected|working|authenticated|open)$/i.test(s.estado) ? `<span class="text-emerald-300">🟢 Conectada${s.telefono ? ' · ' + escaparHtml(s.telefono) : ''}</span>` : `<span class="text-amber-300">🟡 ${escaparHtml(s.estado || 'desconectada')}</span>`; };
+      const horas = sel => Array.from({ length: 18 }, (_, i) => i + 6).map(h => `<option value="${h}" ${h === sel ? 'selected' : ''}>${owaHoraTxt(h)}</option>`).join('');
+      const fF = f => { const p = String(f || '').split('-'); return p.length === 3 ? p[2] + '/' + p[1] + '/' + p[0] : (f || ''); };
+      const sw = (id, on, txt) => `<label class="flex items-center justify-between gap-3 p-2.5 rounded-xl bg-gray-800/60 border border-gray-700/60 cursor-pointer"><span class="text-[12px] font-bold text-white">${txt}</span><input type="checkbox" id="${id}" ${on ? 'checked' : ''} class="w-5 h-5 accent-emerald-500"></label>`;
+      const sec = (titulo, cuerpo, abierta) => `<details class="mt-3 rounded-xl bg-gray-800/40 border border-gray-700/60 overflow-hidden" ${abierta ? 'open' : ''}><summary class="p-3 cursor-pointer select-none list-none text-[12px] font-black text-white">${titulo}</summary><div class="px-3 pb-3 space-y-2">${cuerpo}</div></details>`;
+      const vista = r.vista || [], hist = r.historial || [], est = r.estados || [];
+      b.innerHTML = sec('🔌 Conexión', `
+          <label class="block text-[10px] text-gray-400">Dirección de OpenWA<input id="owaUrl" value="${escaparHtml(k.url || '')}" placeholder="https://wa.epicstreaming.vip" class="${inp} mt-1"></label>
+          <label class="block text-[10px] text-gray-400">Clave API <span class="text-gray-500">(rol operador; se guarda en tus secretos y nunca se muestra)</span><input id="owaKey" type="password" autocomplete="new-password" placeholder="${k.tieneClave ? '•••••••• guardada (escribe solo para cambiarla)' : 'Pega aquí la clave servidor-epic'}" class="${inp} mt-1"></label>
+          <label class="block text-[10px] text-gray-400">Sesión de recordatorios (número de respaldo)<input id="owaSesRec" value="${escaparHtml(k.sesRec || 'bot-recordatorio')}" class="${inp} mt-1"></label>
+          <p class="text-[11px]">${estSes(k.sesRec || 'bot-recordatorio')}</p>
+          <label class="block text-[10px] text-gray-400">Sesión de estados (número de la tienda)<input id="owaSesEst" value="${escaparHtml(k.sesEst || 'tienda-estados')}" class="${inp} mt-1"></label>
+          <p class="text-[11px]">${estSes(k.sesEst || 'tienda-estados')}</p>`, !k.url || !k.tieneClave)
+        + sec('⏰ Recordatorios de alquiler', `
+          ${sw('owaRecActivo', k.recActivo === true, 'Activar recordatorios')}
+          <div class="grid grid-cols-3 gap-2">
+            <label class="block text-[10px] text-gray-400">Días antes<input id="owaDias" type="number" min="0" max="7" value="${escaparHtml(String(k.dias !== undefined ? k.dias : 1))}" class="${inp} mt-1"></label>
+            <label class="block text-[10px] text-gray-400">Desde<select id="owaDesde" class="${inp} mt-1">${horas(k.desde || 15)}</select></label>
+            <label class="block text-[10px] text-gray-400">Hasta<select id="owaHasta" class="${inp} mt-1">${horas(k.hasta || 19)}</select></label>
+          </div>
+          <p class="text-[10px] text-gray-500">Cada día elige una hora al azar en esa franja. Un solo mensaje por cliente con todas sus cuentas (alquileres y productos tipo Alquiler). Si el PC está apagado, reintenta cada 10 min hasta el final de la franja y te avisa por Telegram si no alcanzó.</p>
+          <label class="block text-[10px] text-gray-400">Mensaje <span class="text-gray-500">({nombre} {cuando} {fecha} {cuentas} {total} {llave} {pagina} · *texto* = negrita)</span><textarea id="owaPlantilla" rows="8" maxlength="1500" class="${inp} mt-1 font-mono">${escaparHtml(k.plantilla || r.plantillaDef || '')}</textarea></label>
+          <button type="button" onclick="document.getElementById('owaPlantilla').value = owaDatos.plantillaDef" class="text-[10px] text-sky-300 underline">Volver al mensaje original</button>
+          <div class="flex gap-2"><input id="owaPruebaNum" inputmode="numeric" maxlength="15" placeholder="Tu número para la prueba" class="${inp}"><button type="button" onclick="owaPrueba(this)" class="shrink-0 px-3 rounded-xl bg-sky-500/20 border border-sky-500/40 text-sky-200 text-[11px] font-black">🧪 Enviar prueba</button></div>
+          <p class="text-[11px] font-black text-white pt-1">👀 Recibirán el ${escaparHtml(fF(r.fechaVista))} <span class="text-gray-500 font-normal">(vence ese día)</span></p>
+          ${vista.length ? vista.map(v => `<div class="flex items-center justify-between gap-2 text-[11px] p-2 rounded-lg bg-gray-900/60"><span class="truncate text-gray-200">${escaparHtml(v.nombre)}${v.ok ? '' : ' <span class="text-amber-300">· sin WhatsApp válido</span>'}</span><span class="shrink-0 text-gray-400">${v.n} cuenta${v.n === 1 ? '' : 's'} · ${escaparHtml(formatoCOP(v.total || 0))}</span></div>`).join('') : '<p class="text-[11px] text-gray-500">Nadie vence ese día.</p>'}
+          <p class="text-[11px] font-black text-white pt-1">📜 Últimos envíos</p>
+          ${hist.length ? hist.map(h => `<div class="text-[11px] p-2 rounded-lg bg-gray-900/60"><span class="text-gray-200">${escaparHtml(fF(h.dia))}</span> · <span class="text-emerald-300">${h.ok} de ${h.total} enviados</span>${h.terminado ? '' : ' <span class="text-amber-300">· en curso</span>'}${h.fallos.length ? `<span class="block text-[10px] text-amber-200/80 mt-0.5">${h.fallos.map(escaparHtml).join('<br>')}</span>` : ''}</div>`).join('') : '<p class="text-[11px] text-gray-500">Todavía no hay envíos.</p>'}`, false)
+        + sec('📢 Estados cuando llega stock (número de la tienda)', `
+          ${sw('owaEstActivo', k.estActivo === true, 'Activar estados')}
+          <div class="grid grid-cols-2 gap-2">
+            <label class="block text-[10px] text-gray-400">Máximo al día<input id="owaEstMax" type="number" min="1" max="6" value="${escaparHtml(String(k.estMax || 3))}" class="${inp} mt-1"></label>
+            <label class="block text-[10px] text-gray-400">Horas entre estados<input id="owaEstGap" type="number" min="1" max="12" value="${escaparHtml(String(k.estGapH || 3))}" class="${inp} mt-1"></label>
+          </div>
+          <label class="block text-[10px] text-gray-400">Texto del estado <span class="text-gray-500">({producto} {pagina})</span><textarea id="owaEstTexto" rows="3" maxlength="500" class="${inp} mt-1">${escaparHtml(k.estTexto || r.estTextoDef || '')}</textarea></label>
+          <p class="text-[10px] text-gray-500">Sale con la imagen del producto (si tiene) y solo cuando llega stock de un producto normal (nunca VIP), entre 8 a. m. y 9 p. m. Usa la misma detección de "llegó stock" de los estados de tu tienda, así que esos deben estar activos.</p>
+          <p class="text-[10px] text-amber-200/80">⚠️ Es una sesión no oficial con el número de la tienda: si WhatsApp la detecta, el riesgo es para ese número. Apágalo aquí cuando quieras.</p>
+          <p class="text-[11px] font-black text-white pt-1">📜 Últimos estados</p>
+          ${est.length ? est.map(x => `<div class="text-[11px] p-2 rounded-lg bg-gray-900/60 text-gray-200">${escaparHtml(new Date(x.el).toLocaleString('es-CO', { day: '2-digit', month: '2-digit', hour: 'numeric', minute: '2-digit' }))} · ${escaparHtml(x.producto || '')} ${x.ok ? '<span class="text-emerald-300">✓</span>' : `<span class="text-red-300">✗ ${escaparHtml(x.error || '')}</span>`}</div>`).join('') : '<p class="text-[11px] text-gray-500">Todavía no se ha publicado ninguno.</p>'}`, false)
+        + sec('✉️ Enviar un mensaje (número de respaldo)', `
+          <input id="owaMsgNum" inputmode="numeric" maxlength="16" placeholder="Número (ej: 3001234567)" class="${inp}">
+          <textarea id="owaMsgTxt" rows="3" maxlength="2000" placeholder="Escribe el mensaje" class="${inp}"></textarea>
+          <button type="button" onclick="owaEnviarSuelto(this)" class="w-full py-2 rounded-xl bg-emerald-600/20 border border-emerald-500/40 text-emerald-200 text-[11px] font-black">Enviar</button>`, false)
+        + `<button type="button" onclick="guardarOpenWa(this)" class="mt-3 w-full py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-black text-sm">Guardar recordatorios y estados</button>
+           <p class="text-[10px] text-gray-500 mt-1.5">Los cambios le llegan al servidor de correo en máximo 30 minutos.</p>`;
+    }
+    async function guardarOpenWa(btn) {
+      const v = id => document.getElementById(id);
+      const cfg = { url: String(v('owaUrl').value || '').trim(), key: String(v('owaKey').value || '').trim(), sesRec: String(v('owaSesRec').value || '').trim(), sesEst: String(v('owaSesEst').value || '').trim(),
+        recActivo: v('owaRecActivo').checked, dias: parseInt(v('owaDias').value, 10) || 0, desde: parseInt(v('owaDesde').value, 10), hasta: parseInt(v('owaHasta').value, 10), plantilla: String(v('owaPlantilla').value || ''),
+        estActivo: v('owaEstActivo').checked, estMax: parseInt(v('owaEstMax').value, 10) || 3, estGapH: parseInt(v('owaEstGap').value, 10) || 3, estTexto: String(v('owaEstTexto').value || '') };
+      if (cfg.hasta <= cfg.desde) { alert('La hora "Hasta" debe ser después de "Desde".'); return; }
+      if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Guardando…'; }
+      try { const r = await llamarBackend('openwa', { op: 'guardar', cfg: cfg }); if (!r || !r.ok) throw new Error((r && r.error) || 'No se pudo.'); mostrarToast('✅ Guardado'); owaDatos = null; await cargarOpenWa(); }
+      catch (e) { alert(e.message); if (btn) { btn.disabled = false; btn.innerHTML = 'Guardar recordatorios y estados'; } }
+    }
+    async function owaPrueba(btn) {
+      const n = String((document.getElementById('owaPruebaNum') || {}).value || '').trim(); if (!n) { mostrarToast('Escribe tu número'); return; }
+      if (btn) { btn.disabled = true; btn.textContent = 'Enviando…'; }
+      try { const r = await llamarBackend('openwa', { op: 'prueba', numero: n }); if (!r || !r.ok) throw new Error((r && r.error) || 'No se pudo.'); mostrarToast('🧪 Prueba enviada: revisa tu WhatsApp'); }
+      catch (e) { alert(e.message); } finally { if (btn) { btn.disabled = false; btn.textContent = '🧪 Enviar prueba'; } }
+    }
+    async function owaEnviarSuelto(btn) {
+      const n = String((document.getElementById('owaMsgNum') || {}).value || '').trim(), t = String((document.getElementById('owaMsgTxt') || {}).value || '').trim();
+      if (!n || !t) { mostrarToast('Escribe el número y el mensaje'); return; }
+      if (!await confirmarModal('¿Enviar este mensaje por el número de respaldo?\n\n' + t.slice(0, 300), { textoAceptar: 'Sí, enviar' })) return;
+      if (btn) { btn.disabled = true; btn.textContent = 'Enviando…'; }
+      try { const r = await llamarBackend('openwa', { op: 'enviar', numero: n, texto: t }); if (!r || !r.ok) throw new Error((r && r.error) || 'No se pudo.'); mostrarToast('✅ Mensaje enviado'); document.getElementById('owaMsgTxt').value = ''; }
+      catch (e) { alert(e.message); } finally { if (btn) { btn.disabled = false; btn.textContent = 'Enviar'; } }
+    }
+    async function owaRecordar(id) {
+      if (!await confirmarModal('¿Enviarle ahora el recordatorio de renovación por WhatsApp (número de respaldo)?\n\nIncluye todas sus cuentas que vencen entre hace 2 días y los próximos 3.', { textoAceptar: 'Sí, enviar' })) return;
+      try { const r = await llamarBackend('openwa', { op: 'recordar', alquilerId: id }); if (!r || !r.ok) throw new Error((r && r.error) || 'No se pudo.'); mostrarToast('📲 Recordatorio enviado' + (r.nombre ? ' a ' + String(r.nombre).split(' ')[0] : '') + ' (' + r.n + ' cuenta' + (r.n === 1 ? '' : 's') + ')'); }
+      catch (e) { alert(e.message); }
     }
     async function guardarCfgWa(soloActivo) {
       const v = id => document.getElementById(id), datos = { activo: v('waActivo').checked, actualizadoEl: new Date().toISOString() };
@@ -28475,6 +28573,7 @@ async function pintarPanelWa() {
         if (esNetflixNf(a)) botones += `<button id="btnOtpNf_a_${id}" onclick="pedirCodigoNetflix('${id}','a')" class="px-2.5 py-1.5 rounded-lg text-[11px] font-bold flex items-center gap-1 transition bg-emerald-500 hover:bg-emerald-400 text-black"><i class="fa-solid fa-key"></i> Código</button>`;
         if (esNetflixNf(a) && a.clienteUid) botones += btn('bg-red-500/15 hover:bg-red-500/25 text-red-300 border border-red-500/30', `abrirEnlaceCodigo('${id}')`, 'fa-link', 'Enlace');
         botones += btn('bg-green-600 hover:bg-green-500 text-white', `registrarPagoNetflix('${id}')`, 'fa-money-bill-wave', 'Registrar pago');
+        botones += btn('bg-sky-500/15 hover:bg-sky-500/25 text-sky-200 border border-sky-500/40', `owaRecordar('${id}')`, 'fa-bell', 'Recordar');   // 📲 por el número de respaldo (OpenWA)
         if (a.clienteWhatsapp || a.whatsapp) botones += btn('bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-200 border border-emerald-500/40', `avisarRenovacionWhatsapp('${id}')`, 'fa-paper-plane', 'Avisar');
         botones += btn(gris, `abrirModalNetflixVincular('${id}')`, 'fa-link', a.clienteUid ? 'Cambiar usuario' : 'Vincular');
         botones += (est.clave === 'vencida')
