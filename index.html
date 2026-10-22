@@ -4735,6 +4735,7 @@
         </div>
 
         <div id="entregaVisual" class="space-y-2.5"></div>
+        <p id="entregaAvisosLinea" class="hidden p-2.5 rounded-xl bg-sky-500/10 border border-sky-500/30 text-sky-100 text-[11px] font-bold leading-snug"></p>
 
         <details class="rounded-xl border border-gray-700 bg-gray-800/40">
           <summary style="list-style:none" class="cursor-pointer px-3 py-2 text-[11px] font-bold text-gray-300 flex items-center justify-between"><span><i class="fa-brands fa-whatsapp mr-1.5 text-emerald-400"></i>Mensaje listo para pegar</span><i class="fa-solid fa-chevron-down text-gray-500 text-[10px]"></i></summary>
@@ -10332,6 +10333,10 @@
     function esEntregaPrime(p) { const n = String((p && (p.nombre || p.productoNombre)) || ''); return /prime/i.test(n) && !/free/i.test(n); }
     function mostrarEntregaCompleta(texto, cuentas, prodInfo, extras) {
       if (esEntregaPrime(prodInfo) && String(texto || '').indexOf('30 días para pasar') === -1) texto = String(texto || '') + '\n\n_ℹ️ Tienes hasta 30 días para pasar cada cuenta a tu propio correo._';
+      // 📲 Número de avisos y recordatorios (se configura en el panel → 💬 WhatsApp → 📲); una sola vez por entrega
+      let lineaAv = ''; try { const L = ajustesGeneralesConfig.avisosLinea || {}; if (L.activa === true && L.numero) lineaAv = String(L.texto || '📲 Te avisamos desde {numero} (solo avisos). Guárdalo para recibir tus recordatorios.').replace(/\{numero\}/g, '+' + String(L.numero).replace(/\D/g, '')); } catch (e) { lineaAv = ''; }
+      if (lineaAv && String(texto || '').indexOf(lineaAv) === -1) texto = String(texto || '') + '\n\n' + lineaAv;
+      try { const pAv = document.getElementById('entregaAvisosLinea'); if (pAv) { pAv.textContent = lineaAv; pAv.classList.toggle('hidden', !lineaAv); } } catch (e) { /* nada */ }
       textoEntregaActual = texto;
       document.getElementById('txtEntregaCredenciales').innerText = texto;
       pintarEntregaVisual(cuentas, prodInfo, extras);
@@ -17915,8 +17920,9 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-28g';
+    const VERSION_PAGINA = '2026-10-28i';
     const ACTUALIZACIONES_PAGINA = [
+      { id: 'act_20261022_avisos', fecha: '2026-10-22', titulo: 'Tus recordatorios por WhatsApp 📲', mensaje: 'Al final de cada entrega verás el **número desde el que te avisamos** (vencimientos y recordatorios). **Guárdalo** para que no se te pase ninguna renovación. Es solo de avisos: para comprar o pedir ayuda sigue usando la tienda.', ir: '' },
       { id: 'act_20261021_nombre', fecha: '2026-10-21', titulo: 'Tu nombre, más claro ✍️', mensaje: 'En **Mis datos**, tu nombre ahora se escribe **solo con letras y espacios** (sin números ni símbolos). Así te reconocemos mejor cuando te atendemos. Si ya tienes tu nombre guardado, no tienes que hacer nada.', ir: '' },
       { id: 'act_20261021_miscompras', fecha: '2026-10-21', titulo: 'Nuevo: 📦 Mis compras', mensaje: 'Ahora tus compras tienen **su propio botón dorado 📦 Mis compras** (abajo a la izquierda y arriba junto a la campana). Ahí ves **todas tus cuentas ordenadas por producto**, lo que acabas de comprar marcado como **NUEVA**, su **garantía** y el botón para **copiar**. Y al terminar una compra te lleva directo a ellas.' },
       { id: 'act_20261021_telegram', fecha: '2026-10-21', titulo: 'Compra por Telegram ✈️', mensaje: 'Ya puedes comprar desde nuestro **bot de Telegram**, 24/7 y con entrega al instante. Usa **tu misma cuenta**: en la tienda ve a **Mis datos → Usar mi cuenta en Telegram** y verás ahí tu **mismo saldo y tus compras**. Si eres nuevo en Telegram, tu **primera compra tiene descuento** 🎁.' },
@@ -25310,7 +25316,12 @@ async function pintarPanelWa() {
         + sec('📢 Estados (número de la tienda)', `
           ${sw('owaEstActivo', k.estActivo === true, 'Activar estados')}
           <label class="block text-[10px] text-gray-400">Máximo al día (estados de la página)<input id="owaEstMax" type="number" min="1" max="10" value="${escaparHtml(String(k.estMax || 10))}" class="${inp} mt-1"></label>
-          <p class="text-[10px] text-gray-500">🎨 Cada estado que publica tu página (automáticos y los que subes a mano) sale <b class="text-gray-300">al mismo tiempo</b> en tu WhatsApp, con la misma imagen y texto. Nunca VIP. De 8 a. m. a 9 p. m.: lo que tu página publique de noche sale a las 8 a. m. solo si tiene menos de 6 h; los más viejos y las ofertas que terminan en menos de 30 min se saltan. Si el PC está apagado, sale apenas vuelva (al publicar otro o al abrir tu panel).</p>
+          <div class="grid grid-cols-3 gap-2">
+            <label class="block text-[10px] text-gray-400">Desde<select id="owaEstDesde" class="${inp} mt-1">${horas(k.estDesde !== undefined ? k.estDesde : 8)}</select></label>
+            <label class="block text-[10px] text-gray-400">Hasta<select id="owaEstHasta" class="${inp} mt-1">${horas(k.estHasta || 21)}</select></label>
+            <label class="block text-[10px] text-gray-400">Antigüedad máx. (h)<input id="owaEstAntig" type="number" min="1" max="24" value="${escaparHtml(String(k.estAntigH || 6))}" class="${inp} mt-1"></label>
+          </div>
+          <p class="text-[10px] text-gray-500">🎨 Cada estado que publica tu página (automáticos y los que subes a mano) sale <b class="text-gray-300">al mismo tiempo</b> en tu WhatsApp, con la misma imagen y texto. Nunca VIP. Solo dentro de tu horario: lo que tu página publique fuera de él sale apenas abra, si no supera la antigüedad máxima; los más viejos y las ofertas que terminan en menos de 30 min se saltan. Si el PC está apagado, sale apenas vuelva (al publicar otro o al abrir tu panel).</p>
           <p class="text-[10px] text-amber-200/80">⚠️ Es una sesión no oficial con el número de la tienda: si WhatsApp la detecta, el riesgo es para ese número. Apágalo aquí cuando quieras.</p>
           <p class="text-[11px] font-black text-white pt-1">📜 Últimos estados</p>
           ${est.length ? est.map(x => `<div class="text-[11px] p-2 rounded-lg bg-gray-900/60 text-gray-200">${escaparHtml(new Date(x.el).toLocaleString('es-CO', { day: '2-digit', month: '2-digit', hour: 'numeric', minute: '2-digit' }))} · ${escaparHtml(x.producto || '')} ${x.ok ? '<span class="text-emerald-300">✓</span>' : `<span class="text-red-300">✗ ${escaparHtml(x.error || '')}</span>`}</div>`).join('') : '<p class="text-[11px] text-gray-500">Todavía no se ha publicado ninguno.</p>'}`, false)
@@ -25324,6 +25335,13 @@ async function pintarPanelWa() {
           <p class="text-[10px] text-gray-500">Cada día publica esa cantidad, a horas al azar dentro de la franja, rotando: primero las que llevan más tiempo sin salir. Va aparte del máximo de los estados de la página.</p>
           <label class="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl bg-sky-500/20 border border-sky-500/40 text-sky-200 text-[11px] font-black cursor-pointer"><i class="fa-solid fa-images"></i> Subir imágenes<input type="file" accept="image/*" multiple class="hidden" onchange="owaGaleriaSubir(this)"></label>
           <div id="owaGaleria" class="grid grid-cols-2 sm:grid-cols-3 gap-2"><p class="col-span-full text-[11px] text-gray-500"><i class="fa-solid fa-spinner fa-spin mr-1"></i>Cargando tu galería…</p></div>`, false)
+        + sec('📲 Número de avisos en las entregas', `
+          ${sw('owaLineaActiva', k.lineaActiva === true, 'Mostrar la línea en las entregas (página y bot de WhatsApp)')}
+          <label class="block text-[10px] text-gray-400">Número (completo, con el 57, sin espacios)<input id="owaLineaNumero" inputmode="numeric" maxlength="15" value="${escaparHtml(k.lineaNumero || ((ses.find(x => x.nombre.toLowerCase() === String(k.sesRec || 'bot-recordatorio').toLowerCase()) || {}).telefono || ''))}" placeholder="573001697272" class="${inp} mt-1"></label>
+          <label class="block text-[10px] text-gray-400">Texto de la línea <span class="text-gray-500">({numero})</span><input id="owaLineaTexto" maxlength="300" value="${escaparHtml(k.lineaTexto || k.lineaDef || '')}" class="${inp} mt-1"></label>
+          <p class="text-[10px] text-gray-500">Sale una sola vez al final de cada entrega de la página y del bot de WhatsApp (compras y renovaciones). En Telegram no.</p>
+          ${sw('owaAutoActiva', k.autoActiva === true, 'Respuesta automática si alguien escribe a ese número')}
+          <label class="block text-[10px] text-gray-400">Respuesta <span class="text-gray-500">(una sola vez por persona; nunca a grupos)</span><textarea id="owaAutoTexto" rows="4" maxlength="1500" class="${inp} mt-1">${escaparHtml(k.autoTexto || k.autoDef || '')}</textarea></label>`, false)
         + sec('✉️ Enviar un mensaje (número de respaldo)', `
           <input id="owaMsgNum" inputmode="numeric" maxlength="16" placeholder="Número (ej: 3001234567)" class="${inp}">
           <textarea id="owaMsgTxt" rows="3" maxlength="2000" placeholder="Escribe el mensaje" class="${inp}"></textarea>
@@ -25375,12 +25393,16 @@ async function pintarPanelWa() {
       const v = id => document.getElementById(id);
       const cfg = { url: String(v('owaUrl').value || '').trim(), key: String(v('owaKey').value || '').trim(), sesRec: String(v('owaSesRec').value || '').trim(), sesEst: String(v('owaSesEst').value || '').trim(),
         recActivo: v('owaRecActivo').checked, dias: parseInt(v('owaDias').value, 10) || 0, desde: parseInt(v('owaDesde').value, 10), hasta: parseInt(v('owaHasta').value, 10), plantilla: String(v('owaPlantilla').value || ''),
-        estActivo: v('owaEstActivo').checked, estMax: Math.max(1, Math.min(10, parseInt(v('owaEstMax').value, 10) || 10)),
+        estActivo: v('owaEstActivo').checked, estMax: Math.max(1, Math.min(10, parseInt(v('owaEstMax').value, 10) || 10)), estDesde: parseInt(v('owaEstDesde').value, 10), estHasta: parseInt(v('owaEstHasta').value, 10), estAntigH: Math.max(1, Math.min(24, parseInt(v('owaEstAntig').value, 10) || 6)),
         galActivo: v('owaGalActivo').checked, galPorDia: Math.max(1, Math.min(10, parseInt(v('owaGalPorDia').value, 10) || 3)), galDesde: parseInt(v('owaGalDesde').value, 10), galHasta: parseInt(v('owaGalHasta').value, 10) };
       if (cfg.galHasta <= cfg.galDesde) { alert('En la galería, la hora "Hasta" debe ser después de "Desde".'); return; }
+      if (cfg.estHasta <= cfg.estDesde) { alert('En los estados, la hora "Hasta" debe ser después de "Desde".'); return; }
+      Object.assign(cfg, { lineaActiva: v('owaLineaActiva').checked, lineaNumero: String(v('owaLineaNumero').value || '').replace(/\D/g, ''), lineaTexto: String(v('owaLineaTexto').value || '').trim(), autoActiva: v('owaAutoActiva').checked, autoTexto: String(v('owaAutoTexto').value || '') });
+      if (cfg.lineaActiva && !/^[1-9]\d{10,14}$/.test(cfg.lineaNumero)) { alert('Escribe el número completo, con el 57 y sin espacios (ej: 573001697272).'); return; }
       if (cfg.hasta <= cfg.desde) { alert('La hora "Hasta" debe ser después de "Desde".'); return; }
       if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Guardando…'; }
-      try { const r = await llamarBackend('openwa', { op: 'guardar', cfg: cfg }); if (!r || !r.ok) throw new Error((r && r.error) || 'No se pudo.'); mostrarToast('✅ Guardado'); owaDatos = null; await cargarOpenWa(); }
+      try { const r = await llamarBackend('openwa', { op: 'guardar', cfg: cfg }); if (!r || !r.ok) throw new Error((r && r.error) || 'No se pudo.'); if (r.aviso) alert(r.aviso); else mostrarToast('✅ Guardado');
+        try { ajustesGeneralesConfig.avisosLinea = { activa: cfg.lineaActiva, numero: cfg.lineaNumero, texto: cfg.lineaTexto }; } catch (e) { /* nada */ } owaDatos = null; await cargarOpenWa(); }
       catch (e) { alert(e.message); if (btn) { btn.disabled = false; btn.innerHTML = 'Guardar recordatorios y estados'; } }
     }
     async function owaPrueba(btn) {
