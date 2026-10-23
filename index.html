@@ -18055,7 +18055,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-11-01b';
+    const VERSION_PAGINA = '2026-11-01c';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261101_mary', fecha: '2026-11-01', titulo: 'Conoce a Mary 🔔', mensaje: 'Los avisos de tus cuentas y garantías ahora te llegan de **Mary**, con una imagen clara de lo que pasa (vencimiento, reporte resuelto…). Ese número es solo de avisos: para comprar o pedir ayuda, escríbenos a la tienda.', ir: '' },
       { id: 'act_20261023_spotify', fecha: '2026-10-23', titulo: 'Códigos de Spotify al instante 🎧', mensaje: 'Si compras **Spotify** y te pide un **código de inicio de sesión**, ahora te sale al instante en el **mismo enlace de códigos** que ya usas para Amazon (o en **Mis compras → Ver código**). Cada código dice de qué app es.', ir: '' },
@@ -19053,13 +19053,17 @@
         } catch (e) { alert('No pude buscar la cuenta: ' + e.message); return; }
         if (!uidCli) { alert('No encontré una cuenta con el correo ' + emCli + '. Revisa que esté bien escrito (o que el cliente ya se haya registrado).'); return; }
       }
+      // 📱 Si escribiste el WhatsApp del cliente (y no el correo): se busca su cuenta por ese número y la venta queda a su nombre
+      let emWa = '';
+      if (!uidCli) { const dW = String(cliente || '').replace(/\D/g, ''); if (dW.length >= 10) { const d10 = dW.slice(-10);
+        try { for (const v of [d10, '57' + d10, '+57' + d10, '+57 ' + d10]) { const q = await db.collection('usuarios').where('whatsapp', '==', v).limit(1).get(); if (!q.empty) { uidCli = q.docs[0].id; emWa = String(q.docs[0].data().email || ''); break; } } } catch (e) { /* sin enlace: queda como venta por WhatsApp */ } } }
       const nInm = ac.libre ? 1 : Math.min(n, libres), nPed = sobre ? n - nInm : 0, precio = Math.round(totalCobro / n), totInm = nPed ? precio * nInm : totalCobro;
       const msgC = ac.libre ? `¿Vender el correo libre ${ac.libre} como ${prod.nombre} por ${formatoCOP(totalCobro)}?` : `¿Vender ${n} ${n === 1 ? 'cuenta' : 'cuentas'} de ${prod.nombre} por ${formatoCOP(totalCobro)}?` + (nPed ? `\n\n${nInm} se entregan ya y ${nPed} quedan sobre pedido a nombre de ${emCli}.` : '\n\nSe entregan de tu stock y queda registrada como venta.');
-      if (!await confirmarModal(msgC, { textoAceptar: 'Sí, vender' })) return;
+      if (!await confirmarModal(msgC + (uidCli ? `\n\n👤 Queda a nombre de: ${emCli || emWa}` : (cliente ? '\n\n⚠️ Sin cuenta enlazada (no encontré ese correo ni ese WhatsApp): queda como venta por WhatsApp.' : '')), { textoAceptar: 'Sí, vender' })) return;
       const btn = document.getElementById('btnVentaManual'); if (btn) btn.disabled = true;
       try {
         let sacadas = [];
-        const base = { usuarioId: uidCli, usuarioEmail: uidCli ? emCli : (cliente ? 'WhatsApp · ' + cliente : 'Venta por WhatsApp'), productoId: id, productoNombre: prod.nombre || id, categoria: prod.categoria || '', tipoGarantia: prod.tipoGarantia || '', fecha: new Date().toISOString(), procesadoPor: 'manual', ventaManual: true, vendidoPor: currentUser.email, nota: cliente };
+        const base = { usuarioId: uidCli, usuarioEmail: uidCli ? (emCli || emWa) : (cliente ? 'WhatsApp · ' + cliente : 'Venta por WhatsApp'), productoId: id, productoNombre: prod.nombre || id, categoria: prod.categoria || '', tipoGarantia: prod.tipoGarantia || '', fecha: new Date().toISOString(), procesadoPor: 'manual', ventaManual: true, vendidoPor: currentUser.email, nota: cliente };
         if (ac.libre) {
           sacadas = [ac.libre + ':epic2828'];
           await db.collection('compras').add(Object.assign({}, base, { cantidad: 1, precioUnitario: totalCobro, total: totalCobro, costoTotal: 0, gananciaNeta: totalCobro, credenciales: sacadas[0], correos: [ac.libre], correoLibre: true }));
@@ -23225,6 +23229,7 @@
 
     // ==================== NOVEDADES INTERNAS DEL PANEL (solo el equipo) ====================
     const ACTUALIZACIONES_INTERNAS = [
+      { fecha: '2026-11-01', titulo: '📱 Ventas por WhatsApp a nombre del cliente', mensaje: 'En **Venta manual**, si escribes el **WhatsApp** del cliente (no solo su correo), la venta queda **a su nombre** automáticamente; antes de confirmar te dice a quién queda. Los avisos de **passkey** y de **compras dentro de la cuenta** ya no dicen "sin vender" en cuentas vendidas por WhatsApp: dicen **cuándo y a quién** se vendió. **Para vender más:** cada cliente ve sus avisos y su garantía sin que tú tengas que escribirle.' },
       { fecha: '2026-11-01', titulo: '👩‍💼 Mary, tu vendedora IA', mensaje: 'Nueva sección **👩‍💼 Mary** en el menú. En la **tienda** atiende solo tus **números de prueba** (los clientes siguen con el bot de siempre): conversa, cotiza con precios exactos, recuerda a cada cliente, entiende audios y fotos, manda imágenes (precios, cómo entrar, QR) y le pasa los pedidos, reclamos y saldo al bot. En **notificaciones** atiende a todos: se presenta, manda el aviso con su imagen y, si le responden, pasa a la tienda sin ofrecer nada. Tiene **Cerebro** (preguntas, reglas, frases), **Por aprobar** (aprende de tus respuestas), **Memorias**, **Conversaciones**, **Recompra** y **Hablar con Mary** para probarla. **Para vender más:** el cliente que repite recibe su oferta con el precio de hoy sin que tú escribas.' },
       { fecha: '2026-11-01', titulo: '💬 Grupo: tarjeta con botón para chatear', mensaje: 'Los mensajes de stock del grupo ahora llevan el enlace completo **"Escríbeme y te atiendo al instante 👉 https://wa.me/…"**, así WhatsApp muestra la tarjeta con foto y botón.' },
       { fecha: '2026-10-23', titulo: '🎧 Códigos de Spotify', mensaje: 'Las cuentas de Spotify con correo de tu dominio ya muestran su **código de inicio de sesión** en el **enlace único /c/** de la entrega, en **Mis compras** y en la página **/codigo**, igual que Amazon. La entrega dice **"¿Spotify te pide un código?"** cuando el producto es Spotify. **Para vender más:** el cliente entra solo, sin escribirte.' },
