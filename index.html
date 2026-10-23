@@ -694,7 +694,7 @@
     </div>
       <div id="cintaStock" class="hidden border-t border-gray-800/80 bg-gray-950/40">
       <div class="max-w-6xl mx-auto px-3 h-[22px] flex items-center gap-2 text-[11px] text-gray-400 overflow-hidden">
-        <span class="shrink-0 flex items-center gap-1.5 font-bold text-emerald-300"><span class="punto-vivo"></span>En vivo</span>
+        <span class="shrink-0 flex items-center gap-1.5 font-bold text-emerald-300"><span class="punto-vivo"></span>En vivo</span><span id="cintaViendo" class="hidden shrink-0 font-bold text-white"></span>
         <div class="overflow-hidden flex-1 min-w-0"><span id="cintaStockMov" class="cinta-mov"></span></div>
       </div>
     </div>
@@ -2536,6 +2536,13 @@
         <div class="p-4 rounded-2xl bg-gray-900 border border-gray-800 max-w-3xl">
           <label class="flex items-center justify-between gap-3 cursor-pointer"><span><span class="text-sm font-bold text-white">📦 Mostrar la cantidad de stock a los clientes</span><br><span class="text-[11px] text-gray-400">Apagado: los clientes ven <b class="text-white">"Stock disponible"</b> (o <b class="text-white">"Últimas unidades"</b> si quedan 5 o menos) sin el número, en tarjetas, ventana de compra, cinta "En vivo" y el bot de WhatsApp. Aplica a todos en la tienda; las cantidades siguen en el panel (Productos y Stock).</span></span><input type="checkbox" id="chkMostrarStock" onchange="guardarMostrarStock(this.checked)" class="w-5 h-5 accent-emerald-500 shrink-0" checked></label>
         </div>
+        <details class="p-4 rounded-2xl bg-gray-900 border border-gray-800 max-w-3xl"><summary class="text-sm font-bold text-white cursor-pointer">👀 Contadores de visitas</summary><div class="space-y-3 mt-3">
+          <label class="flex items-center justify-between gap-3 cursor-pointer"><span class="text-[12px] text-gray-300">Mostrar <b class="text-white">"👀 X personas viendo la tienda ahora"</b><br><span class="text-[10px] text-gray-500">Suma cada entrada y cada clic de la última hora (también los tuyos).</span></span><input type="checkbox" id="chkMetViendo" class="w-5 h-5 accent-emerald-500" onchange="guardarMetricasCfg()"></label>
+          <label class="flex items-center justify-between gap-3 cursor-pointer"><span class="text-[12px] text-gray-300">Mostrar <b class="text-white">"👁 X visitas en 7 días"</b> (de toda la tienda)</span><input type="checkbox" id="chkMet7" class="w-5 h-5 accent-emerald-500" onchange="guardarMetricasCfg()"></label>
+          <label class="flex items-center justify-between gap-3 cursor-pointer"><span class="text-[12px] text-gray-300">Mostrar las vistas de <b class="text-white">cada producto</b> en la portada<br><span class="text-[10px] text-gray-500">Solo en los que pasen del mínimo. Apagado por ahora.</span></span><input type="checkbox" id="chkMetProd" class="w-5 h-5 accent-emerald-500" onchange="guardarMetricasCfg()"></label>
+          <label class="flex items-center justify-between gap-3 text-[12px] text-gray-300">Mínimo de vistas para mostrarlas<input type="number" id="inpMetMin" min="0" max="100000" class="w-24 bg-gray-800 border border-gray-700 rounded-lg px-2 py-1 text-white text-right" onchange="guardarMetricasCfg()"></label>
+          <p class="text-[10px] text-gray-500">Tus estadísticas completas (vistas de siempre, por periodo y por año) están en cada producto → <b>📊 Ver</b>.</p>
+        </div></details>
         <div class="p-4 rounded-2xl bg-gray-900 border border-gray-800 flex flex-col sm:flex-row sm:items-center gap-3 max-w-3xl">
           <div class="flex-1 min-w-0"><p class="text-sm font-black text-white"><i class="fa-solid fa-flask text-amber-300 mr-1.5"></i>Simulador de cliente</p>
             <p class="text-[11px] text-gray-400 mt-0.5">Se actualiza solo: usa exactamente la misma tienda que tus clientes (versión <b id="simVersionTxt" class="text-gray-200"></b>). Las compras de prueba no tocan saldo, stock ni ventas reales.</p></div>
@@ -7136,13 +7143,17 @@
     function mostrarStockClientes() { try { const on = !(ajustesGeneralesConfig && ajustesGeneralesConfig.mostrarStockClientes === false); document.body.classList.toggle('stock-oculto', !on); return on; } catch (e) { return true; } }
     function veCantidadStock() { return mostrarStockClientes(); }   // aplica a todos en la tienda (las cantidades siguen en el panel: Productos y Stock)
     function textoStockCliente(n) { return n <= 5 ? 'Últimas unidades' : 'Stock disponible'; }
+    function cargarMetricasCfg() { try { const c = ajustesGeneralesConfig || {}, set = (id, v) => { const e = document.getElementById(id); if (e) { if (e.type === 'checkbox') e.checked = v; else e.value = v; } };
+      set('chkMetViendo', c.mostrarViendo !== false); set('chkMet7', c.mostrarVisitas7 !== false); set('chkMetProd', c.mostrarVistasProducto === true); set('inpMetMin', parseInt(c.vistasMinimo, 10) || 300); } catch (e) { /* nada */ } }
+    async function guardarMetricasCfg() { const g = id => document.getElementById(id); const d = { mostrarViendo: !!(g('chkMetViendo') || {}).checked, mostrarVisitas7: !!(g('chkMet7') || {}).checked, mostrarVistasProducto: !!(g('chkMetProd') || {}).checked, vistasMinimo: Math.max(0, parseInt((g('inpMetMin') || {}).value, 10) || 0) };
+      try { await db.collection('configuracion').doc('ajustes').set(d, { merge: true }); Object.assign(ajustesGeneralesConfig, d); metPintarViendo(); mostrarToast('👀 Contadores guardados'); } catch (e) { alert('No se pudo guardar: ' + e.message); } }
     async function guardarMostrarStock(on) {
       if (!esAdminSesionActual()) return;
       try { await db.collection('configuracion').doc('ajustes').set({ mostrarStockClientes: !!on }, { merge: true }); ajustesGeneralesConfig.mostrarStockClientes = !!on; mostrarToast(on ? '📦 Los clientes ven la cantidad de stock' : '📦 Los clientes ven "Stock disponible", sin número'); try { renderizarCatalogo(); pintarCintaStock(); } catch (e) { /* nada */ } }
       catch (e) { alert('No se pudo guardar: ' + e.message); }
     }
     function pintarCajaMant() {
-      try { const c = document.getElementById('chkMostrarStock'); if (c) c.checked = mostrarStockClientes(); } catch (e) { /* nada */ } const d = datosMant(), m = (ajustesGeneralesConfig && ajustesGeneralesConfig.mantenimiento) || {}; const a = document.getElementById('mantActivo'); if (!a || document.activeElement && /^mant/.test(document.activeElement.id || '')) return; a.checked = d.activo; document.getElementById('mantWa').value = d.wa; if (m.mensaje) document.getElementById('mantMsg').value = m.mensaje; }
+      try { const c = document.getElementById('chkMostrarStock'); if (c) c.checked = mostrarStockClientes(); } catch (e) { /* nada */ } try { cargarMetricasCfg(); } catch (e) { /* nada */ } const d = datosMant(), m = (ajustesGeneralesConfig && ajustesGeneralesConfig.mantenimiento) || {}; const a = document.getElementById('mantActivo'); if (!a || document.activeElement && /^mant/.test(document.activeElement.id || '')) return; a.checked = d.activo; document.getElementById('mantWa').value = d.wa; if (m.mensaje) document.getElementById('mantMsg').value = m.mensaje; }
     async function guardarMantenimiento() {
       if (!esAdminSesionActual()) return;
       const datos = { activo: document.getElementById('mantActivo').checked, wa: String(document.getElementById('mantWa').value || '').replace(/\D/g, '').slice(0, 13) || '3043956726', mensaje: String(document.getElementById('mantMsg').value || '').trim().slice(0, 200), desde: new Date().toISOString() };
@@ -17993,8 +18004,10 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-31f';
+    const VERSION_PAGINA = '2026-10-31i';
     const ACTUALIZACIONES_PAGINA = [
+      { id: 'act_20261023_clave', fecha: '2026-10-23', titulo: 'Recuperar tu contraseña, más fácil 🔐', mensaje: 'Si olvidas tu contraseña, ahora te llega un **correo de Epic Streaming** con un botón para **crear la nueva aquí mismo en la tienda**. Escríbela dos veces, toca **Guardar y entrar** y listo: quedas dentro de tu cuenta.', ir: '' },
+      { id: 'act_20261023_envivo', fecha: '2026-10-23', titulo: 'La tienda en vivo 👀', mensaje: 'Arriba, junto a **En vivo**, ahora ves **cuántas personas están viendo la tienda** y las **visitas de la semana**. Y nuestro logo carga al instante en la página y en el ícono cuando guardas la tienda en tu celular.', ir: '' },
       { id: 'act_20261022_alq_unidos', fecha: '2026-10-22', titulo: 'Tus alquileres, todos en un solo lugar 🔄', mensaje: 'Ahora **todos tus alquileres** están en **Mis alquileres**, también los que compraste en la tienda: ahí ves cuántos días te quedan y los **renuevas con un toque**, siempre al precio actual del producto.', ir: '' },
       { id: 'act_20261022_avisos', fecha: '2026-10-22', titulo: 'Tus recordatorios por WhatsApp 📲', mensaje: 'Al final de cada entrega verás el **número desde el que te avisamos** (vencimientos y recordatorios). **Guárdalo** para que no se te pase ninguna renovación. Es solo de avisos: para comprar o pedir ayuda sigue usando la tienda.', ir: '' },
       { id: 'act_20261021_nombre', fecha: '2026-10-21', titulo: 'Tu nombre, más claro ✍️', mensaje: 'En **Mis datos**, tu nombre ahora se escribe **solo con letras y espacios** (sin números ni símbolos). Así te reconocemos mejor cuando te atendemos. Si ya tienes tu nombre guardado, no tienes que hacer nada.', ir: '' },
@@ -21097,12 +21110,14 @@
           <div class="flex items-start justify-between gap-2"><div class="min-w-0"><p class="text-[10px] font-black tracking-[0.2em] uppercase truncate" style="color:${i.marca.color}">${escaparHtml(i.marca.etiqueta)}</p><p class="text-sm font-black text-white leading-snug mt-0.5">${escaparHtml(p.nombre)}</p></div>${sw(p, i)}</div>
           <div class="flex flex-wrap gap-1 mt-2">${p.esVip ? '<span class="px-1.5 py-0.5 rounded bg-yellow-500/15 text-yellow-300 text-[9px] font-black">VIP</span>' : ''}${p.esCombo ? '<span class="px-1.5 py-0.5 rounded bg-amber-400/15 text-amber-300 text-[9px] font-black">COMBO</span>' : ''}${i.promo ? `<span class="px-1.5 py-0.5 rounded bg-rose-500/20 text-rose-300 text-[9px] font-black">${p.promoPct ? '-' + p.promoPct + '%' : 'PROMO'}</span>` : ''}${i.bajo ? '<span class="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 text-[9px] font-black animate-pulse">STOCK BAJO</span>' : ''}${!(Number(p.precio) > 0) && !p.esCombo ? '<span class="px-1.5 py-0.5 rounded bg-red-500/20 text-red-300 text-[9px] font-black">SIN PRECIO · no se vende</span>' : ''}<span class="px-1.5 py-0.5 rounded bg-gray-800 text-gray-300 text-[9px]">${escaparHtml(p.categoria || '')}</span><span class="px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-300 text-[9px]">🛡 ${escaparHtml(i.txtG)}</span></div>
           <div class="flex items-end justify-between gap-2 mt-3"><div><p class="text-xl font-black text-white">${precioHtml(p)}</p><p class="text-[10px] text-gray-500">mín. ${i.minimo} ${i.minimo === 1 ? 'cuenta' : 'cuentas'}</p></div><div class="text-right"><p class="text-lg font-black ${i.stock > 0 ? 'text-emerald-300' : 'text-red-300'}">${i.stock}</p><p class="text-[10px] text-gray-500">disponibles</p></div></div>
+          <div class="flex items-center justify-between gap-2 mt-2.5 px-2 py-1.5 rounded-lg bg-gray-800/50"><span class="met-adm text-[10px] text-gray-400" data-id="${p.docId}">👁 …</span><button type="button" onclick="verStatsProducto('${p.docId}')" class="shrink-0 text-[10px] font-bold text-emerald-300 hover:text-emerald-200">📊 Ver</button></div>
           <div class="grid ${i.stock > 0 ? 'grid-cols-3' : 'grid-cols-2'} gap-1.5 mt-3">
             ${i.stock > 0 ? `<button type="button" onclick="verDetalleCuentas('${p.docId}')" class="py-2 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-200 text-[11px] font-bold"><i class="fa-solid fa-eye mr-1"></i>Cuentas</button>` : ''}
             <button type="button" onclick="abrirModalEditarProducto('${p.docId}')" class="py-2 rounded-lg bg-sky-500/15 hover:bg-sky-500/25 border border-sky-500/30 text-sky-300 text-[11px] font-bold"><i class="fa-solid fa-pen mr-1"></i>Editar</button>
             <button type="button" onclick="eliminarProducto('${p.docId}')" class="solo-admin py-2 rounded-lg bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 text-red-300 text-[11px] font-bold"><i class="fa-solid fa-trash-can mr-1"></i>Eliminar</button>
           </div>
         </div></div>`).join('') + '</div>';
+      setTimeout(() => metPintarTotales(), 0);   // 📊 vistas y compras de cada producto
     }
 
 
@@ -21821,6 +21836,7 @@
     var crId = '';
     function abrirCompraRapida(id, cantidadInicial) {
       const p = catalogoUnificado.find(x => x.docId === id); if (!p) return;
+      metRegistrar(id);   // 📊 clic en el producto: suma
       if (mantenimientoActivo() && !TIENDA_SLUG) { avisoMantenimiento((cantidadInicial ? cantidadInicial + ' ' : '') + p.nombre); return; }
       if (!currentUser && !TIENDA_SLUG) { abrirModalAuth('login'); return; }   // en modo tienda se pide por WhatsApp, sin registro
       crId = id;
@@ -23155,6 +23171,10 @@
 
     // ==================== NOVEDADES INTERNAS DEL PANEL (solo el equipo) ====================
     const ACTUALIZACIONES_INTERNAS = [
+      { fecha: '2026-10-23', titulo: '📊 Vistas y compras de cada producto', mensaje: 'Cada producto del panel muestra **👁 vistas · 🛒 compras · % que compra**, y **📊 Ver** abre sus estadísticas: vistas de siempre, **Hoy / 7 días / Este mes / Este año** comparados con el periodo anterior, y barras por año. **Para vender más:** muchas vistas y pocas compras = revisa precio o descripción; pocas vistas = promociónalo. **📥 Sumar las compras anteriores** carga tu historial una sola vez.' },
+      { fecha: '2026-10-23', titulo: '👀 Contadores en vivo en portada y tienda', mensaje: 'La portada muestra arriba **viendo ahora · visitas 7 días · clientes**, y la tienda lo muestra junto a **En vivo**. Suman cada entrada y cada clic (también los tuyos). Nunca muestran stock ni ventas. Se prenden y apagan en **Configuración → 👀 Contadores de visitas**, donde también puedes mostrar (apagado por ahora) las vistas de cada producto. **Para vender más:** el movimiento visible da confianza al que llega por primera vez.' },
+      { fecha: '2026-10-23', titulo: '👑 Portada nueva y tu logo en todo', mensaje: 'Portada para visitantes con tu **logo grande**, **promo solo si hay una activa** (con contador), Prime destacado con **precio por cuenta y mínimo**, y el resto en lista. Tu logo carga al instante en la barra, la pestaña y el ícono del celular. Entrada de **proveedores** negra y dorada con contador real de **cuentas subidas hoy**, recuperar contraseña y **Quiero ser proveedor** (te escribe por WhatsApp).' },
+      { fecha: '2026-10-23', titulo: '🌎 Facturación por producto', mensaje: 'En **Editar producto** hay un campo **🌎 Facturación**. El bot solo la dice si tú la escribiste; si preguntan y no está, te avisa por Telegram en vez de inventar. **Para vender más:** respuestas exactas evitan reclamos.' },
       { fecha: '2026-10-21', titulo: '🚀 Nueva portada para visitantes', mensaje: 'Quien entra sin cuenta ya no ve un candado: ve una página de ventas con el precio gancho de Prime Video **en promoción**, lo que hay en stock hoy, los beneficios y el **registro en la misma página** (correo, WhatsApp con país y contraseña fuerte con medidor). Se crea la cuenta y entra directo a la tienda.', ir: '' },
       { fecha: '2026-10-21', titulo: '🧾 Historial de ventas nuevo', mensaje: 'El historial de ventas ya no es una tabla: resumen arriba (vendido, ventas, cuentas y ganancia), filtros Hoy / 7 días / Este mes / Todo, buscador por cliente, producto o correo de cuenta, y cada venta como tarjeta agrupada por día. Toca el **nombre del cliente** para editarlo; despliega las cuentas para copiarlas o **reenviarlas por WhatsApp**. Carga por partes, más rápido.', ir: 'ventas' },
       { fecha: '2026-10-21', titulo: '💳 Recargar saldo en dos toques', mensaje: 'Nueva pantalla de recarga: el cliente toca un monto (tarjetas grandes, con lo que **recibe** con el bono y una marcada como **popular**, configurable en Ajustes) y ya tiene su pago listo. En la pantalla de pago, el peso extra se ve **grande y explicado** ("los 1 peso de más son tu código") o dice "Monto exacto". Para clientes de fuera: montos cerrados de 10, 20 y 50 USDT. Los métodos manuales ahora son tarjetas con el QR grande y botón de copiar.', ir: '' },
@@ -24678,7 +24698,7 @@
 
 
     // ==================== COMPROBAR TODO (estado de la página, servidor, reglas y tareas) ====================
-    const VERSION_REGLAS_ESPERADA = '2026-10-19a';
+    const VERSION_REGLAS_ESPERADA = '2026-10-31a';
     async function abrirComprobarTodo() {
       let m = document.getElementById('modalComprobarTodo');
       if (!m) { m = document.createElement('div'); m.id = 'modalComprobarTodo'; m.className = 'fixed inset-0 z-[96] hidden items-center justify-center p-4 bg-black/75 backdrop-blur-sm'; m.onclick = ev => { if (ev.target === m && cierreFueraPermitido()) cerrarComprobarTodo(); }; document.body.appendChild(m); }
@@ -27624,6 +27644,100 @@ async function pintarPanelWa() {
       const pm = document.getElementById('portMas'); if (pm) pm.textContent = 'Y muchos más dentro de la tienda · stock en vivo';
       try { pintarPortadaNueva(L); } catch (e) { console.warn('Portada nueva:', e); }   // 👑 si falla, se queda la de antes
     }
+    // 📊 ===== VISTAS Y "PERSONAS VIENDO" =====
+    // Todo suma: cada vez que alguien abre la página y cada clic en un producto (también tú). Se guarda por día, mes, año y total.
+    function metFecha() { try { return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Bogota' }).format(new Date()); } catch (e) { return new Date().toISOString().slice(0, 10); } }
+    function metHora() { try { return parseInt(new Intl.DateTimeFormat('en-US', { timeZone: 'America/Bogota', hour: 'numeric', hour12: false }).format(new Date()), 10) % 24; } catch (e) { return new Date().getHours(); } }
+    function metRegistrar(prodId) {
+      try { if (typeof firebase === 'undefined' || !firebase.firestore) return; const fs = firebase.firestore(), inc = firebase.firestore.FieldValue.increment(1), d = metFecha(), h = 'h' + String(metHora()).padStart(2, '0');
+        const pid = prodId ? String(prodId).replace(/[^A-Za-z0-9_-]/g, '') : '', b = fs.batch(), col = fs.collection('metricas');
+        const uDia = { visitas: inc, [h]: inc }, uMes = { visitas: inc }; if (pid) { uDia['v_' + pid] = inc; uMes['v_' + pid] = inc; }
+        b.set(col.doc('dia_' + d), uDia, { merge: true }); b.set(col.doc('mes_' + d.slice(0, 7)), uMes, { merge: true }); b.set(col.doc('anio_' + d.slice(0, 4)), uMes, { merge: true });
+        if (pid) b.set(col.doc('prod_total'), { ['v_' + pid]: inc }, { merge: true });
+        b.commit().catch(() => {}); } catch (e) { /* las estadísticas nunca frenan nada */ }
+    }
+    window.addEventListener('load', () => { setTimeout(() => { metRegistrar(null); metPintarViendo(); setInterval(metPintarViendo, 5 * 60000); }, 2500); });   // 👀 cada entrada suma
+    let metViendoCache = null;
+    async function metDatosPublicos() {
+      const ahora = Date.now(); if (metViendoCache && ahora - metViendoCache.t < 4 * 60000) return metViendoCache;
+      const fs = firebase.firestore(), d = metFecha(), hh = metHora(), min = new Date().getMinutes();
+      const hoy = await fs.collection('metricas').doc('dia_' + d).get(), H = hoy.exists ? hoy.data() : {};
+      const cur = Number(H['h' + String(hh).padStart(2, '0')]) || 0, prev = hh > 0 ? Number(H['h' + String(hh - 1).padStart(2, '0')]) || 0 : 0;
+      const viendo = Math.max(1, Math.round(cur + prev * (60 - min) / 60));
+      let v7 = null; try { const c = JSON.parse(localStorage.getItem('met7') || 'null'); if (c && ahora - c.t < 30 * 60000) v7 = c.n; } catch (e) { v7 = null; }
+      if (v7 === null) { v7 = Number(H.visitas) || 0; const dias = []; for (let i = 1; i < 7; i++) { const x = new Date(Date.now() - i * 86400000); dias.push(new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Bogota' }).format(x)); }
+        const docs = await Promise.all(dias.map(f => fs.collection('metricas').doc('dia_' + f).get().catch(() => null)));
+        docs.forEach(x => { if (x && x.exists) v7 += Number(x.data().visitas) || 0; }); try { localStorage.setItem('met7', JSON.stringify({ t: ahora, n: v7 })); } catch (e) { /* nada */ } }
+      metViendoCache = { t: ahora, viendo, v7 }; return metViendoCache;
+    }
+    function metNum(n) { n = Number(n) || 0; return n >= 1000000 ? (n / 1000000).toFixed(1).replace('.0', '').replace('.', ',') + ' M' : n >= 10000 ? Math.round(n / 1000) + ' mil' : n >= 1000 ? (n / 1000).toFixed(1).replace('.0', '').replace('.', ',') + ' mil' : String(n); }
+    async function metPintarViendo() {
+      try { const cfg = ajustesGeneralesConfig || {}, verV = cfg.mostrarViendo !== false, ver7 = cfg.mostrarVisitas7 !== false;
+        const viejo = document.getElementById('metViendo'); if (viejo) viejo.remove();
+        const cv = document.getElementById('cintaViendo'), p1 = document.getElementById('portCifViendo'), p7 = document.getElementById('portCif7');
+        if (!verV && !ver7) { if (cv) cv.classList.add('hidden'); return; }
+        const r = await metDatosPublicos();
+        if (p1) p1.textContent = r.viendo.toLocaleString('es-CO');
+        if (p7) p7.textContent = metNum(r.v7);
+        if (cv) { cv.innerHTML = (verV ? '· 👀 ' + r.viendo + ' viendo ahora' : '') + (ver7 && r.v7 > 0 ? ' · 👁 ' + metNum(r.v7) + ' visitas en 7 días' : ''); cv.classList.toggle('hidden', !cv.innerHTML); }
+      } catch (e) { /* sin datos: no se muestra */ }
+    }
+    // 📊 Panel (solo admin): totales de siempre por producto + ventana de estadísticas por periodo y año
+    let metTot = null;
+    async function metPintarTotales(forzar) {
+      try { if (!esAdminSesionActual()) return; if (!metTot || forzar) { const d = await firebase.firestore().collection('metricas').doc('prod_total').get(); metTot = d.exists ? d.data() : {};
+          if (!metTot.desde) { const hoy = metFecha(); metTot.desde = hoy; firebase.firestore().collection('metricas').doc('prod_total').set({ desde: hoy }, { merge: true }).catch(() => {}); } }
+        document.querySelectorAll('.met-adm').forEach(e => { const id = e.dataset.id, v = Number(metTot['v_' + id]) || 0, c = Number(metTot['c_' + id]) || 0;
+          e.innerHTML = '👁 <b class="text-gray-200">' + v.toLocaleString('es-CO') + '</b> vistas · 🛒 <b class="text-gray-200">' + c.toLocaleString('es-CO') + '</b> compras' + (v > 0 ? ' · <b class="text-emerald-300">' + (c * 100 / v).toFixed(1).replace('.', ',') + '%</b>' : ''); });
+      } catch (e) { /* nada */ }
+    }
+    async function verStatsProducto(id) {
+      const p = (catalogoUnificado || []).find(x => x.docId === id) || { nombre: id }, fs = firebase.firestore(), col = fs.collection('metricas'), hoy = metFecha();
+      const dia = n => new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Bogota' }).format(new Date(Date.now() - n * 86400000));
+      let m = document.getElementById('modalStatsProd'); if (m) m.remove();
+      m = document.createElement('div'); m.id = 'modalStatsProd'; m.className = 'fixed inset-0 z-[95] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4';
+      m.innerHTML = '<div class="w-full max-w-md max-h-[90vh] overflow-y-auto rounded-2xl bg-gray-900 border border-emerald-500/40 p-5"><div class="flex items-start justify-between"><div><p class="text-[10px] font-black tracking-widest text-emerald-300">📊 ESTADÍSTICAS</p><p class="text-base font-black text-white">' + escaparHtml(p.nombre) + '</p></div><button type="button" onclick="document.getElementById(\'modalStatsProd\').remove()" class="text-gray-400 text-xl leading-none">&times;</button></div><div id="msBody" class="mt-3 text-center text-xs text-gray-400 py-8"><i class="fa-solid fa-spinner fa-spin mr-1"></i>Cargando…</div></div>';
+      document.body.appendChild(m);
+      try {
+        const g = async ids => { const r = await Promise.all(ids.map(x => col.doc(x).get().catch(() => null))); return r.map(x => (x && x.exists) ? x.data() : {}); };
+        const vk = 'v_' + id, ck = 'c_' + id, sum = (L, k) => L.reduce((a, x) => a + (Number(x[k]) || 0), 0);
+        const d14 = await g(Array.from({ length: 14 }, (_, i) => 'dia_' + dia(i)));
+        const mesA = hoy.slice(0, 7), mesP = (() => { const [y, mo] = mesA.split('-').map(Number); return mo === 1 ? (y - 1) + '-12' : y + '-' + String(mo - 1).padStart(2, '0'); })();
+        const anioA = Number(hoy.slice(0, 4)), anios = []; for (let y = 2026; y <= anioA; y++) anios.push(y);
+        const [mA, mP] = await g(['mes_' + mesA, 'mes_' + mesP]), aDocs = await g(anios.map(y => 'anio_' + y)), [tot] = await g(['prod_total']);
+        const per = { hoy: [d14.slice(0, 1), d14.slice(1, 2), 'vs ayer'], s7: [d14.slice(0, 7), d14.slice(7, 14), 'vs 7 días antes'], mes: [[mA], [mP], 'vs mes pasado'], anio: [[aDocs[aDocs.length - 1] || {}], [aDocs[aDocs.length - 2] || {}], 'vs año pasado'] };
+        const vS = Number(tot[vk]) || 0, cS = Number(tot[ck]) || 0, maxA = Math.max(1, ...aDocs.map(x => Number(x[vk]) || 0));
+        window.msPintar = (k) => { const [A, B, txt] = per[k], va = sum(A, vk), vb = sum(B, vk), ca = sum(A, ck), dif = vb > 0 ? Math.round((va - vb) * 100 / vb) : null;
+          document.getElementById('msPer').innerHTML = '<div><p class="text-base font-black text-white">' + va.toLocaleString('es-CO') + '</p><p class="text-[9px] text-gray-400">👁 vistas</p></div><div><p class="text-base font-black text-white">' + ca.toLocaleString('es-CO') + '</p><p class="text-[9px] text-gray-400">🛒 compras</p></div><div><p class="text-base font-black ' + (dif === null ? 'text-gray-400' : dif >= 0 ? 'text-emerald-300' : 'text-red-300') + '">' + (dif === null ? '—' : (dif >= 0 ? '↑ ' : '↓ ') + Math.abs(dif) + '%') + '</p><p class="text-[9px] text-gray-400">' + txt + '</p></div>';
+          document.querySelectorAll('#msBtns button').forEach(b => { const on = b.dataset.k === k; b.className = 'text-[11px] px-3 py-1 rounded-full font-bold ' + (on ? 'bg-emerald-500 text-black' : 'bg-gray-800 text-gray-300'); }); };
+        document.getElementById('msBody').className = 'mt-3';
+        document.getElementById('msBody').innerHTML = '<div class="rounded-xl bg-gray-800/60 p-4 text-center"><p class="text-[10px] text-gray-400 tracking-wider">👁 VISTAS DE SIEMPRE</p><p class="text-3xl font-black text-white">' + vS.toLocaleString('es-CO') + '</p><p class="text-[11px] text-gray-400">desde ' + escaparHtml(String(tot.desde || hoy).split('-').reverse().join('/')) + ' · 🛒 ' + cS.toLocaleString('es-CO') + ' compras' + (vS > 0 ? ' · <b class="text-emerald-300">' + (cS * 100 / vS).toFixed(1).replace('.', ',') + '% compran</b>' : '') + '</p></div>'
+          + '<div id="msBtns" class="flex flex-wrap gap-1.5 mt-3">' + [['hoy', 'Hoy'], ['s7', '7 días'], ['mes', 'Este mes'], ['anio', 'Este año']].map(([k, t]) => '<button type="button" data-k="' + k + '" onclick="msPintar(\'' + k + '\')">' + t + '</button>').join('') + '</div>'
+          + '<div id="msPer" class="grid grid-cols-3 gap-2 text-center rounded-xl bg-gray-800/60 p-3 mt-2"></div>'
+          + '<p class="text-[10px] text-gray-400 mt-4 mb-1">Por año</p>' + anios.slice().reverse().map((y, i) => { const v = Number(aDocs[anios.length - 1 - i][vk]) || 0; return '<div class="flex items-center gap-2 text-[11px] text-gray-300 mb-1"><span class="w-9">' + y + '</span><div class="flex-1 h-2 rounded bg-gray-800"><div class="h-2 rounded bg-emerald-500" style="width:' + Math.round(v * 100 / maxA) + '%"></div></div><span class="w-14 text-right">' + v.toLocaleString('es-CO') + '</span></div>'; }).join('')
+          + '<p class="text-[10px] text-gray-500 mt-3">Las vistas cuentan desde que se activó esto. Las compras cuentan desde el mismo día; si quieres sumar las anteriores, toca abajo (se hace una sola vez).</p>'
+          + '<button type="button" onclick="metCargarComprasViejas(this)" class="w-full mt-2 py-2 rounded-xl bg-gray-800 border border-gray-700 text-gray-200 text-[11px] font-bold">📥 Sumar las compras anteriores (una sola vez)</button>';
+        msPintar('s7');
+      } catch (e) { const b = document.getElementById('msBody'); if (b) b.innerHTML = '<p class="text-red-300">No se pudieron cargar las estadísticas: ' + escaparHtml(e.message) + '</p>'; }
+    }
+    // 📥 Una sola vez: suma las compras viejas (las del historial) a las estadísticas, por día, mes, año y total.
+    async function metCargarComprasViejas(btn) {
+      const fs = firebase.firestore(); const marca = await fs.collection('metricas').doc('prod_total').get();
+      if (marca.exists && marca.data().comprasViejasEl) { alert('Las compras anteriores ya se sumaron el ' + String(marca.data().comprasViejasEl).slice(0, 10).split('-').reverse().join('/') + '.'); return; }
+      if (!await confirmarModal('Se leen todas tus compras anteriores una sola vez (puede tardar un poco) y se suman a las estadísticas. ¿Seguir?', { textoAceptar: 'Sí, sumar' })) return;
+      btn.disabled = true; btn.textContent = 'Leyendo compras…';
+      try { const desde = String((marca.exists && marca.data().desde) || metFecha()), acum = {}; let ultimo = null, n = 0;
+        const add = (doc, k) => { (acum[doc] = acum[doc] || {})[k] = (acum[doc][k] || 0) + 1; };
+        while (true) { let q = fs.collection('compras').orderBy(firebase.firestore.FieldPath.documentId()).limit(500); if (ultimo) q = q.startAfter(ultimo);
+          const snap = await q.get(); if (snap.empty) break;
+          snap.forEach(dc => { const x = dc.data(); if (!x.productoId || x.esBonificacion === true) return; const f = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Bogota' }).format(new Date(x.fecha && x.fecha.toDate ? x.fecha.toDate() : (x.fecha || 0)));
+            if (!(f < desde)) return; const k = 'c_' + String(x.productoId).replace(/[^A-Za-z0-9_-]/g, ''); add('dia_' + f, k); add('mes_' + f.slice(0, 7), k); add('anio_' + f.slice(0, 4), k); add('prod_total', k); n++; });
+          ultimo = snap.docs[snap.docs.length - 1]; btn.textContent = 'Leyendo compras… ' + n; if (snap.size < 500) break; }
+        const ids = Object.keys(acum); for (let i = 0; i < ids.length; i += 400) { const b = fs.batch(); ids.slice(i, i + 400).forEach(doc => { const u = {}; Object.keys(acum[doc]).forEach(k => { u[k] = firebase.firestore.FieldValue.increment(acum[doc][k]); }); b.set(fs.collection('metricas').doc(doc), u, { merge: true }); }); await b.commit(); }
+        await fs.collection('metricas').doc('prod_total').set({ comprasViejasEl: new Date().toISOString() }, { merge: true });
+        mostrarToast('📥 Listo: ' + n.toLocaleString('es-CO') + ' compras anteriores sumadas'); metTot = null; metPintarTotales(true);
+      } catch (e) { alert('No se pudo: ' + e.message); btn.disabled = false; btn.textContent = '📥 Sumar las compras anteriores (una sola vez)'; }
+    }
     // 👑 PORTADA NUEVA (visitantes): logo grande, promo SOLO si hay una activa, Prime destacado con precio POR CUENTA y mínimo, el resto en lista.
     //    Sin calificaciones ni cifras inventadas: todo sale de tu catálogo. Lo de abajo (cifras, confianza, beneficios, registro) sigue igual.
     let portVerTodos = false, portRelojT = null;
@@ -27641,14 +27755,16 @@ async function pintarPanelWa() {
       const sub = p => { const m = minDe(p); return m > 1 ? 'Mínimo ' + m + ' · total ' + cop(Number(p.precio) * m) : 'Desde 1 cuenta'; };
       // 🔥 promo de hoy: solo si un producto tiene descuento activo (con su hora de fin si la pusiste)
       const promo = L.filter(p => Number(p.promoPct) > 0 && conStock(p) && !(p.promoHasta && Date.parse(p.promoHasta) <= Date.now())).sort((a, b) => Number(b.promoPct) - Number(a.promoPct))[0];
-      const tarjeta = (p, i) => `<button type="button" onclick="${irRegistro}" class="text-left p-3.5 rounded-2xl bg-gray-900 border ${i === 0 ? 'border-emerald-500/40' : 'border-gray-800'} hover:border-emerald-500/60 transition">
+      if ((ajustesGeneralesConfig || {}).mostrarVistasProducto === true && !metTot && !window.__metTotPide) { window.__metTotPide = 1; firebase.firestore().collection('metricas').doc('prod_total').get().then(d => { metTot = d.exists ? d.data() : {}; try { pintarPortadaVisitante(); } catch (e) { /* nada */ } }).catch(() => {}); }
+      const vistaP = p => { const c = ajustesGeneralesConfig || {}; if (c.mostrarVistasProducto !== true || !metTot) return ''; const v = Number(metTot['v_' + (p.docId || p.id)]) || 0; return v >= (parseInt(c.vistasMinimo, 10) || 300) ? '<span class="block text-[10px] text-gray-400 mt-0.5">👁 ' + metNum(v) + ' vistas</span>' : ''; };
+      const tarjeta = (p, i) => `<button type="button" onclick="metRegistrar('${p.docId || p.id}');${irRegistro}" class="text-left p-3.5 rounded-2xl bg-gray-900 border ${i === 0 ? 'border-emerald-500/40' : 'border-gray-800'} hover:border-emerald-500/60 transition">
           <span class="inline-block text-[10px] font-black px-2 py-0.5 rounded-full ${i === 0 ? 'bg-emerald-500/15 text-emerald-300' : 'bg-amber-400/15 text-amber-300'}">${i === 0 ? 'MÁS VENDIDO' : (/garant/i.test(p.nombre) ? 'GARANTÍA' : 'PRIME')}</span>
           <span class="block mt-2 text-sm font-black text-white leading-tight">${escaparHtml(p.nombre)}</span>
-          <span class="block text-[11px] mt-1">${estado(p)}</span>
+          <span class="block text-[11px] mt-1">${estado(p)}</span>${vistaP(p)}
           <span class="block mt-2 text-xl font-black text-emerald-400">${cop(p.precio)} <span class="text-[11px] text-gray-400 font-bold">c/u</span></span>
           <span class="block text-[11px] text-gray-500">${sub(p)}</span>
           <span class="mt-2.5 block text-center text-xs font-black text-black bg-emerald-500 rounded-xl py-2">Comprar</span></button>`;
-      const fila = p => `<button type="button" onclick="${irRegistro}" class="w-full flex items-center justify-between gap-3 p-3 rounded-2xl bg-gray-900 border border-gray-800 hover:border-emerald-500/50 transition text-left">
+      const fila = p => `<button type="button" onclick="metRegistrar('${p.docId || p.id}');${irRegistro}" class="w-full flex items-center justify-between gap-3 p-3 rounded-2xl bg-gray-900 border border-gray-800 hover:border-emerald-500/50 transition text-left">
           <span class="min-w-0"><span class="block text-[13px] font-bold text-white truncate">${escaparHtml(p.nombre)}</span><span class="block text-[11px] text-gray-400">${sub(p)}</span></span>
           <span class="shrink-0 text-sm font-black text-emerald-400">${cop(p.precio)} <span class="text-[10px] text-gray-400">c/u</span></span></button>`;
       const visibles = portVerTodos ? resto : resto.slice(0, 3);
@@ -27656,9 +27772,14 @@ async function pintarPanelWa() {
         <div class="flex items-center gap-4 p-4 rounded-3xl bg-gray-900 border border-gray-800">
           ${logo ? `<img src="${escaparHtml(logo)}" alt="${escaparHtml(titulo)}" class="w-20 h-20 md:w-28 md:h-28 rounded-full object-cover border-2 border-amber-400 shadow-lg shadow-amber-500/20 shrink-0">` : ''}
           <div class="min-w-0"><h1 class="text-xl md:text-3xl font-black text-white leading-tight">Cuentas de streaming al por mayor, al instante</h1>
-            <p class="text-xs md:text-sm text-gray-400 mt-1">${clientes ? escaparHtml(clientes) + ' clientes · ' : ''}entrega al instante 24/7</p>
+            <p class="text-xs md:text-sm text-gray-400 mt-1">Entrega al instante 24/7</p>
             <span class="inline-block mt-2 text-[10px] font-black text-amber-300 bg-amber-400/10 border border-amber-400/40 px-2.5 py-0.5 rounded-full tracking-wider">MAYORISTA 24/7</span></div>
         </div>
+        ${(() => { const c = ajustesGeneralesConfig || {}, cas = [];   // 📊 franja de cifras: viendo ahora · visitas 7 días · clientes
+          if (c.mostrarViendo !== false) cas.push('<div class="rounded-2xl bg-emerald-950 border border-emerald-500/60 py-2.5 px-1 text-center"><p id="portCifViendo" class="text-lg md:text-2xl font-black text-white">…</p><p class="text-[10px] md:text-xs text-emerald-200 flex items-center justify-center gap-1"><span class="punto-vivo"></span>viendo ahora</p></div>');
+          if (c.mostrarVisitas7 !== false) cas.push('<div class="rounded-2xl bg-gray-900 border border-gray-800 py-2.5 px-1 text-center"><p id="portCif7" class="text-lg md:text-2xl font-black text-white">…</p><p class="text-[10px] md:text-xs text-gray-400">👁 visitas 7 días</p></div>');
+          if (clientes) cas.push('<div class="rounded-2xl bg-gray-900 border border-gray-800 py-2.5 px-1 text-center"><p class="text-lg md:text-2xl font-black text-white">' + escaparHtml(clientes) + '</p><p class="text-[10px] md:text-xs text-gray-400">👥 clientes</p></div>');
+          return cas.length ? '<div class="mt-3 grid gap-2 ' + (cas.length === 3 ? 'grid-cols-3' : cas.length === 2 ? 'grid-cols-2' : 'grid-cols-1') + '">' + cas.join('') + '</div>' : ''; })()}
         ${promo ? `<button type="button" onclick="${irRegistro}" class="mt-4 w-full flex items-center justify-between gap-3 p-4 rounded-2xl bg-indigo-900 border border-indigo-500 text-left">
           <span><span class="block text-[10px] font-black tracking-wider text-indigo-200">PROMO DE HOY · -${Number(promo.promoPct)}%</span>
           <span class="block text-lg font-black text-white">${escaparHtml(promo.nombre)} a ${cop(promo.precio)} c/u</span>
@@ -27669,6 +27790,7 @@ async function pintarPanelWa() {
           ${resto.length > 3 ? `<button type="button" onclick="portVerTodos=!portVerTodos;try{pintarPortadaVisitante()}catch(e){}" class="w-full mt-2 text-xs text-gray-400 py-1.5">${portVerTodos ? 'Ver menos ▴' : 'Ver los ' + (resto.length + prime.length) + ' productos ▾'}</button>` : ''}` : ''}`;
       const tv = document.getElementById('portTitularViejo'), gv = document.getElementById('portGancho'), cv = document.getElementById('portCatalogoViejo');
       [tv, gv, cv].forEach(e => { if (e) e.style.display = 'none'; });
+      try { metPintarViendo(); } catch (e) { /* nada */ }
       if (portRelojT) clearInterval(portRelojT);
       const rj = document.getElementById('portReloj');
       if (rj) { const fin = Date.parse(rj.dataset.fin), tic = () => { const ms = fin - Date.now(); if (ms <= 0) { rj.textContent = 'unos minutos'; clearInterval(portRelojT); return; } const h = Math.floor(ms / 3600000), m = Math.floor(ms / 60000) % 60, sg = Math.floor(ms / 1000) % 60; rj.textContent = (h > 47 ? Math.floor(h / 24) + ' días' : String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0') + ':' + String(sg).padStart(2, '0')); }; tic(); portRelojT = setInterval(tic, 1000); }
