@@ -17934,7 +17934,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-30i';
+    const VERSION_PAGINA = '2026-10-30j';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261022_alq_unidos', fecha: '2026-10-22', titulo: 'Tus alquileres, todos en un solo lugar 🔄', mensaje: 'Ahora **todos tus alquileres** están en **Mis alquileres**, también los que compraste en la tienda: ahí ves cuántos días te quedan y los **renuevas con un toque**, siempre al precio actual del producto.', ir: '' },
       { id: 'act_20261022_avisos', fecha: '2026-10-22', titulo: 'Tus recordatorios por WhatsApp 📲', mensaje: 'Al final de cada entrega verás el **número desde el que te avisamos** (vencimientos y recordatorios). **Guárdalo** para que no se te pase ninguna renovación. Es solo de avisos: para comprar o pedir ayuda sigue usando la tienda.', ir: '' },
@@ -26515,7 +26515,7 @@ async function pintarPanelWa() {
       if (!currentUser || !currentUser.email) return;
       if (!await confirmarModal(`Te enviaremos un enlace a ${currentUser.email} para crear una nueva contraseña. ¿Continuar?`)) return;
       try {
-        await auth.sendPasswordResetEmail(currentUser.email);
+        await enviarRecuperacionClave(currentUser.email);
         mostrarToast('Enlace enviado. Revisa tu correo (y la carpeta de spam).');
       } catch (err) {
         alert('No se pudo enviar el enlace: ' + err.message);
@@ -27253,6 +27253,54 @@ async function pintarPanelWa() {
     function alternarModoAuth() { abrirModalAuth(modoAuth === 'login' ? 'register' : 'login'); }
     function cerrarModalAuth() { document.getElementById('modalAuth').classList.add('hidden'); document.getElementById('modalAuth').style.display = 'none'; }
 
+    // 🔐 Recuperación con tu diseño: lo manda el servidor de correo (desde tu dominio). Si no responde, el correo normal de Firebase.
+    async function enviarRecuperacionClave(email) {
+      email = String(email || '').trim().toLowerCase();
+      try { const url = obtenerBackendUrl('*correo'); if (url) { const ctl = new AbortController(); setTimeout(() => ctl.abort(), 25000);
+          const r = await (await fetch(url, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ accion: 'recuperar_clave', email: email }), signal: ctl.signal })).json();
+          if (r && r.ok) return true;
+          if (r && r.error && !r.respaldo) throw Object.assign(new Error(r.error), { code: 'epic/servidor' }); } }
+      catch (e) { if (e && e.code === 'epic/servidor') throw e; }
+      await auth.sendPasswordResetEmail(email);   // respaldo
+      return true;
+    }
+    // 🔑 Página para crear la contraseña nueva (enlace del correo: #nuevaclave/CÓDIGO)
+    async function abrirNuevaClaveDeRuta() {
+      const m = String(location.hash || '').match(/^#\/?nuevaclave\/([A-Za-z0-9_-]{20,400})/); if (!m) return;
+      const code = m[1]; let email = '';
+      try { history.replaceState(null, '', location.pathname + location.search); } catch (e) { /* nada */ }
+      let v = document.getElementById('vistaNuevaClave'); if (v) v.remove();
+      v = document.createElement('div'); v.id = 'vistaNuevaClave'; v.className = 'fixed inset-0 z-[9999] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4';
+      v.innerHTML = `<div class="w-full max-w-sm rounded-2xl bg-[#0B0B14] border border-amber-700/60 p-6 text-center">
+          <div class="text-[12px] tracking-[3px] text-amber-400 font-black">EPIC STREAMING</div>
+          <p class="text-lg font-black text-white mt-3">🔐 Crea tu nueva contraseña</p>
+          <p id="ncCorreo" class="text-xs text-gray-400 mt-1"><i class="fa-solid fa-spinner fa-spin mr-1"></i>Revisando el enlace…</p>
+          <div id="ncForm" class="hidden mt-4 space-y-2 text-left">
+            <input id="ncPass1" type="password" minlength="6" autocomplete="new-password" placeholder="Nueva contraseña (mínimo 6)" class="w-full bg-gray-900 border border-gray-700 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:border-amber-500">
+            <input id="ncPass2" type="password" minlength="6" autocomplete="new-password" placeholder="Repítela" class="w-full bg-gray-900 border border-gray-700 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:border-amber-500">
+            <label class="flex items-center gap-2 text-[11px] text-gray-400"><input id="ncVer" type="checkbox" onchange="['ncPass1','ncPass2'].forEach(i => document.getElementById(i).type = this.checked ? 'text' : 'password')"> Ver contraseña</label>
+            <button id="ncBtn" type="button" class="w-full py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-black text-sm">Guardar y entrar</button>
+          </div>
+          <p id="ncMsg" class="text-xs mt-3"></p>
+          <button type="button" onclick="document.getElementById('vistaNuevaClave').remove()" class="mt-3 text-[11px] text-gray-500 underline">Cerrar</button>
+        </div>`;
+      document.body.appendChild(v);
+      const msg = (t, ok) => { const e = document.getElementById('ncMsg'); if (e) { e.textContent = t; e.className = 'text-xs mt-3 ' + (ok ? 'text-emerald-400' : 'text-red-400'); } };
+      try { email = await auth.verifyPasswordResetCode(code); document.getElementById('ncCorreo').textContent = 'Cuenta: ' + email; document.getElementById('ncForm').classList.remove('hidden'); }
+      catch (e) { document.getElementById('ncCorreo').textContent = ''; msg('Este enlace ya venció o ya se usó. Pide uno nuevo en "¿Olvidaste tu contraseña?".'); return; }
+      document.getElementById('ncBtn').onclick = async function () {
+        const p1 = document.getElementById('ncPass1').value, p2 = document.getElementById('ncPass2').value;
+        if (p1.length < 6) return msg('La contraseña debe tener mínimo 6 caracteres.');
+        if (p1 !== p2) return msg('Las dos contraseñas no coinciden.');
+        this.disabled = true; this.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Guardando…';
+        try { await auth.confirmPasswordReset(code, p1); msg('✅ ¡Listo! Contraseña cambiada. Entrando…', true);
+          try { await auth.signInWithEmailAndPassword(email, p1); } catch (e2) { /* si no entra solo, que inicie sesión */ }
+          setTimeout(() => { const x = document.getElementById('vistaNuevaClave'); if (x) x.remove(); try { mostrarToast('🔐 Contraseña cambiada'); } catch (e3) { /* nada */ } }, 1200); }
+        catch (e) { this.disabled = false; this.textContent = 'Guardar y entrar'; msg(e && e.code === 'auth/weak-password' ? 'Esa contraseña es muy débil. Usa una más larga.' : 'Este enlace ya venció o ya se usó. Pide uno nuevo.'); }
+      };
+    }
+    window.addEventListener('load', () => { try { abrirNuevaClaveDeRuta(); } catch (e) { /* nada */ } });
+    window.addEventListener('hashchange', () => { try { abrirNuevaClaveDeRuta(); } catch (e) { /* nada */ } });
     async function recuperarPasswordModal() {
       const emailInput = document.getElementById('authEmail');
       const email = (emailInput ? emailInput.value : '').trim();
@@ -27260,8 +27308,8 @@ async function pintarPanelWa() {
       if (!correoDestino) return;
 
       try {
-        await auth.sendPasswordResetEmail(correoDestino);
-        alert("Se ha enviado un enlace para restablecer tu contraseña a: " + correoDestino);
+        await enviarRecuperacionClave(correoDestino);
+        alert("Si " + correoDestino + " tiene una cuenta, te llegará un correo para crear tu nueva contraseña. Revisa también spam.");
       } catch (err) {
         if (err.code === 'auth/user-not-found') {
           alert("No existe ninguna cuenta registrada con ese correo.");
@@ -27294,7 +27342,7 @@ async function pintarPanelWa() {
       if (b) { b.disabled = true; b.textContent = 'Revisando…'; }
       try { const url = obtenerBackendUrl('wa_recuperar'); const r = await (await fetch(url, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ accion: 'wa_recuperar', wa: wa, email: em, vid: ruVid() }) })).json();
         if (!r || !r.ok) { ver((r && r.error) || 'Ese correo no corresponde a ese WhatsApp.'); }
-        else { await auth.sendPasswordResetEmail(em); ver('📧 Listo. Te enviamos un enlace a tu correo para crear una contraseña nueva.', true); if (b) b.classList.add('hidden'); return; } }
+        else { await enviarRecuperacionClave(em); ver('📧 Listo. Te enviamos un enlace a tu correo para crear una contraseña nueva.', true); if (b) b.classList.add('hidden'); return; } }
       catch (e) { ver('No se pudo. Intenta de nuevo.'); }
       if (b) { b.disabled = false; b.textContent = 'Enviarme el enlace'; }
     }
