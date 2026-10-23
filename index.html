@@ -13076,8 +13076,8 @@
       const d = document.getElementById('pdDescanso'), caja = document.getElementById('misDominiosCaja');
       if (d && caja && caja.parentNode !== d) { d.appendChild(caja); try { cargarMisDominios(); } catch (e) { /* nada */ } }   // 😴 el descanso vive aquí ahora
       const cu = document.getElementById('pdCuerpo'); cu.innerHTML = '<p class="text-center text-gray-400 text-sm py-10"><i class="fa-solid fa-spinner fa-spin mr-1"></i> Cargando…</p>';
-      let r; try { r = await llamarBackend('dominios_panel', { dias: pdDias, fresco: !!fresco }); } catch (e) { r = null; }
-      if (!r || !r.ok) { cu.innerHTML = '<p class="text-center text-red-400 text-sm py-10">No se pudo cargar. Toca 🔄.</p>'; return; }
+      let r, errD = ''; try { r = await llamarBackend('dominios_panel', { dias: pdDias, fresco: !!fresco }); } catch (e) { r = null; errD = e.message || String(e); }
+      if (!r || !r.ok) { cu.innerHTML = '<p class="text-center text-red-400 text-sm py-10">No se pudo cargar. Toca 🔄.' + ((errD || (r && r.error)) ? '<span class="block text-[11px] text-red-300/80 mt-2">🩺 ' + escaparHtml(String(errD || r.error).slice(0, 300)) + '</span>' : '') + '</p>'; return; }
       window._pd = r; pintarPanelDominios();
       try { if (!document.getElementById('pgDesde')) pgPintarFiltro(); } catch (e) { /* nada */ }
     }
@@ -17934,7 +17934,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-30g';
+    const VERSION_PAGINA = '2026-10-30h';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261022_alq_unidos', fecha: '2026-10-22', titulo: 'Tus alquileres, todos en un solo lugar 🔄', mensaje: 'Ahora **todos tus alquileres** están en **Mis alquileres**, también los que compraste en la tienda: ahí ves cuántos días te quedan y los **renuevas con un toque**, siempre al precio actual del producto.', ir: '' },
       { id: 'act_20261022_avisos', fecha: '2026-10-22', titulo: 'Tus recordatorios por WhatsApp 📲', mensaje: 'Al final de cada entrega verás el **número desde el que te avisamos** (vencimientos y recordatorios). **Guárdalo** para que no se te pase ninguna renovación. Es solo de avisos: para comprar o pedir ayuda sigue usando la tienda.', ir: '' },
@@ -24671,7 +24671,7 @@
       // 4) Revisión del servidor
       const sub = [];
       if (ping && ping.ok) {
-        sub.push(fila(!!ping.firestore, 'Conexión con Firebase', ping.firestore ? 'Lee y escribe sin problema' : 'El servidor no puede leer Firebase', ping.firestore ? '' : 'Revisa la cuenta de servicio del servidor.'));
+        sub.push(fila(!!ping.firestore, 'Conexión con Firebase', ping.firestore ? 'Lee y escribe sin problema' : 'El servidor no puede leer Firebase', ping.firestore ? '' : (ping.firestoreError ? '🩺 Error: ' + ping.firestoreError : 'Revisa la cuenta de servicio del servidor.')));
         const pT = (dosServ && pingC && pingC.ok) ? pingC : ping;   // las tareas automáticas solo corren en el de correo
         if (Array.isArray(pT.tareas)) {
           const t = pT.tareas, tiene = n => t.indexOf(n) !== -1, falta = 'Falta: en Apps Script ejecuta crearActivadores una vez.';
