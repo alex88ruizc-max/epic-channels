@@ -4474,6 +4474,19 @@
 
 
   <!-- VISTA PÚBLICA: VER EL CÓDIGO CON EL ENLACE DE LA CUENTA (sin iniciar sesión) -->
+  <div id="vistaCorreoPublico" class="hidden fixed inset-0 z-[312] overflow-y-auto bg-[#0b0b0b]">
+    <div class="max-w-xl mx-auto px-4 py-5" style="padding-top:max(1.25rem, env(safe-area-inset-top));">
+      <div class="flex items-center gap-3 pb-3 mb-3 border-b border-gray-800">
+        <img id="crLogo" alt="" class="w-11 h-11 rounded-full object-cover border border-amber-500/70 hidden">
+        <span id="crLogoAlt" class="w-11 h-11 rounded-full border border-amber-500/70 bg-amber-500/10 text-amber-300 flex items-center justify-center text-lg"><i class="fa-solid fa-crown"></i></span>
+        <div class="min-w-0"><p id="crTienda" class="text-base font-black text-amber-300 leading-tight truncate">Epic Streaming</p><p class="text-[11px] text-gray-400">Correo recibido en tu cuenta</p></div>
+      </div>
+      <div id="crDatos" class="text-[12px] text-gray-300 space-y-1 mb-3"></div>
+      <div class="mb-3 px-3 py-2 rounded-xl bg-amber-500/10 border border-amber-600/40 text-[11px] text-amber-200 flex gap-2"><i class="fa-solid fa-shield-halved mt-0.5"></i><span>Vista protegida: es una copia del correo original. Los botones y enlaces del correo no funcionan aquí.</span></div>
+      <div id="crCuerpo" class="rounded-xl overflow-hidden border border-gray-800 bg-white"></div>
+      <p id="crPie" class="mt-4 text-[11px] text-gray-500 text-center"></p>
+    </div>
+  </div>
   <div id="vistaAmzPublico" class="hidden fixed inset-0 z-[310] overflow-y-auto bg-[#0b0f19]">
     <div class="max-w-md mx-auto px-4 py-6">
       <div class="flex items-center gap-3 mb-4"><span class="w-11 h-11 rounded-2xl bg-sky-500/15 text-sky-300 flex items-center justify-center text-xl">📩</span><div class="flex-1"><p class="text-lg font-black text-white leading-tight">Tus códigos</p><p class="text-[11px] text-gray-400">Pide el código en la app y aquí te aparece al instante.</p></div></div>
@@ -17444,7 +17457,32 @@
 
     // ==================== 📩 CÓDIGOS DE AMAZON DE UNA ENTREGA (enlace /c/<token>, sin iniciar sesión) ====================
     function tokenAmzDeRuta() { const m = String(location.hash || '').match(/^#amz\/([A-Za-z0-9]{16,40})$/); return m ? m[1] : ''; }
-    function revisarVistaAmz() { const v = document.getElementById('vistaAmzPublico'); if (!v) return; const t = tokenAmzDeRuta(); if (!t) { v.classList.add('hidden'); return; } v.classList.remove('hidden'); document.body.style.overflow = 'hidden'; cargarAmzPublico(false); }
+    function revisarVistaAmz() { const v = document.getElementById('vistaAmzPublico'); if (!v) return; const t = tokenAmzDeRuta();
+      const vc = document.getElementById('vistaCorreoPublico');
+      if (t && /^CR[A-Za-z0-9]{22}$/.test(t)) { v.classList.add('hidden'); if (vc) { vc.classList.remove('hidden'); document.body.style.overflow = 'hidden'; cargarCorreoPublico(t); } return; }   // 📧 enlace de un correo (Mary)
+      if (vc) vc.classList.add('hidden');
+      if (!t) { v.classList.add('hidden'); return; } v.classList.remove('hidden'); document.body.style.overflow = 'hidden'; cargarAmzPublico(false); }
+    // 📧 Correo guardado (lo que le llegó a la cuenta de Amazon): se lee directo de Firebase, sin gastar cupo del servidor
+    async function cargarCorreoPublico(t) {
+      const cu = document.getElementById('crCuerpo'), da = document.getElementById('crDatos'), pie = document.getElementById('crPie'); if (!cu) return;
+      try { const lg = localStorage.getItem('epic_logo') || ''; const im = document.getElementById('crLogo'), al = document.getElementById('crLogoAlt'); if (lg && im) { im.src = lg; im.classList.remove('hidden'); if (al) al.classList.add('hidden'); } } catch (e) { /* sin logo */ }
+      try { const nt = (typeof aparienciaConfig !== 'undefined' && aparienciaConfig && aparienciaConfig.nombreTienda) || ''; if (nt) document.getElementById('crTienda').textContent = nt; } catch (e) { /* nada */ }
+      cu.innerHTML = '<p class="text-center text-gray-500 text-sm py-8 bg-[#0b0b0b]"><i class="fa-solid fa-spinner fa-spin mr-1"></i>Abriendo el correo…</p>';
+      try {
+        const d = await db.collection('correos_vista').doc(t).get();
+        if (!d.exists) throw new Error('Este enlace no existe.');
+        const x = d.data() || {};
+        if (x.venceEl && Date.parse(x.venceEl) < Date.now()) throw new Error('Este enlace ya venció.');
+        const fila = (k, v) => v ? `<div class="flex justify-between gap-3"><span class="text-gray-500 shrink-0">${k}</span><span class="text-right break-all">${escaparHtml(v)}</span></div>` : '';
+        const fecha = x.fecha ? new Date(x.fecha).toLocaleString('es-CO', { day: '2-digit', month: '2-digit', year: 'numeric', hour: 'numeric', minute: '2-digit' }) : '';
+        da.innerHTML = fila('Cuenta', x.cuenta) + fila('De', String(x.de || '').replace(/\s*<[^>]*>\s*/g, '').replace(/"/g, '')) + fila('Fecha', fecha) + fila('Asunto', x.asunto);
+        const fr = document.createElement('iframe');
+        fr.setAttribute('sandbox', ''); fr.setAttribute('referrerpolicy', 'no-referrer'); fr.className = 'w-full block bg-white'; fr.style.height = '75vh'; fr.style.border = '0';
+        fr.srcdoc = '<base target="_blank"><meta name="viewport" content="width=device-width, initial-scale=1"><style>body{margin:0;font-family:Arial,sans-serif}img{max-width:100%;height:auto}a{pointer-events:none}</style>' + String(x.html || '');
+        cu.innerHTML = ''; cu.appendChild(fr);
+        if (pie) pie.textContent = x.venceEl ? 'Este enlace vence el ' + new Date(x.venceEl).toLocaleDateString('es-CO') : '';
+      } catch (e) { cu.innerHTML = '<p class="text-center text-amber-300 text-sm py-8 bg-[#0b0b0b]">' + escaparHtml(e.message || 'No se pudo abrir el correo.') + '</p>'; }
+    }
     async function cargarAmzPublico(fresco) {
       const t = tokenAmzDeRuta(), l = document.getElementById('amzPubLista'), b = document.getElementById('amzPubBtn'); if (!t || !l) return;
       if (b) { b.disabled = true; b.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i>Buscando…'; }
@@ -18055,7 +18093,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-11-01c';
+    const VERSION_PAGINA = '2026-11-02a';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261101_mary', fecha: '2026-11-01', titulo: 'Conoce a Mary 🔔', mensaje: 'Los avisos de tus cuentas y garantías ahora te llegan de **Mary**, con una imagen clara de lo que pasa (vencimiento, reporte resuelto…). Ese número es solo de avisos: para comprar o pedir ayuda, escríbenos a la tienda.', ir: '' },
       { id: 'act_20261023_spotify', fecha: '2026-10-23', titulo: 'Códigos de Spotify al instante 🎧', mensaje: 'Si compras **Spotify** y te pide un **código de inicio de sesión**, ahora te sale al instante en el **mismo enlace de códigos** que ya usas para Amazon (o en **Mis compras → Ver código**). Cada código dice de qué app es.', ir: '' },
@@ -23229,6 +23267,7 @@
 
     // ==================== NOVEDADES INTERNAS DEL PANEL (solo el equipo) ====================
     const ACTUALIZACIONES_INTERNAS = [
+      { fecha: '2026-11-02', titulo: '👩‍💼 Mary atiende todo por WhatsApp (prueba)', mensaje: 'En tu número de prueba, **Mary** ya hace: **recargas** (llave Bre-B solo esa, QR y pantallazo), **reclamos** (ticket si está en garantía; si no, le explica con fechas reales y le ofrece la promo; si se cayó por una compra o passkey, le muestra el **correo original** con un enlace limpio de tu página), **códigos** y **contraseñas** de sus cuentas, **crédito** (preaprobado o a crédito por WhatsApp: *me las pagas en tu próxima recarga*), **registro** y **emparejado automático** (el WhatsApp del perfil tiene que ser el mismo número), **USDT por Binance** (en dólares para los de fuera), **varios productos en un pedido**, **sobre pedido** y **renovar**. Si pide productos, **le vende de una** sin preguntar. **Para vender más:** el cliente resuelve todo en el chat, sin entrar a la página.' },
       { fecha: '2026-11-01', titulo: '📱 Ventas por WhatsApp a nombre del cliente', mensaje: 'En **Venta manual**, si escribes el **WhatsApp** del cliente (no solo su correo), la venta queda **a su nombre** automáticamente; antes de confirmar te dice a quién queda. Los avisos de **passkey** y de **compras dentro de la cuenta** ya no dicen "sin vender" en cuentas vendidas por WhatsApp: dicen **cuándo y a quién** se vendió. **Para vender más:** cada cliente ve sus avisos y su garantía sin que tú tengas que escribirle.' },
       { fecha: '2026-11-01', titulo: '👩‍💼 Mary, tu vendedora IA', mensaje: 'Nueva sección **👩‍💼 Mary** en el menú. En la **tienda** atiende solo tus **números de prueba** (los clientes siguen con el bot de siempre): conversa, cotiza con precios exactos, recuerda a cada cliente, entiende audios y fotos, manda imágenes (precios, cómo entrar, QR) y le pasa los pedidos, reclamos y saldo al bot. En **notificaciones** atiende a todos: se presenta, manda el aviso con su imagen y, si le responden, pasa a la tienda sin ofrecer nada. Tiene **Cerebro** (preguntas, reglas, frases), **Por aprobar** (aprende de tus respuestas), **Memorias**, **Conversaciones**, **Recompra** y **Hablar con Mary** para probarla. **Para vender más:** el cliente que repite recibe su oferta con el precio de hoy sin que tú escribas.' },
       { fecha: '2026-11-01', titulo: '💬 Grupo: tarjeta con botón para chatear', mensaje: 'Los mensajes de stock del grupo ahora llevan el enlace completo **"Escríbeme y te atiendo al instante 👉 https://wa.me/…"**, así WhatsApp muestra la tarjeta con foto y botón.' },
@@ -24761,7 +24800,7 @@
 
 
     // ==================== COMPROBAR TODO (estado de la página, servidor, reglas y tareas) ====================
-    const VERSION_REGLAS_ESPERADA = '2026-11-01a';
+    const VERSION_REGLAS_ESPERADA = '2026-11-02a';
     async function abrirComprobarTodo() {
       let m = document.getElementById('modalComprobarTodo');
       if (!m) { m = document.createElement('div'); m.id = 'modalComprobarTodo'; m.className = 'fixed inset-0 z-[96] hidden items-center justify-center p-4 bg-black/75 backdrop-blur-sm'; m.onclick = ev => { if (ev.target === m && cierreFueraPermitido()) cerrarComprobarTodo(); }; document.body.appendChild(m); }
