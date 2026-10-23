@@ -1344,6 +1344,9 @@
           <button onclick="irATabAdmin('whatsapp')" id="tabBtnWhatsapp" class="solo-admin admin-tab bg-gray-900 border-gray-800 text-gray-400">
             <i class="fa-brands fa-whatsapp"></i><span>WhatsApp</span><span id="badgeTabWhatsapp" class="hidden absolute top-1.5 right-1.5 lg:static lg:ml-auto min-w-[18px] h-[18px] px-1 rounded-full bg-emerald-500 text-black text-[10px] font-black flex items-center justify-center"></span>
           </button>
+          <button onclick="irATabAdmin('mary')" id="tabBtnMary" class="solo-admin admin-tab bg-gray-900 border-gray-800 text-gray-400">
+            <i class="fa-solid fa-user-tie"></i><span>Mary</span>
+          </button>
           <button onclick="irATabAdmin('vista')" id="tabBtnVista" class="admin-tab bg-gray-900 border-gray-800 text-gray-400">
             <i class="fa-solid fa-table-cells-large"></i><span>Vista del panel</span>
           </button>
@@ -2336,6 +2339,53 @@
       </div>
 
       <!-- ==================== ADMIN: ASISTENTE DE AYUDA ==================== -->
+      <div id="adminSecMary" class="hidden space-y-4 pb-28 sm:pb-0">
+        <div class="p-4 rounded-2xl bg-gray-900 border border-indigo-500/40 flex items-center gap-3">
+          <span class="w-12 h-12 shrink-0 rounded-full bg-indigo-900 flex items-center justify-center text-2xl">👩‍💼</span>
+          <div class="min-w-0 flex-1"><p class="text-base font-black text-white">Mary</p><p class="text-[11px] text-indigo-200">Vendedora IA · 24/7 (mientras el PC y OpenWA estén prendidos)</p></div>
+          <span id="maryEstadoChip" class="shrink-0 text-[10px] font-black px-2.5 py-1 rounded-full bg-amber-500/15 text-amber-300">…</span>
+        </div>
+        <details class="p-4 rounded-2xl bg-gray-900 border border-gray-800" open><summary class="text-sm font-black text-white cursor-pointer">🤖 A quién atiende</summary>
+          <div class="mt-3 space-y-3">
+            <label class="block text-[12px] text-gray-300">📱 Número de la <b>tienda</b>
+              <select id="maryTienda" class="mt-1 w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-white text-sm">
+                <option value="prueba">🧪 Solo números de prueba (los clientes siguen con el bot de siempre)</option>
+                <option value="todos">✅ Todos los clientes</option>
+                <option value="apagada">⏸ Apagada</option>
+              </select></label>
+            <label class="block text-[12px] text-gray-300">Números de prueba (uno por línea, con o sin 57)
+              <textarea id="maryPrueba" rows="2" class="mt-1 w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-white text-sm font-mono" placeholder="3043956726"></textarea></label>
+            <label class="flex items-center justify-between gap-3 cursor-pointer"><span class="text-[12px] text-gray-300">🔔 Número de <b>notificaciones</b>: Mary se presenta en los avisos (con su imagen) y, si le responden, pasa a la tienda sin ofrecer nada<br><span class="text-[10px] text-gray-500">Para todos los clientes.</span></span><input type="checkbox" id="maryAvisos" class="w-5 h-5 accent-indigo-500"></label>
+            <label class="flex items-center justify-between gap-3 cursor-pointer"><span class="text-[12px] text-gray-300">🔁 Recordatorio de recompra (1 vez por compra, según cada cuánto compra el cliente)<br><span class="text-[10px] text-gray-500">Sale desde la tienda; respeta el modo de arriba (en prueba, solo a tus números).</span></span><input type="checkbox" id="maryRecompra" class="w-5 h-5 accent-indigo-500"></label>
+            <button type="button" onclick="guardarMaryCfg()" class="w-full py-2.5 rounded-xl bg-indigo-500 hover:bg-indigo-400 text-white font-black text-sm">Guardar</button>
+          </div></details>
+        <details class="p-4 rounded-2xl bg-gray-900 border border-gray-800"><summary class="text-sm font-black text-white cursor-pointer">🧪 Hablar con Mary</summary>
+          <div class="mt-3"><p class="text-[11px] text-gray-400 mb-2">Le escribes como si fueras un cliente (llamado Juan, que compró 5 Prime hace 6 días). No envía nada por WhatsApp.</p>
+            <div id="maryChat" class="space-y-2 max-h-80 overflow-y-auto p-2 rounded-xl bg-gray-950 border border-gray-800 text-[13px]"></div>
+            <div class="flex gap-2 mt-2"><input id="maryChatTxt" type="text" placeholder="Escribe como cliente…" class="flex-1 min-w-0 bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-white text-sm" onkeydown="if(event.key==='Enter')maryEnviarPrueba()">
+              <button type="button" id="maryChatBtn" onclick="maryEnviarPrueba()" class="shrink-0 px-4 rounded-xl bg-indigo-500 text-white font-black text-sm">Enviar</button></div>
+            <button type="button" onclick="maryHist=[];document.getElementById('maryChat').innerHTML=''" class="mt-2 text-[11px] text-gray-400 underline">Empezar de nuevo</button></div></details>
+        <details class="p-4 rounded-2xl bg-gray-900 border border-gray-800"><summary class="text-sm font-black text-white cursor-pointer">🖼 Imágenes de Mary</summary>
+          <div class="mt-3 space-y-2"><p class="text-[11px] text-gray-400">Antes de usarlas, en <b>cada</b> proyecto de Apps Script corre una vez la función <b class="text-white">autorizarMary</b> (arriba, junto a "Ejecutar") y acepta los permisos de Drive y Presentaciones. Después prueba aquí:</p>
+            <div class="flex flex-wrap gap-2"><button type="button" onclick="maryProbarBanner('aviso')" class="px-3 py-1.5 rounded-lg bg-gray-800 border border-gray-700 text-[11px] text-white">⏳ Vencimiento</button><button type="button" onclick="maryProbarBanner('garantia')" class="px-3 py-1.5 rounded-lg bg-gray-800 border border-gray-700 text-[11px] text-white">🛡 Garantía</button><button type="button" onclick="maryProbarBanner('corto')" class="px-3 py-1.5 rounded-lg bg-gray-800 border border-gray-700 text-[11px] text-white">💳 Aviso corto</button></div>
+            <div id="maryBannerOut" class="text-[11px] text-gray-400"></div></div></details>
+        <details class="p-4 rounded-2xl bg-gray-900 border border-gray-800"><summary class="text-sm font-black text-white cursor-pointer">🧠 Cerebro de Mary</summary>
+          <div class="mt-3 space-y-3">
+            <div><p class="text-[12px] font-bold text-gray-200">❓ Preguntas frecuentes</p><div id="maryFaqs" class="space-y-2 mt-2"></div>
+              <button type="button" onclick="maryFaqAgregar()" class="mt-2 text-[11px] font-bold text-indigo-300">+ Agregar pregunta</button></div>
+            <label class="block text-[12px] text-gray-300">📏 Reglas (lo que nunca debe hacer o decir), una por línea<textarea id="maryReglas" rows="3" class="mt-1 w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-white text-sm"></textarea></label>
+            <label class="block text-[12px] text-gray-300">💬 Frases de tu tienda, una por línea<textarea id="maryFrases" rows="3" class="mt-1 w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-white text-sm"></textarea></label>
+            <button type="button" onclick="guardarMaryCfg()" class="w-full py-2.5 rounded-xl bg-indigo-500 hover:bg-indigo-400 text-white font-black text-sm">Guardar cerebro</button>
+          </div></details>
+        <details class="p-4 rounded-2xl bg-gray-900 border border-gray-800"><summary class="text-sm font-black text-white cursor-pointer">📥 Por aprobar <span id="maryAprCont" class="ml-1 text-[10px] px-2 py-0.5 rounded-full bg-red-600 text-white hidden"></span></summary>
+          <div class="mt-3"><p class="text-[11px] text-gray-400 mb-2">Cuando Mary no sabe algo te avisa por Telegram; lo que tú le respondes a mano al cliente queda aquí. Si lo apruebas, pasa a Preguntas frecuentes.</p><div id="maryAprender" class="space-y-2"></div></div></details>
+        <details class="p-4 rounded-2xl bg-gray-900 border border-gray-800"><summary class="text-sm font-black text-white cursor-pointer">👥 Memorias de clientes</summary>
+          <div class="mt-3"><button type="button" onclick="maryCargarMemorias()" class="text-[11px] font-bold text-indigo-300">↻ Cargar</button><div id="maryMemorias" class="space-y-2 mt-2"></div></div></details>
+        <details class="p-4 rounded-2xl bg-gray-900 border border-gray-800"><summary class="text-sm font-black text-white cursor-pointer">💬 Conversaciones</summary>
+          <div class="mt-3"><button type="button" onclick="maryCargarLog()" class="text-[11px] font-bold text-indigo-300">↻ Cargar las últimas</button><div id="maryLog" class="space-y-2 mt-2"></div></div></details>
+        <details class="p-4 rounded-2xl bg-gray-900 border border-gray-800"><summary class="text-sm font-black text-white cursor-pointer">🔁 Recordatorios de recompra</summary>
+          <div class="mt-3"><button type="button" onclick="maryCargarRecompra()" class="text-[11px] font-bold text-indigo-300">↻ Cargar</button><div id="maryRecompraLista" class="space-y-2 mt-2"></div></div></details>
+      </div>
       <div id="adminSecWhatsapp" class="hidden space-y-4 pb-28 sm:pb-0">
         <div><h3 class="text-xl font-black text-white">💬 WhatsApp</h3><p class="text-xs text-gray-400">Asistente, precios de WhatsApp, solicitudes y clientes autorizados.</p></div>
         <div id="waInforme" class="solo-admin p-4 bg-gray-900 border border-emerald-500/30 rounded-2xl">
@@ -9202,7 +9252,7 @@
     function cambiarTabAdmin(tab) {
       if (modoPruebaCliente) return;
       iniciarBadgesAdmin();
-      const tabs = ['productos', 'reporte', 'categorias', 'usuarios', 'tickets', 'stock', 'apariencia', 'pagos', 'recargas', 'historial', 'netflix', 'ajustes', 'tiendas', 'proveedores', 'asistente', 'whatsapp', 'buscar', 'promociones', 'cortes', 'novedades', 'vista', 'marketing', 'actividad', 'campanas', 'dealers'];
+      const tabs = ['productos', 'reporte', 'categorias', 'usuarios', 'tickets', 'stock', 'apariencia', 'pagos', 'recargas', 'historial', 'netflix', 'ajustes', 'tiendas', 'proveedores', 'asistente', 'whatsapp', 'buscar', 'promociones', 'cortes', 'novedades', 'vista', 'marketing', 'actividad', 'campanas', 'dealers', 'mary'];
       // El moderador no entra a la configuración general ni a los pagos a proveedores
       if (esModeradorSesion() && RESTRINGIDAS_MODERADOR.includes(tab)) tab = 'productos';
       tabs.forEach(t => {
@@ -9240,6 +9290,7 @@
       if (tab === 'promociones') { renderizarPromoProductos(); renderizarPromoActivas(); try { ubicarPromosDealer('promoDealerSlot'); } catch (e) { /* nada */ } }
       if (tab === 'vista') { renderizarEditorVistaPanel(); cargarPermisosModerador(); }
       if (tab === 'actividad') { try { cargarActividad(); } catch (e) { console.warn(e); } }
+      if (tab === 'mary') { try { cargarPanelMary(); } catch (e) { console.warn(e); } }
       if (tab === 'campanas') { try { prepararCampanas(); } catch (e) { console.warn(e); } }
       if (tab === 'dealers') { try { prepararDealers(); } catch (e) { console.warn(e); } }
 
@@ -17810,9 +17861,9 @@
       tickets: ['Tickets', '#fbbf24'], recargas: ['Solicitudes de Saldo', '#34d399'], stock: ['Cargar Cuentas (Stock)', '#facc15'], historial: ['Historial de Ventas', '#94a3b8'],
       cortes: ['Cortes', '#f87171'], buscar: ['Buscar cuenta', '#38bdf8'], proveedores: ['Proveedores', '#fb923c'], promociones: ['Promociones', '#f472b6'],
       novedades: ['Novedades', '#38bdf8'], marketing: ['Marketing', '#e879f9'], categorias: ['Categorías & Colores', '#c084fc'], apariencia: ['Apariencia y Logo', '#f472b6'], pagos: ['Métodos de Pago & QR', '#2dd4bf'],
-      asistente: ['Asistente', '#34d399'], whatsapp: ['WhatsApp', '#22c55e'], vista: ['Vista del panel', '#a3e635'], ajustes: ['Ajustes Generales', '#cbd5e1']
+      asistente: ['Asistente', '#34d399'], whatsapp: ['WhatsApp', '#22c55e'], mary: ['Mary', '#818cf8'], vista: ['Vista del panel', '#a3e635'], ajustes: ['Ajustes Generales', '#cbd5e1']
     };
-    const ORDEN_MENU_BASE = ['netflix', 'tiendas', 'productos', 'reporte', 'actividad', 'campanas', 'dealers', 'usuarios', 'tickets', 'recargas', 'stock', 'historial', 'cortes', 'buscar', 'proveedores', 'promociones', 'novedades', 'marketing', 'categorias', 'apariencia', 'pagos', 'asistente', 'whatsapp', 'vista', 'ajustes'];
+    const ORDEN_MENU_BASE = ['netflix', 'tiendas', 'productos', 'reporte', 'actividad', 'campanas', 'dealers', 'usuarios', 'tickets', 'recargas', 'stock', 'historial', 'cortes', 'buscar', 'proveedores', 'promociones', 'novedades', 'marketing', 'categorias', 'apariencia', 'pagos', 'asistente', 'whatsapp', 'mary', 'vista', 'ajustes'];
     const VISTA_PANEL_BASE = { version: 2, estilo: 'grupos', columnas: 3, destacado: 'netflix', color: 'rojo', iconos: true, inicio: 'productos', orden: ORDEN_MENU_BASE.slice(), ocultos: [] };
     let vistaPanel = null, vistaPanelGuardada = null;
 
@@ -18004,8 +18055,9 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-31l';
+    const VERSION_PAGINA = '2026-11-01a';
     const ACTUALIZACIONES_PAGINA = [
+      { id: 'act_20261101_mary', fecha: '2026-11-01', titulo: 'Conoce a Mary 🔔', mensaje: 'Los avisos de tus cuentas y garantías ahora te llegan de **Mary**, con una imagen clara de lo que pasa (vencimiento, reporte resuelto…). Ese número es solo de avisos: para comprar o pedir ayuda, escríbenos a la tienda.', ir: '' },
       { id: 'act_20261023_spotify', fecha: '2026-10-23', titulo: 'Códigos de Spotify al instante 🎧', mensaje: 'Si compras **Spotify** y te pide un **código de inicio de sesión**, ahora te sale al instante en el **mismo enlace de códigos** que ya usas para Amazon (o en **Mis compras → Ver código**). Cada código dice de qué app es.', ir: '' },
       { id: 'act_20261023_clave', fecha: '2026-10-23', titulo: 'Recuperar tu contraseña, más fácil 🔐', mensaje: 'Si olvidas tu contraseña, ahora te llega un **correo de Epic Streaming** con un botón para **crear la nueva aquí mismo en la tienda**. Escríbela dos veces, toca **Guardar y entrar** y listo: quedas dentro de tu cuenta.', ir: '' },
       { id: 'act_20261023_envivo', fecha: '2026-10-23', titulo: 'La tienda en vivo 👀', mensaje: 'Arriba, junto a **En vivo**, ahora ves **cuántas personas están viendo la tienda** y las **visitas de la semana**. Y nuestro logo carga al instante en la página y en el ícono cuando guardas la tienda en tu celular.', ir: '' },
@@ -20706,7 +20758,7 @@
     // ==================== MENÚ DEL PANEL POR GRUPOS (estilo app) ====================
     const GRUPOS_MENU = [
       ['Ventas', ['reporte', 'actividad', 'campanas', 'dealers', 'historial', 'recargas', 'promociones', 'marketing', 'tiendas']],
-      ['Clientes', ['usuarios', 'tickets', 'novedades', 'asistente', 'whatsapp']],
+      ['Clientes', ['usuarios', 'tickets', 'novedades', 'asistente', 'whatsapp', 'mary']],
       ['Inventario', ['productos', 'stock', 'proveedores', 'buscar', 'cortes', 'dominios']],
       ['Configuración', ['categorias', 'apariencia', 'pagos', 'vista', 'ajustes']]
     ];
@@ -23173,6 +23225,8 @@
 
     // ==================== NOVEDADES INTERNAS DEL PANEL (solo el equipo) ====================
     const ACTUALIZACIONES_INTERNAS = [
+      { fecha: '2026-11-01', titulo: '👩‍💼 Mary, tu vendedora IA', mensaje: 'Nueva sección **👩‍💼 Mary** en el menú. En la **tienda** atiende solo tus **números de prueba** (los clientes siguen con el bot de siempre): conversa, cotiza con precios exactos, recuerda a cada cliente, entiende audios y fotos, manda imágenes (precios, cómo entrar, QR) y le pasa los pedidos, reclamos y saldo al bot. En **notificaciones** atiende a todos: se presenta, manda el aviso con su imagen y, si le responden, pasa a la tienda sin ofrecer nada. Tiene **Cerebro** (preguntas, reglas, frases), **Por aprobar** (aprende de tus respuestas), **Memorias**, **Conversaciones**, **Recompra** y **Hablar con Mary** para probarla. **Para vender más:** el cliente que repite recibe su oferta con el precio de hoy sin que tú escribas.' },
+      { fecha: '2026-11-01', titulo: '💬 Grupo: tarjeta con botón para chatear', mensaje: 'Los mensajes de stock del grupo ahora llevan el enlace completo **"Escríbeme y te atiendo al instante 👉 https://wa.me/…"**, así WhatsApp muestra la tarjeta con foto y botón.' },
       { fecha: '2026-10-23', titulo: '🎧 Códigos de Spotify', mensaje: 'Las cuentas de Spotify con correo de tu dominio ya muestran su **código de inicio de sesión** en el **enlace único /c/** de la entrega, en **Mis compras** y en la página **/codigo**, igual que Amazon. La entrega dice **"¿Spotify te pide un código?"** cuando el producto es Spotify. **Para vender más:** el cliente entra solo, sin escribirte.' },
       { fecha: '2026-10-23', titulo: '🔐 Recuperar contraseña: aviso al instante', mensaje: 'Al pedir recuperar la contraseña, el aviso con **tu logo** sale **de una** y el correo se envía por detrás (antes tardaba 5 a 15 s).' },
       { fecha: '2026-10-23', titulo: '📊 Vistas y compras de cada producto', mensaje: 'Cada producto del panel muestra **👁 vistas · 🛒 compras · % que compra**, y **📊 Ver** abre sus estadísticas: vistas de siempre, **Hoy / 7 días / Este mes / Este año** comparados con el periodo anterior, y barras por año. **Para vender más:** muchas vistas y pocas compras = revisa precio o descripción; pocas vistas = promociónalo. **📥 Sumar las compras anteriores** carga tu historial una sola vez.' },
@@ -24702,7 +24756,7 @@
 
 
     // ==================== COMPROBAR TODO (estado de la página, servidor, reglas y tareas) ====================
-    const VERSION_REGLAS_ESPERADA = '2026-10-31a';
+    const VERSION_REGLAS_ESPERADA = '2026-11-01a';
     async function abrirComprobarTodo() {
       let m = document.getElementById('modalComprobarTodo');
       if (!m) { m = document.createElement('div'); m.id = 'modalComprobarTodo'; m.className = 'fixed inset-0 z-[96] hidden items-center justify-center p-4 bg-black/75 backdrop-blur-sm'; m.onclick = ev => { if (ev.target === m && cierreFueraPermitido()) cerrarComprobarTodo(); }; document.body.appendChild(m); }
@@ -27755,6 +27809,73 @@ async function pintarPanelWa() {
         mostrarToast('📥 Listo: ' + n.toLocaleString('es-CO') + ' compras anteriores sumadas'); metTot = null; metPintarTotales(true);
       } catch (e) { alert('No se pudo: ' + e.message); btn.disabled = false; btn.textContent = '📥 Sumar las compras anteriores (una sola vez)'; }
     }
+    // 👩‍💼 ===== MARY (panel) =====
+    let maryCfgLocal = null, maryHist = [];
+    const maryFechaTxt = iso => { try { const d = new Date(iso); return String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth() + 1).padStart(2, '0') + '/' + d.getFullYear(); } catch (e) { return ''; } };
+    async function cargarPanelMary() {
+      try { const d = await db.collection('secretos').doc('mary').get(); maryCfgLocal = Object.assign({ tienda: 'prueba', prueba: [], avisos: true, recompra: true, faqs: [], reglas: [], frases: [], aprender: [] }, d.exists ? d.data() : {});
+        const g = id => document.getElementById(id);
+        g('maryTienda').value = maryCfgLocal.tienda || 'prueba'; g('maryPrueba').value = (maryCfgLocal.prueba || []).join('\n');
+        g('maryAvisos').checked = maryCfgLocal.avisos !== false; g('maryRecompra').checked = maryCfgLocal.recompra !== false;
+        g('maryReglas').value = (maryCfgLocal.reglas || []).join('\n'); g('maryFrases').value = (maryCfgLocal.frases || []).join('\n');
+        maryPintarFaqs(); maryPintarAprender(); maryPintarChip();
+      } catch (e) { mostrarToast('No pude cargar a Mary: ' + e.message); }
+    }
+    function maryPintarChip() { const c = document.getElementById('maryEstadoChip'); if (!c || !maryCfgLocal) return; const t = maryCfgLocal.tienda;
+      c.textContent = t === 'todos' ? '✅ Tienda: todos' : t === 'apagada' ? '⏸ Tienda: apagada' : '🧪 Tienda: prueba'; c.className = 'shrink-0 text-[10px] font-black px-2.5 py-1 rounded-full ' + (t === 'todos' ? 'bg-emerald-500/15 text-emerald-300' : t === 'apagada' ? 'bg-gray-700 text-gray-300' : 'bg-amber-500/15 text-amber-300'); }
+    function maryPintarFaqs() { const c = document.getElementById('maryFaqs'); if (!c) return; const L = maryCfgLocal.faqs || [];
+      c.innerHTML = L.length ? L.map((f, i) => `<div class="p-2.5 rounded-xl bg-gray-800/60 border border-gray-700 space-y-1.5"><input data-i="${i}" data-k="p" value="${escaparHtml(f.p || '')}" placeholder="Pregunta" class="mfaq w-full bg-gray-900 border border-gray-700 rounded-lg px-2 py-1.5 text-white text-[12px]"><textarea data-i="${i}" data-k="r" rows="2" placeholder="Respuesta oficial" class="mfaq w-full bg-gray-900 border border-gray-700 rounded-lg px-2 py-1.5 text-white text-[12px]">${escaparHtml(f.r || '')}</textarea><button type="button" onclick="maryFaqQuitar(${i})" class="text-[10px] text-red-300">Quitar</button></div>`).join('') : '<p class="text-[11px] text-gray-500">Aún no hay preguntas.</p>'; }
+    function maryLeerFaqs() { const L = (maryCfgLocal.faqs || []).map(f => Object.assign({}, f)); document.querySelectorAll('.mfaq').forEach(e => { const i = Number(e.dataset.i); if (L[i]) L[i][e.dataset.k] = e.value.trim(); }); return L.filter(f => f.p && f.r); }
+    function maryFaqAgregar() { maryCfgLocal.faqs = maryLeerFaqs().concat([{ p: '', r: '' }]); maryPintarFaqs(); }
+    function maryFaqQuitar(i) { const L = maryLeerFaqs(); L.splice(i, 1); maryCfgLocal.faqs = L; maryPintarFaqs(); }
+    async function guardarMaryCfg() {
+      const g = id => document.getElementById(id), lineas = id => g(id).value.split('\n').map(x => x.trim()).filter(Boolean).slice(0, 40);
+      const d = { tienda: g('maryTienda').value, prueba: g('maryPrueba').value.split(/[\n,;]+/).map(x => x.replace(/\D/g, '').slice(-10)).filter(x => x.length >= 7).slice(0, 20),
+        avisos: g('maryAvisos').checked, recompra: g('maryRecompra').checked, reglas: lineas('maryReglas'), frases: lineas('maryFrases'), faqs: maryLeerFaqs().slice(0, 80), actualizadoEl: new Date().toISOString() };
+      if (d.tienda === 'prueba' && !d.prueba.length) { alert('Pon al menos un número de prueba (el tuyo).'); return; }
+      try { await db.collection('secretos').doc('mary').set(d, { merge: true }); Object.assign(maryCfgLocal, d); maryPintarFaqs(); maryPintarChip(); mostrarToast('👩‍💼 Mary guardada (se aplica en máximo 5 min)'); } catch (e) { alert('No se pudo guardar: ' + e.message); }
+    }
+    function maryPintarAprender() { const c = document.getElementById('maryAprender'), n = document.getElementById('maryAprCont'); if (!c) return; const L = maryCfgLocal.aprender || [];
+      if (n) { n.textContent = L.length; n.classList.toggle('hidden', !L.length); }
+      c.innerHTML = L.length ? L.map((a, i) => `<div class="p-2.5 rounded-xl bg-gray-800/60 border border-gray-700"><p class="text-[11px] text-gray-400">❓ ${escaparHtml(a.p || '')}</p><p class="text-[12px] text-white mt-1">💬 ${escaparHtml(a.r || '')}</p><p class="text-[10px] text-gray-500 mt-1">${maryFechaTxt(a.el)}</p><div class="flex gap-3 mt-1.5"><button type="button" onclick="maryAprobar(${i}, true)" class="text-[11px] font-bold text-emerald-300">✅ Aprobar</button><button type="button" onclick="maryAprobar(${i}, false)" class="text-[11px] text-red-300">🗑 Descartar</button></div></div>`).join('') : '<p class="text-[11px] text-gray-500">Nada por aprobar.</p>'; }
+    async function maryAprobar(i, ok) { const L = (maryCfgLocal.aprender || []).slice(), a = L.splice(i, 1)[0]; if (!a) return;
+      const faqs = ok ? (maryCfgLocal.faqs || []).concat([{ p: a.p, r: a.r }]) : (maryCfgLocal.faqs || []);
+      try { await db.collection('secretos').doc('mary').set({ aprender: L, faqs: faqs }, { merge: true }); maryCfgLocal.aprender = L; maryCfgLocal.faqs = faqs; maryPintarAprender(); maryPintarFaqs(); mostrarToast(ok ? '✅ Mary lo aprendió' : '🗑 Descartado'); } catch (e) { alert(e.message); } }
+    async function maryEnviarPrueba() {
+      const inp = document.getElementById('maryChatTxt'), t = inp.value.trim(), box = document.getElementById('maryChat'), b = document.getElementById('maryChatBtn'); if (!t) return;
+      const burb = (txt, yo) => `<div class="flex ${yo ? 'justify-end' : ''}"><div class="max-w-[85%] px-3 py-2 rounded-2xl ${yo ? 'bg-emerald-800 text-white' : 'bg-gray-800 text-gray-100'} whitespace-pre-wrap">${txt}</div></div>`;
+      box.insertAdjacentHTML('beforeend', burb(escaparHtml(t), true)); inp.value = ''; b.disabled = true; b.textContent = '…'; box.scrollTop = box.scrollHeight;
+      try { const r = await llamarBackend('mary_probar', { texto: t, hist: maryHist.slice(-10) });
+        if (!r || !r.ok) throw new Error((r && r.error) || 'sin respuesta');
+        const fmt = s => escaparHtml(s).replace(/\*([^*\n]+)\*/g, '<b>$1</b>');
+        box.insertAdjacentHTML('beforeend', burb((r.imagen ? `<img src="${r.imagen}" class="rounded-lg mb-1.5 w-full">` : '') + fmt(r.respuesta || '') + `<span class="block mt-1 text-[10px] text-indigo-300">→ ${escaparHtml(r.accion || '')}${r.producto ? ' · ' + escaparHtml(r.producto) + (r.cantidad ? ' x' + r.cantidad : '') : ''}${r.accion === 'pedido' ? ' (aquí el bot de siempre toma el pedido)' : r.accion === 'bot' ? ' (lo atiende el bot de siempre)' : r.accion === 'pasar' ? ' (te avisa por Telegram)' : ''}</span>` + (r.memoria && r.memoria.length ? `<span class="block text-[10px] text-gray-400">🧠 Recordaría: ${escaparHtml(r.memoria.join(' · '))}</span>` : ''), false));
+        maryHist.push({ de: 'c', x: t }); if (r.respuesta) maryHist.push({ de: 'b', x: r.respuesta });
+      } catch (e) { box.insertAdjacentHTML('beforeend', burb('⚠️ ' + escaparHtml(e.message), false)); }
+      finally { b.disabled = false; b.textContent = 'Enviar'; box.scrollTop = box.scrollHeight; }
+    }
+    async function maryProbarBanner(tipo) { const o = document.getElementById('maryBannerOut'); o.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i>Mary está haciendo la imagen (5 a 10 s)…';
+      try { const r = await llamarBackend('mary_banner', { tipo }); if (!r || !r.ok) throw new Error((r && r.error) || 'sin respuesta'); o.innerHTML = `<img src="${r.imagen}" class="w-full max-w-md rounded-xl border border-gray-700">`; }
+      catch (e) { o.innerHTML = '<span class="text-amber-300">⚠️ ' + escaparHtml(e.message) + '</span>'; } }
+    async function maryCargarMemorias() { const c = document.getElementById('maryMemorias'); c.innerHTML = '<p class="text-[11px] text-gray-400">Cargando…</p>';
+      try { const s = await db.collection('mary_memoria').orderBy('actualizadoEl', 'desc').limit(40).get();
+        c.innerHTML = s.empty ? '<p class="text-[11px] text-gray-500">Mary aún no ha hablado con nadie.</p>' : s.docs.map(d => { const x = d.data(), L = Array.isArray(x.lineas) ? x.lineas : [];
+          return `<div class="p-2.5 rounded-xl bg-gray-800/60 border border-gray-700"><div class="flex items-center justify-between gap-2"><p class="text-[12px] font-bold text-white">${escaparHtml(x.nombre || d.id)}</p><button type="button" onclick="maryBorrarMemoria('${d.id}')" class="text-[10px] text-red-300">Borrar todo</button></div>
+            ${L.length ? L.map((l, i) => `<div class="flex items-start justify-between gap-2 mt-1"><span class="text-[11px] text-gray-300">• ${escaparHtml(l.t || l)}</span><button type="button" onclick="maryBorrarLinea('${d.id}', ${i})" class="shrink-0 text-[10px] text-gray-500">✕</button></div>`).join('') : '<p class="text-[11px] text-gray-500 mt-1">Sin datos guardados.</p>'}
+            <p class="text-[10px] text-gray-500 mt-1">Actualizada: ${maryFechaTxt(x.actualizadoEl)}</p></div>`; }).join('');
+      } catch (e) { c.innerHTML = '<p class="text-[11px] text-red-300">' + escaparHtml(e.message) + '</p>'; } }
+    async function maryBorrarLinea(id, i) { try { const r = db.collection('mary_memoria').doc(id), d = await r.get(); const L = (d.data().lineas || []).slice(); L.splice(i, 1); await r.update({ lineas: L }); maryCargarMemorias(); } catch (e) { alert(e.message); } }
+    async function maryBorrarMemoria(id) { if (!await confirmarModal('¿Borrar todo lo que Mary sabe de este cliente?', { textoAceptar: 'Sí, borrar' })) return; try { await db.collection('mary_memoria').doc(id).delete(); maryCargarMemorias(); } catch (e) { alert(e.message); } }
+    async function maryCargarLog() { const c = document.getElementById('maryLog'); c.innerHTML = '<p class="text-[11px] text-gray-400">Cargando…</p>';
+      try { const s = await db.collection('mary_log').orderBy('el', 'desc').limit(40).get();
+        c.innerHTML = s.empty ? '<p class="text-[11px] text-gray-500">Aún no hay conversaciones.</p>' : s.docs.map(d => { const x = d.data();
+          return `<div class="p-2.5 rounded-xl bg-gray-800/60 border border-gray-700"><p class="text-[10px] text-gray-500">${maryFechaTxt(x.el)} ${new Date(x.el).toLocaleTimeString('es-CO', { hour: 'numeric', minute: '2-digit' })} · ${escaparHtml(x.canal || '')}${x.prueba ? ' · 🧪' : ''} · <b class="text-gray-300">${escaparHtml(x.chat || '')}</b></p>${x.msg ? `<p class="text-[11px] text-gray-300 mt-1">🙋 ${escaparHtml(x.msg)}</p>` : ''}<p class="text-[12px] text-white mt-1">👩‍💼 ${escaparHtml(x.resp || '')}</p><p class="text-[10px] text-indigo-300 mt-1">→ ${escaparHtml(x.accion || '')}${x.producto ? ' · ' + escaparHtml(x.producto) + (x.cantidad ? ' x' + x.cantidad : '') : ''}</p></div>`; }).join('');
+      } catch (e) { c.innerHTML = '<p class="text-[11px] text-red-300">' + escaparHtml(e.message) + '</p>'; } }
+    async function maryCargarRecompra() { const c = document.getElementById('maryRecompraLista'); c.innerHTML = '<p class="text-[11px] text-gray-400">Cargando…</p>';
+      try { const s = await db.collection('mary_memoria').orderBy('recompra.avisarEl').limit(40).get();
+        const L = s.docs.map(d => d.data()).filter(x => x.recompra && x.recompra.avisarEl);
+        const dmy = f => String(f || '').split('-').reverse().join('/');
+        c.innerHTML = L.length ? L.map(x => `<div class="p-2.5 rounded-xl bg-gray-800/60 border border-gray-700 flex items-center justify-between gap-2"><div><p class="text-[12px] font-bold text-white">${escaparHtml(x.nombre || '')}</p><p class="text-[10px] text-gray-400">Compra cada ${x.recompra.cadaDias} días · ${x.recompra.cantidad} cuentas</p></div><p class="text-[11px] ${x.recompra.avisadoPara === x.recompra.ultimaEl ? 'text-emerald-300' : 'text-amber-300'} text-right">${x.recompra.avisadoPara === x.recompra.ultimaEl ? '✅ Avisado' : '🔔 ' + dmy(x.recompra.avisarEl)}</p></div>`).join('') : '<p class="text-[11px] text-gray-500">Aún no hay clientes con ritmo de compra (se calcula cuando Mary habla con clientes que han comprado 3 veces o más).</p>';
+      } catch (e) { c.innerHTML = '<p class="text-[11px] text-red-300">' + escaparHtml(e.message) + '</p>'; } }
     // 👑 PORTADA NUEVA (visitantes): logo grande, promo SOLO si hay una activa, Prime destacado con precio POR CUENTA y mínimo, el resto en lista.
     //    Sin calificaciones ni cifras inventadas: todo sale de tu catálogo. Lo de abajo (cifras, confianza, beneficios, registro) sigue igual.
     let portVerTodos = false, portRelojT = null;
@@ -27853,7 +27974,7 @@ async function pintarPanelWa() {
 
     // 📶 Dos servidores: el de la PÁGINA (su propio cupo de Google) y el de CORREO (codigos@: lee pagos y códigos).
     // Las acciones que necesitan el correo van al servidor de correo; el resto, al de la página. Sin el segundo, todo va al único que haya.
-    const ACCIONES_SERVIDOR_CORREO = new Set(['codigos_sin_subir', 'saldo_regla_desde', 'otp', 'recarga_crear', 'recarga_binance_crear', 'recarga_cancelar', 'recarga_verificar', 'recarga_diagnostico', 'recarga_comprobante', 'pago_reportar', 'prov_correos', 'prov_comprobar', 'codigo_dominio', 'amz_otp', 'amz_otp_link', 'amz_salud', 'amz_revisada', 'amz_enlace_crear', 'codigo_enlace_obtener', 'salud', 'cupo', 'saldo_vence_resumen', 'saldo_vence_revertir', 'embudo_registro', 'embudo_registro_ver', 'wa_codigo', 'wa_codigo_admin', 'binance_tasa', 'wa_grupos_log', 'wa_seguimiento_ahora']);   // tg_revisar va al servidor de la página: ahí se revisan los botones de Telegram
+    const ACCIONES_SERVIDOR_CORREO = new Set(['mary_probar', 'mary_banner', 'codigos_sin_subir', 'saldo_regla_desde', 'otp', 'recarga_crear', 'recarga_binance_crear', 'recarga_cancelar', 'recarga_verificar', 'recarga_diagnostico', 'recarga_comprobante', 'pago_reportar', 'prov_correos', 'prov_comprobar', 'codigo_dominio', 'amz_otp', 'amz_otp_link', 'amz_salud', 'amz_revisada', 'amz_enlace_crear', 'codigo_enlace_obtener', 'salud', 'cupo', 'saldo_vence_resumen', 'saldo_vence_revertir', 'embudo_registro', 'embudo_registro_ver', 'wa_codigo', 'wa_codigo_admin', 'binance_tasa', 'wa_grupos_log', 'wa_seguimiento_ahora']);   // tg_revisar va al servidor de la página: ahí se revisan los botones de Telegram
     function obtenerBackendUrl(accion) {
       const pag = String((ajustesGeneralesConfig && ajustesGeneralesConfig.backendUrl) || '').trim();
       const cor = String((ajustesGeneralesConfig && ajustesGeneralesConfig.backendUrlCorreo) || '').trim();
