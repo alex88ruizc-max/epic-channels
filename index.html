@@ -17934,7 +17934,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-30e';
+    const VERSION_PAGINA = '2026-10-30f';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261022_alq_unidos', fecha: '2026-10-22', titulo: 'Tus alquileres, todos en un solo lugar 🔄', mensaje: 'Ahora **todos tus alquileres** están en **Mis alquileres**, también los que compraste en la tienda: ahí ves cuántos días te quedan y los **renuevas con un toque**, siempre al precio actual del producto.', ir: '' },
       { id: 'act_20261022_avisos', fecha: '2026-10-22', titulo: 'Tus recordatorios por WhatsApp 📲', mensaje: 'Al final de cada entrega verás el **número desde el que te avisamos** (vencimientos y recordatorios). **Guárdalo** para que no se te pase ninguna renovación. Es solo de avisos: para comprar o pedir ayuda sigue usando la tienda.', ir: '' },
@@ -25555,13 +25555,16 @@ async function pintarPanelWa() {
     }
     // 📣 Stock en el grupo
     async function owaCargarGrupos() {
-      const sel = document.getElementById('owaGrpId'); if (!sel) return; const antes = sel.value;
+      const sel = document.getElementById('owaGrpId'); if (!sel) return; const antes = sel.value, antesTxt = antes ? ((sel.options[sel.selectedIndex] || {}).text || antes) : '';
+      const scA = document.getElementById('owaCieGrupoId'), cieAntes = scA ? scA.value : '', cieAntesTxt = cieAntes ? ((scA.options[scA.selectedIndex] || {}).text || cieAntes) : '';
       sel.innerHTML = '<option value="">Buscando…</option>';
       try { const r = await llamarBackend('openwa', { op: 'grupos' }); if (!r || !r.ok) throw new Error((r && r.error) || 'No se pudo.');
-        sel.innerHTML = '<option value="">Elige el grupo…</option>' + (r.grupos || []).map(g => `<option value="${escaparHtml(g.id)}" ${g.id === antes ? 'selected' : ''}>${escaparHtml(g.nombre)}</option>`).join('');
-        const sc = document.getElementById('owaCieGrupoId'); if (sc) { const ac = sc.value; sc.innerHTML = '<option value="">El mismo grupo del stock</option>' + (r.grupos || []).map(g => `<option value="${escaparHtml(g.id)}" ${g.id === ac ? 'selected' : ''}>${escaparHtml(g.nombre)}</option>`).join(''); }
+        // ✋ lo que ya tenías elegido se conserva aunque no salga en la búsqueda
+        const L = r.grupos || [], opc = (lista, val, txt) => (val && !lista.some(g => g.id === val) ? `<option value="${escaparHtml(val)}" selected>${escaparHtml(txt)}</option>` : '') + lista.map(g => `<option value="${escaparHtml(g.id)}" ${g.id === val ? 'selected' : ''}>${escaparHtml(g.nombre)}</option>`).join('');
+        sel.innerHTML = '<option value="">Elige el grupo…</option>' + opc(L, antes, antesTxt);
+        const sc = document.getElementById('owaCieGrupoId'); if (sc) sc.innerHTML = '<option value="">El mismo grupo del stock</option>' + opc(L, cieAntes, cieAntesTxt);
         mostrarToast((r.grupos || []).length + ' grupos encontrados'); }
-      catch (e) { sel.innerHTML = antes ? `<option value="${escaparHtml(antes)}" selected>${escaparHtml(antes)}</option>` : '<option value="">Toca "Buscar mis grupos"</option>'; alert(e.message); }
+      catch (e) { sel.innerHTML = antes ? `<option value="${escaparHtml(antes)}" selected>${escaparHtml(antesTxt)}</option>` : '<option value="">Toca "Buscar mis grupos"</option>'; alert(e.message); }
     }
     async function owaGrupoPrueba(tipo) {
       try { mostrarToast('Enviando al grupo…'); const r = await llamarBackend('openwa', { op: 'grupo_prueba', tipo: tipo }); if (!r || !r.ok) throw new Error((r && r.error) || 'No se pudo.'); mostrarToast('✅ Enviado al grupo'); owaDatos = null; cargarOpenWa(); }
