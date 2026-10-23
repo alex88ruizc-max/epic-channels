@@ -17934,7 +17934,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-30j';
+    const VERSION_PAGINA = '2026-10-30k';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261022_alq_unidos', fecha: '2026-10-22', titulo: 'Tus alquileres, todos en un solo lugar 🔄', mensaje: 'Ahora **todos tus alquileres** están en **Mis alquileres**, también los que compraste en la tienda: ahí ves cuántos días te quedan y los **renuevas con un toque**, siempre al precio actual del producto.', ir: '' },
       { id: 'act_20261022_avisos', fecha: '2026-10-22', titulo: 'Tus recordatorios por WhatsApp 📲', mensaje: 'Al final de cada entrega verás el **número desde el que te avisamos** (vencimientos y recordatorios). **Guárdalo** para que no se te pase ninguna renovación. Es solo de avisos: para comprar o pedir ayuda sigue usando la tienda.', ir: '' },
@@ -25289,7 +25289,9 @@ async function pintarPanelWa() {
           <p class="text-[10px] text-gray-500">Lo que la gente escribió y el bot no entendió. Al lado eliges qué significa (una intención, un producto o una de tus preguntas frecuentes) y tocas <b class="text-gray-300">Enseñar</b>: desde ahí lo entiende siempre. Con Gemini activo, la sugerencia ya viene marcada (🤖).</p>
           <div class="mt-2 p-2.5 rounded-xl bg-violet-500/5 border border-violet-500/30">
             <div class="flex items-center justify-between gap-3"><span><span class="block text-[12px] font-black text-white">🤖 Aprender solo con IA (Gemini)</span><span class="block text-[10px] text-gray-400">Si el bot no entiende algo, la IA solo elige qué quiso decir (saludo, precios, reclamo…). <b class="text-gray-300">Nunca escribe respuestas ni conoce tus precios</b>: responde el bot con sus textos. Si está segura, la frase queda aprendida (🤖). Máximo 300 consultas al día.</span></span><input type="checkbox" id="waIa" ${k.iaAprender !== false ? 'checked' : ''} class="accent-violet-500 w-6 h-6 shrink-0"></div>
-            <div class="flex gap-1.5 mt-2"><input type="password" id="waGeminiKey" autocomplete="off" placeholder="Clave de Gemini (AQ.… o AIza…)" class="${inp}"><button type="button" onclick="guardarClaveGemini()" class="px-3 rounded-lg bg-violet-600 text-white font-bold text-[11px]">Guardar</button></div>
+            <div class="flex gap-1.5 mt-2"><input type="password" id="waGeminiKey" autocomplete="off" placeholder="Clave 1 de Gemini (la gratis) · AQ.… o AIza…" class="${inp}"><button type="button" onclick="guardarClaveGemini()" class="px-3 rounded-lg bg-violet-600 text-white font-bold text-[11px]">Guardar</button></div>
+            <div class="flex gap-1.5 mt-1.5"><input type="password" id="waGeminiKey2" autocomplete="off" placeholder="Clave 2 de respaldo (la de pago) · opcional" class="${inp}"><button type="button" onclick="guardarClaveGemini(2)" class="px-3 rounded-lg bg-violet-600 text-white font-bold text-[11px]">Guardar</button></div>
+            <p class="text-[10px] text-gray-500 mt-1">🔑 Usa primero la <b class="text-gray-300">clave 1</b>; si se le acaba el cupo, sigue sola con la <b class="text-gray-300">clave 2</b> (así la de pago solo cobra lo que la gratis no alcanzó). Para borrar una, déjala vacía y toca Guardar.</p>
             <div class="mt-2 p-2.5 rounded-lg bg-gray-900/60 border border-violet-500/30"><p class="text-[11px] font-bold text-violet-200 mb-1.5">📊 Cupos de Gemini por día</p>
               <div class="grid grid-cols-2 gap-2"><label class="text-[10px] text-gray-400">🧠 Para entender<input id="waCupoEnt" type="number" min="50" max="5000" placeholder="500" class="${inp} mt-1"></label><label class="text-[10px] text-gray-400">🗣 Tu estilo y vendedor<input id="waCupoEst" type="number" min="0" max="5000" placeholder="300" class="${inp} mt-1"></label></div>
               <div class="flex items-center gap-2 mt-2"><button type="button" onclick="guardarCuposIa()" class="px-3 py-1.5 rounded-lg bg-violet-600 text-white font-bold text-[11px]">Guardar cupos</button><button type="button" onclick="verUsoIa()" class="px-3 py-1.5 rounded-lg bg-gray-800 border border-gray-700 text-gray-200 font-bold text-[11px]">Ver consumo de hoy</button></div>
@@ -26255,13 +26257,14 @@ async function pintarPanelWa() {
       const el = document.getElementById('waIaUso'); if (el) el.textContent = 'Consultando…';
       try { const r = await llamarBackend('ia_uso', {}); if (!r || !r.ok) throw new Error('No se pudo leer.');
         const ce = document.getElementById('waCupoEnt'), cs = document.getElementById('waCupoEst'); if (ce && !ce.value) ce.value = r.topeEntender; if (cs && !cs.value) cs.value = r.topeEstilo;
-        if (el) el.innerHTML = `Hoy: 🧠 <b>${r.entender}</b> de ${r.topeEntender} para entender · 🗣 <b>${r.estilo}</b> de ${r.topeEstilo} para tu estilo` + (r.entender >= r.topeEntender ? ' · <span class="text-red-300 font-bold">cupo de entender agotado</span>' : '') + '<br><span class="text-gray-500">Es por proyecto: tu otro servidor tiene su propio cupo.</span>'; }
+        if (el) el.innerHTML = (r.claves !== undefined ? `🔑 Clave 1: ${r.clave1 ? (r.clave1SinCupo ? '<span class="text-amber-300">sin cupo ahora</span>' : '✓') : '—'} · Clave 2: ${r.clave2 ? '✓' : '—'}${r.ultimaClave ? ' · última que respondió: <b>' + r.ultimaClave + '</b>' : ''}<br>` : '') + `Hoy: 🧠 <b>${r.entender}</b> de ${r.topeEntender} para entender · 🗣 <b>${r.estilo}</b> de ${r.topeEstilo} para tu estilo` + (r.entender >= r.topeEntender ? ' · <span class="text-red-300 font-bold">cupo de entender agotado</span>' : '') + '<br><span class="text-gray-500">Es por proyecto: tu otro servidor tiene su propio cupo.</span>'; }
       catch (e) { if (el) el.textContent = e.message; }
     }
-    async function guardarClaveGemini() {
-      const v = String((document.getElementById('waGeminiKey') || {}).value || '').trim(), est = document.getElementById('waGeminiEstado');
+    async function guardarClaveGemini(cual) {
+      const idK = cual === 2 ? 'waGeminiKey2' : 'waGeminiKey', campoK = cual === 2 ? 'geminiKey2' : 'geminiKey';
+      const v = String((document.getElementById(idK) || {}).value || '').trim(), est = document.getElementById('waGeminiEstado');
       if (v && !/^(AIza[0-9A-Za-z_-]{30,}|AQ\.[0-9A-Za-z._-]{20,})$/.test(v)) { alert('Esa clave no parece de Gemini: debe empezar por "AIza" o por "AQ." (cópiala con el ícono 📋 junto a "Clave de API").'); return; }
-      try { await db.collection('secretos').doc('ajustes').set({ geminiKey: v }, { merge: true }); document.getElementById('waGeminiKey').value = ''; if (est) est.textContent = v ? '✓ Clave guardada (oculta). Activa el interruptor y Guardar cambios.' : 'Clave borrada.'; mostrarToast(v ? '🤖 Clave de Gemini guardada' : 'Clave de Gemini borrada'); } catch (e) { alert(e.message); }
+      try { await db.collection('secretos').doc('ajustes').set({ [campoK]: v }, { merge: true }); document.getElementById(idK).value = ''; if (est) est.textContent = v ? '✓ Clave guardada (oculta). Activa el interruptor y Guardar cambios.' : 'Clave borrada.'; mostrarToast(v ? '🤖 Clave de Gemini guardada' : 'Clave de Gemini borrada'); } catch (e) { alert(e.message); }
     }
     async function probarIaWa() {
       const out = document.getElementById('waIaResultado'); if (!out) return; out.className = 'text-[11px] mt-1.5 text-gray-400'; out.textContent = 'Preguntándole a Gemini…';
