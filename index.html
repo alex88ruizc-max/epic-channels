@@ -17940,7 +17940,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-31a';
+    const VERSION_PAGINA = '2026-10-31b';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261022_alq_unidos', fecha: '2026-10-22', titulo: 'Tus alquileres, todos en un solo lugar 🔄', mensaje: 'Ahora **todos tus alquileres** están en **Mis alquileres**, también los que compraste en la tienda: ahí ves cuántos días te quedan y los **renuevas con un toque**, siempre al precio actual del producto.', ir: '' },
       { id: 'act_20261022_avisos', fecha: '2026-10-22', titulo: 'Tus recordatorios por WhatsApp 📲', mensaje: 'Al final de cada entrega verás el **número desde el que te avisamos** (vencimientos y recordatorios). **Guárdalo** para que no se te pase ninguna renovación. Es solo de avisos: para comprar o pedir ayuda sigue usando la tienda.', ir: '' },
@@ -25297,6 +25297,13 @@ async function pintarPanelWa() {
             <div class="flex items-center justify-between gap-3"><span><span class="block text-[12px] font-black text-white">🤖 Aprender solo con IA (Gemini)</span><span class="block text-[10px] text-gray-400">Si el bot no entiende algo, la IA solo elige qué quiso decir (saludo, precios, reclamo…). <b class="text-gray-300">Nunca escribe respuestas ni conoce tus precios</b>: responde el bot con sus textos. Si está segura, la frase queda aprendida (🤖). Máximo 300 consultas al día.</span></span><input type="checkbox" id="waIa" ${k.iaAprender !== false ? 'checked' : ''} class="accent-violet-500 w-6 h-6 shrink-0"></div>
             <div class="flex gap-1.5 mt-2"><input type="password" id="waGeminiKey" autocomplete="off" placeholder="Clave 1 de Gemini (la gratis) · AQ.… o AIza…" class="${inp}"><button type="button" onclick="guardarClaveGemini()" class="px-3 rounded-lg bg-violet-600 text-white font-bold text-[11px]">Guardar</button></div>
             <div class="flex gap-1.5 mt-1.5"><input type="password" id="waGeminiKey2" autocomplete="off" placeholder="Clave 2 de respaldo (la de pago) · opcional" class="${inp}"><button type="button" onclick="guardarClaveGemini(2)" class="px-3 rounded-lg bg-violet-600 text-white font-bold text-[11px]">Guardar</button></div>
+            <details class="mt-1.5 rounded-lg border border-orange-500/30 bg-orange-500/5 p-2"><summary class="text-[11px] font-bold text-orange-300 cursor-pointer">☁️ Respaldo gratis: Cloudflare Workers AI</summary>
+              <p class="text-[10px] text-gray-400 mt-1">Si las claves de Gemini no responden, el bot usa la IA gratis de Cloudflare (solo texto). Cloudflare → Workers AI → <b>Usar API REST</b>: copia el <b>ID de la cuenta</b> y crea un <b>token</b> con permiso "Workers AI".</p>
+              <input type="text" id="cfIaCuenta" autocomplete="off" placeholder="ID de la cuenta de Cloudflare" class="${inp} mt-1.5">
+              <input type="password" id="cfIaToken" autocomplete="off" placeholder="Token de Workers AI" class="${inp} mt-1.5">
+              <div class="flex gap-1.5 mt-1.5"><input type="text" id="cfIaModelo" autocomplete="off" placeholder="Modelo (opcional, vacío = automático)" class="${inp}"><button type="button" onclick="guardarCloudflareIa()" class="px-3 rounded-lg bg-orange-600 text-white font-bold text-[11px]">Guardar</button></div>
+              <p id="cfIaEstado" class="text-[10px] text-gray-500 mt-1"></p>
+            </details>
             <p class="text-[10px] text-gray-500 mt-1">🔑 Usa primero la <b class="text-gray-300">clave 1</b>; si se le acaba el cupo, sigue sola con la <b class="text-gray-300">clave 2</b> (así la de pago solo cobra lo que la gratis no alcanzó). Para borrar una, déjala vacía y toca Guardar.</p>
             <div class="mt-2 p-2.5 rounded-lg bg-gray-900/60 border border-violet-500/30"><p class="text-[11px] font-bold text-violet-200 mb-1.5">📊 Cupos de Gemini por día</p>
               <div class="grid grid-cols-2 gap-2"><label class="text-[10px] text-gray-400">🧠 Para entender<input id="waCupoEnt" type="number" min="50" max="5000" placeholder="500" class="${inp} mt-1"></label><label class="text-[10px] text-gray-400">🗣 Tu estilo y vendedor<input id="waCupoEst" type="number" min="0" max="5000" placeholder="300" class="${inp} mt-1"></label></div>
@@ -26263,8 +26270,18 @@ async function pintarPanelWa() {
       const el = document.getElementById('waIaUso'); if (el) el.textContent = 'Consultando…';
       try { const r = await llamarBackend('ia_uso', {}); if (!r || !r.ok) throw new Error('No se pudo leer.');
         const ce = document.getElementById('waCupoEnt'), cs = document.getElementById('waCupoEst'); if (ce && !ce.value) ce.value = r.topeEntender; if (cs && !cs.value) cs.value = r.topeEstilo;
-        if (el) el.innerHTML = (r.claves !== undefined ? `🔑 Clave 1: ${r.clave1 ? (r.clave1SinCupo ? '<span class="text-amber-300">sin cupo ahora</span>' : '✓') : '—'} · Clave 2: ${r.clave2 ? '✓' : '—'}${r.ultimaClave ? ' · última que respondió: <b>' + r.ultimaClave + '</b>' : ''}<br>` : '') + `Hoy: 🧠 <b>${r.entender}</b> de ${r.topeEntender} para entender · 🗣 <b>${r.estilo}</b> de ${r.topeEstilo} para tu estilo` + (r.entender >= r.topeEntender ? ' · <span class="text-red-300 font-bold">cupo de entender agotado</span>' : '') + '<br><span class="text-gray-500">Es por proyecto: tu otro servidor tiene su propio cupo.</span>'; }
+        if (el) el.innerHTML = (r.claves !== undefined ? `🔑 Clave 1: ${r.clave1 ? (r.clave1SinCupo ? '<span class="text-amber-300">sin cupo ahora</span>' : '✓') : '—'} · Clave 2: ${r.clave2 ? '✓' : '—'} · ☁️ Cloudflare: ${r.cloudflare ? '✓' : '—'}${r.ultimaClave ? ' · última que respondió: <b>' + (r.ultimaClave === 3 ? 'Cloudflare' : 'clave ' + r.ultimaClave) + '</b>' : ''}<br>` : '') + `Hoy: 🧠 <b>${r.entender}</b> de ${r.topeEntender} para entender · 🗣 <b>${r.estilo}</b> de ${r.topeEstilo} para tu estilo` + (r.entender >= r.topeEntender ? ' · <span class="text-red-300 font-bold">cupo de entender agotado</span>' : '') + '<br><span class="text-gray-500">Es por proyecto: tu otro servidor tiene su propio cupo.</span>'; }
       catch (e) { if (el) el.textContent = e.message; }
+    }
+    async function guardarCloudflareIa() {
+      const v = id => String((document.getElementById(id) || {}).value || '').trim(), est = document.getElementById('cfIaEstado');
+      const acc = v('cfIaCuenta'), tok = v('cfIaToken'), mod = v('cfIaModelo');
+      if ((acc && !/^[a-f0-9]{32}$/i.test(acc))) { if (est) { est.textContent = '❌ El ID de la cuenta son 32 letras y números.'; est.className = 'text-[10px] text-red-400 mt-1'; } return; }
+      if ((acc && !tok) || (!acc && tok)) { if (est) { est.textContent = '❌ Pon los dos: ID de la cuenta y token (o deja los dos vacíos para quitarlo).'; est.className = 'text-[10px] text-red-400 mt-1'; } return; }
+      try { await db.collection('secretos').doc('ajustes').set({ cfAccount: acc, cfToken: tok, cfModelo: mod }, { merge: true });
+        ['cfIaToken'].forEach(i => { const e = document.getElementById(i); if (e) e.value = ''; });
+        if (est) { est.textContent = acc ? '✓ Guardado (el token queda oculto). Toca 🧪 Probar IA: si Gemini falla, verás que responde Cloudflare.' : '✓ Cloudflare quitado.'; est.className = 'text-[10px] text-emerald-400 mt-1'; } }
+      catch (e) { if (est) { est.textContent = '❌ ' + e.message; est.className = 'text-[10px] text-red-400 mt-1'; } }
     }
     async function guardarClaveGemini(cual) {
       const idK = cual === 2 ? 'waGeminiKey2' : 'waGeminiKey', campoK = cual === 2 ? 'geminiKey2' : 'geminiKey';
