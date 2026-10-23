@@ -17934,7 +17934,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-10-30d';
+    const VERSION_PAGINA = '2026-10-30e';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261022_alq_unidos', fecha: '2026-10-22', titulo: 'Tus alquileres, todos en un solo lugar 🔄', mensaje: 'Ahora **todos tus alquileres** están en **Mis alquileres**, también los que compraste en la tienda: ahí ves cuántos días te quedan y los **renuevas con un toque**, siempre al precio actual del producto.', ir: '' },
       { id: 'act_20261022_avisos', fecha: '2026-10-22', titulo: 'Tus recordatorios por WhatsApp 📲', mensaje: 'Al final de cada entrega verás el **número desde el que te avisamos** (vencimientos y recordatorios). **Guárdalo** para que no se te pase ninguna renovación. Es solo de avisos: para comprar o pedir ayuda sigue usando la tienda.', ir: '' },
@@ -25455,6 +25455,24 @@ async function pintarPanelWa() {
             <button type="button" onclick="owaGrupoPrueba('aviso')" class="py-2 rounded-xl bg-gray-800 border border-gray-700 text-gray-200 text-[11px] font-black">🧪 Enviar el aviso ya</button>
           </div>
           ${(k.grpLog || []).length ? '<p class="text-[10px] text-gray-400 font-bold mt-1">📜 Últimos envíos al grupo</p>' + k.grpLog.slice(0, 6).map(x => `<p class="text-[10px] ${x.ok ? 'text-gray-400' : 'text-red-300'}">${x.ok ? '✓' : '✗'} ${escaparHtml(new Date(x.el).toLocaleString('es-CO', { day: '2-digit', month: '2-digit', hour: 'numeric', minute: '2-digit' }))} · ${x.tipo === 'lista' ? 'Lista del día' : 'Aviso de stock'}${x.error ? ' · ' + escaparHtml(x.error) : ''}</p>`).join('') : ''}`, false)
+        + sec('🌙 Aviso de cierre (estado y comunidad)', `
+          ${sw('owaCieActivo', k.cieActivo === true, 'Publicar el aviso antes de cerrar, todos los días')}
+          <div class="grid grid-cols-2 gap-2">
+            <label class="block text-[10px] text-gray-400">Hora de cierre<input id="owaCieCierre" type="time" value="${escaparHtml(owaCieHHMM(k.cieCierre !== undefined ? k.cieCierre : 1320))}" class="${inp} mt-1"></label>
+            <label class="block text-[10px] text-gray-400">Avisar faltando (min) <span class="text-gray-500">· ej: 20, 10</span><input id="owaCieAntes" maxlength="40" oninput="owaCieVista()" value="${escaparHtml((k.cieAntes || [10]).join(', '))}" class="${inp} mt-1"></label>
+          </div>
+          ${sw('owaCieEstado', k.cieEstado !== false, '📢 Publicar en mi estado')}
+          ${sw('owaCieGrupo', k.cieGrupo !== false, '👥 Enviar a mi comunidad / grupo')}
+          <div class="flex gap-2 items-end">
+            <label class="block flex-1 text-[10px] text-gray-400">Comunidad o grupo <span class="text-gray-500">(vacío = el grupo del stock)</span><select id="owaCieGrupoId" class="${inp} mt-1"><option value="">El mismo grupo del stock</option>${k.cieGrupoId ? `<option value="${escaparHtml(k.cieGrupoId)}" selected>${escaparHtml(k.cieGrupoNombre || k.cieGrupoId)}</option>` : ''}</select></label>
+            <button type="button" onclick="owaCargarGrupos()" class="px-3 py-2.5 rounded-xl bg-sky-500/20 border border-sky-500/40 text-sky-200 text-[11px] font-black whitespace-nowrap"><i class="fa-solid fa-magnifying-glass mr-1"></i>Buscar</button>
+          </div>
+          <p class="text-[10px] text-sky-300/80">En una comunidad se publica en su grupo de <b>Avisos</b>. Si no aparece, con el PC prendido escribe un punto en ese grupo y toca "Buscar".</p>
+          <p class="text-[11px] font-black text-white">🎨 Diseños (se alternan solos)</p>
+          <div class="grid grid-cols-3 gap-2"><img id="owaCieV0" alt="Diseño premium oscuro" class="w-full rounded-lg border border-gray-700"><img id="owaCieV1" alt="Diseño cuenta regresiva" class="w-full rounded-lg border border-gray-700"><img id="owaCieV2" alt="Diseño buenas noches" class="w-full rounded-lg border border-gray-700"></div>
+          <p class="text-[10px] text-gray-500">Avisa que cierras la <b class="text-gray-300">atención personal</b> y que la página (recarga automática) y el bot siguen 24/7. Sale a la hora de cierre menos cada tiempo que pongas (máx. 3): con cierre 10:00 p. m. y "20, 10" sale a las 9:40 y a las 9:50. Los 3 diseños se turnan solos cada día. Abajo va el enlace de tu página. Hora de Colombia siempre, aunque estés de viaje. Si el PC está apagado, se intenta hasta 15 min después. Al guardar se crean las imágenes.</p>
+          <button type="button" onclick="owaCiePrueba(this)" class="w-full py-2 rounded-xl bg-gray-800 border border-gray-700 text-gray-200 text-[11px] font-black">🧪 Guardar y publicar ya</button>
+          ${(k.cieLog || []).length ? '<p class="text-[10px] text-gray-400 font-bold mt-1">📜 Últimos avisos</p>' + k.cieLog.slice(0, 6).map(x => `<p class="text-[10px] ${x.ok ? 'text-gray-400' : 'text-red-300'}">${x.ok ? '✓' : '✗'} ${escaparHtml(new Date(x.el).toLocaleString('es-CO', { day: '2-digit', month: '2-digit', hour: 'numeric', minute: '2-digit' }))} · faltando ${escaparHtml(String(x.min))} min${x.prueba ? ' (prueba)' : ''}${x.error ? ' · ' + escaparHtml(x.error) : ''}</p>`).join('') : ''}`, false)
         + sec('📲 Número de avisos en las entregas', `
           ${sw('owaLineaActiva', k.lineaActiva === true, 'Mostrar la línea en las entregas (página y bot de WhatsApp)')}
           <label class="block text-[10px] text-gray-400">Número (completo, con el 57, sin espacios)<input id="owaLineaNumero" inputmode="numeric" maxlength="15" value="${escaparHtml(k.lineaNumero || ((ses.find(x => x.nombre.toLowerCase() === String(k.sesRec || 'bot-recordatorio').toLowerCase()) || {}).telefono || ''))}" placeholder="573001697272" class="${inp} mt-1"></label>
@@ -25470,6 +25488,70 @@ async function pintarPanelWa() {
            <p class="text-[10px] text-gray-500 mt-1.5">Los cambios le llegan al servidor de correo en máximo 30 minutos.</p>`
         + (k.fixClave && Array.isArray(k.fixClave.cuentas) ? `<div class="mt-2 p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-[11px] text-emerald-100 leading-snug">🩹 <b>Avisos de contraseña corregidos:</b> ${k.fixClave.cuentas.length ? escaparHtml(k.fixClave.cuentas.join(', ')) + ' ya no cuentan como caídas' + (k.fixClave.etiquetasQuitadas ? ' · etiqueta 🔴 quitada de ' + k.fixClave.etiquetasQuitadas + ' correo(s)' : '') + (k.fixClave.descuentos ? ' · ' + k.fixClave.descuentos + ' descuento(s) al proveedor deshecho(s)' : '') + (k.fixClave.descuentosYaAplicados && k.fixClave.descuentosYaAplicados.length ? ' · <span class="text-amber-300">ya aplicado en un pago (revísalo a mano): ' + escaparHtml(k.fixClave.descuentosYaAplicados.join(', ')) + '</span>' : '') : (k.fixClave.etiquetasQuitadas ? 'etiqueta 🔴 quitada de ' + k.fixClave.etiquetasQuitadas + ' correo(s) que eran avisos normales' : 'no había cuentas marcadas por eso')}.</div>` : '');
       owaGaleriaCargar();
+      try { owaCieVista(); } catch (e) { /* nada */ }
+    }
+    // 🌙 Aviso de cierre: la imagen se dibuja aquí (fondo de color + texto centrado, como un estado de texto)
+    function owaCieHHMM(min) { const h = Math.floor((parseInt(min, 10) || 0) / 60) % 24, m = (parseInt(min, 10) || 0) % 60; return String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0'); }
+    function owaCieHora12(min) { const h = Math.floor(min / 60) % 24, m = min % 60; return (h % 12 || 12) + ':' + String(m).padStart(2, '0') + (h < 12 ? ' a. m.' : ' p. m.'); }
+    // 3 diseños: 0 premium oscuro · 1 cuenta regresiva · 2 buenas noches (900×1600, tamaño estado)
+    const OWA_CIE_FAM = '"Segoe UI", Roboto, "Helvetica Neue", Arial, "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif';
+    function owaCieTxt(x, txt, cx, y, tam, color, peso, maxW, alto) {   // texto centrado con ajuste de línea; devuelve la y final
+      x.font = (peso || 400) + ' ' + tam + 'px ' + OWA_CIE_FAM; x.fillStyle = color; x.textAlign = 'center'; x.textBaseline = 'alphabetic';
+      const lh = alto || tam * 1.3; String(txt).split('\n').forEach(L => { const pal = L.split(' '); let fila = '';
+        pal.forEach(w => { const t = fila ? fila + ' ' + w : w; if (x.measureText(t).width > maxW && fila) { x.fillText(fila, cx, y); y += lh; fila = w; } else fila = t; });
+        x.fillText(fila, cx, y); y += lh; });
+      return y;
+    }
+    function owaCieRR(x, X, Y, W, H, r) { x.beginPath(); x.moveTo(X + r, Y); x.arcTo(X + W, Y, X + W, Y + H, r); x.arcTo(X + W, Y + H, X, Y + H, r); x.arcTo(X, Y + H, X, Y, r); x.arcTo(X, Y, X + W, Y, r); x.closePath(); }
+    function owaCieImagen(d, min, pag) {
+      const W = 900, H = 1600, c = document.createElement('canvas'); c.width = W; c.height = H; const x = c.getContext('2d'), cx = W / 2;
+      const pill = (txt, y, bg, fg, borde) => { x.font = '700 40px ' + OWA_CIE_FAM; const w = x.measureText(txt).width + 90; owaCieRR(x, cx - w / 2, y - 52, w, 76, 38); if (bg) { x.fillStyle = bg; x.fill(); } if (borde) { x.lineWidth = 4; x.strokeStyle = borde; x.stroke(); } owaCieTxt(x, txt, cx, y, 40, fg, 700, W); };
+      if (d === 0) {   // ⚡ premium oscuro
+        x.fillStyle = '#0B0B14'; x.fillRect(0, 0, W, H); x.lineWidth = 6; x.strokeStyle = '#534AB7'; owaCieRR(x, 30, 30, W - 60, H - 60, 48); x.stroke();
+        owaCieTxt(x, '⚡ EPIC STREAMING ⚡', cx, 170, 46, '#AFA9EC', 700, W - 120);
+        owaCieTxt(x, String(min), cx, 520, 280, '#FFFFFF', 800, W);
+        owaCieTxt(x, 'MINUTOS', cx, 610, 60, '#AFA9EC', 700, W);
+        owaCieTxt(x, 'para cerrar la atención\npersonal 🌙', cx, 740, 54, '#FFFFFF', 400, W - 140);
+        x.lineWidth = 4; x.strokeStyle = '#534AB7'; owaCieRR(x, 90, 900, W - 180, 380, 32); x.stroke();
+        owaCieTxt(x, 'Seguimos activos 24/7 ⚡', cx, 990, 50, '#FFFFFF', 700, W - 220);
+        owaCieTxt(x, '🛒 Página con recarga automática\n🤖 El bot te atiende y entrega\nal instante', cx, 1080, 42, '#CECBF6', 400, W - 220, 62);
+        pill(pag, 1420, '#534AB7', '#FFFFFF');
+      } else if (d === 1) {   // ⏱ cuenta regresiva
+        x.fillStyle = '#04342C'; x.fillRect(0, 0, W, H);
+        owaCieTxt(x, 'EPIC STREAMING', cx, 170, 50, '#9FE1CB', 700, W - 120);
+        x.beginPath(); x.arc(cx, 470, 210, 0, Math.PI * 2); x.lineWidth = 18; x.strokeStyle = '#1D9E75'; x.stroke();
+        x.beginPath(); x.arc(cx, 470, 210, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * Math.min(1, min / 60)); x.strokeStyle = '#5DCAA5'; x.lineCap = 'round'; x.stroke(); x.lineCap = 'butt';
+        owaCieTxt(x, String(min), cx, 520, 190, '#FFFFFF', 800, W); owaCieTxt(x, 'min', cx, 590, 50, '#9FE1CB', 400, W);
+        owaCieTxt(x, 'Cerramos la atención personal\nen ' + min + ' minutos ‼️', cx, 820, 52, '#FFFFFF', 700, W - 120, 70);
+        owaCieTxt(x, 'Pero la tienda no duerme 😎', cx, 1000, 50, '#9FE1CB', 400, W - 120);
+        owaCieTxt(x, '🛒 Recarga automática\n🤖 Bot activo 24/7\n⚡ Entrega inmediata', cx, 1140, 46, '#FFFFFF', 400, W - 160, 70);
+        pill(pag, 1450, '#1D9E75', '#FFFFFF');
+      } else {   // 🌙 buenas noches
+        x.fillStyle = '#26215C'; x.fillRect(0, 0, W, H);
+        x.fillStyle = 'rgba(206,203,246,0.55)'; [[140, 260, 5], [760, 200, 6], [680, 420, 4], [200, 560, 4], [820, 700, 5], [110, 980, 5], [790, 1180, 4]].forEach(p => { x.beginPath(); x.arc(p[0], p[1], p[2], 0, Math.PI * 2); x.fill(); });
+        owaCieTxt(x, '🌙', cx, 400, 200, '#FFFFFF', 400, W);
+        owaCieTxt(x, '¡Buenas noches!', cx, 600, 84, '#FFFFFF', 800, W - 100);
+        owaCieTxt(x, 'En ' + min + ' minutos cerramos\nla atención personal', cx, 730, 52, '#CECBF6', 400, W - 120, 70);
+        owaCieTxt(x, '¿Se te antojó algo? 🍿', cx, 980, 54, '#FFFFFF', 700, W - 120);
+        owaCieTxt(x, 'La página recarga sola 🛒\ny el bot te atiende 24/7 🤖', cx, 1080, 46, '#FFFFFF', 400, W - 140, 66);
+        pill(pag, 1420, null, '#FFFFFF', '#CECBF6');
+      }
+      return c.toDataURL('image/jpeg', 0.74);
+    }
+    function owaCiePag() { return (owaDatos && owaDatos.cfg && owaDatos.cfg.ciePagina) || location.host; }
+    function owaCieDatos() { const v = id => document.getElementById(id); if (!v('owaCieCierre')) return null;
+      const hm = String(v('owaCieCierre').value || '22:00').split(':'), cierre = (parseInt(hm[0], 10) || 0) * 60 + (parseInt(hm[1], 10) || 0);
+      const antes = [...new Set(String(v('owaCieAntes').value || '').split(/[\s,;]+/).map(n => parseInt(n, 10)).filter(n => n >= 1 && n <= 180))].sort((a, b) => b - a).slice(0, 3);
+      return { cierre, antes: antes.length ? antes : [10] }; }
+    function owaCieVista() { try { const d = owaCieDatos(); if (!d) return; const m = d.antes[d.antes.length - 1]; [0, 1, 2].forEach(i => { const im = document.getElementById('owaCieV' + i); if (im) im.src = owaCieImagen(i, m, owaCiePag()); }); } catch (e) { /* vista previa opcional */ } }
+    async function owaCieGuardarImagenes() { const d = owaCieDatos(); if (!d) return; const imgs = {}, pag = owaCiePag();
+      d.antes.forEach(m => [0, 1, 2].forEach(i => { imgs[m + '_' + i] = owaCieImagen(i, m, pag); }));
+      const r = await llamarBackend('openwa', { op: 'cierre_img', imagenes: imgs }); if (!r || !r.ok) throw new Error((r && r.error) || 'No se pudieron guardar las imágenes del aviso de cierre.'); }
+    async function owaCiePrueba(btn) {
+      if (!await confirmarModal('Se guarda todo y el aviso de cierre se publica YA en tu estado y/o comunidad (como lo tengas activado). ¿Seguir?', { textoAceptar: 'Sí, publicar' })) return;
+      if (btn) { btn.disabled = true; btn.textContent = 'Publicando…'; }
+      try { if (await guardarOpenWa(null, true) !== true) return; const r = await llamarBackend('openwa', { op: 'cierre_prueba' }); if (!r || !r.ok) throw new Error((r && r.error) || 'No se pudo publicar.'); mostrarToast('🌙 ' + (r.detalle || 'Publicado')); owaDatos = null; cargarOpenWa(); }
+      catch (e) { alert(e.message); } finally { if (btn) { btn.disabled = false; btn.textContent = '🧪 Guardar y publicar ya'; } }
     }
     // 📣 Stock en el grupo
     async function owaCargarGrupos() {
@@ -25477,6 +25559,7 @@ async function pintarPanelWa() {
       sel.innerHTML = '<option value="">Buscando…</option>';
       try { const r = await llamarBackend('openwa', { op: 'grupos' }); if (!r || !r.ok) throw new Error((r && r.error) || 'No se pudo.');
         sel.innerHTML = '<option value="">Elige el grupo…</option>' + (r.grupos || []).map(g => `<option value="${escaparHtml(g.id)}" ${g.id === antes ? 'selected' : ''}>${escaparHtml(g.nombre)}</option>`).join('');
+        const sc = document.getElementById('owaCieGrupoId'); if (sc) { const ac = sc.value; sc.innerHTML = '<option value="">El mismo grupo del stock</option>' + (r.grupos || []).map(g => `<option value="${escaparHtml(g.id)}" ${g.id === ac ? 'selected' : ''}>${escaparHtml(g.nombre)}</option>`).join(''); }
         mostrarToast((r.grupos || []).length + ' grupos encontrados'); }
       catch (e) { sel.innerHTML = antes ? `<option value="${escaparHtml(antes)}" selected>${escaparHtml(antes)}</option>` : '<option value="">Toca "Buscar mis grupos"</option>'; alert(e.message); }
     }
@@ -25523,7 +25606,7 @@ async function pintarPanelWa() {
       try { const r = await llamarBackend('openwa', { op: 'galeria_borrar', id: id }); if (!r || !r.ok) throw new Error((r && r.error) || 'No se pudo.'); mostrarToast('Imagen borrada'); owaGaleriaCargar(); }
       catch (e) { alert(e.message); }
     }
-    async function guardarOpenWa(btn) {
+    async function guardarOpenWa(btn, lanzar) {
       const v = id => document.getElementById(id);
       const cfg = { url: String(v('owaUrl').value || '').trim(), key: String(v('owaKey').value || '').trim(), relay: String((v('owaRelay') || {}).value || '').trim(), sesRec: String(v('owaSesRec').value || '').trim(), sesEst: String(v('owaSesEst').value || '').trim(),
         recActivo: v('owaRecActivo').checked, dias: parseInt(v('owaDias').value, 10) || 0, desde: parseInt(v('owaDesde').value, 10), hasta: parseInt(v('owaHasta').value, 10), plantilla: String(v('owaPlantilla').value || ''), tiendaWa: String(v('owaTiendaWa').value || '').replace(/\D/g, ''), tiendaTexto: String(v('owaTiendaTexto').value || '').trim(),
@@ -25541,11 +25624,16 @@ async function pintarPanelWa() {
       if (cfg.botEspMax < cfg.botEspMin) { alert('La espera máxima debe ser mayor o igual a la mínima.'); return; }
       Object.assign(cfg, { lineaActiva: v('owaLineaActiva').checked, lineaNumero: String(v('owaLineaNumero').value || '').replace(/\D/g, ''), lineaTexto: String(v('owaLineaTexto').value || '').trim(), autoActiva: v('owaAutoActiva').checked, autoTexto: String(v('owaAutoTexto').value || '') });
       if (cfg.lineaActiva && !/^[1-9]\d{10,14}$/.test(cfg.lineaNumero)) { alert('Escribe el número completo, con el 57 y sin espacios (ej: 573001697272).'); return; }
-      if (cfg.hasta <= cfg.desde) { alert('La hora "Hasta" debe ser después de "Desde".'); return; }
+      if (cfg.hasta <= cfg.desde) { const m0 = 'La hora "Hasta" debe ser después de "Desde".'; if (lanzar) throw new Error(m0); alert(m0); return; }
+      { const dc = owaCieDatos(), sc = v('owaCieGrupoId'); if (dc) Object.assign(cfg, { cieActivo: v('owaCieActivo').checked, cieCierre: dc.cierre, cieAntes: dc.antes, cieEstado: v('owaCieEstado').checked, cieGrupo: v('owaCieGrupo').checked,
+          cieGrupoId: sc.value, cieGrupoNombre: sc.value ? (sc.options[sc.selectedIndex] || {}).text || '' : '' });
+        if (dc && cfg.cieActivo && cfg.cieGrupo && !cfg.cieGrupoId && !cfg.grpId) { const m1 = 'Para enviar el aviso de cierre a tu comunidad, elige el grupo (toca "Buscar").'; if (lanzar) throw new Error(m1); alert(m1); return; } }
       if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Guardando…'; }
-      try { const r = await llamarBackend('openwa', { op: 'guardar', cfg: cfg }); if (!r || !r.ok) throw new Error((r && r.error) || 'No se pudo.'); if (r.aviso) alert(r.aviso); else mostrarToast('✅ Guardado');
+      try { const r = await llamarBackend('openwa', { op: 'guardar', cfg: cfg }); if (!r || !r.ok) throw new Error((r && r.error) || 'No se pudo.');
+        if (cfg.cieActivo || lanzar) await owaCieGuardarImagenes();   // 🌙 imágenes del aviso de cierre
+        if (lanzar) return true; if (r.aviso) alert(r.aviso); else mostrarToast('✅ Guardado');
         try { ajustesGeneralesConfig.avisosLinea = { activa: cfg.lineaActiva, numero: cfg.lineaNumero, texto: cfg.lineaTexto }; } catch (e) { /* nada */ } owaDatos = null; await cargarOpenWa(); }
-      catch (e) { alert(e.message); if (btn) { btn.disabled = false; btn.innerHTML = 'Guardar recordatorios y estados'; } }
+      catch (e) { if (lanzar) throw e; alert(e.message); if (btn) { btn.disabled = false; btn.innerHTML = 'Guardar recordatorios y estados'; } }
     }
     async function owaPrueba(btn) {
       const n = String((document.getElementById('owaPruebaNum') || {}).value || '').trim(); if (!n) { mostrarToast('Escribe tu número'); return; }
@@ -27460,7 +27548,7 @@ async function pintarPanelWa() {
       return { cuentas: legado, stock: legado.length || stockPublico };
     }
 
-    const VERSION_SERVIDOR_NECESARIA = '2026-10-28a';   // la versión del servidor que necesita esta página
+    const VERSION_SERVIDOR_NECESARIA = '2026-10-30k';   // la versión del servidor que necesita esta página
     async function llamarBackend(accion, datos) {
       window._llamadasEnCurso = (window._llamadasEnCurso || 0) + 1;
       try { return await llamarBackendBase(accion, datos); } finally { window._llamadasEnCurso = Math.max(0, (window._llamadasEnCurso || 1) - 1); }
