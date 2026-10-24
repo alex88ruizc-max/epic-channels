@@ -4495,6 +4495,7 @@
     <div class="max-w-md mx-auto px-4 py-6">
       <div class="flex items-center gap-3 mb-4"><span class="w-11 h-11 rounded-2xl bg-sky-500/15 text-sky-300 flex items-center justify-center text-xl">📩</span><div class="flex-1"><p class="text-lg font-black text-white leading-tight">Tus códigos</p><p class="text-[11px] text-gray-400">Pide el código en la app y aquí te aparece al instante.</p></div></div>
       <div id="amzPubLista" class="space-y-2.5"></div>
+      <div id="amzPubSesion" class="mt-3"></div>
       <button type="button" onclick="cargarAmzPublico(true)" id="amzPubBtn" class="mt-4 w-full py-3 rounded-xl bg-sky-500 text-black font-black text-sm"><i class="fa-solid fa-rotate mr-1"></i>Buscar códigos nuevos</button>
       <p class="mt-3 text-[11px] text-gray-500 text-center">Cada código dura pocos minutos: si ya no te sirve, pide otro en la app y toca el botón.</p>
       <p id="amzPubPie" class="mt-4 text-[11px] text-gray-500 text-center"></p>
@@ -17492,7 +17493,8 @@
       if (b) { b.disabled = true; b.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i>Buscando…'; }
       if (!l.children.length) l.innerHTML = '<p class="text-center text-gray-400 text-sm py-6"><i class="fa-solid fa-spinner fa-spin mr-1"></i>Cargando tus cuentas…</p>';
       try {
-        const r = await llamarPagoPublico('amz_enlace', { token: t, fresco: !!fresco });
+        let idT = ''; try { const uA = firebase.auth().currentUser; if (uA) idT = await uA.getIdToken(); } catch (e) { idT = ''; }   // 🔒 con sesión de proveedor o admin se ven también los de crear cuenta
+        const r = await llamarPagoPublico('amz_enlace', { token: t, fresco: !!fresco, idToken: idT });
         if (!r || !r.ok) throw new Error((r && r.error) || 'No se pudo abrir.');
         const hora = f => { const d = new Date(f); return isNaN(d) ? '' : d.toLocaleTimeString('es-CO', { hour: 'numeric', minute: '2-digit' }); };
         const reciente = f => { const d = Date.parse(f); return d && Date.now() - d < 15 * 60000; };
@@ -17501,9 +17503,23 @@
           ${c.codigo ? `<div class="mt-2 flex items-center gap-2"><span class="font-mono font-black text-2xl tracking-[0.25em] ${reciente(c.fecha) ? 'text-emerald-400' : 'text-gray-500'}">${escaparHtml(c.codigo)}</span><button type="button" onclick="copiarTexto('${escaparHtml(c.codigo)}','Código copiado')" class="ml-auto px-3 py-1.5 rounded-lg bg-emerald-500 text-black text-[11px] font-black">Copiar</button></div><p class="text-[10px] ${reciente(c.fecha) ? 'text-emerald-300' : 'text-amber-300'} mt-1">${reciente(c.fecha) ? 'Llegó a las ' + hora(c.fecha) : 'De las ' + hora(c.fecha) + ' · probablemente ya venció: pide otro en Amazon'}</p>` : '<p class="mt-2 text-[11px] text-gray-400">Aún no llega ningún código a este correo.</p>'}
         </div>`).join('') || '<p class="text-center text-gray-400 text-sm">Este enlace no tiene cuentas.</p>';
         const pie = document.getElementById('amzPubPie'); if (pie) pie.textContent = 'Revisado a las ' + hora(r.ahora || new Date().toISOString());
+        pintarSesionAmzPublico(r);
       } catch (e) { l.innerHTML = '<p class="text-center text-amber-300 text-sm py-6">' + escaparHtml(e.message) + '</p>'; }
       finally { if (b) { b.disabled = false; b.innerHTML = '<i class="fa-solid fa-rotate mr-1"></i>Buscar códigos nuevos'; } }
     }
+    // 🔒 Enlace de códigos: los de CREAR cuenta solo los ven proveedores y el administrador (lo decide el servidor con la sesión)
+    function pintarSesionAmzPublico(r) {
+      const z = document.getElementById('amzPubSesion'); if (!z) return;
+      const hayOcultos = (r.correos || []).some(c => c.oculto), conSesion = !!(firebase.auth && firebase.auth().currentUser);
+      if (r.puedeCreacion) { z.innerHTML = '<p class="text-[11px] text-emerald-300 text-center"><i class="fa-solid fa-user-shield mr-1"></i>Sesión de proveedor: también ves los códigos para crear cuenta.</p>'; return; }
+      z.innerHTML = (hayOcultos ? '<div class="p-3 rounded-xl bg-amber-500/10 border border-amber-500/40 text-[12px] text-amber-200 leading-relaxed mb-2"><i class="fa-solid fa-lock mr-1"></i>Hay un código para <b>crear una cuenta nueva</b>. Esos códigos solo los ven los proveedores.</div>' : '')
+        + (conSesion ? '' : '<button type="button" onclick="loginDesdeCodigos()" class="w-full py-2.5 rounded-xl bg-gray-800 border border-gray-700 text-gray-200 font-bold text-[12px]"><i class="fa-solid fa-right-to-bracket mr-1"></i>¿Eres proveedor? Inicia sesión</button>');
+    }
+    function loginDesdeCodigos() {
+      try { const m = document.getElementById('modalAuth'); if (m) m.style.zIndex = '400'; abrirModalAuth('login'); } catch (e) { console.warn(e); }
+    }
+    try { firebase.auth().onAuthStateChanged(function (u) {   // al iniciar sesión desde el enlace, los códigos se recargan solos
+      try { const m = document.getElementById('modalAuth'); if (m && u) m.style.zIndex = ''; const v = document.getElementById('vistaAmzPublico'); if (u && v && !v.classList.contains('hidden') && tokenAmzDeRuta()) cargarAmzPublico(true); } catch (e) { /* nada */ } }); } catch (e) { /* nada */ }
     window.addEventListener('hashchange', function () { try { revisarVistaAmz(); } catch (e) { console.warn(e); } });
     window.addEventListener('DOMContentLoaded', function () { try { revisarVistaAmz(); } catch (e) { console.warn(e); } });
 
@@ -18097,8 +18113,9 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-11-02c';
+    const VERSION_PAGINA = '2026-11-02d';
     const ACTUALIZACIONES_PAGINA = [
+      { id: 'act_20261102_codigos_seguros', fecha: '2026-11-02', titulo: 'Tus códigos, más protegidos 🔒', mensaje: 'Tu enlace de códigos ahora es más seguro: los códigos para **crear cuentas nuevas** con nuestros correos ya no se muestran a nadie sin permiso. Los códigos para **entrar a tu cuenta** y **cambiar la contraseña** te siguen llegando al instante, igual que siempre.', ir: '' },
       { id: 'act_20261101_mary', fecha: '2026-11-01', titulo: 'Conoce a Mary 🔔', mensaje: 'Los avisos de tus cuentas y garantías ahora te llegan de **Mary**, con una imagen clara de lo que pasa (vencimiento, reporte resuelto…). Ese número es solo de avisos: para comprar o pedir ayuda, escríbenos a la tienda.', ir: '' },
       { id: 'act_20261023_spotify', fecha: '2026-10-23', titulo: 'Códigos de Spotify al instante 🎧', mensaje: 'Si compras **Spotify** y te pide un **código de inicio de sesión**, ahora te sale al instante en el **mismo enlace de códigos** que ya usas para Amazon (o en **Mis compras → Ver código**). Cada código dice de qué app es.', ir: '' },
       { id: 'act_20261023_clave', fecha: '2026-10-23', titulo: 'Recuperar tu contraseña, más fácil 🔐', mensaje: 'Si olvidas tu contraseña, ahora te llega un **correo de Epic Streaming** con un botón para **crear la nueva aquí mismo en la tienda**. Escríbela dos veces, toca **Guardar y entrar** y listo: quedas dentro de tu cuenta.', ir: '' },
@@ -23273,6 +23290,10 @@
 
     // ==================== NOVEDADES INTERNAS DEL PANEL (solo el equipo) ====================
     const ACTUALIZACIONES_INTERNAS = [
+      { fecha: '2026-11-02', titulo: '🔒 Códigos para crear cuenta: solo proveedores', mensaje: 'Los códigos de **crear o verificar una cuenta nueva** (en cualquier idioma) ya **no se le muestran a ningún cliente**: ni en el enlace de códigos, ni en la página de códigos, ni en Mis compras, ni por WhatsApp. Solo los ven los **proveedores** y tú, **con la sesión iniciada**. El enlace de códigos ahora tiene el botón **"¿Eres proveedor? Inicia sesión"**. **Para vender más:** nadie puede crear cuentas con tus correos sin permiso, y los proveedores siguen trabajando igual.' },
+      { fecha: '2026-11-02', titulo: '✉️ El cambio de correo ya no es "problema"', mensaje: 'Cuando un cliente **pasa la cuenta a su dominio** (Amazon manda "Revision to Your Amazon.com Account"), ya **no aparece en "Amazon avisó problemas"**, **no se marca como suspendida** y **no se le descuenta al proveedor**. Las suspensiones, pausas por pago y compras del cliente se siguen avisando igual.' },
+      { fecha: '2026-11-02', titulo: '📷 Mary entiende las fotos', mensaje: 'Si el cliente manda el pantallazo de una app **pidiendo un código**, Mary lo busca y se lo manda (solo si la cuenta es suya). Si la pantalla es para **crear una cuenta**, le explica que esos no se entregan por ahí. En cualquier otra foto, Mary sabe qué se ve y responde según eso, sin pasártela a ti.' },
+      { fecha: '2026-11-02', titulo: '📲 Aviso cuando WhatsApp se cae', mensaje: 'Cada 5 minutos el servidor revisa las 2 sesiones de WhatsApp. Si una **pide QR**, se **desconecta** u **OpenWA no responde** por más de 5 minutos, te llega un aviso a Telegram, y otro cuando vuelve. Un reinicio normal (2 o 3 minutos) no avisa.' },
       { fecha: '2026-11-02', titulo: '🎟 Sin descuento sobre descuento', mensaje: 'Los **cupones** (bienvenida, ruleta, Telegram, códigos y regalos) **ya no se suman** a productos en **promoción** ni con **precio por cantidad**. En ese caso el cupón **no se gasta**: le queda al cliente para otra compra. El aviso de venta en Telegram ahora muestra el **cupón aplicado** (y de dónde salió) o que no se aplicó. **Para vender más:** el cupón sigue atrayendo, pero sin regalar dos descuentos.' },
       { fecha: '2026-11-02', titulo: '📊 Reporte de Mary', mensaje: 'En **👩‍💼 Mary → 📊 Reporte de Mary** ves **hoy, ayer o los últimos 7 días**: clientes atendidos, **ventas ganadas** (con saldo, pagadas al momento o a crédito), **ventas perdidas** con el motivo (cobro sin pagar, canceló, agotado, preguntó y no compró), conversión, recargas, reclamos, registros, crédito, pendientes, lo más pedido, lo que pidieron agotado, lo que no supo responder y la hora pico. Todas las noches a las **10 p. m.** también te llega a Telegram. **Para vender más:** mira a quién recuperar y qué reponer.' },
       { fecha: '2026-11-02', titulo: '👩‍💼 Mary atiende todo por WhatsApp (prueba)', mensaje: 'En tu número de prueba, **Mary** ya hace: **recargas** (llave Bre-B solo esa, QR y pantallazo), **reclamos** (ticket si está en garantía; si no, le explica con fechas reales y le ofrece la promo; si se cayó por una compra o passkey, le muestra el **correo original** con un enlace limpio de tu página), **códigos** y **contraseñas** de sus cuentas, **crédito** (preaprobado o a crédito por WhatsApp: *me las pagas en tu próxima recarga*), **registro** y **emparejado automático** (el WhatsApp del perfil tiene que ser el mismo número), **USDT por Binance** (en dólares para los de fuera), **varios productos en un pedido**, **sobre pedido** y **renovar**. Si pide productos, **le vende de una** sin preguntar. **Para vender más:** el cliente resuelve todo en el chat, sin entrar a la página.' },
