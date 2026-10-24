@@ -18097,7 +18097,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-11-02b';
+    const VERSION_PAGINA = '2026-11-02c';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261101_mary', fecha: '2026-11-01', titulo: 'Conoce a Mary 🔔', mensaje: 'Los avisos de tus cuentas y garantías ahora te llegan de **Mary**, con una imagen clara de lo que pasa (vencimiento, reporte resuelto…). Ese número es solo de avisos: para comprar o pedir ayuda, escríbenos a la tienda.', ir: '' },
       { id: 'act_20261023_spotify', fecha: '2026-10-23', titulo: 'Códigos de Spotify al instante 🎧', mensaje: 'Si compras **Spotify** y te pide un **código de inicio de sesión**, ahora te sale al instante en el **mismo enlace de códigos** que ya usas para Amazon (o en **Mis compras → Ver código**). Cada código dice de qué app es.', ir: '' },
@@ -22076,6 +22076,8 @@
     function escalasDe(prod) { const sn = (snapshotInventario && snapshotInventario[prod.docId]) || {}; const e = Array.isArray(prod.escalas) ? prod.escalas : (Array.isArray(sn.escalas) ? sn.escalas : []); const lista = Number(prod.precioLista || prod.precio) || 0; return e.map(x => ({ desde: parseInt(x.desde, 10) || 0, precio: Math.round(Number(x.precio) || 0) })).filter(x => x.desde > 1 && x.precio > 0 && x.precio < lista).sort((a, b) => a.desde - b.desde); }
     function precioPorCantidad(prod, n) {
       const u = precioPorCantidadSinCupon(prod, n); let pct = cuponVigenteCliente();
+      { const lista = Number(prod.precioLista || prod.precio) || 0, esc = escalasDe(prod); let base = lista; esc.forEach(e => { if (Math.max(1, Number(n) || 1) >= e.desde) base = e.precio; });
+        if ((Number(prod.promoPct) || 0) > 0 || (lista > 0 && base < lista)) pct = 0; }   // 🚫 sin descuento sobre descuento (igual que el servidor)
       try { const tope = Number(miCupon && miCupon.tope) || 0, q = Math.max(1, Number(n) || 1); if (pct && tope > 0 && u > 0) pct = Math.max(0, Math.min(pct, Math.floor(tope * 100 / (u * q)))); } catch (e) { /* nada */ }
       return pct ? Math.round(u * (100 - pct) / 100) : u;
     }
@@ -22387,7 +22389,7 @@
       if (!pct || !ancla) { if (b) b.remove(); return; }
       if (!b) { b = document.createElement('div'); b.id = 'bannerCupon'; ancla.parentElement.insertBefore(b, ancla); }
       b.className = 'mb-4 p-3 rounded-2xl border border-violet-400/50 bg-violet-500/10 flex items-center gap-3';
-      b.innerHTML = `<span class="w-10 h-10 shrink-0 rounded-xl bg-violet-500 text-white flex items-center justify-center text-lg">🎟</span><div class="min-w-0 flex-1"><p class="text-sm font-black text-white">Tienes ${pct} % de descuento</p><p class="text-[11px] text-violet-200">En tu próxima compra · vence en <span class="cuenta-regresiva font-bold" data-hasta="${escaparHtml(miCupon.vence)}"></span>${miCupon && miCupon.motivo === 'bienvenida' ? ' · <span class="opacity-70">Aplican términos y condiciones</span>' : ''}</p></div>`;
+      b.innerHTML = `<span class="w-10 h-10 shrink-0 rounded-xl bg-violet-500 text-white flex items-center justify-center text-lg">🎟</span><div class="min-w-0 flex-1"><p class="text-sm font-black text-white">Tienes ${pct} % de descuento</p><p class="text-[11px] text-violet-200">En tu próxima compra (no aplica a productos que ya tienen descuento) · vence en <span class="cuenta-regresiva font-bold" data-hasta="${escaparHtml(miCupon.vence)}"></span>${miCupon && miCupon.motivo === 'bienvenida' ? ' · <span class="opacity-70">Aplican términos y condiciones</span>' : ''}</p></div>`;
       actualizarCuentasRegresivas();
     }
 
@@ -23271,6 +23273,7 @@
 
     // ==================== NOVEDADES INTERNAS DEL PANEL (solo el equipo) ====================
     const ACTUALIZACIONES_INTERNAS = [
+      { fecha: '2026-11-02', titulo: '🎟 Sin descuento sobre descuento', mensaje: 'Los **cupones** (bienvenida, ruleta, Telegram, códigos y regalos) **ya no se suman** a productos en **promoción** ni con **precio por cantidad**. En ese caso el cupón **no se gasta**: le queda al cliente para otra compra. El aviso de venta en Telegram ahora muestra el **cupón aplicado** (y de dónde salió) o que no se aplicó. **Para vender más:** el cupón sigue atrayendo, pero sin regalar dos descuentos.' },
       { fecha: '2026-11-02', titulo: '📊 Reporte de Mary', mensaje: 'En **👩‍💼 Mary → 📊 Reporte de Mary** ves **hoy, ayer o los últimos 7 días**: clientes atendidos, **ventas ganadas** (con saldo, pagadas al momento o a crédito), **ventas perdidas** con el motivo (cobro sin pagar, canceló, agotado, preguntó y no compró), conversión, recargas, reclamos, registros, crédito, pendientes, lo más pedido, lo que pidieron agotado, lo que no supo responder y la hora pico. Todas las noches a las **10 p. m.** también te llega a Telegram. **Para vender más:** mira a quién recuperar y qué reponer.' },
       { fecha: '2026-11-02', titulo: '👩‍💼 Mary atiende todo por WhatsApp (prueba)', mensaje: 'En tu número de prueba, **Mary** ya hace: **recargas** (llave Bre-B solo esa, QR y pantallazo), **reclamos** (ticket si está en garantía; si no, le explica con fechas reales y le ofrece la promo; si se cayó por una compra o passkey, le muestra el **correo original** con un enlace limpio de tu página), **códigos** y **contraseñas** de sus cuentas, **crédito** (preaprobado o a crédito por WhatsApp: *me las pagas en tu próxima recarga*), **registro** y **emparejado automático** (el WhatsApp del perfil tiene que ser el mismo número), **USDT por Binance** (en dólares para los de fuera), **varios productos en un pedido**, **sobre pedido** y **renovar**. Si pide productos, **le vende de una** sin preguntar. **Para vender más:** el cliente resuelve todo en el chat, sin entrar a la página.' },
       { fecha: '2026-11-01', titulo: '📱 Ventas por WhatsApp a nombre del cliente', mensaje: 'En **Venta manual**, si escribes el **WhatsApp** del cliente (no solo su correo), la venta queda **a su nombre** automáticamente; antes de confirmar te dice a quién queda. Los avisos de **passkey** y de **compras dentro de la cuenta** ya no dicen "sin vender" en cuentas vendidas por WhatsApp: dicen **cuándo y a quién** se vendió. **Para vender más:** cada cliente ve sus avisos y su garantía sin que tú tengas que escribirle.' },
