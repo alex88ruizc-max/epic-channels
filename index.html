@@ -18303,7 +18303,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-11-05q';
+    const VERSION_PAGINA = '2026-11-05r';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261105_ranking', fecha: '2026-11-05', titulo: '🏆 ¡Llegó el ranking del mes!', mensaje: 'Ahora en la página ves **en qué puesto vas** (arriba, debajo de tu saldo). Los **3 que más recarguen** en el mes se llevan **saldo de regalo**: el **4%**, el **3%** y el **2%** de lo que recargaron. Para participar debes recargar mínimo **$150.000** en el mes. Se actualiza cada hora, cierra el último día del mes y el premio te cae solo el día 1. ¿Quién va a ser el primero? 😎', ir: '' },
       { id: 'act_20261102_codigos_seguros', fecha: '2026-11-02', titulo: 'Tus códigos, más protegidos 🔒', mensaje: 'Tu enlace de códigos ahora es más seguro: los códigos para **crear cuentas nuevas** con nuestros correos ya no se muestran a nadie sin permiso. Los códigos para **entrar a tu cuenta** y **cambiar la contraseña** te siguen llegando al instante, igual que siempre.', ir: '' },
@@ -23505,6 +23505,7 @@
 
     // ==================== NOVEDADES INTERNAS DEL PANEL (solo el equipo) ====================
     const ACTUALIZACIONES_INTERNAS = [
+      { fecha: '2026-11-05', titulo: '⚡ Encárgale a Mary: más rápido y sin dobles', mensaje: 'El encargo tardaba más de lo que el panel esperaba (35 s) porque, por cada mensaje, el servidor volvía a preguntarle a OpenWA por la sesión. Ahora pregunta **una sola vez** para todos los mensajes, el panel espera hasta **2 minutos** y el botón queda en *"Mary le está escribiendo…"* hasta que termine. El **QR** ahora sale **después** del saludo y del precio (antes llegaba primero). Y **nunca se repite**: si tocas dos veces o reintentas, Mary no le vuelve a cobrar ni a escribir.' },
       { fecha: '2026-11-05', titulo: '🔗 Stock heredado en todas las listas', mensaje: 'Las listas de productos del panel (**Encárgale a Mary**, Venta manual, Asignar correos y Pedidos de revendedores) ahora cuentan el **stock heredado**: si un producto toma las cuentas de otro, dice por ejemplo *"Prime Video con Garantía 25 días · 209 libres (de Prime Video)"*, en vez de "0 libres". Es el mismo stock con el que Mary vende.' },
       { fecha: '2026-11-05', titulo: '🏆 Ranking del mes + Luisa lo promociona', mensaje: '**Ranking:** los 3 clientes que más recargan en el mes ganan saldo (**4% / 3% / 2%** de sus recargas, mínimo **$150.000** en el mes; si solo uno llega, él es el 1.º). Cada cliente ve **solo su puesto** en una franja dorada debajo de su saldo y, al tocarla, cuánto le falta para subir y cuánto ganaría. Se actualiza cada hora y el **día 1** se abonan los premios solos, se le avisa al ganador por WhatsApp y a ti por Telegram. Cuentan solo las recargas aprobadas (no regalos, bonos, premios ni ajustes). **Todo editable** en **Promociones → 🏆 Ranking del mes** (porcentajes, mínimo, tope, encender) con la vista del top 10. **Luisa** publica 1 estado al día del ranking (arranque, mitad, últimos días y ganadores sin nombres) y lo mete en la rotación de la comunidad; sus frases y la hora se editan en **📣 Luisa**.' },
       { fecha: '2026-11-05', titulo: '📝 Volantes en texto, con tu formato', mensaje: 'Los volantes de Mary en los grupos ahora van **en texto, sin imagen**, con tu formato: *"¡Buenos días, familia! 🤝 Tenemos Prime Video y Amazon disponibles ahora mismo 🚀…"*, con dominio, precio mayorista, tu WhatsApp, la web y el Telegram. El saludo cambia con la hora (días / tardes / noches); si solo hay uno de los dos productos sale solo ese, si quedan pocas dice *"¡últimas!"*, y sin stock ese día no se volantea. Además, los volantes enviados antes de la confirmación ya no salen como alerta falsa: quedan *"enviado (antes de la confirmación)"*.' },
@@ -28278,9 +28279,14 @@ const LUISA_COM_DEF_PAG = { activo: true, stockHora: '08:00', mediodiaHora: '12:
       const prod = (typeof catalogoUnificado !== 'undefined' ? catalogoUnificado : []).find(x => x.docId === pid), nom = prod ? prod.nombre : pid;
       const res = op === 'entregar' ? `📦 Mary le ENTREGA ${n} ${nom} al ${num}` + (fuera ? '\n💵 Te pagó por fuera (no se toca su saldo)' : '\n💰 Se descuenta de su saldo') : `💳 Mary le COBRA ${n} ${nom} al ${num}\nLe escribe primero, le manda el QR y gestiona todo.`;
       if (!await confirmarModal(res + (pe ? `\n🏷 Precio especial: ${formatoCOP(pe)} en total` : '\n🏷 Su precio normal'), { textoAceptar: 'Sí, encárgaselo' })) return;
+      if (window._encEnCurso) { mostrarToast('Mary ya está con ese encargo, espera un momento…'); return; } window._encEnCurso = true;
+      const btnE = document.querySelector('button[onclick="encargarMary()"]'); if (btnE) { btnE.disabled = true; btnE.dataset.t = btnE.innerHTML; btnE.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Mary le está escribiendo…'; }
+      const encId = 'e' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
       mostrarToast('Mary está en eso…');
-      try { const r = await llamarBackend('mary_encargo', { op: op, numero: num, pid: pid, cantidad: n, precioTotal: pe, porFuera: fuera }); if (!r || !r.ok) throw new Error((r && r.error) || 'No se pudo.');
+      try { const r = await llamarBackend('mary_encargo', { op: op, numero: num, pid: pid, cantidad: n, precioTotal: pe, porFuera: fuera, encId: encId, __espera: 120000 }).catch(e => { if (/tard[oó] demasiado/i.test(String(e && e.message))) throw new Error('Mary sigue trabajando en el encargo (tardó más de lo normal). NO lo repitas: revisa 💬 Conversaciones en un minuto para ver si ya le escribió.'); throw e; });
+        if (!r || !r.ok) throw new Error((r && r.error) || 'No se pudo.');
         alert('✅ ' + r.texto); g('encNumero').value = ''; g('encCantidad').value = 1; g('encPrecio').value = ''; g('encFuera').checked = false; } catch (e) { alert(e.message); }
+      finally { window._encEnCurso = false; if (btnE) { btnE.disabled = false; btnE.innerHTML = btnE.dataset.t || '🤝 Encargar a Mary'; } }
     }
     async function cargarPanelMary() {
       try { const d = await db.collection('secretos').doc('mary').get(); maryCfgLocal = Object.assign({ tienda: 'prueba', prueba: [], avisos: true, recompra: true, faqs: [], reglas: [], frases: [], aprender: [] }, d.exists ? d.data() : {});
@@ -28548,7 +28554,8 @@ const LUISA_COM_DEF_PAG = { activo: true, stockHora: '08:00', mediodiaHora: '12:
       }
       let resp;
       const ctrl = (typeof AbortController !== 'undefined') ? new AbortController() : null;
-      const limite = setTimeout(() => { try { ctrl && ctrl.abort(); } catch (e) { /* nada */ } }, 35000);
+      const esperaMs = Math.max(35000, Math.min(170000, Number(datos && datos.__espera) || 0)); if (datos && datos.__espera) { datos = Object.assign({}, datos); delete datos.__espera; }   // ⏳ acciones largas del administrador (encargos) esperan más
+      const limite = setTimeout(() => { try { ctrl && ctrl.abort(); } catch (e) { /* nada */ } }, esperaMs);
       try {
         resp = await fetch(url, {
           method: 'POST',
