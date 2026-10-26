@@ -4047,7 +4047,7 @@
       <div class="overflow-y-auto p-4 flex-grow space-y-3">
         <p id="rnCorreo" class="font-mono text-[12px] text-gray-300 break-all select-all"></p>
         <details open class="rounded-xl border border-gray-800 bg-gray-950/60 p-3"><summary class="text-sm font-black text-white cursor-pointer">👤 Perfiles: nombre y PIN</summary>
-          <p class="text-[11px] text-gray-400 mt-1">Marca los perfiles a cambiar. Deja el PIN vacío para no tocarlo; 🎲 genera uno nuevo.</p>
+          <p class="text-[11px] text-gray-400 mt-1">Marca los perfiles a cambiar. Deja el PIN vacío para no tocarlo; 🎲 genera uno nuevo. Si los nombres no son iguales a los de Netflix, el robot te preguntará allá cuál es cuál (nunca adivina).</p>
           <div id="rnPerfiles" class="mt-2 space-y-1.5"></div></details>
         <details open class="rounded-xl border border-gray-800 bg-gray-950/60 p-3"><summary class="text-sm font-black text-white cursor-pointer">🔌 Sacar dispositivos</summary>
           <div class="mt-2 space-y-1.5 text-[12px] text-gray-200">
@@ -18359,7 +18359,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-11-08c';
+    const VERSION_PAGINA = '2026-11-08d';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261105_ranking', fecha: '2026-11-05', titulo: '🏆 ¡Llegó el ranking del mes!', mensaje: 'Ahora en la página ves **en qué puesto vas** (arriba, debajo de tu saldo). Los **3 que más recarguen** en el mes se llevan **saldo de regalo**: el **4%**, el **3%** y el **2%** de lo que recargaron. Para participar debes recargar mínimo **$150.000** en el mes. Se actualiza cada hora, cierra el último día del mes y el premio te cae solo el día 1. ¿Quién va a ser el primero? 😎', ir: '' },
       { id: 'act_20261102_codigos_seguros', fecha: '2026-11-02', titulo: 'Tus códigos, más protegidos 🔒', mensaje: 'Tu enlace de códigos ahora es más seguro: los códigos para **crear cuentas nuevas** con nuestros correos ya no se muestran a nadie sin permiso. Los códigos para **entrar a tu cuenta** y **cambiar la contraseña** te siguen llegando al instante, igual que siempre.', ir: '' },
@@ -29925,7 +29925,8 @@ const LUISA_COM_DEF_PAG = { activo: true, stockHora: '08:00', mediodiaHora: '12:
     function abrirRobotNetflix(id, todaLaCuenta) {   // todaLaCuenta: los 5 perfiles marcados, cada uno con PIN nuevo, y "sacar a todos"
       const a = netflixCuentasAdmin.find(x => x.id === id); if (!a) return;
       const compartida = a.tipo === 'compartida';
-      const slots = compartida ? netflixCuentasAdmin.filter(x => x.tipo === 'compartida' && x.correo === a.correo) : [];
+      const numP = (x) => { const m = String(x.perfil || '').match(/(\d+)/); return m ? parseInt(m[1], 10) : 99; };
+      const slots = compartida ? netflixCuentasAdmin.filter(x => x.tipo === 'compartida' && x.correo === a.correo).sort((x, y) => numP(x) - numP(y) || String(x.perfil || '').localeCompare(String(y.perfil || ''))) : [];
       const filas = compartida
         ? slots.map((x, i) => ({ slotId: x.id, pos: i + 1, actual: x.perfil || '', nuevo: x.perfil || '', pin: (todaLaCuenta || x.id === id) ? generarPinNetflix(x.pin) : '', sel: !!todaLaCuenta || x.id === id }))
         : [1, 2, 3, 4, 5].map(n => ({ slotId: '', pos: n, actual: '', nuevo: '', pin: '', sel: false }));
