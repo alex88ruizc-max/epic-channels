@@ -18364,7 +18364,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-11-08i';
+    const VERSION_PAGINA = '2026-11-08k';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261105_ranking', fecha: '2026-11-05', titulo: '🏆 ¡Llegó el ranking del mes!', mensaje: 'Ahora en la página ves **en qué puesto vas** (arriba, debajo de tu saldo). Los **3 que más recarguen** en el mes se llevan **saldo de regalo**: el **4%**, el **3%** y el **2%** de lo que recargaron. Para participar debes recargar mínimo **$150.000** en el mes. Se actualiza cada hora, cierra el último día del mes y el premio te cae solo el día 1. ¿Quién va a ser el primero? 😎', ir: '' },
       { id: 'act_20261102_codigos_seguros', fecha: '2026-11-02', titulo: 'Tus códigos, más protegidos 🔒', mensaje: 'Tu enlace de códigos ahora es más seguro: los códigos para **crear cuentas nuevas** con nuestros correos ya no se muestran a nadie sin permiso. Los códigos para **entrar a tu cuenta** y **cambiar la contraseña** te siguen llegando al instante, igual que siempre.', ir: '' },
@@ -29944,6 +29944,7 @@ const LUISA_COM_DEF_PAG = { activo: true, stockHora: '08:00', mediodiaHora: '12:
         : [1, 2, 3, 4, 5].map((n, i) => ({ slotId: '', pos: n, actual: '', nuevo: azar[i], pin: '', sel: false }));
       robotNf = { id: id, correo: a.correo || '', compartida: compartida, filas: filas, srvUrl: '' };
       urlServidorPublico().then(function (u) { if (robotNf) robotNf.srvUrl = u || ''; try { if (u) localStorage.setItem('epicRobotNfSrv', u); } catch (e) {} }).catch(function () {});
+      llamarBackend('nf_robot_clave', {}).then(function (r) { if (r && r.ok && r.clave) { if (robotNf) robotNf.clave = r.clave; try { localStorage.setItem('epicRobotNfClave', r.clave); } catch (e) {} const el = document.getElementById('rnClaveRobot'); if (el && !el.value) el.value = r.clave; } }).catch(function () {});
       document.getElementById('rnCorreo').textContent = (a.correo || '') + (compartida ? ' · compartida' : ' · cuenta completa');
       pintarRobotNetflix(); robotNfOpcionesSacar(compartida ? a.perfil : '');
       const modo = compartida && !todaLaCuenta ? 'perfil' : 'todos';
@@ -29989,7 +29990,7 @@ const LUISA_COM_DEF_PAG = { activo: true, stockHora: '08:00', mediodiaHora: '12:
       if (modo === 'perfil' && !perfilSacar) { alert('Elige de qué perfil sacar los dispositivos.'); return null; }
       const perfiles = filas.filter(f => (f.nuevo && f.nuevo !== f.actual) || f.pin).map(f => ({ pos: f.pos, actual: f.actual, nuevo: f.nuevo || f.actual, pin: f.pin || '' }));
       if (!perfiles.length && modo === 'ninguno') { alert('No hay nada que hacer: cambia un nombre, pon un PIN o elige a quién sacar.'); return null; }
-      let claveR = ''; try { claveR = localStorage.getItem('epicRobotNfClave') || ''; } catch (e) {}
+      let claveR = (robotNf && robotNf.clave) || ''; if (!claveR) { try { claveR = localStorage.getItem('epicRobotNfClave') || ''; } catch (e) {} }
       return { v: 1, correo: robotNf.correo, perfiles: perfiles, sacar: modo, perfilSacar: perfilSacar, srv: robotNf.srvUrl || '', clave: claveR, t: Date.now() };
     }
     function ejecutarRobotNetflix() {
@@ -30005,12 +30006,18 @@ const LUISA_COM_DEF_PAG = { activo: true, stockHora: '08:00', mediodiaHora: '12:
       if (!robotNf) return; const o = robotNf.enviado;
       if (!o) { alert('Primero toca «Hacerlo en Netflix».'); return; }
       if (!robotNf.compartida) { mostrarToast('Listo. En cuentas completas no hay perfiles guardados en el panel.'); robotNf.enviado = null; cerrarRobotNetflix(); return; }
-      const cambios = robotNf.filas.filter(f => f.sel && f.slotId && ((f.nuevo && f.nuevo !== f.actual) || f.pin));
-      if (!cambios.length) { cerrarRobotNetflix(); return; }
-      if (!await confirmarModal('¿Guardar en el panel lo que hizo el robot? ' + cambios.map(f => '«' + f.actual + '»' + (f.nuevo && f.nuevo !== f.actual ? ' → «' + f.nuevo + '»' : '') + (f.pin ? ' · PIN ' + f.pin : '')).join(' · '), { textoAceptar: 'Sí, guardar' })) return;
+      // Lee lo que el robot REALMENTE hizo (lo guarda en el navegador al terminar). Solo eso se guarda en el panel.
+      let res = null; try { res = JSON.parse(localStorage.getItem('epicRobotNfResultado') || 'null'); } catch (e) { res = null; }
+      const hechoDe = {}; if (res && res.perfiles) res.perfiles.forEach(x => { hechoDe[x.pos] = x; });
+      // empareja por posición (fila N del panel = perfil N de Netflix) solo si el robot lo confirmó
+      const cambios = robotNf.filas.map(f => { const h = hechoDe[f.pos]; if (!h) return null;
+        const d = {}; if (h.nombre) d.perfil = h.nombre; if (h.pin) { d.pin = h.pin; d.pinPendiente = false; }
+        return (d.perfil || d.pin) ? { slotId: f.slotId, pos: f.pos, nombre: h.nombre || '', pin: h.pin || '', d: d } : null; }).filter(Boolean);
+      if (!cambios.length) { mostrarToast('El robot no alcanzó a cambiar nada para guardar.'); cerrarRobotNetflix(); return; }
+      if (!await confirmarModal('¿Guardar en el panel lo que el robot hizo de verdad? ' + cambios.map(c => 'Perfil ' + c.pos + (c.nombre ? ' → «' + c.nombre + '»' : '') + (c.pin ? ' · PIN ' + c.pin : '')).join(' · '), { textoAceptar: 'Sí, guardar' })) return;
       try { const lote = db.batch(), ahora = new Date().toISOString();
-        cambios.forEach(f => { const d = { actualizadoEl: ahora }; if (f.nuevo && f.nuevo !== f.actual) d.perfil = f.nuevo; if (f.pin) { d.pin = f.pin; d.pinPendiente = false; } lote.set(db.collection('alquileres').doc(f.slotId), d, { merge: true }); });
-        await lote.commit(); mostrarToast('✅ Guardado: nombres y PIN actualizados en el panel.'); robotNf.enviado = null; cerrarRobotNetflix();
+        cambios.forEach(c => { if (c.slotId) lote.set(db.collection('alquileres').doc(c.slotId), Object.assign({ actualizadoEl: ahora }, c.d), { merge: true }); });
+        await lote.commit(); try { localStorage.removeItem('epicRobotNfResultado'); } catch (e) {} mostrarToast('✅ Guardado: ' + cambios.length + ' perfil' + (cambios.length === 1 ? '' : 'es') + ' actualizado' + (cambios.length === 1 ? '' : 's') + ' en el panel.'); robotNf.enviado = null; cerrarRobotNetflix();
       } catch (err) { alert('No se pudo guardar: ' + err.message); }
     }
     function abrirGestionNetflix(id) {
