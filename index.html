@@ -4079,6 +4079,7 @@
           <div class="mt-2 space-y-1.5 text-[12px] text-gray-200">
             <label class="flex items-center gap-2"><input type="radio" name="rnSacar" value="ninguno"> No sacar a nadie</label>
             <label id="rnOpPerfil" class="flex items-center gap-2 flex-wrap"><input type="radio" name="rnSacar" value="perfil"> Sacar solo a los que usan el perfil <select id="rnPerfilSacar" class="bg-gray-800 border border-gray-700 rounded-lg px-2 py-1 text-white text-[12px]"></select></label>
+            <label id="rnOpSeleccionados" class="flex items-start gap-2"><input type="radio" name="rnSacar" value="seleccionados" class="mt-0.5"> <span>Sacar a los que usan los perfiles <b>marcados arriba</b> <span id="rnSacarSelTxt" class="text-violet-300"></span></span></label>
             <label class="flex items-center gap-2"><input type="radio" name="rnSacar" value="todos"> Sacar a todos (cuenta completa)</label>
             <p class="text-[11px] text-gray-500">Para sacar a uno solo, en Netflix toca <b>📱 Sacar uno</b> en la cajita del robot y elige el dispositivo.</p>
           </div></details>
@@ -4092,7 +4093,7 @@
           <p class="text-[11px] text-gray-500 mt-2">Requiere el script <b>Epic Robot Netflix</b> en Tampermonkey con <b>Permitir en modo incógnito</b> activado.</p></details>
       </div>
       <div class="shrink-0 p-3 border-t border-gray-800 grid grid-cols-2 gap-2">
-        <button onclick="ejecutarRobotNetflix()" class="py-2.5 rounded-xl bg-violet-600 hover:bg-violet-500 text-white font-black text-xs"><i class="fa-solid fa-play mr-1"></i> Hacerlo en Netflix</button>
+        <button onclick="ejecutarRobotNetflix()" class="py-2.5 rounded-xl bg-violet-600 hover:bg-violet-500 text-white font-black text-xs"><i class="fa-solid fa-play mr-1"></i> <span id="rnBotonHacer">Hacerlo en Netflix</span></button>
         <button onclick="guardarRobotNetflix()" class="py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs"><i class="fa-solid fa-check mr-1"></i> Ya quedó</button>
       </div>
     </div>
@@ -18398,7 +18399,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-11-08t';
+    const VERSION_PAGINA = '2026-11-08v';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261105_ranking', fecha: '2026-11-05', titulo: '🏆 ¡Llegó el ranking del mes!', mensaje: 'Ahora en la página ves **en qué puesto vas** (arriba, debajo de tu saldo). Los **3 que más recarguen** en el mes se llevan **saldo de regalo**: el **4%**, el **3%** y el **2%** de lo que recargaron. Para participar debes recargar mínimo **$150.000** en el mes. Se actualiza cada hora, cierra el último día del mes y el premio te cae solo el día 1. ¿Quién va a ser el primero? 😎', ir: '' },
       { id: 'act_20261102_codigos_seguros', fecha: '2026-11-02', titulo: 'Tus códigos, más protegidos 🔒', mensaje: 'Tu enlace de códigos ahora es más seguro: los códigos para **crear cuentas nuevas** con nuestros correos ya no se muestran a nadie sin permiso. Los códigos para **entrar a tu cuenta** y **cambiar la contraseña** te siguen llegando al instante, igual que siempre.', ir: '' },
@@ -30197,7 +30198,8 @@ const LUISA_COM_DEF_PAG = { activo: true, stockHora: '08:00', mediodiaHora: '12:
         : [1, 2, 3, 4, 5].map((n, i) => ({ slotId: '', pos: n, actual: '', nuevo: azar[i], pin: '', sel: false }));
       const platR = esDisneyNf(a) ? 'disney' : 'netflix';
       robotNf = { id: id, correo: a.correo || '', compartida: compartida, filas: filas, srvUrl: '', plat: platR };
-      try { document.getElementById('rnTitulo').textContent = platR === 'disney' ? 'Robot Disney+' : 'Robot Netflix'; const op = document.getElementById('rnOpPerfil'); if (op) op.style.display = platR === 'disney' ? 'none' : ''; } catch (e) { /* nada */ }
+      try { document.getElementById('rnTitulo').textContent = platR === 'disney' ? 'Robot Disney+' : 'Robot Netflix'; document.getElementById('rnBotonHacer').textContent = platR === 'disney' ? 'Hacerlo en Disney+' : 'Hacerlo en Netflix';
+        ['rnOpPerfil', 'rnOpSeleccionados'].forEach(function (k) { const op = document.getElementById(k); if (op) op.style.display = platR === 'disney' ? 'none' : ''; }); } catch (e) { /* nada */ }   // Disney+ solo saca a todos
       urlServidorPublico().then(function (u) { if (robotNf) robotNf.srvUrl = u || ''; try { if (u) localStorage.setItem('epicRobotNfSrv', u); } catch (e) {} }).catch(function () {});
       llamarBackend('nf_robot_clave', {}).then(function (r) { if (r && r.ok && r.clave) { if (robotNf) robotNf.clave = r.clave; try { localStorage.setItem('epicRobotNfClave', r.clave); } catch (e) {} const el = document.getElementById('rnClaveRobot'); if (el && !el.value) el.value = r.clave; } }).catch(function () {});
       document.getElementById('rnCorreo').textContent = (a.correo || '') + (compartida ? ' · compartida' : ' · cuenta completa');
@@ -30224,15 +30226,22 @@ const LUISA_COM_DEF_PAG = { activo: true, stockHora: '08:00', mediodiaHora: '12:
     function robotNfMarcar(i, el) { robotNf.filas[i].sel = true; const c = el.closest('.grid') && el.closest('.grid').querySelector('input[type=checkbox]'); if (c) c.checked = true; }
     function pintarRobotNetflix() {
       const box = document.getElementById('rnPerfiles'); if (!box || !robotNf) return;
-      box.innerHTML = `<div class="grid grid-cols-[20px_minmax(0,1fr)_minmax(0,1fr)_86px] gap-1.5 text-[10px] text-gray-500 font-bold"><span></span><span>${robotNf.compartida ? 'Nombre actual' : 'Nombre actual (como sale en Netflix)'}</span><span>Nombre nuevo</span><span>PIN nuevo</span></div>` +
-        robotNf.filas.map((f, i) => `<div class="grid grid-cols-[20px_minmax(0,1fr)_minmax(0,1fr)_86px] gap-1.5 items-center">
-          <input type="checkbox" ${f.sel ? 'checked' : ''} onchange="robotNf.filas[${i}].sel=this.checked" class="w-4 h-4 accent-violet-500">
+      box.innerHTML = `<div class="grid grid-cols-[20px_minmax(0,1fr)_minmax(0,1fr)_86px_28px] gap-1.5 text-[10px] text-gray-500 font-bold"><span></span><span>${robotNf.compartida ? 'Nombre actual' : 'Nombre actual (como sale en Netflix)'}</span><span>Nombre nuevo</span><span>PIN nuevo</span><span title="Eliminar y crear de nuevo">♻</span></div>` +
+        robotNf.filas.map((f, i) => `<div class="grid grid-cols-[20px_minmax(0,1fr)_minmax(0,1fr)_86px_28px] gap-1.5 items-center ${f.reemplazar ? 'rounded-lg ring-1 ring-amber-500/50 bg-amber-500/5' : ''}">
+          <input type="checkbox" ${f.sel ? 'checked' : ''} onchange="robotNf.filas[${i}].sel=this.checked; robotNfTextoSacar()" class="w-4 h-4 accent-violet-500">
           ${robotNf.compartida ? `<span class="text-[12px] text-white truncate">${escaparHtml(f.actual || '—')}</span>` : `<input type="text" maxlength="30" value="${escaparHtml(f.actual)}" placeholder="Perfil ${f.pos}" oninput="robotNf.filas[${i}].actual=this.value.trim(); robotNfOpcionesSacar()" class="bg-gray-800 border border-gray-700 rounded-lg px-2 py-1.5 text-[12px] text-white min-w-0">`}
           <input type="text" maxlength="30" value="${escaparHtml(f.nuevo)}" placeholder="igual" oninput="robotNf.filas[${i}].nuevo=this.value.trim(); robotNfMarcar(${i}, this)" class="bg-gray-800 border border-gray-700 rounded-lg px-2 py-1.5 text-[12px] text-white min-w-0">
           <div class="flex gap-1"><input type="text" inputmode="numeric" maxlength="4" value="${escaparHtml(f.pin)}" placeholder="—" oninput="this.value=this.value.replace(/\D/g,'').slice(0,4); robotNf.filas[${i}].pin=this.value; if (this.value) robotNfMarcar(${i}, this)" class="w-full bg-gray-800 border border-gray-700 rounded-lg px-1 py-1.5 text-[12px] text-white text-center font-mono min-w-0">
             <button type="button" title="PIN nuevo" onclick="robotNf.filas[${i}].pin=generarPinNetflix(robotNf.filas[${i}].pin); robotNf.filas[${i}].sel=true; pintarRobotNetflix()" class="px-1 rounded-lg bg-gray-800 hover:bg-gray-700 text-[12px]">🎲</button></div>
-        </div>`).join('');
+          <button type="button" title="${f.reemplazar ? 'Quitar: no eliminar este perfil' : 'Eliminar este perfil en la plataforma y crear uno nuevo con el nombre nuevo'}" onclick="robotNfReemplazar(${i})" class="w-7 h-7 rounded-lg text-[12px] border ${f.reemplazar ? 'bg-amber-500/25 border-amber-500/60 text-amber-200' : 'bg-gray-800 border-gray-700 text-gray-500 hover:text-amber-300'}">♻</button>
+        </div>`).join('') + (robotNf.filas.some(f => f.reemplazar) ? `<p class="text-[11px] text-amber-200 bg-amber-500/10 border border-amber-500/30 rounded-lg p-2 mt-1">♻ Los marcados se <b>eliminan</b> en la plataforma (con su historial) y se <b>crean de nuevo al final</b>. Los perfiles que estaban debajo suben un puesto; al tocar «Ya quedó», el panel reacomoda el orden solo.</p>` : '');
+      robotNfTextoSacar();
     }
+    function robotNfTextoSacar() { const el = document.getElementById('rnSacarSelTxt'); if (!el || !robotNf) return; const L = robotNf.filas.filter(f => f.sel).map(f => f.actual || ('Perfil ' + f.pos)); el.textContent = L.length ? '(' + L.join(', ') + ')' : '(no hay ninguno marcado)'; }
+    async function robotNfReemplazar(i) { const f = robotNf.filas[i]; if (!f) return;
+      if (!f.reemplazar) { if (f.pos === 1) { alert('El perfil 1 es el principal de la cuenta: Netflix y Disney+ no dejan eliminarlo.'); return; }
+        if (!await confirmarModal('¿Eliminar «' + (f.actual || 'Perfil ' + f.pos) + '» en la plataforma y crear uno nuevo' + (f.nuevo && f.nuevo !== f.actual ? ' llamado «' + f.nuevo + '»' : '') + '? Se borra su historial. Los perfiles de abajo suben un puesto.', { textoAceptar: 'Sí, eliminar y crear' })) return; }
+      f.reemplazar = !f.reemplazar; if (f.reemplazar) { f.sel = true; if (!f.pin) f.pin = generarPinNetflix(''); } pintarRobotNetflix(); }
     function ordenRobotNetflix() {
       if (!robotNf) return null;
       const modo = (document.querySelector('input[name="rnSacar"]:checked') || {}).value || 'ninguno';
@@ -30243,10 +30252,12 @@ const LUISA_COM_DEF_PAG = { activo: true, stockHora: '08:00', mediodiaHora: '12:
       }
       const perfilSacar = modo === 'perfil' ? String(document.getElementById('rnPerfilSacar').value || '') : '';
       if (modo === 'perfil' && !perfilSacar) { alert('Elige de qué perfil sacar los dispositivos.'); return null; }
-      const perfiles = filas.filter(f => (f.nuevo && f.nuevo !== f.actual) || f.pin).map(f => ({ pos: f.pos, actual: f.actual, nuevo: f.nuevo || f.actual, pin: f.pin || '', pinActual: (/^\d{4}$/.test(String(((netflixCuentasAdmin.find(x => x.id === f.slotId) || {}).pin) || '')) ? String(netflixCuentasAdmin.find(x => x.id === f.slotId).pin) : '') }));   // pinActual: Disney+ lo pide para editar un perfil con candado
+      if (modo === 'seleccionados' && !filas.length) { alert('Marca arriba los perfiles a los que quieres sacar los dispositivos.'); return null; }
+      const perfilesSacar = modo === 'seleccionados' ? filas.map(f => f.actual || ('Perfil ' + f.pos)) : [];
+      const perfiles = filas.filter(f => (f.nuevo && f.nuevo !== f.actual) || f.pin || f.reemplazar).map(f => ({ pos: f.pos, slot: f.slotId || '', actual: f.actual, nuevo: f.nuevo || f.actual, pin: f.pin || '', reemplazar: !!f.reemplazar, pinActual: (/^\d{4}$/.test(String(((netflixCuentasAdmin.find(x => x.id === f.slotId) || {}).pin) || '')) ? String(netflixCuentasAdmin.find(x => x.id === f.slotId).pin) : '') }));   // pinActual: Disney+ lo pide para editar un perfil con candado
       if (!perfiles.length && modo === 'ninguno') { alert('No hay nada que hacer: cambia un nombre, pon un PIN o elige a quién sacar.'); return null; }
       let claveR = (robotNf && robotNf.clave) || ''; if (!claveR) { try { claveR = localStorage.getItem('epicRobotNfClave') || ''; } catch (e) {} }
-      return { v: 1, plataforma: robotNf.plat || 'netflix', correo: robotNf.correo, perfiles: perfiles, sacar: modo, perfilSacar: perfilSacar, srv: robotNf.srvUrl || '', clave: claveR, t: Date.now() };
+      return { v: 1, plataforma: robotNf.plat || 'netflix', correo: robotNf.correo, perfiles: perfiles, sacar: modo, perfilSacar: perfilSacar, perfilesSacar: perfilesSacar, srv: robotNf.srvUrl || '', clave: claveR, t: Date.now() };
     }
     function ejecutarRobotNetflix() {
       const o = ordenRobotNetflix(); if (!o) return;
@@ -30261,9 +30272,9 @@ const LUISA_COM_DEF_PAG = { activo: true, stockHora: '08:00', mediodiaHora: '12:
     async function guardarRobotNetflix() {
       if (!robotNf) return; const o = robotNf.enviado;
       const correoNf = String(robotNf.correo || '').toLowerCase(), kUsado = 'epicRobotNfUsado_' + (robotNf.plat === 'disney' ? 'dsn_' : '') + correoNf;
-      let resNav = null; try { resNav = JSON.parse(localStorage.getItem('epicRobotNfResultado') || 'null'); } catch (e) { resNav = null; }
+      const kRes = robotNf.plat === 'disney' ? 'epicRobotDsnResultado' : 'epicRobotNfResultado';   // 🌉 cada robot entrega su resultado por su propio puente (Tampermonkey) y también al servidor
+      let resNav = null; try { resNav = JSON.parse(localStorage.getItem(kRes) || 'null'); } catch (e) { resNav = null; }
       if (resNav && String(resNav.correo || '').toLowerCase() !== correoNf) resNav = null;
-      if (robotNf.plat === 'disney') resNav = null;   // Disney+ manda su resultado solo al servidor
       let resSrv = null; try { const r = await llamarBackend('nf_robot_resultado_leer', { correo: robotNf.correo, plataforma: robotNf.plat || 'netflix' }); if (r && r.ok && r.resultado) resSrv = r.resultado; } catch (e) { resSrv = null; }
       // el más reciente de los dos, y solo si no se guardó antes
       let resPrevio = [resNav, resSrv].filter(Boolean).sort((x, y) => (y.t || 0) - (x.t || 0))[0] || null;
@@ -30280,12 +30291,18 @@ const LUISA_COM_DEF_PAG = { activo: true, stockHora: '08:00', mediodiaHora: '12:
         const d = { posNf: f.pos }; if (h.nombre) d.perfil = h.nombre; if (h.pin) { d.pin = h.pin; d.pinPendiente = false; }
         return (d.perfil || d.pin) ? { slotId: f.slotId, pos: f.pos, nombre: h.nombre || '', pin: h.pin || '', d: d } : null; }).filter(Boolean);
       if (!cambios.length) { mostrarToast('El robot no alcanzó a cambiar nada para guardar.'); cerrarRobotNetflix(); return; }
-      if (!await confirmarModal('¿Guardar en el panel lo que el robot hizo de verdad? ' + cambios.map(c => 'Perfil ' + c.pos + (c.nombre ? ' → «' + c.nombre + '»' : '') + (c.pin ? ' · PIN ' + c.pin : '')).join(' · '), { textoAceptar: 'Sí, guardar' })) return;
+      const remplTxt = (resPrevio && Array.isArray(resPrevio.reemplazados) && resPrevio.reemplazados.length) ? ' · ♻ Eliminados y creados de nuevo: ' + resPrevio.reemplazados.map(r => 'perfil ' + r).join(', ') + ' (el orden se reacomoda)' : '';
+      if (!await confirmarModal('¿Guardar en el panel lo que el robot hizo de verdad? ' + cambios.map(c => 'Perfil ' + c.pos + (c.nombre ? ' → «' + c.nombre + '»' : '') + (c.pin ? ' · PIN ' + c.pin : '')).join(' · ') + remplTxt, { textoAceptar: 'Sí, guardar' })) return;
       try { const lote = db.batch(), ahora = new Date().toISOString();
-        cambios.forEach(c => { if (c.slotId) lote.set(db.collection('alquileres').doc(c.slotId), Object.assign({ actualizadoEl: ahora }, c.d), { merge: true }); });
-        // fija la posición de TODOS los perfiles de la cuenta (fila N = perfil N de Netflix), así el orden no cambia al renombrar
-        robotNf.filas.forEach(f => { if (f.slotId && !cambios.some(c => c.slotId === f.slotId)) lote.set(db.collection('alquileres').doc(f.slotId), { posNf: f.pos }, { merge: true }); });
-        await lote.commit(); try { localStorage.removeItem('epicRobotNfResultado'); localStorage.setItem(kUsado, String(resPrevio && resPrevio.t || Date.now())); } catch (e) {} mostrarToast('✅ Guardado: ' + cambios.length + ' perfil' + (cambios.length === 1 ? '' : 'es') + ' actualizado' + (cambios.length === 1 ? '' : 's') + ' en el panel.'); robotNf.enviado = null; cerrarRobotNetflix();
+        // ♻ Si el robot eliminó y creó de nuevo perfiles: los de abajo suben un puesto y los nuevos quedan al final (igual que en la plataforma)
+        const rempl = (resPrevio && Array.isArray(resPrevio.reemplazados)) ? resPrevio.reemplazados.map(Number).filter(Boolean) : [];
+        const ordenF = robotNf.filas.slice().sort((a, b) => a.pos - b.pos);
+        const nuevoOrden = ordenF.filter(f => rempl.indexOf(f.pos) === -1).concat(rempl.map(r => ordenF.find(f => f.pos === r)).filter(Boolean));
+        const posDe = {}; nuevoOrden.forEach((f, k) => { if (f.slotId) posDe[f.slotId] = k + 1; });
+        cambios.forEach(c => { if (c.slotId) lote.set(db.collection('alquileres').doc(c.slotId), Object.assign({ actualizadoEl: ahora }, c.d, posDe[c.slotId] ? { posNf: posDe[c.slotId] } : {}), { merge: true }); });
+        // fija la posición de TODOS los perfiles de la cuenta (fila N = perfil N de la plataforma), así el orden no cambia al renombrar
+        robotNf.filas.forEach(f => { if (f.slotId && !cambios.some(c => c.slotId === f.slotId)) lote.set(db.collection('alquileres').doc(f.slotId), { posNf: posDe[f.slotId] || f.pos }, { merge: true }); });
+        await lote.commit(); try { localStorage.removeItem(kRes); localStorage.setItem(kUsado, String(resPrevio && resPrevio.t || Date.now())); } catch (e) {} mostrarToast('✅ Guardado: ' + cambios.length + ' perfil' + (cambios.length === 1 ? '' : 'es') + ' actualizado' + (cambios.length === 1 ? '' : 's') + ' en el panel.'); robotNf.enviado = null; cerrarRobotNetflix();
       } catch (err) { alert('No se pudo guardar: ' + err.message); }
     }
     function abrirGestionNetflix(id) {
