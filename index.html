@@ -15952,7 +15952,7 @@
         }
         // 1) se marcan los perfiles como "a la venta"
         const lote = db.batch();
-        lista.forEach(a => lote.update(db.collection('alquileres').doc(a.id), { enTienda: true, productoTiendaId: prodId, planTienda: plan, enTiendaDesde: ahora, actualizadoEl: ahora }));
+        lista.forEach(a => lote.update(db.collection('alquileres').doc(a.id), { enTienda: true, productoTiendaId: prodId, planTienda: plan, enTiendaDesde: ahora, noVentaAuto: false, actualizadoEl: ahora }));
         await lote.commit();
         marcados = lista;
         // 2) se ponen en el stock del producto
@@ -15983,7 +15983,8 @@
       if (!silencioso && !await confirmarModal(`¿Sacar ${a.tipo === 'compartida' ? (a.perfil || 'el perfil') : a.correo} de la tienda? Dejará de poder comprarse y queda libre en Alquileres.`, { textoAceptar: 'Sí, sacar' })) return false;
       try {
         await quitarPerfilesDeStock([a]);
-        await db.collection('alquileres').doc(a.id).update({ enTienda: false, productoTiendaId: '', actualizadoEl: new Date().toISOString() });
+        await db.collection('alquileres').doc(a.id).update({ enTienda: false, productoTiendaId: '', noVentaAuto: true, enTiendaAuto: false, actualizadoEl: new Date().toISOString() });   // 👑 lo sacaste tú: la venta automática ya no lo vuelve a poner
+        a.enTienda = false; a.noVentaAuto = true;
         if (!silencioso) mostrarToast('Listo: ya no está a la venta.');
         return true;
       } catch (err) {
@@ -18399,7 +18400,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-11-08v';
+    const VERSION_PAGINA = '2026-11-08w';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261105_ranking', fecha: '2026-11-05', titulo: '🏆 ¡Llegó el ranking del mes!', mensaje: 'Ahora en la página ves **en qué puesto vas** (arriba, debajo de tu saldo). Los **3 que más recarguen** en el mes se llevan **saldo de regalo**: el **4%**, el **3%** y el **2%** de lo que recargaron. Para participar debes recargar mínimo **$150.000** en el mes. Se actualiza cada hora, cierra el último día del mes y el premio te cae solo el día 1. ¿Quién va a ser el primero? 😎', ir: '' },
       { id: 'act_20261102_codigos_seguros', fecha: '2026-11-02', titulo: 'Tus códigos, más protegidos 🔒', mensaje: 'Tu enlace de códigos ahora es más seguro: los códigos para **crear cuentas nuevas** con nuestros correos ya no se muestran a nadie sin permiso. Los códigos para **entrar a tu cuenta** y **cambiar la contraseña** te siguen llegando al instante, igual que siempre.', ir: '' },
@@ -29076,7 +29077,7 @@ const LUISA_COM_DEF_PAG = { activo: true, stockHora: '08:00', mediodiaHora: '12:
 
     // ---------- Venta automática: los perfiles libres pasan solos al producto conectado ----------
     var alqAutoCfg = { conexiones: {} }, unsubAlqAuto = null, alqSyncTimer = null, alqSyncando = false;
-    function perfilLibreParaVenta(a) { return a && a.estado !== 'asignado' && !a.enTienda && a.pinPendiente !== true && a.limpiezaPendiente !== true && !a.clienteUid; }
+    function perfilLibreParaVenta(a) { return a && a.estado !== 'asignado' && !a.enTienda && a.noVentaAuto !== true && a.pinPendiente !== true && a.limpiezaPendiente !== true && !a.clienteUid; }
     function escucharAlqAuto() {
       if (unsubAlqAuto || !esAdminSesionActual()) return;
       try { unsubAlqAuto = db.collection('configuracion').doc('alquiler_auto').onSnapshot(d => { alqAutoCfg = Object.assign({ conexiones: {} }, d.exists ? d.data() : {}); renderAlqAuto(); programarSyncAlqTienda(); }, () => {}); } catch (e) { /* nada */ }
@@ -29876,7 +29877,7 @@ const LUISA_COM_DEF_PAG = { activo: true, stockHora: '08:00', mediodiaHora: '12:
     function nfFechaRara(a) { const e = estadoNetflix(a); return a && a.estado === 'asignado' && e.dias !== null && e.dias > 400; }
     function nfTextoDias(a) {
       const e = estadoNetflix(a);
-      if (a.estado !== 'asignado') return a.enTienda ? 'Libre · en la tienda' : 'Libre';
+      if (a.estado !== 'asignado') return a.enTienda ? 'Libre · en la tienda' : (a.noVentaAuto ? 'Libre · fuera de la venta' : 'Libre');
       if (nfFechaRara(a)) return 'Fecha por revisar';
       if (e.dias === null) return 'Sin fecha de pago';
       if (e.dias < 0) return 'Venció hace ' + Math.abs(e.dias) + (Math.abs(e.dias) === 1 ? ' día' : ' días');
@@ -30254,7 +30255,7 @@ const LUISA_COM_DEF_PAG = { activo: true, stockHora: '08:00', mediodiaHora: '12:
       if (modo === 'perfil' && !perfilSacar) { alert('Elige de qué perfil sacar los dispositivos.'); return null; }
       if (modo === 'seleccionados' && !filas.length) { alert('Marca arriba los perfiles a los que quieres sacar los dispositivos.'); return null; }
       const perfilesSacar = modo === 'seleccionados' ? filas.map(f => f.actual || ('Perfil ' + f.pos)) : [];
-      const perfiles = filas.filter(f => (f.nuevo && f.nuevo !== f.actual) || f.pin || f.reemplazar).map(f => ({ pos: f.pos, actual: f.actual, nuevo: f.nuevo || f.actual, pin: f.pin || '', reemplazar: !!f.reemplazar, pinActual: (/^\d{4}$/.test(String(((netflixCuentasAdmin.find(x => x.id === f.slotId) || {}).pin) || '')) ? String(netflixCuentasAdmin.find(x => x.id === f.slotId).pin) : '') }));   // pinActual: Disney+ lo pide para editar un perfil con candado
+      const perfiles = filas.filter(f => (f.nuevo && f.nuevo !== f.actual) || f.pin || f.reemplazar).map(f => ({ pos: f.pos, slot: f.slotId || '', actual: f.actual, nuevo: f.nuevo || f.actual, pin: f.pin || '', reemplazar: !!f.reemplazar, pinActual: (/^\d{4}$/.test(String(((netflixCuentasAdmin.find(x => x.id === f.slotId) || {}).pin) || '')) ? String(netflixCuentasAdmin.find(x => x.id === f.slotId).pin) : '') }));   // pinActual: Disney+ lo pide para editar un perfil con candado
       if (!perfiles.length && modo === 'ninguno') { alert('No hay nada que hacer: cambia un nombre, pon un PIN o elige a quién sacar.'); return null; }
       let claveR = (robotNf && robotNf.clave) || ''; if (!claveR) { try { claveR = localStorage.getItem('epicRobotNfClave') || ''; } catch (e) {} }
       return { v: 1, plataforma: robotNf.plat || 'netflix', correo: robotNf.correo, perfiles: perfiles, sacar: modo, perfilSacar: perfilSacar, perfilesSacar: perfilesSacar, srv: robotNf.srvUrl || '', clave: claveR, t: Date.now() };
@@ -30272,8 +30273,8 @@ const LUISA_COM_DEF_PAG = { activo: true, stockHora: '08:00', mediodiaHora: '12:
     async function guardarRobotNetflix() {
       if (!robotNf) return; const o = robotNf.enviado;
       const correoNf = String(robotNf.correo || '').toLowerCase(), kUsado = 'epicRobotNfUsado_' + (robotNf.plat === 'disney' ? 'dsn_' : '') + correoNf;
-      const kNav = robotNf.plat === 'disney' ? 'epicRobotDsnResultado' : 'epicRobotNfResultado';   // cada robot entrega por su propio puente (Tampermonkey)
-      let resNav = null; try { resNav = JSON.parse(localStorage.getItem(kNav) || 'null'); } catch (e) { resNav = null; }
+      const kRes = robotNf.plat === 'disney' ? 'epicRobotDsnResultado' : 'epicRobotNfResultado';   // 🌉 cada robot entrega su resultado por su propio puente (Tampermonkey) y también al servidor
+      let resNav = null; try { resNav = JSON.parse(localStorage.getItem(kRes) || 'null'); } catch (e) { resNav = null; }
       if (resNav && String(resNav.correo || '').toLowerCase() !== correoNf) resNav = null;
       let resSrv = null; try { const r = await llamarBackend('nf_robot_resultado_leer', { correo: robotNf.correo, plataforma: robotNf.plat || 'netflix' }); if (r && r.ok && r.resultado) resSrv = r.resultado; } catch (e) { resSrv = null; }
       // el más reciente de los dos, y solo si no se guardó antes
@@ -30302,7 +30303,7 @@ const LUISA_COM_DEF_PAG = { activo: true, stockHora: '08:00', mediodiaHora: '12:
         cambios.forEach(c => { if (c.slotId) lote.set(db.collection('alquileres').doc(c.slotId), Object.assign({ actualizadoEl: ahora }, c.d, posDe[c.slotId] ? { posNf: posDe[c.slotId] } : {}), { merge: true }); });
         // fija la posición de TODOS los perfiles de la cuenta (fila N = perfil N de la plataforma), así el orden no cambia al renombrar
         robotNf.filas.forEach(f => { if (f.slotId && !cambios.some(c => c.slotId === f.slotId)) lote.set(db.collection('alquileres').doc(f.slotId), { posNf: posDe[f.slotId] || f.pos }, { merge: true }); });
-        await lote.commit(); try { localStorage.removeItem(kNav); localStorage.setItem(kUsado, String(resPrevio && resPrevio.t || Date.now())); } catch (e) {} mostrarToast('✅ Guardado: ' + cambios.length + ' perfil' + (cambios.length === 1 ? '' : 'es') + ' actualizado' + (cambios.length === 1 ? '' : 's') + ' en el panel.'); robotNf.enviado = null; cerrarRobotNetflix();
+        await lote.commit(); try { localStorage.removeItem(kRes); localStorage.setItem(kUsado, String(resPrevio && resPrevio.t || Date.now())); } catch (e) {} mostrarToast('✅ Guardado: ' + cambios.length + ' perfil' + (cambios.length === 1 ? '' : 'es') + ' actualizado' + (cambios.length === 1 ? '' : 's') + ' en el panel.'); robotNf.enviado = null; cerrarRobotNetflix();
       } catch (err) { alert('No se pudo guardar: ' + err.message); }
     }
     function abrirGestionNetflix(id) {
@@ -30733,7 +30734,7 @@ const LUISA_COM_DEF_PAG = { activo: true, stockHora: '08:00', mediodiaHora: '12:
         if (!proximo) { alert('Escribe la fecha del próximo pago (o la fecha de inicio para calcularla).'); return; }
         if (!inicio) inicio = hoyNetflix();
         Object.assign(datos, {
-          estado: 'asignado', clienteNombre: cliente, clienteWhatsapp: wa,
+          noVentaAuto: false, estado: 'asignado', clienteNombre: cliente, clienteWhatsapp: wa,
           fechaInicio: inicio, proximoPago: proximo, limpiezaPendiente: false
         });
       } else {
