@@ -1388,6 +1388,7 @@
       <div id="adminSecNetflix" class="hidden space-y-4">
         <div id="alertaNetflixVencidas" class="hidden"></div>
         <div id="resumenNetflixAdmin" class="grid grid-cols-2 sm:grid-cols-4 gap-2"></div>
+        <div id="vencimientosNetflixAdmin"></div>
 
         <div class="p-4 bg-gray-900 border border-gray-800 rounded-2xl space-y-3">
           <div id="alqAutoCaja" class="mb-3"></div>
@@ -1405,6 +1406,7 @@
               <option value="en_tienda">A la venta en la tienda</option>
               <option value="pendientes">Pendientes de migrar</option>
               <option value="limpieza">Por limpiar (cambiar clave)</option>
+              <option value="no_renovar">Marcados «No renovar»</option>
             </select>
             <select id="selNetflixVista" onchange="renderizarNetflixAdmin()" title="Cómo ver la lista" class="bg-gray-800 border border-gray-700 rounded-xl px-3 py-2.5 text-xs text-white focus:outline-none">
               <option value="cuenta">Ver por cuenta</option>
@@ -2523,6 +2525,14 @@
 
       </div>
       <!-- ==================== ADMIN: LUISA (MARKETING) ==================== -->
+      <div id="modalCharla" class="hidden fixed inset-0 z-[90] bg-black/70 items-end sm:items-center justify-center" onclick="if(event.target===this)cmCerrarModal()">
+        <div class="w-full sm:max-w-lg bg-gray-900 border border-indigo-700/60 rounded-t-2xl sm:rounded-2xl p-4 flex flex-col" style="max-height:88vh">
+          <div class="flex items-center gap-2"><p id="cmModalTitulo" class="text-sm font-black text-white flex-1">💬 Conversar</p><button type="button" onclick="cmCerrarModal()" class="w-8 h-8 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300" aria-label="Cerrar"><i class="fa-solid fa-xmark"></i></button></div>
+          <div class="flex gap-2 mt-3"><button type="button" id="cmTab_mary" onclick="cmModalAgente('mary')">👩‍💼 Mary</button><button type="button" id="cmTab_luisa" onclick="cmModalAgente('luisa')">📣 Luisa</button></div>
+          <div id="cmChatM" class="mt-3 space-y-2 overflow-y-auto flex-1" style="min-height:180px"></div>
+          <div class="flex gap-2 mt-3"><input id="cmCharlaTextoM" type="text" maxlength="500" placeholder="Escríbele…" onkeydown="if(event.key==='Enter'){event.preventDefault();cmCharlaModal();}" class="flex-1 min-w-0 bg-gray-800 border border-gray-700 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500"><button type="button" onclick="cmCharlaModal()" class="px-4 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-black text-sm"><i class="fa-solid fa-paper-plane"></i></button></div>
+        </div>
+      </div>
       <div id="adminSecLuisa" class="hidden space-y-4 pb-28 sm:pb-0">
         <div class="p-4 rounded-2xl bg-gray-900 border border-pink-500/40 flex items-center gap-3">
           <div class="w-10 h-10 rounded-full bg-pink-500/20 flex items-center justify-center text-lg">📣</div>
@@ -4041,7 +4051,7 @@
   <div id="modalRobotNetflix" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden items-center justify-center p-3 sm:p-4">
     <div class="bg-gray-900 border border-violet-500/50 rounded-2xl max-w-lg w-full shadow-2xl max-h-[88vh] flex flex-col overflow-hidden">
       <div class="shrink-0 flex items-center justify-between gap-3 px-4 py-3 border-b border-gray-800">
-        <h3 class="text-base font-black text-white flex items-center gap-2"><i class="fa-solid fa-robot text-violet-300"></i> Robot Netflix</h3>
+        <h3 class="text-base font-black text-white flex items-center gap-2"><i class="fa-solid fa-robot text-violet-300"></i> <span id="rnTitulo">Robot Netflix</span></h3>
         <button onclick="cerrarRobotNetflix()" aria-label="Cerrar" class="w-8 h-8 shrink-0 rounded-full bg-gray-800 hover:bg-gray-700 text-gray-300 hover:text-white flex items-center justify-center"><i class="fa-solid fa-xmark"></i></button>
       </div>
       <div class="overflow-y-auto p-4 flex-grow space-y-3">
@@ -4052,7 +4062,7 @@
         <details open class="rounded-xl border border-gray-800 bg-gray-950/60 p-3"><summary class="text-sm font-black text-white cursor-pointer">🔌 Sacar dispositivos</summary>
           <div class="mt-2 space-y-1.5 text-[12px] text-gray-200">
             <label class="flex items-center gap-2"><input type="radio" name="rnSacar" value="ninguno"> No sacar a nadie</label>
-            <label class="flex items-center gap-2 flex-wrap"><input type="radio" name="rnSacar" value="perfil"> Sacar solo a los que usan el perfil <select id="rnPerfilSacar" class="bg-gray-800 border border-gray-700 rounded-lg px-2 py-1 text-white text-[12px]"></select></label>
+            <label id="rnOpPerfil" class="flex items-center gap-2 flex-wrap"><input type="radio" name="rnSacar" value="perfil"> Sacar solo a los que usan el perfil <select id="rnPerfilSacar" class="bg-gray-800 border border-gray-700 rounded-lg px-2 py-1 text-white text-[12px]"></select></label>
             <label class="flex items-center gap-2"><input type="radio" name="rnSacar" value="todos"> Sacar a todos (cuenta completa)</label>
             <p class="text-[11px] text-gray-500">Para sacar a uno solo, en Netflix toca <b>📱 Sacar uno</b> en la cajita del robot y elige el dispositivo.</p>
           </div></details>
@@ -18364,7 +18374,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-11-08l';
+    const VERSION_PAGINA = '2026-11-08o';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261105_ranking', fecha: '2026-11-05', titulo: '🏆 ¡Llegó el ranking del mes!', mensaje: 'Ahora en la página ves **en qué puesto vas** (arriba, debajo de tu saldo). Los **3 que más recarguen** en el mes se llevan **saldo de regalo**: el **4%**, el **3%** y el **2%** de lo que recargaron. Para participar debes recargar mínimo **$150.000** en el mes. Se actualiza cada hora, cierra el último día del mes y el premio te cae solo el día 1. ¿Quién va a ser el primero? 😎', ir: '' },
       { id: 'act_20261102_codigos_seguros', fecha: '2026-11-02', titulo: 'Tus códigos, más protegidos 🔒', mensaje: 'Tu enlace de códigos ahora es más seguro: los códigos para **crear cuentas nuevas** con nuestros correos ya no se muestran a nadie sin permiso. Los códigos para **entrar a tu cuenta** y **cambiar la contraseña** te siguen llegando al instante, igual que siempre.', ir: '' },
@@ -28482,12 +28492,22 @@ const LUISA_COM_DEF_PAG = { activo: true, stockHora: '08:00', mediodiaHora: '12:
       } catch (e) { box.innerHTML = '<p class="text-amber-300">' + escaparHtml(e.message || 'Error') + '</p>'; }
     }
     const CM_HIST = { mary: [], luisa: [] };
-    function cmIr(agente) { try { const sel = document.getElementById('cmAgente'); if (sel) sel.value = agente; const det = sel && sel.closest('details'); if (det) det.open = true; const inp = document.getElementById('cmCharlaTexto'); if (inp) { inp.placeholder = agente === 'luisa' ? 'Escríbele a Luisa…' : 'Escríbele a Mary…'; inp.scrollIntoView({ behavior: 'smooth', block: 'center' }); setTimeout(function () { inp.focus(); }, 400); } } catch (e) { /* nada */ } }
+    // 💬 «Conversar»: ventana de chat encima de la pantalla donde estés (antes llevaba al chat del Centro de mando, que vive dentro de la pantalla de Mary y desde Luisa quedaba escondido)
+    let CM_MODAL_AG = 'mary';
+    function cmIr(agente) { cmModalAgente(agente === 'luisa' ? 'luisa' : 'mary'); const m = document.getElementById('modalCharla'); if (m) { if (m.parentElement !== document.body) document.body.appendChild(m); m.classList.remove('hidden'); m.style.display = 'flex'; }   /* siempre encima de todo, sin depender de la pantalla abierta */ setTimeout(function () { const i = document.getElementById('cmCharlaTextoM'); if (i) i.focus(); }, 250); }
+    function cmCerrarModal() { const m = document.getElementById('modalCharla'); if (m) { m.classList.add('hidden'); m.style.display = 'none'; } }
+    function cmModalAgente(ag) { CM_MODAL_AG = ag; const t = document.getElementById('cmModalTitulo'); if (t) t.textContent = ag === 'luisa' ? '📣 Conversar con Luisa' : '👩‍💼 Conversar con Mary';
+      ['mary', 'luisa'].forEach(function (x) { const b = document.getElementById('cmTab_' + x); if (b) b.className = 'flex-1 py-2 rounded-xl text-xs font-black transition ' + (x === ag ? 'bg-indigo-600 text-white' : 'bg-gray-800 text-gray-300 hover:bg-gray-700'); });
+      const i = document.getElementById('cmCharlaTextoM'); if (i) i.placeholder = ag === 'luisa' ? 'Escríbele a Luisa… (ej.: ¿qué vas a publicar hoy?)' : 'Escríbele a Mary… (ej.: ¿cómo van las ventas?)';
+      cmPintarChat(ag); }
+    async function cmCharlaModal() { const im = document.getElementById('cmCharlaTextoM'), inp = document.getElementById('cmCharlaTexto'), sel = document.getElementById('cmAgente'); if (!im || !inp || !sel) return;
+      const tx = String(im.value || '').trim(); if (!tx) return; im.value = ''; sel.value = CM_MODAL_AG; inp.value = tx; await cmCharla(); }
     function cmPintarChat(agente) { const box = document.getElementById('cmChat'); if (!box) return; const H = CM_HIST[agente] || [];
       box.innerHTML = H.map(function (h) { if (h.de === 'tu') return '<div class="flex justify-end"><div class="max-w-[85%] px-3 py-2 rounded-2xl rounded-br-sm bg-indigo-600/70 text-white text-[12px]">' + escaparHtml(h.t) + '</div></div>';
         const acc = (h.acciones || []).map(function (a) { return '<button type="button" onclick="cmAccion(\'' + a.id.replace(/'/g, '') + '\')" class="mt-2 mr-2 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-black">' + escaparHtml(a.titulo) + '</button>'; }).join('');
         return '<div class="flex justify-start"><div class="max-w-[85%] px-3 py-2 rounded-2xl rounded-bl-sm bg-gray-800 text-gray-100 text-[12px]"><p class="text-[10px] font-black text-indigo-300 mb-1">' + (agente === 'luisa' ? '📣 Luisa' : '👩‍💼 Mary') + '</p>' + cmMd(h.t) + (acc ? '<div>' + acc + '</div>' : '') + '</div></div>'; }).join('');
-      box.scrollTop = box.scrollHeight; }
+      box.scrollTop = box.scrollHeight;
+      const bm = document.getElementById('cmChatM'); if (bm && agente === CM_MODAL_AG) { bm.innerHTML = box.innerHTML || '<p class="text-[12px] text-gray-500 text-center py-6">Pregúntale lo que quieras o dale una orden en tus palabras.</p>'; bm.scrollTop = bm.scrollHeight; } }
     async function cmCharla() { const inp = document.getElementById('cmCharlaTexto'), sel = document.getElementById('cmAgente'); if (!inp || !sel) return; const tx = String(inp.value || '').trim(); if (!tx) return;
       const ag = sel.value === 'luisa' ? 'luisa' : 'mary'; inp.value = ''; CM_HIST[ag].push({ de: 'tu', t: tx }); CM_HIST[ag].push({ de: 'ella', t: '…', acciones: [] }); cmPintarChat(ag);
       try { const r = await llamarBackend('centro_mando', { op: 'charla', agente: ag, texto: tx, hist: CM_HIST[ag].slice(0, -1).slice(-8) });
@@ -29100,6 +29120,8 @@ const LUISA_COM_DEF_PAG = { activo: true, stockHora: '08:00', mediodiaHora: '12:
     };
     function plataformaNf(a) { const p = String((a && a.plataforma) || 'Netflix').trim(); return p || 'Netflix'; }
     function esNetflixNf(a) { return plataformaNf(a).toLowerCase() === 'netflix'; }
+    function esDisneyNf(a) { return /disney/i.test(plataformaNf(a)); }
+    function tieneRobotNf(a) { return esNetflixNf(a) || esDisneyNf(a); }   // 🤖 Netflix y Disney+ tienen robot
     function iconoPlataformaNf(a) { return ICONO_PLATAFORMA[plataformaNf(a).toLowerCase()] || 'fa-solid fa-layer-group text-gray-400'; }
     function peorEstadoNf(lista) {
       const ests = lista.map(a => estadoNetflix(a).clave);
@@ -29264,7 +29286,9 @@ const LUISA_COM_DEF_PAG = { activo: true, stockHora: '08:00', mediodiaHora: '12:
       const vencida = est.clave === 'vencida';
       const id = escaparHtml(a.id);
 
-      const botonRenovar = precio > 0
+      const botonRenovar = (a.noRenovar === true || a.noRenovarCuenta === true)   // ⛔ «No renovar» marcado en el panel: no se puede pagar
+        ? `<div class="col-span-2 text-[11px] text-amber-200 bg-amber-500/10 border border-amber-500/30 rounded-xl text-center py-2 px-3"><i class="fa-solid fa-circle-info mr-1"></i>Este servicio termina en la fecha indicada y no se renovará. Escríbenos si quieres otro igual.</div>`
+        : precio > 0
         ? `<button id="btnRenovarNf_${ambito}_${id}" onclick="renovarNetflix('${id}','${ambito}')" class="${vencida ? 'bg-red-600 hover:bg-red-500 text-white' : 'bg-gray-800 hover:bg-gray-700 text-gray-100 border border-gray-700'} font-black py-2.5 rounded-xl text-xs flex items-center justify-center gap-1.5 transition"><i class="fa-solid fa-rotate"></i> Renovar por ${escaparHtml(formatoCOP(precio))}</button>`
         : `<div class="col-span-2 text-[11px] text-gray-400 text-center py-2">La renovación en línea no está disponible para esta cuenta. Escríbenos por soporte.</div>`;
 
@@ -29604,6 +29628,7 @@ const LUISA_COM_DEF_PAG = { activo: true, stockHora: '08:00', mediodiaHora: '12:
       ambito = ambito || 'c';
       const a = misAlquileres.find(x => x.id === id);
       if (!a) return;
+      if (a.noRenovar === true || a.noRenovarCuenta === true) { alert('Este servicio no se renovará. Escríbenos si quieres otro igual.'); return; }   // ⛔ «No renovar»
       const plan = parseInt(a.plan, 10) || 1;
       const precio = precioRenovAlquiler(a);   // 🏷 precio actual del producto
       if (modoPruebaCliente && a.simulado) {
@@ -29691,6 +29716,7 @@ const LUISA_COM_DEF_PAG = { activo: true, stockHora: '08:00', mediodiaHora: '12:
         if (f === 'en_tienda' && est !== 'en_tienda') return false;
         if (f === 'pendientes' && !(a.estado === 'asignado' && !a.clienteUid)) return false;
         if (f === 'limpieza' && a.limpiezaPendiente !== true) return false;
+        if (f === 'no_renovar' && !nfNoRenovar(a)) return false;
         if (q) {
           const texto = normalizarBusqueda([a.correo, a.clienteNombre, a.clienteEmail, a.clienteWhatsapp, a.notas, a.perfil, plataformaNf(a)].join(' '));
           if (texto.indexOf(q) === -1) return false;
@@ -29779,6 +29805,7 @@ const LUISA_COM_DEF_PAG = { activo: true, stockHora: '08:00', mediodiaHora: '12:
       }
 
       pintarAmarrarAlquileres();
+      try { const cv = document.getElementById('vencimientosNetflixAdmin'); if (cv) cv.innerHTML = htmlVencimientosNf(); } catch (e) { console.error('Vencimientos: ' + e); }
       const lista = filtrarNetflixAdmin();
       if (!netflixCuentasAdmin.length) {
         cont.innerHTML = '<p class="text-gray-500 text-center py-8 text-sm">Aún no hay cuentas. Usa "Agregar cuenta" o "Carga en bloque".</p>';
@@ -29797,13 +29824,13 @@ const LUISA_COM_DEF_PAG = { activo: true, stockHora: '08:00', mediodiaHora: '12:
       let html = '';
       lista.forEach(a => {
         if (a.tipo !== 'compartida') { html += htmlTarjetaNetflixAdmin(a); return; }
-        if (vistos.has(a.correo)) return;
-        vistos.add(a.correo);
-        const slots = lista.filter(x => x.tipo === 'compartida' && x.correo === a.correo)
+        const kc = claveCuentaNf(a); if (vistos.has(kc)) return;   // una cuenta = mismo correo + misma plataforma (sin importar mayúsculas o espacios)
+        vistos.add(kc);
+        const slots = lista.filter(x => x.tipo === 'compartida' && claveCuentaNf(x) === kc)
           .sort((x, y) => ((x.posNf || 99) - (y.posNf || 99)) || String(x.perfil || '').localeCompare(String(y.perfil || ''), 'es', { numeric: true }));   // orden de Netflix (fila 1 = primer perfil), no alfabético
         html += htmlGrupoCompartidaAdmin(a.correo, slots);
       });
-      cont.innerHTML = html;
+      cont.innerHTML = '<div class="space-y-3">' + html + '</div>';
       lista.forEach(a => pintarOtpNetflix('a', a.id));
     }
 
@@ -29812,24 +29839,162 @@ const LUISA_COM_DEF_PAG = { activo: true, stockHora: '08:00', mediodiaHora: '12:
       return u ? u.email : '';
     }
 
+    // ==================== ALQUILER · CUENTAS ORDENADAS (rediseño) ====================
+    // Una cuenta = mismo correo + misma plataforma (aunque se haya guardado con mayúsculas o espacios distintos)
+    function claveCuentaNf(a) { return plataformaNf(a).toLowerCase() + '|' + String((a && a.correo) || '').trim().toLowerCase(); }
+    function nfNoRenovar(a) { return !!a && (a.noRenovar === true || a.noRenovarCuenta === true); }
+    // Fecha que no tiene sentido (más de 400 días por delante): se marca para corregir, no se muestra como «22619 días»
+    function nfFechaRara(a) { const e = estadoNetflix(a); return a && a.estado === 'asignado' && e.dias !== null && e.dias > 400; }
+    function nfTextoDias(a) {
+      const e = estadoNetflix(a);
+      if (a.estado !== 'asignado') return a.enTienda ? 'Libre · en la tienda' : 'Libre';
+      if (nfFechaRara(a)) return 'Fecha por revisar';
+      if (e.dias === null) return 'Sin fecha de pago';
+      if (e.dias < 0) return 'Venció hace ' + Math.abs(e.dias) + (Math.abs(e.dias) === 1 ? ' día' : ' días');
+      if (e.dias === 0) return 'Vence hoy';
+      if (e.dias === 1) return 'Vence mañana';
+      return e.dias + ' días';
+    }
+    function nfColorDias(a) {
+      const e = estadoNetflix(a);
+      if (a.estado !== 'asignado') return 'text-gray-400';
+      if (nfFechaRara(a) || e.dias === null) return 'text-fuchsia-300';
+      if (e.dias < 0) return 'text-red-400';
+      if (e.dias <= 3) return 'text-amber-300';
+      return 'text-gray-400';
+    }
+    function nfPuntoColor(a) {
+      const e = estadoNetflix(a);
+      if (a.estado !== 'asignado') return a.enTienda ? 'bg-emerald-400' : 'bg-gray-600';
+      if (nfFechaRara(a) || e.dias === null) return 'bg-fuchsia-400';
+      if (e.dias < 0) return 'bg-red-500';
+      if (e.dias <= 3) return 'bg-amber-400';
+      return 'bg-green-500';
+    }
+    const ETQ_NO_RENOVAR = '<span class="shrink-0 text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-amber-500/15 text-amber-300 border border-amber-500/30"><i class="fa-solid fa-ban mr-0.5"></i>No renovar</span>';
+
+    // ---------- Vencimientos: del más urgente al más lejano ----------
+    let nfVencTodos = false;
+    function htmlVencimientosNf() {
+      const pf = (document.getElementById('selNetflixPlataforma') || {}).value || '';
+      const L = netflixCuentasAdmin.filter(a => a.estado === 'asignado' && (!pf || plataformaNf(a).toLowerCase() === pf.toLowerCase()));
+      if (!L.length) return '';
+      const peso = a => { const e = estadoNetflix(a); if (nfFechaRara(a) || e.dias === null) return 1e6; return e.dias; };
+      L.sort((x, y) => (peso(x) - peso(y)) || String(x.proximoPago || '').localeCompare(String(y.proximoPago || '')));
+      const urgentes = L.filter(a => { const e = estadoNetflix(a); return nfFechaRara(a) || e.dias === null || e.dias <= 7; }).length;
+      const ver = nfVencTodos ? L : L.slice(0, Math.max(6, Math.min(urgentes, 15)));
+      const chip = a => {
+        const e = estadoNetflix(a);
+        if (nfFechaRara(a)) return '<span class="w-[74px] shrink-0 text-center text-[10px] font-black py-1 rounded-full bg-fuchsia-500/15 text-fuchsia-300 border border-fuchsia-500/30">Revisar</span>';
+        if (e.dias === null) return '<span class="w-[74px] shrink-0 text-center text-[10px] font-black py-1 rounded-full bg-fuchsia-500/15 text-fuchsia-300 border border-fuchsia-500/30">Sin fecha</span>';
+        const t = e.dias < 0 ? 'Hace ' + Math.abs(e.dias) + (Math.abs(e.dias) === 1 ? ' día' : ' días') : e.dias === 0 ? 'Hoy' : e.dias === 1 ? 'Mañana' : 'En ' + e.dias + ' días';
+        const c = e.dias < 0 ? 'bg-red-500/15 text-red-300 border-red-500/30' : e.dias <= 3 ? 'bg-amber-500/15 text-amber-300 border-amber-500/30' : 'bg-gray-800 text-gray-300 border-gray-700';
+        return `<span class="w-[74px] shrink-0 text-center text-[10px] font-black py-1 rounded-full border ${c}">${t}</span>`;
+      };
+      const fila = a => {
+        const e = estadoNetflix(a), id = escaparHtml(a.id), noR = nfNoRenovar(a);
+        const quien = escaparHtml(a.clienteNombre || a.clienteEmail || 'Sin nombre'), donde = a.tipo === 'compartida' ? escaparHtml(a.perfil || 'Perfil') : 'Cuenta completa';
+        const accion = (e.dias !== null && e.dias < 0 && !nfFechaRara(a))
+          ? `<button onclick="event.stopPropagation();noRenovoNetflix('${id}')" class="shrink-0 px-2 py-1 rounded-lg text-[10px] font-bold bg-red-600 hover:bg-red-500 text-white">${noR ? 'Liberar' : 'No renovó'}</button>`
+          : (nfFechaRara(a) || e.dias === null) ? `<button onclick="event.stopPropagation();abrirModalNetflixCuenta('${id}')" class="shrink-0 px-2 py-1 rounded-lg text-[10px] font-bold bg-fuchsia-600 hover:bg-fuchsia-500 text-white">Corregir</button>` : '';
+        return `<div onclick="abrirGestionNetflix('${id}')" role="button" tabindex="0" class="cursor-pointer flex items-center gap-2 px-3 py-2 hover:bg-gray-800/60 border-b border-gray-800 last:border-b-0 transition">
+          ${chip(a)}
+          <div class="min-w-0 flex-grow">
+            <p class="text-xs font-bold text-white truncate">${quien} <span class="font-normal text-gray-400">· ${donde}</span></p>
+            <p class="text-[10px] text-gray-500 truncate"><i class="${iconoPlataformaNf(a)} mr-1"></i>${escaparHtml(plataformaNf(a))} · <span class="font-mono">${escaparHtml(a.correo || '')}</span></p>
+          </div>
+          ${noR ? ETQ_NO_RENOVAR : ''}${botonWhatsappFila(a)}${accion}
+        </div>`;
+      };
+      return `<div class="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden">
+        <div class="flex items-center justify-between gap-2 px-3 py-2.5 border-b border-gray-800">
+          <p class="text-sm font-black text-white"><i class="fa-solid fa-calendar-days text-amber-300 mr-1.5"></i>Vencimientos <span class="text-[11px] font-normal text-gray-400">· del más urgente al más lejano</span></p>
+          <span class="text-[10px] text-gray-400">${L.length} cliente${L.length === 1 ? '' : 's'}</span>
+        </div>
+        <div>${ver.map(fila).join('')}</div>
+        ${L.length > ver.length || nfVencTodos ? `<button onclick="nfVencTodos=!nfVencTodos;renderizarNetflixAdmin()" class="w-full text-[11px] font-bold text-sky-300 hover:bg-gray-800/60 py-2 border-t border-gray-800">${nfVencTodos ? 'Ver menos' : 'Ver todos (' + L.length + ')'}</button>` : ''}
+      </div>`;
+    }
+
+    // ---------- «No renovar»: por perfil o por cuenta entera ----------
+    async function toggleNoRenovarPerfilNf(id) {
+      const a = netflixCuentasAdmin.find(x => x.id === id); if (!a) return;
+      const poner = a.noRenovar !== true;
+      const quien = (a.tipo === 'compartida' ? (a.perfil || 'este perfil') : (a.correo || 'esta cuenta')) + (a.clienteNombre ? ' (' + a.clienteNombre + ')' : '');
+      if (!await confirmarModal(poner ? '¿Marcar «No renovar» en ' + quien + '? El cliente ya no podrá pagar la renovación: al vencer, el perfil queda libre.' : '¿Volver a permitir que ' + quien + ' se renueve?', { textoAceptar: poner ? 'Sí, no renovar' : 'Sí, permitir' })) return;
+      try { await db.collection('alquileres').doc(id).set({ noRenovar: poner, noRenovarEl: poner ? new Date().toISOString() : '', actualizadoEl: new Date().toISOString() }, { merge: true });
+        mostrarToast(poner ? '⛔ No se renovará: ' + quien : '✅ Se puede renovar otra vez: ' + quien); } catch (e) { alert('No se pudo guardar: ' + e.message); }
+    }
+    async function toggleNoRenovarCuentaNf(clave) {
+      const todos = netflixCuentasAdmin.filter(x => claveCuentaNf(x) === clave); if (!todos.length) return;
+      const poner = !todos.every(x => x.noRenovarCuenta === true), asig = todos.filter(x => x.estado === 'asignado').length;
+      if (!await confirmarModal(poner ? '¿Marcar «No renovar» en TODA la cuenta ' + (todos[0].correo || '') + '? Ninguno de sus ' + todos.length + ' perfiles' + (asig ? ' (' + asig + ' con cliente)' : '') + ' se podrá renovar; al vencer, cada uno queda libre.' : '¿Volver a permitir renovaciones en la cuenta ' + (todos[0].correo || '') + '? (Los perfiles que marcaste uno por uno siguen como estaban.)', { textoAceptar: poner ? 'Sí, no renovar' : 'Sí, permitir' })) return;
+      try { const lote = db.batch(), ahora = new Date().toISOString();
+        todos.forEach(x => lote.set(db.collection('alquileres').doc(x.id), { noRenovarCuenta: poner, actualizadoEl: ahora }, { merge: true }));
+        await lote.commit(); mostrarToast(poner ? '⛔ Cuenta marcada: no se renovará' : '✅ La cuenta se puede renovar otra vez'); } catch (e) { alert('No se pudo guardar: ' + e.message); }
+    }
+
+    // ---------- Una fila por perfil (mismo diseño para todos) ----------
+    function htmlFilaCuentaNf(a, pos) {
+      const id = escaparHtml(a.id), asignada = a.estado === 'asignado', e = estadoNetflix(a), noR = nfNoRenovar(a);
+      const nombre = escaparHtml(a.perfil || ('Perfil ' + pos));
+      const cliente = asignada ? escaparHtml(a.clienteNombre || a.clienteEmail || 'Sin nombre') + ' · ' : '';
+      let accion = '';
+      if (!asignada) accion = `<button onclick="event.stopPropagation();abrirModalNetflixCuenta('${id}', true)" class="shrink-0 px-2.5 py-1 rounded-lg text-[11px] font-bold bg-red-600 hover:bg-red-500 text-white">Asignar</button>`;
+      else if (e.clave === 'vencida' && !nfFechaRara(a)) accion = `<button onclick="event.stopPropagation();noRenovoNetflix('${id}')" class="shrink-0 px-2.5 py-1 rounded-lg text-[11px] font-bold bg-red-600 hover:bg-red-500 text-white">${noR ? 'Liberar' : 'No renovó'}</button>`;
+      const btnNoR = asignada ? `<button onclick="event.stopPropagation();toggleNoRenovarPerfilNf('${id}')" title="${a.noRenovar === true ? 'Permitir renovar este perfil' : 'No renovar este perfil'}" class="shrink-0 w-7 h-7 rounded-lg flex items-center justify-center text-[11px] border transition ${a.noRenovar === true ? 'bg-amber-500/20 text-amber-300 border-amber-500/40' : 'bg-gray-800 text-gray-500 border-gray-700 hover:text-amber-300'}"><i class="fa-solid fa-ban"></i></button>` : '';
+      return `<div onclick="abrirGestionNetflix('${id}')" role="button" tabindex="0" class="cursor-pointer flex items-center gap-2.5 px-3 py-2.5 hover:bg-gray-800/60 border-t border-gray-800 transition">
+        <div class="relative shrink-0 w-8 h-8 rounded-lg bg-gray-800 border border-gray-700 flex items-center justify-center text-xs font-black text-gray-200">${pos}<span class="absolute -right-1 -bottom-1 w-3 h-3 rounded-full border-2 border-gray-900 ${nfPuntoColor(a)}"></span></div>
+        <div class="min-w-0 flex-grow">
+          <p class="text-xs font-bold text-white truncate">${nombre} <span class="font-mono font-normal text-gray-400">· ${a.pin ? 'PIN ' + escaparHtml(a.pin) : 'sin PIN'}</span></p>
+          <p class="text-[11px] truncate ${nfColorDias(a)}">${cliente}${escaparHtml(nfTextoDias(a))}</p>
+          ${a.pinPendiente === true ? '<p class="text-[10px] text-yellow-300"><i class="fa-solid fa-key mr-1"></i>Falta poner el PIN en la plataforma</p>' : ''}
+        </div>
+        ${noR ? ETQ_NO_RENOVAR : ''}${botonWhatsappFila(a)}${btnNoR}${accion}
+        <i class="fa-solid fa-chevron-right text-gray-600 text-[10px] shrink-0"></i>
+      </div>`;
+    }
+
     function htmlGrupoCompartidaAdmin(correo, slots) {
-      const todos = netflixCuentasAdmin.filter(x => x.tipo === 'compartida' && x.correo === correo);
+      const clave = claveCuentaNf(slots[0] || { correo: correo });
+      const todos = netflixCuentasAdmin.filter(x => x.tipo === 'compartida' && claveCuentaNf(x) === clave)
+        .sort((x, y) => ((x.posNf || 99) - (y.posNf || 99)) || String(x.perfil || '').localeCompare(String(y.perfil || ''), 'es', { numeric: true }));
+      const a0 = todos[0] || slots[0];
       const ocupados = todos.filter(x => x.estado === 'asignado').length;
       const pendPin = todos.filter(x => x.pinPendiente === true).length;
       const libresTienda = todos.filter(x => x.estado !== 'asignado' && !x.enTienda).map(x => x.id);
+      const ctaNoR = todos.length && todos.every(x => x.noRenovarCuenta === true);
+      const ingreso = todos.filter(x => x.estado === 'asignado').reduce((t, x) => t + (precioRenovAlquiler(x) || 0), 0);
+      const plat = plataformaNf(a0), esDisney = /disney/i.test(plat);
+      const logo = esDisney ? 'bg-blue-700 text-blue-50' : /netflix/i.test(plat) ? 'bg-red-700 text-red-50' : 'bg-gray-700 text-gray-100';
+      const ini = esDisney ? 'D+' : (plat.trim()[0] || '?').toUpperCase();
+      const barra = todos.map(x => `<div class="flex-1 h-1.5 rounded-full ${nfPuntoColor(x)}"></div>`).join('');
+      const visibles = slots.length ? slots : todos;   // respeta el filtro/búsqueda, pero el número es la posición REAL en la cuenta
+      const pos = x => todos.findIndex(y => y.id === x.id) + 1;
       return `
-        <div class="p-3 bg-gray-900/60 border border-sky-500/30 rounded-2xl">
-          <div class="flex flex-wrap items-start justify-between gap-2">
-            <p class="font-mono text-xs text-white break-all select-all">${escaparHtml(correo)}</p>
-            <div class="flex items-center gap-1.5 shrink-0">
-              <span class="text-[10px] font-bold px-2 py-0.5 rounded-full border bg-sky-500/15 text-sky-300 border-sky-500/30"><i class="${iconoPlataformaNf(todos[0])} mr-1"></i>${escaparHtml(plataformaNf(todos[0]))} · Compartida · ${ocupados}/${todos.length}</span>
-              ${libresTienda.length ? `<button onclick="abrirPasarATienda(['${libresTienda.join("','")}'])" class="px-2 py-0.5 rounded-lg text-[10px] font-bold flex items-center gap-1 transition bg-emerald-600 hover:bg-emerald-500 text-white"><i class="fa-solid fa-store"></i> Pasar ${libresTienda.length === 1 ? '1 libre' : libresTienda.length + ' libres'} a la tienda</button>` : ''}
-              ${esNetflixNf(todos[0]) ? `<button onclick="abrirRobotNetflix('${escaparJsAttr(todos[0].id)}', true)" class="px-2 py-0.5 rounded-lg text-[10px] font-bold flex items-center gap-1 transition bg-violet-600 hover:bg-violet-500 text-white"><i class="fa-solid fa-robot"></i> Robot: toda la cuenta</button>` : ''}
-              <button onclick="eliminarCuentaCompartidaNetflix('${escaparJsAttr(correo)}')" class="px-2 py-0.5 rounded-lg text-[10px] font-bold flex items-center gap-1 transition hover:bg-red-500/20 text-red-400 border border-red-500/40"><i class="fa-solid fa-trash-can"></i> Eliminar cuenta</button>
+        <div class="bg-gray-900 border ${ctaNoR ? 'border-amber-500/40' : 'border-gray-800'} rounded-2xl overflow-hidden">
+          <div class="p-3">
+            <div class="flex items-center gap-2.5">
+              <div class="shrink-0 w-10 h-10 rounded-xl ${logo} flex items-center justify-center font-black">${escaparHtml(ini)}</div>
+              <div class="min-w-0 flex-grow">
+                <p class="text-sm font-black text-white truncate">${escaparHtml(plat)} <span class="font-normal text-gray-400">· ${ocupados} de ${todos.length} en uso</span>${ingreso ? ` <span class="text-[11px] font-normal text-emerald-300">· ${escaparHtml(formatoCOP(ingreso))}</span>` : ''}</p>
+                <div class="flex items-center gap-1.5 min-w-0">
+                  <p class="font-mono text-[11px] text-gray-300 truncate select-all">${escaparHtml(a0.correo || correo)}</p>
+                  <button onclick="navigator.clipboard.writeText('${escaparJsAttr(a0.correo || correo)}').then(()=>mostrarToast('Correo copiado'))" title="Copiar correo" class="shrink-0 text-gray-500 hover:text-white text-[11px]"><i class="fa-regular fa-copy"></i></button>
+                </div>
+              </div>
+              ${ctaNoR ? ETQ_NO_RENOVAR : ''}
+            </div>
+            <div class="flex gap-1 mt-2.5">${barra}</div>
+            ${pendPin ? `<p class="text-[11px] text-yellow-300 mt-2"><i class="fa-solid fa-key mr-1"></i>${pendPin} PIN por poner en ${escaparHtml(plat)}</p>` : ''}
+            <div class="flex flex-wrap gap-1.5 mt-2.5">
+              ${tieneRobotNf(a0) ? `<button onclick="abrirRobotNetflix('${escaparJsAttr(a0.id)}', true)" class="px-2.5 py-1 rounded-lg text-[11px] font-bold flex items-center gap-1 transition bg-violet-600 hover:bg-violet-500 text-white"><i class="fa-solid fa-robot"></i> Robot</button>` : ''}
+              ${libresTienda.length ? `<button onclick="abrirPasarATienda(['${libresTienda.join("','")}'])" class="px-2.5 py-1 rounded-lg text-[11px] font-bold flex items-center gap-1 transition bg-emerald-600 hover:bg-emerald-500 text-white"><i class="fa-solid fa-store"></i> ${libresTienda.length === 1 ? '1 libre' : libresTienda.length + ' libres'} a la tienda</button>` : ''}
+              <button onclick="toggleNoRenovarCuentaNf('${escaparJsAttr(clave)}')" class="px-2.5 py-1 rounded-lg text-[11px] font-bold flex items-center gap-1 transition border ${ctaNoR ? 'bg-amber-500/20 text-amber-200 border-amber-500/40' : 'bg-gray-800 text-gray-300 border-gray-700 hover:text-amber-300'}"><i class="fa-solid fa-ban"></i> ${ctaNoR ? 'Permitir renovar' : 'No renovar cuenta'}</button>
+              <button onclick="eliminarCuentaCompartidaNetflix('${escaparJsAttr(a0.correo || correo)}')" title="Eliminar cuenta" class="ml-auto px-2 py-1 rounded-lg text-[11px] transition hover:bg-red-500/20 text-red-400 border border-red-500/30"><i class="fa-solid fa-trash-can"></i></button>
             </div>
           </div>
-          ${pendPin ? `<p class="text-[11px] text-yellow-300 mt-1"><i class="fa-solid fa-key mr-1"></i> ${pendPin} PIN por cambiar en Netflix</p>` : ''}
-          <div class="mt-2 space-y-1.5">${slots.map(htmlFilaPerfilAdmin).join('')}</div>
+          <div>${visibles.map(x => htmlFilaCuentaNf(x, pos(x))).join('')}</div>
         </div>`;
     }
 
@@ -29937,12 +30102,14 @@ const LUISA_COM_DEF_PAG = { activo: true, stockHora: '08:00', mediodiaHora: '12:
       const a = netflixCuentasAdmin.find(x => x.id === id); if (!a) return;
       const compartida = a.tipo === 'compartida';
       // Mismo orden en que ves las filas en el panel (de arriba abajo): la fila 1 es el perfil 1 de Netflix (el de la izquierda)
-      const slots = compartida ? netflixCuentasAdmin.filter(x => x.tipo === 'compartida' && x.correo === a.correo).sort((x, y) => ((x.posNf || 99) - (y.posNf || 99)) || String(x.perfil || '').localeCompare(String(y.perfil || ''), 'es', { numeric: true })) : [];   // primero la posición en Netflix (la guarda «Ya quedó»)
+      const slots = compartida ? netflixCuentasAdmin.filter(x => x.tipo === 'compartida' && claveCuentaNf(x) === claveCuentaNf(a)).sort((x, y) => ((x.posNf || 99) - (y.posNf || 99)) || String(x.perfil || '').localeCompare(String(y.perfil || ''), 'es', { numeric: true })) : [];   // primero la posición en Netflix (la guarda «Ya quedó»)
       const azar = nombresRobotAzar(Math.max(slots.length, 5));
       const filas = compartida
         ? slots.map((x, i) => ({ slotId: x.id, pos: i + 1, actual: x.perfil || '', nuevo: azar[i], pin: (todaLaCuenta || x.id === id) ? generarPinNetflix(x.pin) : '', sel: !!todaLaCuenta || x.id === id }))
         : [1, 2, 3, 4, 5].map((n, i) => ({ slotId: '', pos: n, actual: '', nuevo: azar[i], pin: '', sel: false }));
-      robotNf = { id: id, correo: a.correo || '', compartida: compartida, filas: filas, srvUrl: '' };
+      const platR = esDisneyNf(a) ? 'disney' : 'netflix';
+      robotNf = { id: id, correo: a.correo || '', compartida: compartida, filas: filas, srvUrl: '', plat: platR };
+      try { document.getElementById('rnTitulo').textContent = platR === 'disney' ? 'Robot Disney+' : 'Robot Netflix'; const op = document.getElementById('rnOpPerfil'); if (op) op.style.display = platR === 'disney' ? 'none' : ''; } catch (e) { /* nada */ }
       urlServidorPublico().then(function (u) { if (robotNf) robotNf.srvUrl = u || ''; try { if (u) localStorage.setItem('epicRobotNfSrv', u); } catch (e) {} }).catch(function () {});
       llamarBackend('nf_robot_clave', {}).then(function (r) { if (r && r.ok && r.clave) { if (robotNf) robotNf.clave = r.clave; try { localStorage.setItem('epicRobotNfClave', r.clave); } catch (e) {} const el = document.getElementById('rnClaveRobot'); if (el && !el.value) el.value = r.clave; } }).catch(function () {});
       document.getElementById('rnCorreo').textContent = (a.correo || '') + (compartida ? ' · compartida' : ' · cuenta completa');
@@ -29991,23 +30158,25 @@ const LUISA_COM_DEF_PAG = { activo: true, stockHora: '08:00', mediodiaHora: '12:
       const perfiles = filas.filter(f => (f.nuevo && f.nuevo !== f.actual) || f.pin).map(f => ({ pos: f.pos, actual: f.actual, nuevo: f.nuevo || f.actual, pin: f.pin || '' }));
       if (!perfiles.length && modo === 'ninguno') { alert('No hay nada que hacer: cambia un nombre, pon un PIN o elige a quién sacar.'); return null; }
       let claveR = (robotNf && robotNf.clave) || ''; if (!claveR) { try { claveR = localStorage.getItem('epicRobotNfClave') || ''; } catch (e) {} }
-      return { v: 1, correo: robotNf.correo, perfiles: perfiles, sacar: modo, perfilSacar: perfilSacar, srv: robotNf.srvUrl || '', clave: claveR, t: Date.now() };
+      return { v: 1, plataforma: robotNf.plat || 'netflix', correo: robotNf.correo, perfiles: perfiles, sacar: modo, perfilSacar: perfilSacar, srv: robotNf.srvUrl || '', clave: claveR, t: Date.now() };
     }
     function ejecutarRobotNetflix() {
       const o = ordenRobotNetflix(); if (!o) return;
 
       let b64 = ''; try { b64 = btoa(unescape(encodeURIComponent(JSON.stringify(o)))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''); } catch (e) { alert('No se pudo armar la orden.'); return; }
       // La orden viaja en el enlace y en el nombre de la pestaña (así sobrevive si Netflix te pide iniciar sesión)
-      const w = window.open('https://www.netflix.com/account/profiles?epicrobot=' + b64 + '#epicrobot=' + b64, 'epicrobot:' + b64);
+      const destino = robotNf.plat === 'disney' ? 'https://www.disneyplus.com/edit-profiles' : 'https://www.netflix.com/account/profiles';
+      const w = window.open(destino + '?epicrobot=' + b64 + '#epicrobot=' + b64, 'epicrobot:' + b64);
       if (!w) { alert('El navegador bloqueó la pestaña nueva. Permite las ventanas emergentes para esta página y vuelve a tocar el botón.'); return; }
-      robotNf.enviado = o; mostrarToast('🤖 Orden enviada a Netflix. Cuando la cajita del robot diga «Listo», vuelve y toca «Ya quedó».');
+      robotNf.enviado = o; mostrarToast('🤖 Orden enviada a ' + (robotNf.plat === 'disney' ? 'Disney+' : 'Netflix') + '. Cuando la cajita del robot diga «Listo», vuelve y toca «Ya quedó».');
     }
     async function guardarRobotNetflix() {
       if (!robotNf) return; const o = robotNf.enviado;
-      const correoNf = String(robotNf.correo || '').toLowerCase(), kUsado = 'epicRobotNfUsado_' + correoNf;
+      const correoNf = String(robotNf.correo || '').toLowerCase(), kUsado = 'epicRobotNfUsado_' + (robotNf.plat === 'disney' ? 'dsn_' : '') + correoNf;
       let resNav = null; try { resNav = JSON.parse(localStorage.getItem('epicRobotNfResultado') || 'null'); } catch (e) { resNav = null; }
       if (resNav && String(resNav.correo || '').toLowerCase() !== correoNf) resNav = null;
-      let resSrv = null; try { const r = await llamarBackend('nf_robot_resultado_leer', { correo: robotNf.correo }); if (r && r.ok && r.resultado) resSrv = r.resultado; } catch (e) { resSrv = null; }
+      if (robotNf.plat === 'disney') resNav = null;   // Disney+ manda su resultado solo al servidor
+      let resSrv = null; try { const r = await llamarBackend('nf_robot_resultado_leer', { correo: robotNf.correo, plataforma: robotNf.plat || 'netflix' }); if (r && r.ok && r.resultado) resSrv = r.resultado; } catch (e) { resSrv = null; }
       // el más reciente de los dos, y solo si no se guardó antes
       let resPrevio = [resNav, resSrv].filter(Boolean).sort((x, y) => (y.t || 0) - (x.t || 0))[0] || null;
       let usado = 0; try { usado = parseInt(localStorage.getItem(kUsado) || '0', 10) || 0; } catch (e) {}
@@ -30154,7 +30323,8 @@ const LUISA_COM_DEF_PAG = { activo: true, stockHora: '08:00', mediodiaHora: '12:
       if (a.pinPendiente === true) botones += btn('bg-yellow-500/20 hover:bg-yellow-500/30 text-yellow-300 border border-yellow-500/40', `marcarPinCambiadoNetflix('${id}')`, 'fa-key', 'Ya cambié el PIN');
       if (a.limpiezaPendiente === true && a.tipo !== 'compartida' && esNetflixNf(a)) botones += btn(gris, `abrirRestablecerNetflix('${escaparJsAttr(a.correo)}')`, 'fa-arrow-up-right-from-square', 'Restablecer clave');
       if (puedeEscribirWhatsappNf(a)) botones += `<button onclick="escribirWhatsappNf('${id}')" class="px-2.5 py-1.5 rounded-lg text-[11px] font-bold flex items-center gap-1 transition bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 border border-emerald-500/30"><i class="fa-brands fa-whatsapp"></i> WhatsApp</button>`;
-      if (esNetflixNf(a)) botones += btn('bg-violet-500/15 hover:bg-violet-500/25 text-violet-200 border border-violet-500/40', `abrirRobotNetflix('${id}')`, 'fa-robot', 'Robot');   // 🤖 nombres, PIN y sacar dispositivos en Netflix
+      if (tieneRobotNf(a)) botones += btn('bg-violet-500/15 hover:bg-violet-500/25 text-violet-200 border border-violet-500/40', `abrirRobotNetflix('${id}')`, 'fa-robot', 'Robot');
+      if (a.estado === 'asignado') botones += btn(a.noRenovar === true ? 'bg-amber-500/20 hover:bg-amber-500/30 text-amber-200 border border-amber-500/40' : 'bg-gray-800 hover:bg-gray-700 text-gray-300 border border-gray-700', `toggleNoRenovarPerfilNf('${id}')`, 'fa-ban', a.noRenovar === true ? 'Permitir renovar' : 'No renovar');   // ⛔ el cliente no podrá pagar la renovación   // 🤖 nombres, PIN y sacar dispositivos en Netflix
       botones += btn(gris, `abrirModalNetflixCuenta('${id}')`, 'fa-pen', 'Editar');
       botones += btn(gris, `verHistorialNetflix('${id}')`, 'fa-clock-rotate-left', 'Historial');
       if (!enGrupo) botones += `<button onclick="eliminarCuentaNetflix('${id}')" class="ml-auto px-2.5 py-1.5 rounded-lg text-[11px] font-bold flex items-center gap-1 transition hover:bg-red-500/20 text-red-400 border border-red-500/40"><i class="fa-solid fa-trash-can"></i> Eliminar cuenta</button>`;
@@ -30165,8 +30335,9 @@ const LUISA_COM_DEF_PAG = { activo: true, stockHora: '08:00', mediodiaHora: '12:
             ${enGrupo
               ? `<div class="min-w-0"><p class="text-xs font-bold text-sky-200"><i class="fa-solid fa-circle-user mr-1"></i>${escaparHtml(a.perfil || 'Perfil')}</p><p class="text-[10px] text-gray-500 mt-0.5"><i class="${iconoPlataformaNf(a)} mr-1"></i>${escaparHtml(plataformaNf(a))}</p></div>`
               : `<div class="min-w-0"><p class="font-mono text-xs text-white break-all select-all"><i class="${iconoPlataformaNf(a)} mr-1.5"></i>${escaparHtml(a.correo)}</p><p class="text-[10px] text-gray-500 mt-0.5">${escaparHtml(plataformaNf(a))}</p></div>`}
-            <span class="shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-full border ${st.chip}">${st.txt}</span>
+            ${nfNoRenovar(a) ? ETQ_NO_RENOVAR : ''}<span class="shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-full border ${st.chip}">${st.txt}</span>
           </div>
+          ${nfNoRenovar(a) ? `<p class="text-[11px] text-amber-300 mt-1"><i class="fa-solid fa-ban mr-1"></i>${a.noRenovarCuenta === true ? 'Toda la cuenta' : 'Este perfil'} está marcado «No renovar»: el cliente no puede pagar la renovación.</p>` : ''}
           <p class="text-xs mt-1.5">${cliente}${a.clienteWhatsapp ? ` <span class="text-[10px] text-gray-500">· ${escaparHtml(a.clienteWhatsapp)}</span>` : ''}</p>
           ${lineaUsuario}
           ${a.tipo === 'compartida' ? `<p class="text-[11px] mt-1 text-sky-300"><i class="fa-solid fa-lock mr-1"></i> PIN: <b class="font-mono tracking-widest">${escaparHtml(a.pin || 'sin definir')}</b></p>` : ''}
