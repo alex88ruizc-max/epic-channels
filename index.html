@@ -2525,6 +2525,22 @@
 
       </div>
       <!-- ==================== ADMIN: LUISA (MARKETING) ==================== -->
+      <div id="modalCuentaNfEd" class="hidden fixed inset-0 z-[85] bg-black/70 items-end sm:items-center justify-center" onclick="if(event.target===this)nfCerrar('modalCuentaNfEd')">
+        <div class="w-full sm:max-w-md bg-gray-900 border border-gray-700 rounded-t-2xl sm:rounded-2xl p-4 space-y-3" style="max-height:90vh;overflow-y:auto">
+          <div class="flex items-center gap-2"><p id="cnTitulo" class="text-sm font-black text-white flex-1"><i class="fa-solid fa-pen mr-1.5"></i>Editar cuenta</p><button type="button" onclick="nfCerrar('modalCuentaNfEd')" aria-label="Cerrar" class="w-8 h-8 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300"><i class="fa-solid fa-xmark"></i></button></div>
+          <div><label class="block text-xs text-gray-400 mb-1">Correo de la cuenta</label>
+            <input type="text" id="cnCorreo" autocomplete="off" autocapitalize="none" spellcheck="false" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-sm text-white font-mono focus:outline-none focus:border-sky-500">
+            <p class="text-[10px] text-gray-500 mt-1">Si lo cambias, se cambia en todos los perfiles de la cuenta.</p></div>
+          <div id="cnBloqueClave" class="hidden"><label class="block text-xs text-gray-400 mb-1">Contraseña de la cuenta Disney+ <span class="text-gray-500">(el robot la usa para el PIN de perfil)</span></label>
+            <div class="relative"><input type="password" id="cnClave" autocomplete="new-password" data-lpignore="true" maxlength="120" placeholder="Contraseña de Disney+" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 pr-10 text-sm text-white focus:outline-none focus:border-sky-500">
+              <button type="button" onclick="const i=document.getElementById('cnClave'); i.type = i.type === 'password' ? 'text' : 'password';" aria-label="Ver contraseña" class="absolute right-2 top-1/2 -translate-y-1/2 w-7 h-7 text-gray-400 hover:text-white"><i class="fa-regular fa-eye"></i></button></div>
+            <p class="text-[10px] text-gray-500 mt-1"><i class="fa-solid fa-lock mr-1"></i>Se guarda en la zona privada del servidor: los clientes nunca la ven.</p></div>
+          <div class="flex items-center gap-2"><p id="cnPerfilesTxt" class="text-xs text-gray-300 flex-1"></p>
+            <label class="text-xs text-gray-400">Agregar</label><select id="cnAgregar" class="bg-gray-800 border border-gray-700 rounded-xl px-2 py-1.5 text-xs text-white"></select></div>
+          <button type="button" id="cnRepetidos" onclick="quitarRepetidosCuentaNf()" class="hidden w-full py-2 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 text-amber-200 border border-amber-500/40 font-bold text-xs"></button>
+          <button type="button" id="cnBtnGuardar" onclick="guardarEditarCuentaNf()" class="w-full py-2.5 rounded-xl bg-red-600 hover:bg-red-500 text-white font-black text-sm">Guardar</button>
+        </div>
+      </div>
       <div id="modalCharla" class="hidden fixed inset-0 z-[90] bg-black/70 items-end sm:items-center justify-center" onclick="if(event.target===this)cmCerrarModal()">
         <div class="w-full sm:max-w-lg bg-gray-900 border border-indigo-700/60 rounded-t-2xl sm:rounded-2xl p-4 flex flex-col" style="max-height:88vh">
           <div class="flex items-center gap-2"><p id="cmModalTitulo" class="text-sm font-black text-white flex-1">💬 Conversar</p><button type="button" onclick="cmCerrarModal()" class="w-8 h-8 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300" aria-label="Cerrar"><i class="fa-solid fa-xmark"></i></button></div>
@@ -18382,7 +18398,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-11-08q';
+    const VERSION_PAGINA = '2026-11-08s';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261105_ranking', fecha: '2026-11-05', titulo: '🏆 ¡Llegó el ranking del mes!', mensaje: 'Ahora en la página ves **en qué puesto vas** (arriba, debajo de tu saldo). Los **3 que más recarguen** en el mes se llevan **saldo de regalo**: el **4%**, el **3%** y el **2%** de lo que recargaron. Para participar debes recargar mínimo **$150.000** en el mes. Se actualiza cada hora, cierra el último día del mes y el premio te cae solo el día 1. ¿Quién va a ser el primero? 😎', ir: '' },
       { id: 'act_20261102_codigos_seguros', fecha: '2026-11-02', titulo: 'Tus códigos, más protegidos 🔒', mensaje: 'Tu enlace de códigos ahora es más seguro: los códigos para **crear cuentas nuevas** con nuestros correos ya no se muestran a nadie sin permiso. Los códigos para **entrar a tu cuenta** y **cambiar la contraseña** te siguen llegando al instante, igual que siempre.', ir: '' },
@@ -29325,8 +29341,12 @@ const LUISA_COM_DEF_PAG = { activo: true, stockHora: '08:00', mediodiaHora: '12:
     }
 
     // ==================== CUENTAS COMPARTIDAS, "NO RENOVÓ" Y NETFLIX EN LA TIENDA ====================
+    const nfCreadasRecien = {};
     async function crearCuentaCompartida(correo, cantidadTxt, notas, plataforma) {
-      const n = Math.max(2, Math.min(10, parseInt(cantidadTxt, 10) || 5));   // tú eliges: de 2 a 10 perfiles (Netflix 5, Disney+ hasta 7…)
+      const n = Math.max(2, Math.min(10, parseInt(cantidadTxt, 10) || 5));
+      const kN = String(plataforma || 'Netflix').toLowerCase() + '|' + String(correo || '').trim().toLowerCase();
+      if ((nfCreadasRecien[kN] && Date.now() - nfCreadasRecien[kN] < 120000) || netflixCuentasAdmin.some(x => claveCuentaNf(x) === kN)) { alert('Esa cuenta ya está creada. Si quieres más perfiles, usa «Editar cuenta» → Agregar.'); return; }
+      nfCreadasRecien[kN] = Date.now();   // tú eliges: de 2 a 10 perfiles (Netflix 5, Disney+ hasta 7…)
       const btn = document.getElementById('btnGuardarNetflixCuenta');
       if (btn) { btn.disabled = true; btn.innerHTML = SPINNER_NF + ' Creando...'; }
       try {
@@ -29334,7 +29354,7 @@ const LUISA_COM_DEF_PAG = { activo: true, stockHora: '08:00', mediodiaHora: '12:
         const lote = db.batch();
         for (let i = 1; i <= n; i++) {
           lote.set(db.collection('alquileres').doc(), {
-            correo: correo, plataforma: plataforma || 'Netflix', tipo: 'compartida', perfil: 'Perfil ' + i, pin: '', pinPendiente: false,
+            correo: correo, plataforma: plataforma || 'Netflix', tipo: 'compartida', perfil: 'Perfil ' + i, posNf: i, pin: '', pinPendiente: false,
             estado: 'sin_asignar', clienteNombre: '', clienteWhatsapp: '', clienteUid: '', clienteEmail: '',
             plan: 1, precio: 0, fechaInicio: '', proximoPago: '', limpiezaPendiente: false,
             notas: notas || '', creadoEl: ahora, actualizadoEl: ahora
@@ -29924,6 +29944,65 @@ const LUISA_COM_DEF_PAG = { activo: true, stockHora: '08:00', mediodiaHora: '12:
       </div>`;
     }
 
+    // ---------- ✏️ Editar cuenta: correo (en todos sus perfiles), contraseña de Disney+ y agregar perfiles ----------
+    let cnClaveCta = '';
+    function abrirEditarCuentaNf(clave) {
+      const todos = netflixCuentasAdmin.filter(x => claveCuentaNf(x) === clave); if (!todos.length) return;
+      cnClaveCta = clave; const a0 = todos[0], plat = plataformaNf(a0), esD = /disney/i.test(plat), comp = a0.tipo === 'compartida';
+      const m = document.getElementById('modalCuentaNfEd'); if (m && m.parentElement !== document.body) document.body.appendChild(m);
+      document.getElementById('cnTitulo').innerHTML = '<i class="fa-solid fa-pen mr-1.5"></i>Editar cuenta · ' + escaparHtml(plat);
+      document.getElementById('cnCorreo').value = String(a0.correo || '').trim();
+      document.getElementById('cnBloqueClave').classList.toggle('hidden', !esD);
+      const cl = document.getElementById('cnClave'); cl.value = ''; cl.type = 'password'; cl.placeholder = 'Contraseña de Disney+';
+      if (esD) llamarBackend('cuenta_clave_leer', { correo: String(a0.correo || '').trim().toLowerCase(), plataforma: plat }).then(r => { if (r && r.ok && r.clave && !cl.value) cl.value = r.clave; else if (r && r.ok && !r.clave) cl.placeholder = 'Aún no la has guardado'; }).catch(() => {});
+      document.getElementById('cnPerfilesTxt').textContent = comp ? 'Tiene ' + todos.length + ' perfil' + (todos.length === 1 ? '' : 'es') : 'Cuenta completa (un solo cliente)';
+      const sel = document.getElementById('cnAgregar'), max = comp ? Math.max(0, 10 - todos.length) : 0;
+      const rep = comp ? repetidosCuentaNf(clave).length : 0, br = document.getElementById('cnRepetidos');
+      if (br) { br.classList.toggle('hidden', !rep); br.innerHTML = '<i class="fa-solid fa-broom mr-1"></i> Quitar ' + rep + ' perfil' + (rep === 1 ? '' : 'es') + ' repetido' + (rep === 1 ? '' : 's'); }
+      sel.innerHTML = Array.from({ length: max + 1 }, (_, i) => `<option value="${i}">${i === 0 ? 'Ninguno' : '+' + i + ' perfil' + (i === 1 ? '' : 'es')}</option>`).join(''); sel.disabled = !max;
+      nfAbrir('modalCuentaNfEd');
+    }
+    let cnGuardando = false;
+    async function guardarEditarCuentaNf() {
+      if (cnGuardando) return; cnGuardando = true;
+      try { await guardarEditarCuentaNfInterno(); } finally { cnGuardando = false; }
+    }
+    // Perfiles repetidos (mismo nombre en la misma cuenta) que están LIBRES: se pueden quitar. Nunca se toca uno con cliente.
+    function repetidosCuentaNf(clave) {
+      const todos = netflixCuentasAdmin.filter(x => claveCuentaNf(x) === clave && x.tipo === 'compartida')
+        .sort((x, y) => ((x.estado === 'asignado' ? 0 : 1) - (y.estado === 'asignado' ? 0 : 1)) || ((x.posNf || 99) - (y.posNf || 99)) || String(x.creadoEl || '').localeCompare(String(y.creadoEl || '')));
+      const vistos = {}, sobran = [];
+      todos.forEach(x => { const k = String(x.perfil || '').trim().toLowerCase(); if (!vistos[k]) { vistos[k] = 1; return; } if (x.estado !== 'asignado' && !x.clienteUid && !x.enTienda) sobran.push(x); });
+      return sobran;
+    }
+    async function quitarRepetidosCuentaNf() {
+      const sobran = repetidosCuentaNf(cnClaveCta); if (!sobran.length) return;
+      if (!await confirmarModal('¿Quitar ' + sobran.length + ' perfil' + (sobran.length === 1 ? '' : 'es') + ' repetido' + (sobran.length === 1 ? '' : 's') + '? Solo se borran los que están libres; los que tienen cliente no se tocan.', { textoAceptar: 'Sí, quitar' })) return;
+      try { const lote = db.batch(); sobran.forEach(x => lote.delete(db.collection('alquileres').doc(x.id))); await lote.commit();
+        mostrarToast('🧹 Quité ' + sobran.length + ' perfil' + (sobran.length === 1 ? '' : 'es') + ' repetido' + (sobran.length === 1 ? '' : 's')); nfCerrar('modalCuentaNfEd'); } catch (e) { alert('No se pudo: ' + e.message); }
+    }
+    async function guardarEditarCuentaNfInterno() {
+      const todos = netflixCuentasAdmin.filter(x => claveCuentaNf(x) === cnClaveCta); if (!todos.length) { nfCerrar('modalCuentaNfEd'); return; }
+      const a0 = todos[0], plat = plataformaNf(a0), esD = /disney/i.test(plat);
+      const nuevo = nfNormalizarCorreo(document.getElementById('cnCorreo').value || '');
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(nuevo)) { alert('El correo no es válido: ' + nuevo); return; }
+      const claveNueva = plataformaNf(a0).toLowerCase() + '|' + nuevo.toLowerCase();
+      if (claveNueva !== cnClaveCta && netflixCuentasAdmin.some(x => claveCuentaNf(x) === claveNueva)) { alert('Ya existe otra cuenta de ' + plat + ' con ese correo.'); return; }
+      const agregar = parseInt(document.getElementById('cnAgregar').value, 10) || 0;
+      const btn = document.getElementById('cnBtnGuardar'); btn.disabled = true; btn.innerHTML = SPINNER_NF + ' Guardando...';
+      try {
+        if (esD) { const v = String(document.getElementById('cnClave').value || ''); if (v) { const r = await llamarBackend('cuenta_clave', { correo: nuevo, plataforma: plat, clave: v }); if (!r || !r.ok) throw new Error((r && r.error) || 'No pude guardar la contraseña.'); } }
+        const lote = db.batch(), ahora = new Date().toISOString(); let n = 0;
+        todos.forEach(x => { if (String(x.correo || '') !== nuevo) { lote.set(db.collection('alquileres').doc(x.id), { correo: nuevo, actualizadoEl: ahora }, { merge: true }); n++; } });   // también deja el correo limpio (sin espacios ni mayúsculas)
+        for (let i = 1; i <= agregar; i++) { const pos = todos.length + i;
+          lote.set(db.collection('alquileres').doc(), { correo: nuevo, plataforma: plat, tipo: 'compartida', perfil: 'Perfil ' + pos, posNf: pos, pin: '', pinPendiente: false,
+            estado: 'sin_asignar', clienteNombre: '', clienteWhatsapp: '', clienteUid: '', clienteEmail: '', plan: 1, precio: 0, fechaInicio: '', proximoPago: '', limpiezaPendiente: false, notas: a0.notas || '', creadoEl: ahora, actualizadoEl: ahora }); n++; }
+        if (n) await lote.commit();
+        nfCerrar('modalCuentaNfEd'); mostrarToast('✅ Cuenta guardada' + (agregar ? ' · ' + agregar + ' perfil' + (agregar === 1 ? '' : 'es') + ' nuevo' + (agregar === 1 ? '' : 's') : ''));
+      } catch (err) { alert('No se pudo guardar: ' + (err.message || err)); }
+      finally { btn.disabled = false; btn.innerHTML = 'Guardar'; }
+    }
+
     // ---------- «No renovar»: por perfil o por cuenta entera ----------
     async function toggleNoRenovarPerfilNf(id) {
       const a = netflixCuentasAdmin.find(x => x.id === id); if (!a) return;
@@ -29958,7 +30037,7 @@ const LUISA_COM_DEF_PAG = { activo: true, stockHora: '08:00', mediodiaHora: '12:
           <p class="text-[11px] truncate ${nfColorDias(a)}">${cliente}${escaparHtml(nfTextoDias(a))}</p>
           ${a.pinPendiente === true ? '<p class="text-[10px] text-yellow-300"><i class="fa-solid fa-key mr-1"></i>Falta poner el PIN en la plataforma</p>' : ''}
         </div>
-        ${noR ? ETQ_NO_RENOVAR : ''}${botonWhatsappFila(a)}${btnNoR}${accion}
+        ${noR ? ETQ_NO_RENOVAR : ''}${botonWhatsappFila(a)}<button onclick="event.stopPropagation();abrirModalNetflixCuenta('${id}')" title="Editar este perfil" class="shrink-0 w-7 h-7 rounded-lg flex items-center justify-center text-[11px] border bg-gray-800 text-gray-400 border-gray-700 hover:text-white"><i class="fa-solid fa-pen"></i></button>${btnNoR}${accion}
         <i class="fa-solid fa-chevron-right text-gray-600 text-[10px] shrink-0"></i>
       </div>`;
     }
@@ -29998,6 +30077,7 @@ const LUISA_COM_DEF_PAG = { activo: true, stockHora: '08:00', mediodiaHora: '12:
             <div class="flex flex-wrap gap-1.5 mt-2.5">
               ${tieneRobotNf(a0) ? `<button onclick="abrirRobotNetflix('${escaparJsAttr(a0.id)}', true)" class="px-2.5 py-1 rounded-lg text-[11px] font-bold flex items-center gap-1 transition bg-violet-600 hover:bg-violet-500 text-white"><i class="fa-solid fa-robot"></i> Robot</button>` : ''}
               ${libresTienda.length ? `<button onclick="abrirPasarATienda(['${libresTienda.join("','")}'])" class="px-2.5 py-1 rounded-lg text-[11px] font-bold flex items-center gap-1 transition bg-emerald-600 hover:bg-emerald-500 text-white"><i class="fa-solid fa-store"></i> ${libresTienda.length === 1 ? '1 libre' : libresTienda.length + ' libres'} a la tienda</button>` : ''}
+              <button onclick="abrirEditarCuentaNf('${escaparJsAttr(clave)}')" class="px-2.5 py-1 rounded-lg text-[11px] font-bold flex items-center gap-1 transition bg-gray-800 text-gray-200 border border-gray-700 hover:bg-gray-700"><i class="fa-solid fa-pen"></i> Editar cuenta</button>
               <button onclick="toggleNoRenovarCuentaNf('${escaparJsAttr(clave)}')" class="px-2.5 py-1 rounded-lg text-[11px] font-bold flex items-center gap-1 transition border ${ctaNoR ? 'bg-amber-500/20 text-amber-200 border-amber-500/40' : 'bg-gray-800 text-gray-300 border-gray-700 hover:text-amber-300'}"><i class="fa-solid fa-ban"></i> ${ctaNoR ? 'Permitir renovar' : 'No renovar cuenta'}</button>
               <button onclick="eliminarCuentaCompartidaNetflix('${escaparJsAttr(a0.correo || correo)}')" title="Eliminar cuenta" class="ml-auto px-2 py-1 rounded-lg text-[11px] transition hover:bg-red-500/20 text-red-400 border border-red-500/30"><i class="fa-solid fa-trash-can"></i></button>
             </div>
@@ -30577,8 +30657,15 @@ const LUISA_COM_DEF_PAG = { activo: true, stockHora: '08:00', mediodiaHora: '12:
       }
     }
 
+    // 🔒 Candado: mientras se guarda, el segundo toque no hace nada (antes un doble toque creaba la cuenta dos veces)
+    let nfGuardandoCta = false;
     async function guardarNetflixCuenta(e) {
-      e.preventDefault();
+      if (e && e.preventDefault) e.preventDefault();
+      if (nfGuardandoCta) return;
+      nfGuardandoCta = true; const bG = document.getElementById('btnGuardarNetflixCuenta'); if (bG) bG.disabled = true;
+      try { await guardarNetflixCuentaInterno(e); } finally { nfGuardandoCta = false; if (bG) bG.disabled = false; }
+    }
+    async function guardarNetflixCuentaInterno(e) {
       const val = (id) => ((document.getElementById(id) || {}).value || '').trim();
       const correo = nfNormalizarCorreo(val('nfCorreo'));
       if (!correo) { alert('Falta el correo de la cuenta. Escríbelo o toca "Pegar".'); return; }
