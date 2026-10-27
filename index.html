@@ -30254,7 +30254,7 @@ const LUISA_COM_DEF_PAG = { activo: true, stockHora: '08:00', mediodiaHora: '12:
       if (modo === 'perfil' && !perfilSacar) { alert('Elige de qué perfil sacar los dispositivos.'); return null; }
       if (modo === 'seleccionados' && !filas.length) { alert('Marca arriba los perfiles a los que quieres sacar los dispositivos.'); return null; }
       const perfilesSacar = modo === 'seleccionados' ? filas.map(f => f.actual || ('Perfil ' + f.pos)) : [];
-      const perfiles = filas.filter(f => (f.nuevo && f.nuevo !== f.actual) || f.pin || f.reemplazar).map(f => ({ pos: f.pos, slot: f.slotId || '', actual: f.actual, nuevo: f.nuevo || f.actual, pin: f.pin || '', reemplazar: !!f.reemplazar, pinActual: (/^\d{4}$/.test(String(((netflixCuentasAdmin.find(x => x.id === f.slotId) || {}).pin) || '')) ? String(netflixCuentasAdmin.find(x => x.id === f.slotId).pin) : '') }));   // pinActual: Disney+ lo pide para editar un perfil con candado
+      const perfiles = filas.filter(f => (f.nuevo && f.nuevo !== f.actual) || f.pin || f.reemplazar).map(f => ({ pos: f.pos, actual: f.actual, nuevo: f.nuevo || f.actual, pin: f.pin || '', reemplazar: !!f.reemplazar, pinActual: (/^\d{4}$/.test(String(((netflixCuentasAdmin.find(x => x.id === f.slotId) || {}).pin) || '')) ? String(netflixCuentasAdmin.find(x => x.id === f.slotId).pin) : '') }));   // pinActual: Disney+ lo pide para editar un perfil con candado
       if (!perfiles.length && modo === 'ninguno') { alert('No hay nada que hacer: cambia un nombre, pon un PIN o elige a quién sacar.'); return null; }
       let claveR = (robotNf && robotNf.clave) || ''; if (!claveR) { try { claveR = localStorage.getItem('epicRobotNfClave') || ''; } catch (e) {} }
       return { v: 1, plataforma: robotNf.plat || 'netflix', correo: robotNf.correo, perfiles: perfiles, sacar: modo, perfilSacar: perfilSacar, perfilesSacar: perfilesSacar, srv: robotNf.srvUrl || '', clave: claveR, t: Date.now() };
@@ -30272,8 +30272,8 @@ const LUISA_COM_DEF_PAG = { activo: true, stockHora: '08:00', mediodiaHora: '12:
     async function guardarRobotNetflix() {
       if (!robotNf) return; const o = robotNf.enviado;
       const correoNf = String(robotNf.correo || '').toLowerCase(), kUsado = 'epicRobotNfUsado_' + (robotNf.plat === 'disney' ? 'dsn_' : '') + correoNf;
-      const kRes = robotNf.plat === 'disney' ? 'epicRobotDsnResultado' : 'epicRobotNfResultado';   // 🌉 cada robot entrega su resultado por su propio puente (Tampermonkey) y también al servidor
-      let resNav = null; try { resNav = JSON.parse(localStorage.getItem(kRes) || 'null'); } catch (e) { resNav = null; }
+      const kNav = robotNf.plat === 'disney' ? 'epicRobotDsnResultado' : 'epicRobotNfResultado';   // cada robot entrega por su propio puente (Tampermonkey)
+      let resNav = null; try { resNav = JSON.parse(localStorage.getItem(kNav) || 'null'); } catch (e) { resNav = null; }
       if (resNav && String(resNav.correo || '').toLowerCase() !== correoNf) resNav = null;
       let resSrv = null; try { const r = await llamarBackend('nf_robot_resultado_leer', { correo: robotNf.correo, plataforma: robotNf.plat || 'netflix' }); if (r && r.ok && r.resultado) resSrv = r.resultado; } catch (e) { resSrv = null; }
       // el más reciente de los dos, y solo si no se guardó antes
@@ -30302,7 +30302,7 @@ const LUISA_COM_DEF_PAG = { activo: true, stockHora: '08:00', mediodiaHora: '12:
         cambios.forEach(c => { if (c.slotId) lote.set(db.collection('alquileres').doc(c.slotId), Object.assign({ actualizadoEl: ahora }, c.d, posDe[c.slotId] ? { posNf: posDe[c.slotId] } : {}), { merge: true }); });
         // fija la posición de TODOS los perfiles de la cuenta (fila N = perfil N de la plataforma), así el orden no cambia al renombrar
         robotNf.filas.forEach(f => { if (f.slotId && !cambios.some(c => c.slotId === f.slotId)) lote.set(db.collection('alquileres').doc(f.slotId), { posNf: posDe[f.slotId] || f.pos }, { merge: true }); });
-        await lote.commit(); try { localStorage.removeItem(kRes); localStorage.setItem(kUsado, String(resPrevio && resPrevio.t || Date.now())); } catch (e) {} mostrarToast('✅ Guardado: ' + cambios.length + ' perfil' + (cambios.length === 1 ? '' : 'es') + ' actualizado' + (cambios.length === 1 ? '' : 's') + ' en el panel.'); robotNf.enviado = null; cerrarRobotNetflix();
+        await lote.commit(); try { localStorage.removeItem(kNav); localStorage.setItem(kUsado, String(resPrevio && resPrevio.t || Date.now())); } catch (e) {} mostrarToast('✅ Guardado: ' + cambios.length + ' perfil' + (cambios.length === 1 ? '' : 'es') + ' actualizado' + (cambios.length === 1 ? '' : 's') + ' en el panel.'); robotNf.enviado = null; cerrarRobotNetflix();
       } catch (err) { alert('No se pudo guardar: ' + err.message); }
     }
     function abrirGestionNetflix(id) {
