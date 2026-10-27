@@ -18364,7 +18364,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-11-08h';
+    const VERSION_PAGINA = '2026-11-08i';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261105_ranking', fecha: '2026-11-05', titulo: '🏆 ¡Llegó el ranking del mes!', mensaje: 'Ahora en la página ves **en qué puesto vas** (arriba, debajo de tu saldo). Los **3 que más recarguen** en el mes se llevan **saldo de regalo**: el **4%**, el **3%** y el **2%** de lo que recargaron. Para participar debes recargar mínimo **$150.000** en el mes. Se actualiza cada hora, cierra el último día del mes y el premio te cae solo el día 1. ¿Quién va a ser el primero? 😎', ir: '' },
       { id: 'act_20261102_codigos_seguros', fecha: '2026-11-02', titulo: 'Tus códigos, más protegidos 🔒', mensaje: 'Tu enlace de códigos ahora es más seguro: los códigos para **crear cuentas nuevas** con nuestros correos ya no se muestran a nadie sin permiso. Los códigos para **entrar a tu cuenta** y **cambiar la contraseña** te siguen llegando al instante, igual que siempre.', ir: '' },
@@ -29927,14 +29927,21 @@ const LUISA_COM_DEF_PAG = { activo: true, stockHora: '08:00', mediodiaHora: '12:
 
     // ==================== 🤖 ROBOT NETFLIX (con el script Epic Robot Netflix de Tampermonkey) ====================
     let robotNf = null;   // { id, correo, compartida, filas: [{ slotId, pos, actual, nuevo, pin, sel }] }
+    const NOMBRES_ROBOT = ['Mateo', 'Santiago', 'Samuel', 'Sebastián', 'Benjamín', 'Martín', 'Thiago', 'Emiliano', 'Daniel', 'Alejandro', 'Gabriel', 'Nicolás', 'Lucas', 'Diego', 'Tomás', 'Valentín', 'Andrés', 'Felipe', 'David', 'Joaquín',
+      'Sofía', 'Isabella', 'Valentina', 'Camila', 'Valeria', 'Mariana', 'Luciana', 'Daniela', 'María', 'Gabriela', 'Victoria', 'Martina', 'Antonella', 'Emma', 'Renata', 'Julieta', 'Catalina', 'Paula', 'Elena', 'Sara'];
+    function nombresRobotAzar(n) {
+      const pool = NOMBRES_ROBOT.slice(); for (let i = pool.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); const t = pool[i]; pool[i] = pool[j]; pool[j] = t; }
+      return pool.slice(0, n);
+    }
     function abrirRobotNetflix(id, todaLaCuenta) {   // todaLaCuenta: los 5 perfiles marcados, cada uno con PIN nuevo, y "sacar a todos"
       const a = netflixCuentasAdmin.find(x => x.id === id); if (!a) return;
       const compartida = a.tipo === 'compartida';
       // Mismo orden en que ves las filas en el panel (de arriba abajo): la fila 1 es el perfil 1 de Netflix (el de la izquierda)
       const slots = compartida ? netflixCuentasAdmin.filter(x => x.tipo === 'compartida' && x.correo === a.correo).sort((x, y) => String(x.perfil || '').localeCompare(String(y.perfil || ''), 'es', { numeric: true })) : [];
+      const azar = nombresRobotAzar(Math.max(slots.length, 5));
       const filas = compartida
-        ? slots.map((x, i) => ({ slotId: x.id, pos: i + 1, actual: x.perfil || '', nuevo: x.perfil || '', pin: (todaLaCuenta || x.id === id) ? generarPinNetflix(x.pin) : '', sel: !!todaLaCuenta || x.id === id }))
-        : [1, 2, 3, 4, 5].map(n => ({ slotId: '', pos: n, actual: '', nuevo: '', pin: '', sel: false }));
+        ? slots.map((x, i) => ({ slotId: x.id, pos: i + 1, actual: x.perfil || '', nuevo: azar[i], pin: (todaLaCuenta || x.id === id) ? generarPinNetflix(x.pin) : '', sel: !!todaLaCuenta || x.id === id }))
+        : [1, 2, 3, 4, 5].map((n, i) => ({ slotId: '', pos: n, actual: '', nuevo: azar[i], pin: '', sel: false }));
       robotNf = { id: id, correo: a.correo || '', compartida: compartida, filas: filas, srvUrl: '' };
       urlServidorPublico().then(function (u) { if (robotNf) robotNf.srvUrl = u || ''; try { if (u) localStorage.setItem('epicRobotNfSrv', u); } catch (e) {} }).catch(function () {});
       document.getElementById('rnCorreo').textContent = (a.correo || '') + (compartida ? ' · compartida' : ' · cuenta completa');
