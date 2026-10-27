@@ -4134,6 +4134,14 @@
           <input type="text" inputmode="email" id="nfCorreo" oninput="nfAlEscribirCorreo(this)" onchange="nfLimpiarCorreo(this)" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" data-lpignore="true" placeholder="usuario+alias@gmail.com" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-1.5 text-xs text-white font-mono focus:outline-none">
           <p class="text-[10px] text-gray-500 mt-1">Tip: pega una línea completa y se llenan los campos.</p>
         </div>
+        <div id="nfBloqueClaveCta" class="hidden">
+          <label class="block text-xs text-gray-400 mb-1">Contraseña de la cuenta Disney+ <span class="text-gray-500">(el robot la usa para el PIN de perfil)</span></label>
+          <div class="relative">
+            <input type="password" id="nfClaveCta" autocomplete="new-password" data-lpignore="true" maxlength="120" placeholder="Contraseña de Disney+" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 pr-10 text-sm text-white focus:outline-none focus:border-sky-500">
+            <button type="button" onclick="const i=document.getElementById('nfClaveCta'); i.type = i.type === 'password' ? 'text' : 'password';" aria-label="Ver contraseña" class="absolute right-2 top-1/2 -translate-y-1/2 w-7 h-7 text-gray-400 hover:text-white"><i class="fa-regular fa-eye"></i></button>
+          </div>
+          <p class="text-[10px] text-gray-500 mt-1"><i class="fa-solid fa-lock mr-1"></i>Se guarda en la zona privada del servidor: los clientes nunca la ven.</p>
+        </div>
         <div class="grid grid-cols-2 gap-2">
           <div>
             <label class="block text-xs text-gray-400 mb-1">Plataforma</label>
@@ -18374,7 +18382,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-11-08p';
+    const VERSION_PAGINA = '2026-11-08q';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261105_ranking', fecha: '2026-11-05', titulo: '🏆 ¡Llegó el ranking del mes!', mensaje: 'Ahora en la página ves **en qué puesto vas** (arriba, debajo de tu saldo). Los **3 que más recarguen** en el mes se llevan **saldo de regalo**: el **4%**, el **3%** y el **2%** de lo que recargaron. Para participar debes recargar mínimo **$150.000** en el mes. Se actualiza cada hora, cierra el último día del mes y el premio te cae solo el día 1. ¿Quién va a ser el primero? 😎', ir: '' },
       { id: 'act_20261102_codigos_seguros', fecha: '2026-11-02', titulo: 'Tus códigos, más protegidos 🔒', mensaje: 'Tu enlace de códigos ahora es más seguro: los códigos para **crear cuentas nuevas** con nuestros correos ya no se muestran a nadie sin permiso. Los códigos para **entrar a tu cuenta** y **cambiar la contraseña** te siguen llegando al instante, igual que siempre.', ir: '' },
@@ -30385,6 +30393,7 @@ const LUISA_COM_DEF_PAG = { activo: true, stockHora: '08:00', mediodiaHora: '12:
       set('nfPerfil', a ? (a.perfil || '') : '');
       set('nfPin', a ? (a.pin || '') : '');
       set('nfCantidad', '5');
+      nfCargarClaveCta(a ? (a.correo || '') : '', a ? plataformaNf(a) : '');
       const titulo = document.getElementById('nfTituloModal');
       if (titulo) titulo.innerHTML = `<i class="fa-solid fa-tv text-red-500"></i> ${!a ? 'Agregar cuenta' : (modoAsignar ? 'Asignar cuenta' : 'Editar cuenta')}`;
       const elim = document.getElementById('btnEliminarNetflixCuenta');
@@ -30410,7 +30419,16 @@ const LUISA_COM_DEF_PAG = { activo: true, stockHora: '08:00', mediodiaHora: '12:
       const sel = document.getElementById('nfPlataforma');
       const otro = document.getElementById('nfBloquePlataformaOtra');
       if (otro) otro.classList.toggle('hidden', !(sel && sel.value === 'Otra'));
+      const bc = document.getElementById('nfBloqueClaveCta'); if (bc) bc.classList.toggle('hidden', !/disney/i.test(nfLeerPlataforma()));   // 🔐 solo Disney+
     }
+    // 🔐 Contraseña de la cuenta (Disney+): vive en la zona privada del servidor, no en el alquiler (que el cliente sí puede leer)
+    async function nfCargarClaveCta(correo, plataforma) { const el = document.getElementById('nfClaveCta'); if (!el) return; el.value = ''; el.type = 'password'; el.placeholder = 'Contraseña de Disney+';
+      if (!correo || !/disney/i.test(plataforma || '')) return;
+      try { const r = await llamarBackend('cuenta_clave_leer', { correo: correo, plataforma: plataforma }); if (r && r.ok && r.clave && !el.value) el.value = r.clave; else if (r && r.ok && !r.clave) el.placeholder = 'Aún no la has guardado'; } catch (e) { /* nada */ } }
+    async function nfGuardarClaveCta(correo, plataforma) { const el = document.getElementById('nfClaveCta'); if (!el || !/disney/i.test(plataforma || '')) return true;
+      const v = String(el.value || ''); if (!v) return true;
+      try { const r = await llamarBackend('cuenta_clave', { correo: correo, plataforma: plataforma, clave: v }); if (!r || !r.ok) throw new Error((r && r.error) || 'No se pudo.'); return true; }
+      catch (e) { alert('La cuenta se guarda, pero no pude guardar la contraseña de Disney+: ' + (e.message || e)); return false; } }
 
     function nfLeerPlataforma() {
       const sel = ((document.getElementById('nfPlataforma') || {}).value || 'Netflix');
@@ -30573,6 +30591,7 @@ const LUISA_COM_DEF_PAG = { activo: true, stockHora: '08:00', mediodiaHora: '12:
       const plataformaSel = nfLeerPlataforma();
       const repetida = netflixCuentasAdmin.some(x => x.correo === correo && plataformaNf(x).toLowerCase() === plataformaSel.toLowerCase() && x.id !== netflixEditandoId && !(previa && tipoFinal === 'compartida' && x.tipo === 'compartida'));
       if (repetida) { alert('Esa cuenta ya está en la lista.'); return; }
+      await nfGuardarClaveCta(correo, plataformaSel);   // 🔐 Disney+: la contraseña a la zona privada del servidor
       if (!previa && tipoFinal === 'compartida') { await crearCuentaCompartida(correo, val('nfCantidad'), val('nfNotas'), plataformaSel); return; }
 
       let perfil = '', pin = '';
