@@ -12367,6 +12367,8 @@
       mostrarToast(abonoAprobado > 0 ? `Recarga aprobada. ${formatoCOP(abonoAprobado)} pagaron su crédito.` : "Recarga aprobada con éxito.");
       // 🎁 Si el cliente tenía un regalo para su próxima recarga, el servidor se lo suma ahora (una sola vez)
       try { if (obtenerBackendUrl()) llamarBackend('regalo_recarga_aplicar', { uid: userId, monto: Number(monto) || 0 }).then(r => { if (r && r.extra > 0) mostrarToast('🎁 Además se le sumó su regalo: +' + formatoCOP(r.extra)); }).catch(() => {}); } catch (e) { /* nada */ }
+      // 💌 el correo de «recarga exitosa» (el servidor lo manda una sola vez por recarga, después del regalo si lo hay)
+      try { if (obtenerBackendUrl()) setTimeout(() => { llamarBackend('correo_recarga', { recargaId: recargaId }).catch(() => {}); }, 4000); } catch (e) { /* nada */ }
       cargarRecargasAdmin();
     }
 
@@ -18400,7 +18402,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-11-08w';
+    const VERSION_PAGINA = '2026-11-09b';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261105_ranking', fecha: '2026-11-05', titulo: '🏆 ¡Llegó el ranking del mes!', mensaje: 'Ahora en la página ves **en qué puesto vas** (arriba, debajo de tu saldo). Los **3 que más recarguen** en el mes se llevan **saldo de regalo**: el **4%**, el **3%** y el **2%** de lo que recargaron. Para participar debes recargar mínimo **$150.000** en el mes. Se actualiza cada hora, cierra el último día del mes y el premio te cae solo el día 1. ¿Quién va a ser el primero? 😎', ir: '' },
       { id: 'act_20261102_codigos_seguros', fecha: '2026-11-02', titulo: 'Tus códigos, más protegidos 🔒', mensaje: 'Tu enlace de códigos ahora es más seguro: los códigos para **crear cuentas nuevas** con nuestros correos ya no se muestran a nadie sin permiso. Los códigos para **entrar a tu cuenta** y **cambiar la contraseña** te siguen llegando al instante, igual que siempre.', ir: '' },
