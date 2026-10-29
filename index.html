@@ -2493,6 +2493,15 @@
             <div class="p-3 rounded-xl bg-gray-800/60 border border-gray-700 space-y-2">
               <label class="flex items-center justify-between gap-3 cursor-pointer"><span class="text-[12px] text-gray-300">👥 Volantes en grupos (Prime Video y Amazon Free, en texto con tu formato, <b>sin precios</b>)<br><span class="text-[10px] text-gray-500">Número de la tienda · 2 por grupo al día (1ª de 9 a 1, 2ª 7 h o más después) · entre grupo y grupo espera al azar de 10 s a 1 min · nunca en tu comunidad. Mientras Mary volantea, el bot de siempre no publica en grupos; si Mary u OpenWA se caen, él retoma.</span></span><input type="checkbox" id="maryVolantes" class="w-5 h-5 accent-indigo-500"></label>
               <label class="block text-[11px] text-gray-400">Grupos donde NO publicar (uno por línea; basta una parte del nombre)<textarea id="maryVolExcluir" rows="2" placeholder="familia" class="mt-1 w-full bg-gray-900 border border-gray-700 rounded-lg px-2 py-1.5 text-white text-xs"></textarea></label>
+              <div class="pt-2 border-t border-gray-700/60">
+                <label class="block text-[11px] text-gray-400">🤖 <b class="text-gray-200">¿Quién publica los volantes?</b>
+                  <select id="maryVolMotor" onchange="guardarMotorVolantes()" class="mt-1 w-full bg-gray-900 border border-gray-700 rounded-lg px-2 py-1.5 text-white text-xs">
+                    <option value="google">Google (como siempre)</option>
+                    <option value="prueba">VPS en modo prueba (Google publica; el VPS solo anota lo que habría hecho)</option>
+                    <option value="vps">VPS (sin cupo diario; si el VPS se cae, Google retoma solo a los 5 min)</option>
+                  </select></label>
+                <p id="maryVolMotorEst" class="text-[10px] text-gray-500 mt-1">Revisando el motor…</p>
+              </div>
             </div>
             <div class="p-3 rounded-xl bg-gray-800/60 border border-gray-700 space-y-2">
               <label class="block text-[11px] text-gray-400">👀 <b class="text-gray-200">No ven mis estados</b> (uno por línea: un número, o una parte del nombre como lo tienes guardado). Los estados que publica Luisa le llegan a todos tus contactos con número, menos estos y tu equipo (proveedores, moderadores y administradores).<textarea id="maryEstExcluir" rows="3" placeholder="3001234567&#10;mamá" class="mt-1 w-full bg-gray-900 border border-gray-700 rounded-lg px-2 py-1.5 text-white text-xs"></textarea></label>
@@ -18433,7 +18442,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-11-10g';
+    const VERSION_PAGINA = '2026-11-10h';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261105_ranking', fecha: '2026-11-05', titulo: '🏆 ¡Llegó el ranking del mes!', mensaje: 'Ahora en la página ves **en qué puesto vas** (arriba, debajo de tu saldo). Los **3 que más recarguen** en el mes se llevan **saldo de regalo**: el **4%**, el **3%** y el **2%** de lo que recargaron. Para participar debes recargar mínimo **$150.000** en el mes. Se actualiza cada hora, cierra el último día del mes y el premio te cae solo el día 1. ¿Quién va a ser el primero? 😎', ir: '' },
       { id: 'act_20261102_codigos_seguros', fecha: '2026-11-02', titulo: 'Tus códigos, más protegidos 🔒', mensaje: 'Tu enlace de códigos ahora es más seguro: los códigos para **crear cuentas nuevas** con nuestros correos ya no se muestran a nadie sin permiso. Los códigos para **entrar a tu cuenta** y **cambiar la contraseña** te siguen llegando al instante, igual que siempre.', ir: '' },
@@ -28457,7 +28466,8 @@ const LUISA_COM_DEF_PAG = { activo: true, stockHora: '08:00', mediodiaHora: '12:
         { let lv = {}; if (maryCfgLocal.volantes === undefined) { try { const dl = await db.collection('secretos').doc('luisa').get(); lv = dl.exists ? dl.data() : {}; } catch (e) { lv = {}; } }
           if (g('maryVolantes')) g('maryVolantes').checked = (maryCfgLocal.volantes !== undefined ? maryCfgLocal.volantes : lv.volantes) !== false;
           if (g('maryVolExcluir')) g('maryVolExcluir').value = ((Array.isArray(maryCfgLocal.volantesExcluir) && maryCfgLocal.volantesExcluir.length) ? maryCfgLocal.volantesExcluir : (lv.volantesExcluir || [])).join('\n');
-          if (g('maryEstExcluir')) g('maryEstExcluir').value = (Array.isArray(maryCfgLocal.estadosExcluir) ? maryCfgLocal.estadosExcluir : []).join('\n'); }
+          if (g('maryEstExcluir')) g('maryEstExcluir').value = (Array.isArray(maryCfgLocal.estadosExcluir) ? maryCfgLocal.estadosExcluir : []).join('\n');
+          cargarMotorVolantes(); }
         if (g('maryJefeDesde')) { g('maryJefeDesde').value = maryCfgLocal.jefeDesde || 8; g('maryJefeHasta').value = maryCfgLocal.jefeHasta || 22; }
       } catch (e) { mostrarToast('No pude cargar a Mary: ' + e.message); }
     }
@@ -28497,6 +28507,18 @@ const LUISA_COM_DEF_PAG = { activo: true, stockHora: '08:00', mediodiaHora: '12:
     function maryRefQuitar(i) { const L = maryLeerRefs(); L.splice(i, 1); maryCfgLocal.referencias = L; maryPintarRefs(); }
 
     function maryFaqQuitar(i) { const L = maryLeerFaqs(); L.splice(i, 1); maryCfgLocal.faqs = L; maryPintarFaqs(); }
+    // 🤖 MOTOR DEL VPS: interruptor de los volantes y su señal de vida
+    async function cargarMotorVolantes() {
+      const sel = document.getElementById('maryVolMotor'), est = document.getElementById('maryVolMotorEst'); if (!sel || !est) return;
+      try { const d = await db.collection('secretos').doc('motor').get(), m = d.exists ? d.data() : {};
+        sel.value = ['google', 'prueba', 'vps'].includes(m.volantes) ? m.volantes : 'google';
+        const lat = Date.parse(m.latido || '') || 0, min = lat ? Math.round((Date.now() - lat) / 60000) : null;
+        est.innerHTML = !lat ? '⚪ El motor del VPS todavía no ha dado señal de vida.' : (min < 5 ? '🟢 Motor del VPS vivo (última señal hace ' + Math.max(0, min) + ' min' + (m.version ? ' · versión ' + escaparHtml(m.version) : '') + ').' : '🔴 El motor del VPS no da señal hace ' + min + ' min: Google está publicando.');
+      } catch (e) { est.textContent = 'No pude leer el estado del motor: ' + e.message; } }
+    async function guardarMotorVolantes() {
+      const sel = document.getElementById('maryVolMotor'); if (!sel) return;
+      try { await db.collection('secretos').doc('motor').set({ volantes: sel.value }, { merge: true }); mostrarToast(sel.value === 'vps' ? '🤖 Los volantes los publica el VPS' : sel.value === 'prueba' ? '🧪 VPS en modo prueba: Google sigue publicando' : '☁️ Los volantes los publica Google'); cargarMotorVolantes(); }
+      catch (e) { alert('No se pudo guardar: ' + e.message); } }
     async function guardarMaryCfg() {
       const g = id => document.getElementById(id), lineas = id => g(id).value.split('\n').map(x => x.trim()).filter(Boolean).slice(0, 40);
       const d = { tienda: g('maryTienda').value, prueba: g('maryPrueba').value.split(/[\n,;]+/).map(x => x.replace(/\D/g, '').slice(-10)).filter(x => x.length >= 7).slice(0, 20),
