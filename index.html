@@ -18430,7 +18430,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-11-10c';
+    const VERSION_PAGINA = '2026-11-10e';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261105_ranking', fecha: '2026-11-05', titulo: '🏆 ¡Llegó el ranking del mes!', mensaje: 'Ahora en la página ves **en qué puesto vas** (arriba, debajo de tu saldo). Los **3 que más recarguen** en el mes se llevan **saldo de regalo**: el **4%**, el **3%** y el **2%** de lo que recargaron. Para participar debes recargar mínimo **$150.000** en el mes. Se actualiza cada hora, cierra el último día del mes y el premio te cae solo el día 1. ¿Quién va a ser el primero? 😎', ir: '' },
       { id: 'act_20261102_codigos_seguros', fecha: '2026-11-02', titulo: 'Tus códigos, más protegidos 🔒', mensaje: 'Tu enlace de códigos ahora es más seguro: los códigos para **crear cuentas nuevas** con nuestros correos ya no se muestran a nadie sin permiso. Los códigos para **entrar a tu cuenta** y **cambiar la contraseña** te siguen llegando al instante, igual que siempre.', ir: '' },
@@ -31097,8 +31097,8 @@ const LUISA_COM_DEF_PAG = { activo: true, stockHora: '08:00', mediodiaHora: '12:
     // 📣 CAMPAÑAS DE MARY (panel): se guarda y se controla en el servidor de correo (el que hace los envíos)
     let campTipoSel = 'poco';
     function campPintar(r) {
-      if (!r || !r.ok) return; const c = r.cfg || {}, e = r.est || {}, T = r.tipos || {}; campTipoSel = c.tipo || campTipoSel;
-      const box = document.getElementById('campTipos'); if (box) box.innerHTML = Object.keys(T).map(k => `<label class="flex gap-2 items-start p-2 rounded-xl border ${k === campTipoSel ? 'border-emerald-500 bg-gray-800' : 'border-gray-700 bg-gray-900'} cursor-pointer"><input type="radio" name="campTipo" value="${k}" ${k === campTipoSel ? 'checked' : ''} onchange="campTipoSel=this.value;campPintar(window._campUlt)" class="mt-0.5"><span class="text-white font-bold text-[12px]">${escaparHtml(T[k])}</span></label>`).join('');
+      if (!r || !r.ok) return; const c = r.cfg || {}, e = r.est || {}, T = r.tipos || {}; if (!window._campTipoTocado) campTipoSel = c.tipo || campTipoSel;   // tu elección no se pisa al repintar
+      const box = document.getElementById('campTipos'); if (box) box.innerHTML = Object.keys(T).map(k => `<label class="flex gap-2 items-start p-2 rounded-xl border ${k === campTipoSel ? 'border-emerald-500 bg-gray-800' : 'border-gray-700 bg-gray-900'} cursor-pointer"><input type="radio" name="campTipo" value="${k}" ${k === campTipoSel ? 'checked' : ''} onchange="campTipoSel=this.value;window._campTipoTocado=true;campPintar(window._campUlt)" class="mt-0.5"><span class="text-white font-bold text-[12px]">${escaparHtml(T[k])}</span></label>`).join('');
       const v = (id, x) => { const el = document.getElementById(id); if (el && document.activeElement !== el) el.value = x; };
       v('campMax', c.max); v('campNoRep', c.noRep); v('campIMin', c.iMin); v('campIMax', c.iMax); v('campDesde', c.desde); v('campHasta', c.hasta);
       const tag = document.getElementById('campEstadoTag'); if (tag) tag.textContent = c.activa ? '🟢 Corriendo · ' + (T[c.tipo] || '') : (c.pausadaPor === 'freno' ? '⏸ Pausada por quejas' : c.pausadaPor === 'tu' ? '⏸ Pausada' : '⚪ Apagada');
@@ -31113,7 +31113,7 @@ const LUISA_COM_DEF_PAG = { activo: true, stockHora: '08:00', mediodiaHora: '12:
     async function campOp(op) {
       if (op === 'iniciar' && !confirm('¿Iniciar la campaña «' + ((window._campUlt && window._campUlt.tipos || {})[campTipoSel] || campTipoSel) + '»? Mary empieza a enviar dentro del horario, uno cada pocos minutos.')) return;
       if (op === 'detener' && !confirm('¿Detener la campaña? Se borra la lista de hoy.')) return;
-      try { await llamarBackend('mary_campana', campDatos(op)); mostrarToast(op === 'iniciar' ? '📣 Campaña iniciada' : op === 'pausar' ? '⏸ Pausada' : '⏹ Detenida'); campVer(); } catch (e) { mostrarToast(e.message); }
+      try { await llamarBackend('mary_campana', campDatos(op)); window._campTipoTocado = false; mostrarToast(op === 'iniciar' ? '📣 Campaña iniciada' : op === 'pausar' ? '⏸ Pausada' : '⏹ Detenida'); campVer(); } catch (e) { mostrarToast(e.message); }
     }
     async function campEjemplo() {
       mostrarToast('Armando el ejemplo…');
