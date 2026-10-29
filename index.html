@@ -2494,6 +2494,9 @@
               <label class="flex items-center justify-between gap-3 cursor-pointer"><span class="text-[12px] text-gray-300">👥 Volantes en grupos (Prime Video y Amazon Free, en texto con tu formato, <b>sin precios</b>)<br><span class="text-[10px] text-gray-500">Número de la tienda · 2 por grupo al día (1ª de 9 a 1, 2ª 7 h o más después) · entre grupo y grupo espera al azar de 10 s a 1 min · nunca en tu comunidad. Mientras Mary volantea, el bot de siempre no publica en grupos; si Mary u OpenWA se caen, él retoma.</span></span><input type="checkbox" id="maryVolantes" class="w-5 h-5 accent-indigo-500"></label>
               <label class="block text-[11px] text-gray-400">Grupos donde NO publicar (uno por línea; basta una parte del nombre)<textarea id="maryVolExcluir" rows="2" placeholder="familia" class="mt-1 w-full bg-gray-900 border border-gray-700 rounded-lg px-2 py-1.5 text-white text-xs"></textarea></label>
             </div>
+            <div class="p-3 rounded-xl bg-gray-800/60 border border-gray-700 space-y-2">
+              <label class="block text-[11px] text-gray-400">👀 <b class="text-gray-200">No ven mis estados</b> (uno por línea: un número, o una parte del nombre como lo tienes guardado). Los estados que publica Luisa le llegan a todos tus contactos con número, menos estos y tu equipo (proveedores, moderadores y administradores).<textarea id="maryEstExcluir" rows="3" placeholder="3001234567&#10;mamá" class="mt-1 w-full bg-gray-900 border border-gray-700 rounded-lg px-2 py-1.5 text-white text-xs"></textarea></label>
+            </div>
                       <div class="pt-2 border-t border-gray-800 space-y-2">
               <div class="flex flex-wrap gap-3"><button type="button" onclick="maryVolReporte()" class="text-[11px] font-bold text-pink-300">↻ Ver reporte de hoy</button><button type="button" onclick="maryVolReporte(true)" class="text-[11px] font-bold text-amber-300">🔄 Buscar grupos de nuevo</button><button type="button" onclick="maryVolProbar()" class="text-[11px] font-bold text-sky-300">🧪 Probar en un grupo</button></div>
               <div id="maryVolRep" class="text-[12px] text-gray-300"></div>
@@ -18430,7 +18433,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-11-10f';
+    const VERSION_PAGINA = '2026-11-10g';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261105_ranking', fecha: '2026-11-05', titulo: '🏆 ¡Llegó el ranking del mes!', mensaje: 'Ahora en la página ves **en qué puesto vas** (arriba, debajo de tu saldo). Los **3 que más recarguen** en el mes se llevan **saldo de regalo**: el **4%**, el **3%** y el **2%** de lo que recargaron. Para participar debes recargar mínimo **$150.000** en el mes. Se actualiza cada hora, cierra el último día del mes y el premio te cae solo el día 1. ¿Quién va a ser el primero? 😎', ir: '' },
       { id: 'act_20261102_codigos_seguros', fecha: '2026-11-02', titulo: 'Tus códigos, más protegidos 🔒', mensaje: 'Tu enlace de códigos ahora es más seguro: los códigos para **crear cuentas nuevas** con nuestros correos ya no se muestran a nadie sin permiso. Los códigos para **entrar a tu cuenta** y **cambiar la contraseña** te siguen llegando al instante, igual que siempre.', ir: '' },
@@ -28453,7 +28456,8 @@ const LUISA_COM_DEF_PAG = { activo: true, stockHora: '08:00', mediodiaHora: '12:
         maryPintarFaqs(); maryPintarAprender(); maryPintarChip(); try { encPrepararProductos(); } catch (e) { /* nada */ }
         { let lv = {}; if (maryCfgLocal.volantes === undefined) { try { const dl = await db.collection('secretos').doc('luisa').get(); lv = dl.exists ? dl.data() : {}; } catch (e) { lv = {}; } }
           if (g('maryVolantes')) g('maryVolantes').checked = (maryCfgLocal.volantes !== undefined ? maryCfgLocal.volantes : lv.volantes) !== false;
-          if (g('maryVolExcluir')) g('maryVolExcluir').value = ((Array.isArray(maryCfgLocal.volantesExcluir) && maryCfgLocal.volantesExcluir.length) ? maryCfgLocal.volantesExcluir : (lv.volantesExcluir || [])).join('\n'); }
+          if (g('maryVolExcluir')) g('maryVolExcluir').value = ((Array.isArray(maryCfgLocal.volantesExcluir) && maryCfgLocal.volantesExcluir.length) ? maryCfgLocal.volantesExcluir : (lv.volantesExcluir || [])).join('\n');
+          if (g('maryEstExcluir')) g('maryEstExcluir').value = (Array.isArray(maryCfgLocal.estadosExcluir) ? maryCfgLocal.estadosExcluir : []).join('\n'); }
         if (g('maryJefeDesde')) { g('maryJefeDesde').value = maryCfgLocal.jefeDesde || 8; g('maryJefeHasta').value = maryCfgLocal.jefeHasta || 22; }
       } catch (e) { mostrarToast('No pude cargar a Mary: ' + e.message); }
     }
@@ -28499,6 +28503,7 @@ const LUISA_COM_DEF_PAG = { activo: true, stockHora: '08:00', mediodiaHora: '12:
         avisos: g('maryAvisos').checked, recompra: g('maryRecompra').checked, reglas: lineas('maryReglas'), frases: lineas('maryFrases'), faqs: maryLeerFaqs().slice(0, 80), actualizadoEl: new Date().toISOString(),
         posventa: g('maryPosventa') ? g('maryPosventa').checked : true, recupero: g('maryRecupero') ? g('maryRecupero').checked : true, marketing: g('maryMarketing') ? g('maryMarketing').checked : true,
         volantes: g('maryVolantes') ? g('maryVolantes').checked : true, volantesExcluir: g('maryVolExcluir') ? g('maryVolExcluir').value.split('\n').map(x => x.trim()).filter(x => x.length >= 2).slice(0, 40) : [],
+        estadosExcluir: g('maryEstExcluir') ? g('maryEstExcluir').value.split('\n').map(x => x.trim()).filter(x => x.length >= 2).slice(0, 300) : [],
         jefeDesde: g('maryJefeDesde') ? Math.max(0, Math.min(23, Number(g('maryJefeDesde').value) || 8)) : 8, jefeHasta: g('maryJefeHasta') ? Math.max(1, Math.min(24, Number(g('maryJefeHasta').value) || 22)) : 22,
         retoma: { activo: g('maryRetoma') ? g('maryRetoma').checked : true, m1: Math.max(10, Number(g('maryRetM1') && g('maryRetM1').value) || 30), m2: Math.max(40, Number(g('maryRetM2') && g('maryRetM2').value) || 180) },
         inactivos: { activo: g('maryInactivos') ? g('maryInactivos').checked : true, dias: Math.max(3, Number(g('maryInactDias') && g('maryInactDias').value) || 15), cada: Math.max(7, Number(g('maryInactCada') && g('maryInactCada').value) || 30), max: Math.max(1, Math.min(30, Number(g('maryInactMax') && g('maryInactMax').value) || 10)) }, dueno: (g('maryDueno') ? g('maryDueno').value.trim() : '') || 'Alex', objeciones: maryLeerObjs().slice(0, 40), referencias: maryLeerRefs() };
