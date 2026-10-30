@@ -18455,7 +18455,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-11-10t';
+    const VERSION_PAGINA = '2026-11-10u';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261105_ranking', fecha: '2026-11-05', titulo: '🏆 ¡Llegó el ranking del mes!', mensaje: 'Ahora en la página ves **en qué puesto vas** (arriba, debajo de tu saldo). Los **3 que más recarguen** en el mes se llevan **saldo de regalo**: el **4%**, el **3%** y el **2%** de lo que recargaron. Para participar debes recargar mínimo **$150.000** en el mes. Se actualiza cada hora, cierra el último día del mes y el premio te cae solo el día 1. ¿Quién va a ser el primero? 😎', ir: '' },
       { id: 'act_20261102_codigos_seguros', fecha: '2026-11-02', titulo: 'Tus códigos, más protegidos 🔒', mensaje: 'Tu enlace de códigos ahora es más seguro: los códigos para **crear cuentas nuevas** con nuestros correos ya no se muestran a nadie sin permiso. Los códigos para **entrar a tu cuenta** y **cambiar la contraseña** te siguen llegando al instante, igual que siempre.', ir: '' },
@@ -25989,7 +25989,7 @@ async function pintarPanelWa() {
       const sw = (id, on, txt) => `<label class="flex items-center justify-between gap-3 p-2.5 rounded-xl bg-gray-800/60 border border-gray-700/60 cursor-pointer"><span class="text-[12px] font-bold text-white">${txt}</span><input type="checkbox" id="${id}" ${on ? 'checked' : ''} class="w-5 h-5 accent-emerald-500"></label>`;
       const sec = (titulo, cuerpo, abierta) => `<details class="mt-3 rounded-xl bg-gray-800/40 border border-gray-700/60 overflow-hidden" ${abierta ? 'open' : ''}><summary class="p-3 cursor-pointer select-none list-none text-[12px] font-black text-white">${titulo}</summary><div class="px-3 pb-3 space-y-2">${cuerpo}</div></details>`;
       const vista = r.vista || [], hist = r.historial || [], est = r.estados || [];
-      b.innerHTML = sec('🔌 Conexión', `
+      b.innerHTML = sec('🛑 Frenos de envío', `<div id="owaFrenos" class="space-y-2"><p class="text-[11px] text-gray-400"><i class="fa-solid fa-spinner fa-spin mr-1"></i>Revisando los frenos…</p></div>`, true) + sec('🔌 Conexión', `
           <div class="p-2.5 rounded-xl bg-emerald-950/40 border border-emerald-700/50 space-y-2">
             <label class="block text-[10px] text-gray-300 font-bold">🔁 Motor de WhatsApp
               <select id="owaMotor" class="${inp} mt-1"><option value="openwa" ${k.motor !== 'evolution' ? 'selected' : ''}>OpenWA</option><option value="evolution" ${k.motor === 'evolution' ? 'selected' : ''}>Evolution API (recomendado: sin Chrome, más estable)</option></select></label>
@@ -26053,13 +26053,14 @@ async function pintarPanelWa() {
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
             <label class="block text-[10px] text-gray-400">Chats privados<select id="owaBotPriv" class="${inp} mt-1">
               <option value="aar" ${k.botPriv === 'aar' ? 'selected' : ''}>Solo All Auto Responder</option>
-              <option value="dinamico" ${(k.botPriv || 'dinamico') === 'dinamico' ? 'selected' : ''}>Dinámico: texto por All · audios, fotos y QR por OpenWA</option>
-              <option value="openwa" ${k.botPriv === 'openwa' ? 'selected' : ''}>Solo OpenWA</option></select></label>
+              <option value="dinamico" ${(k.botPriv || 'dinamico') === 'dinamico' ? 'selected' : ''}>Dinámico: texto por All · audios, fotos y QR por Evolution</option>
+              <option value="openwa" ${k.botPriv === 'openwa' ? 'selected' : ''}>Solo Evolution (Mary en el VPS)</option></select></label>
             <label class="block text-[10px] text-gray-400">Grupos<select id="owaBotGrupos" class="${inp} mt-1">
               <option value="aar" ${(k.botGrupos || 'aar') === 'aar' ? 'selected' : ''}>All Auto Responder</option>
-              <option value="openwa" ${k.botGrupos === 'openwa' ? 'selected' : ''}>OpenWA</option>
+              <option value="openwa" ${k.botGrupos === 'openwa' ? 'selected' : ''}>Evolution</option>
               <option value="nadie" ${k.botGrupos === 'nadie' ? 'selected' : ''}>Nadie</option></select></label>
           </div>
+          <p class="text-[10px] text-sky-300/90">🖥️ Si Mary del VPS está activa, al guardar los mensajes siguen yendo al VPS (si se cae, pasan solos a Google).</p>
           ${sw('owaBotCubrir', k.botCubrir !== false, 'Si uno falla, responde el otro')}
           <div class="grid grid-cols-3 gap-2">
             <label class="block text-[10px] text-gray-400">Pausa si escribo yo (h)<input id="owaBotPausa" type="number" min="0" max="6" value="${escaparHtml(String(k.botPausaH !== undefined ? k.botPausaH : 2))}" class="${inp} mt-1"></label>
@@ -26126,6 +26127,7 @@ async function pintarPanelWa() {
         + (k.fixClave && Array.isArray(k.fixClave.cuentas) ? `<div class="mt-2 p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-[11px] text-emerald-100 leading-snug">🩹 <b>Avisos de contraseña corregidos:</b> ${k.fixClave.cuentas.length ? escaparHtml(k.fixClave.cuentas.join(', ')) + ' ya no cuentan como caídas' + (k.fixClave.etiquetasQuitadas ? ' · etiqueta 🔴 quitada de ' + k.fixClave.etiquetasQuitadas + ' correo(s)' : '') + (k.fixClave.descuentos ? ' · ' + k.fixClave.descuentos + ' descuento(s) al proveedor deshecho(s)' : '') + (k.fixClave.descuentosYaAplicados && k.fixClave.descuentosYaAplicados.length ? ' · <span class="text-amber-300">ya aplicado en un pago (revísalo a mano): ' + escaparHtml(k.fixClave.descuentosYaAplicados.join(', ')) + '</span>' : '') : (k.fixClave.etiquetasQuitadas ? 'etiqueta 🔴 quitada de ' + k.fixClave.etiquetasQuitadas + ' correo(s) que eran avisos normales' : 'no había cuentas marcadas por eso')}.</div>` : '');
       owaGaleriaCargar();
       try { owaCieVista(); } catch (e) { /* nada */ }
+      try { cargarFrenos(); } catch (e) { /* nada */ }
     }
     // 🌙 Aviso de cierre: la imagen se dibuja aquí (fondo de color + texto centrado, como un estado de texto)
     function owaCieHHMM(min) { const h = Math.floor((parseInt(min, 10) || 0) / 60) % 24, m = (parseInt(min, 10) || 0) % 60; return String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0'); }
@@ -28559,6 +28561,28 @@ const LUISA_COM_DEF_PAG = { activo: true, stockHora: '08:00', mediodiaHora: '12:
       const sel = document.getElementById('maryVolMotor'); if (!sel) return;
       try { await db.collection('secretos').doc('motor').set({ volantes: sel.value }, { merge: true }); mostrarToast(sel.value === 'vps' ? '🤖 Los volantes los publica el VPS' : sel.value === 'prueba' ? '🧪 VPS en modo prueba: Google sigue publicando' : '☁️ Los volantes los publica Google'); cargarMotorVolantes(); }
       catch (e) { alert('No se pudo guardar: ' + e.message); } }
+    // 🛑 FRENOS DE ENVÍO: se aplican al instante (secretos/motor), sin «Guardar». Y la señal de Mary del VPS (la anota el motor cada minuto)
+    async function cargarFrenos() {
+      const c = document.getElementById('owaFrenos'); if (!c) return;
+      if (!window._frenosT) window._frenosT = setInterval(() => { if (document.getElementById('owaFrenos')) cargarFrenos(); }, 30000);
+      try { const d = await db.collection('secretos').doc('motor').get(), m = d.exists ? d.data() : {}, v = m.maryVps || {}, t = Date.parse(v.t || '') || 0;
+        const seg = t ? Math.max(0, Math.round((Date.now() - t) / 1000)) : null, hace = seg === null ? '' : (seg < 90 ? seg + ' s' : Math.round(seg / 60) + ' min'), viva = v.ok === true && seg !== null && seg < 180;
+        const destino = v.destino === 'vps' ? 'los mensajes van al VPS' : v.destino === 'google' ? '<b class="text-amber-300">los mensajes están yendo a Google</b> (el vigilante los regresa en menos de 1 min)' : 'revisando a dónde van los mensajes';
+        const estado = !t ? '<div class="p-2.5 rounded-xl bg-gray-800 border border-gray-700 text-[11px] text-gray-300">⚪ Mary del VPS todavía no da señal (aparece cuando el motor 1.1 esté instalado).</div>'
+          : viva ? `<div class="p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/40 text-[11px] text-emerald-200 leading-snug">🟢 <b>Mary en el VPS: activa</b> · señal hace ${hace} · ${destino}${v.version ? ' · ' + escaparHtml(v.version) : ''}</div>`
+          : `<div class="p-2.5 rounded-xl bg-red-500/10 border border-red-500/40 text-[11px] text-red-200 leading-snug">🔴 <b>Mary del VPS no responde</b>${hace ? ' (última señal hace ' + hace + ')' : ''} · los mensajes pasan a Google, que responde como antes.</div>`;
+        const fila = (tipo, enc, titulo, sub) => `<div class="flex items-center justify-between gap-3 pt-2 border-t border-gray-700/60"><div class="min-w-0"><p class="text-[12px] font-bold text-white">${titulo}</p><p class="text-[10px] text-gray-400">${sub}</p></div>`
+          + `<button type="button" onclick="guardarFreno('${tipo}', ${enc ? 'true' : 'false'})" class="shrink-0 min-w-[96px] px-3 py-1.5 rounded-lg text-[11px] font-black border ${enc ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/40' : 'bg-red-500/20 text-red-300 border-red-500/50'}">${enc ? 'Encendido' : '🛑 Apagado'}</button></div>`;
+        c.innerHTML = estado + '<p class="text-[10px] text-gray-500 leading-snug">Se aplican al instante, sin guardar. Mientras un freno esté puesto, lo que escriban los clientes queda sin respuesta automática (lo atiendes tú). Los estados no se frenan.</p>'
+          + fila('priv', m.frenoPriv !== true, '💬 Enviar a chats privados', 'Mary, bot, campañas, cobros y avisos (los dos números)')
+          + fila('grupos', m.frenoGrupos !== true, '👥 Enviar a grupos', 'Volantes, stock y respuestas en grupos');
+      } catch (e) { c.innerHTML = '<p class="text-[11px] text-red-300">No pude leer los frenos: ' + escaparHtml(e.message) + '</p>'; } }
+    async function guardarFreno(tipo, encendido) {
+      const frenar = encendido === true, que = tipo === 'priv' ? 'a chats privados' : 'a grupos';
+      if (frenar && !confirm('¿Frenar todos los envíos automáticos ' + que + '?\n\nNada automático saldrá ' + que + ' hasta que lo vuelvas a encender.')) return;
+      try { await db.collection('secretos').doc('motor').set(tipo === 'priv' ? { frenoPriv: frenar, frenoPrivEl: new Date().toISOString() } : { frenoGrupos: frenar, frenoGruposEl: new Date().toISOString() }, { merge: true });
+        mostrarToast(frenar ? '🛑 Envíos ' + que + ' frenados' : '✅ Envíos ' + que + ' encendidos otra vez'); cargarFrenos(); }
+      catch (e) { alert('No se pudo guardar el freno: ' + e.message); } }
     async function guardarMaryCfg() {
       const g = id => document.getElementById(id), lineas = id => g(id).value.split('\n').map(x => x.trim()).filter(Boolean).slice(0, 40);
       const d = { tienda: g('maryTienda').value, prueba: g('maryPrueba').value.split(/[\n,;]+/).map(x => x.replace(/\D/g, '').slice(-10)).filter(x => x.length >= 7).slice(0, 20),
