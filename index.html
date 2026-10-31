@@ -1332,6 +1332,9 @@
           <button onclick="irATabAdmin('netflix')" id="tabBtnNetflix" class="admin-tab bg-gray-900 border-gray-800 text-gray-400">
             <i class="fa-solid fa-tv"></i><span>Alquileres</span><span id="badgeTabNetflix" class="hidden lg:static lg:ml-auto min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-[10px] font-black flex items-center justify-center"></span>
           </button>
+          <button onclick="irATabAdmin('primevideo')" id="tabBtnPrimevideo" class="solo-admin admin-tab bg-gray-900 border-gray-800 text-gray-400">
+            <i class="fa-brands fa-amazon"></i><span>Prime Video (robot)</span>
+          </button>
           <button onclick="abrirPanelDominios()" id="tabBtnDominios" class="admin-tab solo-admin bg-gray-900 border-gray-800 text-gray-400">
             <i class="fa-solid fa-globe"></i><span>Dominios</span>
           </button>
@@ -2320,6 +2323,45 @@
           <button type="button" id="btnGuardarCfgTiendas" onclick="guardarCfgTiendas()" class="w-full py-2.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-black font-black text-xs">Guardar</button>
           <div class="pt-2 border-t border-gray-800"><p class="text-xs font-black text-white mb-2">Solicitudes</p><div id="ctSolicitudes" class="space-y-2"></div></div>
           <div class="pt-2 border-t border-gray-800"><p class="text-xs font-black text-white mb-2">Tiendas creadas</p><div id="ctTiendas" class="space-y-2"></div></div>
+        </div>
+      </div>
+
+      <!-- TAB: PRIME VIDEO · ROBOT AMAZON (pruebas en Chrome con Tampermonkey) -->
+      <div id="adminSecPrimevideo" class="hidden space-y-4 pb-28 sm:pb-0">
+        <div class="p-4 rounded-2xl border border-sky-500/30 bg-gradient-to-br from-sky-500/10 via-gray-900 to-gray-900">
+          <h3 class="text-base font-black text-white flex items-center gap-2"><i class="fa-brands fa-amazon text-sky-300"></i> Robot Amazon · Prime Video</h3>
+          <p class="text-xs text-gray-400 mt-1 leading-relaxed">Pones el correo, la contraseña y la tarjeta; la dirección de Colombia sale al azar. Tocas <b class="text-white">🚀 Hacerlo en Chrome</b> y el robot inicia sesión y sigue los pasos solo, con pausas de persona: país EE.UU. → dirección de Colombia → <b>dejarla seleccionada</b> → artículo al carrito → <b>Prime dentro del carrito</b> con la tarjeta.</p>
+          <p id="pvVersion" class="text-[11px] text-gray-500 mt-2">Robot en este Chrome: …</p>
+        </div>
+        <div class="p-4 rounded-2xl bg-gray-900 border border-gray-800 space-y-3">
+          <p class="text-xs font-black text-white">👤 Cuenta Amazon</p>
+          <input id="pvCorreo" type="email" autocomplete="off" placeholder="Correo de la cuenta Amazon" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none">
+          <div class="flex gap-2"><input id="pvPass" type="password" autocomplete="new-password" placeholder="Contraseña" class="flex-1 min-w-0 bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none">
+            <button type="button" onclick="pvVerPass()" class="px-3 rounded-xl bg-gray-800 border border-gray-700 text-gray-300" title="Ver u ocultar"><i class="fa-solid fa-eye"></i></button></div>
+          <p class="text-xs font-black text-white pt-1">💳 Tarjeta (sin CVV)</p>
+          <input id="pvTarjeta" type="text" inputmode="numeric" autocomplete="off" placeholder="Número de tarjeta" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-sm text-white font-mono focus:outline-none">
+          <div class="grid grid-cols-2 gap-2">
+            <label class="text-[11px] text-gray-400">Mes de vencimiento<select id="pvMes" class="mt-1 w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-sm text-white"></select></label>
+            <label class="text-[11px] text-gray-400">Año de vencimiento<select id="pvAnio" class="mt-1 w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-sm text-white"></select></label>
+          </div>
+          <input id="pvTitular" type="text" autocomplete="off" placeholder="Nombre en la tarjeta (vacío = el nombre de la dirección)" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none">
+          <div class="p-3 rounded-xl bg-gray-950/60 border border-gray-800">
+            <div class="flex items-center justify-between gap-2"><p class="text-xs font-black text-white">🇨🇴 Dirección al azar</p><button type="button" onclick="pvDireccionNueva()" class="px-2.5 py-1 rounded-lg bg-gray-800 border border-gray-700 text-[11px] font-bold text-amber-200">🎲 Otra</button></div>
+            <div id="pvDireccion" class="text-[12px] text-gray-300 mt-1.5 leading-relaxed"></div>
+          </div>
+          <label class="flex items-start gap-2 text-[12px] text-gray-300"><input id="pvPausarPrime" type="checkbox" checked class="mt-0.5"> <span><b class="text-white">Pausar antes de confirmar Prime</b> (el robot llega a la última pantalla y espera tu «▶ Continuar» en su cajita)</span></label>
+          <label class="flex items-start gap-2 text-[12px] text-gray-300"><input id="pvRecordar" type="checkbox" class="mt-0.5"> <span>Recordar correo, contraseña y tarjeta <b class="text-white">solo en este navegador</b> (nunca se guardan en el servidor)</span></label>
+          <div class="grid grid-cols-2 gap-2 pt-1">
+            <button type="button" onclick="ejecutarRobotAmazon()" class="py-2.5 rounded-xl bg-sky-600 hover:bg-sky-500 text-white font-black text-xs"><i class="fa-brands fa-chrome mr-1"></i> 🚀 Hacerlo en Chrome</button>
+            <button type="button" onclick="pvGuardarResultado(false)" class="py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs"><i class="fa-solid fa-check mr-1"></i> Ya quedó</button>
+          </div>
+          <div id="pvEstado" class="hidden"></div>
+          <details class="rounded-xl border border-gray-800 bg-gray-950/60 p-3"><summary class="text-sm font-black text-white cursor-pointer">ℹ️ Cómo se prueba</summary>
+            <ol class="mt-2 text-[11px] text-gray-300 space-y-1 list-decimal pl-4"><li>En el Chrome de pruebas instala el script <b>Epic Robot Amazon 1.5.0</b> en Tampermonkey (con <b>Permitir en modo incógnito</b> si lo usas en incógnito).</li><li>Abre este panel en ese Chrome, llena los datos y toca <b>🚀 Hacerlo en Chrome</b>: se abre Amazon Music Italia con la orden.</li><li>Aquí abajo ves en vivo en qué paso va. Si Amazon pide un código o un CAPTCHA, el robot se pausa: lo resuelves y tocas <b>▶ Continuar</b> en su cajita.</li><li>Al terminar se guarda solo en el historial (o toca <b>Ya quedó</b>). La contraseña y la tarjeta completa nunca se guardan: solo los últimos 4.</li></ol></details>
+        </div>
+        <div class="p-4 rounded-2xl bg-gray-900 border border-gray-800">
+          <div class="flex items-center justify-between gap-2"><p class="text-xs font-black text-white">📋 Historial Prime Video</p><button type="button" onclick="pvCargarHistorial()" class="text-[11px] text-gray-400 hover:text-white"><i class="fa-solid fa-rotate"></i></button></div>
+          <div id="pvHistorial" class="mt-2 space-y-2 text-[12px]"></div>
         </div>
       </div>
 
@@ -9587,7 +9629,7 @@
     function cambiarTabAdmin(tab) {
       if (modoPruebaCliente) return;
       iniciarBadgesAdmin();
-      const tabs = ['productos', 'reporte', 'categorias', 'usuarios', 'tickets', 'stock', 'apariencia', 'pagos', 'recargas', 'historial', 'netflix', 'ajustes', 'tiendas', 'proveedores', 'asistente', 'whatsapp', 'buscar', 'promociones', 'cortes', 'novedades', 'vista', 'marketing', 'actividad', 'campanas', 'dealers', 'mary', 'luisa'];
+      const tabs = ['productos', 'reporte', 'categorias', 'usuarios', 'tickets', 'stock', 'apariencia', 'pagos', 'recargas', 'historial', 'netflix', 'ajustes', 'tiendas', 'proveedores', 'asistente', 'whatsapp', 'buscar', 'promociones', 'cortes', 'novedades', 'vista', 'marketing', 'actividad', 'campanas', 'dealers', 'mary', 'luisa', 'primevideo'];
       // El moderador no entra a la configuración general ni a los pagos a proveedores
       if (esModeradorSesion() && RESTRINGIDAS_MODERADOR.includes(tab)) tab = 'productos';
       tabs.forEach(t => {
@@ -9638,6 +9680,7 @@
       if (tab === 'marketing') { try { if (!cfgDealer) cargarCfgDealer().then(prepararMarketing); } catch (e) { /* nada */ } prepararMarketing(); }
       if (tab === 'novedades') { iniciarNovedadesClientes(); renderizarNovedadesAdmin(); renderizarActualizacionesPagina(); }
       if (tab === 'cortes') { try { iniciarNetflixAdmin(); } catch (e) { /* nada */ } renderizarCortes(); }
+      if (tab === 'primevideo') { try { prepararPrimeVideo(); } catch (e) { console.warn(e); } }
       if (tab === 'buscar') prepararBuscadorAdmin();
       try { const vAdm = document.getElementById('vistaAdmin'); if (vAdm && !vAdm.classList.contains('hidden')) fijarRuta('admin/' + tab); } catch (e) { /* nada */ }
     }
@@ -13009,7 +13052,7 @@
     let inicioEnPanelPendiente = false;
     let perfilNombreActual = '';
     let escuchasModeradorActivas = false;
-    var RESTRINGIDAS_MODERADOR = ['categorias', 'apariencia', 'pagos', 'ajustes', 'tiendas', 'proveedores', 'asistente', 'whatsapp', 'promociones', 'novedades', 'marketing', 'actividad', 'campanas', 'dealers'];
+    var RESTRINGIDAS_MODERADOR = ['categorias', 'apariencia', 'pagos', 'ajustes', 'tiendas', 'proveedores', 'asistente', 'whatsapp', 'promociones', 'novedades', 'marketing', 'actividad', 'campanas', 'dealers', 'primevideo'];
 
     function esModeradorSesion() { return rolActual === 'moderador' && !esAdminSesionActual(); }
     function esProveedorSesion() { return rolActual === 'proveedor' && !esAdminSesionActual(); }
@@ -18461,7 +18504,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-11-10u1';
+    const VERSION_PAGINA = '2026-11-10u2';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261105_ranking', fecha: '2026-11-05', titulo: '🏆 ¡Llegó el ranking del mes!', mensaje: 'Ahora en la página ves **en qué puesto vas** (arriba, debajo de tu saldo). Los **3 que más recarguen** en el mes se llevan **saldo de regalo**: el **4%**, el **3%** y el **2%** de lo que recargaron. Para participar debes recargar mínimo **$150.000** en el mes. Se actualiza cada hora, cierra el último día del mes y el premio te cae solo el día 1. ¿Quién va a ser el primero? 😎', ir: '' },
       { id: 'act_20261102_codigos_seguros', fecha: '2026-11-02', titulo: 'Tus códigos, más protegidos 🔒', mensaje: 'Tu enlace de códigos ahora es más seguro: los códigos para **crear cuentas nuevas** con nuestros correos ya no se muestran a nadie sin permiso. Los códigos para **entrar a tu cuenta** y **cambiar la contraseña** te siguen llegando al instante, igual que siempre.', ir: '' },
@@ -20163,7 +20206,7 @@
       { id: 'referidos', t: 'Referidos y comisiones', docs: ['referidos'], sel: ['#adminReferidosCaja'] },
       { id: 'venta_manual', t: 'Venta manual (WhatsApp)', docs: [], sel: ['#ventaManualCaja'] }
     ];
-    const RESTRINGIDAS_BASE = ['categorias', 'apariencia', 'pagos', 'ajustes', 'tiendas', 'proveedores', 'asistente', 'whatsapp', 'promociones', 'novedades', 'marketing', 'actividad', 'campanas', 'dealers'];
+    const RESTRINGIDAS_BASE = ['categorias', 'apariencia', 'pagos', 'ajustes', 'tiendas', 'proveedores', 'asistente', 'whatsapp', 'promociones', 'novedades', 'marketing', 'actividad', 'campanas', 'dealers', 'primevideo'];
     var permisosModerador = [];
     function puedeSeccion(sec) { return esAdminSesionActual() || (esModeradorSesion() && permisosModerador.indexOf(sec) !== -1); }
     function elementosSeccionMod(sm) {
@@ -23663,6 +23706,7 @@
 
     // ==================== NOVEDADES INTERNAS DEL PANEL (solo el equipo) ====================
     const ACTUALIZACIONES_INTERNAS = [
+      { fecha: '2026-11-10', titulo: '🤖 Robot Amazon · Prime Video', mensaje: 'Nueva sección **Prime Video (robot)**: pones **correo, contraseña y tarjeta** (sin CVV) y la **dirección de Colombia sale al azar** (🎲 para otra). Tocas **🚀 Hacerlo en Chrome** y el robot (script **Epic Robot Amazon 1.5.0** en Tampermonkey) inicia sesión y sigue los pasos con pausas de persona: país EE.UU. → dirección de Colombia → **la deja seleccionada** → artículo al carrito → **Prime dentro del carrito** con la tarjeta. Ves **en vivo** en qué paso va; con **Pausar antes de confirmar Prime** espera tu ▶ Continuar. Al terminar se guarda en el **historial** (solo los últimos 4 de la tarjeta; la contraseña nunca va al servidor).', ir: 'primevideo' },
       { fecha: '2026-11-08', titulo: '🤖 Robot Netflix', mensaje: 'En cada cuenta Netflix de alquiler hay un botón **🤖 Robot**: eliges nombres nuevos y PIN de los perfiles, y si quieres **sacar a los de un perfil o a todos**. En la cabecera de cada cuenta compartida está **Robot: toda la cuenta** (los 5 perfiles con PIN nuevo y sacar a todos de una). Tocas **Hacerlo en Netflix** y el robot lo hace solo en Netflix (usa el panel en incógnito con el script Epic Robot Netflix). Así liberas y reentregas perfiles en segundos, sin errores de PIN. Con la **🔑 clave del robot**, cuando Netflix pide un código lo busca solo en tu correo y lo escribe, y al terminar te llega a Telegram **«✅ PIN cambiados»**.' },
       { fecha: '2026-11-07', titulo: '🎛 Centro de mando', mensaje: 'En **👩‍💼 Mary → 🎛 Centro de mando** les das órdenes a tus asistentes en tus palabras (*"hoy empuja Amazon Free"*, *"no ofrezcas Gemini hasta el viernes"*, *"Luisa: pausa hoy"*, *"Luisa: destaca Spotify por 3 días"*) y con **📊 ¿Cómo va todo?** ves WhatsApp conectado, clientes sin respuesta, estados de Luisa, tus órdenes activas y el reporte del día. Las órdenes vencen solas.' },
       { fecha: '2026-11-07', titulo: '🛟 Mary rescata a los clientes sin respuesta', mensaje: 'Si un cliente le escribió a Mary y por alguna falla no recibió respuesta real (o solo "dame un momentico"), cada 15 minutos Mary lo rescata: le escribe **"Perdona la demora 🙏"** + la respuesta a lo que pidió. No se mete si tú ya le escribiste ni con los de "no atender", y nunca rescata dos veces. Te avisa por Telegram a quién le escribió. En **👩‍💼 Mary → 🛟 Clientes sin respuesta** ves la lista y puedes **Rescatar ahora**.' },
@@ -30429,6 +30473,113 @@ const LUISA_COM_DEF_PAG = { activo: true, stockHora: '08:00', mediodiaHora: '12:
       if (!f.reemplazar) { if (f.pos === 1) { alert('El perfil 1 es el principal de la cuenta: Netflix y Disney+ no dejan eliminarlo.'); return; }
         if (!await confirmarModal('¿Eliminar «' + (f.actual || 'Perfil ' + f.pos) + '» en la plataforma y crear uno nuevo' + (f.nuevo && f.nuevo !== f.actual ? ' llamado «' + f.nuevo + '»' : '') + '? Se borra su historial. Los perfiles de abajo suben un puesto.', { textoAceptar: 'Sí, eliminar y crear' })) return; }
       f.reemplazar = !f.reemplazar; if (f.reemplazar) { f.sel = true; if (!f.pin) f.pin = generarPinNetflix(''); } pintarRobotNetflix(); }
+    // ==================== 🤖 ROBOT AMAZON · PRIME VIDEO (pruebas en Chrome con el script Epic Robot Amazon de Tampermonkey) ====================
+    //   La orden viaja en el enlace y en el nombre de la pestaña (#epicrobot=…), igual que el robot Netflix. El robot devuelve su avance y su
+    //   resultado por el puente de Tampermonkey (localStorage de este panel). Al servidor solo va el resultado: NUNCA la contraseña ni la tarjeta completa.
+    const PV_CIUDADES = [
+      ['Bogotá', 'Bogotá D.C.', ['110111', '110221', '110311', '111071', '111211', '111611']], ['Medellín', 'Antioquia', ['050010', '050012', '050021', '050031', '050034']],
+      ['Cali', 'Valle del Cauca', ['760001', '760020', '760032', '760042', '760044']], ['Barranquilla', 'Atlántico', ['080001', '080002', '080003', '080020']],
+      ['Soledad', 'Atlántico', ['083001', '083002']], ['Cartagena', 'Bolívar', ['130001', '130002', '130010', '130015']], ['Bucaramanga', 'Santander', ['680001', '680002', '680003', '680006']],
+      ['Pereira', 'Risaralda', ['660001', '660002', '660003']], ['Manizales', 'Caldas', ['170001', '170002', '170004']], ['Santa Marta', 'Magdalena', ['470001', '470002', '470003']],
+      ['Cúcuta', 'Norte de Santander', ['540001', '540003', '540006']], ['Ibagué', 'Tolima', ['730001', '730002', '730006']], ['Villavicencio', 'Meta', ['500001', '500002', '500005']],
+      ['Armenia', 'Quindío', ['630001', '630002', '630004']], ['Montería', 'Córdoba', ['230001', '230002', '230003']], ['Neiva', 'Huila', ['410001', '410002', '410010']]];
+    const PV_NOMBRES = ['Carlos', 'Andrés', 'Mateo', 'Sebastián', 'Camilo', 'Alejandro', 'Daniel', 'Santiago', 'Nicolás', 'Felipe', 'Valentina', 'Sofía', 'Laura', 'Daniela', 'Mariana', 'Natalia', 'Paula', 'Juliana', 'Gabriela', 'María', 'Esteban', 'Julián', 'Camila', 'Andrea'];
+    const PV_APELLIDOS = ['Gómez', 'Rodríguez', 'Martínez', 'Hernández', 'López', 'González', 'Pérez', 'Sánchez', 'Ramírez', 'Torres', 'Díaz', 'Vargas', 'Castro', 'Romero', 'Morales', 'Ortega', 'Rojas', 'Moreno', 'Jiménez', 'Herrera'];
+    let pv = { dir: null, enviado: null, timer: null, guardadoT: 0 };
+    const pvAzar = (a) => a[Math.floor(Math.random() * a.length)], pvEntre = (a, b) => a + Math.floor(Math.random() * (b - a + 1));
+    function pvDireccionAzar() {
+      const c = pvAzar(PV_CIUDADES), letra = Math.random() < 0.25 ? pvAzar(['A', 'B', 'C']) : '';
+      return { pais: 'CO', azar: true, nombre: pvAzar(PV_NOMBRES) + ' ' + pvAzar(PV_APELLIDOS),
+        telefono: pvAzar(['300', '301', '302', '304', '305', '310', '311', '312', '313', '314', '315', '316', '317', '318', '319', '320', '321', '322', '323', '350']) + String(pvEntre(1000000, 9999999)),
+        linea1: pvAzar(['Calle', 'Carrera', 'Avenida', 'Transversal', 'Diagonal']) + ' ' + pvEntre(1, 120) + letra + ' # ' + pvEntre(1, 99) + '-' + pvEntre(1, 99),
+        linea2: Math.random() < 0.5 ? pvAzar(['Apto', 'Casa', 'Piso']) + ' ' + pvEntre(101, 902) : '', barrio: pvAzar(['Norte', 'Sur', 'Este', 'Oeste']),
+        ciudad: c[0], departamento: c[1], codigoPostal: pvAzar(c[2]) };
+    }
+    function pvPintarDireccion() {
+      const el = document.getElementById('pvDireccion'), d = pv.dir; if (!el || !d) return;
+      el.innerHTML = '<b class="text-white">' + escaparHtml(d.nombre) + '</b> · 📱 ' + escaparHtml(d.telefono) + '<br>' + escaparHtml(d.linea1) + (d.linea2 ? ', ' + escaparHtml(d.linea2) : '') + ' · Barrio ' + escaparHtml(d.barrio) + '<br>' + escaparHtml(d.ciudad) + ', ' + escaparHtml(d.departamento) + ' · ' + escaparHtml(d.codigoPostal) + ' · Colombia';
+    }
+    function pvDireccionNueva() { pv.dir = pvDireccionAzar(); pvPintarDireccion(); }
+    function pvVerPass() { const el = document.getElementById('pvPass'); if (el) el.type = el.type === 'password' ? 'text' : 'password'; }
+    function prepararPrimeVideo() {
+      const m = document.getElementById('pvMes'), a = document.getElementById('pvAnio');
+      if (m && !m.options.length) m.innerHTML = Array.from({ length: 12 }, (_, i) => { const v = String(i + 1).padStart(2, '0'); return '<option value="' + v + '">' + v + '</option>'; }).join('');
+      if (a && !a.options.length) { const y = new Date().getFullYear(); a.innerHTML = Array.from({ length: 12 }, (_, i) => '<option value="' + (y + i) + '">' + (y + i) + '</option>').join(''); }
+      let g = null; try { g = JSON.parse(localStorage.getItem('epicPvDatos') || 'null'); } catch (e) { g = null; }
+      if (g) { [['pvCorreo', g.correo], ['pvPass', g.pass], ['pvTarjeta', g.numero], ['pvTitular', g.titular]].forEach((x) => { const el = document.getElementById(x[0]); if (el && !el.value) el.value = x[1] || ''; });
+        if (g.mes && m) m.value = g.mes; if (g.anio && a) a.value = g.anio; const r = document.getElementById('pvRecordar'); if (r) r.checked = true; }
+      if (!pv.dir) pvDireccionNueva(); else pvPintarDireccion();
+      let ver = ''; try { ver = localStorage.getItem('epicRobotAmzVersion') || ''; } catch (e) { /* nada */ }
+      const vEl = document.getElementById('pvVersion'); if (vEl) vEl.innerHTML = ver ? 'Robot en este Chrome: <b class="text-white">Epic Robot Amazon ' + escaparHtml(ver) + '</b>' + (ver < '1.5.0' ? ' <span class="text-amber-300">· actualízalo a 1.5.0 (los pasos nuevos y el estado en vivo vienen ahí)</span>' : '') : '<span class="text-amber-300">Este Chrome no tiene el script Epic Robot Amazon en Tampermonkey (o no está activo en esta página).</span>';
+      if (!pv.timer) pv.timer = setInterval(() => { const sec = document.getElementById('adminSecPrimevideo'); if (!sec || sec.classList.contains('hidden')) { clearInterval(pv.timer); pv.timer = null; return; } pvPintarEstado(); }, 2000);
+      pvPintarEstado(); pvCargarHistorial();
+    }
+    function pvOrden() {
+      const v = (id) => String((document.getElementById(id) || {}).value || '').trim();
+      const correo = v('pvCorreo').toLowerCase(), pass = v('pvPass'), numero = v('pvTarjeta').replace(/\D/g, '');
+      if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(correo)) { alert('Escribe un correo válido de la cuenta Amazon.'); return null; }
+      if (!pass) { alert('Escribe la contraseña de la cuenta Amazon.'); return null; }
+      if (numero.length < 13 || numero.length > 19) { alert('El número de tarjeta debe tener entre 13 y 19 dígitos.'); return null; }
+      const mes = v('pvMes'), anio = v('pvAnio'), hoy = new Date();
+      if (Number(anio) < hoy.getFullYear() || (Number(anio) === hoy.getFullYear() && Number(mes) < hoy.getMonth() + 1)) { alert('Esa tarjeta ya está vencida.'); return null; }
+      if (!pv.dir) pv.dir = pvDireccionAzar();
+      const recordar = !!(document.getElementById('pvRecordar') || {}).checked;
+      try { if (recordar) localStorage.setItem('epicPvDatos', JSON.stringify({ correo, pass, numero, mes, anio, titular: v('pvTitular') })); else localStorage.removeItem('epicPvDatos'); } catch (e) { /* nada */ }
+      return { v: 1, correo: correo, pass: pass, tarjeta: { numero: numero, mes: mes, anio: anio, titular: v('pvTitular') }, direccion: Object.assign({}, pv.dir),
+        pausarAntesPrime: !!(document.getElementById('pvPausarPrime') || {}).checked, activarPrime: true, t: Date.now() };
+    }
+    function ejecutarRobotAmazon() {
+      const o = pvOrden(); if (!o) return;
+      let b64 = ''; try { b64 = btoa(unescape(encodeURIComponent(JSON.stringify(o)))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''); } catch (e) { alert('No se pudo armar la orden.'); return; }
+      const w = window.open('https://music.amazon.it/#epicrobot=' + b64, 'epicrobot:' + b64);
+      if (!w) { alert('El navegador bloqueó la pestaña nueva. Permite las ventanas emergentes para esta página y vuelve a tocar el botón.'); return; }
+      pv.enviado = { t: o.t, correo: o.correo, direccion: o.direccion, ultimos4: o.tarjeta.numero.slice(-4) }; pv.guardadoT = 0;
+      try { localStorage.setItem('epicPvEnviado', JSON.stringify(pv.enviado)); } catch (e) { /* nada */ }
+      mostrarToast('🤖 Orden enviada a Amazon. Aquí ves en vivo cómo va.'); pvPintarEstado();
+      pvDireccionNueva();   // la próxima corrida ya trae otra dirección
+    }
+    function pvLeer(k) { try { return JSON.parse(localStorage.getItem(k) || 'null'); } catch (e) { return null; } }
+    const PV_PASOS = { music_it: 'Iniciar sesión (Amazon Music IT)', pais_us: 'País Estados Unidos', relogin: 'Confirmar sesión', amazon_com: 'Entrar a amazon.com', direccion_co: 'Agregar dirección de Colombia', seleccionar_direccion: 'Dejar la dirección seleccionada', carrito_20_50: 'Artículo al carrito ($20-$50)', prime_en_carrito: 'Prime dentro del carrito (tarjeta)' };
+    function pvPintarEstado() {
+      const caja = document.getElementById('pvEstado'); if (!caja) return;
+      if (!pv.enviado) pv.enviado = pvLeer('epicPvEnviado');
+      const e = pvLeer('epicRobotAmzEstado');
+      if (!e || !pv.enviado || (e.ordenT && e.ordenT !== pv.enviado.t)) { caja.classList.toggle('hidden', !pv.enviado); if (pv.enviado) caja.innerHTML = '<div class="p-2.5 rounded-xl bg-gray-800 border border-gray-700 text-[11px] text-gray-300">⏳ Esperando que el robot de Chrome tome la orden de <b class="text-white">' + escaparHtml(pv.enviado.correo) + '</b>…</div>'; return; }
+      const paso = PV_PASOS[e.paso] || e.paso || '', lin = (e.log || []).slice(-3).map((l) => '<div class="truncate">' + escaparHtml(String(l)) + '</div>').join('');
+      const cab = e.estado === 'listo' ? ['bg-emerald-500/10 border-emerald-500/40 text-emerald-100', '✅ <b>Listo</b>'] : e.estado === 'pausa' ? ['bg-amber-500/10 border-amber-500/40 text-amber-100', '⏸ <b>En pausa</b> · paso ' + (e.i + 1) + '/' + e.n + ' · ' + escaparHtml(paso)]
+        : e.estado === 'error' ? ['bg-red-500/10 border-red-500/40 text-red-100', '⚠️ <b>Se detuvo</b> · paso ' + (e.i + 1) + '/' + e.n + ' · ' + escaparHtml(paso)] : e.estado === 'detenido' ? ['bg-gray-800 border-gray-700 text-gray-300', '⏹ <b>Detenido</b>']
+        : ['bg-sky-500/10 border-sky-500/40 text-sky-100', '<i class="fa-solid fa-spinner fa-spin mr-1"></i><b>Trabajando</b> · paso ' + (e.i + 1) + '/' + e.n + ' · ' + escaparHtml(paso)];
+      caja.innerHTML = '<div class="p-2.5 rounded-xl border text-[11px] space-y-1 ' + cab[0] + '"><p>' + cab[1] + '</p>' + (e.motivo && e.estado !== 'listo' ? '<p class="font-bold">' + escaparHtml(e.motivo) + '</p>' : '') + '<div class="text-[10px] opacity-80">' + lin + '</div></div>';
+      caja.classList.remove('hidden');
+      if (e.estado === 'listo' && pv.guardadoT !== pv.enviado.t) setTimeout(() => pvGuardarResultado(true), 1500);   // ✅ terminó: se guarda solo (una vez)
+    }
+    async function pvGuardarResultado(auto) {
+      const r = pvLeer('epicRobotAmzResultado'), env = pv.enviado || pvLeer('epicPvEnviado');
+      if (!r || !r.correo) { if (!auto) alert('Todavía no hay resultado del robot en este navegador. Espera a que la cajita del robot termine.'); return; }
+      if (env && String(r.correo).toLowerCase() !== String(env.correo).toLowerCase()) { if (!auto) alert('El último resultado del robot es de otra cuenta (' + r.correo + ').'); return; }
+      const id = 'pv' + (r.ordenT || r.t || Date.now()); let usado = ''; try { usado = localStorage.getItem('epicPvUsado') || ''; } catch (e) { /* nada */ }
+      if (usado === id) { if (pv.enviado) pv.guardadoT = pv.enviado.t; if (!auto) mostrarToast('Ese resultado ya estaba guardado.'); return; }
+      const d = r.direccion || {};
+      const rec = { correo: String(r.correo).toLowerCase(), cliente: r.cliente || d.nombre || '', direccion: { nombre: d.nombre || r.cliente || '', telefono: d.telefono || '', linea1: d.linea1 || '', linea2: d.linea2 || '', barrio: d.barrio || r.barrio || '', ciudad: d.ciudad || '', departamento: d.departamento || '', codigoPostal: d.codigoPostal || '' },
+        tarjeta: r.tarjetaUltimos4 ? '••••' + String(r.tarjetaUltimos4).slice(-4) : (env && env.ultimos4 ? '••••' + env.ultimos4 : ''), paisCambiado: !!r.paisCambiado, direccionColombia: !!r.direccionColombia, direccionSeleccionada: !!r.direccionSeleccionada,
+        producto: r.productoCarrito || '', prime: !!r.primeIntentado, estado: r.estado || (r.primeIntentado ? 'listo' : ''), motivo: r.motivo || '', robot: r.version || '', t: r.t || Date.now(), guardadoEl: new Date().toISOString() };
+      try { await db.collection('secretos').doc('robots_amazon').set({ historial: { [id]: rec } }, { merge: true });
+        try { localStorage.setItem('epicPvUsado', id); } catch (e) { /* nada */ } if (pv.enviado) pv.guardadoT = pv.enviado.t;
+        mostrarToast('✅ Guardado en el historial de Prime Video: ' + rec.correo); pvCargarHistorial(); }
+      catch (e) { if (!auto) alert('No se pudo guardar: ' + e.message); }
+    }
+    async function pvCargarHistorial() {
+      const c = document.getElementById('pvHistorial'); if (!c) return; c.innerHTML = '<p class="text-gray-500">Cargando…</p>';
+      try { const doc = await db.collection('secretos').doc('robots_amazon').get(), h = (doc.exists ? doc.data().historial : null) || {};
+        const ids = Object.keys(h).sort((a, b) => (h[b].t || 0) - (h[a].t || 0)).slice(0, 30);
+        c.innerHTML = ids.length ? ids.map((k) => { const x = h[k], d = x.direccion || {}, ok = x.prime && x.estado === 'listo';
+          return '<div class="p-3 rounded-xl bg-gray-950/60 border ' + (ok ? 'border-emerald-700/50' : 'border-gray-800') + '"><div class="flex items-start justify-between gap-2"><p class="font-bold text-white truncate">' + escaparHtml(x.correo) + '</p><span class="shrink-0 text-[10px] ' + (ok ? 'text-emerald-300' : 'text-amber-300') + '">' + (ok ? '✅ Prime' : '⚠️ ' + escaparHtml(x.estado || 'incompleto')) + '</span></div>'
+            + '<p class="text-gray-400 mt-0.5">' + escaparHtml(d.nombre || x.cliente || '') + ' · ' + escaparHtml(d.linea1 || '') + ', ' + escaparHtml(d.ciudad || '') + ' (' + escaparHtml(d.departamento || '') + ')' + (x.direccionSeleccionada ? ' · 📍 seleccionada' : '') + '</p>'
+            + '<p class="text-gray-500 text-[11px]">' + (x.tarjeta ? '💳 ' + escaparHtml(x.tarjeta) + ' · ' : '') + (x.producto ? '🛒 ' + escaparHtml(String(x.producto).slice(0, 40)) + ' · ' : '') + escaparHtml(new Date(x.t || 0).toLocaleString('es-CO')) + (x.motivo && !ok ? ' · ' + escaparHtml(String(x.motivo).slice(0, 80)) : '') + '</p></div>'; }).join('')
+          : '<p class="text-gray-500">Todavía no hay corridas guardadas.</p>';
+      } catch (e) { c.innerHTML = '<p class="text-red-300">No pude cargar el historial: ' + escaparHtml(e.message) + '</p>'; }
+    }
+
     function ordenRobotNetflix() {
       if (!robotNf) return null;
       const modo = (document.querySelector('input[name="rnSacar"]:checked') || {}).value || 'ninguno';
