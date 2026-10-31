@@ -18504,7 +18504,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-11-10u2';
+    const VERSION_PAGINA = '2026-11-10u3';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261105_ranking', fecha: '2026-11-05', titulo: '🏆 ¡Llegó el ranking del mes!', mensaje: 'Ahora en la página ves **en qué puesto vas** (arriba, debajo de tu saldo). Los **3 que más recarguen** en el mes se llevan **saldo de regalo**: el **4%**, el **3%** y el **2%** de lo que recargaron. Para participar debes recargar mínimo **$150.000** en el mes. Se actualiza cada hora, cierra el último día del mes y el premio te cae solo el día 1. ¿Quién va a ser el primero? 😎', ir: '' },
       { id: 'act_20261102_codigos_seguros', fecha: '2026-11-02', titulo: 'Tus códigos, más protegidos 🔒', mensaje: 'Tu enlace de códigos ahora es más seguro: los códigos para **crear cuentas nuevas** con nuestros correos ya no se muestran a nadie sin permiso. Los códigos para **entrar a tu cuenta** y **cambiar la contraseña** te siguen llegando al instante, igual que siempre.', ir: '' },
@@ -23706,6 +23706,7 @@
 
     // ==================== NOVEDADES INTERNAS DEL PANEL (solo el equipo) ====================
     const ACTUALIZACIONES_INTERNAS = [
+      { fecha: '2026-11-10', titulo: '🖥️ Robot del VPS 1.3: pantalla en vivo, diagnóstico y reintentos', mensaje: 'En **🤖 Robot → Automático (VPS)** ahora ves la **pantalla del Chrome del VPS en vivo** (cada ~4 s), la **etapa** en la que va y el **intento** (hasta 3, con Chrome nuevo). Si no avanza, el VPS te dice **qué pasa en palabras** («Netflix rechazó el inicio de sesión desde el VPS», CAPTCHA, correo que no existe, contraseña incorrecta, pide código). Cuando termina bien, **el panel guarda solo**: «Ya quedó» es solo para Chrome (manual). Ojo: si Netflix bloquea la IP del VPS, te lo dice en segundos pero no entra; la salida es Chrome (manual) o un proxy residencial en el VPS.', ir: 'netflix' },
       { fecha: '2026-11-10', titulo: '🤖 Robot Amazon · Prime Video', mensaje: 'Nueva sección **Prime Video (robot)**: pones **correo, contraseña y tarjeta** (sin CVV) y la **dirección de Colombia sale al azar** (🎲 para otra). Tocas **🚀 Hacerlo en Chrome** y el robot (script **Epic Robot Amazon 1.5.0** en Tampermonkey) inicia sesión y sigue los pasos con pausas de persona: país EE.UU. → dirección de Colombia → **la deja seleccionada** → artículo al carrito → **Prime dentro del carrito** con la tarjeta. Ves **en vivo** en qué paso va; con **Pausar antes de confirmar Prime** espera tu ▶ Continuar. Al terminar se guarda en el **historial** (solo los últimos 4 de la tarjeta; la contraseña nunca va al servidor).', ir: 'primevideo' },
       { fecha: '2026-11-08', titulo: '🤖 Robot Netflix', mensaje: 'En cada cuenta Netflix de alquiler hay un botón **🤖 Robot**: eliges nombres nuevos y PIN de los perfiles, y si quieres **sacar a los de un perfil o a todos**. En la cabecera de cada cuenta compartida está **Robot: toda la cuenta** (los 5 perfiles con PIN nuevo y sacar a todos de una). Tocas **Hacerlo en Netflix** y el robot lo hace solo en Netflix (usa el panel en incógnito con el script Epic Robot Netflix). Así liberas y reentregas perfiles en segundos, sin errores de PIN. Con la **🔑 clave del robot**, cuando Netflix pide un código lo busca solo en tu correo y lo escribe, y al terminar te llega a Telegram **«✅ PIN cambiados»**.' },
       { fecha: '2026-11-07', titulo: '🎛 Centro de mando', mensaje: 'En **👩‍💼 Mary → 🎛 Centro de mando** les das órdenes a tus asistentes en tus palabras (*"hoy empuja Amazon Free"*, *"no ofrezcas Gemini hasta el viernes"*, *"Luisa: pausa hoy"*, *"Luisa: destaca Spotify por 3 días"*) y con **📊 ¿Cómo va todo?** ves WhatsApp conectado, clientes sin respuesta, estados de Luisa, tus órdenes activas y el reporte del día. Las órdenes vencen solas.' },
@@ -30392,7 +30393,7 @@ const LUISA_COM_DEF_PAG = { activo: true, stockHora: '08:00', mediodiaHora: '12:
       sel.innerHTML = nombres.map(n => `<option value="${escaparHtml(n)}">${escaparHtml(n)}</option>`).join('') || '<option value="">(escribe los nombres arriba)</option>';
       if (prev && nombres.indexOf(prev) !== -1) sel.value = prev;
     }
-    function cerrarRobotNetflix() { const m = document.getElementById('modalRobotNetflix'); if (m) { m.classList.add('hidden'); m.style.display = 'none'; } try { if (window._robotVpsUnsub) { window._robotVpsUnsub(); window._robotVpsUnsub = null; } } catch (e) { /* nada */ } }
+    function cerrarRobotNetflix() { const m = document.getElementById('modalRobotNetflix'); if (m) { m.classList.add('hidden'); m.style.display = 'none'; } try { robotVpsVivoParar(); } catch (e) { /* nada */ } try { if (window._robotVpsUnsub) { window._robotVpsUnsub(); window._robotVpsUnsub = null; } } catch (e) { /* nada */ } }
     // 🤖 ROBOT AUTOMÁTICO (VPS): la MISMA orden que abre tu Chrome va a la fila del VPS (secretos/robots). El VPS la hace sola y avisa aquí.
     async function ejecutarRobotVps() {
       const o = ordenRobotNetflix(); if (!o) return;
@@ -30430,18 +30431,30 @@ const LUISA_COM_DEF_PAG = { activo: true, stockHora: '08:00', mediodiaHora: '12:
       const antes = Object.keys(cola).filter((k) => (cola[k] || {}).estado === 'pendiente' && String(cola[k].creadoEl) < String(o.creadoEl)).length;
       let h = '';
       if (o.estado === 'pendiente') h = '<div class="p-2.5 rounded-xl bg-gray-800 border border-gray-700 text-[11px] text-gray-200">⏳ <b>En la fila del VPS</b>' + (antes ? ' · ' + antes + ' antes' : ' · empieza en segundos') + (vivo ? '' : '<br><span class="text-red-300">El robot del VPS no da señal: puede tardar o no arrancar.</span>') + '</div>';
-      else if (o.estado === 'trabajando') h = '<div class="p-2.5 rounded-xl bg-sky-500/10 border border-sky-500/40 text-[11px] text-sky-100 space-y-0.5"><p><i class="fa-solid fa-spinner fa-spin mr-1"></i><b>VPS trabajando</b>' + (o.pasos ? ' · paso ' + Math.min((o.paso || 0) + 1, o.pasos) + ' de ' + o.pasos : '') + '</p>' + (o.avance === 'pausa' && o.motivo ? '<p class="text-amber-200">⏸ ' + escaparHtml(o.motivo) + '</p>' : '') + '<div class="text-sky-200/80">' + logs + '</div></div>';
-      else if (o.estado === 'listo') h = '<div class="p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/40 text-[11px] text-emerald-200">✅ <b>Listo en el VPS</b>' + (o.ms ? ' en ' + Math.round(o.ms / 1000) + ' s' : '') + (o.plat === 'disney' ? ' · navegador borrado.' : ' · sesión cerrada y navegador borrado.') + (robotNf.vpsGuardado ? ' Guardado en el panel.' : '') + '</div>';
-      else h = '<div class="p-2.5 rounded-xl bg-red-500/10 border border-red-500/40 text-[11px] text-red-100 space-y-1"><p>✋ <b>' + (o.estado === 'ayuda' ? 'El robot del VPS necesita ayuda' : o.estado === 'tiempo' ? 'Se acabó el tiempo' : 'El robot del VPS no pudo') + '</b>: ' + escaparHtml(o.motivo || '') + '</p><div class="text-red-200/80">' + logs + '</div>'
-        + (o.captura ? '<button type="button" onclick="robotVpsVerFoto(\'' + id + '\')" class="px-2.5 py-1 rounded-lg bg-gray-800 border border-gray-600 text-white text-[11px] font-bold">📷 Ver la pantalla</button><div id="rnVpsFoto"></div>' : '') + '<p class="text-gray-300">Puedes hacerlo con <b>Chrome (manual)</b>.</p></div>';
+      else if (o.estado === 'trabajando') h = '<div class="p-2.5 rounded-xl bg-sky-500/10 border border-sky-500/40 text-[11px] text-sky-100 space-y-0.5"><p><i class="fa-solid fa-spinner fa-spin mr-1"></i><b>VPS trabajando</b>' + ((o.intentos || 1) > 1 ? ' · intento ' + (o.intento || 1) + '/' + o.intentos : '') + (o.etapa ? ' · ' + escaparHtml(o.etapa) : (o.pasos ? ' · paso ' + Math.min((o.paso || 0) + 1, o.pasos) + ' de ' + o.pasos : '')) + '</p>' + (o.avance === 'pausa' && o.motivo ? '<p class="text-amber-200">⏸ ' + escaparHtml(o.motivo) + '</p>' : '') + (o.diagTexto ? '<p class="text-amber-100 font-bold">🩺 ' + escaparHtml(o.diagTexto) + '</p>' : '') + '<div class="text-sky-200/80">' + logs + '</div><div id="rnVpsVivo" class="mt-1"></div><p class="text-[10px] text-sky-200/60">Automático: cuando termine, el panel guarda solo. No tienes que tocar nada.</p></div>';
+      else if (o.estado === 'listo') h = '<div class="p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/40 text-[11px] text-emerald-200">✅ <b>Listo en el VPS</b>' + (o.ms ? ' en ' + Math.round(o.ms / 1000) + ' s' : '') + (o.plat === 'disney' ? ' · navegador borrado.' : ' · sesión cerrada y navegador borrado.') + (robotNf.vpsGuardado ? ' <b>Guardado en el panel solo.</b>' : '') + ((o.intentos || 1) > 1 && (o.intento || 1) > 1 ? ' (al intento ' + o.intento + ')' : '') + '</div>';
+      else h = '<div class="p-2.5 rounded-xl bg-red-500/10 border border-red-500/40 text-[11px] text-red-100 space-y-1"><p>✋ <b>' + (o.estado === 'ayuda' ? 'El robot del VPS necesita ayuda' : o.estado === 'tiempo' ? 'Se acabó el tiempo' : 'El robot del VPS no pudo') + '</b>' + ((o.intentos || 1) > 1 ? ' (' + (o.intento || 1) + ' intento' + ((o.intento || 1) === 1 ? '' : 's') + ')' : '') + ': ' + escaparHtml(o.motivo || '') + '</p>' + (o.diagnostico ? '<p class="text-[10px] text-red-200/70">Diagnóstico: ' + escaparHtml(o.diagnostico) + '</p>' : '') + '<div class="text-red-200/80">' + logs + '</div>'
+        + (o.captura ? '<div id="rnVpsFoto"></div>' : '') + '<p class="text-gray-300">' + (/bloqueo|captcha|pais/.test(o.diagnostico || '') ? 'Netflix no deja entrar al VPS desde su conexión. Hazlo con <b>Chrome (manual)</b> o pon un proxy residencial en el VPS (robots.env → ROBOT_PROXY).' : 'Puedes hacerlo con <b>Chrome (manual)</b>.') + '</p></div>';
       caja.innerHTML = h; caja.classList.remove('hidden');
+      if (o.estado === 'trabajando' || (o.captura && o.estado !== 'listo')) robotVpsVivoEscuchar(id); else robotVpsVivoParar();   // 📸 pantalla en vivo (y la foto final sin tocar nada)
       // ✅ terminó bien: el panel guarda solo (lo mismo que «Ya quedó»), una sola vez
       if (o.estado === 'listo' && id === robotNf.vpsId && !robotNf.vpsGuardado && String(o.correo || '').toLowerCase() === correo) {
         robotNf.vpsGuardado = true;
         try { if (o.resultado) localStorage.setItem(robotNf.plat === 'disney' ? 'epicRobotDsnResultado' : 'epicRobotNfResultado', o.resultado); } catch (e) { /* nada */ }
-        setTimeout(() => { try { guardarRobotNetflix(); } catch (e) { /* nada */ } }, 600);
+        setTimeout(() => { try { guardarRobotNetflix(true); } catch (e) { /* nada */ } }, 600);   // 🤖 automático: sin preguntar
       }
     }
+    // 📸 PANTALLA EN VIVO del Chrome del VPS (robots-1.3): secretos/robots_captura se actualiza cada ~4 s mientras trabaja
+    function robotVpsVivoEscuchar(id) {
+      if (window._robotVpsVivoUnsub && window._robotVpsVivoId === id) return; robotVpsVivoParar(); window._robotVpsVivoId = id;
+      try { window._robotVpsVivoUnsub = db.collection('secretos').doc('robots_captura').onSnapshot((d) => { try {
+        const x = d.exists ? d.data() : {}; if (x.id !== id || !x.img) return;
+        const c = document.getElementById('rnVpsVivo') || document.getElementById('rnVpsFoto'); if (!c) return;
+        const hace = Math.max(0, Math.round((Date.now() - (Date.parse(x.t || '') || Date.now())) / 1000));
+        c.innerHTML = '<img src="' + x.img + '" alt="Pantalla del robot del VPS" class="w-full rounded-lg border border-gray-700"><p class="text-[10px] text-gray-400 mt-0.5">' + (x.viva ? '📸 Pantalla del VPS en vivo · hace ' + hace + ' s' : '📷 Última pantalla del VPS') + '</p>';
+      } catch (e) { /* nada */ } }, () => { window._robotVpsVivoUnsub = null; }); } catch (e) { /* nada */ }
+    }
+    function robotVpsVivoParar() { try { if (window._robotVpsVivoUnsub) window._robotVpsVivoUnsub(); } catch (e) { /* nada */ } window._robotVpsVivoUnsub = null; window._robotVpsVivoId = ''; }
     async function robotVpsVerFoto(id) {
       const c = document.getElementById('rnVpsFoto'); if (!c) return; c.innerHTML = '<p class="text-gray-400">Cargando…</p>';
       try { const d = await db.collection('secretos').doc('robots_captura').get(), x = d.exists ? d.data() : {};
@@ -30607,7 +30620,7 @@ const LUISA_COM_DEF_PAG = { activo: true, stockHora: '08:00', mediodiaHora: '12:
       if (!w) { alert('El navegador bloqueó la pestaña nueva. Permite las ventanas emergentes para esta página y vuelve a tocar el botón.'); return; }
       robotNf.enviado = o; mostrarToast('🤖 Orden enviada a ' + (robotNf.plat === 'disney' ? 'Disney+' : 'Netflix') + '. Cuando la cajita del robot diga «Listo», vuelve y toca «Ya quedó».');
     }
-    async function guardarRobotNetflix() {
+    async function guardarRobotNetflix(auto) {   // auto = lo terminó el VPS: se guarda sin preguntar
       if (!robotNf) return; const o = robotNf.enviado;
       const correoNf = String(robotNf.correo || '').toLowerCase(), kUsado = 'epicRobotNfUsado_' + (robotNf.plat === 'disney' ? 'dsn_' : '') + correoNf;
       const kRes = robotNf.plat === 'disney' ? 'epicRobotDsnResultado' : 'epicRobotNfResultado';   // 🌉 cada robot entrega su resultado por su propio puente (Tampermonkey) y también al servidor
@@ -30630,7 +30643,7 @@ const LUISA_COM_DEF_PAG = { activo: true, stockHora: '08:00', mediodiaHora: '12:
         return (d.perfil || d.pin) ? { slotId: f.slotId, pos: f.pos, nombre: h.nombre || '', pin: h.pin || '', d: d } : null; }).filter(Boolean);
       if (!cambios.length) { mostrarToast('El robot no alcanzó a cambiar nada para guardar.'); cerrarRobotNetflix(); return; }
       const remplTxt = (resPrevio && Array.isArray(resPrevio.reemplazados) && resPrevio.reemplazados.length) ? ' · ♻ Eliminados y creados de nuevo: ' + resPrevio.reemplazados.map(r => 'perfil ' + r).join(', ') + ' (el orden se reacomoda)' : '';
-      if (!await confirmarModal('¿Guardar en el panel lo que el robot hizo de verdad? ' + cambios.map(c => 'Perfil ' + c.pos + (c.nombre ? ' → «' + c.nombre + '»' : '') + (c.pin ? ' · PIN ' + c.pin : '')).join(' · ') + remplTxt, { textoAceptar: 'Sí, guardar' })) return;
+      if (!auto && !await confirmarModal('¿Guardar en el panel lo que el robot hizo de verdad? ' + cambios.map(c => 'Perfil ' + c.pos + (c.nombre ? ' → «' + c.nombre + '»' : '') + (c.pin ? ' · PIN ' + c.pin : '')).join(' · ') + remplTxt, { textoAceptar: 'Sí, guardar' })) return;
       try { const lote = db.batch(), ahora = new Date().toISOString();
         // ♻ Si el robot eliminó y creó de nuevo perfiles: los de abajo suben un puesto y los nuevos quedan al final (igual que en la plataforma)
         const rempl = (resPrevio && Array.isArray(resPrevio.reemplazados)) ? resPrevio.reemplazados.map(Number).filter(Boolean) : [];
