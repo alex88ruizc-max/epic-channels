@@ -2691,6 +2691,25 @@
         <div class="flex flex-wrap gap-2">
           <button type="button" onclick="guardarLuisaCfg()" class="flex-1 py-2.5 rounded-xl bg-pink-500 hover:bg-pink-400 text-white font-black text-sm">Guardar Luisa</button>
         </div>
+        <details id="luiVideosCaja" class="p-4 rounded-2xl bg-gray-900 border border-pink-500/30" ontoggle="if (this.open) luisaVideosCargar()"><summary class="text-sm font-black text-white cursor-pointer">🎬 Videos de Luisa <span class="text-[10px] font-normal text-gray-500">estados en video desde el VPS</span></summary>
+          <div class="mt-3 space-y-3">
+            <p class="text-[11px] text-gray-400 leading-relaxed">Luisa publica un video cuando <b class="text-white">llega stock</b>, hay <b class="text-white">producto nuevo</b> o <b class="text-white">promo nueva</b>, y uno de <b class="text-white">«Stock de hoy»</b> al día. Reglas: máximo 3 al día, de 8 a 21, nunca dos seguidos, 1 por producto cada 24 h, y si llegan varios juntos sale un solo video. Se cambian en Firebase → secretos/luisa → video.</p>
+            <div id="luiVideosEstado" class="text-[12px] text-gray-300 p-2.5 rounded-xl bg-gray-800/60 border border-gray-700/60">Cargando…</div>
+            <div class="p-3 rounded-xl bg-gray-800/40 border border-gray-700/60 space-y-2">
+              <p class="text-[12px] font-black text-white">🎬 Hacer un video</p>
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <label class="text-[11px] text-gray-400">Plantilla<select id="luiVidPlantilla" class="mt-1 w-full bg-gray-900 border border-gray-700 rounded-lg px-2 py-1.5 text-white text-sm"><option value="contador">💲 Contador (precio que sube)</option><option value="cine">🎞 Cine (logo en 3D)</option><option value="promo">🔥 Promo (solo con rebaja real)</option><option value="stock">🆕 Llegó stock</option><option value="lista">📋 Stock de hoy (lista)</option><option value="mensaje">🛡 Garantía (mensaje)</option></select></label>
+                <label class="text-[11px] text-gray-400">Producto<select id="luiVidProducto" class="mt-1 w-full bg-gray-900 border border-gray-700 rounded-lg px-2 py-1.5 text-white text-sm"></select></label>
+              </div>
+              <label class="flex items-center gap-2 text-[11px] text-gray-300"><input type="checkbox" id="luiVidPublicar" checked class="w-4 h-4 accent-pink-500">Publicarlo como estado en WhatsApp (si lo quitas, solo queda en la galería para verlo)</label>
+              <button type="button" onclick="luisaVideoPedir()" class="w-full py-2.5 rounded-xl bg-pink-500 hover:bg-pink-400 text-white font-black text-xs">🎬 Hacer el video (tarda 2–4 min)</button>
+            </div>
+            <div class="p-3 rounded-xl bg-gray-800/40 border border-gray-700/60 space-y-2">
+              <div class="flex items-center justify-between gap-2"><p class="text-[12px] font-black text-white">🖼 Galería (últimos 7 días)</p><button type="button" onclick="luisaVideosCargar(true)" class="text-[11px] font-bold text-pink-300">↻ Actualizar</button></div>
+              <label class="block text-[11px] text-gray-400">Dirección pública del camarógrafo (túnel de Cloudflare → http://localhost:3060)<div class="flex gap-2 mt-1"><input id="luiVidUrl" placeholder="https://videos.epicstreaming.vip" class="flex-1 min-w-0 bg-gray-900 border border-gray-700 rounded-lg px-2 py-1.5 text-white text-sm"><button type="button" onclick="luisaVideoGuardarUrl()" class="px-3 rounded-lg bg-gray-700 text-white text-[11px] font-bold">Guardar</button></div></label>
+              <div id="luiVideosGaleria" class="grid grid-cols-2 sm:grid-cols-3 gap-2"></div>
+            </div>
+          </div></details>
         <details class="p-4 rounded-2xl bg-gray-900 border border-gray-800"><summary class="text-sm font-black text-white cursor-pointer">📋 Plan de hoy y publicar</summary>
           <div class="mt-3 space-y-2">
             <div class="flex flex-wrap gap-2"><button type="button" onclick="luisaVerPlan()" class="text-[11px] font-bold text-pink-300">↻ Ver plan de hoy</button><button type="button" onclick="luisaVerPlan(true)" class="text-[11px] font-bold text-amber-300">🔄 Rehacer el plan</button></div>
@@ -18504,7 +18523,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-11-10u3';
+    const VERSION_PAGINA = '2026-11-10u4';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261105_ranking', fecha: '2026-11-05', titulo: '🏆 ¡Llegó el ranking del mes!', mensaje: 'Ahora en la página ves **en qué puesto vas** (arriba, debajo de tu saldo). Los **3 que más recarguen** en el mes se llevan **saldo de regalo**: el **4%**, el **3%** y el **2%** de lo que recargaron. Para participar debes recargar mínimo **$150.000** en el mes. Se actualiza cada hora, cierra el último día del mes y el premio te cae solo el día 1. ¿Quién va a ser el primero? 😎', ir: '' },
       { id: 'act_20261102_codigos_seguros', fecha: '2026-11-02', titulo: 'Tus códigos, más protegidos 🔒', mensaje: 'Tu enlace de códigos ahora es más seguro: los códigos para **crear cuentas nuevas** con nuestros correos ya no se muestran a nadie sin permiso. Los códigos para **entrar a tu cuenta** y **cambiar la contraseña** te siguen llegando al instante, igual que siempre.', ir: '' },
@@ -23706,6 +23725,7 @@
 
     // ==================== NOVEDADES INTERNAS DEL PANEL (solo el equipo) ====================
     const ACTUALIZACIONES_INTERNAS = [
+      { fecha: '2026-11-10', titulo: '🎬 Luisa publica estados en VIDEO (con reglas)', mensaje: 'Nueva tarjeta **📣 Luisa → 🎬 Videos de Luisa**. Con el camarógrafo instalado en el VPS (epic-videos 1.3) y Mary del VPS 1.22, Luisa publica un **video Full HD** cuando **llega stock**, hay **producto nuevo** o **promo nueva**, y uno de **«Stock de hoy»** al día. Reglas: máximo 3 al día, de 8 a 21, nunca dos seguidos, 1 por producto cada 24 h, varios juntos salen en un solo video, y Google no repite en imagen lo que el VPS ya sacó en video. Desde la tarjeta ves cuántos van hoy, el que está «en el horno», pides uno de cualquier producto (6 plantillas), y con la **dirección pública del camarógrafo** (videos.epicstreaming.vip en tu túnel) ves la **galería** y publicas desde ahí. Por Telegram: «video de netflix», «video promo de disney», «video de la lista», «video de prime sin publicar».', ir: 'luisa' },
       { fecha: '2026-11-10', titulo: '🖥️ Robot del VPS 1.3: pantalla en vivo, diagnóstico y reintentos', mensaje: 'En **🤖 Robot → Automático (VPS)** ahora ves la **pantalla del Chrome del VPS en vivo** (cada ~4 s), la **etapa** en la que va y el **intento** (hasta 3, con Chrome nuevo). Si no avanza, el VPS te dice **qué pasa en palabras** («Netflix rechazó el inicio de sesión desde el VPS», CAPTCHA, correo que no existe, contraseña incorrecta, pide código). Cuando termina bien, **el panel guarda solo**: «Ya quedó» es solo para Chrome (manual). Ojo: si Netflix bloquea la IP del VPS, te lo dice en segundos pero no entra; la salida es Chrome (manual) o un proxy residencial en el VPS.', ir: 'netflix' },
       { fecha: '2026-11-10', titulo: '🤖 Robot Amazon · Prime Video', mensaje: 'Nueva sección **Prime Video (robot)**: pones **correo, contraseña y tarjeta** (sin CVV) y la **dirección de Colombia sale al azar** (🎲 para otra). Tocas **🚀 Hacerlo en Chrome** y el robot (script **Epic Robot Amazon 1.5.0** en Tampermonkey) inicia sesión y sigue los pasos con pausas de persona: país EE.UU. → dirección de Colombia → **la deja seleccionada** → artículo al carrito → **Prime dentro del carrito** con la tarjeta. Ves **en vivo** en qué paso va; con **Pausar antes de confirmar Prime** espera tu ▶ Continuar. Al terminar se guarda en el **historial** (solo los últimos 4 de la tarjeta; la contraseña nunca va al servidor).', ir: 'primevideo' },
       { fecha: '2026-11-08', titulo: '🤖 Robot Netflix', mensaje: 'En cada cuenta Netflix de alquiler hay un botón **🤖 Robot**: eliges nombres nuevos y PIN de los perfiles, y si quieres **sacar a los de un perfil o a todos**. En la cabecera de cada cuenta compartida está **Robot: toda la cuenta** (los 5 perfiles con PIN nuevo y sacar a todos de una). Tocas **Hacerlo en Netflix** y el robot lo hace solo en Netflix (usa el panel en incógnito con el script Epic Robot Netflix). Así liberas y reentregas perfiles en segundos, sin errores de PIN. Con la **🔑 clave del robot**, cuando Netflix pide un código lo busca solo en tu correo y lo escribe, y al terminar te llega a Telegram **«✅ PIN cambiados»**.' },
@@ -28499,6 +28519,50 @@ const LUISA_COM_DEF_PAG = { activo: true, stockHora: '08:00', mediodiaHora: '12:
       const rol = document.getElementById('luiRolYa').value; if (!confirm('¿Publicar ya un estado de Luisa (' + rol + ')?')) return; mostrarToast('Publicando…');
       try { const r = await llamarBackend('luisa', { op: 'publicar', rol: rol }); if (!r || !r.ok) throw new Error((r && r.error) || 'No se pudo publicar.'); mostrarToast('📣 Publicado' + (r.imagen ? ' con imagen' : '')); alert('Luisa publicó:\n\n' + r.texto); luisaVerPlan(); } catch (e) { alert(e.message); }
     }
+
+    // ==================== 🎬 VIDEOS DE LUISA (u4): estado, pedir uno, galería ====================
+    var luisaVidUrl = '', luisaVidCargando = false;
+    function luisaVidHora(iso) { try { return new Date(iso).toLocaleString('es-CO', { day: '2-digit', month: '2-digit', hour: 'numeric', minute: '2-digit' }); } catch (e) { return ''; } }
+    async function luisaVideosCargar(forzar) {
+      if (luisaVidCargando) return; luisaVidCargando = true;
+      const est = document.getElementById('luiVideosEstado'), gal = document.getElementById('luiVideosGaleria');
+      try { const sel = document.getElementById('luiVidProducto'); if (sel && (!sel.options.length || forzar)) opcionesProductosStock(sel); } catch (e) { /* nada */ }
+      try {
+        const r = await llamarBackend('luisa', { op: 'video_estado' }); if (!r || !r.ok) throw new Error((r && r.error) || 'No se pudo.');
+        luisaVidUrl = String(r.urlPublica || ''); const u = document.getElementById('luiVidUrl'); if (u && !u.value) u.value = luisaVidUrl;
+        const R = r.resumen || {}, g = r.reglas || {}, hoy = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Bogota' }), deHoy = R.dia === hoy;
+        const lineas = [];
+        lineas.push(r.vps ? '🟢 Mary del VPS está haciendo los videos.' : (r.activo ? '🔴 El VPS no ha dado señal de videos en 12 min (¿Mary del VPS 1.22 y el camarógrafo encendidos?). Mientras tanto, Luisa publica las novedades en imagen.' : '⚪ Videos apagados (secretos/luisa → video.activo).'));
+        lineas.push('📊 Hoy: <b class="text-white">' + (deHoy ? (R.n || 0) : 0) + ' de ' + (g.maxDia || 3) + '</b> videos de novedades' + (R.ultimaEl ? ' · último a las ' + luisaVidHora(R.ultimaEl) : '') + (R.pend ? ' · ' + R.pend + ' en espera' : '') + (deHoy && R.listaEl && R.listaEl !== 'saltada' ? ' · lista del día ✅' : ''));
+        if (R.trabajo) lineas.push('🎬 En el horno: <b class="text-white">' + escaparHtml(R.trabajo.nombre || '') + '</b> (' + escaparHtml(R.trabajo.plantilla || '') + ') desde las ' + luisaVidHora(R.trabajo.el) + (R.trabajo.soloVer ? ' · solo para ver' : ''));
+        if (deHoy && R.descartes && R.descartes.length) lineas.push('🗂 Descartó: ' + escaparHtml(R.descartes.slice(-4).join(' · ')));
+        if (R.ultimos && R.ultimos.length) lineas.push('🕓 Últimos: ' + R.ultimos.slice(-5).reverse().map(x => escaparHtml((x.nombre || '') + ' (' + (x.plantilla || '') + (x.publicado ? '' : ', sin publicar') + ') ' + luisaVidHora(x.el))).join(' · '));
+        est.innerHTML = lineas.map(l => '<div>' + l + '</div>').join('');
+      } catch (e) { est.textContent = e.message; }
+      if (!luisaVidUrl) { gal.innerHTML = '<p class="col-span-full text-[11px] text-gray-500">Para ver los videos aquí, pon arriba la dirección pública del camarógrafo (videos.epicstreaming.vip en tu túnel de Cloudflare) y guárdala. Sin eso, los videos igual se publican en WhatsApp y te llegan a Telegram.</p>'; luisaVidCargando = false; return; }
+      try {
+        const rr = await fetch(luisaVidUrl + '/galeria', { cache: 'no-store' }); const j = await rr.json(); const L = (j && j.videos) || [];
+        gal.innerHTML = L.length ? L.map(v => `<div class="rounded-xl overflow-hidden bg-gray-900 border border-gray-700/60"><video src="${escaparHtml(luisaVidUrl + v.url)}" controls playsinline preload="metadata" class="w-full aspect-[9/16] bg-black"></video>
+          <div class="p-2"><p class="text-[11px] font-black text-white truncate">${escaparHtml(v.nombre || v.plantilla || '')}</p><p class="text-[10px] text-gray-400">${escaparHtml(v.plantilla || '')} · ${luisaVidHora(v.el)} · ${v.publicado ? '<span class="text-emerald-300">publicado</span>' : '<span class="text-amber-300">sin publicar</span>'}${v.origen ? ' · ' + escaparHtml(v.origen) : ''}</p>
+          <div class="flex gap-1.5 mt-1.5"><a href="${escaparHtml(luisaVidUrl + v.url)}" download class="px-2 py-1 rounded-lg bg-gray-800 border border-gray-700 text-gray-200 text-[10px] font-bold">Descargar</a>${v.publicado ? '' : `<button type="button" onclick="luisaVideoPublicarId('${escaparJsAttr(v.id)}')" class="px-2 py-1 rounded-lg bg-pink-500 text-white text-[10px] font-black">📣 Publicar</button>`}</div></div></div>`).join('')
+          : '<p class="col-span-full text-[11px] text-gray-500">Todavía no hay videos en la galería.</p>';
+      } catch (e) { gal.innerHTML = '<p class="col-span-full text-[11px] text-amber-300">No pude leer la galería en ' + escaparHtml(luisaVidUrl) + ' (¿el túnel apunta a localhost:3060?).</p>'; }
+      luisaVidCargando = false;
+    }
+    async function luisaVideoGuardarUrl() {
+      if (!esAdminSesionActual()) return; const u = String((document.getElementById('luiVidUrl') || {}).value || '').trim().replace(/\/+$/, '');
+      if (u && !/^https?:\/\/[a-z0-9.-]+(:\d+)?$/i.test(u)) { alert('Escribe solo la dirección, por ejemplo https://videos.epicstreaming.vip'); return; }
+      try { await db.collection('configuracion').doc('videos').set({ urlPublica: u, el: new Date().toISOString() }, { merge: true }); luisaVidUrl = u; mostrarToast('✓ Guardado'); luisaVideosCargar(true); } catch (e) { alert(e.message); }
+    }
+    async function luisaVideoPedir() {
+      const pl = (document.getElementById('luiVidPlantilla') || {}).value || 'contador', sel = document.getElementById('luiVidProducto'), pub = !!(document.getElementById('luiVidPublicar') || {}).checked;
+      const p = (catalogoUnificado || []).find(x => x.docId === (sel && sel.value)); const nombre = pl === 'lista' ? 'la lista' : pl === 'mensaje' ? '' : (p ? p.nombre : '');
+      if (!nombre && pl !== 'mensaje') { alert('Elige un producto.'); return; }
+      if (!confirm('¿Hacer el video «' + pl + '»' + (nombre ? ' de ' + nombre : '') + (pub ? ' y publicarlo en WhatsApp' : ' (solo para verlo)') + '? Tarda 2–4 min.')) return;
+      try { const r = await llamarBackend('luisa', { op: 'video', plantilla: pl === 'lista' || pl === 'mensaje' ? pl : pl, producto: pl === 'mensaje' ? 'mensaje' : nombre, publicar: pub }); if (!r || !r.ok) throw new Error((r && r.error) || 'No se pudo.');
+        mostrarToast('🎬 Pedido a Luisa'); alert((r.texto || 'Orden guardada') + '\n\nEn 2–4 minutos te llega a Telegram y aparece en la galería (↻ Actualizar).'); } catch (e) { alert(e.message); }
+    }
+    async function luisaVideoPublicarId(id) { if (!confirm('¿Publicar este video como estado de WhatsApp?')) return; try { const r = await llamarBackend('luisa', { op: 'video_publicar', id: id }); if (!r || !r.ok) throw new Error((r && r.error) || 'No se pudo.'); mostrarToast('📣 Luisa lo publica en unos minutos'); } catch (e) { alert(e.message); } }
 
     function encCambioOp() { const op = (document.querySelector('input[name="encOp"]:checked') || {}).value, a = document.getElementById('encAyuda'), f = document.getElementById('encFueraBox');
       if (f) f.classList.toggle('hidden', op !== 'entregar');
