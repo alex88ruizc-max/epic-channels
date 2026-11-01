@@ -3299,6 +3299,11 @@
                 <p class="text-[10px] text-gray-500 mt-1">Con esta URL las compras se procesan en el servidor: el cliente nunca toca su saldo ni el inventario. Se guarda con "Guardar Ajustes Generales".</p>
               </div>
               <div>
+                <label class="block text-[11px] text-gray-400 mb-1">⚡ Servidor rápido (Mary del VPS, para compras)</label>
+                <input type="url" id="ajusteVpsUrl" placeholder="https://api.epicstreaming.vip" class="w-full bg-gray-900 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white font-mono focus:outline-none">
+                <p class="text-[10px] text-gray-500 mt-1">Compras, pedidos, renovaciones, reportes de cuenta, comprobantes de recarga y el generador de correos de proveedores van al servidor del VPS (1.23 o más): 1-2 s en vez de 10-15. Lo que lee el Gmail (códigos, bienvenidas) sigue en Google. Si el VPS no responde, la página usa Google sola. Vacío = todo por Google.</p>
+              </div>
+              <div>
                 <label class="block text-[11px] text-gray-400 mb-1">📧 URL del servidor de CORREO (el de codigos@: pagos, códigos y bot)</label>
                 <input type="url" id="ajusteBackendUrlCorreo" placeholder="https://script.google.com/macros/s/.../exec" class="w-full bg-gray-900 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white font-mono focus:outline-none">
                 <p class="text-[10px] text-gray-500 mt-1">Opcional. Si la pones, la página usa el servidor de arriba (con su propio cupo de Google) y solo lo que necesita el correo va a este. Vacío = todo va al de arriba.</p>
@@ -7434,6 +7439,7 @@
       const inpBackend = document.getElementById('ajusteBackendUrl');
       if (inpBackend) inpBackend.value = ajustesGeneralesConfig.backendUrl || '';
       { const e = document.getElementById('ajusteBackendUrlCorreo'); if (e) e.value = ajustesGeneralesConfig.backendUrlCorreo || ''; }
+      { const e = document.getElementById('ajusteVpsUrl'); if (e) e.value = ajustesGeneralesConfig.vpsUrl || ''; }
       try { renderizarEstadoSeguridadAdmin(); } catch (e) { console.warn(e); }
       try { renderizarSelectorTemas(); } catch (e) { console.warn(e); }
       try { restaurarTemaGuardado(); } catch (e) { console.warn(e); }
@@ -7538,6 +7544,7 @@
         plantillaCuentaEntrega: (document.getElementById('ajustePlantillaCuenta') || {}).value || '',
         backendUrl: ((document.getElementById('ajusteBackendUrl') || {}).value || ajustesGeneralesConfig.backendUrl || '').trim(),
         backendUrlCorreo: String((document.getElementById('ajusteBackendUrlCorreo') || {}).value || '').trim(),
+        vpsUrl: String((document.getElementById('ajusteVpsUrl') || {}).value || '').trim().replace(/\/+$/, '').replace(/\/api$/, ''),
         actualizadoEl: new Date().toISOString()
       };
 
@@ -18535,7 +18542,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-11-10u9';
+    const VERSION_PAGINA = '2026-11-10u11';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261105_ranking', fecha: '2026-11-05', titulo: '🏆 ¡Llegó el ranking del mes!', mensaje: 'Ahora en la página ves **en qué puesto vas** (arriba, debajo de tu saldo). Los **3 que más recarguen** en el mes se llevan **saldo de regalo**: el **4%**, el **3%** y el **2%** de lo que recargaron. Para participar debes recargar mínimo **$150.000** en el mes. Se actualiza cada hora, cierra el último día del mes y el premio te cae solo el día 1. ¿Quién va a ser el primero? 😎', ir: '' },
       { id: 'act_20261102_codigos_seguros', fecha: '2026-11-02', titulo: 'Tus códigos, más protegidos 🔒', mensaje: 'Tu enlace de códigos ahora es más seguro: los códigos para **crear cuentas nuevas** con nuestros correos ya no se muestran a nadie sin permiso. Los códigos para **entrar a tu cuenta** y **cambiar la contraseña** te siguen llegando al instante, igual que siempre.', ir: '' },
@@ -23776,6 +23783,7 @@
 
     // ==================== NOVEDADES INTERNAS DEL PANEL (solo el equipo) ====================
     const ACTUALIZACIONES_INTERNAS = [
+      { fecha: '2026-11-10', titulo: '⚡ Servidor rápido del VPS: compras, proveedores y generador de correos', mensaje: 'En Ajustes → **⚡ Servidor rápido** pones https://api.epicstreaming.vip (con Mary del VPS 1.23 y el nombre en tu túnel). Desde ahí **comprar, pedidos sobre pedido, renovar, reportar cuenta, comprobante de recarga y el generador de correos de los proveedores** (lista, bolsa, sacar, usar, propio) se procesan en el VPS en 1-2 s en vez de 10-15. Lo que lee el Gmail de codigos@ (código, bienvenidas, refrescar) sigue en Google. Si el VPS falla, la página recae sola a Google.', ir: 'ajustes' },
       { fecha: '2026-11-10', titulo: '📇 «No atender» por nombre, con tu lista de contactos', mensaje: 'Si en Ajustes → WhatsApp → «Chats que el bot no atiende» pones un nombre (ej. **Karen Amazon**), antes solo funcionaba si el servidor había aprendido ese nombre por OpenWA. Ahora también usa **tu lista de contactos (.vcf)**: vuelve a subirla en Mary → Estados → contactos y el servidor sabrá el nombre de cada número. Con Evolution lo más seguro sigue siendo poner el **número**.', ir: 'whatsapp' },
       { fecha: '2026-11-10', titulo: '🧹 No atender: ver y limpiar toda la lista', mensaje: 'En **👩‍💼 Mary** arriba: **Ver lista** (los #nomary de los chats y los números que el bot aprendió) y **🧹 Limpiar todo**. También por Telegram: «Mary, atiende a todos». Se limpia en Google y en el VPS a la vez. Lo que pusiste a mano en Ajustes → WhatsApp → ignorar se queda.', ir: 'mary' },
       { fecha: '2026-11-10', titulo: '🌐 Tiendas: dominio propio desde tu panel', mensaje: 'En 🏪 Tiendas → ✏️ Editar ahora pones el **dominio propio** de la tienda (ej: www.tumarca.com). El servidor del VPS la reconoce por ese nombre y la tienda muestra esa dirección. Falta solo apuntar el dominio: el LEEME de epic-tiendas explica las 2 formas (Cloudflare o Caddy en el VPS).', ir: 'tiendas' },
@@ -28995,6 +29003,10 @@ const LUISA_COM_DEF_PAG = { activo: true, stockHora: '08:00', mediodiaHora: '12:
     // 📶 Dos servidores: el de la PÁGINA (su propio cupo de Google) y el de CORREO (codigos@: lee pagos y códigos).
     // Las acciones que necesitan el correo van al servidor de correo; el resto, al de la página. Sin el segundo, todo va al único que haya.
     const ACCIONES_SERVIDOR_CORREO = new Set(['mary_probador', 'mary_rescate', 'mary_volantes', 'mary_encargo', 'luisa', 'mary_vistos', 'mary_probar', 'mary_reporte', 'mary_banner', 'codigos_sin_subir', 'saldo_regla_desde', 'otp', 'recarga_crear', 'recarga_binance_crear', 'recarga_cancelar', 'recarga_verificar', 'recarga_diagnostico', 'recarga_comprobante', 'pago_reportar', 'prov_correos', 'prov_comprobar', 'codigo_dominio', 'amz_otp', 'amz_otp_link', 'amz_salud', 'amz_revisada', 'amz_enlace_crear', 'codigo_enlace_obtener', 'salud', 'cupo', 'saldo_vence_resumen', 'saldo_vence_revertir', 'embudo_registro', 'embudo_registro_ver', 'wa_codigo', 'wa_codigo_admin', 'binance_tasa', 'wa_grupos_log', 'wa_seguimiento_ahora']);   // tg_revisar va al servidor de la página: ahí se revisan los botones de Telegram
+    const ACCIONES_VPS = new Set(['comprar', 'preorden_crear', 'renovar', 'renovar_compra', 'ticket_crear', 'recarga_comprobante', 'prov_correos', 'prov_hoy']);   // ⚡ lo que hace el servidor del VPS (1.23+): compras, renovaciones, reportes, comprobantes y el generador de correos
+    const OPS_CORREOS_GOOGLE = new Set(['codigo', 'revisar_bienvenidas', 'refrescar']);   // estas leen el Gmail de codigos@: siempre en Google
+    function urlVps(accion, datos) { const v = String((ajustesGeneralesConfig && ajustesGeneralesConfig.vpsUrl) || '').trim().replace(/\/+$/, ''); if (!v || window.__vpsCaido || !ACCIONES_VPS.has(String(accion || ''))) return '';
+      if (accion === 'prov_correos' && OPS_CORREOS_GOOGLE.has(String((datos || {}).op || ''))) return ''; return v + '/api'; }
     function obtenerBackendUrl(accion) {
       const pag = String((ajustesGeneralesConfig && ajustesGeneralesConfig.backendUrl) || '').trim();
       const cor = String((ajustesGeneralesConfig && ajustesGeneralesConfig.backendUrlCorreo) || '').trim();
@@ -29019,14 +29031,26 @@ const LUISA_COM_DEF_PAG = { activo: true, stockHora: '08:00', mediodiaHora: '12:
       window._llamadasEnCurso = (window._llamadasEnCurso || 0) + 1;
       try { return await llamarBackendBase(accion, datos); } finally { window._llamadasEnCurso = Math.max(0, (window._llamadasEnCurso || 1) - 1); }
     }
+    async function llamarBackendVps(url, accion, datos) {
+      if (!currentUser) throw new Error('Debes iniciar sesión.'); const idToken = await currentUser.getIdToken();
+      const ctrl = (typeof AbortController !== 'undefined') ? new AbortController() : null, limite = setTimeout(() => { try { ctrl && ctrl.abort(); } catch (e) { /* nada */ } }, 25000);
+      try { const resp = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(Object.assign({}, datos || {}, { accion: accion, idToken: idToken })), signal: ctrl ? ctrl.signal : undefined });
+        if (!resp.ok) return { __recaer: true, error: 'VPS ' + resp.status }; const j = await resp.json(); if (j && j.soloGoogle) return { __recaer: true, error: j.error || 'necesita Google' }; return j; }
+      finally { clearTimeout(limite); }
+    }
     async function llamarBackendBase(accion, datos) {
+      if (datos && datos.__google) { datos = Object.assign({}, datos); delete datos.__google; accion = accion; }
       if (mantenimientoActivo() && /^(comprar|recarga|renovar|carrito|preorden|combo)/.test(String(accion || ''))) { avisoMantenimiento(''); throw new Error('Estamos en mantenimiento. Compra por WhatsApp mientras tanto.'); }
       if (modoPruebaCliente) { const rs = backendSimulado(accion, datos || {}); if (rs) return rs; }
       const aCorreo = !!(datos && datos.__servidor === 'correo'); if (aCorreo) { datos = Object.assign({}, datos); delete datos.__servidor; }
       // 📧 Correos del dominio: solo "codigo" y "revisar_bienvenidas" necesitan leer el correo; la lista y lo demás van al servidor de la página
       const provSinCorreo = accion === 'prov_correos' && datos && ['codigo', 'revisar_bienvenidas', 'refrescar'].indexOf(String(datos.op || '')) === -1;   // 🔄 'refrescar' lee el Gmail de codigos@: va al servidor de correo
-      const url = aCorreo ? obtenerBackendUrl('*correo') : (provSinCorreo ? obtenerBackendUrl('comprar') : obtenerBackendUrl(accion));
+      const vUrl = aCorreo ? '' : urlVps(accion, datos);   // ⚡ primero el VPS (si está configurado y la acción no necesita Gmail)
+      const url = vUrl || (aCorreo ? obtenerBackendUrl('*correo') : (provSinCorreo ? obtenerBackendUrl('comprar') : obtenerBackendUrl(accion)));
       if (!url) throw new Error('El servidor seguro no está configurado.');
+      const esVps = !!vUrl;   // si el VPS no responde o dice «necesita Google», se repite en Google (2 min sin volver a intentar el VPS)
+      if (esVps) { try { const t0v = Date.now(), rv = await llamarBackendVps(url, accion, datos); if (rv && rv.__recaer) throw new Error(rv.error || 'VPS'); try { console.log('⚡ ' + accion + ' por el VPS en ' + (Date.now() - t0v) + ' ms'); } catch (e) { /* nada */ } return rv; }
+        catch (eV) { console.warn('Servidor rápido no respondió, voy por Google:', eV && eV.message); window.__vpsCaido = true; setTimeout(() => { window.__vpsCaido = false; }, 120000); return llamarBackendBase(accion, Object.assign({}, datos || {}, { __google: true })); } }
       if (!currentUser) throw new Error('Debes iniciar sesión.');
       let idToken;
       try {
