@@ -2601,14 +2601,15 @@
         <details class="p-4 rounded-2xl bg-gray-900 border border-indigo-500/40"><summary class="text-sm font-black text-white cursor-pointer">🤝 Encárgale a Mary</summary>
           <div class="mt-3 space-y-3">
             <p class="text-[11px] text-gray-400">Dile a Mary que le cobre a un número o que le entregue una venta: ella le escribe por WhatsApp y gestiona todo.</p>
-            <div class="grid grid-cols-2 gap-2 text-[12px] text-gray-300">
+            <div class="grid grid-cols-3 gap-2 text-[12px] text-gray-300">
+              <label class="flex items-center gap-2 p-2 rounded-lg bg-gray-800/60 border border-gray-700 cursor-pointer"><input type="radio" name="encOp" value="ofrecer" onchange="encCambioOp()" class="accent-indigo-500">🎯 Ofrecerle</label>
               <label class="flex items-center gap-2 p-2 rounded-lg bg-gray-800/60 border border-gray-700 cursor-pointer"><input type="radio" name="encOp" value="cobrar" checked onchange="encCambioOp()" class="accent-indigo-500">💳 Cobrarle</label>
               <label class="flex items-center gap-2 p-2 rounded-lg bg-gray-800/60 border border-gray-700 cursor-pointer"><input type="radio" name="encOp" value="entregar" onchange="encCambioOp()" class="accent-indigo-500">📦 Entregar una venta</label>
             </div>
             <p id="encAyuda" class="text-[11px] text-gray-500">Mary le escribe primero con el precio, el mínimo y el QR, y se encarga del pago, los recordatorios y la entrega. Si el número no tiene cuenta, se la crea en el chat.</p>
             <label class="block text-[11px] text-gray-400">WhatsApp del cliente<input id="encNumero" type="tel" inputmode="numeric" placeholder="3001234567" class="mt-1 w-full bg-gray-900 border border-gray-700 rounded-lg px-2 py-1.5 text-white text-sm"></label>
             <div class="grid grid-cols-3 gap-2 text-[11px] text-gray-400">
-              <label class="col-span-2">Producto<select id="encProducto" class="mt-1 w-full bg-gray-900 border border-gray-700 rounded-lg px-2 py-1.5 text-white text-sm"></select></label>
+              <label class="col-span-2">Producto<select id="encProducto" onfocus="encPrepararProductos(true)" onmousedown="encPrepararProductos(true)" class="mt-1 w-full bg-gray-900 border border-gray-700 rounded-lg px-2 py-1.5 text-white text-sm"></select></label>
               <label>Cantidad<input id="encCantidad" type="number" min="1" value="1" class="mt-1 w-full bg-gray-900 border border-gray-700 rounded-lg px-2 py-1.5 text-white text-sm"></label>
             </div>
             <label class="block text-[11px] text-gray-400">Precio especial del total (opcional)<input id="encPrecio" type="number" min="0" step="100" placeholder="Vacío = su precio normal" class="mt-1 w-full bg-gray-900 border border-gray-700 rounded-lg px-2 py-1.5 text-white text-sm"></label>
@@ -18644,7 +18645,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-11-10u14';
+    const VERSION_PAGINA = '2026-11-10u15';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261105_ranking', fecha: '2026-11-05', titulo: '🏆 ¡Llegó el ranking del mes!', mensaje: 'Ahora en la página ves **en qué puesto vas** (arriba, debajo de tu saldo). Los **3 que más recarguen** en el mes se llevan **saldo de regalo**: el **4%**, el **3%** y el **2%** de lo que recargaron. Para participar debes recargar mínimo **$150.000** en el mes. Se actualiza cada hora, cierra el último día del mes y el premio te cae solo el día 1. ¿Quién va a ser el primero? 😎', ir: '' },
       { id: 'act_20261102_codigos_seguros', fecha: '2026-11-02', titulo: 'Tus códigos, más protegidos 🔒', mensaje: 'Tu enlace de códigos ahora es más seguro: los códigos para **crear cuentas nuevas** con nuestros correos ya no se muestran a nadie sin permiso. Los códigos para **entrar a tu cuenta** y **cambiar la contraseña** te siguen llegando al instante, igual que siempre.', ir: '' },
@@ -28764,15 +28765,16 @@ const LUISA_COM_DEF_PAG = { activo: true, stockHora: '08:00', mediodiaHora: '12:
       try { const r = await llamarBackend('wa_no_atender', { op: 'limpiar' }); if (!r || !r.ok) throw new Error((r && r.error) || 'No se pudo.'); mostrarToast('🧹 Lista limpia'); alert(r.texto); } catch (e) { alert(e.message); } }
     function encCambioOp() { const op = (document.querySelector('input[name="encOp"]:checked') || {}).value, a = document.getElementById('encAyuda'), f = document.getElementById('encFueraBox');
       if (f) f.classList.toggle('hidden', op !== 'entregar');
-      if (a) a.textContent = op === 'entregar' ? 'Mary le entrega las cuentas por WhatsApp y las descuenta de su saldo (o marca que te pagó por fuera). Necesita que el número tenga cuenta en la página.' : 'Mary le escribe primero con el precio, el mínimo y el QR, y se encarga del pago, los recordatorios y la entrega. Si el número no tiene cuenta, se la crea en el chat.'; }
-    function encPrepararProductos() { const sel = document.getElementById('encProducto'); if (!sel || sel.options.length) return; try { opcionesProductosStock(sel); } catch (e) { /* nada */ } }
+      try { encPrepararProductos(true); } catch (e) { /* nada */ }
+      if (a) a.textContent = op === 'ofrecer' ? 'Mary le escribe ofreciéndole el producto con su precio, el mínimo y la garantía. No le cobra todavía: si responde que sí, ella le cobra y le entrega.' : op === 'entregar' ? 'Mary le entrega las cuentas por WhatsApp y las descuenta de su saldo (o marca que te pagó por fuera). Necesita que el número tenga cuenta en la página.' : 'Mary le escribe primero con el precio, el mínimo y el QR, y se encarga del pago, los recordatorios y la entrega. Si el número no tiene cuenta, se la crea en el chat.'; }
+    function encPrepararProductos(fresco) { const sel = document.getElementById('encProducto'); if (!sel || (sel.options.length && !fresco)) return; const v = sel.value; try { opcionesProductosStock(sel); if (v) sel.value = v; } catch (e) { /* nada */ } }   // 🔄 u15: se recalcula al abrirlo (antes se quedaba con el «0 libres» del primer momento)
     async function encargarMary() {
       const g = id => document.getElementById(id), op = (document.querySelector('input[name="encOp"]:checked') || {}).value || 'cobrar';
       const num = String(g('encNumero').value || '').replace(/\D/g, '').slice(-10), pid = g('encProducto').value, n = Math.max(1, parseInt(g('encCantidad').value, 10) || 1), pe = Math.max(0, Math.round(Number(g('encPrecio').value) || 0)), fuera = op === 'entregar' && g('encFuera').checked;
       if (!/^3\d{9}$/.test(num)) { alert('Escribe el WhatsApp del cliente (10 dígitos, empieza por 3).'); return; }
       if (!pid) { alert('Elige el producto.'); return; }
       const prod = (typeof catalogoUnificado !== 'undefined' ? catalogoUnificado : []).find(x => x.docId === pid), nom = prod ? prod.nombre : pid;
-      const res = op === 'entregar' ? `📦 Mary le ENTREGA ${n} ${nom} al ${num}` + (fuera ? '\n💵 Te pagó por fuera (no se toca su saldo)' : '\n💰 Se descuenta de su saldo') : `💳 Mary le COBRA ${n} ${nom} al ${num}\nLe escribe primero, le manda el QR y gestiona todo.`;
+      const res = op === 'ofrecer' ? `🎯 Mary le OFRECE ${n} ${nom} al ${num}\nCon su precio, el mínimo y la garantía. No le cobra todavía.` : op === 'entregar' ? `📦 Mary le ENTREGA ${n} ${nom} al ${num}` + (fuera ? '\n💵 Te pagó por fuera (no se toca su saldo)' : '\n💰 Se descuenta de su saldo') : `💳 Mary le COBRA ${n} ${nom} al ${num}\nLe escribe primero, le manda el QR y gestiona todo.`;
       if (!await confirmarModal(res + (pe ? `\n🏷 Precio especial: ${formatoCOP(pe)} en total` : '\n🏷 Su precio normal'), { textoAceptar: 'Sí, encárgaselo' })) return;
       if (window._encEnCurso) { mostrarToast('Mary ya está con ese encargo, espera un momento…'); return; } window._encEnCurso = true;
       const btnE = document.querySelector('button[onclick="encargarMary()"]'); if (btnE) { btnE.disabled = true; btnE.dataset.t = btnE.innerHTML; btnE.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Mary le está escribiendo…'; }
