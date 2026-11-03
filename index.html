@@ -2295,41 +2295,61 @@
 
       <!-- ==================== ADMIN: CORTES ==================== -->
       <div id="adminSecTiendas" class="hidden space-y-4 pb-28 sm:pb-0">
-        <div class="p-5 bg-gray-900 border border-cyan-500/30 rounded-2xl shadow-xl max-w-3xl space-y-3">
-          <div class="flex items-center justify-between gap-2"><h3 class="text-base font-black text-white flex items-center gap-2">🏪 Tiendas para clientes <span class="px-2 py-0.5 rounded-full bg-cyan-500/15 text-cyan-300 text-[10px] font-black">BETA</span></h3><span id="ctSolBadge" class="hidden px-2 py-0.5 rounded-full bg-cyan-500 text-black text-[10px] font-black"></span></div>
-          <p class="text-xs text-gray-400">Mientras esté apagado, nadie ve "Crea tu tienda", salvo los correos de prueba que pongas abajo.</p>
-          <details id="ctCrearCaja" class="rounded-xl bg-gray-800/50 border border-cyan-500/40 overflow-hidden" open>
-            <summary class="p-3 cursor-pointer select-none flex items-center gap-2 list-none"><span class="text-sm font-black text-cyan-200">➕ Crear tienda</span><span class="text-[10px] text-gray-400">para probar o para un cliente, sin esperar una solicitud</span><i class="fa-solid fa-chevron-down text-gray-500 text-xs ml-auto"></i></summary>
-            <div class="px-3 pb-3 pt-1 space-y-2 border-t border-gray-700/60">
-              <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                <label class="text-[10px] text-gray-400">Nombre de la tienda<input type="text" id="ctAdmNombre" maxlength="40" oninput="ctAdmSugerir()" placeholder="Ej: Tienda de prueba" class="mt-1 w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"></label>
-                <label class="text-[10px] text-gray-400">Enlace (solo letras y números)<input type="text" id="ctAdmEnlace" maxlength="30" oninput="this.dataset.tocado='1';ctAdmPrevia()" placeholder="tiendaprueba" class="mt-1 w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white font-mono focus:outline-none"></label>
-                <label class="text-[10px] text-gray-400">Dueño (correo de su cuenta; vacío = tú)<input type="email" id="ctAdmDueno" placeholder="cliente@correo.com" class="mt-1 w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"></label>
-                <label class="text-[10px] text-gray-400">WhatsApp de la tienda<input type="tel" id="ctAdmWa" maxlength="15" placeholder="3001234567" class="mt-1 w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"></label>
-                <label class="text-[10px] text-gray-400">Plan<select id="ctAdmNivel" class="mt-1 w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"><option value="basico">🟣 Básico (gratis por días)</option><option value="pro">🔵 Pro</option><option value="premium">🟡 Premium</option></select></label>
-                <label class="text-[10px] text-gray-400">Días (vigencia inicial)<input type="number" id="ctAdmDias" min="0" max="365" placeholder="30" class="mt-1 w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"></label>
-              </div>
-              <label class="flex items-center gap-2 text-[11px] text-gray-300"><input type="checkbox" id="ctAdmPrueba" checked class="w-4 h-4 accent-cyan-500"> Es de prueba <span class="text-gray-500">(se marca 🧪 y no le avisa al dueño)</span></label>
-              <p id="ctAdmPrevia" class="text-[10px] text-cyan-200"></p>
-              <button type="button" id="btnCtAdmCrear" onclick="crearTiendaDesdePanel()" class="w-full py-2.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-black font-black text-xs">➕ Crear tienda</button>
+        <div class="flex items-center justify-between gap-2"><h3 class="text-base font-black text-white flex items-center gap-2">🏪 Tiendas <span class="px-2 py-0.5 rounded-full bg-cyan-500/15 text-cyan-300 text-[10px] font-black">BETA</span></h3><span id="ctSolBadge" class="hidden px-2 py-0.5 rounded-full bg-cyan-500 text-black text-[10px] font-black"></span></div>
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-2.5">
+          <div class="rounded-2xl border border-emerald-500/30 bg-gradient-to-br from-gray-900 to-gray-950 p-3.5 relative overflow-hidden"><span class="absolute right-3 top-3 text-xl">🏪</span><b id="ctKpiActivas" class="block text-2xl font-black text-white">0</b><span class="text-[11px] text-gray-400">tiendas activas</span></div>
+          <div class="rounded-2xl border border-amber-500/30 bg-gradient-to-br from-gray-900 to-gray-950 p-3.5 relative overflow-hidden"><span class="absolute right-3 top-3 text-xl">⏳</span><b id="ctKpiVencen" class="block text-2xl font-black text-white">0</b><span class="text-[11px] text-gray-400">vencen en 3 días</span></div>
+          <div class="rounded-2xl border border-violet-500/30 bg-gradient-to-br from-gray-900 to-gray-950 p-3.5 relative overflow-hidden"><span class="absolute right-3 top-3 text-xl">💰</span><b id="ctKpiCobrado" class="block text-2xl font-black text-white">$0</b><span id="ctKpiCobradoSub" class="text-[11px] text-gray-400">cobrado este mes</span></div>
+          <div class="rounded-2xl border border-gray-700 bg-gradient-to-br from-gray-900 to-gray-950 p-3.5 relative overflow-hidden"><span class="absolute right-3 top-3 text-xl">📨</span><b id="ctKpiSol" class="block text-2xl font-black text-white">0</b><span class="text-[11px] text-gray-400">solicitudes por aprobar</span></div>
+        </div>
+        <div class="grid grid-cols-1 lg:grid-cols-[1.6fr_1fr] gap-3 items-start">
+          <div class="space-y-3 min-w-0">
+            <div class="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden">
+              <div class="hidden sm:grid grid-cols-[2fr_1fr_1.3fr_1fr_1.2fr] px-4 py-2.5 text-[10px] font-black text-gray-400 uppercase tracking-wider bg-gray-950/60"><span>Tienda</span><span>Plan</span><span>Vence</span><span>Estado</span><span class="text-right">Acciones</span></div>
+              <div id="ctTiendas" class="divide-y divide-gray-800"><p class="px-4 py-6 text-center text-gray-500 text-sm">Todavía no hay tiendas.</p></div>
             </div>
-          </details>
-          <label class="flex items-center justify-between gap-3 p-2.5 rounded-xl bg-gray-800/60 border border-gray-700/60"><span class="text-xs font-bold text-white">Mostrar "Crea tu tienda" a todos los clientes</span><input type="checkbox" id="ctVisible" class="accent-cyan-500 w-5 h-5"></label>
-          <label class="block text-[11px] text-gray-400">Correos de prueba (uno por línea; solo ellos lo ven mientras esté apagado)<textarea id="ctBeta" rows="2" class="mt-1 w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white font-mono focus:outline-none"></textarea></label>
-          <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
-            <label class="text-[11px] text-gray-400 sm:col-span-3">Modelo<select id="ctModo" onchange="pintarCfgTiendasUI()" class="mt-1 w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"><option value="gratis">Gratis</option><option value="demo">Demo gratis por unos días y luego suscripción</option><option value="suscripcion">Suscripción desde el inicio</option></select></label>
-            <label id="ctDiasCaja" class="text-[11px] text-gray-400">Días de demo<input type="number" id="ctDias" min="1" max="90" class="mt-1 w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"></label>
-            <div id="ctPrecioCaja" class="sm:col-span-3 grid grid-cols-3 gap-2">
-              <label class="text-[11px] text-gray-400">🟣 Básico: días gratis<input type="number" id="ctDiasBasico" min="0" max="365" class="mt-1 w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"></label>
-              <label class="text-[11px] text-gray-400">🔵 Pro ($/mes)<input type="number" id="ctPrecioPro" min="0" step="1000" class="mt-1 w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"></label>
-              <label class="text-[11px] text-gray-400">🟡 Premium ($/mes)<input type="number" id="ctPrecioPremium" min="0" step="1000" class="mt-1 w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"></label>
-              <input type="hidden" id="ctPrecio">
+            <details id="ctCrearCaja" class="rounded-2xl bg-gray-900 border border-cyan-500/30 overflow-hidden">
+              <summary class="p-3 cursor-pointer select-none flex items-center gap-2 list-none"><span class="text-sm font-black text-cyan-200">➕ Crear tienda a mano</span><span class="text-[10px] text-gray-400">para probar o para un cliente, sin solicitud ni cobro</span><i class="fa-solid fa-chevron-down text-gray-500 text-xs ml-auto"></i></summary>
+              <div class="px-3 pb-3 pt-1 space-y-2 border-t border-gray-800">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <label class="text-[10px] text-gray-400">Nombre de la tienda<input type="text" id="ctAdmNombre" maxlength="40" oninput="ctAdmSugerir()" placeholder="Ej: Tienda de prueba" class="mt-1 w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"></label>
+                  <label class="text-[10px] text-gray-400">Enlace (solo letras y números)<input type="text" id="ctAdmEnlace" maxlength="30" oninput="this.dataset.tocado='1';ctAdmPrevia()" placeholder="tiendaprueba" class="mt-1 w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white font-mono focus:outline-none"></label>
+                  <label class="text-[10px] text-gray-400">Dueño (correo de su cuenta; vacío = tú)<input type="email" id="ctAdmDueno" placeholder="cliente@correo.com" class="mt-1 w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"></label>
+                  <label class="text-[10px] text-gray-400">WhatsApp de la tienda<input type="tel" id="ctAdmWa" maxlength="15" placeholder="3001234567" class="mt-1 w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"></label>
+                  <label class="text-[10px] text-gray-400">Plan<select id="ctAdmNivel" class="mt-1 w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"><option value="basico">🟣 Básico (gratis por días)</option><option value="pro">🔵 Pro</option><option value="premium">🟡 Premium</option></select></label>
+                  <label class="text-[10px] text-gray-400">Días (vigencia inicial)<input type="number" id="ctAdmDias" min="0" max="365" placeholder="30" class="mt-1 w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"></label>
+                </div>
+                <label class="flex items-center gap-2 text-[11px] text-gray-300"><input type="checkbox" id="ctAdmPrueba" checked class="w-4 h-4 accent-cyan-500"> Es de prueba <span class="text-gray-500">(se marca 🧪, no le avisa al dueño y no se cobra ni vence sola)</span></label>
+                <p id="ctAdmPrevia" class="text-[10px] text-cyan-200"></p>
+                <button type="button" id="btnCtAdmCrear" onclick="crearTiendaDesdePanel()" class="w-full py-2.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-black font-black text-xs">➕ Crear tienda</button>
+              </div>
+            </details>
+          </div>
+          <div class="space-y-3 min-w-0">
+            <div id="ctSolicitudes" class="space-y-2"></div>
+            <div class="bg-gray-900 border border-violet-500/40 rounded-2xl p-4 space-y-2.5">
+              <p class="text-sm font-black text-white">💎 Precios de los planes</p>
+              <div class="grid grid-cols-3 gap-2" id="ctPrecioCaja">
+                <label class="text-[10px] text-gray-400">🟣 Básico: días gratis<input type="number" id="ctDiasBasico" min="0" max="365" class="mt-1 w-full bg-gray-800 border border-gray-700 rounded-xl px-2 py-2 text-xs text-white focus:outline-none"></label>
+                <label class="text-[10px] text-gray-400">🔵 Pro ($/mes)<input type="number" id="ctPrecioPro" min="0" step="1000" class="mt-1 w-full bg-gray-800 border border-gray-700 rounded-xl px-2 py-2 text-xs text-white focus:outline-none"></label>
+                <label class="text-[10px] text-gray-400">🟡 Premium ($/mes)<input type="number" id="ctPrecioPremium" min="0" step="1000" class="mt-1 w-full bg-gray-800 border border-gray-700 rounded-xl px-2 py-2 text-xs text-white focus:outline-none"></label>
+                <input type="hidden" id="ctPrecio"><input type="hidden" id="ctDias">
+              </div>
+              <p class="text-[11px] font-black text-white pt-1">🎁 Descuento por pagar varios meses</p>
+              <div class="grid grid-cols-3 gap-2">
+                <label class="text-[10px] text-gray-400">3 meses (%)<input type="number" id="ctDescM3" min="0" max="90" class="mt-1 w-full bg-gray-800 border border-gray-700 rounded-xl px-2 py-2 text-xs text-white focus:outline-none"></label>
+                <label class="text-[10px] text-gray-400">6 meses (%)<input type="number" id="ctDescM6" min="0" max="90" class="mt-1 w-full bg-gray-800 border border-gray-700 rounded-xl px-2 py-2 text-xs text-white focus:outline-none"></label>
+                <label class="text-[10px] text-gray-400">12 meses (%)<input type="number" id="ctDescM12" min="0" max="90" class="mt-1 w-full bg-gray-800 border border-gray-700 rounded-xl px-2 py-2 text-xs text-white focus:outline-none"></label>
+              </div>
+              <label class="flex items-center gap-2 text-[11px] text-gray-300"><input type="checkbox" id="ctRenovAuto" class="w-4 h-4 accent-violet-500"> Al vencer, renovar sola con el saldo del dueño</label>
+              <label class="flex items-center gap-2 text-[11px] text-gray-300"><input type="checkbox" id="ctAviso3" class="w-4 h-4 accent-violet-500"> Avisar al dueño 3 días antes de vencer</label>
+              <label class="text-[11px] text-gray-400 block">Modelo<select id="ctModo" onchange="pintarCfgTiendasUI()" class="mt-1 w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"><option value="gratis">Gratis para todos</option><option value="demo">Básico gratis por días y luego Pro / Premium</option><option value="suscripcion">Solo Pro / Premium (de pago)</option></select></label>
+              <p id="ctVistaPrevia" class="text-[11px] text-violet-200 p-2.5 rounded-xl bg-violet-500/10 border border-violet-500/30"></p>
+              <label class="flex items-center justify-between gap-3 p-2.5 rounded-xl bg-gray-800/60 border border-gray-700/60"><span class="text-xs font-bold text-white">Mostrar "Crea tu tienda" a todos</span><input type="checkbox" id="ctVisible" class="accent-cyan-500 w-5 h-5"></label>
+              <label class="block text-[11px] text-gray-400">Correos de prueba (uno por línea; solo ellos lo ven mientras esté apagado)<textarea id="ctBeta" rows="2" class="mt-1 w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white font-mono focus:outline-none"></textarea></label>
+              <button type="button" id="btnGuardarCfgTiendas" onclick="guardarCfgTiendas()" class="w-full py-2.5 rounded-xl bg-violet-500 hover:bg-violet-400 text-white font-black text-xs">Guardar</button>
             </div>
           </div>
-          <p id="ctVistaPrevia" class="text-[11px] text-cyan-200 p-2.5 rounded-xl bg-cyan-500/10 border border-cyan-500/30"></p>
-          <button type="button" id="btnGuardarCfgTiendas" onclick="guardarCfgTiendas()" class="w-full py-2.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-black font-black text-xs">Guardar</button>
-          <div class="pt-2 border-t border-gray-800"><p class="text-xs font-black text-white mb-2">Solicitudes</p><div id="ctSolicitudes" class="space-y-2"></div></div>
-          <div class="pt-2 border-t border-gray-800"><p class="text-xs font-black text-white mb-2">Tiendas creadas</p><div id="ctTiendas" class="space-y-2"></div></div>
         </div>
       </div>
 
@@ -5179,7 +5199,11 @@
 
         <div id="grupoAuthWhatsapp" class="hidden space-y-3">
           <div>
-            <label class="block text-xs text-gray-400 mb-1">WhatsApp</label>
+            <label class="block text-xs text-gray-400 mb-1">Tu nombre</label>
+            <input type="text" id="authNombre" maxlength="60" autocomplete="name" enterkeyhint="next" placeholder="Nombre y apellido" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500">
+          </div>
+          <div>
+            <label class="block text-xs text-gray-400 mb-1">WhatsApp <span class="text-red-400">*</span></label>
             <div class="flex gap-2">
               <select id="authPais" onchange="cambioPaisRegistro()" aria-label="País" class="shrink-0 w-[118px] bg-gray-800 border border-gray-700 rounded-xl px-2 py-2.5 text-sm text-white focus:outline-none"></select>
               <input type="tel" id="authWhatsapp" inputmode="numeric" autocomplete="tel" enterkeyhint="next" placeholder="3001234567" class="min-w-0 flex-grow bg-gray-800 border border-gray-700 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500">
@@ -11433,7 +11457,7 @@
                       <div class="min-w-0 flex-grow">
                         <p class="text-sm font-black text-white truncate">${escaparHtml(u.nombre || u.email || 'Ficha incompleta')}</p>
                         <p class="text-[11px] text-gray-400 font-mono truncate">${escaparHtml(u.email || uid)}</p>
-                        <div class="flex flex-wrap items-center gap-1.5 mt-1">${esInvitadoU(u, uid) ? '<span class="px-1.5 py-0.5 rounded bg-gray-700 text-gray-300 text-[9px] font-black">🛒 INVITADO · SIN REGISTRO</span>' : ''}${(() => { const et = etiquetaTipoCuenta(u.rol, u.tipoCuenta); return et ? `<span class="px-1.5 py-0.5 rounded ${et[1]} text-[9px] font-black">${et[0]}</span>` : ''; })()}${chipId}${chipWa}${u.appUso ? `<span class="px-1.5 py-0.5 rounded bg-emerald-500/15 border border-emerald-500/40 text-emerald-300 text-[9px] font-black" title="Último uso: ${escaparHtml(u.appUltimoUso ? new Date(u.appUltimoUso).toLocaleString('es-CO') : '')}">📲 App ${u.appUso === 'pc' ? 'PC' : (u.appUso === 'iphone' ? 'iPhone' : 'Android')}</span>` : (u.appDescargaEl ? '<span class="px-1.5 py-0.5 rounded bg-gray-700/60 text-gray-300 text-[9px] font-black">⬇️ Descargó la app</span>' : '')}<span data-nivel-uid="${uid}"></span>${deudaU > 0 ? `<span class="px-1.5 py-0.5 rounded bg-violet-500/20 text-violet-200 text-[9px] font-black">DEBE ${formatoCOP(deudaU)}</span>` : ''}</div>
+                        <div class="flex flex-wrap items-center gap-1.5 mt-1">${esInvitadoU(u, uid) ? '<span class="px-1.5 py-0.5 rounded bg-gray-700 text-gray-300 text-[9px] font-black">🛒 INVITADO · SIN REGISTRO</span><button type="button" onclick="unirInvitadoAdmin(\'' + uid + '\')" class="px-1.5 py-0.5 rounded bg-emerald-500/15 border border-emerald-500/40 text-emerald-300 text-[9px] font-black">🔗 Unir a su cuenta</button>' : ''}${(() => { const et = etiquetaTipoCuenta(u.rol, u.tipoCuenta); return et ? `<span class="px-1.5 py-0.5 rounded ${et[1]} text-[9px] font-black">${et[0]}</span>` : ''; })()}${chipId}${chipWa}${u.appUso ? `<span class="px-1.5 py-0.5 rounded bg-emerald-500/15 border border-emerald-500/40 text-emerald-300 text-[9px] font-black" title="Último uso: ${escaparHtml(u.appUltimoUso ? new Date(u.appUltimoUso).toLocaleString('es-CO') : '')}">📲 App ${u.appUso === 'pc' ? 'PC' : (u.appUso === 'iphone' ? 'iPhone' : 'Android')}</span>` : (u.appDescargaEl ? '<span class="px-1.5 py-0.5 rounded bg-gray-700/60 text-gray-300 text-[9px] font-black">⬇️ Descargó la app</span>' : '')}<span data-nivel-uid="${uid}"></span>${deudaU > 0 ? `<span class="px-1.5 py-0.5 rounded bg-violet-500/20 text-violet-200 text-[9px] font-black">DEBE ${formatoCOP(deudaU)}</span>` : ''}</div>
                       </div>
                       <div class="shrink-0 text-right"><p class="text-[10px] text-gray-500">Saldo</p><p class="text-base font-black text-emerald-400">${formatoCOP(u.saldo || 0)}</p>${htmlVenceSaldoU(Object.assign({ uid: uid }, u))}</div>
                     </div>
@@ -11454,7 +11478,7 @@
                 </td>
                 <td class="hidden md:table-cell px-4 py-3">
                   ${nombreCliente}${chipId}${chipWa}
-                  ${esInvitadoU(u, uid) ? '<span class="inline-block mt-1 mr-1 px-1.5 py-0.5 rounded bg-gray-700 text-gray-300 text-[9px] font-black">🛒 INVITADO · SIN REGISTRO</span>' : ''}${(() => { const et = etiquetaTipoCuenta(u.rol, u.tipoCuenta); return et ? `<span class="inline-block mt-1 px-1.5 py-0.5 rounded ${et[1]} text-[9px] font-black">${et[0]}</span>` : ''; })()}
+                  ${esInvitadoU(u, uid) ? '<span class="inline-block mt-1 mr-1 px-1.5 py-0.5 rounded bg-gray-700 text-gray-300 text-[9px] font-black">🛒 INVITADO · SIN REGISTRO</span><button type="button" onclick="unirInvitadoAdmin(\'' + uid + '\')" class="inline-block mt-1 mr-1 px-1.5 py-0.5 rounded bg-emerald-500/15 border border-emerald-500/40 text-emerald-300 text-[9px] font-black">🔗 Unir a su cuenta</button>' : ''}${(() => { const et = etiquetaTipoCuenta(u.rol, u.tipoCuenta); return et ? `<span class="inline-block mt-1 px-1.5 py-0.5 rounded ${et[1]} text-[9px] font-black">${et[0]}</span>` : ''; })()}
                   <span data-nivel-uid="${uid}" class="block mt-1"></span>
                   <button onclick="abrirModalEditarCliente('${uid}', '${escaparJsAttr(u.email)}', '${escaparJsAttr(u.nombre)}')" class="mt-1 text-[10px] bg-gray-800 hover:bg-gray-700 text-emerald-400 px-2 py-0.5 rounded"><i class="fa-solid fa-pen mr-1"></i> Editar perfil</button>
                   <button onclick="verRecargasCliente('${uid}', '${escaparJsAttr(u.nombre || u.email || '')}')" class="mt-1 text-[10px] bg-gray-800 hover:bg-gray-700 text-sky-300 px-2 py-0.5 rounded"><i class="fa-solid fa-receipt mr-1"></i> Recargas</button>
@@ -11859,6 +11883,11 @@
       const d = diasVenceSaldoU(u); if (d === null) return '';
       const col = d <= 0 ? 'text-red-300' : (d <= 3 ? 'text-amber-300' : 'text-gray-400');
       return `<p class="text-[10px] ${col} leading-tight mt-0.5">${d <= 0 ? '⏳ vence hoy' : '⏳ vence en ' + d + (d === 1 ? ' día' : ' días')}</p>`;
+    }
+    // 🔗 u14: unir un invitado de WhatsApp a la cuenta registrada que tiene su mismo número (saldo, compras y chat pasan a la cuenta real)
+    async function unirInvitadoAdmin(uid) {
+      if (!esAdminSesionActual()) return; if (!await confirmarModal('¿Unir este invitado a la cuenta registrada con su mismo WhatsApp?\n\nSu saldo, compras y chat pasan a la cuenta real y el invitado desaparece.', { textoAceptar: 'Sí, unir' })) return;
+      try { const r = await llamarBackend('invitado_unir', { uid: uid }); if (!r || !r.ok) { alert((r && r.error) || 'No se pudo unir.'); return; } mostrarToast('🔗 Unido a ' + (r.email || r.nombre)); } catch (e) { alert('No se pudo: ' + e.message); }
     }
     function esInvitadoU(u, uid) { return !!(u && (u.invitado === true || u.registradoPor === 'whatsapp_invitado')) || /^inv_/.test(String(uid || '')); }   // 🛒 compró por WhatsApp sin registrarse
     function etiquetaTipoCuenta(rol, tipo) {
@@ -18615,7 +18644,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-11-10u12';
+    const VERSION_PAGINA = '2026-11-10u14';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261105_ranking', fecha: '2026-11-05', titulo: '🏆 ¡Llegó el ranking del mes!', mensaje: 'Ahora en la página ves **en qué puesto vas** (arriba, debajo de tu saldo). Los **3 que más recarguen** en el mes se llevan **saldo de regalo**: el **4%**, el **3%** y el **2%** de lo que recargaron. Para participar debes recargar mínimo **$150.000** en el mes. Se actualiza cada hora, cierra el último día del mes y el premio te cae solo el día 1. ¿Quién va a ser el primero? 😎', ir: '' },
       { id: 'act_20261102_codigos_seguros', fecha: '2026-11-02', titulo: 'Tus códigos, más protegidos 🔒', mensaje: 'Tu enlace de códigos ahora es más seguro: los códigos para **crear cuentas nuevas** con nuestros correos ya no se muestran a nadie sin permiso. Los códigos para **entrar a tu cuenta** y **cambiar la contraseña** te siguen llegando al instante, igual que siempre.', ir: '' },
@@ -21219,7 +21248,9 @@
 
     // ==================== TIENDAS PARA CLIENTES — FASE 1 (vitrina oculta + solicitudes) ====================
     var cfgTiendas = null, miSolicitudTienda = null, solicitudesTiendas = [], unsubSolTiendas = null;
-    const CFG_TIENDAS_BASE = { visible: false, beta: [], modo: 'demo', diasDemo: 30, precioMensual: 49900, niveles: { basico: { precio: 0, dias: 30 }, pro: { precio: 49900 }, premium: { precio: 99900 } } };
+    const CFG_TIENDAS_BASE = { visible: false, beta: [], modo: 'demo', diasDemo: 30, precioMensual: 49900, niveles: { basico: { precio: 0, dias: 30 }, pro: { precio: 49900 }, premium: { precio: 99900 } }, descuentos: { m3: 10, m6: 20, m12: 30 }, renovAuto: true, aviso3: true };
+    const TIENDA_MESES = [1, 3, 6, 12];
+    function precioPlanTienda(c, nivel, meses) { c = c || cfgTiendas || CFG_TIENDAS_BASE; const nv = nivelesTienda(c), base = nivel === 'pro' ? nv.pro.precio : nivel === 'premium' ? nv.premium.precio : 0, m = TIENDA_MESES.indexOf(Number(meses)) === -1 ? 1 : Number(meses), pct = m === 1 ? 0 : Math.max(0, Math.min(90, Number(((c.descuentos || {})['m' + m]) || 0))); return { base, meses: m, pct, total: Math.round(base * m * (1 - pct / 100)) }; }
     const NIVELES_TIENDA = { basico: 'Básico', pro: 'Pro', premium: 'Premium' };
     function nivelesTienda(c) { c = c || cfgTiendas || CFG_TIENDAS_BASE; const n = Object.assign({}, CFG_TIENDAS_BASE.niveles, c.niveles || {}); return { basico: Object.assign({ precio: 0, dias: 30 }, n.basico || {}), pro: Object.assign({ precio: 49900 }, n.pro || {}), premium: Object.assign({ precio: 99900 }, n.premium || {}) }; }
     function nombreNivelTienda(k) { return NIVELES_TIENDA[String(k || 'basico').toLowerCase()] || 'Básico'; }
@@ -21307,40 +21338,71 @@
       } catch (e) { alert('No se pudo enviar: ' + e.message); if (btn) { btn.disabled = false; btn.textContent = 'Quiero mi tienda'; } }
     }
     // ----- Panel del administrador -----
+    var ctSaldos = {}, ctPagosMes = [], unsubPagosTiendas = null;   // u13: tablero de control + cobro por saldo
     async function prepararCfgTiendas() {
-      const c = await cargarCfgTiendas();
-      document.getElementById('ctVisible').checked = c.visible === true;
-      document.getElementById('ctBeta').value = (c.beta || []).join('\n');
-      document.getElementById('ctModo').value = c.modo || 'demo';
-      const nv = nivelesTienda(c); document.getElementById('ctDias').value = nv.basico.dias || c.diasDemo || 30;
-      document.getElementById('ctDiasBasico').value = nv.basico.dias; document.getElementById('ctPrecioPro').value = nv.pro.precio; document.getElementById('ctPrecioPremium').value = nv.premium.precio; document.getElementById('ctPrecio').value = nv.pro.precio;
+      const c = await cargarCfgTiendas(), g = id => document.getElementById(id);
+      g('ctVisible').checked = c.visible === true; g('ctBeta').value = (c.beta || []).join('\n'); g('ctModo').value = c.modo || 'demo';
+      const nv = nivelesTienda(c); g('ctDias').value = nv.basico.dias || c.diasDemo || 30;
+      g('ctDiasBasico').value = nv.basico.dias; g('ctPrecioPro').value = nv.pro.precio; g('ctPrecioPremium').value = nv.premium.precio; g('ctPrecio').value = nv.pro.precio;
+      const ds = Object.assign({}, CFG_TIENDAS_BASE.descuentos, c.descuentos || {}); g('ctDescM3').value = ds.m3; g('ctDescM6').value = ds.m6; g('ctDescM12').value = ds.m12;
+      g('ctRenovAuto').checked = c.renovAuto !== false; g('ctAviso3').checked = c.aviso3 !== false;
       pintarCfgTiendasUI();
       try { iniciarTiendasAdmin(); } catch (e) { /* nada */ }
       if (!unsubSolTiendas) { try { unsubSolTiendas = db.collection('tiendas_solicitudes').onSnapshot(snap => { solicitudesTiendas = []; snap.forEach(d => solicitudesTiendas.push(Object.assign({ id: d.id }, d.data() || {}))); solicitudesTiendas.sort((a, b) => String(b.creadoEl).localeCompare(String(a.creadoEl))); pintarSolicitudesTiendas(); }, e => console.warn(e)); } catch (e) { /* nada */ } }
+      if (!unsubPagosTiendas) { try { const ini = new Date(); ini.setDate(1); ini.setHours(0, 0, 0, 0); unsubPagosTiendas = db.collection('tiendas_pagos').where('fecha', '>=', ini.toISOString()).onSnapshot(sn => { ctPagosMes = []; sn.forEach(d => ctPagosMes.push(d.data() || {})); pintarKpisTiendas(); }, e => console.warn(e)); } catch (e) { /* nada */ } }
     }
     function leerCfgTiendasUI() {
-      return { visible: document.getElementById('ctVisible').checked, beta: String(document.getElementById('ctBeta').value || '').split(/[\s,;]+/).map(x => x.trim().toLowerCase()).filter(x => /@/.test(x)).slice(0, 50), modo: document.getElementById('ctModo').value, diasDemo: Math.max(1, Math.min(365, parseInt(document.getElementById('ctDiasBasico').value, 10) || parseInt(document.getElementById('ctDias').value, 10) || 30)), precioMensual: Math.max(0, Math.round(Number(document.getElementById('ctPrecioPro').value) || 0)),
-        niveles: { basico: { precio: 0, dias: Math.max(0, Math.min(365, parseInt(document.getElementById('ctDiasBasico').value, 10) || 30)) }, pro: { precio: Math.max(0, Math.round(Number(document.getElementById('ctPrecioPro').value) || 0)) }, premium: { precio: Math.max(0, Math.round(Number(document.getElementById('ctPrecioPremium').value) || 0)) } } };
+      const g = id => document.getElementById(id), n = (id, mn, mx) => Math.max(mn, Math.min(mx, parseInt(g(id).value, 10) || 0));
+      return { visible: g('ctVisible').checked, beta: String(g('ctBeta').value || '').split(/[\s,;]+/).map(x => x.trim().toLowerCase()).filter(x => /@/.test(x)).slice(0, 50), modo: g('ctModo').value, diasDemo: Math.max(1, Math.min(365, parseInt(g('ctDiasBasico').value, 10) || 30)),
+        niveles: { basico: { precio: 0, dias: n('ctDiasBasico', 0, 365) || 30 }, pro: { precio: Math.max(0, Math.round(Number(g('ctPrecioPro').value) || 0)) }, premium: { precio: Math.max(0, Math.round(Number(g('ctPrecioPremium').value) || 0)) } },
+        descuentos: { m3: n('ctDescM3', 0, 90), m6: n('ctDescM6', 0, 90), m12: n('ctDescM12', 0, 90) }, renovAuto: g('ctRenovAuto').checked, aviso3: g('ctAviso3').checked };
     }
     function pintarCfgTiendasUI() {
-      const c = leerCfgTiendasUI();
-      document.getElementById('ctDiasCaja').classList.add('hidden');
-      document.getElementById('ctPrecioCaja').classList.toggle('hidden', c.modo === 'gratis');
-      document.getElementById('ctVistaPrevia').innerHTML = '<b>El cliente verá:</b> ' + escaparHtml(textoModeloTienda(c));
+      const c = leerCfgTiendasUI(), p3 = precioPlanTienda(c, 'pro', 3), p12 = precioPlanTienda(c, 'pro', 12);
+      document.getElementById('ctPrecioCaja').classList.toggle('opacity-50', c.modo === 'gratis');
+      document.getElementById('ctVistaPrevia').innerHTML = '<b>El cliente verá:</b> ' + escaparHtml(textoModeloTienda(c)) + (c.modo !== 'gratis' && c.niveles.pro.precio ? '<br><span class="text-gray-400">Pro 3 meses: ' + formatoCOP(p3.total) + (p3.pct ? ' (−' + p3.pct + '%)' : '') + ' · 12 meses: ' + formatoCOP(p12.total) + (p12.pct ? ' (−' + p12.pct + '%)' : '') + '</span>' : '');
     }
     async function guardarCfgTiendas() {
       if (!esAdminSesionActual()) return;
       const c = leerCfgTiendasUI(), btn = document.getElementById('btnGuardarCfgTiendas'); if (btn) { btn.disabled = true; btn.textContent = 'Guardando...'; }
-      try { await db.collection('configuracion').doc('tiendas').set(c); cfgTiendas = Object.assign({}, CFG_TIENDAS_BASE, c); mostrarToast(c.visible ? '✓ "Crea tu tienda" visible para todos.' : `✓ Guardado. Solo lo ven ${c.beta.length} ${c.beta.length === 1 ? 'correo' : 'correos'} de prueba.`); }
+      try { await db.collection('configuracion').doc('tiendas').set(c); cfgTiendas = Object.assign({}, CFG_TIENDAS_BASE, c); mostrarToast('✓ Planes y precios guardados. Las tiendas los ven en máximo 1 minuto.'); pintarSolicitudesTiendas(); }
       catch (e) { alert('No se pudo guardar: ' + e.message); }
       finally { if (btn) { btn.disabled = false; btn.textContent = 'Guardar'; } }
+    }
+    async function ctSaldoDe(uid) { if (!uid) return null; if (uid in ctSaldos) return ctSaldos[uid]; ctSaldos[uid] = null; try { const d = await db.collection('usuarios').doc(uid).get(); ctSaldos[uid] = d.exists ? (Number(d.data().saldo) || 0) : 0; } catch (e) { ctSaldos[uid] = 0; } return ctSaldos[uid]; }
+    function pintarKpisTiendas() {
+      const g = id => document.getElementById(id); if (!g('ctKpiActivas')) return;
+      const ahora = Date.now(), reales = tiendasCreadas.filter(t => !t.prueba);
+      const activas = reales.filter(t => t.estado !== 'suspendida' && t.estado !== 'vencida' && (!t.venceEl || Date.parse(t.venceEl) > ahora)).length;
+      const vencen = reales.filter(t => t.venceEl && Date.parse(t.venceEl) > ahora && Date.parse(t.venceEl) - ahora <= 3 * 86400000).length;
+      const cobrado = ctPagosMes.reduce((a, x) => a + (Number(x.monto) || 0), 0), pend = solicitudesTiendas.filter(x => x.estado === 'pendiente').length;
+      g('ctKpiActivas').textContent = activas; g('ctKpiVencen').textContent = vencen; g('ctKpiCobrado').textContent = formatoCOP(cobrado); g('ctKpiCobradoSub').textContent = 'cobrado este mes · ' + ctPagosMes.length + (ctPagosMes.length === 1 ? ' pago' : ' pagos'); g('ctKpiSol').textContent = pend;
     }
     function pintarSolicitudesTiendas() {
       const c = document.getElementById('ctSolicitudes'); if (!c) return;
       const pend = solicitudesTiendas.filter(x => x.estado === 'pendiente').length;
       const b = document.getElementById('ctSolBadge'); if (b) { b.textContent = pend + ' nuevas'; b.classList.toggle('hidden', !pend); }
-      c.innerHTML = solicitudesTiendas.length ? solicitudesTiendas.slice(0, 30).map(x => `<div class="p-2.5 rounded-xl bg-gray-800/50 border border-gray-700/60"><div class="flex items-start justify-between gap-2"><div class="min-w-0"><p class="text-xs font-black text-white truncate">${escaparHtml(x.nombreTienda || '')} <span class="text-gray-500 font-normal">${escaparHtml(x.enlace || '')}.epicstreaming.vip</span> <span class="px-1.5 py-0.5 rounded-full bg-amber-500/15 text-amber-300 text-[9px] font-black">${escaparHtml(nombreNivelTienda(x.nivel))}</span></p><p class="text-[10px] text-gray-400 truncate">${escaparHtml(x.email || '')} · ${escaparHtml(bcFecha(x.creadoEl))}</p></div><span class="shrink-0 px-1.5 py-0.5 rounded-full text-[9px] font-black ${x.estado === 'aprobada' ? 'bg-emerald-500/15 text-emerald-300' : (x.estado === 'rechazada' ? 'bg-red-500/15 text-red-300' : 'bg-amber-500/15 text-amber-300')}">${escaparHtml(x.estado || '')}</span></div>
-        <div class="flex gap-1.5 mt-2">${x.whatsapp ? `<a href="https://wa.me/${escaparHtml(x.whatsapp.length === 10 ? '57' + x.whatsapp : x.whatsapp)}" target="_blank" rel="noopener noreferrer" class="px-2 py-1 rounded-lg bg-emerald-500/15 text-emerald-300 text-[10px] font-bold"><i class="fa-brands fa-whatsapp"></i> WhatsApp</a>` : ''}${x.estado === 'aprobada' && !x.tiendaId ? `<button type="button" onclick="crearTiendaCliente('${escaparJsAttr(x.id)}')" class="px-2 py-1 rounded-lg bg-emerald-500 text-black text-[10px] font-black">🏪 Crear tienda</button>` : ''}${x.tiendaId ? `<span class="px-2 py-1 rounded-lg bg-emerald-500/10 text-emerald-300 text-[10px] font-bold">✓ Tienda creada</span>` : ''}${x.estado === 'pendiente' ? `<button type="button" onclick="resolverSolicitudTienda('${escaparJsAttr(x.id)}','aprobada')" class="px-2 py-1 rounded-lg bg-cyan-500 text-black text-[10px] font-black">Aprobar</button><button type="button" onclick="resolverSolicitudTienda('${escaparJsAttr(x.id)}','rechazada')" class="px-2 py-1 rounded-lg bg-gray-800 border border-gray-700 text-gray-300 text-[10px]">Rechazar</button>` : ''}</div></div>`).join('') : '<p class="text-[11px] text-gray-500">Todavía no hay solicitudes.</p>';
+      pintarKpisTiendas();
+      const L = solicitudesTiendas.filter(x => x.estado === 'pendiente' || (x.estado === 'aprobada' && !x.tiendaId)).slice(0, 20);
+      c.innerHTML = (L.length ? L.map(x => { const nivel = /^(basico|pro|premium)$/.test(String(x.nivel || '')) ? x.nivel : 'basico', meses = Number(x._meses) || 1, pr = precioPlanTienda(null, nivel, meses), gratis = (cfgTiendas || {}).modo === 'gratis' || nivel === 'basico', saldo = ctSaldos[x.uid];
+        if (!(x.uid in ctSaldos)) ctSaldoDe(x.uid).then(() => pintarSolicitudesTiendas());
+        const chip = nivel === 'premium' ? 'bg-gradient-to-r from-amber-600 to-amber-400 text-black' : nivel === 'pro' ? 'bg-violet-700 text-violet-100' : 'bg-gray-700 text-gray-200';
+        return `<div class="bg-gray-900 border border-gray-800 rounded-2xl p-3.5 space-y-1.5"><div class="flex items-center justify-between gap-2"><p class="text-xs font-black text-white">📨 Solicitud ${x.estado === 'aprobada' ? '<span class="text-emerald-300">aprobada · sin crear</span>' : 'nueva'}</p><span class="px-2 py-0.5 rounded-full text-[10px] font-black ${chip}">${nombreNivelTienda(nivel).toUpperCase()}</span></div>
+          <p class="text-[12px] text-gray-200"><b>${escaparHtml(x.nombreTienda || '')}</b> · <span class="font-mono text-gray-400">${escaparHtml(x.enlace || '')}</span></p>
+          <p class="text-[11px] text-gray-400">${escaparHtml(x.email || '')}${x.whatsapp ? ' · <a class="text-emerald-300" target="_blank" rel="noopener" href="https://wa.me/' + escaparHtml(x.whatsapp.length === 10 ? '57' + x.whatsapp : x.whatsapp) + '">' + escaparHtml(x.whatsapp) + '</a>' : ''}</p>
+          ${gratis ? '<p class="text-[11px] text-gray-400">Plan gratis · sin cobro</p>' : `<div class="flex items-center gap-1.5 text-[11px] text-gray-300">Meses: ${TIENDA_MESES.map(m => `<button type="button" onclick="ctSolMeses('${escaparJsAttr(x.id)}',${m})" class="px-2 py-0.5 rounded-lg border ${m === meses ? 'border-violet-400 bg-violet-500/20 text-white' : 'border-gray-700 text-gray-400'}">${m}</button>`).join('')}</div>
+          <p class="text-[11px] text-gray-400">Cobro: <b class="text-white">${formatoCOP(pr.total)}</b>${pr.pct ? ' (−' + pr.pct + '%)' : ''} · saldo del cliente: ${saldo === null || saldo === undefined ? '…' : '<b class="' + (saldo >= pr.total ? 'text-emerald-300' : 'text-red-300') + '">' + formatoCOP(saldo) + '</b>' + (saldo >= pr.total ? ' → alcanza' : ' → faltan ' + formatoCOP(pr.total - saldo))}</p>`}
+          <div class="flex gap-1.5 pt-1"><button type="button" onclick="aprobarYCobrarTienda('${escaparJsAttr(x.id)}')" class="flex-1 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-black text-[11px]">${gratis ? 'Aprobar' : 'Aprobar y cobrar'}</button>${x.estado === 'pendiente' ? `<button type="button" onclick="resolverSolicitudTienda('${escaparJsAttr(x.id)}','rechazada')" class="px-3 py-2 rounded-xl bg-gray-800 border border-gray-700 text-gray-300 font-bold text-[11px]">Rechazar</button>` : ''}</div></div>`; }).join('') : '<p class="text-[11px] text-gray-500 p-3 rounded-2xl bg-gray-900 border border-gray-800">Sin solicitudes pendientes.</p>');
+    }
+    function ctSolMeses(id, m) { const x = solicitudesTiendas.find(y => y.id === id); if (x) { x._meses = m; pintarSolicitudesTiendas(); } }
+    async function aprobarYCobrarTienda(id) {
+      if (!esAdminSesionActual()) return; const x = solicitudesTiendas.find(y => y.id === id); if (!x) return;
+      const nivel = /^(basico|pro|premium)$/.test(String(x.nivel || '')) ? x.nivel : 'basico', meses = Number(x._meses) || 1, pr = precioPlanTienda(null, nivel, meses), gratis = (cfgTiendas || {}).modo === 'gratis' || nivel === 'basico';
+      if (!await confirmarModal(`¿Crear la tienda "${x.nombreTienda}" para ${x.email}?\n\nPlan ${nombreNivelTienda(nivel)}${gratis ? ' (gratis)' : ' × ' + meses + (meses === 1 ? ' mes' : ' meses') + ' = ' + formatoCOP(pr.total) + ' que se descuentan de su saldo'}`, { textoAceptar: gratis ? 'Sí, crear' : 'Sí, cobrar y crear' })) return;
+      try { const r = await llamarBackend('tienda_aprobar', { solId: id, nivel: nivel, meses: meses });
+        if (!r || !r.ok) { alert((r && r.error) || 'No se pudo crear la tienda.'); return; }
+        delete ctSaldos[x.uid]; mostrarToast('🏪 Tienda creada: ' + r.url + (r.total ? ' · cobrados ' + formatoCOP(r.total) : '')); try { abrirDialogoTextoCopiable('Tienda creada', '🏪 ' + x.nombreTienda + '\n' + r.url + '\n\nDueño: ' + x.email + (r.total ? '\nCobrado: ' + formatoCOP(r.total) : '')); } catch (e) { /* opcional */ } }
+      catch (e) { alert('No se pudo: ' + e.message); }
     }
     async function resolverSolicitudTienda(id, estado) {
       if (!esAdminSesionActual()) return;
@@ -21478,36 +21540,28 @@
       } catch (e) { alert('No se pudo crear: ' + e.message); }
       finally { if (btn) btn.disabled = false; }
     }
-    async function crearTiendaCliente(solId) {
-      if (!esAdminSesionActual()) return;
-      const sol = solicitudesTiendas.find(x => x.id === solId); if (!sol) return;
-      const slug = slugTienda(sol.enlace || sol.nombreTienda);
-      if (slug.length < 3) { alert('El enlace de la tienda no es válido.'); return; }
-      const c = cfgTiendas || await cargarCfgTiendas(), nivel = /^(basico|pro|premium)$/.test(String(sol.nivel || '')) ? sol.nivel : 'basico', nv = nivelesTienda(c);
-      const dias = c.modo === 'gratis' ? 0 : (nivel === 'basico' ? nv.basico.dias : 30);
-      if (!await confirmarModal(`¿Crear la tienda "${sol.nombreTienda}"?\n\nEnlace: ${urlTiendaCliente(slug)}\nDueño: ${sol.email}\nPlan: ${textoModeloTienda(c)}`, { textoAceptar: 'Sí, crear' })) return;
-      try {
-        const ref = db.collection('tiendas').doc(), ahora = new Date().toISOString();
-        await db.runTransaction(async (t) => {
-          const sRef = db.collection('slugs').doc(slug), ya = await t.get(sRef);
-          if (ya.exists) throw new Error('Ya existe una tienda con el enlace "' + slug + '". Cambia el enlace en la solicitud.');
-          t.set(ref, { slug: slug, nombre: sol.nombreTienda, ownerUid: sol.uid, ownerEmail: sol.email, whatsapp: sol.whatsapp || '', color: '#8b5cf6', frase: '', logo: '', tipo: 'streaming', plan: c.modo, nivel: nivel, estado: 'activa', venceEl: dias ? new Date(Date.now() + dias * 86400000).toISOString() : '', creadoEl: ahora, creadoPor: currentUser.email });
-          t.set(sRef, { tiendaId: ref.id, creadoEl: ahora });
-          t.update(db.collection('tiendas_solicitudes').doc(solId), { tiendaId: ref.id, slug: slug });
-        });
-        avisarClienteTicket(sol.uid, '🏪 ¡Tu tienda está lista!', 'Entra a ' + urlTiendaCliente(slug) + ' y toca "Mi panel" para agregar tus productos.');
-        mostrarToast('✓ Tienda creada: ' + urlTiendaCliente(slug));
-      } catch (e) { alert(e.message || 'No se pudo crear la tienda.'); }
-    }
+    async function crearTiendaCliente(solId) { return aprobarYCobrarTienda(solId); }
     function iniciarTiendasAdmin() {
       if (unsubTiendasAdm || !esAdminSesionActual()) return;
       try { unsubTiendasAdm = db.collection('tiendas').onSnapshot(sn => { tiendasCreadas = []; sn.forEach(d => tiendasCreadas.push(Object.assign({ id: d.id }, d.data() || {}))); tiendasCreadas.sort((a, b) => String(b.creadoEl).localeCompare(String(a.creadoEl))); pintarTiendasAdmin(); }, e => console.warn(e)); } catch (e) { /* nada */ }
     }
     function pintarTiendasAdmin() {
-      const c = document.getElementById('ctTiendas'); if (!c) return;
-      c.innerHTML = tiendasCreadas.length ? tiendasCreadas.map(t => { const dias = t.venceEl ? Math.ceil((Date.parse(t.venceEl) - Date.now()) / 86400000) : null; const cerrada = t.estado === 'suspendida' || (dias !== null && dias <= 0); return `<div class="p-2.5 rounded-xl bg-gray-800/50 border ${cerrada ? 'border-red-500/40' : 'border-gray-700/60'}">
-        <div class="flex items-start justify-between gap-2"><div class="min-w-0"><p class="text-xs font-black text-white truncate">${t.prueba ? '🧪 ' : ''}${escaparHtml(t.nombre)} <span class="text-gray-500 font-normal">/t/${escaparHtml(t.slug)}</span></p><p class="text-[10px] text-gray-400 truncate">${escaparHtml(t.ownerEmail || '')} · <b class="text-amber-300">${escaparHtml(nombreNivelTienda(t.nivel))}</b>${dias === null ? ' · sin vencimiento' : (dias > 0 ? ' · ' + dias + ' días' : ' · VENCIDA')}${t.baseLista ? ' · 🟢 base lista' : (t.baseError ? ' · ⚠️ ' + escaparHtml(String(t.baseError).slice(0, 60)) : ' · ⏳ creando base')}${t.recargaAuto ? ' · 💳 auto' : ''}${t.dominioPersonal ? ' · 🌐 ' + escaparHtml(t.dominioPersonal) : (t.dominioPropio ? ' · 🌐 dominio' : '')}</p></div><span class="shrink-0 px-1.5 py-0.5 rounded-full text-[9px] font-black ${cerrada ? 'bg-red-500/15 text-red-300' : 'bg-emerald-500/15 text-emerald-300'}">${cerrada ? 'CERRADA' : 'ACTIVA'}</span></div>
-        <div class="flex flex-wrap gap-1.5 mt-2"><a href="${escaparHtml(urlTiendaCliente(t.slug))}" target="_blank" rel="noopener" class="px-2 py-1 rounded-lg bg-gray-800 border border-gray-700 text-gray-200 text-[10px] font-bold">Abrir</a><button type="button" onclick="editarTiendaAdmin('${escaparJsAttr(t.id)}')" class="px-2 py-1 rounded-lg bg-amber-500 text-black text-[10px] font-black">✏️ Editar</button><button type="button" onclick="extenderTienda('${escaparJsAttr(t.id)}',30)" class="px-2 py-1 rounded-lg bg-cyan-500 text-black text-[10px] font-black">+30 días</button><button type="button" onclick="estadoTienda('${escaparJsAttr(t.id)}','${t.estado === 'suspendida' ? 'activa' : 'suspendida'}')" class="px-2 py-1 rounded-lg ${t.estado === 'suspendida' ? 'bg-emerald-500/15 text-emerald-300' : 'bg-red-500/10 text-red-300 border border-red-500/30'} text-[10px] font-bold">${t.estado === 'suspendida' ? 'Reactivar' : 'Suspender'}</button></div></div>`; }).join('') : '<p class="text-[11px] text-gray-500">Todavía no hay tiendas. Aprueba una solicitud y toca "Crear tienda".</p>';
+      const c = document.getElementById('ctTiendas'); if (!c) return; pintarKpisTiendas();
+      const ini = s => { const w = String(s || '').replace(/[^A-Za-z0-9 ]/g, '').trim().split(/\s+/); return ((w[0] || 'T')[0] + (w[1] ? w[1][0] : (w[0] || 'T')[1] || '')).toUpperCase(); };
+      const col = s => ['#4c1d95', '#0e7490', '#9a3412', '#166534', '#1e40af', '#7f1d1d', '#374151'][Array.from(String(s || '')).reduce((a, ch) => a + ch.charCodeAt(0), 0) % 7];
+      c.innerHTML = tiendasCreadas.length ? tiendasCreadas.map(t => {
+        const dias = t.venceEl ? Math.ceil((Date.parse(t.venceEl) - Date.now()) / 86400000) : null, susp = t.estado === 'suspendida', cerrada = susp || t.estado === 'vencida' || (dias !== null && dias <= 0), porVencer = !cerrada && dias !== null && dias <= 3;
+        const nivel = String(t.nivel || 'basico'), chip = nivel === 'premium' ? 'bg-gradient-to-r from-amber-600 to-amber-400 text-black' : nivel === 'pro' ? 'bg-violet-700 text-violet-100' : 'bg-gray-700 text-gray-200';
+        const pct = dias === null ? 100 : Math.max(0, Math.min(100, Math.round(dias / 30 * 100))), barra = cerrada ? 'bg-red-500' : porVencer ? 'bg-amber-400' : 'bg-emerald-400';
+        const saldo = ctSaldos[t.ownerUid]; if (t.ownerUid && !(t.ownerUid in ctSaldos)) ctSaldoDe(t.ownerUid).then(() => pintarTiendasAdmin());
+        const precio = nivel === 'basico' ? 0 : precioPlanTienda(null, nivel, 1).total, saldoTxt = t.prueba || !t.ownerUid ? '' : (saldo === null || saldo === undefined ? '' : (nivel === 'basico' ? '' : (saldo >= precio ? '<span class="text-[10px] font-bold text-emerald-300">saldo ' + formatoCOP(saldo) + ' · renueva solo</span>' : '<span class="text-[10px] font-bold text-red-300">saldo ' + formatoCOP(saldo) + ' · no podrá renovar</span>')));
+        const estado = susp ? '<span class="text-[10px] font-black text-gray-400">⏸ Suspendida</span>' : cerrada ? '<span class="text-[10px] font-black text-red-400">● Cerrada</span>' : porVencer ? '<span class="text-[10px] font-black text-amber-400">● Por vencer</span>' : '<span class="text-[10px] font-black text-emerald-400">● Activa</span>';
+        return `<div class="grid grid-cols-1 sm:grid-cols-[2fr_1fr_1.3fr_1fr_1.2fr] gap-2 sm:gap-1 px-4 py-3 items-center ${cerrada ? 'bg-red-500/5' : ''}">
+          <div class="flex items-center gap-2.5 min-w-0"><span class="w-9 h-9 rounded-xl grid place-items-center text-xs font-black text-white shrink-0" style="background:${col(t.slug)}">${escaparHtml(ini(t.nombre))}</span><div class="min-w-0"><p class="text-xs font-black text-white truncate">${t.prueba ? '🧪 ' : ''}${escaparHtml(t.nombre)}</p><p class="text-[10px] text-gray-400 truncate">${escaparHtml(urlTiendaCliente(t.slug).replace(/^https?:\/\//, ''))}${t.dominioPersonal ? ' · dominio propio ✓' : ''} · ${escaparHtml((t.ownerEmail || '').split('@')[0])}</p></div></div>
+          <div><span class="px-2 py-0.5 rounded-full text-[10px] font-black ${chip}">${nombreNivelTienda(nivel).toUpperCase()}</span></div>
+          <div class="min-w-0"><p class="text-[11px] text-gray-200">${dias === null ? 'sin vencimiento' : (dias > 0 ? dias + (dias === 1 ? ' día' : ' días') : 'vencida hace ' + Math.abs(dias) + (Math.abs(dias) === 1 ? ' día' : ' días'))}</p><div class="h-1.5 rounded-full bg-gray-800 overflow-hidden mt-1"><i class="block h-full rounded-full ${barra}" style="width:${pct}%"></i></div>${saldoTxt}</div>
+          <div>${estado}</div>
+          <div class="flex gap-1.5 sm:justify-end"><a href="${escaparHtml(urlTiendaCliente(t.slug))}" target="_blank" rel="noopener" title="Abrir" class="w-8 h-8 rounded-lg bg-gray-800 border border-gray-700 grid place-items-center text-xs text-gray-200">↗</a><button type="button" title="Editar" onclick="editarTiendaAdmin('${escaparJsAttr(t.id)}')" class="w-8 h-8 rounded-lg bg-gray-800 border border-gray-700 grid place-items-center text-xs">✏️</button><button type="button" title="+30 días" onclick="extenderTienda('${escaparJsAttr(t.id)}',30)" class="w-8 h-8 rounded-lg bg-gray-800 border border-gray-700 grid place-items-center text-xs text-emerald-300 font-black">+30</button><button type="button" title="${susp ? 'Reactivar' : 'Suspender'}" onclick="estadoTienda('${escaparJsAttr(t.id)}','${susp ? 'activa' : 'suspendida'}')" class="w-8 h-8 rounded-lg bg-gray-800 border border-gray-700 grid place-items-center text-xs">${susp ? '▶️' : '⏸'}</button></div></div>`; }).join('') : '<p class="px-4 py-6 text-center text-gray-500 text-sm">Todavía no hay tiendas.</p>';
     }
     // ✏️ Editar una tienda: plan, vencimiento, estado, nombre, WhatsApp, recarga automática y dominio propio
     async function editarTiendaAdmin(id) {
@@ -28222,7 +28276,9 @@ async function pintarPanelWa() {
         const digWa = document.getElementById('authWhatsapp').value.replace(/\D/g, '').replace(new RegExp('^' + paisSel[2]), '');
         // Colombia se guarda como siempre (10 dígitos); otros países con su código: +58 4241234567
         const whatsapp = digWa ? (paisSel[0] === 'CO' ? digWa.slice(-10) : '+' + paisSel[2] + ' ' + digWa) : '';
+        const nombreReg = String((document.getElementById('authNombre') || {}).value || '').trim().replace(/\s+/g, ' ').slice(0, 60);   // 👤 u13: nombre obligatorio
         { const errBox = document.getElementById('authErrorBox'), errMsg = document.getElementById('authErrorMsg'), falla = m => { if (errBox && errMsg) { errMsg.innerText = m; errBox.classList.remove('hidden'); } else alert(m); };
+          if (nombreReg.length < 2) { falla('Escribe tu nombre.'); return; }
           if (digWa.length < 7) { falla('Escribe tu número de WhatsApp: con él te mostramos los precios en tu moneda.'); return; }
           const rq = portReglas(password); if (!(rq.len && rq.may && rq.num)) { falla('Tu contraseña necesita 8 caracteres o más, una mayúscula y un número.'); return; }
           if (errBox) errBox.classList.add('hidden'); }
@@ -28232,6 +28288,7 @@ async function pintarPanelWa() {
           const cred = await auth.createUserWithEmailAndPassword(email, password);
           await db.collection('usuarios').doc(cred.user.uid).set({ 
             email, 
+            nombre: nombreReg,
             whatsapp: whatsapp || 'Sin WhatsApp', 
             pais: paisSel[0], paisCodigo: paisSel[2],
             saldo: 0, 
@@ -29076,7 +29133,7 @@ const LUISA_COM_DEF_PAG = { activo: true, stockHora: '08:00', mediodiaHora: '12:
     // 📶 Dos servidores: el de la PÁGINA (su propio cupo de Google) y el de CORREO (codigos@: lee pagos y códigos).
     // Las acciones que necesitan el correo van al servidor de correo; el resto, al de la página. Sin el segundo, todo va al único que haya.
     const ACCIONES_SERVIDOR_CORREO = new Set(['mary_probador', 'mary_rescate', 'mary_volantes', 'mary_encargo', 'luisa', 'mary_vistos', 'mary_probar', 'mary_reporte', 'mary_banner', 'codigos_sin_subir', 'saldo_regla_desde', 'otp', 'recarga_crear', 'recarga_binance_crear', 'recarga_cancelar', 'recarga_verificar', 'recarga_diagnostico', 'recarga_comprobante', 'pago_reportar', 'prov_correos', 'prov_comprobar', 'codigo_dominio', 'amz_otp', 'amz_otp_link', 'amz_salud', 'amz_revisada', 'amz_enlace_crear', 'codigo_enlace_obtener', 'salud', 'cupo', 'saldo_vence_resumen', 'saldo_vence_revertir', 'embudo_registro', 'embudo_registro_ver', 'wa_codigo', 'wa_codigo_admin', 'binance_tasa', 'wa_grupos_log', 'wa_seguimiento_ahora']);   // tg_revisar va al servidor de la página: ahí se revisan los botones de Telegram
-    const ACCIONES_VPS = new Set(['comprar', 'preorden_crear', 'renovar', 'renovar_compra', 'ticket_crear', 'recarga_comprobante', 'prov_correos', 'prov_hoy']);   // ⚡ lo que hace el servidor del VPS (1.23+): compras, renovaciones, reportes, comprobantes y el generador de correos
+    const ACCIONES_VPS = new Set(['comprar', 'preorden_crear', 'renovar', 'renovar_compra', 'ticket_crear', 'recarga_comprobante', 'recarga_crear', 'recarga_cancelar', 'prov_correos', 'prov_hoy', 'tienda_aprobar']);   // ⚡ lo que hace el servidor del VPS (1.23+): compras, renovaciones, reportes, comprobantes y el generador de correos
     const OPS_CORREOS_GOOGLE = new Set(['codigo', 'revisar_bienvenidas', 'refrescar']);   // estas leen el Gmail de codigos@: siempre en Google
     function urlVps(accion, datos) { const v = String((ajustesGeneralesConfig && ajustesGeneralesConfig.vpsUrl) || '').trim().replace(/\/+$/, ''); if (!v || window.__vpsCaido || !ACCIONES_VPS.has(String(accion || ''))) return '';
       if (accion === 'prov_correos' && OPS_CORREOS_GOOGLE.has(String((datos || {}).op || ''))) return ''; return v + '/api'; }
