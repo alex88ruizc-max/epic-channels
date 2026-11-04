@@ -10401,6 +10401,7 @@
       try { const dS = document.getElementById('correoPropioDestino'); if (dS && !dS.options.length) poblarDestinoPropio(); } catch (e) { /* nada */ }
       try { aplicarPromociones(); } catch (e) { console.warn('Promociones:', e); }
       aplicarStockCompartido();
+      try { refrescarListasStock(); } catch (e) { /* nada */ }   // 🔄 u20: todas las listas «N libres» al día
       try { if (document.getElementById('adminSecPromociones') && !document.getElementById('adminSecPromociones').classList.contains('hidden')) { renderizarPromoProductos(); renderizarPromoActivas(); } } catch (e) { /* nada */ }
 
       renderizarFiltrosCategorias();
@@ -18672,7 +18673,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-11-10u19';
+    const VERSION_PAGINA = '2026-11-10u20';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261105_ranking', fecha: '2026-11-05', titulo: '🏆 ¡Llegó el ranking del mes!', mensaje: 'Ahora en la página ves **en qué puesto vas** (arriba, debajo de tu saldo). Los **3 que más recarguen** en el mes se llevan **saldo de regalo**: el **4%**, el **3%** y el **2%** de lo que recargaron. Para participar debes recargar mínimo **$150.000** en el mes. Se actualiza cada hora, cierra el último día del mes y el premio te cae solo el día 1. ¿Quién va a ser el primero? 😎', ir: '' },
       { id: 'act_20261102_codigos_seguros', fecha: '2026-11-02', titulo: 'Tus códigos, más protegidos 🔒', mensaje: 'Tu enlace de códigos ahora es más seguro: los códigos para **crear cuentas nuevas** con nuestros correos ya no se muestran a nadie sin permiso. Los códigos para **entrar a tu cuenta** y **cambiar la contraseña** te siguen llegando al instante, igual que siempre.', ir: '' },
@@ -19553,10 +19554,19 @@
     function opcionesProductosStock(sel, conLibres) {
       if (!sel) return;
       const prev = sel.value;
+      sel.dataset.stock = '1';   // 🔄 u20: queda marcada para que se actualice sola (refrescarListasStock)
       sel.innerHTML = catalogoUnificado.filter(p => p && p.docId && !p.esCombo).sort((a, b) => String(a.nombre).localeCompare(String(b.nombre), 'es'))
         .map(p => `<option value="${escaparHtml(p.docId)}">${escaparHtml(textoLibresProducto(p))}</option>`).join('');
       if (prev) sel.value = prev;
     }
+    // 🔄 u20 · TODAS las listas de productos con «N libres» al día: cada vez que cambia el stock y al abrir cualquiera de ellas.
+    //    Antes cada lista se llenaba una vez y se quedaba con el número viejo (videos, aviso de cuentas, promos, encuestas…).
+    function refrescarListaStock(sel) { if (!sel || !sel.dataset || sel.dataset.stock !== '1') return;
+      const ids = catalogoUnificado.filter(p => p && p.docId && !p.esCombo).map(p => p.docId), tiene = [...sel.options].filter(o => !/^libre:/.test(o.value)).map(o => o.value);
+      if (sel.id !== 'vmProducto' && (ids.length !== tiene.length || ids.some(id => !tiene.includes(id)))) { opcionesProductosStock(sel); return; }   /* producto nuevo o borrado → se rehace */
+      [...sel.options].forEach(o => { if (/^libre:/.test(o.value)) return; const p = catalogoUnificado.find(x => x.docId === o.value); if (!p) return; const tx = textoLibresProducto(p); if (o.textContent !== tx) o.textContent = tx; }); }
+    function refrescarListasStock() { try { document.querySelectorAll('select[data-stock="1"]').forEach(s => { try { refrescarListaStock(s); } catch (e) { /* nada */ } }); } catch (e) { /* nada */ } }
+    ['mousedown', 'focusin', 'touchstart'].forEach(ev => document.addEventListener(ev, e => { const s = e.target && e.target.closest ? e.target.closest('select[data-stock="1"]') : null; if (s) try { refrescarListaStock(s); } catch (x) { /* nada */ } }, true));
 
     // ==================== VENTA MANUAL POR WHATSAPP ====================
     async function prepararVentaManual() {
