@@ -13536,6 +13536,17 @@
     }
     // 📧 Correos de tu dominio para el proveedor: uno a la vez, con "Ver código" solo de sus correos
     var provDominioCorreos = [];
+    // 📥 u18: «Cargar» (Amazon Free): solo si el proveedor tiene habilitado subir un producto Amazon Free. Free nunca recibe la bienvenida de Prime,
+    //    así que no se sube sola: el proveedor la verifica con «Ver código» y la carga él. Va a su lote y sigue tu aprobación y tu costo de siempre.
+    function provPuedeFree() { try { return (userPermisosSubirStock || []).some(id => /free/i.test(String(((typeof snapshotInventario !== 'undefined' && snapshotInventario[id]) || {}).nombre || ''))); } catch (e) { return false; } }
+    async function provDominioCargar(i) { const c = provDominioCorreos[i]; if (!c || !c.correo) return;
+      if (!c.codigoVistoEl && !await confirmarModal('¿Ya verificaste esta cuenta en Amazon con «Ver código»?\n\nSolo carga cuentas Amazon Free que ya verificaste.', { textoAceptar: 'Sí, ya la verifiqué' })) return;
+      const b = document.getElementById('provDomCarg_' + i); if (b) { b.disabled = true; b.textContent = '⏳'; }
+      try { const r = await llamarBackend('prov_correos', { op: 'cargar', correo: c.correo });
+        if (!r || !r.ok) { alert((r && r.error) || 'No se pudo cargar.'); if (b) { b.disabled = false; b.textContent = '📥 Cargar'; } return; }
+        c.autoSubidaEl = new Date().toISOString(); c.autoProducto = r.producto || 'Amazon Free'; provDomGuardarLocal(); pintarProvDominio();
+        mostrarToast(r.ya ? (r.mensaje || 'Ya estaba cargada.') : `📥 Cargada a ${r.producto || 'Amazon Free'}. Queda en tu lote de hoy.`);
+      } catch (e) { alert(e.message); if (b) { b.disabled = false; b.textContent = '📥 Cargar'; } } }
     function pintarProvDominio() {
       try {   // 📥 contador de lo que se subió solo hoy
         const caja = document.getElementById('provAutoResumen'), hoy = new Date().toDateString();
@@ -13556,7 +13567,7 @@
       l.innerHTML = porMostrar.length ? porMostrar.slice(0, 8).map(({ c, idx: i }) => c.reservando ? `<div class="p-2.5 rounded-xl bg-gray-800/60 border border-gray-700 flex items-center gap-2"><span class="font-mono text-[12px] text-gray-400 truncate flex-1"><i class="fa-solid fa-spinner fa-spin mr-1"></i>Generando correo…</span></div>` : c.primeActivoEl ? `<div class="p-2.5 rounded-xl bg-emerald-500/15 border border-emerald-400/60 flex items-center gap-2"><span class="font-mono text-[12px] text-white truncate flex-1">${escaparHtml(c.correo)}</span><span class="text-[10px] font-black text-emerald-300 shrink-0">${c.autoSubidaEl ? '✅ Subida sola · en revisión' : '✅ Prime activo · súbela'}</span><button type="button" onclick="copiarTexto('${escaparHtml(c.correo)}','Correo copiado')" class="px-2 py-1 rounded-lg bg-gray-700 text-gray-200 text-[10px] font-bold"><i class="fa-solid fa-copy"></i></button></div>` : `<div class="p-2.5 rounded-xl bg-gray-800/70 border ${c.codigoVistoEl ? 'border-gray-700' : 'border-emerald-500/40'}">
           <div class="flex items-center gap-2"><span class="font-mono text-[12px] text-white truncate flex-1">${escaparHtml(c.correo)}</span>
             <button type="button" onclick="copiarTexto('${escaparHtml(c.correo)}','Correo copiado')" class="px-2 py-1 rounded-lg bg-gray-700 text-gray-200 text-[10px] font-bold"><i class="fa-solid fa-copy"></i></button>
-            <button type="button" onclick="provDominioCodigo(${i})" class="px-2.5 py-1 rounded-lg bg-emerald-500 text-black text-[10px] font-black">🔑 Ver código</button></div>
+            <button type="button" onclick="provDominioCodigo(${i})" class="px-2.5 py-1 rounded-lg bg-emerald-500 text-black text-[10px] font-black">🔑 Ver código</button>${provPuedeFree() ? `<button type="button" id="provDomCarg_${i}" onclick="provDominioCargar(${i})" title="Ya verifiqué la cuenta Amazon Free: súbela" class="px-2.5 py-1 rounded-lg bg-sky-500 text-black text-[10px] font-black">📥 Cargar</button>` : ''}</div>
           <div id="provDomCod_${i}" class="mt-1.5 text-[11px] text-gray-400 ${c.codigoVistoEl ? '' : 'hidden'}">${c.codigoVistoEl ? '✓ Ya verificaste este correo' : ''}</div></div>`).join('') : '<p class="text-[11px] text-gray-500">Toca <b>Nuevo</b> para recibir un correo.</p>';
     }
     // 💾 Los correos pedidos también se guardan en este celular (48 h): si se recarga la página no se pierden
@@ -18653,7 +18664,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-11-10u17';
+    const VERSION_PAGINA = '2026-11-10u18';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261105_ranking', fecha: '2026-11-05', titulo: '🏆 ¡Llegó el ranking del mes!', mensaje: 'Ahora en la página ves **en qué puesto vas** (arriba, debajo de tu saldo). Los **3 que más recarguen** en el mes se llevan **saldo de regalo**: el **4%**, el **3%** y el **2%** de lo que recargaron. Para participar debes recargar mínimo **$150.000** en el mes. Se actualiza cada hora, cierra el último día del mes y el premio te cae solo el día 1. ¿Quién va a ser el primero? 😎', ir: '' },
       { id: 'act_20261102_codigos_seguros', fecha: '2026-11-02', titulo: 'Tus códigos, más protegidos 🔒', mensaje: 'Tu enlace de códigos ahora es más seguro: los códigos para **crear cuentas nuevas** con nuestros correos ya no se muestran a nadie sin permiso. Los códigos para **entrar a tu cuenta** y **cambiar la contraseña** te siguen llegando al instante, igual que siempre.', ir: '' },
