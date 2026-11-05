@@ -18762,7 +18762,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-11-10u33';
+    const VERSION_PAGINA = '2026-11-10u35';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261105_ranking', fecha: '2026-11-05', titulo: '🏆 ¡Llegó el ranking del mes!', mensaje: 'Ahora en la página ves **en qué puesto vas** (arriba, debajo de tu saldo). Los **3 que más recarguen** en el mes se llevan **saldo de regalo**: el **4%**, el **3%** y el **2%** de lo que recargaron. Para participar debes recargar mínimo **$150.000** en el mes. Se actualiza cada hora, cierra el último día del mes y el premio te cae solo el día 1. ¿Quién va a ser el primero? 😎', ir: '' },
       { id: 'act_20261102_codigos_seguros', fecha: '2026-11-02', titulo: 'Tus códigos, más protegidos 🔒', mensaje: 'Tu enlace de códigos ahora es más seguro: los códigos para **crear cuentas nuevas** con nuestros correos ya no se muestran a nadie sin permiso. Los códigos para **entrar a tu cuenta** y **cambiar la contraseña** te siguen llegando al instante, igual que siempre.', ir: '' },
@@ -21862,6 +21862,7 @@
     }
     function pintarTiendasAdmin() {
       const c = document.getElementById('ctTiendas'); if (!c) return; pintarKpisTiendas();
+      if (!categoriasTienda) cargarCategoriasTienda().then(() => pintarTiendasAdmin());   // 💰 u34: íconos de categoría
       const ini = s => { const w = String(s || '').replace(/[^A-Za-z0-9 ]/g, '').trim().split(/\s+/); return ((w[0] || 'T')[0] + (w[1] ? w[1][0] : (w[0] || 'T')[1] || '')).toUpperCase(); };
       const col = s => ['#4c1d95', '#0e7490', '#9a3412', '#166534', '#1e40af', '#7f1d1d', '#374151'][Array.from(String(s || '')).reduce((a, ch) => a + ch.charCodeAt(0), 0) % 7];
       c.innerHTML = tiendasCreadas.length ? tiendasCreadas.map(t => {
@@ -21872,15 +21873,30 @@
         const precio = nivel === 'basico' ? 0 : precioPlanTienda(null, nivel, 1).total, saldoTxt = t.prueba || !t.ownerUid ? '' : (saldo === null || saldo === undefined ? '' : (nivel === 'basico' ? '' : (saldo >= precio ? '<span class="text-[10px] font-bold text-emerald-300">saldo ' + formatoCOP(saldo) + ' · renueva solo</span>' : '<span class="text-[10px] font-bold text-red-300">saldo ' + formatoCOP(saldo) + ' · no podrá renovar</span>')));
         const estado = susp ? '<span class="text-[10px] font-black text-gray-400">⏸ Suspendida</span>' : cerrada ? '<span class="text-[10px] font-black text-red-400">● Cerrada</span>' : porVencer ? '<span class="text-[10px] font-black text-amber-400">● Por vencer</span>' : '<span class="text-[10px] font-black text-emerald-400">● Activa</span>';
         return `<div class="grid grid-cols-1 sm:grid-cols-[2fr_1fr_1.3fr_1fr_1.2fr] gap-2 sm:gap-1 px-4 py-3 items-center ${cerrada ? 'bg-red-500/5' : ''}">
-          <div class="flex items-center gap-2.5 min-w-0"><span class="w-9 h-9 rounded-xl grid place-items-center text-xs font-black text-white shrink-0" style="background:${col(t.slug)}">${escaparHtml(ini(t.nombre))}</span><div class="min-w-0"><p class="text-xs font-black text-white truncate">${t.prueba ? '🧪 ' : ''}${escaparHtml(t.nombre)}</p><p class="text-[10px] text-gray-400 truncate">${escaparHtml(urlTiendaCliente(t.slug).replace(/^https?:\/\//, ''))}${t.dominioPersonal ? ' · dominio propio ✓' : ''} · ${escaparHtml((t.ownerEmail || '').split('@')[0])}</p></div></div>
+          <div class="flex items-center gap-2.5 min-w-0"><span class="w-9 h-9 rounded-xl grid place-items-center text-xs font-black text-white shrink-0" style="background:${col(t.slug)}">${escaparHtml(ini(t.nombre))}</span><div class="min-w-0"><p class="text-xs font-black text-white truncate">${t.prueba ? '🧪 ' : ''}${t.categoria && t.categoria !== 'streaming' ? '<span title="' + escaparHtml(categoriaTiendaDe(t).nombre) + '">' + (categoriaTiendaDe(t).icono || '🏷') + '</span> ' : ''}${escaparHtml(t.nombre)}</p><p class="text-[10px] text-gray-400 truncate">${escaparHtml(urlTiendaCliente(t.slug).replace(/^https?:\/\//, ''))}${t.dominioPersonal ? ' · dominio propio ✓' : ''} · ${escaparHtml((t.ownerEmail || '').split('@')[0])}</p></div></div>
           <div><span class="px-2 py-0.5 rounded-full text-[10px] font-black ${chip}">${nombreNivelTienda(nivel).toUpperCase()}</span></div>
           <div class="min-w-0"><p class="text-[11px] text-gray-200">${dias === null ? 'sin vencimiento' : (dias > 0 ? dias + (dias === 1 ? ' día' : ' días') : 'vencida hace ' + Math.abs(dias) + (Math.abs(dias) === 1 ? ' día' : ' días'))}</p><div class="h-1.5 rounded-full bg-gray-800 overflow-hidden mt-1"><i class="block h-full rounded-full ${barra}" style="width:${pct}%"></i></div>${saldoTxt}</div>
           <div>${estado}</div>
           <div class="flex gap-1.5 sm:justify-end"><a href="${escaparHtml(urlTiendaCliente(t.slug))}" target="_blank" rel="noopener" title="Abrir" class="w-8 h-8 rounded-lg bg-gray-800 border border-gray-700 grid place-items-center text-xs text-gray-200">↗</a><button type="button" title="Editar" onclick="editarTiendaAdmin('${escaparJsAttr(t.id)}')" class="w-8 h-8 rounded-lg bg-gray-800 border border-gray-700 grid place-items-center text-xs">✏️</button><button type="button" title="+30 días" onclick="extenderTienda('${escaparJsAttr(t.id)}',30)" class="w-8 h-8 rounded-lg bg-gray-800 border border-gray-700 grid place-items-center text-xs text-emerald-300 font-black">+30</button><button type="button" title="${susp ? 'Reactivar' : 'Suspender'}" onclick="estadoTienda('${escaparJsAttr(t.id)}','${susp ? 'activa' : 'suspendida'}')" class="w-8 h-8 rounded-lg bg-gray-800 border border-gray-700 grid place-items-center text-xs">${susp ? '▶️' : '⏸'}</button></div></div>`; }).join('') : '<p class="px-4 py-6 text-center text-gray-500 text-sm">Todavía no hay tiendas.</p>';
     }
     // ✏️ Editar una tienda: plan, vencimiento, estado, nombre, WhatsApp, recarga automática y dominio propio
+    // 💰 u34 · CATEGORÍAS DE TIENDA: «Streaming» (la tienda de siempre) y «Préstamos» (panel de préstamos con Mary que cobra). Puedes crear más.
+    const CATEGORIAS_TIENDA0 = [{ id: 'streaming', nombre: 'Streaming', motor: 'catalogo', icono: '📺' }, { id: 'prestamos', nombre: 'Préstamos', motor: 'prestamos', icono: '💰' }];
+    var categoriasTienda = null;
+    async function cargarCategoriasTienda(forzar) { if (categoriasTienda && !forzar) return categoriasTienda; let L = []; try { const d = await db.collection('configuracion').doc('tiendas_categorias').get(); L = d.exists && Array.isArray(d.data().lista) ? d.data().lista : []; } catch (e) { L = []; }
+      const ids = {}; categoriasTienda = CATEGORIAS_TIENDA0.concat(L).filter(c => c && c.id && !ids[c.id] && (ids[c.id] = 1)); return categoriasTienda; }
+    function categoriaTiendaDe(t) { const c = String((t && t.categoria) || 'streaming'); return (categoriasTienda || CATEGORIAS_TIENDA0).find(x => x.id === c) || CATEGORIAS_TIENDA0[0]; }
+    async function nuevaCategoriaTienda() {
+      const nombre = String(prompt('Nombre de la nueva categoría (ej: Ropa, Comida, Préstamos rápidos):') || '').trim().slice(0, 30); if (!nombre) return;
+      const pres = confirm('¿Esta categoría funciona como PRÉSTAMOS (clientes con cuotas y cobros)?\n\nAceptar = Préstamos · Cancelar = Tienda con productos (como streaming)');
+      const id = nombre.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 30); if (!id) return;
+      const L = (await cargarCategoriasTienda(true)).filter(c => !CATEGORIAS_TIENDA0.some(x => x.id === c.id)); if (L.concat(CATEGORIAS_TIENDA0).some(c => c.id === id)) { alert('Ya existe una categoría así.'); return id; }
+      L.push({ id, nombre, motor: pres ? 'prestamos' : 'catalogo', icono: pres ? '💰' : '🛍' });
+      try { await db.collection('configuracion').doc('tiendas_categorias').set({ lista: L, actualizadoEl: new Date().toISOString() }, { merge: true }); await cargarCategoriasTienda(true); mostrarToast('✓ Categoría «' + nombre + '» creada'); } catch (e) { alert('No se pudo crear: ' + e.message); }
+      return id; }
     async function editarTiendaAdmin(id) {
       if (!esAdminSesionActual()) return; const t = tiendasCreadas.find(x => x.id === id); if (!t) return;
+      const cats = await cargarCategoriasTienda();
       let m = document.getElementById('modalEditarTienda'); if (!m) { m = document.createElement('div'); m.id = 'modalEditarTienda'; m.className = 'fixed inset-0 bg-black/85 backdrop-blur-sm z-[60] items-center justify-center p-4'; document.body.appendChild(m); }
       const f = iso => iso ? new Date(iso).toISOString().slice(0, 10) : '';
       m.innerHTML = `<div class="bg-gray-900 border border-amber-500/40 rounded-3xl max-w-md w-full shadow-2xl max-h-[92vh] overflow-y-auto p-5 space-y-3">
@@ -21888,6 +21904,7 @@
         <p class="text-[11px] text-gray-400">Dueño: ${escaparHtml(t.ownerEmail || '')}</p>
         <div class="grid grid-cols-2 gap-2">
           <label class="text-[10px] text-gray-400 col-span-2">Nombre<input id="etNombre" maxlength="40" value="${escaparHtml(t.nombre || '')}" class="mt-1 w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white"></label>
+          <label class="text-[10px] text-gray-400 col-span-2">🏷 Categoría <span class="text-gray-500">(define qué es la tienda: Streaming = productos · Préstamos = panel de préstamos con Mary que cobra)</span><span class="flex gap-2 mt-1"><select id="etCategoria" class="flex-1 bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white">${cats.map(c => `<option value="${escaparHtml(c.id)}"${String(t.categoria || 'streaming') === c.id ? ' selected' : ''}>${escaparHtml((c.icono || '') + ' ' + c.nombre)}${c.motor === 'prestamos' ? ' · préstamos' : ''}</option>`).join('')}</select><button type="button" onclick="nuevaCategoriaTienda().then(n => { if (n) editarTiendaAdmin('${escaparJsAttr(id)}').then(() => { const s = document.getElementById('etCategoria'); if (s) s.value = n; }); })" class="px-3 rounded-xl bg-gray-800 border border-gray-700 text-xs text-gray-200 font-black">＋ Nueva</button></span></label>
           <label class="text-[10px] text-gray-400">Plan<select id="etNivel" class="mt-1 w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white"><option value="basico"${t.nivel === 'pro' || t.nivel === 'premium' ? '' : ' selected'}>🟣 Básico</option><option value="pro"${t.nivel === 'pro' ? ' selected' : ''}>🔵 Pro</option><option value="premium"${t.nivel === 'premium' ? ' selected' : ''}>🟡 Premium</option></select></label>
           <label class="text-[10px] text-gray-400">Estado<select id="etEstado" class="mt-1 w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white"><option value="activa"${t.estado !== 'suspendida' ? ' selected' : ''}>✅ Activa</option><option value="suspendida"${t.estado === 'suspendida' ? ' selected' : ''}>⛔ Suspendida</option></select></label>
           <label class="text-[10px] text-gray-400">Vence el<input id="etVence" type="date" value="${f(t.venceEl)}" class="mt-1 w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white"></label>
@@ -21903,8 +21920,11 @@
     }
     async function guardarTiendaAdmin(id) {
       const g = k => document.getElementById(k), t = tiendasCreadas.find(x => x.id === id); if (!t) return;
-      const d = { nombre: String(g('etNombre').value || '').trim().slice(0, 40) || t.nombre, nivel: g('etNivel').value, estado: g('etEstado').value, whatsapp: String(g('etWa').value || '').replace(/\D/g, '').slice(0, 15), recargaAuto: !!g('etRecargaAuto').checked, dominioPropio: !!g('etDominio').checked, dominioPersonal: String(g('etDominioPersonal').value || '').trim().toLowerCase().replace(/^https?:\/\//, '').replace(/\/.*$/, '').slice(0, 80), editadoEl: new Date().toISOString() };
+      const d = { nombre: String(g('etNombre').value || '').trim().slice(0, 40) || t.nombre, categoria: (g('etCategoria') && g('etCategoria').value) || t.categoria || 'streaming', nivel: g('etNivel').value, estado: g('etEstado').value, whatsapp: String(g('etWa').value || '').replace(/\D/g, '').slice(0, 15), recargaAuto: !!g('etRecargaAuto').checked, dominioPropio: !!g('etDominio').checked, dominioPersonal: String(g('etDominioPersonal').value || '').trim().toLowerCase().replace(/^https?:\/\//, '').replace(/\/.*$/, '').slice(0, 80), editadoEl: new Date().toISOString() };
       if (d.dominioPersonal && !/^[a-z0-9.-]+\.[a-z]{2,}$/.test(d.dominioPersonal)) { alert('Ese dominio no se ve bien. Ejemplo: www.tumarca.com'); return; }
+      const catAntes = String(t.categoria || 'streaming');   // 🛡 u35: cambiar el tipo de una tienda que ya existe pide confirmación (sus datos no se borran)
+      if (d.categoria !== catAntes) { const a = categoriaTiendaDe({ categoria: catAntes }), b = categoriaTiendaDe({ categoria: d.categoria });
+        if (!confirm('⚠️ Vas a cambiar «' + (t.nombre || t.slug) + '» de ' + a.nombre + ' a ' + b.nombre + '.\n\n' + (b.motor !== a.motor ? (b.motor === 'prestamos' ? 'La tienda deja de mostrar productos y pasa a ser un PANEL DE PRÉSTAMOS.' : 'El panel de préstamos deja de verse y vuelve a ser una TIENDA CON PRODUCTOS.') + ' Sus datos NO se borran: si te equivocas, vuelve a ponerle la categoría de antes.' : 'Solo cambia el nombre de la categoría.') + '\n\n¿Seguro?')) return; }
       const sumar = parseInt(g('etSumar').value, 10), fecha = String(g('etVence').value || '');
       if (sumar > 0) d.venceEl = new Date(Math.max(Date.now(), Date.parse(t.venceEl) || 0) + sumar * 86400000).toISOString();
       else d.venceEl = fecha ? new Date(fecha + 'T23:59:00-05:00').toISOString() : '';
