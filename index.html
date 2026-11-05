@@ -17305,6 +17305,29 @@
         alert('No se pudo guardar: ' + err.message);
       }
     }
+    // 🟢 COBRAR POR WHATSAPP (10u100): escoges el mensaje (amable, firme o último aviso), lo editas si quieres y Mary se lo manda YA.
+    //    Cuenta como recordatorio: el automático espera 5 días desde este.
+    async function cobrarCreditoWa(uid, nombre, deuda, btn) {
+      const cerrar = () => { const m = document.getElementById('modalCobroWa'); if (m) m.remove(); };
+      cerrar(); const m = document.createElement('div'); m.id = 'modalCobroWa'; m.className = 'fixed inset-0 z-[80] bg-black/80 flex items-center justify-center p-3';
+      m.innerHTML = '<div class="w-full max-w-md max-h-[92vh] overflow-y-auto rounded-2xl bg-gray-900 border border-emerald-500/40 p-4 text-sm"><div class="flex items-center justify-between gap-2"><h3 class="font-black text-white"><i class="fa-brands fa-whatsapp text-emerald-400"></i> Cobrar a ' + escaparHtml(nombre || 'cliente') + ' · ' + formatoCOP(deuda) + '</h3><button type="button" id="cwX" class="w-8 h-8 rounded-full bg-gray-800 text-gray-300">✕</button></div><div id="cwC" class="mt-3 text-gray-400">Cargando los mensajes…</div></div>';
+      document.body.appendChild(m); m.onclick = (e) => { if (e.target === m) cerrar(); }; document.getElementById('cwX').onclick = cerrar;
+      let r; try { r = await llamarBackend('cred_cobrar', { uid: uid, ver: true }); } catch (e) { r = { ok: false, error: e.message }; }
+      const c = document.getElementById('cwC'); if (!c) return;
+      if (!r || !r.ok) { c.innerHTML = '<p class="text-red-300">' + escaparHtml((r && r.error) || 'No se pudo.') + '</p>'; return; }
+      const T = r.textos || {}, ops = [['amable', '😊 Amable'], ['firme', '📌 Recordatorio firme'], ['ultimo', '⚠️ Último aviso']];
+      c.innerHTML = '<div class="grid grid-cols-3 gap-1.5">' + ops.map((o, k) => '<button type="button" data-t="' + o[0] + '" class="cwT px-2 py-2 rounded-xl text-[11px] font-bold border ' + (k === 0 ? 'bg-emerald-500/20 border-emerald-500 text-emerald-200' : 'bg-gray-800 border-gray-700 text-gray-300') + '">' + o[1] + '</button>').join('') + '</div>' +
+        '<textarea id="cwTxt" rows="11" class="mt-3 w-full bg-gray-950 border border-gray-700 rounded-xl p-3 text-[12px] text-white leading-relaxed focus:outline-none focus:border-emerald-500"></textarea>' +
+        '<p class="text-[10px] text-gray-500 mt-1">Puedes cambiar lo que quieras: Mary manda exactamente este texto' + (r.whatsapp ? ' al <b class="text-gray-300">' + escaparHtml(r.whatsapp) + '</b>' : '') + '. *texto* = negrita en WhatsApp.' + (r.ultimo ? ' Último cobro: ' + escaparHtml(new Date(r.ultimo).toLocaleString('es-CO')) + '.' : '') + '</p>' +
+        (r.whatsapp ? '' : '<p class="mt-2 text-[12px] text-amber-300">⚠️ Este cliente no tiene WhatsApp en su perfil: ponlo en «Editar» para poder cobrarle.</p>') +
+        '<button type="button" id="cwEnviar" class="mt-3 w-full py-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-black"><i class="fa-brands fa-whatsapp"></i> Enviar por WhatsApp</button>';
+      const ta = document.getElementById('cwTxt'); ta.value = T.amable || '';
+      c.querySelectorAll('.cwT').forEach((b) => { b.onclick = () => { c.querySelectorAll('.cwT').forEach((x) => { x.className = x.className.replace(/bg-emerald-500\/20 border-emerald-500 text-emerald-200/, 'bg-gray-800 border-gray-700 text-gray-300'); }); b.className = b.className.replace(/bg-gray-800 border-gray-700 text-gray-300/, 'bg-emerald-500/20 border-emerald-500 text-emerald-200'); ta.value = T[b.dataset.t] || ''; }; });
+      const env = document.getElementById('cwEnviar'); if (!r.whatsapp) { env.disabled = true; env.style.opacity = '.4'; }
+      env.onclick = async () => { const txt = ta.value.trim(); if (!txt) return alert('Escribe el mensaje.'); env.disabled = true; env.textContent = 'Enviando…';
+        try { const x = await llamarBackend('cred_cobrar', { uid: uid, texto: txt }); if (!x || !x.ok) throw new Error((x && x.error) || 'No se pudo.'); cerrar(); mostrarToast('✅ Mary le escribió a ' + (nombre || 'el cliente') + ' por WhatsApp.'); }
+        catch (err) { alert(err.message || 'No se pudo cobrar.'); env.disabled = false; env.innerHTML = '<i class="fa-brands fa-whatsapp"></i> Enviar por WhatsApp'; } };
+    }
     function creditoPrestar() { return operarCredito('prestamo'); }
     function creditoRegistrarPago() { return operarCredito('pago'); }
     function creditoGuardarCupo() { return operarCredito('cupo_cambio'); }
@@ -17318,7 +17341,7 @@
       const tot = document.getElementById('adminCreditosTotal'); if (tot) tot.textContent = formatoCOP(total);
       lista.innerHTML = con.map(u => `<div class="px-4 py-2.5 flex items-center justify-between gap-3">
         <div class="min-w-0"><p class="text-xs font-bold text-white truncate">${escaparHtml(u.nombre || u.email || u.uid)}</p><p class="text-[10px] text-gray-400 truncate">${escaparHtml(u.email || '')}${(Number(u.cupoCredito) || 0) > 0 ? ' · cupo ' + formatoCOP(u.cupoCredito) : ''}</p>${(Number(u.cupoCredito) || 0) > 0 ? (u.creditoAceptadoEl ? `<span class="inline-block mt-0.5 px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-300 text-[9px] font-black">ACEPTÓ EL ${escaparHtml(new Date(u.creditoAceptadoEl).toLocaleDateString('es-CO'))}</span>` : '<span class="inline-block mt-0.5 px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-300 text-[9px] font-black">SIN ACEPTAR</span>') : ''}</div>
-        <div class="shrink-0 flex items-center gap-2"><span class="text-xs font-black ${(Number(u.deuda) || 0) > 0 ? 'text-violet-200' : 'text-emerald-300'}">${(Number(u.deuda) || 0) > 0 ? formatoCOP(u.deuda) : 'Al día'}</span><button type="button" onclick="abrirModalEditarCliente('${escaparJsAttr(u.uid)}', '${escaparJsAttr(u.email || '')}', '${escaparJsAttr(u.nombre || '')}')" class="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-gray-800 hover:bg-gray-700 text-gray-200 border border-gray-700">Editar</button></div>
+        <div class="shrink-0 flex items-center gap-2"><span class="text-xs font-black ${(Number(u.deuda) || 0) > 0 ? 'text-violet-200' : 'text-emerald-300'}">${(Number(u.deuda) || 0) > 0 ? formatoCOP(u.deuda) : 'Al día'}</span>${(Number(u.deuda) || 0) > 0 && !window.EPIC_TIENDA ? `<button type="button" onclick="cobrarCreditoWa('${escaparJsAttr(u.uid)}', '${escaparJsAttr(u.nombre || u.email || '')}', ${Number(u.deuda) || 0}, this)" title="Mary le cobra por WhatsApp${u.credAvisoWaEl ? ' · último cobro: ' + escaparHtml(new Date(u.credAvisoWaEl).toLocaleDateString('es-CO')) : ''}" class="w-9 h-8 rounded-lg bg-emerald-500/15 hover:bg-emerald-500/30 border border-emerald-500/40 text-emerald-300 flex items-center justify-center"><i class="fa-brands fa-whatsapp text-base"></i></button>` : ''}<button type="button" onclick="abrirModalEditarCliente('${escaparJsAttr(u.uid)}', '${escaparJsAttr(u.email || '')}', '${escaparJsAttr(u.nombre || '')}')" class="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-gray-800 hover:bg-gray-700 text-gray-200 border border-gray-700">Editar</button></div>
       </div>`).join('');
     }
 
@@ -18715,7 +18738,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-11-10u27';
+    const VERSION_PAGINA = '2026-11-10u28';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261105_ranking', fecha: '2026-11-05', titulo: '🏆 ¡Llegó el ranking del mes!', mensaje: 'Ahora en la página ves **en qué puesto vas** (arriba, debajo de tu saldo). Los **3 que más recarguen** en el mes se llevan **saldo de regalo**: el **4%**, el **3%** y el **2%** de lo que recargaron. Para participar debes recargar mínimo **$150.000** en el mes. Se actualiza cada hora, cierra el último día del mes y el premio te cae solo el día 1. ¿Quién va a ser el primero? 😎', ir: '' },
       { id: 'act_20261102_codigos_seguros', fecha: '2026-11-02', titulo: 'Tus códigos, más protegidos 🔒', mensaje: 'Tu enlace de códigos ahora es más seguro: los códigos para **crear cuentas nuevas** con nuestros correos ya no se muestran a nadie sin permiso. Los códigos para **entrar a tu cuenta** y **cambiar la contraseña** te siguen llegando al instante, igual que siempre.', ir: '' },
@@ -29412,7 +29435,7 @@ const LUISA_COM_DEF_PAG = { activo: true, stockHora: '08:00', mediodiaHora: '12:
     // 📶 Dos servidores: el de la PÁGINA (su propio cupo de Google) y el de CORREO (codigos@: lee pagos y códigos).
     // Las acciones que necesitan el correo van al servidor de correo; el resto, al de la página. Sin el segundo, todo va al único que haya.
     const ACCIONES_SERVIDOR_CORREO = new Set(['mary_probador', 'mary_rescate', 'mary_volantes', 'mary_encargo', 'luisa', 'mary_vistos', 'mary_probar', 'mary_reporte', 'mary_banner', 'codigos_sin_subir', 'saldo_regla_desde', 'otp', 'recarga_crear', 'recarga_binance_crear', 'recarga_cancelar', 'recarga_verificar', 'recarga_diagnostico', 'recarga_comprobante', 'pago_reportar', 'prov_correos', 'prov_comprobar', 'codigo_dominio', 'amz_otp', 'amz_otp_link', 'amz_salud', 'amz_revisada', 'amz_enlace_crear', 'codigo_enlace_obtener', 'salud', 'cupo', 'saldo_vence_resumen', 'saldo_vence_revertir', 'embudo_registro', 'embudo_registro_ver', 'wa_codigo', 'wa_codigo_admin', 'binance_tasa', 'wa_grupos_log', 'wa_seguimiento_ahora']);   // tg_revisar va al servidor de la página: ahí se revisan los botones de Telegram
-    const ACCIONES_VPS = new Set(['comprar', 'preorden_crear', 'renovar', 'renovar_compra', 'ticket_crear', 'recarga_comprobante', 'recarga_crear', 'recarga_cancelar', 'prov_correos', 'prov_hoy', 'tienda_aprobar']);   // ⚡ lo que hace el servidor del VPS (1.23+): compras, renovaciones, reportes, comprobantes y el generador de correos
+    const ACCIONES_VPS = new Set(['comprar', 'preorden_crear', 'renovar', 'renovar_compra', 'ticket_crear', 'recarga_comprobante', 'recarga_crear', 'recarga_cancelar', 'prov_correos', 'prov_hoy', 'tienda_aprobar', 'cred_cobrar']);   // ⚡ lo que hace el servidor del VPS (1.23+): compras, renovaciones, reportes, comprobantes y el generador de correos
     const OPS_CORREOS_GOOGLE = new Set(['codigo', 'revisar_bienvenidas', 'refrescar']);   // estas leen el Gmail de codigos@: siempre en Google
     function urlVps(accion, datos) { const v = String((ajustesGeneralesConfig && ajustesGeneralesConfig.vpsUrl) || '').trim().replace(/\/+$/, ''); if (!v || window.__vpsCaido || !ACCIONES_VPS.has(String(accion || ''))) return '';
       if (accion === 'prov_correos' && OPS_CORREOS_GOOGLE.has(String((datos || {}).op || ''))) return ''; return v + '/api'; }
