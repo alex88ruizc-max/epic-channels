@@ -7,6 +7,7 @@
     // 📱 iPhone: al tocar un campo de texto Safari agranda la página y no vuelve a su tamaño. Así se queda ajustada a la pantalla (el zoom con dos dedos sigue funcionando).
     try { if (/iPhone|iPad|iPod/i.test(navigator.userAgent)) { var vpm = document.querySelector('meta[name="viewport"]'); if (vpm) vpm.setAttribute('content', 'width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover'); } } catch (e) { /* nada */ }
   </script>
+  <style>.solo-tienda{display:none}</style>
   <style>
     /* La página nunca se corre hacia los lados: lo que sea más ancho se desplaza dentro de su propia caja */
     /* Solo en body: el navegador lo aplica a la pantalla completa y no rompe el menú fijo ni el desplazamiento */
@@ -3742,6 +3743,13 @@
           <input type="text" id="inputNuevaCatTexto" placeholder="Nombre de la nueva categoría" class="w-full hidden bg-gray-800 border border-emerald-500/50 rounded-xl px-3 py-2 text-xs text-white focus:outline-none mt-2">
         </div>
 
+        <!-- 🔗 ENLACE DE CÓDIGOS DEL PRODUCTO (solo en las tiendas de clientes) -->
+        <div class="solo-tienda">
+          <label class="block text-[11px] text-gray-400 mb-1">🔗 Enlace de códigos (opcional)</label>
+          <input type="url" id="nuevoProdLinkCod" placeholder="https://codigos.tudominio.com/?correo={correo}" autocomplete="off" autocapitalize="none" spellcheck="false" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none">
+          <p class="text-[10px] text-gray-500 mt-1">Le sale al cliente en su compra para ver sus códigos. {correo} = el correo de la cuenta. Vacío = el enlace general de tu tienda (📧 Mi correo).</p>
+        </div>
+
         <!-- SELECTOR DE GARANTÍA AÑADIDO -->
         <div>
           <label class="block text-[11px] text-gray-400 mb-1">Garantía</label>
@@ -3857,6 +3865,13 @@
             <option value="__NUEVA__">+ Crear nueva categoría...</option>
           </select>
           <input type="text" id="inputEditNuevaCatTexto" placeholder="Nombre de la nueva categoría" class="w-full hidden bg-gray-800 border border-emerald-500/50 rounded-xl px-3 py-2 text-xs text-white focus:outline-none mt-2">
+        </div>
+
+        <!-- 🔗 ENLACE DE CÓDIGOS DEL PRODUCTO (solo en las tiendas de clientes) -->
+        <div class="solo-tienda">
+          <label class="block text-[11px] text-gray-400 mb-1">🔗 Enlace de códigos (opcional)</label>
+          <input type="url" id="editProdLinkCod" placeholder="https://codigos.tudominio.com/?correo={correo}" autocomplete="off" autocapitalize="none" spellcheck="false" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none">
+          <p class="text-[10px] text-gray-500 mt-1">Le sale al cliente en su compra para ver sus códigos. {correo} = el correo de la cuenta. Vacío = el enlace general de tu tienda (📧 Mi correo).</p>
         </div>
 
         <!-- SELECTOR DE GARANTÍA EN EDICIÓN AÑADIDO -->
@@ -8147,8 +8162,17 @@
       const base = construirFormatoEntregaBase(cuentas, prodInfo, extras, overrides);
       const ind = String((prodInfo && (prodInfo.indicacionesEntrega || (((catalogoUnificado || []).find(p => p.docId === (prodInfo.docId || prodInfo.productoId)) || {}).indicacionesEntrega))) || '').trim();
       const pk = /prime|amazon/i.test(String((prodInfo && (prodInfo.nombre || prodInfo.productoNombre)) || '')) ? '\n\n⚠️ No actives "Add a passkey" en Amazon: la cuenta se cae y la garantía no cubre.' : '';
-      return (ind && base.indexOf(ind.slice(0, 40)) === -1 ? base + '\n\n' + ind : base) + pk;
+      const lc = linkCodigosEntrega(prodInfo, cuentas);
+      return (ind && base.indexOf(ind.slice(0, 40)) === -1 ? base + '\n\n' + ind : base) + pk + (lc && base.indexOf(lc) === -1 ? '\n\n📩 ¿Te piden un código? Míralo aquí 👉 ' + lc : '');
     }
+    // 🔗 TIENDAS: enlace de códigos del producto (o el general de la tienda). {correo} = el correo de la primera cuenta. En Epic no se usa.
+    function linkCodigosDesdeUI(pre) { const el = document.getElementById(pre + 'LinkCod'); const v = String((el && el.value) || '').trim(); return /^https:\/\/[^\s"'<>]{4,400}$/i.test(v) ? v : ''; }
+    function linkCodigosEntrega(prodInfo, cuentas) {
+      try { if (!window.EPIC_TIENDA) return '';
+        const id = prodInfo && (prodInfo.docId || prodInfo.productoId), cat = ((catalogoUnificado || []).find(p => p.docId === id)) || {}, snap = (typeof snapshotInventario === 'object' && snapshotInventario && snapshotInventario[id]) || {};
+        const l = String((prodInfo && prodInfo.linkCodigos) || cat.linkCodigos || snap.linkCodigos || window.EPIC_TIENDA.codigosLink || '').trim(); if (!/^https:\/\//i.test(l)) return '';
+        let em = ''; (cuentas || []).some(c => { try { em = String(parseCredencialObj(c).email || '').trim(); } catch (e) { em = ''; } return /@/.test(em); });
+        return l.split('{correo}').join(encodeURIComponent(em.toLowerCase())); } catch (e) { return ''; } }
     function construirFormatoEntregaBase(cuentas, prodInfo, extras, overrides) {
       // Netflix se entrega sin contraseña y con el paso a paso para entrar por código
       if (prodInfo && esProductoNetflix(prodInfo)) {
@@ -10106,7 +10130,7 @@
           stock: 0,
           activo: true,
           esVip: esVip,
-          tipoGarantia: tipoGarantia, garantiaInicio: 'compra',
+          tipoGarantia: tipoGarantia, garantiaInicio: 'compra', linkCodigos: linkCodigosDesdeUI('nuevoProd'),
           ...encargoDesdeUI('nuevoProd'), ...tarjetaDesdeUI('nuevoProd'), ...duracionDesdeUI('nuevoProd'),
           imagenUrl: imagenNuevoProductoBase64Temporal || '',
           fechaCreacion: new Date().toISOString()
@@ -11124,6 +11148,7 @@
       { const fx = document.getElementById('editProdFacturacion'); if (fx) fx.value = prod.facturacion || ''; }
       document.getElementById('editProdPrecio').value = (prod.precioLista !== undefined ? prod.precioLista : prod.precio) || 0;
       document.getElementById('editProdMinimo').value = prod.minCompra || 1;
+      try { const lc = document.getElementById('editProdLinkCod'); if (lc) lc.value = String(prod.linkCodigos || ((snapshotInventario[prod.docId] || {}).linkCodigos) || ''); } catch (e) { /* nada */ }
       document.getElementById('editProdTipoGarantia').value = prod.tipoGarantia || ''; garantiaHaciaUI('editProd', prod.tipoGarantia || '', prod.garantiaInicio || ((snapshotInventario[prod.docId] || {}).garantiaInicio) || 'compra'); encargoHaciaUI('editProd', Object.assign({}, snapshotInventario[prod.docId] || {}, prod)); try { duracionHaciaUI('editProd', Object.assign({}, snapshotInventario[prod.docId] || {}, prod)); } catch (e) { /* nada */ } tarjetaHaciaUI('editProd', Object.assign({}, snapshotInventario[prod.docId] || {}, prod));
 
       actualizarSelectCategoriasAdmin();
@@ -11222,7 +11247,7 @@
           facturacion: String((document.getElementById('editProdFacturacion') || {}).value || '').trim().slice(0, 60),
           precio: precio,
           minCompra: minCompra,
-          tipoGarantia: tipoGarantia, garantiaInicio: 'compra',
+          tipoGarantia: tipoGarantia, garantiaInicio: 'compra', linkCodigos: linkCodigosDesdeUI('editProd'),
           ...encargoDesdeUI('editProd'), ...tarjetaDesdeUI('editProd'), ...duracionDesdeUI('editProd')
         };
 
@@ -18690,7 +18715,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-11-10u26';
+    const VERSION_PAGINA = '2026-11-10u27';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261105_ranking', fecha: '2026-11-05', titulo: '🏆 ¡Llegó el ranking del mes!', mensaje: 'Ahora en la página ves **en qué puesto vas** (arriba, debajo de tu saldo). Los **3 que más recarguen** en el mes se llevan **saldo de regalo**: el **4%**, el **3%** y el **2%** de lo que recargaron. Para participar debes recargar mínimo **$150.000** en el mes. Se actualiza cada hora, cierra el último día del mes y el premio te cae solo el día 1. ¿Quién va a ser el primero? 😎', ir: '' },
       { id: 'act_20261102_codigos_seguros', fecha: '2026-11-02', titulo: 'Tus códigos, más protegidos 🔒', mensaje: 'Tu enlace de códigos ahora es más seguro: los códigos para **crear cuentas nuevas** con nuestros correos ya no se muestran a nadie sin permiso. Los códigos para **entrar a tu cuenta** y **cambiar la contraseña** te siguen llegando al instante, igual que siempre.', ir: '' },
@@ -21673,7 +21698,7 @@
             ${item('🔔', 'Avisos', 'Te llega a Telegram cada venta, recarga y quién entra a tu tienda.')}</div></section>
           <section class="py-8"><h2 class="text-2xl font-black text-white">Planes</h2><p class="text-[13px] text-gray-400 mt-1">Pagando varios meses ahorras: ${c.descuentos ? '3 meses −' + (c.descuentos.m3 || 0) + '% · 6 meses −' + (c.descuentos.m6 || 0) + '% · 12 meses −' + (c.descuentos.m12 || 0) + '%' : 'descuentos por meses'}.</p><div class="mt-4 grid md:grid-cols-3 gap-3">
             ${plan('basico', 'Básico', 'Gratis ' + nv.basico.dias + ' días', 'Para empezar', ['Hasta 5 productos', 'Entrega automática', 'Tus ventas y ganancias', 'Avisos por Telegram', 'tutienda.epicstreaming.vip'], false)}
-            ${plan('pro', 'Pro', cop(nv.pro.precio) + '<span class="text-sm text-gray-400 font-bold"> /mes</span>', 'Para vender en serio', ['Productos ilimitados', 'Reportes completos', 'Promos y cupones', 'Historial de cada venta', 'Los códigos en tu propia página, con tu correo', 'Todo lo del Básico'], true)}
+            ${plan('pro', 'Pro', cop(nv.pro.precio) + '<span class="text-sm text-gray-400 font-bold"> /mes</span>', 'Para vender en serio', ['Productos ilimitados', 'Reportes completos', 'Promos y cupones', 'Historial de cada venta', 'Tu enlace de códigos en cada compra', 'Todo lo del Básico'], true)}
             ${plan('premium', 'Premium', cop(nv.premium.precio) + '<span class="text-sm text-gray-400 font-bold"> /mes</span>', 'Todo desbloqueado', ['Todo lo del Pro', 'Mary en tu tienda, con IA (pronto)', 'Luisa: estados automáticos +' + cop(nv.premium.luisa) + '/mes', 'Pagos Bre-B y Binance automáticos', 'Tu dominio propio (opcional)', 'Prioridad en soporte'], false)}</div></section>
           <section class="py-8"><div class="rounded-3xl p-6 bg-gradient-to-br from-cyan-500/10 via-gray-900 to-gray-900 border border-cyan-500/30"><h2 class="text-2xl font-black text-white">🔐 Tu tienda, blindada</h2><p class="text-[13px] text-gray-400 mt-1">Lo que es tuyo, solo lo ves tú.</p><div class="mt-4 grid sm:grid-cols-2 gap-3">
             ${item('🗄', 'Base de datos propia', 'Cada tienda tiene su propia base: ninguna otra tienda (ni nadie) ve tus clientes, ventas o precios.')}
