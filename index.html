@@ -751,6 +751,8 @@
           <p class="text-xs text-gray-400 mb-4">Toma menos de 10 segundos. Sin mensualidad.</p>
           <label class="block text-xs text-gray-400 mb-1" for="portEmail">Correo</label>
           <input type="email" id="portEmail" autocomplete="email" enterkeyhint="next" placeholder="nombre@gmail.com" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500 mb-3">
+          <label class="block text-xs text-gray-400 mb-1" for="portNombre">Tu nombre</label>
+          <input type="text" id="portNombre" maxlength="60" autocomplete="name" enterkeyhint="next" placeholder="Nombre y apellido" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500 mb-3">
           <label class="block text-xs text-gray-400 mb-1" for="portWa">WhatsApp</label>
           <div class="flex gap-2 mb-3">
             <select id="portPais" onchange="portCambioPais()" aria-label="País" class="shrink-0 w-[118px] bg-gray-800 border border-gray-700 rounded-xl px-2 py-2.5 text-sm text-white focus:outline-none"></select>
@@ -2351,6 +2353,15 @@
             </div>
           </div>
         </div>
+        <!-- ⚙️ u21 · CONFIGURACIÓN GENERAL DE LAS TIENDAS (control total: apariencia, inicio de sesión, lo que ve el cliente y lo que puede el dueño) -->
+        <details id="cgCaja" class="rounded-2xl bg-gray-900 border border-cyan-500/40 overflow-hidden" ontoggle="if (this.open) cgCargar()">
+          <summary class="p-3.5 cursor-pointer select-none flex items-center gap-2 list-none"><span class="text-sm font-black text-white">⚙️ Configuración general de las tiendas</span><span class="px-2 py-0.5 rounded-full bg-cyan-500/15 text-cyan-300 text-[10px] font-black">CONTROL TOTAL</span><span id="cgResumen" class="ml-auto text-[10px] text-gray-400"></span></summary>
+          <div class="px-3 pb-3 pt-1 border-t border-gray-800 grid grid-cols-1 xl:grid-cols-[1fr_1fr_340px] gap-3 items-start">
+            <div id="cgCol1" class="space-y-3 min-w-0"></div>
+            <div id="cgCol2" class="space-y-3 min-w-0"></div>
+            <div class="min-w-0 xl:sticky xl:top-24"><div id="cgVista"></div><p class="text-[10px] text-gray-500 text-center mt-2">Vista previa en vivo: así ve el cliente la entrada de una tienda con lo que configures</p></div>
+          </div>
+        </details>
       </div>
 
       <!-- TAB: PRIME VIDEO · ROBOT AMAZON (pruebas en Chrome con Tampermonkey) -->
@@ -9812,7 +9823,7 @@
 
       if (tab === 'marketing') { try { iniciarEstados(); pintarEstadosAdmin(); } catch (e) { /* nada */ } }
       if (tab === 'usuarios' || tab === 'ajustes' || tab === 'tiendas') { try { if (esAdminSesionActual()) prepararCfgTiendas(); } catch (e) { /* nada */ } }
-      if (tab === 'tiendas') { try { ctAdmPrevia(); } catch (e) { /* nada */ } }
+      if (tab === 'tiendas') { try { ctAdmPrevia(); } catch (e) { /* nada */ } try { const cg = document.getElementById('cgCaja'); if (cg && cg.open) cgCargar(); } catch (e) { /* nada */ } }
       if (tab === 'marketing') { try { if (!cfgDealer) cargarCfgDealer().then(prepararMarketing); } catch (e) { /* nada */ } prepararMarketing(); }
       if (tab === 'novedades') { iniciarNovedadesClientes(); renderizarNovedadesAdmin(); renderizarActualizacionesPagina(); }
       if (tab === 'cortes') { try { iniciarNetflixAdmin(); } catch (e) { /* nada */ } renderizarCortes(); }
@@ -18673,7 +18684,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-11-10u20';
+    const VERSION_PAGINA = '2026-11-10u21';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261105_ranking', fecha: '2026-11-05', titulo: '🏆 ¡Llegó el ranking del mes!', mensaje: 'Ahora en la página ves **en qué puesto vas** (arriba, debajo de tu saldo). Los **3 que más recarguen** en el mes se llevan **saldo de regalo**: el **4%**, el **3%** y el **2%** de lo que recargaron. Para participar debes recargar mínimo **$150.000** en el mes. Se actualiza cada hora, cierra el último día del mes y el premio te cae solo el día 1. ¿Quién va a ser el primero? 😎', ir: '' },
       { id: 'act_20261102_codigos_seguros', fecha: '2026-11-02', titulo: 'Tus códigos, más protegidos 🔒', mensaje: 'Tu enlace de códigos ahora es más seguro: los códigos para **crear cuentas nuevas** con nuestros correos ya no se muestran a nadie sin permiso. Los códigos para **entrar a tu cuenta** y **cambiar la contraseña** te siguen llegando al instante, igual que siempre.', ir: '' },
@@ -21582,6 +21593,93 @@
     function iniciarTiendasAdmin() {
       if (unsubTiendasAdm || !esAdminSesionActual()) return;
       try { unsubTiendasAdm = db.collection('tiendas').onSnapshot(sn => { tiendasCreadas = []; sn.forEach(d => tiendasCreadas.push(Object.assign({ id: d.id }, d.data() || {}))); tiendasCreadas.sort((a, b) => String(b.creadoEl).localeCompare(String(a.creadoEl))); pintarTiendasAdmin(); }, e => console.warn(e)); } catch (e) { /* nada */ }
+    }
+    // ==================== ⚙️ u21 · CONFIGURACIÓN GENERAL DE LAS TIENDAS ====================
+    // Se guarda en configuracion/tiendas_general (tu Firebase). El servidor de tiendas (VPS) la lee cada minuto y cada tienda la aplica
+    // según «Aplicar a»: solo las tiendas nuevas (las que se creen desde ahora), las que elijas, o todas.
+    var CG_BASE = {
+      apariencia: { skin: 'galaxia', color: 'violet', logo: 'iniciales', duenoTema: true, duenoLogo: true, forzar: false },
+      login: { google: false, registro: 'abierto', nombre: true, cedula: false, bienvenida: 'Cuentas de streaming al instante, con garantía ⚡', catalogo: true, precios: true, recordar: true },
+      cliente: { moneda: 'ambas', pagos: ['Nequi', 'Daviplata', 'Bre-B', 'Bancolombia', 'Transfiya', 'Otro'], stock: true, garantia: true, wa: true },
+      dueno: { margen: 0, propios: true, clientes: true, bienvenida: true },
+      aplicar: 'nuevas', elegidas: [] };
+    var CG_PAGOS = ['Nequi', 'Daviplata', 'Bre-B', 'Bancolombia', 'Transfiya', 'Otro'];
+    var cfgGeneralTiendas = null, cgCargando = false;
+    function cgMezclar(d) { d = d || {}; const o = {}; Object.keys(CG_BASE).forEach(k => { o[k] = (CG_BASE[k] && typeof CG_BASE[k] === 'object' && !Array.isArray(CG_BASE[k])) ? Object.assign({}, CG_BASE[k], d[k] || {}) : (d[k] !== undefined ? d[k] : CG_BASE[k]); }); if (!Array.isArray(o.elegidas)) o.elegidas = []; if (!Array.isArray(o.cliente.pagos)) o.cliente.pagos = CG_PAGOS.slice(); return o; }
+    async function cgCargar() {
+      if (cgCargando) return; cgCargando = true;
+      try { const d = await db.collection('configuracion').doc('tiendas_general').get(); cfgGeneralTiendas = cgMezclar(d.exists ? d.data() : null); } catch (e) { cfgGeneralTiendas = cgMezclar(null); }
+      cgCargando = false; cgPintar();
+    }
+    function cgSw(id, on, titulo, sub) { return `<label class="flex items-center justify-between gap-3 py-2 border-t border-gray-800 first:border-t-0 cursor-pointer"><span class="min-w-0"><span class="block text-xs font-bold text-white">${titulo}</span>${sub ? `<span class="block text-[10px] text-gray-500">${sub}</span>` : ''}</span><input type="checkbox" id="${id}" ${on ? 'checked' : ''} onchange="cgCambio()" class="w-5 h-5 shrink-0 accent-cyan-500"></label>`; }
+    function cgSeg(id, val, ops, titulo) { return `<div class="flex items-center justify-between gap-3 py-2 border-t border-gray-800 first:border-t-0"><span class="text-xs font-bold text-white">${titulo}</span><span class="flex bg-gray-950 border border-gray-800 rounded-xl p-0.5 gap-0.5" id="${id}" data-val="${escaparHtml(val)}">${ops.map(o => `<button type="button" data-v="${escaparHtml(o[0])}" onclick="this.parentNode.dataset.val=this.dataset.v;cgCambio()" class="px-2.5 py-1 rounded-lg text-[11px] font-bold ${String(o[0]) === String(val) ? 'bg-gray-700 text-white' : 'text-gray-400'}">${o[1]}</button>`).join('')}</span></div>`; }
+    function cgCard(t, s, cuerpo, borde) { return `<div class="rounded-2xl bg-gray-950/50 border ${borde || 'border-gray-800'} p-3.5"><p class="text-sm font-black text-white">${t}</p><p class="text-[10px] text-gray-400 mb-2">${s}</p>${cuerpo}</div>`; }
+    function cgPintar() {
+      const c = cfgGeneralTiendas || cgMezclar(null), a = c.apariencia, l = c.login, k = c.cliente, d = c.dueno, c1 = document.getElementById('cgCol1'), c2 = document.getElementById('cgCol2'); if (!c1 || !c2) return;
+      const S = typeof CATALOGO_SKINS !== 'undefined' ? CATALOGO_SKINS : [], K = typeof CATALOGO_COLORES_ACENTO !== 'undefined' ? CATALOGO_COLORES_ACENTO : [];
+      const skins = `<div class="text-[11px] font-bold text-gray-300 mb-1">Skin por defecto</div><div id="cgSkins" class="grid grid-cols-4 sm:grid-cols-6 gap-1.5 max-h-44 overflow-y-auto pr-1" data-val="${escaparHtml(a.skin)}">${S.map(s => { const v = skinVista(s); return `<button type="button" title="${escaparHtml(s.nombre)}" data-v="${escaparHtml(s.id)}" onclick="this.parentNode.dataset.val=this.dataset.v;cgCambio()" class="h-11 rounded-lg border-2 ${s.id === a.skin ? 'border-white ring-2 ring-cyan-500' : 'border-transparent'} relative overflow-hidden" style="background:${v.bg}"><span class="absolute bottom-0.5 left-1 text-[9px] font-black" style="color:${v.texto};text-shadow:0 1px 2px #0008">${escaparHtml(s.nombre)}</span></button>`; }).join('')}</div>`;
+      const colores = `<div class="text-[11px] font-bold text-gray-300 mt-2 mb-1">Color de botones</div><div id="cgColores" class="flex flex-wrap gap-1.5" data-val="${escaparHtml(a.color)}">${K.map(x => `<button type="button" title="${escaparHtml(x.nombre)}" data-v="${escaparHtml(x.id)}" onclick="this.parentNode.dataset.val=this.dataset.v;cgCambio()" class="w-7 h-7 rounded-lg border-2 ${x.id === a.color ? 'border-white ring-2 ring-cyan-500' : 'border-transparent'}" style="background:${x.grad ? 'linear-gradient(135deg,' + x.grad.join(',') + ')' : x.hex}"></button>`).join('')}</div>`;
+      c1.innerHTML = cgCard('🎨 Apariencia por defecto', 'Con esto nace cada tienda nueva. Tú decides qué puede cambiar el dueño.', skins + colores +
+          cgSeg('cgLogo', a.logo, [['iniciales', 'Iniciales'], ['epic', 'Rayo']], 'Logo si el dueño no sube uno') +
+          cgSw('cgDuenoTema', a.duenoTema, 'El dueño puede cambiar colores y skin') + cgSw('cgDuenoLogo', a.duenoLogo, 'El dueño puede subir su logo') +
+          cgSw('cgForzar', a.forzar, 'Forzar este skin y color', 'Ignora lo que eligió cada dueño')) +
+        cgCard('🛒 Lo que ve el cliente', 'Igual en todas las tiendas donde aplique.',
+          cgSeg('cgMoneda', k.moneda, [['cop', 'Solo COP'], ['ambas', 'COP + USD']], 'Moneda') +
+          `<div class="py-2 border-t border-gray-800"><span class="block text-xs font-bold text-white mb-1.5">Medios de pago que puede poner el dueño</span><div id="cgPagos" class="flex flex-wrap gap-1.5">${CG_PAGOS.map(p => `<label class="px-2.5 py-1 rounded-lg border text-[11px] font-bold cursor-pointer ${k.pagos.indexOf(p) !== -1 ? 'border-cyan-500 bg-cyan-500/10 text-cyan-200' : 'border-gray-700 text-gray-400'}"><input type="checkbox" value="${p}" ${k.pagos.indexOf(p) !== -1 ? 'checked' : ''} onchange="cgCambio()" class="hidden">${p}</label>`).join('')}</div></div>` +
+          cgSw('cgStock', k.stock, 'Mostrar la cantidad de stock', 'Apagado: solo dice Disponible / Agotado') + cgSw('cgGarantia', k.garantia, 'Mostrar los días de garantía') + cgSw('cgWa', k.wa, 'Botón de soporte por WhatsApp', 'Con el WhatsApp de cada tienda'));
+      const elegir = (typeof tiendasCreadas !== 'undefined' ? tiendasCreadas : []).map(t => `<label class="flex items-center gap-2 text-[11px] text-gray-300"><input type="checkbox" value="${escaparHtml(t.slug)}" ${c.elegidas.indexOf(t.slug) !== -1 ? 'checked' : ''} onchange="cgCambio()" class="w-4 h-4 accent-cyan-500">${escaparHtml(t.nombre || t.slug)} <span class="text-gray-500">${escaparHtml(t.slug)}</span></label>`).join('') || '<p class="text-[11px] text-gray-500">Todavía no hay tiendas.</p>';
+      c2.innerHTML = cgCard('🔐 Inicio de sesión', 'Cómo entran los clientes y qué ven antes de entrar.',
+          cgSw('cgGoogle', l.google, 'Entrar con Google', 'Además de correo y contraseña · hay que prenderlo en Firebase (epic-tiendas)') +
+          cgSeg('cgRegistro', l.registro, [['abierto', 'Abierto'], ['cerrado', 'Cerrado']], 'Registro de clientes nuevos') +
+          cgSw('cgNombre', l.nombre, 'Pedir el nombre al registrarse', 'El WhatsApp siempre se pide (1 WhatsApp = 1 cliente)') + cgSw('cgCedula', l.cedula, 'Pedir la cédula al registrarse') +
+          `<label class="block py-2 border-t border-gray-800"><span class="block text-xs font-bold text-white">Mensaje de bienvenida <span class="text-[10px] text-gray-500 font-normal">puedes usar {tienda}</span></span><input id="cgBienvenida" maxlength="120" value="${escaparHtml(l.bienvenida)}" oninput="cgCambio(1)" class="mt-1 w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"></label>` +
+          cgSw('cgCatalogo', l.catalogo, 'Mostrar el catálogo SIN entrar') + cgSw('cgPrecios', l.precios, 'Mostrar los precios SIN entrar') +
+          cgSw('cgRecordar', l.recordar, 'Recordar la sesión 30 días', 'Apagado: se cierra al cerrar el navegador'), 'border-cyan-700/60') +
+        cgCard('👑 Lo que puede hacer el dueño', 'Límites para todos los dueños de tienda.',
+          `<label class="flex items-center justify-between gap-3 py-2"><span><span class="block text-xs font-bold text-white">Margen mínimo sobre tu precio (%)</span><span class="block text-[10px] text-gray-500">Se aplica cuando prendas la compra como mayorista</span></span><input id="cgMargen" type="number" min="0" max="300" value="${Number(d.margen) || 0}" oninput="cgCambio(1)" class="w-20 text-center bg-gray-800 border border-gray-700 rounded-xl px-2 py-1.5 text-xs text-white"></label>` +
+          cgSw('cgPropios', d.propios, 'Agregar productos propios') + cgSw('cgClientes', d.clientes, 'Ver su lista de clientes (Usuarios)') + cgSw('cgDuenoBienv', d.bienvenida, 'Cambiar el mensaje de bienvenida')) +
+        cgCard('📍 Aplicar a', 'A qué tiendas llega esta configuración.',
+          cgSeg('cgAplicar', c.aplicar, [['nuevas', 'Solo nuevas'], ['elegidas', 'Elegir…'], ['todas', 'Todas']], 'Tiendas') +
+          `<div id="cgElegidas" class="${c.aplicar === 'elegidas' ? '' : 'hidden'} space-y-1 max-h-40 overflow-y-auto p-2 rounded-xl bg-gray-900 border border-gray-800">${elegir}</div>` +
+          `<button type="button" id="btnCgGuardar" onclick="cgGuardar()" class="mt-2 w-full py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-black text-xs">💾 Guardar y aplicar</button><p class="text-[10px] text-gray-500 mt-1.5">Las tiendas lo toman en máximo 1 minuto (al recargar la página).</p>`);
+      cgVista(); cgResumen();
+    }
+    function cgLeer() {
+      const v = id => (document.getElementById(id) || {}), on = id => !!v(id).checked, seg = id => (v(id).dataset || {}).val;
+      const c = cgMezclar(cfgGeneralTiendas);
+      c.apariencia = { skin: seg('cgSkins') || c.apariencia.skin, color: seg('cgColores') || c.apariencia.color, logo: seg('cgLogo') || 'iniciales', duenoTema: on('cgDuenoTema'), duenoLogo: on('cgDuenoLogo'), forzar: on('cgForzar') };
+      c.login = { google: on('cgGoogle'), registro: seg('cgRegistro') || 'abierto', nombre: on('cgNombre'), cedula: on('cgCedula'), bienvenida: String(v('cgBienvenida').value || '').trim().slice(0, 120), catalogo: on('cgCatalogo'), precios: on('cgPrecios'), recordar: on('cgRecordar') };
+      c.cliente = { moneda: seg('cgMoneda') || 'ambas', pagos: Array.from(document.querySelectorAll('#cgPagos input:checked')).map(x => x.value), stock: on('cgStock'), garantia: on('cgGarantia'), wa: on('cgWa') };
+      c.dueno = { margen: Math.max(0, Math.min(300, Number(v('cgMargen').value) || 0)), propios: on('cgPropios'), clientes: on('cgClientes'), bienvenida: on('cgDuenoBienv') };
+      c.aplicar = seg('cgAplicar') || 'nuevas'; c.elegidas = Array.from(document.querySelectorAll('#cgElegidas input:checked')).map(x => x.value);
+      if (!c.login.precios && !c.login.catalogo) c.login.precios = false;
+      return c;
+    }
+    function cgCambio(soloVista) { cfgGeneralTiendas = cgLeer(); if (soloVista) { cgVista(); cgResumen(); } else cgPintar(); }
+    function cgResumen() { const c = cfgGeneralTiendas || cgMezclar(null), r = document.getElementById('cgResumen'); if (!r) return; const n = c.aplicar === 'todas' ? 'todas las tiendas' : c.aplicar === 'elegidas' ? c.elegidas.length + (c.elegidas.length === 1 ? ' tienda elegida' : ' tiendas elegidas') : 'solo tiendas nuevas'; r.textContent = 'Aplica a: ' + n + (c.actualizadoEl ? ' · guardado ' + new Date(c.actualizadoEl).toLocaleString('es-CO', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : ''); }
+    function cgVista() {
+      const c = cfgGeneralTiendas || cgMezclar(null), box = document.getElementById('cgVista'); if (!box) return;
+      const S = (typeof CATALOGO_SKINS !== 'undefined' ? CATALOGO_SKINS : []).find(s => s.id === c.apariencia.skin), K = (typeof CATALOGO_COLORES_ACENTO !== 'undefined' ? CATALOGO_COLORES_ACENTO : []).find(x => x.id === c.apariencia.color);
+      const vs = S ? skinVista(S) : { bg: '#0d0a1a', card: '#ffffff12', borde: '#ffffff26', texto: '#ffffff' }, hex = (K && K.hex) || '#8b5cf6', claro = !!(S && S.claro);
+      const nom = 'Cheems Store', txt = vs.texto || '#fff', sub = claro ? '#475569' : '#c4b5fd', bienv = escaparHtml(String(c.login.bienvenida || '').replace(/\{tienda\}/g, nom));
+      const chips = c.login.catalogo ? `<div style="display:flex;gap:5px;flex-wrap:wrap;justify-content:center;margin:14px 0 6px">${['Netflix', 'Prime Video', 'Disney+', 'YouTube', 'Spotify'].map((p, i) => `<b style="font-size:10px;padding:5px 9px;border-radius:999px;background:${vs.card};border:1px solid ${vs.borde};color:${txt}">${p}${c.login.precios ? ` · <span style="color:${hex}">$${[16900, 9900, 12900, 8900, 7900][i].toLocaleString('es-CO')}</span>` : ''}</b>`).join('')}</div>${!c.login.precios ? `<p style="font-size:10px;color:${sub};text-align:center">🔒 Entra para ver los precios</p>` : ''}` : '<div style="height:16px"></div>';
+      const inp = t => `<div style="width:100%;background:${vs.card};border:1px solid ${vs.borde};border-radius:12px;padding:10px 12px;font-size:12px;color:${sub};margin-bottom:8px">${t}</div>`;
+      const logo = c.apariencia.logo === 'epic' ? `<div style="width:64px;height:64px;border-radius:20px;background:${hex};display:flex;align-items:center;justify-content:center;font-size:30px;color:#fff">⚡</div>` : `<div style="width:64px;height:64px;border-radius:20px;background:linear-gradient(135deg,${hex},#ec4899);display:flex;align-items:center;justify-content:center;font-weight:900;font-size:30px;color:#fff">C</div>`;
+      box.innerHTML = `<div style="width:100%;max-width:320px;margin:0 auto;border-radius:38px;background:#000;padding:9px;box-shadow:0 0 0 2px #1f2937"><div style="border-radius:30px;overflow:hidden;background:${vs.bg};padding:26px 18px 16px;min-height:560px;display:flex;flex-direction:column;align-items:center;font-family:Inter,system-ui,sans-serif">
+        ${logo}<div style="font-size:21px;font-weight:900;color:${txt};margin-top:10px">${nom}</div><div style="font-size:12px;color:${sub};margin-top:4px;text-align:center">${bienv}</div>${chips}
+        <div style="width:100%;margin-top:8px">${inp('tucorreo@gmail.com')}${inp('••••••••')}<div style="width:100%;text-align:center;font-weight:900;font-size:14px;padding:12px;border-radius:12px;background:${hex};color:#fff;margin-bottom:8px">Entrar</div>
+        ${c.login.google ? `<div style="width:100%;text-align:center;font-weight:800;font-size:13px;padding:11px;border-radius:12px;background:#fff;color:#111"><b style="color:#4285f4">G</b> Entrar con Google</div>` : ''}</div>
+        <div style="font-size:11.5px;color:${sub};margin-top:12px">${c.login.registro === 'cerrado' ? '🔒 Registro cerrado · pide tu acceso por WhatsApp' : `¿No tienes cuenta? <b style="color:${txt}">Regístrate gratis</b>${c.login.cedula ? ' (con cédula)' : ''}`}</div>
+        ${c.cliente.wa ? `<div style="margin-top:auto;width:100%;text-align:center;font-weight:800;font-size:12px;padding:10px;border-radius:12px;background:#22c55e22;border:1px solid #22c55e66;color:#86efac">💬 Soporte por WhatsApp</div>` : ''}</div></div>`;
+    }
+    async function cgGuardar() {
+      const c = cgLeer(), b = document.getElementById('btnCgGuardar'); if (c.aplicar === 'elegidas' && !c.elegidas.length) { mostrarToast('Elige al menos una tienda (o cambia «Aplicar a»).'); return; }
+      if (c.aplicar === 'todas' && !confirm('¿Aplicar esta configuración a TODAS las tiendas? Lo que cada dueño eligió en lo que tú controlas se reemplaza.')) return;
+      c.actualizadoEl = new Date().toISOString(); c.actualizadoPor = (currentUser && currentUser.email) || '';
+      if (b) { b.disabled = true; b.textContent = 'Guardando…'; }
+      try { await db.collection('configuracion').doc('tiendas_general').set(c); cfgGeneralTiendas = c; cgPintar(); mostrarToast('✓ Configuración de las tiendas guardada. Se aplica en máximo 1 minuto.'); }
+      catch (e) { mostrarToast('No se pudo guardar: ' + (e.message || e)); }
+      finally { const b2 = document.getElementById('btnCgGuardar'); if (b2) { b2.disabled = false; b2.textContent = '💾 Guardar y aplicar'; } }
     }
     function pintarTiendasAdmin() {
       const c = document.getElementById('ctTiendas'); if (!c) return; pintarKpisTiendas();
@@ -28191,7 +28289,8 @@ async function pintarPanelWa() {
         sig('authEmail', ['authWhatsapp', 'authPassword'], enviarAuth);
         sig('authWhatsapp', ['authPassword'], enviarAuth);
         sig('authPassword', [], enviarAuth);
-        sig('portEmail', ['portWa'], enviarPort);
+        sig('portEmail', ['portNombre', 'portWa'], enviarPort);
+        sig('portNombre', ['portWa'], enviarPort);
         sig('portWa', ['portPass'], enviarPort);
         sig('portPass', [], enviarPort);
       });
@@ -28402,6 +28501,8 @@ async function pintarPanelWa() {
       if (err) err.classList.add('hidden');
       const email = String(document.getElementById('portEmail').value || '').trim(), wa = String(document.getElementById('portWa').value || '').replace(/\D/g, ''), pass = String(document.getElementById('portPass').value || '');
       if (!/^\S+@\S+\.\S+$/.test(email)) return fallo('Escribe tu correo completo.');
+      const nomPort = String((document.getElementById('portNombre') || {}).value || '').trim().replace(/\s+/g, ' ');   // 👤 u21: la portada no pedía el nombre y el registro (que lo exige desde u13) fallaba sin avisar
+      if (nomPort.length < 2) return fallo('Escribe tu nombre.');
       if (wa.length < 7) return fallo('Escribe tu número de WhatsApp: con él te mostramos los precios en tu moneda.');
       const r = portReglas(pass); if (!(r.len && r.may && r.num)) return fallo('Tu contraseña necesita 8 caracteres o más, una mayúscula y un número.');
       portEmbudo('clave');
@@ -28413,9 +28514,11 @@ async function pintarPanelWa() {
         document.getElementById('authPassword').value = pass;
         document.getElementById('authPais').value = document.getElementById('portPais').value;
         document.getElementById('authWhatsapp').value = wa;
+        { const an = document.getElementById('authNombre'); if (an) an.value = nomPort; }
         const ref = document.getElementById('authReferido'); if (ref && !ref.value) { try { ref.value = sessionStorage.getItem('refEmail') || ''; } catch (e) { /* nada */ } }
         modoAuth = 'register'; authAbiertoEl = portAbiertaEl || (Date.now() - 5000);
         await procesarAuth({ preventDefault() {} });
+        if (!auth.currentUser) { const eb = document.getElementById('authErrorBox'), em = document.getElementById('authErrorMsg'); if (eb && em && !eb.classList.contains('hidden') && em.innerText) { fallo(em.innerText); eb.classList.add('hidden'); } }   // u21: si el registro no pasó, el motivo se ve aquí (antes quedaba en la ventana escondida)
         if (auth.currentUser) { portPasosEnviados.fin = false; const u = obtenerBackendUrl('embudo_registro'); if (u) { let vid = ''; try { vid = localStorage.getItem('embVid') || ''; } catch (e) { /* nada */ } fetch(u, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ accion: 'embudo_registro', paso: 'fin', vid: vid || ('x' + Date.now()) }) }).catch(() => {}); } }
       } catch (e) { fallo(e.message || 'No se pudo crear la cuenta.'); }
       finally { if (btn) { btn.disabled = false; btn.textContent = 'Crear cuenta y entrar'; } }
@@ -28807,8 +28910,9 @@ const LUISA_COM_DEF_PAG = { activo: true, stockHora: '08:00', mediodiaHora: '12:
     function encPrepararProductos(fresco) { const sel = document.getElementById('encProducto'); if (!sel || (sel.options.length && !fresco)) return; const v = sel.value; try { opcionesProductosStock(sel); if (v) sel.value = v; } catch (e) { /* nada */ } }   // 🔄 u15: se recalcula al abrirlo (antes se quedaba con el «0 libres» del primer momento)
     async function encargarMary() {
       const g = id => document.getElementById(id), op = (document.querySelector('input[name="encOp"]:checked') || {}).value || 'cobrar';
-      const num = String(g('encNumero').value || '').replace(/\D/g, '').slice(-10), pid = g('encProducto').value, n = Math.max(1, parseInt(g('encCantidad').value, 10) || 1), pe = Math.max(0, Math.round(Number(g('encPrecio').value) || 0)), fuera = op === 'entregar' && g('encFuera').checked;
-      if (!/^3\d{9}$/.test(num)) { alert('Escribe el WhatsApp del cliente (10 dígitos, empieza por 3).'); return; }
+      const numDig = String(g('encNumero').value || '').replace(/\D/g, ''), num = (numDig.length === 12 && /^57/.test(numDig)) || numDig.length <= 10 ? numDig.slice(-10) : numDig,   // 🌎 u21: los números de otro país van completos (con su código)
+            pid = g('encProducto').value, n = Math.max(1, parseInt(g('encCantidad').value, 10) || 1), pe = Math.max(0, Math.round(Number(g('encPrecio').value) || 0)), fuera = op === 'entregar' && g('encFuera').checked;
+      if (!/^3\d{9}$/.test(num) && !/^\d{11,15}$/.test(num)) { alert('Escribe el WhatsApp del cliente: 10 dígitos si es de Colombia (empieza por 3), o con el código del país si es de otro (ej: 593983600961).'); return; }
       if (!pid) { alert('Elige el producto.'); return; }
       const prod = (typeof catalogoUnificado !== 'undefined' ? catalogoUnificado : []).find(x => x.docId === pid), nom = prod ? prod.nombre : pid;
       const res = op === 'ofrecer' ? `🎯 Mary le OFRECE ${n} ${nom} al ${num}\nCon su precio, el mínimo y la garantía. No le cobra todavía.` : op === 'entregar' ? `📦 Mary le ENTREGA ${n} ${nom} al ${num}` + (fuera ? '\n💵 Te pagó por fuera (no se toca su saldo)' : '\n💰 Se descuenta de su saldo') : `💳 Mary le COBRA ${n} ${nom} al ${num}\nLe escribe primero, le manda el QR y gestiona todo.`;
