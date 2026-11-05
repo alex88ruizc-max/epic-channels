@@ -17852,7 +17852,9 @@
     function renderizarMisRecargas() {
       const cont = document.getElementById('listaMisRecargas');
       if (!cont) return;
-      const aprob = misRecargas.filter(r => r.estado === 'aprobado');
+      const esPremio = (r) => (r.estado === 'ajuste' && Number(r.monto) > 0 && /ranking|premio|regalo|bono|🎁|🏆/i.test(String(r.metodo || ''))) || r.esRegalo === true;   // 🏆 10u106: premios del ranking y regalos por recarga
+      const premios = misRecargas.filter(esPremio), totPremios = premios.reduce((t, r) => t + (Number(r.monto) || 0), 0);
+      const aprob = misRecargas.filter(r => r.estado === 'aprobado' && !r.esRegalo);
       const pend = misRecargas.filter(r => r.estado === 'pendiente');
       const setT = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v; };
       setT('recStatTotal', formatoCOP(aprob.reduce((t, r) => t + (Number(r.monto) || 0), 0)));
@@ -17867,13 +17869,13 @@
       }
       const filtros = document.getElementById('recFiltros');
       if (filtros) {
-        const opc = [['todas', 'Todas', misRecargas.length], ['aprobado', 'Aprobadas', aprob.length], ['pendiente', 'En revisión', pend.length], ['rechazado', 'Rechazadas', misRecargas.filter(r => r.estado === 'rechazado').length]];
+        const opc = [['todas', 'Todas', misRecargas.length], ['aprobado', 'Aprobadas', aprob.length]].concat(premios.length ? [['premios', '🏆 Premios', premios.length]] : []).concat([['pendiente', 'En revisión', pend.length], ['rechazado', 'Rechazadas', misRecargas.filter(r => r.estado === 'rechazado').length]]);
         filtros.innerHTML = opc.map(([k, t, n]) => `<button type="button" onclick="filtrarMisRecargas('${k}')" class="shrink-0 px-3 py-1.5 rounded-full border ${filtroMisRecargas === k ? 'bg-gray-700 text-white border-gray-500' : 'bg-gray-900 text-gray-400 border-gray-800'}">${t} <span class="opacity-70">${n}</span></button>`).join('');
       }
-      const lista = filtroMisRecargas === 'todas' ? misRecargas : misRecargas.filter(r => r.estado === filtroMisRecargas);
+      const lista = filtroMisRecargas === 'todas' ? misRecargas : filtroMisRecargas === 'premios' ? premios : misRecargas.filter(r => r.estado === filtroMisRecargas && !(filtroMisRecargas === 'aprobado' && r.esRegalo));
       try { iniciarMisReportesPago(); } catch (e) { /* nada */ }
       const extraRep = document.getElementById('recReportePagoCaja') || (() => { const d = document.createElement('div'); d.id = 'recReportePagoCaja'; d.className = 'space-y-2 mb-3'; cont.parentNode.insertBefore(d, cont); return d; })();
-      extraRep.innerHTML = htmlTarjetaReportePago() + htmlMisReportesPago();
+      extraRep.innerHTML = (totPremios > 0 ? `<button type="button" onclick="filtrarMisRecargas('premios')" class="w-full text-left p-3 rounded-2xl border border-amber-400/50 flex items-center gap-3" style="background:linear-gradient(135deg,#3b2a06,#1a1306)"><span class="w-10 h-10 shrink-0 rounded-xl bg-amber-400/20 flex items-center justify-center text-xl">🏆</span><span class="min-w-0"><span class="block text-sm font-black text-amber-200">Has ganado ${formatoCOP(totPremios)} en premios y regalos</span><span class="block text-[11px] text-amber-100/80">Por tus recargas (ranking del mes y regalos). Ya están en tu saldo. Toca para verlos.</span></span></button>` : '') + htmlTarjetaReportePago() + htmlMisReportesPago();
       if (!misRecargas.length) {
         cont.innerHTML = `<div class="text-center py-10 px-4 bg-gray-900 border border-gray-800 rounded-2xl"><i class="fa-solid fa-receipt text-3xl text-gray-600 mb-3"></i><p class="text-gray-400 text-sm mb-3">Todavía no has hecho recargas.</p><button onclick="abrirModalRecarga()" class="px-4 py-2 bg-emerald-500 hover:bg-emerald-400 text-black font-bold text-xs rounded-xl">Recargar saldo</button></div>`;
         return;
@@ -17881,14 +17883,15 @@
       if (!lista.length) { cont.innerHTML = '<p class="text-gray-500 text-center py-6 text-sm">No hay recargas en este filtro.</p>'; return; }
       const EST = { aprobado: ['Aprobada', 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30', 'fa-circle-check text-emerald-300'], pendiente: ['En revisión', 'bg-amber-500/15 text-amber-300 border-amber-500/30', 'fa-hourglass-half text-amber-300'], rechazado: ['Rechazada', 'bg-red-500/15 text-red-300 border-red-500/30', 'fa-circle-xmark text-red-300'] };
       cont.innerHTML = lista.slice(0, 100).map(r => {
-        const e = EST[r.estado] || ['—', 'bg-gray-800 text-gray-400 border-gray-700', 'fa-receipt text-gray-400'];
-        const auto = /autom|bre-b/i.test(String(r.metodo || ''));
+        const prem = esPremio(r), rank = /ranking/i.test(String(r.metodo || '')), neg = Number(r.monto) < 0;
+        const e = prem ? (rank ? ['Premio', 'bg-amber-400/15 text-amber-200 border-amber-400/50', 'fa-trophy text-amber-300'] : ['Regalo', 'bg-pink-500/15 text-pink-200 border-pink-400/50', 'fa-gift text-pink-300']) : r.estado === 'ajuste' ? [neg ? 'Cobro' : 'Ajuste', 'bg-gray-800 text-gray-300 border-gray-700', neg ? 'fa-minus text-gray-300' : 'fa-plus text-gray-300'] : (EST[r.estado] || ['—', 'bg-gray-800 text-gray-400 border-gray-700', 'fa-receipt text-gray-400']);
+        const auto = !prem && /autom|bre-b/i.test(String(r.metodo || ''));
         const abono = Number(r.abonoCredito) || 0;
         return `<div class="p-3 bg-gray-900 border border-gray-800 rounded-2xl flex items-center gap-3">
-          <span class="w-10 h-10 shrink-0 rounded-xl ${auto ? 'bg-emerald-500/15' : 'bg-gray-800'} flex items-center justify-center"><i class="fa-solid ${auto ? 'fa-bolt text-emerald-300' : 'fa-file-invoice-dollar text-gray-300'}"></i></span>
+          <span class="w-10 h-10 shrink-0 rounded-xl ${prem ? (rank ? 'bg-amber-400/20' : 'bg-pink-500/15') : auto ? 'bg-emerald-500/15' : 'bg-gray-800'} flex items-center justify-center"><i class="fa-solid ${prem ? (rank ? 'fa-trophy text-amber-300' : 'fa-gift text-pink-300') : auto ? 'fa-bolt text-emerald-300' : 'fa-file-invoice-dollar text-gray-300'}"></i></span>
           <div class="min-w-0 flex-grow">
-            <p class="text-sm font-black text-white">${formatoCOP(r.monto || 0)}</p>
-            <p class="text-[10px] text-gray-400 truncate">${escaparHtml(bcFecha(r.fecha))} · ${escaparHtml(r.metodo || (auto ? 'Automática' : 'Con comprobante'))}</p>
+            <p class="text-sm font-black ${prem ? 'text-amber-200' : 'text-white'}">${prem ? '+' : ''}${formatoCOP(r.monto || 0)}</p>
+            <p class="text-[10px] ${prem ? 'text-amber-100/80' : 'text-gray-400'} ${prem ? '' : 'truncate'}">${escaparHtml(bcFecha(r.fecha))} · ${escaparHtml(prem && rank ? String(r.metodo || '').replace(/\s*\(puesto/, ' · por tus recargas (puesto') : (r.metodo || (auto ? 'Automática' : 'Con comprobante')))}</p>
             ${abono > 0 ? `<p class="text-[10px] text-violet-300 mt-0.5"><i class="fa-solid fa-hand-holding-dollar mr-1"></i>${formatoCOP(abono)} pagaron tu crédito</p>` : ''}
           </div>
           <span class="shrink-0 px-2 py-0.5 rounded-full text-[10px] font-bold border ${e[1]}"><i class="fa-solid ${e[2]} mr-1"></i>${e[0]}</span>
@@ -18759,7 +18762,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-11-10u32';
+    const VERSION_PAGINA = '2026-11-10u33';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261105_ranking', fecha: '2026-11-05', titulo: '🏆 ¡Llegó el ranking del mes!', mensaje: 'Ahora en la página ves **en qué puesto vas** (arriba, debajo de tu saldo). Los **3 que más recarguen** en el mes se llevan **saldo de regalo**: el **4%**, el **3%** y el **2%** de lo que recargaron. Para participar debes recargar mínimo **$150.000** en el mes. Se actualiza cada hora, cierra el último día del mes y el premio te cae solo el día 1. ¿Quién va a ser el primero? 😎', ir: '' },
       { id: 'act_20261102_codigos_seguros', fecha: '2026-11-02', titulo: 'Tus códigos, más protegidos 🔒', mensaje: 'Tu enlace de códigos ahora es más seguro: los códigos para **crear cuentas nuevas** con nuestros correos ya no se muestran a nadie sin permiso. Los códigos para **entrar a tu cuenta** y **cambiar la contraseña** te siguen llegando al instante, igual que siempre.', ir: '' },
