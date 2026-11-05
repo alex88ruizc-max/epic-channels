@@ -18690,7 +18690,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-11-10u24';
+    const VERSION_PAGINA = '2026-11-10u25';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261105_ranking', fecha: '2026-11-05', titulo: '🏆 ¡Llegó el ranking del mes!', mensaje: 'Ahora en la página ves **en qué puesto vas** (arriba, debajo de tu saldo). Los **3 que más recarguen** en el mes se llevan **saldo de regalo**: el **4%**, el **3%** y el **2%** de lo que recargaron. Para participar debes recargar mínimo **$150.000** en el mes. Se actualiza cada hora, cierra el último día del mes y el premio te cae solo el día 1. ¿Quién va a ser el primero? 😎', ir: '' },
       { id: 'act_20261102_codigos_seguros', fecha: '2026-11-02', titulo: 'Tus códigos, más protegidos 🔒', mensaje: 'Tu enlace de códigos ahora es más seguro: los códigos para **crear cuentas nuevas** con nuestros correos ya no se muestran a nadie sin permiso. Los códigos para **entrar a tu cuenta** y **cambiar la contraseña** te siguen llegando al instante, igual que siempre.', ir: '' },
@@ -21440,10 +21440,10 @@
       pintarKpisTiendas();
       const L = solicitudesTiendas.filter(x => x.estado === 'pendiente' || (x.estado === 'aprobada' && !x.tiendaId)).slice(0, 20);
       c.innerHTML = (L.length ? L.map(x => { const nivel = /^(basico|pro|premium)$/.test(String(x.nivel || '')) ? x.nivel : 'basico', meses = Number(x._meses) || 1, pr = precioPlanTienda(null, nivel, meses), gratis = (cfgTiendas || {}).modo === 'gratis' || nivel === 'basico', saldo = ctSaldos[x.uid];
-        if (!(x.uid in ctSaldos)) ctSaldoDe(x.uid).then(() => pintarSolicitudesTiendas());
+        if (x.uid && !(x.uid in ctSaldos)) ctSaldoDe(x.uid).then(() => pintarSolicitudesTiendas());
         const chip = nivel === 'premium' ? 'bg-gradient-to-r from-amber-600 to-amber-400 text-black' : nivel === 'pro' ? 'bg-violet-700 text-violet-100' : 'bg-gray-700 text-gray-200';
         return `<div class="bg-gray-900 border border-gray-800 rounded-2xl p-3.5 space-y-1.5"><div class="flex items-center justify-between gap-2"><p class="text-xs font-black text-white">📨 Solicitud ${x.estado === 'aprobada' ? '<span class="text-emerald-300">aprobada · sin crear</span>' : 'nueva'}</p><span class="px-2 py-0.5 rounded-full text-[10px] font-black ${chip}">${nombreNivelTienda(nivel).toUpperCase()}</span></div>
-          <p class="text-[12px] text-gray-200"><b>${escaparHtml(x.nombreTienda || '')}</b> · <span class="font-mono text-gray-400">${escaparHtml(x.enlace || '')}</span></p>
+          <p class="text-[12px] text-gray-200"><b>${escaparHtml(x.nombreTienda || '')}</b> · <span class="font-mono text-gray-400">${escaparHtml(x.enlace || '')}</span></p>${x.sinCuentaEpic ? `<p class="text-[10.5px] text-cyan-300">📍 Pedida desde la tienda <b>${escaparHtml(String(x.origen || '').replace(/^tienda:/, ''))}</b> · ${escaparHtml(x.nombre || '')} · sin cuenta en Epic (se aprueba en Básico)</p>` : ''}
           <p class="text-[11px] text-gray-400">${escaparHtml(x.email || '')}${x.whatsapp ? ' · <a class="text-emerald-300" target="_blank" rel="noopener" href="https://wa.me/' + escaparHtml(x.whatsapp.length === 10 ? '57' + x.whatsapp : x.whatsapp) + '">' + escaparHtml(x.whatsapp) + '</a>' : ''}</p>
           ${gratis ? '<p class="text-[11px] text-gray-400">Plan gratis · sin cobro</p>' : `<div class="flex items-center gap-1.5 text-[11px] text-gray-300">Meses: ${TIENDA_MESES.map(m => `<button type="button" onclick="ctSolMeses('${escaparJsAttr(x.id)}',${m})" class="px-2 py-0.5 rounded-lg border ${m === meses ? 'border-violet-400 bg-violet-500/20 text-white' : 'border-gray-700 text-gray-400'}">${m}</button>`).join('')}</div>
           <p class="text-[11px] text-gray-400">Cobro: <b class="text-white">${formatoCOP(pr.total)}</b>${pr.pct ? ' (−' + pr.pct + '%)' : ''} · saldo del cliente: ${saldo === null || saldo === undefined ? '…' : '<b class="' + (saldo >= pr.total ? 'text-emerald-300' : 'text-red-300') + '">' + formatoCOP(saldo) + '</b>' + (saldo >= pr.total ? ' → alcanza' : ' → faltan ' + formatoCOP(pr.total - saldo))}</p>`}
