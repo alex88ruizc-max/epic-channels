@@ -881,6 +881,7 @@
 
     <!-- VISTA: MI PERFIL (antes "Mis Cuentas"; se conserva el id vistaMisCuentas) -->
     <section id="vistaProveedor" class="hidden pb-24 sm:pb-6 max-w-2xl mx-auto space-y-4">
+      <div id="provEsperaCaja" class="hidden space-y-3"></div>   <!-- 📦 10u105: pedidos esperando cuentas (el contador baja) -->
       <div id="provTicketsCaja" class="hidden p-4 bg-gray-900 border border-amber-500/30 rounded-2xl">
         <h3 class="text-sm font-black text-white mb-3 flex items-center gap-2"><i class="fa-solid fa-ticket text-amber-400"></i> Cuentas reportadas <span id="provTicketsAbiertos" class="hidden px-2 py-0.5 rounded-full bg-amber-500 text-black text-[10px] font-black"></span></h3>
         <div id="provTickets" class="space-y-2"></div>
@@ -8501,7 +8502,7 @@
             try { document.body.classList.toggle('modo-proveedor', rolActual === 'proveedor' && !userProveedorVende); const bPS = document.getElementById('btnNavSubirStock'); if (bPS) { bPS.classList.toggle('hidden', !userProveedorVende); bPS.classList.toggle('flex', userProveedorVende); } } catch (e) { /* nada */ }
             if ((userTipoCuenta === 'externo' || userTipoCuenta === 'reseller') && dataU.rol === 'proveedor') { try { const vP = document.getElementById('vistaProveedor'); if (vP && vP.classList.contains('hidden')) cambiarVista('proveedor'); } catch (e) { /* nada */ } }
             userProductosBloqueados = dataU.productos_bloqueados || [];
-            userPermisosSubirStock = dataU.permisos_subir_stock || [];
+            userPermisosSubirStock = dataU.permisos_subir_stock || []; try { provEsperaEscuchar(); } catch (e) { /* nada */ }
             perfilNombreActual = dataU.nombre || '';
             perfilPagoNequi = dataU.pagoNequi || '';
             perfilPagoDaviplata = dataU.pagoDaviplata || '';
@@ -17332,6 +17333,26 @@
     function creditoRegistrarPago() { return operarCredito('pago'); }
     function creditoGuardarCupo() { return operarCredito('cupo_cambio'); }
 
+
+    // 📦 10u105 · PEDIDOS ESPERANDO CUENTAS (panel del proveedor): «Hay un pedido de 50 cuentas», y el número BAJA a medida que se entregan.
+    //    El servidor publica solo el conteo por producto (configuracion/pedidos_espera); cada proveedor ve los productos que puede subir.
+    let unsubProvEspera = null, provEsperaDatos = {};
+    function provEsperaEscuchar() { if (unsubProvEspera || !currentUser) return; try { unsubProvEspera = db.collection('configuracion').doc('pedidos_espera').onSnapshot((d) => { provEsperaDatos = (d.exists && (d.data() || {}).porProducto) || {}; provEsperaPintar(); }, () => {}); } catch (e) { /* nada */ } }
+    function provEsperaPintar() {
+      const caja = document.getElementById('provEsperaCaja'); if (!caja) return;
+      const todos = esAdminSesionActual(), L = Object.keys(provEsperaDatos).filter((pid) => todos || (userPermisosSubirStock || []).indexOf(pid) !== -1).map((pid) => Object.assign({ pid }, provEsperaDatos[pid]))
+        .filter((x) => Number(x.faltan) > 0 || (x.completoEl && Date.now() - Date.parse(x.completoEl) < 24 * 3600000)).sort((a, b) => (Number(b.faltan) || 0) - (Number(a.faltan) || 0));
+      caja.classList.toggle('hidden', !L.length);
+      caja.innerHTML = L.map((x) => { const tot = Math.max(1, Number(x.total) || 0), ent = Math.max(0, Number(x.entregadas) || 0), fal = Math.max(0, Number(x.faltan) || 0), pct = Math.round(ent / tot * 100), nom = escaparHtml(x.nombre || x.pid);
+        if (!fal) return `<div class="rounded-2xl p-4 bg-emerald-950/60 border border-emerald-500/60 flex items-center justify-between gap-3"><p class="text-sm font-black text-emerald-200">✅ Pedido completo · ${tot} de ${tot} entregadas<span class="block text-[11px] font-bold text-emerald-300/80">${nom}</span></p><span class="text-3xl font-black text-emerald-300">0</span></div>`;
+        return `<div class="rounded-2xl p-4 border border-amber-400/60" style="background:linear-gradient(135deg,#3b2a06,#1a1306 60%,#0d0f17)">
+          <p class="text-[11px] font-black tracking-widest text-amber-200">⏳ ${Number(x.pedidos) > 1 ? 'HAY ' + x.pedidos + ' PEDIDOS ESPERANDO CUENTAS' : 'HAY UN PEDIDO ESPERANDO CUENTAS'}</p>
+          <div class="flex items-center gap-4 mt-2"><span class="text-6xl font-black text-white leading-none">${fal}</span><p class="text-[15px] font-black text-white leading-tight">cuenta${fal === 1 ? '' : 's'} de ${nom}<span class="block text-[12px] font-bold text-amber-300 mt-1">${ent ? 'Ya se entregaron ' + ent + ' · faltan ' + fal : 'Sube y se entregan solas al cliente, al instante'}</span></p></div>
+          <div class="mt-3 h-3 rounded-full bg-white/10 overflow-hidden"><div class="h-full rounded-full" style="width:${pct}%;background:linear-gradient(90deg,#22c55e,#a3e635)"></div></div>
+          <div class="flex justify-between mt-1.5 text-[12px] font-bold text-gray-300"><span>${ent} entregadas</span><span>faltan ${fal}</span></div>
+          <button type="button" onclick="provEsperaSubir('${escaparJsAttr(x.pid)}')" class="mt-3 w-full py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-black text-sm"><i class="fa-solid fa-arrow-up mr-1"></i> Subir cuentas ahora</button></div>`; }).join('');
+    }
+    function provEsperaSubir(pid) { try { const s = document.getElementById('provProducto'); if (s) { s.value = pid; s.dispatchEvent(new Event('change')); } const t = document.getElementById('provCuentas'); if (t) { t.scrollIntoView({ behavior: 'smooth', block: 'center' }); setTimeout(() => t.focus(), 400); } } catch (e) { /* nada */ } }
     function renderizarCreditosPendientes(usuarios) {
       const caja = document.getElementById('adminCreditosCaja'), lista = document.getElementById('adminCreditosLista');
       if (!caja || !lista) return;
@@ -18738,7 +18759,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-11-10u30';
+    const VERSION_PAGINA = '2026-11-10u32';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261105_ranking', fecha: '2026-11-05', titulo: '🏆 ¡Llegó el ranking del mes!', mensaje: 'Ahora en la página ves **en qué puesto vas** (arriba, debajo de tu saldo). Los **3 que más recarguen** en el mes se llevan **saldo de regalo**: el **4%**, el **3%** y el **2%** de lo que recargaron. Para participar debes recargar mínimo **$150.000** en el mes. Se actualiza cada hora, cierra el último día del mes y el premio te cae solo el día 1. ¿Quién va a ser el primero? 😎', ir: '' },
       { id: 'act_20261102_codigos_seguros', fecha: '2026-11-02', titulo: 'Tus códigos, más protegidos 🔒', mensaje: 'Tu enlace de códigos ahora es más seguro: los códigos para **crear cuentas nuevas** con nuestros correos ya no se muestran a nadie sin permiso. Los códigos para **entrar a tu cuenta** y **cambiar la contraseña** te siguen llegando al instante, igual que siempre.', ir: '' },
@@ -23899,7 +23920,9 @@
       const q = (col, campo) => db.collection(col).where(campo, '==', uid).get().then(sn => { const a = []; sn.forEach(d => a.push(Object.assign({ id: d.id }, d.data() || {}))); return a; }).catch(() => []);
       const [ud, rec, comp, pre, cred, com, aj] = await Promise.all([db.collection('usuarios').doc(uid).get(), q('recargas', 'usuarioId'), q('compras', 'usuarioId'), q('preordenes', 'usuarioId'), q('creditos_movimientos', 'usuarioId'), q('comisiones_referidos', 'beneficiarioUid'), q('ajustes_saldo', 'uid')]);
       const u = ud.data() || {}, mov = [];
-      rec.filter(r => r.estado === 'aprobado').forEach(r => { const v = (Number(r.monto) || 0) - (Number(r.abonoCredito) || 0) + (Number(r.bono) || 0); mov.push({ f: r.fecha, t: 'Recarga ' + (r.metodo || ''), v, extra: r.abonoCredito ? `(${formatoCOP(r.abonoCredito)} pagaron deuda de crédito)` : '' }); });
+      rec.filter(r => r.estado === 'aprobado').forEach(r => { const v = (Number(r.monto) || 0) - (Number(r.abonoCredito) || 0) + (Number(r.bono) || 0); mov.push({ f: r.fecha, t: r.esRegalo ? (r.metodo || '🎁 Regalo por recarga') : 'Recarga ' + (r.metodo || ''), v, extra: [r.abonoCredito ? `(${formatoCOP(r.abonoCredito)} pagaron deuda de crédito)` : '', Number(r.bono) > 0 ? `(incluye 🎁 +${formatoCOP(r.bono)} de regalo por la recarga)` : ''].filter(Boolean).join(' ') }); });
+      // 🏆 10u105: premios del ranking de recargas, cobros de planes de tienda / Luisa y otros movimientos del servidor (estado «ajuste»): también mueven el saldo
+      rec.filter(r => r.estado === 'ajuste' && Number(r.monto)).forEach(r => { const m = String(r.metodo || 'Ajuste del sistema'); mov.push({ f: r.fecha, t: /ranking/i.test(m) ? m.replace(/\s*\(puesto/, ' · por tus recargas (puesto') : m, v: Number(r.monto) || 0 }); });
       comp.filter(c => !c.regalo && !c.ventaManual).forEach(c => mov.push({ f: c.fecha, t: (c.esRenovacion ? 'Renovación ' : 'Compra ') + (c.productoNombre || '') + ' × ' + (c.cantidad || 1), v: -(Number(c.total) || 0) }));
       pre.forEach(x => { mov.push({ f: x.creadoEl || x.fecha, t: 'Encargo ' + (x.productoNombre || '') + ' × ' + (x.cantidad || ''), v: -(Number(x.total) || 0) }); if (Number(x.devuelto) > 0) mov.push({ f: x.canceladoEl || x.actualizadoEl, t: 'Devolución de encargo cancelado', v: Number(x.devuelto) }); });
       cred.filter(x => x.tipo === 'cupo' || x.tipo === 'prestamo').forEach(x => mov.push({ f: x.fecha, t: x.tipo === 'cupo' ? 'Crédito usado en ' + (x.origen || 'compra') : 'Préstamo de crédito', v: Number(x.monto) || 0 }));
