@@ -4532,7 +4532,7 @@
           <p class="text-[11px] font-bold text-emerald-300 uppercase tracking-wider mb-2"><i class="fa-solid fa-bolt mr-1"></i> Recarga automática</p>
           <div id="recargaVias" class="hidden grid grid-cols-2 gap-1 p-1 rounded-xl bg-gray-900/80 border border-gray-700/60 mb-2.5">
             <button type="button" onclick="elegirViaRecarga('breb'); try { if (clienteInternacional) fijarMonedaVista('COP', true); } catch (e) {}" data-via="breb" class="py-2 rounded-lg text-[11px] font-black">🇨🇴 Bre-B (pesos)</button>
-            <button type="button" onclick="elegirViaRecarga('binance'); try { if (clienteInternacional) fijarMonedaVista('USD', true); } catch (e) {}" data-via="binance" class="py-2 rounded-lg text-[11px] font-black">🟡 Binance (USDT)</button>
+            <button type="button" onclick="elegirViaRecarga('binance'); try { if (clienteInternacional || clientePagaUsd) fijarMonedaVista('USD', true); } catch (e) {}" data-via="binance" class="py-2 rounded-lg text-[11px] font-black">🟡 Binance (USDT)</button>
           </div>
 
           <p id="avisoCompraTrasRecarga" class="hidden mb-2 px-3 py-2 rounded-xl bg-emerald-500/10 border border-emerald-400/40 text-[11px] text-emerald-100"></p><div id="recargaAutoForm">
@@ -8475,7 +8475,7 @@
             // 🧪 durante la prueba de compra simulada el saldo es de mentira: el real se guarda aparte y se repone al terminar
             if (typeof pruebaCompraCorriendo !== 'undefined' && pruebaCompraCorriendo) window.__saldoRealPrueba = dataU.saldo || 0; else userSaldo = dataU.saldo || 0;
             try { if (dataU.debeCambiarClave === true) exigirCambioClave(); } catch (e) { /* nada */ }
-            try { if (!modoPruebaCliente) { clienteInternacional = esNumeroInternacional(dataU.whatsapp); fijarMonedaVista(dataU.monedaVista || (clienteInternacional ? 'USD' : 'COP'), false); actualizarSaldoHeader(); } } catch (e) { /* nada */ }
+            try { if (!modoPruebaCliente) { clienteInternacional = esNumeroInternacional(dataU.whatsapp); clientePagaUsd = dataU.pagaUsd === true; fijarMonedaVista(clientePagaUsd ? 'USD' : (dataU.monedaVista || (clienteInternacional ? 'USD' : 'COP')), false); actualizarSaldoHeader(); } } catch (e) { /* nada */ }
             try { registrarUsoApp(dataU); } catch (e) { /* nada */ }
             try { perfilWa = { waVinculado: dataU.waVinculado || '', waCompraAutorizada: dataU.waCompraAutorizada === true, waSolicitaEl: dataU.waSolicitaEl || '' }; if (document.getElementById('waClienteCaja')) pintarWaCliente(); } catch (e) { /* nada */ }
             setTimeout(() => { try { revisarCompraTrasRecarga(); } catch (e) { /* nada */ } }, 0);
@@ -18738,7 +18738,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-11-10u29';
+    const VERSION_PAGINA = '2026-11-10u30';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261105_ranking', fecha: '2026-11-05', titulo: '🏆 ¡Llegó el ranking del mes!', mensaje: 'Ahora en la página ves **en qué puesto vas** (arriba, debajo de tu saldo). Los **3 que más recarguen** en el mes se llevan **saldo de regalo**: el **4%**, el **3%** y el **2%** de lo que recargaron. Para participar debes recargar mínimo **$150.000** en el mes. Se actualiza cada hora, cierra el último día del mes y el premio te cae solo el día 1. ¿Quién va a ser el primero? 😎', ir: '' },
       { id: 'act_20261102_codigos_seguros', fecha: '2026-11-02', titulo: 'Tus códigos, más protegidos 🔒', mensaje: 'Tu enlace de códigos ahora es más seguro: los códigos para **crear cuentas nuevas** con nuestros correos ya no se muestran a nadie sin permiso. Los códigos para **entrar a tu cuenta** y **cambiar la contraseña** te siguen llegando al instante, igual que siempre.', ir: '' },
@@ -25707,7 +25707,7 @@
     // Mismo redondeo que el bot (hacia arriba, de a 0,10): 2.500 COP → "0,70 USD"
     function usdDeCop(cop) { const t = Math.round((tasaUsdtPagina.base || 0) * (1 + (tasaUsdtPagina.ajuste || 0) / 100)); if (!(t > 1000) || !(Number(cop) > 0) || TIENDA_SLUG) return ''; return (Math.ceil(Number(cop) / t * 10 - 1e-9) / 10).toFixed(2).replace('.', ','); }
     // 💱 Moneda en que el cliente ve la tienda (el saldo siempre se guarda en pesos). COP por defecto.
-    var monedaVista = 'COP', clienteInternacional = false;
+    var monedaVista = 'COP', clienteInternacional = false, clientePagaUsd = false;   // 💵 10u102: REGLA: quien paga en USD (Binance/USDT) ve su saldo y precios en USD
     // 🌎 Número de WhatsApp de otro país: 57 + 10 dígitos o 10 dígitos que empiezan por 3 = Colombia; sin número = Colombia
     function esNumeroInternacional(wa) {
       const d = String(wa || '').replace(/\D/g, '');
@@ -25717,7 +25717,7 @@
       return true;
     }
     // Solo los clientes con número internacional (y tú o tus moderadores, para revisar) pueden ver la tienda en USD
-    function puedeUsd() { try { return clienteInternacional || esStaffSesion(); } catch (e) { return clienteInternacional; } }
+    function puedeUsd() { try { return clienteInternacional || clientePagaUsd || esStaffSesion(); } catch (e) { return clienteInternacional || clientePagaUsd; } }
     function enUsd() { return monedaVista === 'USD' && puedeUsd() && !TIENDA_SLUG && !!usdDeCop(1000); }
     function usdSaldo(cop) { const t = Math.round((tasaUsdtPagina.base || 0) * (1 + (tasaUsdtPagina.ajuste || 0) / 100)); if (!(t > 1000)) return ''; return (Math.floor(Math.max(0, Number(cop) || 0) / t * 100) / 100).toFixed(2).replace('.', ','); }
     function precioVista(cop) { return enUsd() ? usdDeCop(cop) + ' USD' : formatoCOP(cop); }
