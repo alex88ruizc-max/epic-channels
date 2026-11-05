@@ -588,7 +588,7 @@
   </script>
 
   <!-- ==================== NOTIFICACIÓN TOAST ELEGANTE ==================== -->
-  <div id="toastNotif" class="fixed top-5 right-5 z-[9999] hidden items-center gap-3 bg-gray-900 border border-emerald-500/60 text-white px-4 py-3 rounded-2xl shadow-2xl transition-all duration-300">
+  <div id="toastNotif" onclick="this.classList.add('hidden');this.classList.remove('flex')" class="fixed top-5 right-5 z-[9999] hidden items-center gap-3 cursor-pointer whitespace-pre-line bg-gray-900 border border-emerald-500/60 text-white px-4 py-3 rounded-2xl shadow-2xl transition-all duration-300">
     <div class="w-8 h-8 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0">
       <i class="fa-solid fa-check"></i>
     </div>
@@ -5790,17 +5790,18 @@
       console.warn('No se pudo ajustar la conexión de Firestore:', e);
     }
 
-    function mostrarToast(mensaje) {
+    function mostrarToast(mensaje, ms) {
       const toast = document.getElementById('toastNotif');
       const txt = document.getElementById('txtToastMensaje');
       if (!toast || !txt) return;
       txt.innerText = mensaje;
       toast.classList.remove('hidden');
       toast.classList.add('flex');
-      setTimeout(() => {
+      clearTimeout(mostrarToast._t);   // 🔑 u37: un aviso largo (el código para vincular) no lo tapa el siguiente aviso corto
+      mostrarToast._t = setTimeout(() => {
         toast.classList.add('hidden');
         toast.classList.remove('flex');
-      }, 3000);
+      }, ms || 3000);
     }
 
     // ==================== DIÁLOGOS MODERNOS ====================
@@ -18762,7 +18763,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-11-10u35';
+    const VERSION_PAGINA = '2026-11-10u37';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261105_ranking', fecha: '2026-11-05', titulo: '🏆 ¡Llegó el ranking del mes!', mensaje: 'Ahora en la página ves **en qué puesto vas** (arriba, debajo de tu saldo). Los **3 que más recarguen** en el mes se llevan **saldo de regalo**: el **4%**, el **3%** y el **2%** de lo que recargaron. Para participar debes recargar mínimo **$150.000** en el mes. Se actualiza cada hora, cierra el último día del mes y el premio te cae solo el día 1. ¿Quién va a ser el primero? 😎', ir: '' },
       { id: 'act_20261102_codigos_seguros', fecha: '2026-11-02', titulo: 'Tus códigos, más protegidos 🔒', mensaje: 'Tu enlace de códigos ahora es más seguro: los códigos para **crear cuentas nuevas** con nuestros correos ya no se muestran a nadie sin permiso. Los códigos para **entrar a tu cuenta** y **cambiar la contraseña** te siguen llegando al instante, igual que siempre.', ir: '' },
@@ -21915,9 +21916,26 @@
         <label class="flex items-center gap-2 text-[11px] text-gray-300"><input type="checkbox" id="etRecargaAuto" ${t.recargaAuto ? 'checked' : ''} class="w-4 h-4 accent-amber-500"> 💳 Habilitar recarga automática (Premium)</label>
         <label class="flex items-center gap-2 text-[11px] text-gray-300"><input type="checkbox" id="etDominio" ${t.dominioPropio ? 'checked' : ''} class="w-4 h-4 accent-amber-500"> 🌐 Habilitar dominio propio / correos (Premium)</label>
         <p class="text-[10px] text-gray-500">Los cambios llegan a la tienda en máximo 1 minuto. Sin fecha de vencimiento = no vence.</p>
-        <button type="button" onclick="guardarTiendaAdmin('${escaparJsAttr(id)}')" class="w-full py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-black text-xs">Guardar cambios</button></div>`;
+        <button type="button" onclick="guardarTiendaAdmin('${escaparJsAttr(id)}')" class="w-full py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-black text-xs">Guardar cambios</button>
+        <button type="button" onclick="crearAccesoDueno('${escaparJsAttr(id)}')" class="w-full py-2.5 rounded-xl bg-gray-800 border border-gray-700 text-gray-100 font-black text-xs">🔑 Crear acceso del dueño (sin correo de verificación)</button>
+        <div id="etAcceso"></div></div>`;
       m.style.display = 'flex';
     }
+    // 🔑 u36: crea (o cambia) la contraseña del dueño en el sistema de las tiendas, YA verificada. Tú se la pasas por WhatsApp.
+    async function crearAccesoDueno(id) {
+      const t = tiendasCreadas.find(x => x.id === id), box = document.getElementById('etAcceso'); if (!t || !box) return;
+      if (!confirm('¿Crear el acceso de ' + (t.ownerEmail || 'el dueño') + '?\n\nSi ya tenía uno, se le cambia la contraseña. Te la muestro para que se la pases.')) return;
+      box.innerHTML = '<p class="text-[11px] text-gray-400 mt-2">⏳ Creando…</p>';
+      try { const tk = await currentUser.getIdToken(), r = await fetch('https://' + t.slug + '.epicstreaming.vip/acceso-dueno', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ slug: t.slug, idToken: tk }) }), j = await r.json();
+        if (!j.ok) { box.innerHTML = '<p class="text-[11px] text-red-400 mt-2">⚠️ ' + escaparHtml(j.error || 'No se pudo') + '</p>'; return; }
+        const msg = '¡Hola! Tu panel ya está listo 🎉\n\n🌐 ' + j.url + '\n📧 ' + j.email + '\n🔑 ' + j.clave + '\n\nEntra con «Entrar» (no con «Crear mi acceso»). Te recomiendo cambiar la contraseña después con «Olvidé mi contraseña».';
+        let wa = String(j.whatsapp || t.whatsapp || '').replace(/\D/g, ''); if (wa.length === 10) wa = '57' + wa;
+        box.innerHTML = '<div class="mt-2 rounded-2xl border border-emerald-500/40 bg-emerald-500/10 p-3 space-y-1"><p class="text-xs font-black text-emerald-300">✅ Acceso ' + (j.nuevo ? 'creado' : 'actualizado') + ' (ya verificado)</p>' +
+          '<p class="text-[11px] text-gray-200">🌐 ' + escaparHtml(j.url) + '</p><p class="text-[11px] text-gray-200">📧 ' + escaparHtml(j.email) + '</p><p class="text-sm font-black text-white tracking-wider">🔑 ' + escaparHtml(j.clave) + '</p>' +
+          '<div class="flex gap-2 pt-1"><button type="button" id="etAccCopiar" class="flex-1 py-2 rounded-xl bg-gray-800 text-xs font-black text-white">📋 Copiar</button>' + (wa ? '<a target="_blank" rel="noopener" href="https://wa.me/' + wa + '?text=' + encodeURIComponent(msg) + '" class="flex-1 py-2 rounded-xl bg-emerald-500 text-xs font-black text-black text-center">💬 Enviar por WhatsApp</a>' : '') + '</div>' +
+          '<p class="text-[10px] text-gray-500">La contraseña no se guarda en ningún lado: cópiala ahora.</p></div>';
+        document.getElementById('etAccCopiar').onclick = () => { try { navigator.clipboard.writeText(msg); mostrarToast('📋 Copiado'); } catch (e) { /* nada */ } };
+      } catch (e) { box.innerHTML = '<p class="text-[11px] text-red-400 mt-2">⚠️ No se pudo conectar con la tienda: ' + escaparHtml(e.message || e) + '</p>'; } }
     async function guardarTiendaAdmin(id) {
       const g = k => document.getElementById(k), t = tiendasCreadas.find(x => x.id === id); if (!t) return;
       const d = { nombre: String(g('etNombre').value || '').trim().slice(0, 40) || t.nombre, categoria: (g('etCategoria') && g('etCategoria').value) || t.categoria || 'streaming', nivel: g('etNivel').value, estado: g('etEstado').value, whatsapp: String(g('etWa').value || '').replace(/\D/g, '').slice(0, 15), recargaAuto: !!g('etRecargaAuto').checked, dominioPropio: !!g('etDominio').checked, dominioPersonal: String(g('etDominioPersonal').value || '').trim().toLowerCase().replace(/^https?:\/\//, '').replace(/\/.*$/, '').slice(0, 80), editadoEl: new Date().toISOString() };
@@ -29338,7 +29356,7 @@ const LUISA_COM_DEF_PAG = { activo: true, stockHora: '08:00', mediodiaHora: '12:
         box.innerHTML = (r.ordenes || []).length ? r.ordenes.map(function (o) { return `<div class="flex items-start gap-2 p-2 rounded-xl bg-indigo-950/40 border border-indigo-700/40"><p class="flex-1 text-[12px] text-white">${o.agente === 'luisa' ? '📣 Luisa' : '👩‍💼 Mary'}: ${escaparHtml(o.t)}<br><span class="text-[10px] text-gray-400">${o.hasta ? 'vence ' + escaparHtml(new Date(o.hasta).toLocaleDateString('es-CO', { day: '2-digit', month: '2-digit' })) : 'sin vencimiento'}</span></p><button type="button" onclick="cmBorrar('${escaparHtml(o.id)}')" class="text-red-300 text-sm px-2" aria-label="Borrar">🗑</button></div>`; }).join('') : '<p class="text-[11px] text-gray-500">No hay órdenes activas.</p>';
       } catch (e) { box.innerHTML = '<p class="text-[11px] text-red-300">' + escaparHtml(e.message) + '</p>'; } }
     async function cmOrden() { const t = document.getElementById('cmTexto'), ag = document.getElementById('cmAgente').value, tx = String(t.value || '').trim(); if (!tx) return;
-      try { const r = await llamarBackend('centro_mando', { op: 'orden', agente: ag, texto: tx }); if (!r || !r.ok) throw new Error((r && r.error) || 'No se pudo.'); t.value = ''; mostrarToast(r.texto); cmVer(); } catch (e) { alert(e.message); } }
+      try { const r = await llamarBackend('centro_mando', { op: 'orden', agente: ag, texto: tx }); if (!r || !r.ok) throw new Error((r && r.error) || 'No se pudo.'); t.value = ''; const esCod = /🔑/.test(String(r.texto || '')); mostrarToast(esCod ? r.texto.replace(/`/g, '') + '\n(también te lo mandé a Telegram · toca para cerrar)' : r.texto, esCod ? 180000 : 3000); if (esCod) { try { navigator.clipboard.writeText((r.texto.match(/`([A-Za-z0-9]{6,10})`/) || [])[1] || ''); } catch (e) { /* nada */ } } cmVer(); } catch (e) { alert(e.message); } }
     async function cmBorrar(id) { try { const r = await llamarBackend('centro_mando', { op: 'borrar', id: id }); if (r && r.ok) { mostrarToast(r.texto); cmVer(); } } catch (e) { /* nada */ } }
     async function cmEstado() { const box = document.getElementById('cmSalida'); if (!box) return; box.innerHTML = '<p class="text-gray-500"><i class="fa-solid fa-spinner fa-spin mr-1"></i>Preguntándoles a tus asistentes…</p>';
       try { const r = await llamarBackend('centro_mando', { op: 'estado' }); if (!r || !r.ok) throw new Error((r && r.error) || 'No se pudo.'); box.innerHTML = '<div class="p-3 rounded-xl bg-gray-950 border border-gray-800">' + cmMd(r.texto) + '</div>'; } catch (e) { box.innerHTML = '<p class="text-amber-300">' + escaparHtml(e.message) + '</p>'; } }
