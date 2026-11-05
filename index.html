@@ -2340,6 +2340,7 @@
                 <label class="text-[10px] text-gray-400">🟡 Premium ($/mes)<input type="number" id="ctPrecioPremium" min="0" step="1000" class="mt-1 w-full bg-gray-800 border border-gray-700 rounded-xl px-2 py-2 text-xs text-white focus:outline-none"></label>
                 <input type="hidden" id="ctPrecio"><input type="hidden" id="ctDias">
               </div>
+              <label class="block text-[10px] text-gray-400">📣 Luisa (estados automáticos): adicional del Premium ($/mes) · Mary va incluida<input type="number" id="ctPrecioLuisa" min="0" step="1000" class="mt-1 w-full bg-gray-800 border border-gray-700 rounded-xl px-2 py-2 text-xs text-white focus:outline-none"></label>
               <p class="text-[11px] font-black text-white pt-1">🎁 Descuento por pagar varios meses</p>
               <div class="grid grid-cols-3 gap-2">
                 <label class="text-[10px] text-gray-400">3 meses (%)<input type="number" id="ctDescM3" min="0" max="90" class="mt-1 w-full bg-gray-800 border border-gray-700 rounded-xl px-2 py-2 text-xs text-white focus:outline-none"></label>
@@ -2745,8 +2746,9 @@
             <div class="p-3 rounded-xl bg-gray-800/40 border border-gray-700/60 space-y-2">
               <p class="text-[12px] font-black text-white">🎬 Hacer un video</p>
               <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                <label class="text-[11px] text-gray-400">Plantilla<select id="luiVidPlantilla" class="mt-1 w-full bg-gray-900 border border-gray-700 rounded-lg px-2 py-1.5 text-white text-sm"><option value="contador">💲 Contador (precio que sube)</option><option value="cine">🎞 Cine (logo en 3D)</option><option value="promo">🔥 Promo (solo con rebaja real)</option><option value="stock">🆕 Llegó stock</option><option value="lista">📋 Stock de hoy (lista)</option><option value="mensaje">🛡 Garantía (mensaje)</option><option value="tienda">🏪 Tu propia tienda (multitienda)</option></select></label>
-                <label class="text-[11px] text-gray-400">Producto<select id="luiVidProducto" class="mt-1 w-full bg-gray-900 border border-gray-700 rounded-lg px-2 py-1.5 text-white text-sm"></select></label>
+                <label class="text-[11px] text-gray-400">Plantilla<select id="luiVidPlantilla" onchange="luiVidCambioPlantilla()" class="mt-1 w-full bg-gray-900 border border-gray-700 rounded-lg px-2 py-1.5 text-white text-sm"><option value="contador">💲 Contador (precio que sube)</option><option value="cine">🎞 Cine (logo en 3D)</option><option value="promo">🔥 Promo (solo con rebaja real)</option><option value="stock">🆕 Llegó stock</option><option value="lista">📋 Stock de hoy (lista)</option><option value="mensaje">🛡 Garantía (mensaje)</option><option value="tienda">🏪 Tu propia tienda (multitienda)</option></select></label>
+                <label id="luiVidProdCaja" class="text-[11px] text-gray-400">Producto<select id="luiVidProducto" class="mt-1 w-full bg-gray-900 border border-gray-700 rounded-lg px-2 py-1.5 text-white text-sm"></select></label>
+                <label id="luiVidTdaCaja" class="hidden text-[11px] text-gray-400">Versión del video<select id="luiVidTiendaVar" class="mt-1 w-full bg-gray-900 border border-gray-700 rounded-lg px-2 py-1.5 text-white text-sm"><option value="">🔀 Una distinta cada vez</option><option value="propia">🏪 Tu propia tienda de streaming</option><option value="marca">🎨 Vende con tu marca</option><option value="blindada">🔐 Tu tienda, blindada</option></select></label>
               </div>
               <label class="flex items-center gap-2 text-[11px] text-gray-300"><input type="checkbox" id="luiVidPublicar" checked class="w-4 h-4 accent-pink-500">Publicarlo como estado en WhatsApp (si lo quitas, solo queda en la galería para verlo)</label>
               <button type="button" onclick="luisaVideoPedir()" class="w-full py-2.5 rounded-xl bg-pink-500 hover:bg-pink-400 text-white font-black text-xs">🎬 Hacer el video (tarda 2–4 min)</button>
@@ -18687,7 +18689,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-11-10u22';
+    const VERSION_PAGINA = '2026-11-10u23';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261105_ranking', fecha: '2026-11-05', titulo: '🏆 ¡Llegó el ranking del mes!', mensaje: 'Ahora en la página ves **en qué puesto vas** (arriba, debajo de tu saldo). Los **3 que más recarguen** en el mes se llevan **saldo de regalo**: el **4%**, el **3%** y el **2%** de lo que recargaron. Para participar debes recargar mínimo **$150.000** en el mes. Se actualiza cada hora, cierra el último día del mes y el premio te cae solo el día 1. ¿Quién va a ser el primero? 😎', ir: '' },
       { id: 'act_20261102_codigos_seguros', fecha: '2026-11-02', titulo: 'Tus códigos, más protegidos 🔒', mensaje: 'Tu enlace de códigos ahora es más seguro: los códigos para **crear cuentas nuevas** con nuestros correos ya no se muestran a nadie sin permiso. Los códigos para **entrar a tu cuenta** y **cambiar la contraseña** te siguen llegando al instante, igual que siempre.', ir: '' },
@@ -21304,7 +21306,7 @@
     const TIENDA_MESES = [1, 3, 6, 12];
     function precioPlanTienda(c, nivel, meses) { c = c || cfgTiendas || CFG_TIENDAS_BASE; const nv = nivelesTienda(c), base = nivel === 'pro' ? nv.pro.precio : nivel === 'premium' ? nv.premium.precio : 0, m = TIENDA_MESES.indexOf(Number(meses)) === -1 ? 1 : Number(meses), pct = m === 1 ? 0 : Math.max(0, Math.min(90, Number(((c.descuentos || {})['m' + m]) || 0))); return { base, meses: m, pct, total: Math.round(base * m * (1 - pct / 100)) }; }
     const NIVELES_TIENDA = { basico: 'Básico', pro: 'Pro', premium: 'Premium' };
-    function nivelesTienda(c) { c = c || cfgTiendas || CFG_TIENDAS_BASE; const n = Object.assign({}, CFG_TIENDAS_BASE.niveles, c.niveles || {}); return { basico: Object.assign({ precio: 0, dias: 30 }, n.basico || {}), pro: Object.assign({ precio: 49900 }, n.pro || {}), premium: Object.assign({ precio: 99900 }, n.premium || {}) }; }
+    function nivelesTienda(c) { c = c || cfgTiendas || CFG_TIENDAS_BASE; const n = Object.assign({}, CFG_TIENDAS_BASE.niveles, c.niveles || {}); return { basico: Object.assign({ precio: 0, dias: 30 }, n.basico || {}), pro: Object.assign({ precio: 49900 }, n.pro || {}), premium: Object.assign({ precio: 99900, luisa: 30000 }, n.premium || {}) }; }   // 📣 u23: Luisa (estados) = adicional del Premium
     function nombreNivelTienda(k) { return NIVELES_TIENDA[String(k || 'basico').toLowerCase()] || 'Básico'; }
     async function cargarCfgTiendas() {
       try { const d = await db.collection('configuracion').doc('tiendas').get(); cfgTiendas = Object.assign({}, CFG_TIENDAS_BASE, d.exists ? (d.data() || {}) : {}); }
@@ -21395,7 +21397,7 @@
       const c = await cargarCfgTiendas(), g = id => document.getElementById(id);
       g('ctVisible').checked = c.visible === true; g('ctBeta').value = (c.beta || []).join('\n'); g('ctModo').value = c.modo || 'demo';
       const nv = nivelesTienda(c); g('ctDias').value = nv.basico.dias || c.diasDemo || 30;
-      g('ctDiasBasico').value = nv.basico.dias; g('ctPrecioPro').value = nv.pro.precio; g('ctPrecioPremium').value = nv.premium.precio; g('ctPrecio').value = nv.pro.precio;
+      g('ctDiasBasico').value = nv.basico.dias; g('ctPrecioPro').value = nv.pro.precio; g('ctPrecioPremium').value = nv.premium.precio; { const eL = g('ctPrecioLuisa'); if (eL) eL.value = nv.premium.luisa; } g('ctPrecio').value = nv.pro.precio;
       const ds = Object.assign({}, CFG_TIENDAS_BASE.descuentos, c.descuentos || {}); g('ctDescM3').value = ds.m3; g('ctDescM6').value = ds.m6; g('ctDescM12').value = ds.m12;
       g('ctRenovAuto').checked = c.renovAuto !== false; g('ctAviso3').checked = c.aviso3 !== false;
       pintarCfgTiendasUI();
@@ -21406,7 +21408,7 @@
     function leerCfgTiendasUI() {
       const g = id => document.getElementById(id), n = (id, mn, mx) => Math.max(mn, Math.min(mx, parseInt(g(id).value, 10) || 0));
       return { visible: g('ctVisible').checked, beta: String(g('ctBeta').value || '').split(/[\s,;]+/).map(x => x.trim().toLowerCase()).filter(x => /@/.test(x)).slice(0, 50), modo: g('ctModo').value, diasDemo: Math.max(1, Math.min(365, parseInt(g('ctDiasBasico').value, 10) || 30)),
-        niveles: { basico: { precio: 0, dias: n('ctDiasBasico', 0, 365) || 30 }, pro: { precio: Math.max(0, Math.round(Number(g('ctPrecioPro').value) || 0)) }, premium: { precio: Math.max(0, Math.round(Number(g('ctPrecioPremium').value) || 0)) } },
+        niveles: { basico: { precio: 0, dias: n('ctDiasBasico', 0, 365) || 30 }, pro: { precio: Math.max(0, Math.round(Number(g('ctPrecioPro').value) || 0)) }, premium: { precio: Math.max(0, Math.round(Number(g('ctPrecioPremium').value) || 0)), luisa: Math.max(0, Math.round(Number((g('ctPrecioLuisa') || {}).value) || 0)) } },
         descuentos: { m3: n('ctDescM3', 0, 90), m6: n('ctDescM6', 0, 90), m12: n('ctDescM12', 0, 90) }, renovAuto: g('ctRenovAuto').checked, aviso3: g('ctAviso3').checked };
     }
     function pintarCfgTiendasUI() {
@@ -21617,17 +21619,19 @@
           <button type="button" onclick="abrirLandingTiendas()" class="relative mt-5 w-full flex items-center gap-3 p-3.5 rounded-2xl text-left border border-violet-500/50 shadow-lg shadow-violet-900/30" style="background:linear-gradient(120deg,#4c1d95,#1e1b4b 55%,#0c4a6e)">
             <span class="absolute -top-2 right-3 text-[9.5px] font-black bg-cyan-400 text-cyan-950 rounded-full px-2 py-0.5 tracking-wider">NUEVO</span>
             <span class="w-11 h-11 rounded-xl bg-white/10 flex items-center justify-center text-2xl shrink-0">🏪</span>
-            <span class="min-w-0"><span class="block text-[14px] font-black text-white leading-tight">Prueba tu propia tienda de streaming</span><span class="block text-[11.5px] font-semibold text-violet-200 mt-0.5">Con tu marca · ${dias} días gratis</span></span>
+            <span class="min-w-0"><span class="block text-[14px] font-black text-white leading-tight">Prueba tu propia tienda de streaming</span><span class="block text-[11.5px] font-semibold text-violet-200 mt-0.5">Con tu marca · <span class="inDias">${dias}</span> días gratis</span></span>
             <span class="ml-auto text-xl text-violet-200">›</span></button>
           <div class="mt-3.5 grid gap-2.5 md:grid-cols-2">
             <button type="button" onclick="portEmbudo('inicio');abrirModalAuth('register')" class="w-full py-4 rounded-2xl font-black text-[16px] text-black shadow-lg shadow-emerald-500/25" style="background:linear-gradient(90deg,#10d48e,#22c55e)">Crear cuenta gratis</button>
             <button type="button" onclick="abrirModalAuth('login')" class="w-full py-4 rounded-2xl font-black text-[15px] text-white bg-gray-900 border border-gray-700">Iniciar sesión</button></div>
           <p class="mt-2 text-center text-[11.5px] text-gray-500">Toma 10 segundos · Sin mensualidad</p></div>`; }
+      { const ponDias = () => { try { const d = nivelesTienda(cfgTiendas || CFG_TIENDAS_BASE).basico.dias; document.querySelectorAll('.inDias').forEach(e => { e.textContent = d; }); } catch (e) { /* nada */ } };   // 🗓 u23: los días gratis son los de TU panel (antes salía 30 fijo si aún no se había leído)
+        if (!cfgTiendas && !window.__cfgTdaPide) { window.__cfgTdaPide = 1; cargarCfgTiendas().then(ponDias).catch(() => {}); } else ponDias(); }
       if (!ab.dataset.listo) { ab.dataset.listo = '1';
         const card = 'rounded-2xl bg-gray-900 border border-gray-800', tit = t => `<p class="text-[15px] font-black text-white mb-2.5">${t}</p>`;
         ab.innerHTML = `<div>${tit('Así de fácil')}<div class="grid grid-cols-3 gap-2 text-center">${[['📝', 'Te registras en 10 s'], ['💳', 'Recargas tu saldo'], ['⚡', 'Compras y te llega al instante']].map(x => `<div class="${card} p-3"><p class="text-xl">${x[0]}</p><p class="text-[11px] font-bold text-gray-300 mt-1 leading-tight">${x[1]}</p></div>`).join('')}</div></div>
           <div>${tit('Pagas desde donde estés')}<div class="flex flex-wrap gap-1.5">${['🇨🇴 Bre-B', 'Nequi', 'Bancolombia', '🟡 Binance (USDT)'].map(x => `<span class="text-[11.5px] font-bold text-gray-200 ${card} px-3 py-1.5">${x}</span>`).join('')}</div><p class="mt-2.5 text-lg tracking-[4px]">🇨🇴🇪🇨🇵🇪🇻🇪🇲🇽🇨🇱🇦🇷🇺🇸🇪🇸</p></div>
-          <div>${tit('¿Revendes? Ten tu tienda')}<button type="button" onclick="abrirLandingTiendas()" class="w-full flex items-center gap-3 p-3.5 rounded-2xl text-left border border-violet-500/50" style="background:linear-gradient(120deg,#4c1d95,#1e1b4b 55%,#0c4a6e)"><span class="w-11 h-11 rounded-xl bg-white/10 flex items-center justify-center text-2xl shrink-0">🏪</span><span><span class="block text-[14px] font-black text-white">Tu marca, tus precios, tus clientes</span><span class="block text-[11.5px] font-semibold text-violet-200">Nosotros somos tu proveedor · Básico gratis</span></span><span class="ml-auto text-xl text-violet-200">›</span></button></div>
+          <div>${tit('¿Revendes? Ten tu tienda')}<button type="button" onclick="abrirLandingTiendas()" class="w-full flex items-center gap-3 p-3.5 rounded-2xl text-left border border-violet-500/50" style="background:linear-gradient(120deg,#4c1d95,#1e1b4b 55%,#0c4a6e)"><span class="w-11 h-11 rounded-xl bg-white/10 flex items-center justify-center text-2xl shrink-0">🏪</span><span><span class="block text-[14px] font-black text-white">Tu marca, tus precios, tus clientes</span><span class="block text-[11.5px] font-semibold text-violet-200">Nosotros somos tu proveedor · Básico gratis <span class="inDias">${dias}</span> días</span></span><span class="ml-auto text-xl text-violet-200">›</span></button></div>
           <div>${tit('Preguntas rápidas')}<div class="space-y-1.5">${[['¿En cuánto me llegan?', 'Al instante, 24/7'], ['¿Y si se cae?', 'Garantía: te la cambiamos'], ['¿Desde otro país?', 'Pagas con Binance (USDT)']].map(x => `<p class="${card} px-3 py-2.5 text-[12.5px] text-gray-300"><b class="text-white">${x[0]}</b> → ${x[1]}</p>`).join('')}</div></div>`; }
     }
     // ==================== 🏪 u22 · PÁGINA DE VENTA DE LA MULTITIENDA (epicstreaming.vip/#tiendas) ====================
@@ -21669,7 +21673,7 @@
           <section class="py-8"><h2 class="text-2xl font-black text-white">Planes</h2><p class="text-[13px] text-gray-400 mt-1">Pagando varios meses ahorras: ${c.descuentos ? '3 meses −' + (c.descuentos.m3 || 0) + '% · 6 meses −' + (c.descuentos.m6 || 0) + '% · 12 meses −' + (c.descuentos.m12 || 0) + '%' : 'descuentos por meses'}.</p><div class="mt-4 grid md:grid-cols-3 gap-3">
             ${plan('basico', 'Básico', 'Gratis ' + nv.basico.dias + ' días', 'Para empezar', ['Hasta 5 productos', 'Entrega automática', 'Tus ventas y ganancias', 'Avisos por Telegram', 'tutienda.epicstreaming.vip'], false)}
             ${plan('pro', 'Pro', cop(nv.pro.precio) + '<span class="text-sm text-gray-400 font-bold"> /mes</span>', 'Para vender en serio', ['Productos ilimitados', 'Reportes completos', 'Promos y cupones', 'Historial de cada venta', 'Todo lo del Básico'], true)}
-            ${plan('premium', 'Premium', cop(nv.premium.precio) + '<span class="text-sm text-gray-400 font-bold"> /mes</span>', 'Todo desbloqueado', ['Todo lo del Pro', 'Tu dominio propio (opcional)', 'Mary y Luisa en tu tienda (pronto)', 'Prioridad en soporte'], false)}</div></section>
+            ${plan('premium', 'Premium', cop(nv.premium.precio) + '<span class="text-sm text-gray-400 font-bold"> /mes</span>', 'Todo desbloqueado', ['Todo lo del Pro', 'Mary en tu tienda, con IA (pronto)', 'Luisa: estados automáticos +' + cop(nv.premium.luisa) + '/mes (pronto)', 'Tu dominio propio (opcional)', 'Prioridad en soporte'], false)}</div></section>
           <section class="py-8"><div class="rounded-3xl p-6 bg-gradient-to-br from-cyan-500/10 via-gray-900 to-gray-900 border border-cyan-500/30"><h2 class="text-2xl font-black text-white">🔐 Tu tienda, blindada</h2><p class="text-[13px] text-gray-400 mt-1">Lo que es tuyo, solo lo ves tú.</p><div class="mt-4 grid sm:grid-cols-2 gap-3">
             ${item('🗄', 'Base de datos propia', 'Cada tienda tiene su propia base: ninguna otra tienda (ni nadie) ve tus clientes, ventas o precios.')}
             ${item('🔑', 'Cuentas en zona privada', 'El correo y la clave de tus cuentas nunca quedan a la vista: solo tú y el cliente que la compró.')}
@@ -28992,12 +28996,15 @@ const LUISA_COM_DEF_PAG = { activo: true, stockHora: '08:00', mediodiaHora: '12:
       if (u && !/^https?:\/\/[a-z0-9.-]+(:\d+)?$/i.test(u)) { alert('Escribe solo la dirección, por ejemplo https://videos.epicstreaming.vip'); return; }
       try { await db.collection('configuracion').doc('videos').set({ urlPublica: u, el: new Date().toISOString() }, { merge: true }); luisaVidUrl = u; mostrarToast('✓ Guardado'); luisaVideosCargar(true); } catch (e) { alert(e.message); }
     }
+    function luiVidCambioPlantilla() {   // 🏪 u23: con «Tu propia tienda» no se elige producto sino la versión del video; con garantía o lista tampoco hay producto
+      const pl = (document.getElementById('luiVidPlantilla') || {}).value || '', pc = document.getElementById('luiVidProdCaja'), tc = document.getElementById('luiVidTdaCaja');
+      if (pc) pc.classList.toggle('hidden', pl === 'tienda' || pl === 'mensaje' || pl === 'lista'); if (tc) tc.classList.toggle('hidden', pl !== 'tienda'); }
     async function luisaVideoPedir() {
       const pl = (document.getElementById('luiVidPlantilla') || {}).value || 'contador', sel = document.getElementById('luiVidProducto'), pub = !!(document.getElementById('luiVidPublicar') || {}).checked;
       const p = (catalogoUnificado || []).find(x => x.docId === (sel && sel.value)); const nombre = pl === 'lista' ? 'la lista' : (pl === 'mensaje' || pl === 'tienda') ? '' : (p ? p.nombre : '');   // 🏪 u22: «tienda» = video de la multitienda (sin producto)
       if (!nombre && pl !== 'mensaje' && pl !== 'tienda') { alert('Elige un producto.'); return; }
       if (!confirm('¿Hacer el video «' + pl + '»' + (nombre ? ' de ' + nombre : '') + (pub ? ' y publicarlo en WhatsApp' : ' (solo para verlo)') + '? Tarda 2–4 min.')) return;
-      try { const r = await llamarBackend('luisa', { op: 'video', plantilla: pl, producto: pl === 'mensaje' ? 'mensaje' : pl === 'tienda' ? 'tienda' : nombre, publicar: pub }); if (!r || !r.ok) throw new Error((r && r.error) || 'No se pudo.');
+      try { const r = await llamarBackend('luisa', { op: 'video', plantilla: pl, producto: pl === 'mensaje' ? 'mensaje' : pl === 'tienda' ? ('tienda ' + ((document.getElementById('luiVidTiendaVar') || {}).value || '')).trim() : nombre, publicar: pub }); if (!r || !r.ok) throw new Error((r && r.error) || 'No se pudo.');
         mostrarToast('🎬 Pedido a Luisa'); alert((r.texto || 'Orden guardada') + '\n\nEn 2–4 minutos te llega a Telegram y aparece en la galería (↻ Actualizar).'); } catch (e) { alert(e.message); }
     }
     async function luisaVideoPublicarId(id) { if (!confirm('¿Publicar este video como estado de WhatsApp?')) return; try { const r = await llamarBackend('luisa', { op: 'video_publicar', id: id }); if (!r || !r.ok) throw new Error((r && r.error) || 'No se pudo.'); mostrarToast('📣 Luisa lo publica en unos minutos'); } catch (e) { alert(e.message); } }
