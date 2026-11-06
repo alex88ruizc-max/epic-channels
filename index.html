@@ -18763,7 +18763,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-11-10u37';
+    const VERSION_PAGINA = '2026-11-10u38';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261105_ranking', fecha: '2026-11-05', titulo: '🏆 ¡Llegó el ranking del mes!', mensaje: 'Ahora en la página ves **en qué puesto vas** (arriba, debajo de tu saldo). Los **3 que más recarguen** en el mes se llevan **saldo de regalo**: el **4%**, el **3%** y el **2%** de lo que recargaron. Para participar debes recargar mínimo **$150.000** en el mes. Se actualiza cada hora, cierra el último día del mes y el premio te cae solo el día 1. ¿Quién va a ser el primero? 😎', ir: '' },
       { id: 'act_20261102_codigos_seguros', fecha: '2026-11-02', titulo: 'Tus códigos, más protegidos 🔒', mensaje: 'Tu enlace de códigos ahora es más seguro: los códigos para **crear cuentas nuevas** con nuestros correos ya no se muestran a nadie sin permiso. Los códigos para **entrar a tu cuenta** y **cambiar la contraseña** te siguen llegando al instante, igual que siempre.', ir: '' },
@@ -21924,14 +21924,15 @@
     // 🔑 u36: crea (o cambia) la contraseña del dueño en el sistema de las tiendas, YA verificada. Tú se la pasas por WhatsApp.
     async function crearAccesoDueno(id) {
       const t = tiendasCreadas.find(x => x.id === id), box = document.getElementById('etAcceso'); if (!t || !box) return;
-      if (!confirm('¿Crear el acceso de ' + (t.ownerEmail || 'el dueño') + '?\n\nSi ya tenía uno, se le cambia la contraseña. Te la muestro para que se la pases.')) return;
+      const claveP = prompt('🔑 Acceso de ' + (t.ownerEmail || 'el dueño') + '\n\nEscribe una contraseña TEMPORAL (mínimo 8) o deja vacío para que el sistema genere una segura.\nAl entrar por primera vez, el dueño tendrá que crear la suya.\nSi ya tenía acceso, se le cambia.', ''); if (claveP === null) return;
+      if (claveP.trim() && claveP.trim().length < 8) { alert('La contraseña temporal debe tener al menos 8 caracteres.'); return; }
       box.innerHTML = '<p class="text-[11px] text-gray-400 mt-2">⏳ Creando…</p>';
-      try { const tk = await currentUser.getIdToken(), r = await fetch('https://' + t.slug + '.epicstreaming.vip/acceso-dueno', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ slug: t.slug, idToken: tk }) }), j = await r.json();
+      try { const tk = await currentUser.getIdToken(), r = await fetch('https://' + t.slug + '.epicstreaming.vip/acceso-dueno', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ slug: t.slug, idToken: tk, clave: claveP.trim() }) }), j = await r.json();
         if (!j.ok) { box.innerHTML = '<p class="text-[11px] text-red-400 mt-2">⚠️ ' + escaparHtml(j.error || 'No se pudo') + '</p>'; return; }
-        const msg = '¡Hola! Tu panel ya está listo 🎉\n\n🌐 ' + j.url + '\n📧 ' + j.email + '\n🔑 ' + j.clave + '\n\nEntra con «Entrar» (no con «Crear mi acceso»). Te recomiendo cambiar la contraseña después con «Olvidé mi contraseña».';
+        const msg = '¡Hola! Tu panel ya está listo 🎉\n\n🌐 ' + j.url + '\n📧 ' + j.email + '\n🔑 ' + j.clave + '\n\nEntra con «Entrar» (no con «Crear mi acceso»). Esa contraseña es temporal: al entrar te pedirá crear la tuya.';
         let wa = String(j.whatsapp || t.whatsapp || '').replace(/\D/g, ''); if (wa.length === 10) wa = '57' + wa;
         box.innerHTML = '<div class="mt-2 rounded-2xl border border-emerald-500/40 bg-emerald-500/10 p-3 space-y-1"><p class="text-xs font-black text-emerald-300">✅ Acceso ' + (j.nuevo ? 'creado' : 'actualizado') + ' (ya verificado)</p>' +
-          '<p class="text-[11px] text-gray-200">🌐 ' + escaparHtml(j.url) + '</p><p class="text-[11px] text-gray-200">📧 ' + escaparHtml(j.email) + '</p><p class="text-sm font-black text-white tracking-wider">🔑 ' + escaparHtml(j.clave) + '</p>' +
+          '<p class="text-[11px] text-gray-200">🌐 ' + escaparHtml(j.url) + '</p><p class="text-[11px] text-gray-200">📧 ' + escaparHtml(j.email) + '</p><p class="text-sm font-black text-white tracking-wider">🔑 ' + escaparHtml(j.clave) + ' <span class="text-[10px] text-amber-300 font-bold tracking-normal">temporal: al entrar debe crear la suya</span></p>' +
           '<div class="flex gap-2 pt-1"><button type="button" id="etAccCopiar" class="flex-1 py-2 rounded-xl bg-gray-800 text-xs font-black text-white">📋 Copiar</button>' + (wa ? '<a target="_blank" rel="noopener" href="https://wa.me/' + wa + '?text=' + encodeURIComponent(msg) + '" class="flex-1 py-2 rounded-xl bg-emerald-500 text-xs font-black text-black text-center">💬 Enviar por WhatsApp</a>' : '') + '</div>' +
           '<p class="text-[10px] text-gray-500">La contraseña no se guarda en ningún lado: cópiala ahora.</p></div>';
         document.getElementById('etAccCopiar').onclick = () => { try { navigator.clipboard.writeText(msg); mostrarToast('📋 Copiado'); } catch (e) { /* nada */ } };
