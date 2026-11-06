@@ -5230,7 +5230,13 @@
         <h3 id="modalAuthTitulo" class="text-xl font-black text-white mt-3">Iniciar Sesión</h3>
         <p id="modalAuthSub" class="text-xs text-gray-400 mt-0.5"></p>
       </div>
-      <form id="formAuth" onsubmit="procesarAuth(event)" novalidate class="space-y-3 mt-5">
+      <!-- 🔑 u47: entrar / registrarse con Google -->
+      <div id="googleAuthCaja">
+      <button type="button" id="btnGoogleAuth" onclick="entrarConGoogle()" class="mt-5 w-full flex items-center justify-center gap-2.5 bg-white hover:bg-gray-100 text-gray-800 font-black py-3 rounded-xl text-[14.5px] transition"><svg width="18" height="18" viewBox="0 0 48 48"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.4-.4-3.5z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-7.9l-6.5 5C9.5 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C37 39.2 44 34 44 24c0-1.3-.1-2.4-.4-3.5z"/></svg>Continuar con Google</button>
+      <p id="googleAuthErr" class="hidden text-[11.5px] text-red-300 mt-2 text-center"></p>
+      <div class="flex items-center gap-2 mt-4 text-[11px] text-gray-500 font-semibold"><span class="flex-1 h-px bg-gray-800"></span>o con tu correo<span class="flex-1 h-px bg-gray-800"></span></div>
+      </div>
+      <form id="formAuth" onsubmit="procesarAuth(event)" novalidate class="space-y-3 mt-3">
         <div>
           <label class="block text-xs text-gray-400 mb-1">Correo</label>
           <input type="email" id="authEmail" required autocomplete="email" enterkeyhint="next" placeholder="nombre@gmail.com" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500">
@@ -5305,6 +5311,17 @@
   </div>
 
   
+<!-- 🔑 u47 · MODAL: completar datos después de entrar con Google -->
+  <div id="modalDatosGoogle" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+    <div class="bg-gray-900 border border-gray-800 rounded-3xl max-w-sm w-full p-6 shadow-2xl">
+      <h3 class="text-lg font-black text-white">¡Bienvenido! 👋</h3><p class="text-xs text-gray-400 mt-1" id="dgSub">Solo faltan tu nombre y tu WhatsApp.</p>
+      <label class="block text-xs text-gray-400 mt-4 mb-1">Tu nombre</label><input id="dgNombre" maxlength="60" autocomplete="name" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500">
+      <label class="block text-xs text-gray-400 mt-3 mb-1">Tu WhatsApp</label><div class="flex gap-2"><select id="dgPais" class="shrink-0 w-[118px] bg-gray-800 border border-gray-700 rounded-xl px-2 py-2.5 text-sm text-white focus:outline-none"></select><input id="dgWa" type="tel" inputmode="tel" maxlength="16" class="flex-1 min-w-0 bg-gray-800 border border-gray-700 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500"></div>
+      <p id="dgErr" class="hidden text-[11.5px] text-red-300 mt-2"></p>
+      <button type="button" id="dgBtn" onclick="guardarDatosGoogle()" class="w-full bg-emerald-500 hover:bg-emerald-400 text-black font-black py-3 rounded-xl text-[15px] mt-4">Guardar y seguir</button>
+    </div>
+  </div>
+
 <!-- MODAL: ENTREGA DE CUENTAS -->
   <div id="modalEntrega" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden items-center justify-center p-3 sm:p-4">
     <div class="bg-gray-900 border border-emerald-500/50 rounded-2xl max-w-md w-full shadow-2xl max-h-[92vh] flex flex-col overflow-hidden">
@@ -18768,7 +18785,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-11-10u46';
+    const VERSION_PAGINA = '2026-11-10u47';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261105_ranking', fecha: '2026-11-05', titulo: '🏆 ¡Llegó el ranking del mes!', mensaje: 'Ahora en la página ves **en qué puesto vas** (arriba, debajo de tu saldo). Los **3 que más recarguen** en el mes se llevan **saldo de regalo**: el **4%**, el **3%** y el **2%** de lo que recargaron. Para participar debes recargar mínimo **$150.000** en el mes. Se actualiza cada hora, cierra el último día del mes y el premio te cae solo el día 1. ¿Quién va a ser el primero? 😎', ir: '' },
       { id: 'act_20261102_codigos_seguros', fecha: '2026-11-02', titulo: 'Tus códigos, más protegidos 🔒', mensaje: 'Tu enlace de códigos ahora es más seguro: los códigos para **crear cuentas nuevas** con nuestros correos ya no se muestran a nadie sin permiso. Los códigos para **entrar a tu cuenta** y **cambiar la contraseña** te siguen llegando al instante, igual que siempre.', ir: '' },
@@ -28766,6 +28783,30 @@ async function pintarPanelWa() {
     }
 
     // =================== 📱 1 WHATSAPP = 1 CLIENTE ===================
+    // 🔑 u47 · ENTRAR / REGISTRARSE CON GOOGLE. Si el correo ya tenía cuenta con contraseña (Gmail), Firebase la une a Google: misma cuenta, mismo saldo.
+    //    La primera vez se crea su ficha con saldo 0 (como siempre) y se le piden nombre y WhatsApp (1 WhatsApp = 1 cliente).
+    async function entrarConGoogle() { const err = document.getElementById('googleAuthErr'), b = document.getElementById('btnGoogleAuth'); if (err) err.classList.add('hidden'); if (b) b.disabled = true;
+      const pr = new firebase.auth.GoogleAuthProvider(); pr.setCustomParameters({ prompt: 'select_account' });
+      try { const r = await auth.signInWithPopup(pr); cerrarModalAuth(); setTimeout(() => revisarDatosGoogle(r && r.user), 900); }
+      catch (e) { const c = String(e.code || ''); if (/popup-blocked|operation-not-supported|web-storage/.test(c)) { try { return await auth.signInWithRedirect(pr); } catch (e2) { /* sigue */ } }
+        if (!/popup-closed|cancelled-popup/.test(c) && err) { err.textContent = /unauthorized-domain|operation-not-allowed/.test(c) ? 'El inicio con Google aún no está activado. Entra con tu correo por ahora.' : /account-exists/.test(c) ? 'Ese correo ya tiene cuenta con contraseña: entra con tu correo y tu contraseña.' : 'No se pudo entrar con Google. Intenta de nuevo.'; err.classList.remove('hidden'); } }
+      finally { if (b) b.disabled = false; } }
+    try { auth.getRedirectResult().then((r) => { if (r && r.user) setTimeout(() => revisarDatosGoogle(r.user), 1200); }).catch(() => {}); } catch (e) { /* nada */ }
+    async function revisarDatosGoogle(u) { try { if (!u || !(u.providerData || []).some((x) => x.providerId === 'google.com')) return; let d = null;
+        for (let k = 0; k < 6 && !(d && d.exists); k++) { d = await db.collection('usuarios').doc(u.uid).get(); if (!d.exists) await new Promise((ok) => setTimeout(ok, 800)); }
+        const x = d && d.exists ? d.data() : {}, wa = String(x.whatsapp || ''); if (x.nombre && wa && wa !== 'Sin WhatsApp') return;
+        const sel = document.getElementById('dgPais'); if (sel && !sel.options.length) sel.innerHTML = PAISES_WA.map((p) => '<option value="' + p[0] + '">' + p[1] + ' +' + p[2] + '</option>').join('');
+        document.getElementById('dgNombre').value = x.nombre || u.displayName || ''; document.getElementById('dgSub').textContent = 'Entraste con ' + (u.email || 'Google') + '. Solo faltan tu nombre y tu WhatsApp.';
+        const m = document.getElementById('modalDatosGoogle'); m.classList.remove('hidden'); m.style.display = 'flex'; } catch (e) { console.warn('datos Google', e); } }
+    async function guardarDatosGoogle() { const u = auth.currentUser; if (!u) return; const err = document.getElementById('dgErr'), b = document.getElementById('dgBtn'), falla = (t) => { err.textContent = t; err.classList.remove('hidden'); };
+      const nombre = String(document.getElementById('dgNombre').value || '').trim().replace(/\s+/g, ' ').slice(0, 60), paisSel = PAISES_WA.find((x) => x[0] === document.getElementById('dgPais').value) || PAISES_WA[0];
+      const dig = String(document.getElementById('dgWa').value || '').replace(/\D/g, '').replace(new RegExp('^' + paisSel[2]), ''), whatsapp = paisSel[0] === 'CO' ? dig.slice(-10) : '+' + paisSel[2] + ' ' + dig;
+      if (nombre.length < 2) return falla('Escribe tu nombre.'); if (dig.length < 7) return falla('Escribe tu número de WhatsApp.'); err.classList.add('hidden'); b.disabled = true;
+      try { if (await waYaRegistrado(whatsapp)) { b.disabled = false; const m = document.getElementById('modalDatosGoogle'); m.classList.add('hidden'); m.style.display = 'none'; return abrirWaRepetido(whatsapp); }
+        await db.collection('usuarios').doc(u.uid).set({ nombre, whatsapp }, { merge: true }); try { await db.collection('usuarios').doc(u.uid).set({ pais: paisSel[0], paisCodigo: paisSel[2] }, { merge: true }); } catch (e) { /* si las reglas no lo dejan, queda en el WhatsApp */ }
+        const m = document.getElementById('modalDatosGoogle'); m.classList.add('hidden'); m.style.display = 'none'; mostrarToast('🎉 ¡Listo! Ya eres cliente VIP 👑');
+        if (obtenerBackendUrl()) setTimeout(() => { llamarBackend('vincular_invitado', {}).then((r) => { if (r && r.unido) mostrarToast('🔗 Tus compras por WhatsApp ya están en tu cuenta'); }).catch(() => {}); }, 1500); }
+      catch (e) { falla('No se pudo guardar: ' + (e.message || e)); } finally { b.disabled = false; } }
     async function waYaRegistrado(wa) { try { const url = obtenerBackendUrl('wa_existe'); if (!url) return false; const r = await (await fetch(url, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ accion: 'wa_existe', wa: wa, vid: ruVid() }) })).json(); return !!(r && r.existe); } catch (e) { return false; } }
     function abrirWaRepetido(wa) {
       const m = document.createElement('div'); m.id = 'modalWaRepetido'; m.className = 'fixed inset-0 z-[85] flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm';
