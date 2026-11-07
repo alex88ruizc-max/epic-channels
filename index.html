@@ -3339,6 +3339,7 @@
                 <i class="fa-solid fa-lock"></i> Seguridad: Servidor e Inventario Protegido
               </h4>
               <div>
+                <div id="candadoUrls" class="mb-3 rounded-xl border border-emerald-500/40 bg-emerald-500/5 p-2.5 text-[11px] font-mono break-all"></div>
                 <label class="block text-[11px] text-gray-400 mb-1">URL del servidor seguro (Apps Script, termina en /exec)</label>
                 <input type="url" id="ajusteBackendUrl" placeholder="https://script.google.com/macros/s/.../exec" class="w-full bg-gray-900 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white font-mono focus:outline-none">
                 <p class="text-[10px] text-gray-500 mt-1">Con esta URL las compras se procesan en el servidor: el cliente nunca toca su saldo ni el inventario. Se guarda con "Guardar Ajustes Generales".</p>
@@ -3350,6 +3351,7 @@
               </div>
               <div>
                 <label class="block text-[11px] text-gray-400 mb-1">📧 URL del servidor de CORREO (el de codigos@: pagos, códigos y bot)</label>
+                <p class="text-[10px] text-emerald-300/80 mb-1">🔒 Con candado: estas URLs no se borran solas; solo tú las cambias aquí.</p>
                 <input type="url" id="ajusteBackendUrlCorreo" placeholder="https://script.google.com/macros/s/.../exec" class="w-full bg-gray-900 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white font-mono focus:outline-none">
                 <p class="text-[10px] text-gray-500 mt-1">Opcional. Si la pones, la página usa el servidor de arriba (con su propio cupo de Google) y solo lo que necesita el correo va a este. Vacío = todo va al de arriba.</p>
               </div>
@@ -7594,6 +7596,7 @@
       if (inpBackend) inpBackend.value = ajustesGeneralesConfig.backendUrl || '';
       { const e = document.getElementById('ajusteBackendUrlCorreo'); if (e) e.value = ajustesGeneralesConfig.backendUrlCorreo || ''; }
       { const e = document.getElementById('ajusteVpsUrl'); if (e) e.value = ajustesGeneralesConfig.vpsUrl || ''; }
+      try { pintarCandadoUrls(); } catch (e) { /* nada */ }
       try { renderizarEstadoSeguridadAdmin(); } catch (e) { console.warn(e); }
       try { renderizarSelectorTemas(); } catch (e) { console.warn(e); }
       try { restaurarTemaGuardado(); } catch (e) { console.warn(e); }
@@ -7702,6 +7705,13 @@
         actualizadoEl: new Date().toISOString()
       };
 
+      // 🔒 CANDADO (orden de Alex): las 3 URLs de servidores nunca se borran solas. Si un campo quedó vacío y antes tenía URL, se mantiene la que estaba
+      //    (salvo que confirmes que quieres borrarla). Cambiarla por OTRA URL sí se puede, a mano, como siempre.
+      [['backendUrl', 'URL del servidor seguro'], ['vpsUrl', 'Servidor rápido (Mary del VPS)'], ['backendUrlCorreo', 'URL del servidor de CORREO (codigos@)']].forEach(function (x) {
+        const antes = String(ajustesGeneralesConfig[x[0]] || '').trim();
+        if (antes && !String(dataGuardar[x[0]] || '').trim() && !confirm('🔒 «' + x[1] + '» quedó VACÍA.\n\n¿Seguro que quieres BORRARLA?\n\nCancelar = se mantiene la que estaba:\n' + antes)) dataGuardar[x[0]] = antes;
+      });
+
       try {
         // Secretos: zona privada (solo admin). Se borran de la configuración pública.
         // 🛡 Un campo vacío NO borra el secreto guardado (si la pantalla se abrió antes de cargarlos, quedaban vacíos y al guardar se perdía el Telegram)
@@ -7718,11 +7728,27 @@
         dataGuardar.telegramChatId = borrar;
         dataGuardar.claveAmazon = borrar;
         await db.collection('configuracion').doc('ajustes').set(dataGuardar, { merge: true });
+        Object.assign(ajustesGeneralesConfig, { backendUrl: dataGuardar.backendUrl, backendUrlCorreo: dataGuardar.backendUrlCorreo, vpsUrl: dataGuardar.vpsUrl });
+        try { pintarCandadoUrls(); } catch (e) { /* nada */ }
         renderizarEstadoSeguridadAdmin();
         mostrarToast("¡Ajustes y color guardados con éxito!");
       } catch (err) {
         alert("Error al guardar ajustes: " + err.message);
       }
+    }
+
+    // 🔒 Las 3 URLs de servidores, SIEMPRE a la vista (y en rojo arriba de todo si alguna está vacía)
+    function pintarCandadoUrls() {
+      const L = [['URL del servidor seguro (servidor 1, página)', ajustesGeneralesConfig.backendUrl], ['⚡ Servidor rápido (Mary del VPS)', ajustesGeneralesConfig.vpsUrl], ['📮 Servidor de CORREO (servidor 2, codigos@)', ajustesGeneralesConfig.backendUrlCorreo]];
+      const vacias = L.filter(function (x) { return !String(x[1] || '').trim(); });
+      const box = document.getElementById('candadoUrls');
+      if (box) { box.className = 'mb-3 rounded-xl border p-2.5 text-[11px] font-mono break-all ' + (vacias.length ? 'border-red-500/60 bg-red-500/10' : 'border-emerald-500/40 bg-emerald-500/5');
+        box.innerHTML = '<p class="font-sans font-black text-[12px] mb-1 ' + (vacias.length ? 'text-red-300' : 'text-emerald-300') + '">🔒 URLs guardadas (con candado)</p>' + L.map(function (x) { const v = String(x[1] || '').trim();
+          return '<p class="mt-1"><span class="font-sans text-gray-400">' + escaparHtml(x[0]) + ':</span><br>' + (v ? '<span class="text-white">' + escaparHtml(v) + '</span>' : '<span class="text-red-300 font-black">⚠️ VACÍA</span>') + '</p>'; }).join(''); }
+      let b = document.getElementById('candadoUrlsAlerta');
+      if (!vacias.length) { if (b) b.remove(); return; }
+      if (!b) { b = document.createElement('div'); b.id = 'candadoUrlsAlerta'; b.className = 'fixed top-2 left-1/2 -translate-x-1/2 z-[9999] max-w-[92vw] rounded-xl border border-red-500 bg-red-950/95 text-red-100 text-xs font-bold px-3 py-2 shadow-xl cursor-pointer'; b.onclick = function () { const c = document.getElementById('candadoUrls'); if (c) c.scrollIntoView({ behavior: 'smooth', block: 'center' }); }; document.body.appendChild(b); }
+      b.textContent = '⚠️ Falta la ' + vacias.map(function (x) { return x[0]; }).join(' y la ') + '. Toca aquí para ponerla.';
     }
 
     let secretosAdmin = null;
@@ -18789,7 +18815,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-11-10u52';
+    const VERSION_PAGINA = '2026-11-10u53';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261105_ranking', fecha: '2026-11-05', titulo: '🏆 ¡Llegó el ranking del mes!', mensaje: 'Ahora en la página ves **en qué puesto vas** (arriba, debajo de tu saldo). Los **3 que más recarguen** en el mes se llevan **saldo de regalo**: el **4%**, el **3%** y el **2%** de lo que recargaron. Para participar debes recargar mínimo **$150.000** en el mes. Se actualiza cada hora, cierra el último día del mes y el premio te cae solo el día 1. ¿Quién va a ser el primero? 😎', ir: '' },
       { id: 'act_20261102_codigos_seguros', fecha: '2026-11-02', titulo: 'Tus códigos, más protegidos 🔒', mensaje: 'Tu enlace de códigos ahora es más seguro: los códigos para **crear cuentas nuevas** con nuestros correos ya no se muestran a nadie sin permiso. Los códigos para **entrar a tu cuenta** y **cambiar la contraseña** te siguen llegando al instante, igual que siempre.', ir: '' },
