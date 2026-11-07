@@ -2487,6 +2487,10 @@
           <button type="button" onclick="maryNoAtenderVer()" class="px-3 py-1.5 rounded-lg bg-gray-800 border border-gray-700 text-gray-200 text-[11px] font-bold">Ver lista</button>
           <button type="button" onclick="maryNoAtenderLimpiar()" class="px-3 py-1.5 rounded-lg bg-red-500/15 border border-red-500/40 text-red-200 text-[11px] font-bold">🧹 Limpiar todo</button>
         </div>
+        <details class="p-4 rounded-2xl bg-gray-900 border border-emerald-500/30" ontoggle="if (this.open) waRutasVer()"><summary class="text-sm font-black text-white cursor-pointer">🔀 WhatsApp principal (WAHA / Evolution)</summary>
+          <p class="mt-2 text-[11px] text-gray-400">El <b class="text-white">principal</b> atiende al instante; el otro queda de <b class="text-white">respaldo</b>: si el principal no entrega un mensaje en 45 s, lo atiende el otro. Si el WAHA elegido no está conectado, Mary sigue con Evolution sola. Se aplica en 1 min.</p>
+          <div id="waRutasCaja" class="mt-3 space-y-2 text-[12px] text-gray-300">Cargando…</div>
+        </details>
         <details class="p-4 rounded-2xl bg-gray-900 border border-gray-800" open><summary class="text-sm font-black text-white cursor-pointer">🤖 A quién atiende</summary>
           <div class="mt-3 space-y-3">
             <label class="block text-[12px] text-gray-300">📱 Número de la <b>tienda</b>
@@ -18785,7 +18789,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-11-10u49';
+    const VERSION_PAGINA = '2026-11-10u50';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261105_ranking', fecha: '2026-11-05', titulo: '🏆 ¡Llegó el ranking del mes!', mensaje: 'Ahora en la página ves **en qué puesto vas** (arriba, debajo de tu saldo). Los **3 que más recarguen** en el mes se llevan **saldo de regalo**: el **4%**, el **3%** y el **2%** de lo que recargaron. Para participar debes recargar mínimo **$150.000** en el mes. Se actualiza cada hora, cierra el último día del mes y el premio te cae solo el día 1. ¿Quién va a ser el primero? 😎', ir: '' },
       { id: 'act_20261102_codigos_seguros', fecha: '2026-11-02', titulo: 'Tus códigos, más protegidos 🔒', mensaje: 'Tu enlace de códigos ahora es más seguro: los códigos para **crear cuentas nuevas** con nuestros correos ya no se muestran a nadie sin permiso. Los códigos para **entrar a tu cuenta** y **cambiar la contraseña** te siguen llegando al instante, igual que siempre.', ir: '' },
@@ -29346,6 +29350,16 @@ const LUISA_COM_DEF_PAG = { activo: true, stockHora: '08:00', mediodiaHora: '12:
     }
     async function luisaVideoPublicarId(id) { if (!confirm('¿Publicar este video como estado de WhatsApp?')) return; try { const r = await llamarBackend('luisa', { op: 'video_publicar', id: id }); if (!r || !r.ok) throw new Error((r && r.error) || 'No se pudo.'); mostrarToast('📣 Luisa lo publica en unos minutos'); } catch (e) { alert(e.message); } }
 
+    // 🔀 u50 · WhatsApp principal por rol (tienda = Mary, estados, notificador). Lo guarda el servidor en secretos/motor.waRutas
+    const WA_ROLES = [['tienda', '🛍 Tienda (Mary)'], ['estados', '📣 Estados'], ['recordatorio', '🔔 Notificador']];
+    function waRutasPintar(r) { const c = document.getElementById('waRutasCaja'); if (!c) return; const R = (r && r.rutas) || {}, E = (r && r.efectivo) || null;
+      c.innerHTML = WA_ROLES.map(([k, nom]) => { const v = R[k] === 'waha' ? 'waha' : 'evolution', ef = E ? (E[k] === 'waha' ? 'WAHA' : 'Evolution') : '';
+        const b = (m, txt) => '<button type="button" onclick="waRutasPoner(\'' + k + '\',\'' + m + '\')" class="px-3 py-1.5 rounded-lg text-[11px] font-black border ' + (v === m ? 'bg-emerald-500/20 border-emerald-400 text-emerald-200' : 'bg-gray-800 border-gray-700 text-gray-400') + '">' + txt + '</button>';
+        return '<div class="flex flex-wrap items-center gap-2"><span class="flex-1 min-w-[130px] font-bold text-white">' + nom + (ef && ef.toLowerCase() !== v ? ' <span class="text-[10px] text-amber-300">(usando ' + ef + ')</span>' : '') + '</span>' + b('waha', '🟢 WAHA') + b('evolution', '🔵 Evolution') + '</div>'; }).join('')
+        + (R.el ? '<p class="text-[10px] text-gray-500">Último cambio: ' + new Date(R.el).toLocaleString('es-CO') + '</p>' : ''); }
+    async function waRutasVer() { try { const r = await llamarBackend('wa_rutas', { op: 'ver' }); if (!r || !r.ok) throw new Error((r && r.error) || 'No se pudo.'); waRutasPintar(r); } catch (e) { const c = document.getElementById('waRutasCaja'); if (c) c.textContent = '⚠️ ' + e.message; } }
+    async function waRutasPoner(rol, motor) { if (!confirm('¿Poner ' + (motor === 'waha' ? 'WAHA' : 'Evolution') + ' como principal de ' + (WA_ROLES.find((x) => x[0] === rol) || [, rol])[1] + '?')) return;
+      try { const r = await llamarBackend('wa_rutas', { op: 'poner', rol, motor }); if (!r || !r.ok) throw new Error((r && r.error) || 'No se pudo.'); waRutasPintar(r); mostrarToast('🔀 Guardado: se aplica en 1 min'); } catch (e) { alert(e.message); } }
     async function maryNoAtenderVer() { try { const r = await llamarBackend('wa_no_atender', { op: 'ver' }); if (!r || !r.ok) throw new Error((r && r.error) || 'No se pudo.');
         abrirDialogoTextoCopiable('🚫 Lista de no atender', '#nomary en chats (' + (r.nomary || []).length + '):\n' + ((r.nomary || []).join('\n') || '—') + '\n\nNúmeros aprendidos (' + (r.ignorados || []).length + '):\n' + ((r.ignorados || []).map(x => '…' + String(x.d).slice(-4) + ' ' + (x.n || '')).join('\n') || '—') + '\n\nPuestos a mano en Ajustes → WhatsApp: ' + ((r.ajustesNombres || []).concat(r.ajustesNumeros || []).join(', ') || '—')); } catch (e) { alert(e.message); } }
     async function maryNoAtenderLimpiar() { if (!await confirmarModal('¿Quitar TODOS los #nomary y los números aprendidos?\n\nMary y el bot vuelven a atender a todos (también los avisos). Lo que pusiste a mano en Ajustes → WhatsApp → ignorar se queda.', { textoAceptar: 'Sí, limpiar' })) return;
