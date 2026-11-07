@@ -4402,7 +4402,7 @@
         <div id="nfBloqueCliente" class="space-y-3">
         <div class="grid grid-cols-2 gap-2">
           <div>
-            <label class="block text-xs text-gray-400 mb-1">Nombre del perfil (Netflix) · vacío = sin asignar</label>
+            <label class="block text-xs text-gray-400 mb-1">Cliente (vacío = sin asignar) · su WhatsApp sale de su cuenta registrada (🔗 Vincular)</label>
             <input type="text" id="nfCliente" oninput="actualizarVistaVenceNetflix()" autocomplete="off" data-lpignore="true" placeholder="Ej: Mile" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none">
           </div>
           <div class="hidden"><!-- u51: el WhatsApp sale del cliente REGISTRADO (🔗 Vincular), no se escribe a mano -->
@@ -12949,10 +12949,14 @@
       const btn = document.getElementById('btnRecargaAutoCrear');
       if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>'; }
       try {
-        const r = await llamarBackend('recarga_crear', { monto: monto, paraCompra: paraCompra });
+        // 🛒 u52 · la compra que el cliente ya tocó viaja con el cobro: al llegar el pago la hace el SERVIDOR (aunque cierre la página)
+        const compraCobro = paraCompra && compraTrasRecarga ? Object.assign({ productoId: compraTrasRecarga.docId, cantidad: compraTrasRecarga.cantidad }, compraTrasRecarga.combo ? { combo: true } : {}) : null;
+        const r = await llamarBackend('recarga_crear', Object.assign({ monto: monto, paraCompra: paraCompra }, compraCobro ? { compra: compraCobro } : {}));
+        if (r && r.ok && r.compraGuardada && compraTrasRecarga) compraTrasRecarga.enServidor = true;
         if (!r.ok) { alert(r.error || 'No se pudo crear el pedido.'); return; }
         if (r.yaPagado) {   // 💸 pagó antes de pedir: el servidor ya encontró su pago y lo acreditó
           pedidoRecargaActivo = null; renderizarRecargaAuto();
+          if (r.compraHecha) { compraTrasRecarga = null; mostrarToast(r.compraHecha.ok ? '✅ Tu pago ya había llegado y tu compra de ' + r.compraHecha.cantidad + ' ' + r.compraHecha.producto + ' quedó lista' : '💰 Tu pago llegó; la compra no se pudo completar: ' + (r.compraHecha.error || '')); if (r.compraHecha.ok) setTimeout(() => { try { irAMisCompras(); } catch (e) { /* nada */ } }, 1500); return; }
           mostrarToast('✅ ¡Tu pago ya había llegado! Te acreditamos ' + formatoCOP(Number(r.acreditado) || 0) + (r.saldo != null ? ' · Saldo: ' + formatoCOP(Number(r.saldo) || 0) : ''));
           return;
         }
@@ -18785,7 +18789,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-11-10u51';
+    const VERSION_PAGINA = '2026-11-10u52';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261105_ranking', fecha: '2026-11-05', titulo: '🏆 ¡Llegó el ranking del mes!', mensaje: 'Ahora en la página ves **en qué puesto vas** (arriba, debajo de tu saldo). Los **3 que más recarguen** en el mes se llevan **saldo de regalo**: el **4%**, el **3%** y el **2%** de lo que recargaron. Para participar debes recargar mínimo **$150.000** en el mes. Se actualiza cada hora, cierra el último día del mes y el premio te cae solo el día 1. ¿Quién va a ser el primero? 😎', ir: '' },
       { id: 'act_20261102_codigos_seguros', fecha: '2026-11-02', titulo: 'Tus códigos, más protegidos 🔒', mensaje: 'Tu enlace de códigos ahora es más seguro: los códigos para **crear cuentas nuevas** con nuestros correos ya no se muestran a nadie sin permiso. Los códigos para **entrar a tu cuenta** y **cambiar la contraseña** te siguen llegando al instante, igual que siempre.', ir: '' },
@@ -21003,7 +21007,7 @@
       const prod = catalogoUnificado.find(p => p.docId === it.docId); if (!prod) return;
       // Total real: con precios por cantidad, campaña, venta relámpago, cupón y combo (lo mismo que cobra la compra)
       const total = Math.round((Number(precioUnitarioConCombo(prod, it.cantidad)) || Number(prod.precio) || 0) * it.cantidad);
-      compraTrasRecarga = { docId: it.docId, cantidad: it.cantidad, total: total, nombre: prod.nombre, expira: Date.now() + 40 * 60000 };
+      compraTrasRecarga = { docId: it.docId, cantidad: it.cantidad, total: total, nombre: prod.nombre, expira: Date.now() + 40 * 60000, combo: (function () { try { return !!comboPedidoPara(it.docId, it.cantidad); } catch (e) { return false; } })() };
       const falta = Math.max(0, total - (Number(userSaldo) || 0));
       setTimeout(() => {
         const inp = document.getElementById('recargaAutoMonto');
@@ -21037,6 +21041,9 @@
       compraTrasRecarga = null;
       const av = document.getElementById('avisoCompraTrasRecarga'); if (av) av.classList.add('hidden');
       try { cerrarModalRecarga(true); } catch (e) { /* nada */ }
+      if (c.enServidor) {   // 🛒 u52: la compra la hace el SERVIDOR al acreditar el pago (nunca dos veces): aquí solo se muestra
+        mostrarToast('✅ Llegó tu pago. Tu compra de ' + c.cantidad + ' ' + c.nombre + ' se está completando sola…');
+        setTimeout(() => { try { irAMisCompras(); } catch (e) { /* nada */ } }, 4000); return; }
       // ✅ El cliente ya tocó Comprar y recargó para eso: la compra se completa sola apenas entra el pago
       setTimeout(async () => {
         mostrarToast('✅ Llegó tu pago. Completando tu compra de ' + c.cantidad + ' ' + c.nombre + '…');
