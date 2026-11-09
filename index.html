@@ -3782,6 +3782,7 @@
           </div>
           <p id="nuevoProdDurTxt" class="text-[10px] text-violet-200 mt-1.5"></p>
           <label class="block text-[10px] text-gray-400 mt-2">🎯 Gancho de venta (lo usa Mary al ofrecerlo; solo beneficios reales)<textarea id="nuevoProdGancho" rows="2" maxlength="220" placeholder="Ej: la pueden usar 3 personas al tiempo y le puedes crear 6 perfiles" class="mt-1 w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-white text-xs"></textarea></label>
+          <label class="block text-[10px] text-gray-400 mt-2">🧠 Explicación para Mary (NO la ve ningún cliente: solo la usa Mary cuando le preguntan «¿qué es?», «¿cómo funciona?», «¿para qué sirve?»)<textarea id="nuevoProdExplica" rows="3" maxlength="900" placeholder="Ej: Es una cuenta de Amazon ya verificada, sin método de pago, lista para usar. Sirve para…" class="mt-1 w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-white text-xs"></textarea></label>
         </div>
         <div class="p-3 rounded-xl bg-sky-500/5 border border-sky-500/30">
           <label class="flex items-center justify-between gap-3 cursor-pointer"><span class="text-[11px] font-bold text-white"><i class="fa-solid fa-hourglass-half text-sky-300 mr-1"></i>Permitir pedido por encargo cuando esté agotado</span><input type="checkbox" id="nuevoProdEncActivo" onchange="encargoUI('nuevoProd')" class="accent-sky-500 w-5 h-5"></label>
@@ -3906,6 +3907,7 @@
           </div>
           <p id="editProdDurTxt" class="text-[10px] text-violet-200 mt-1.5"></p>
           <label class="block text-[10px] text-gray-400 mt-2">🎯 Gancho de venta (lo usa Mary al ofrecerlo; solo beneficios reales)<textarea id="editProdGancho" rows="2" maxlength="220" placeholder="Ej: la pueden usar 3 personas al tiempo y le puedes crear 6 perfiles" class="mt-1 w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-white text-xs"></textarea></label>
+          <label class="block text-[10px] text-gray-400 mt-2">🧠 Explicación para Mary (NO la ve ningún cliente: solo la usa Mary cuando le preguntan «¿qué es?», «¿cómo funciona?», «¿para qué sirve?»)<textarea id="editProdExplica" rows="3" maxlength="900" placeholder="Ej: Es una cuenta de Amazon ya verificada, sin método de pago, lista para usar. Sirve para…" class="mt-1 w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-white text-xs"></textarea></label>
         </div>
         <div class="p-3 rounded-xl bg-sky-500/5 border border-sky-500/30">
           <label class="flex items-center justify-between gap-3 cursor-pointer"><span class="text-[11px] font-bold text-white"><i class="fa-solid fa-hourglass-half text-sky-300 mr-1"></i>Permitir pedido por encargo cuando esté agotado</span><input type="checkbox" id="editProdEncActivo" onchange="encargoUI('editProd')" class="accent-sky-500 w-5 h-5"></label>
@@ -18816,7 +18818,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-11-10u54';
+    const VERSION_PAGINA = '2026-11-10u55';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261105_ranking', fecha: '2026-11-05', titulo: '🏆 ¡Llegó el ranking del mes!', mensaje: 'Ahora en la página ves **en qué puesto vas** (arriba, debajo de tu saldo). Los **3 que más recarguen** en el mes se llevan **saldo de regalo**: el **4%**, el **3%** y el **2%** de lo que recargaron. Para participar debes recargar mínimo **$150.000** en el mes. Se actualiza cada hora, cierra el último día del mes y el premio te cae solo el día 1. ¿Quién va a ser el primero? 😎', ir: '' },
       { id: 'act_20261102_codigos_seguros', fecha: '2026-11-02', titulo: 'Tus códigos, más protegidos 🔒', mensaje: 'Tu enlace de códigos ahora es más seguro: los códigos para **crear cuentas nuevas** con nuestros correos ya no se muestran a nadie sin permiso. Los códigos para **entrar a tu cuenta** y **cambiar la contraseña** te siguen llegando al instante, igual que siempre.', ir: '' },
@@ -23775,11 +23777,12 @@
       const n = document.getElementById(pref + 'DurN'), u = document.getElementById(pref + 'DurU'), t = document.getElementById(pref + 'TipoVenta'); if (!n) return;
       n.value = g ? g.n : ''; if (u) u.value = g ? g.u : 'm'; if (t) t.value = p && p.tipoVenta === 'alquiler' ? 'alquiler' : 'normal';
       const gv = document.getElementById(pref + 'Gancho'); if (gv) gv.value = (p && (p.ganchoVenta || ((snapshotInventario && snapshotInventario[p.docId]) || {}).ganchoVenta)) || '';
+      const ev = document.getElementById(pref + 'Explica'); if (ev) ev.value = (p && (p.explicacionBot || ((snapshotInventario && snapshotInventario[p.docId]) || {}).explicacionBot)) || '';   // 🧠 u55: explicación solo para Mary
       duracionUI(pref);
     }
     function duracionDesdeUI(pref) {
       const n = Math.max(0, Math.min(999, parseInt((document.getElementById(pref + 'DurN') || {}).value, 10) || 0)), u = (document.getElementById(pref + 'DurU') || {}).value || 'm';
-      return { duracionCuenta: n > 0 ? n + u : '', tipoVenta: (document.getElementById(pref + 'TipoVenta') || {}).value === 'alquiler' && n > 0 ? 'alquiler' : 'normal', ganchoVenta: String((document.getElementById(pref + 'Gancho') || {}).value || '').trim().slice(0, 220) };
+      return { duracionCuenta: n > 0 ? n + u : '', tipoVenta: (document.getElementById(pref + 'TipoVenta') || {}).value === 'alquiler' && n > 0 ? 'alquiler' : 'normal', ganchoVenta: String((document.getElementById(pref + 'Gancho') || {}).value || '').trim().slice(0, 220), explicacionBot: String((document.getElementById(pref + 'Explica') || {}).value || '').trim().slice(0, 900) };
     }
     function infoVentaProducto(prod) { const sn = (snapshotInventario && snapshotInventario[prod && prod.docId]) || {}; const d = (prod && prod.duracionCuenta) || sn.duracionCuenta || ''; return { duracion: parseGarantia(d) ? d : '', alquiler: ((prod && prod.tipoVenta) || sn.tipoVenta) === 'alquiler' && !!parseGarantia(d) }; }
     function htmlDuracionTarjeta(prod) {
