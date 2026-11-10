@@ -18838,7 +18838,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-11-10u63';
+    const VERSION_PAGINA = '2026-11-10u64';
     // 🧑 u58 (Alex, 10-nov): la AGENTE DE D-ID (Luisa con cara, conversa en vivo). Piloto: SOLO en epicstreaming.vip (nunca en las tiendas de tus clientes),
     //    SOLO a visitantes sin sesión, a la IZQUIERDA (a la derecha está tu botón de WhatsApp). Se carga después de la página para no hacerla lenta.
     (function () { try {
@@ -32233,15 +32233,30 @@ const LUISA_COM_DEF_PAG = { activo: true, stockHora: '08:00', mediodiaHora: '12:
       if (diasNetflix(base, hoy) > 7) base = hoy;
       const nuevo = sumarMesesNetflix(base, plan);
 
-      if (!await confirmarModal(
-        `¿Registrar el pago de ${a.clienteNombre || a.correo}?\n\n${plan} ${plan === 1 ? 'mes' : 'meses'} · ${formatoCOP(precio)}\nNuevo vencimiento: ${fechaCortaNetflix(nuevo)}\n\nNo descuenta saldo: úsalo cuando pagó por transferencia u otro medio.`,
-        { tipo: 'pregunta', textoAceptar: 'Registrar pago' }
-      )) return;
+      // 💰 u64 (Alex: «cuando le dé Registrar pago, que me pregunte si lo desconté yo por otra parte o se descuenta del saldo»)
+      const quien = a.clienteNombre || a.correo, resumen = `${plan} ${plan === 1 ? 'mes' : 'meses'} · ${formatoCOP(precio)}\nNuevo vencimiento: ${fechaCortaNetflix(nuevo)}`;
+      let saldoCli = null; if (a.clienteUid) { try { const dS = await db.collection('usuarios').doc(a.clienteUid).get(); saldoCli = dS.exists ? Math.max(0, Number(dS.data().saldo) || 0) : null; } catch (e) { saldoCli = null; } }
+      let conSaldo = false;
+      if (saldoCli !== null && precio > 0) {
+        conSaldo = await confirmarModal(`¿Registrar el pago de ${quien}?\n\n${resumen}\n\n💰 Tiene ${formatoCOP(saldoCli)} de saldo.\n¿Cómo lo pagó?`, { tipo: 'pregunta', textoAceptar: '💰 Descontar de su saldo', textoCancelar: '💵 Me pagó por fuera' });
+        if (conSaldo && saldoCli < precio) { alert(`No le alcanza el saldo: tiene ${formatoCOP(saldoCli)} y la renovación es de ${formatoCOP(precio)}. No registré nada.`); return; }
+      }
+      if (!conSaldo && !await confirmarModal(`¿Registrar el pago de ${quien} SIN tocar su saldo?\n\n${resumen}\n\n💵 Me pagó por fuera (transferencia u otro medio).`, { tipo: 'pregunta', textoAceptar: 'Registrar pago' })) return;
 
       try {
         const ahora = new Date().toISOString();
-        const lote = db.batch();
         const prA = productoDeAlquiler(a);
+        if (conSaldo) {   // todo junto: se descuenta el saldo y se registra el pago en UNA sola operación (si el saldo cambió, no se hace nada)
+          const refU = db.collection('usuarios').doc(a.clienteUid); let sAct = 0;
+          await db.runTransaction(async (tx) => { const u = await tx.get(refU); sAct = Math.max(0, Number(u.exists ? u.data().saldo : 0) || 0);
+            if (sAct < precio) throw new Error('el saldo cambió: ahora tiene ' + formatoCOP(sAct) + ' y la renovación es de ' + formatoCOP(precio));
+            tx.update(refU, { saldo: sAct - precio, ultimoMovimientoEl: ahora });
+            tx.set(db.collection('alquileres').doc(id), { proximoPago: nuevo, ultimoPago: ahora, ultimoMonto: precio, actualizadoEl: ahora, productoId: prA.id, productoNombre: prA.nombre }, { merge: true });
+            tx.set(db.collection('pagos_alquiler').doc(), { alquilerId: id, correo: a.correo || '', usuarioId: a.clienteUid || '', usuarioEmail: a.clienteEmail || '', clienteNombre: a.clienteNombre || '', monto: precio, meses: plan, desde: base, hasta: nuevo, fecha: ahora, metodo: 'saldo', pagadoConSaldo: precio, procesadoPor: 'admin' });
+            tx.set(db.collection('compras').doc(), ventaDeAlquiler(a, precio, 'pago_alquiler', { metodoPago: 'saldo', pagadoConSaldo: precio, procesadoPor: (currentUser && currentUser.email) || 'admin', desde: base, hasta: nuevo })); });
+          mostrarToast(`Pago registrado con su saldo (le quedan ${formatoCOP(sAct - precio)}). Próximo pago: ` + fechaCortaNetflix(nuevo));
+          return; }
+        const lote = db.batch();
         lote.set(db.collection('alquileres').doc(id), { proximoPago: nuevo, ultimoPago: ahora, ultimoMonto: precio, actualizadoEl: ahora, productoId: prA.id, productoNombre: prA.nombre }, { merge: true });
         lote.set(db.collection('pagos_alquiler').doc(), {
           alquilerId: id, correo: a.correo || '', usuarioId: a.clienteUid || '', usuarioEmail: a.clienteEmail || '',
