@@ -18824,7 +18824,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-11-10u59';
+    const VERSION_PAGINA = '2026-11-10u60';
     // 🧑 u58 (Alex, 10-nov): la AGENTE DE D-ID (Luisa con cara, conversa en vivo). Piloto: SOLO en epicstreaming.vip (nunca en las tiendas de tus clientes),
     //    SOLO a visitantes sin sesión, a la IZQUIERDA (a la derecha está tu botón de WhatsApp). Se carga después de la página para no hacerla lenta.
     (function () { try {
@@ -25247,7 +25247,7 @@
     async function hacerDealer(uid, email) {
       if (!await confirmarModal(`¿Convertir a ${email} en Dealer?\n\nVerá la tienda como Dealer, con sus promos, su nivel del mes y "Mi negocio".`, { textoAceptar: 'Sí, hacer Dealer' })) return;
       try {
-        await db.collection('usuarios').doc(uid).update({ tipoCuenta: 'revendedor' });
+        await db.collection('usuarios').doc(uid).update({ tipoCuenta: 'revendedor', dealerEl: new Date().toISOString(), dealerPerdido: false });
         await notificarUsuarioPanel(uid, 'anuncio', '👑 ¡Ahora eres Dealer!', 'Tienes promos exclusivas, regalos por volumen y tu nivel del mes. Míralo en tu perfil.');
         mostrarToast('👑 ' + email + ' ahora es Dealer'); prepararDealers();
       } catch (e) { alert('No se pudo: ' + e.message); }
@@ -25541,6 +25541,11 @@
           <div class="grid grid-cols-2 gap-2"><label class="text-[11px] text-gray-400">Días como cliente<input type="number" id="reqDlDias" min="0" max="365" value="${R.dias}" class="${inp}"></label><label class="text-[11px] text-gray-400">Compras mínimas<input type="number" id="reqDlCompras" min="0" max="1000" value="${R.compras}" class="${inp}"></label></div>
           <p class="text-[11px] text-gray-500">Los clientes ven su avance en su perfil y, cuando cumplen, el botón "Pedir ser Dealer". El servidor verifica los requisitos de verdad.</p>
           <button type="button" onclick="guardarReqDealer()" class="w-full py-2.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-black font-black text-xs">Guardar requisitos</button></div>` +
+        (() => { const I = Object.assign({ activa: false, dias: 15, aviso: 3, vuelve: true }, (cfgDealer || {}).inactividad || {}); return `<div class="p-4 rounded-2xl bg-gray-900 border border-yellow-400/30 space-y-2"><div class="flex items-center justify-between gap-2"><p class="text-sm font-black text-white">👑 Mantener la categoría Dealer</p><label class="flex items-center gap-2 text-[11px] font-bold text-white">Activo<input type="checkbox" id="inDlActiva" ${I.activa ? 'checked' : ''} class="accent-amber-400 w-4 h-4"></label></div>
+          <div class="grid grid-cols-2 gap-2"><label class="text-[11px] text-gray-400">Pierde Dealer si no compra en (días)<input type="number" id="inDlDias" min="5" max="180" value="${I.dias}" class="${inp}"></label><label class="text-[11px] text-gray-400">Mary le avisa (días antes)<input type="number" id="inDlAviso" min="0" max="30" value="${I.aviso}" class="${inp}"></label></div>
+          <label class="flex items-center gap-2 text-[11px] font-bold text-white"><input type="checkbox" id="inDlVuelve" ${I.vuelve !== false ? 'checked' : ''} class="accent-amber-400 w-4 h-4">Si vuelve a comprar, recupera Dealer solo</label>
+          <p class="text-[11px] text-gray-500">Los días se cuentan desde su última compra (o desde que lo aprobaste o prendiste esto). Al perderla pasa a cliente: su saldo y sus compras no se tocan. La primera vez solo te llega por Telegram la lista de quiénes la perderían. Nunca toca a tu equipo.</p>
+          <button type="button" onclick="guardarInactDealer()" class="w-full py-2.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-black font-black text-xs">Guardar</button></div>`; })() +
         (solicitudesDealer.length ? solicitudesDealer.map(x => `<div class="p-3 rounded-2xl bg-gray-900 border border-gray-800"><div class="flex justify-between gap-2"><p class="text-sm font-black text-white truncate">${escaparHtml(x.nombre || String(x.email || '').split('@')[0])}</p><span class="text-[10px] text-gray-500 shrink-0">${tiempoRelativo(x.creadoEl)}</span></div>
             <p class="text-[11px] text-gray-400 truncate">${escaparHtml(x.email || '')} · cliente hace ${x.dias} días · ${x.compras} compras · ${formatoCOP(x.totalGastado || 0)} en total</p>
             <div class="grid grid-cols-2 gap-2 mt-2"><button type="button" onclick="resolverSolicitudDealer('${x.id}',true)" class="py-2 rounded-xl bg-amber-400 text-black font-black text-xs">✓ Aprobar</button><button type="button" onclick="resolverSolicitudDealer('${x.id}',false)" class="py-2 rounded-xl bg-gray-800 border border-gray-700 text-gray-200 font-bold text-xs">Rechazar</button></div></div>`).join('') : '<p class="text-[12px] text-gray-500 text-center py-4">No hay solicitudes pendientes.</p>');
@@ -25550,6 +25555,12 @@
       try { await db.collection('configuracion').doc('revendedores').set({ solicitud: sol }, { merge: true }); cfgDealer = Object.assign(cfgDealer || {}, { solicitud: sol }); mostrarToast(`Requisitos guardados: ${sol.dias} días y ${sol.compras} compras${sol.activa ? '' : ' (solicitudes apagadas)'}`); }
       catch (e) { alert(e.message); }
     }
+    async function guardarInactDealer() {
+      const ant = (cfgDealer || {}).inactividad || {}, activa = !!document.getElementById('inDlActiva').checked, dias = Math.max(5, Math.min(180, parseInt(document.getElementById('inDlDias').value, 10) || 15));
+      const I = { activa, dias, aviso: Math.max(0, Math.min(dias - 1, parseInt(document.getElementById('inDlAviso').value, 10) || 0)), vuelve: !!document.getElementById('inDlVuelve').checked, activadaEl: activa ? (ant.activa === true && ant.activadaEl ? ant.activadaEl : new Date().toISOString()) : '' };
+      try { await db.collection('configuracion').doc('revendedores').set({ inactividad: I }, { merge: true }); cfgDealer = Object.assign(cfgDealer || {}, { inactividad: I }); mostrarToast(activa ? `👑 Listo: pierde Dealer a los ${I.dias} días sin comprar${I.aviso ? ' (aviso ' + I.aviso + ' días antes)' : ''}` : 'Mantener Dealer: apagado'); }
+      catch (e) { alert(e.message); }
+    }
     async function resolverSolicitudDealer(uid, aprobar) {
       const x = solicitudesDealer.find(s => s.id === uid); if (!x) return;
       let motivo = '';
@@ -25557,7 +25568,7 @@
       else { motivo = await pedirTextoModal('Motivo del rechazo (lo verá el cliente)', 'Por ahora no cumple con lo que buscamos. Sigue comprando y vuelve a intentarlo.'); if (motivo === null) return; }
       try {
         const ahora = new Date().toISOString();
-        if (aprobar) await db.collection('usuarios').doc(uid).update({ tipoCuenta: 'revendedor' });
+        if (aprobar) await db.collection('usuarios').doc(uid).update({ tipoCuenta: 'revendedor', dealerEl: new Date().toISOString(), dealerPerdido: false });
         await db.collection('solicitudes_dealer').doc(uid).update({ estado: aprobar ? 'aprobada' : 'rechazada', motivo: motivo, resueltoEl: ahora, resueltoPor: currentUser.email });
         await notificarUsuarioPanel(uid, 'anuncio', aprobar ? '👑 ¡Ahora eres Dealer!' : '👑 Revisamos tu solicitud', aprobar ? 'Tienes promos exclusivas, regalos por volumen y tu nivel del mes. Míralo en tu perfil.' : motivo);
         mostrarToast(aprobar ? '👑 ' + x.email + ' ahora es Dealer' : 'Solicitud rechazada: el cliente fue avisado');
