@@ -4407,8 +4407,10 @@
         <div id="nfBloqueCliente" class="space-y-3">
         <div class="grid grid-cols-2 gap-2">
           <div>
-            <label class="block text-xs text-gray-400 mb-1">Cliente (vacío = sin asignar) · su WhatsApp sale de su cuenta registrada (🔗 Vincular)</label>
-            <input type="text" id="nfCliente" oninput="actualizarVistaVenceNetflix()" autocomplete="off" data-lpignore="true" placeholder="Ej: Mile" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none">
+            <label class="block text-xs text-gray-400 mb-1">Estado</label>
+            <select id="nfAsignada" onchange="nfPintarVinculo(); actualizarVistaVenceNetflix()" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none"><option value="si">🟢 Asignada</option><option value="no">⚪ Sin asignar</option></select>
+            <input type="hidden" id="nfCliente"><!-- u61 (Alex: «en vez del nombre pon asignar o sin asignar»): el nombre sale del cliente vinculado -->
+            <div id="nfVinculo" class="mt-1.5 text-[11px]"></div>
           </div>
           <div class="hidden"><!-- u51: el WhatsApp sale del cliente REGISTRADO (🔗 Vincular), no se escribe a mano -->
             <label class="block text-xs text-gray-400 mb-1">WhatsApp (opcional)</label>
@@ -17282,7 +17284,7 @@
     let creditoEditando = null;
 
     async function cargarCreditoEditar(uid, d) {
-      creditoEditando = { uid: uid, email: d.email || '', deuda: Math.max(0, Number(d.deuda) || 0), cupo: Math.max(0, Number(d.cupoCredito) || 0) };
+      creditoEditando = { uid: uid, email: d.email || '', deuda: Math.max(0, Number(d.deuda) || 0), cupo: Math.max(0, Number(d.cupoCredito) || 0), pausa: d.credPausa === true, pausaDias: Number(d.credPausaDias) || 0 };   // 💳 u61: crédito en pausa
       const set = (id, v) => { const e = document.getElementById(id); if (e) e.value = v; };
       set('editClienteCupo', creditoEditando.cupo ? String(creditoEditando.cupo) : '');
       set('editCreditoPrestar', ''); set('editCreditoPago', ''); set('editCreditoNota', '');
@@ -17312,7 +17314,18 @@
       if (chip) { chip.textContent = c.deuda > 0 ? 'Debe ' + formatoCOP(c.deuda) : 'Sin deuda'; chip.className = 'text-[11px] font-black px-2 py-0.5 rounded-full border ' + (c.deuda > 0 ? 'bg-violet-500/20 text-violet-100 border-violet-400/40' : 'bg-gray-800 text-emerald-300 border-gray-700'); }
       const res = document.getElementById('editCreditoResumen');
       if (res) res.textContent = c.cupo > 0 ? `Cupo ${formatoCOP(c.cupo)} · disponible ${formatoCOP(Math.max(0, c.cupo - c.deuda))}. Cuando recargue, primero se paga la deuda.` : 'Sin cupo: solo compra con su saldo. Puedes prestarle saldo o darle un cupo.';
+      // ⏸ u61 (Alex: «si dura más de 10 días sin pagar, no se le renueva el crédito hasta que yo se lo active»)
+      if (res) { let p = document.getElementById('editCreditoPausa'); if (!p) { p = document.createElement('div'); p.id = 'editCreditoPausa'; res.insertAdjacentElement('afterend', p); }
+        p.className = 'mt-2 p-3 rounded-xl border space-y-2 ' + (c.pausa ? 'bg-amber-500/10 border-amber-400/40' : 'bg-gray-900 border-gray-800');
+        p.innerHTML = (c.pausa ? `<div class="flex items-center justify-between gap-2"><p class="text-[11px] font-black text-amber-200">⏸ Crédito en pausa${c.pausaDias ? ' (debió ' + c.pausaDias + ' días)' : ''}</p><button type="button" onclick="activarCreditoPausa()" class="px-3 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-black text-[11px] font-black">▶ Activar crédito</button></div><p class="text-[10px] text-amber-100/80">No puede usar crédito (ni cupo, ni preaprobado, ni «paga después» con Mary) hasta que lo actives. La deuda se paga igual.</p>` : '') +
+          `<div class="flex items-center gap-2 text-[10px] text-gray-400">Pausar el crédito a los<input type="number" id="editCreditoDiasPausa" min="1" max="90" placeholder="10" class="w-14 bg-gray-800 border border-gray-700 rounded-lg px-2 py-1 text-[11px] text-white">días debiendo (para todos)<button type="button" onclick="guardarDiasPausaCredito()" class="ml-auto px-2 py-1 rounded-lg bg-gray-800 border border-gray-700 text-gray-200 font-bold">Guardar</button></div>`;
+        db.collection('configuracion').doc('ajustes').get().then((x) => { const n = Number(((x.exists && x.data()) || {}).creditoDiasPausa) || 10; const i = document.getElementById('editCreditoDiasPausa'); if (i && !i.value) i.value = n; }).catch(() => {}); }
     }
+    async function activarCreditoPausa() { const c = creditoEditando; if (!c) return;
+      if (!await confirmarModal('¿Activar otra vez el crédito de ' + (c.email || 'este cliente') + '?', { textoAceptar: 'Sí, activar' })) return;
+      try { await db.collection('usuarios').doc(c.uid).update({ credPausa: false, credPausaEl: '', credActivadoEl: new Date().toISOString(), credActivadoPor: currentUser.email }); c.pausa = false; pintarCreditoEditar(); mostrarToast('▶ Crédito activado otra vez'); } catch (e) { alert(e.message); } }
+    async function guardarDiasPausaCredito() { const n = Math.max(1, Math.min(90, parseInt((document.getElementById('editCreditoDiasPausa') || {}).value, 10) || 10));
+      try { await db.collection('configuracion').doc('ajustes').set({ creditoDiasPausa: n }, { merge: true }); mostrarToast('⏸ El crédito se pausa a los ' + n + ' días debiendo'); } catch (e) { alert(e.message); } }
 
     async function operarCredito(tipo) {
       if (!esAdminSesionActual() || !creditoEditando) return;
@@ -18824,7 +18837,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-11-10u60';
+    const VERSION_PAGINA = '2026-11-10u61';
     // 🧑 u58 (Alex, 10-nov): la AGENTE DE D-ID (Luisa con cara, conversa en vivo). Piloto: SOLO en epicstreaming.vip (nunca en las tiendas de tus clientes),
     //    SOLO a visitantes sin sesión, a la IZQUIERDA (a la derecha está tu botón de WhatsApp). Se carga después de la página para no hacerla lenta.
     (function () { try {
@@ -31721,7 +31734,7 @@ const LUISA_COM_DEF_PAG = { activo: true, stockHora: '08:00', mediodiaHora: '12:
         else diasTxt = `Venció hace ${Math.abs(est.dias)} ${Math.abs(est.dias) === 1 ? 'día' : 'días'}`;
       }
       const cliente = asignada
-        ? `<span class="text-white font-bold">${escaparHtml(a.clienteNombre || a.clienteEmail || 'Sin nombre')}</span> ${a.clienteUid ? '<span class="text-[10px] text-emerald-400"><i class="fa-solid fa-link"></i> vinculado</span>' : '<span class="text-[10px] text-amber-400">pendiente de migrar</span>'}`
+        ? `<span class="text-white font-bold">${escaparHtml(a.clienteNombre || a.clienteEmail || 'Sin nombre')}</span> ${a.clienteUid ? '<span class="text-[10px] text-emerald-400"><i class="fa-solid fa-link"></i> vinculado</span>' : '<span class="text-[10px] text-amber-400 font-bold">⚠️ sin vincular · no le llegan avisos</span>'}`
         : '<span class="text-gray-400">Sin cliente</span>';
       const emailVinculado = a.clienteUid ? (a.clienteEmail || emailPorUidNetflix(a.clienteUid) || a.clienteUid) : '';
       const nCod = (asignada && a.clienteUid && a.codigosClienteUid === a.clienteUid) ? (parseInt(a.codigosPedidos, 10) || 0) : 0;
@@ -31803,6 +31816,7 @@ const LUISA_COM_DEF_PAG = { activo: true, stockHora: '08:00', mediodiaHora: '12:
       const set = (campo, valor) => { const el = document.getElementById(campo); if (el) el.value = valor; };
       set('nfCorreo', a ? (a.correo || '') : '');
       set('nfCliente', a ? (a.clienteNombre || '') : '');
+      set('nfAsignada', (a && a.estado === 'asignado') || (!a && modoAsignar) || (a && modoAsignar) ? 'si' : 'no'); setTimeout(nfPintarVinculo, 0);   // 🟢 u61
       set('nfWhatsapp', a ? (a.clienteWhatsapp || '') : '');
       set('nfPlan', a ? String(parseInt(a.plan, 10) || 1) : '1');
       nfPonerDuracion(a ? (a.duracion || (parseInt(a.plan, 10) || 1) + 'm') : duracionProductoNetflix());
@@ -31914,7 +31928,7 @@ const LUISA_COM_DEF_PAG = { activo: true, stockHora: '08:00', mediodiaHora: '12:
       const set = (id, v) => { const el = document.getElementById(id); if (el) el.value = v; };
       const partes = String(linea).split(/[;\t|]/).map(x => x.trim());
       set('nfCorreo', nfNormalizarCorreo(partes[0]));
-      if (partes[1]) set('nfCliente', partes[1]);
+      if (partes[1]) { set('nfCliente', partes[1]); set('nfAsignada', 'si'); }
       const plan = parseInt(String(partes[2] || '').replace(/\D/g, ''), 10);
       if (plan > 0 && plan <= 36) { set('nfPlan', String(plan)); nfPonerDuracion(plan + 'm'); }
       const precio = parseInt(String(partes[3] || '').replace(/\D/g, ''), 10);
@@ -31934,7 +31948,7 @@ const LUISA_COM_DEF_PAG = { activo: true, stockHora: '08:00', mediodiaHora: '12:
       if (/[;\t|]/.test(t)) { nfRellenarDesdeLinea(t.split('\n')[0]); return true; }
       const m = t.match(/[^\s@<>"',;:]+@[^\s@<>"',;:]+\.[^\s@<>"',;:]+/);
       if (m) { set('nfCorreo', nfNormalizarCorreo(m[0])); return true; }
-      set('nfCliente', t.replace(/\s+/g, ' ').slice(0, 80));
+      set('nfCliente', t.replace(/\s+/g, ' ').slice(0, 80)); set('nfAsignada', 'si'); nfPintarVinculo();
       actualizarVistaVenceNetflix();
       return true;
     }
@@ -31974,7 +31988,7 @@ const LUISA_COM_DEF_PAG = { activo: true, stockHora: '08:00', mediodiaHora: '12:
       const box = document.getElementById('nfVistaVence');
       if (!box) return;
       const previa = netflixEditandoId ? netflixCuentasAdmin.find(x => x.id === netflixEditandoId) : null;
-      const asignada = !!nfValor('nfCliente') || !!(previa && previa.estado === 'asignado');
+      const asignada = nfValor('nfAsignada') === 'si';   // 🟢 u61
       const prox = nfValor('nfProximo');
       const inpProx = document.getElementById('nfProximo');
       const crudoProx = inpProx && typeof inpProx.textoCrudo === 'function' ? inpProx.textoCrudo() : '';
@@ -32035,7 +32049,7 @@ const LUISA_COM_DEF_PAG = { activo: true, stockHora: '08:00', mediodiaHora: '12:
         const mismoPerfil = netflixCuentasAdmin.some(x => x.correo === correo && x.tipo === 'compartida' && x.id !== netflixEditandoId && String(x.perfil || '').toLowerCase() === perfil.toLowerCase());
         if (mismoPerfil) { alert('Ya hay un perfil con el nombre "' + perfil + '" en esta cuenta.'); return; }
       }
-      const cliente = val('nfCliente');
+      const cliente = val('nfCliente') || (previa && previa.clienteNombre) || '';
       const duracionNf = nfDuracionActual() || duracionProductoNetflix();
       const plan = mesesEquivalentes(duracionNf);
       const precio = Math.max(0, Math.round(Number(val('nfPrecio')) || 0));
@@ -32044,7 +32058,9 @@ const LUISA_COM_DEF_PAG = { activo: true, stockHora: '08:00', mediodiaHora: '12:
       const crudoDe = (id) => { const el = document.getElementById(id); return el && typeof el.textoCrudo === 'function' ? el.textoCrudo().trim() : ''; };
       if (crudoDe('nfInicio') && !inicio) { alert('La fecha de inicio no es válida. Escríbela como día/mes/año, por ejemplo 21/10/2026.'); return; }
       if (crudoDe('nfProximo') && !proximo) { alert('La fecha del próximo pago no es válida. Escríbela como día/mes/año, por ejemplo 21/10/2026.'); return; }
-      const asignada = !!cliente || !!(previa && previa.estado === 'asignado');
+      const asignada = val('nfAsignada') === 'si';   // 🟢 u61: lo dices tú (Asignada / Sin asignar), no el nombre
+      if (asignada && !(previa && previa.clienteUid) && !await confirmarModal('⚠️ Esta cuenta queda ASIGNADA pero sin cliente vinculado: no le llegarán los avisos de renovación ni los recordatorios.\n\nDespués de guardar, toca «🔗 Vincular cliente». ¿Guardar igual?', { textoAceptar: 'Guardar' })) return;
+      if (!asignada && previa && previa.estado === 'asignado' && !await confirmarModal('¿Dejar esta cuenta SIN ASIGNAR? Se le quita el cliente ' + (previa.clienteNombre || previa.clienteEmail || '') + ' y sus fechas.', { textoAceptar: 'Sí, sin asignar' })) return;
       if (previa && previa.enTienda && previa.estado !== 'asignado' && asignada) {
         if (!await confirmarModal('Este perfil está a la venta en la tienda. ¿Sacarlo de la tienda y asignarlo a este cliente?', { textoAceptar: 'Sí, asignar' })) return;
         if (!(await sacarDeTienda(previa.id, true))) return;
@@ -32278,6 +32294,12 @@ const LUISA_COM_DEF_PAG = { activo: true, stockHora: '08:00', mediodiaHora: '12:
         alert('No se pudo actualizar: ' + err.message);
       }
     }
+
+    // 🔗 u61: a quién está vinculada (el nombre y el WhatsApp salen de su cuenta registrada)
+    function nfPintarVinculo() { const box = document.getElementById('nfVinculo'); if (!box) return; const a = netflixEditandoId ? netflixCuentasAdmin.find(x => x.id === netflixEditandoId) : null;
+      if (nfValor('nfAsignada') !== 'si') { box.innerHTML = '<span class="text-gray-500">Libre: sin cliente.</span>'; return; }
+      if (a && a.clienteUid) { box.innerHTML = `<span class="text-emerald-300">🔗 ${escaparHtml(a.clienteNombre || a.clienteEmail || '')}</span><span class="text-gray-500"> · ${escaparHtml(a.clienteEmail || '')}${a.clienteWhatsapp ? ' · ' + escaparHtml(a.clienteWhatsapp) : ''}</span> <button type="button" onclick="nfCerrar('modalNetflixCuenta'); abrirModalNetflixVincular('${escaparJsAttr(a.id)}')" class="underline text-gray-300">cambiar</button>`; return; }
+      box.innerHTML = a ? `<span class="text-amber-300">⚠️ Sin cliente vinculado: no le llegan los avisos.</span> <button type="button" onclick="nfCerrar('modalNetflixCuenta'); abrirModalNetflixVincular('${escaparJsAttr(a.id)}')" class="underline font-bold text-white">🔗 Vincular cliente</button>` : '<span class="text-amber-300">⚠️ Guarda la cuenta y luego vincula al cliente (🔗 Vincular).</span>'; }
 
     // ---------- Vincular a un usuario registrado ----------
     async function abrirModalNetflixVincular(id) {
