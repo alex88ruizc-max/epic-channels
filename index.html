@@ -1722,7 +1722,7 @@
             </div>
             <div id="vmComoCaja" class="hidden"><label class="text-[10px] text-gray-400">🆓 Este correo libre se registra como<select id="vmComo" onchange="vmCambioProducto(true)" class="mt-1 w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"></select></label></div>
             <label class="block text-[10px] text-gray-400">👤 Cuenta del cliente (correo) · opcional<input type="email" id="vmCuentaCliente" inputmode="email" autocomplete="off" placeholder="Así la ve en Mis cuentas con su garantía" class="mt-1 w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"></label>
-            <label id="vmSobreCaja" class="hidden flex items-start gap-2 p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/40 text-[11px] text-amber-100"><input type="checkbox" id="vmSobre" class="mt-0.5"><span>📦 Entregar las <b id="vmHay"></b> que hay ya y dejar las <b id="vmFaltan"></b> que faltan <b>sobre pedido</b> (le llegan solas cuando entre stock). Necesita la <b>cuenta del cliente</b>.</span></label>
+            <label id="vmSobreCaja" class="hidden flex items-start gap-2 p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/40 text-[11px] text-amber-100"><input type="checkbox" id="vmSobre" class="mt-0.5"><span>📦 Entregar las <b id="vmHay"></b> que hay ya y dejar las <b id="vmFaltan"></b> que faltan <b>sobre pedido</b>: le llegan solas <b>por WhatsApp</b> apenas entren. Sirve con la <b>cuenta del cliente (correo)</b> o con su <b>WhatsApp</b> en «Cliente» (si no está registrado, queda como cliente de WhatsApp).</span></label>
             <p id="vmInfo" class="text-[11px] text-gray-400"></p>
             <button type="button" id="btnVentaManual" onclick="hacerVentaManual()" class="w-full py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-black text-xs"><i class="fa-brands fa-whatsapp mr-1"></i>Vender y armar mensaje</button>
           </div>
@@ -18837,7 +18837,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-11-10u61';
+    const VERSION_PAGINA = '2026-11-10u62';
     // 🧑 u58 (Alex, 10-nov): la AGENTE DE D-ID (Luisa con cara, conversa en vivo). Piloto: SOLO en epicstreaming.vip (nunca en las tiendas de tus clientes),
     //    SOLO a visitantes sin sesión, a la IZQUIERDA (a la derecha está tu botón de WhatsApp). Se carga después de la página para no hacerla lenta.
     (function () { try {
@@ -19852,7 +19852,7 @@
       if (!prod) { alert('Elige el producto.'); return; }
       const libres = ac.libre ? 1 : vmLibres(id), sobre = !ac.libre && n > libres && !!(document.getElementById('vmSobre') || {}).checked;
       if (!ac.libre && n > libres && !sobre) { alert(`Solo hay ${libres} libres. Marca "sobre pedido" para dejar el resto en fila, o baja la cantidad.`); return; }
-      if (sobre && !emCli) { alert('Para dejar cuentas sobre pedido escribe el correo de la cuenta del cliente.'); return; }
+      if (sobre && !emCli && String(cliente).replace(/\D/g, '').length < 10) { alert('Para dejar cuentas sobre pedido escribe el correo de la cuenta del cliente o su WhatsApp (en «Cliente»).'); return; }   // 📦 u62: también con solo el WhatsApp
       // 👤 cuenta del cliente (si la escribiste): la compra queda a su nombre
       let uidCli = '';
       if (emCli) {
@@ -19868,7 +19868,7 @@
       if (!uidCli) { const dW = String(cliente || '').replace(/\D/g, ''); if (dW.length >= 10) { const d10 = dW.slice(-10);
         try { for (const v of [d10, '57' + d10, '+57' + d10, '+57 ' + d10]) { const q = await db.collection('usuarios').where('whatsapp', '==', v).limit(1).get(); if (!q.empty) { uidCli = q.docs[0].id; emWa = String(q.docs[0].data().email || ''); break; } } } catch (e) { /* sin enlace: queda como venta por WhatsApp */ } } }
       const nInm = ac.libre ? 1 : Math.min(n, libres), nPed = sobre ? n - nInm : 0, precio = Math.round(totalCobro / n), totInm = nPed ? precio * nInm : totalCobro;
-      const msgC = ac.libre ? `¿Vender el correo libre ${ac.libre} como ${prod.nombre} por ${formatoCOP(totalCobro)}?` : `¿Vender ${n} ${n === 1 ? 'cuenta' : 'cuentas'} de ${prod.nombre} por ${formatoCOP(totalCobro)}?` + (nPed ? `\n\n${nInm} se entregan ya y ${nPed} quedan sobre pedido a nombre de ${emCli}.` : '\n\nSe entregan de tu stock y queda registrada como venta.');
+      const msgC = ac.libre ? `¿Vender el correo libre ${ac.libre} como ${prod.nombre} por ${formatoCOP(totalCobro)}?` : `¿Vender ${n} ${n === 1 ? 'cuenta' : 'cuentas'} de ${prod.nombre} por ${formatoCOP(totalCobro)}?` + (nPed ? `\n\n${nInm} se entregan ya y ${nPed} quedan sobre pedido a nombre de ${emCli || emWa || cliente} (le llegan solas por WhatsApp apenas entren).` : '\n\nSe entregan de tu stock y queda registrada como venta.');
       if (!await confirmarModal(msgC + (uidCli ? `\n\n👤 Queda a nombre de: ${emCli || emWa}` : (cliente ? '\n\n⚠️ Sin cuenta enlazada (no encontré ese correo ni ese WhatsApp): queda como venta por WhatsApp.' : '')), { textoAceptar: 'Sí, vender' })) return;
       // 💰 Si el cliente tiene saldo: se descuenta de su saldo (junto con la venta, en una sola operación)
       let descSaldo = 0, saldoAntes = 0;
@@ -19907,11 +19907,11 @@
         if (refUsr && !ac.libre && nInm === 0) {   // todo quedó sobre pedido: el saldo se descuenta aparte (y se devuelve si el pedido no se crea)
           await db.runTransaction(async (tx) => { const sAct = await cobrarSaldoTx(tx); tx.update(refUsr, { saldo: sAct - descSaldo, ultimoMovimientoEl: new Date().toISOString() }); }); }
         if (nPed) {
-          const r = await llamarBackend('venta_manual_preorden', { email: emCli, productoId: id, cantidad: nPed, total: totalCobro - totInm });
+          const r = await llamarBackend('venta_manual_preorden', { email: emCli || emWa, whatsapp: String(cliente || '').replace(/\D/g, ''), nombre: cliente, productoId: id, cantidad: nPed, total: totalCobro - totInm });
           if (!r || !r.ok) { alert('⚠️ ' + (nInm ? 'Las ' + nInm + ' se entregaron, pero ' : '') + 'el sobre pedido no se pudo crear: ' + ((r && r.error) || 'error'));
             if (refUsr && nInm === 0) { try { await db.runTransaction(async (tx) => { const u = await tx.get(refUsr); tx.update(refUsr, { saldo: (Number(u.data().saldo) || 0) + descSaldo }); }); descSaldo = 0; alert('💰 Le devolví el saldo descontado.'); } catch (e) { alert('⚠️ No pude devolverle ' + formatoCOP(descSaldo) + ' al saldo: hazlo a mano.'); } } }
           else { try { if (nInm > 0 && window.__vmCompraRef) await window.__vmCompraRef.update({ preordenId: r.id }); } catch (e) { /* solo es para agrupar */ } }
-          if (r && r.ok) extra = `\n\n📦 *Y ${nPed} ${nPed === 1 ? 'te queda' : 'te quedan'} sobre pedido:* te ${nPed === 1 ? 'llega sola' : 'llegan solas'} a tu cuenta apenas entren${r.fila && r.fila.delante ? ' (hay ' + r.fila.delante + ' pedidas antes que las tuyas)' : ''}.`;
+          if (r && r.ok) extra = `\n\n📦 *Y ${nPed} ${nPed === 1 ? 'te queda' : 'te quedan'} sobre pedido:* te ${nPed === 1 ? 'llega sola' : 'llegan solas'} por aquí apenas entren${r.fila && r.fila.delante ? ' (hay ' + r.fila.delante + ' pedidas antes que las tuyas)' : ''}.`;
         }
         const texto = (sacadas.length ? textoVentaManual(prod, sacadas, await enlaceAmzDe(sacadas)) : `✅ *Tu pedido de ${prod.nombre}*`) + extra + (descSaldo > 0 ? `\n\n💰 *Pagado con tu saldo:* ${formatoCOP(descSaldo)}${descSaldo < totalCobro ? ' (el resto, ' + formatoCOP(totalCobro - descSaldo) + ', aparte)' : ''} · Te quedan ${formatoCOP(saldoAntes - descSaldo)}` : '');
         document.getElementById('vmCantidad').value = 1; document.getElementById('vmCliente').value = ''; const ec = document.getElementById('vmCuentaCliente'); if (ec) ec.value = ''; const sb = document.getElementById('vmSobre'); if (sb) sb.checked = false;
