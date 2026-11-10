@@ -1103,8 +1103,7 @@
             <i class="fa-solid fa-chevron-right text-amber-300 text-xs"></i>
           </button>
         </div>
-        <div id="perfilNetflixCaja" class="hidden mb-3 p-3 rounded-2xl border border-red-500/40 bg-gradient-to-br from-red-600/10 to-gray-900">
-          <h4 class="text-xs font-black text-white mb-2.5 flex items-center gap-2"><span class="nf-wordmark text-[12px]">NETFLIX</span> Mis cuentas asignadas</h4>
+        <div id="perfilNetflixCaja" class="hidden mb-3">   <!-- 🎨 u57 (Alex): un cuadro por plataforma, como el de Netflix, cada uno con sus colores -->
           <div id="perfilNetflixLista" class="space-y-3"></div>
         </div>
         <div id="misPreordenesCaja" class="hidden mb-3"></div>
@@ -17567,7 +17566,9 @@
         .sort((x, y) => String(x.proximoPago || '9999').localeCompare(String(y.proximoPago || '9999')));
       caja.classList.toggle('hidden', !asignadas.length);
       if (!asignadas.length) { cont.innerHTML = ''; return; }
-      cont.innerHTML = asignadas.map(a => htmlTarjetaNetflixCliente(a, 'p')).join('');
+      const grupos = {}, orden = []; asignadas.forEach(a => { const k = marcaAlqClave(a); if (!grupos[k]) { grupos[k] = []; orden.push(k); } grupos[k].push(a); });
+      cont.innerHTML = orden.map(k => { const M = MARCA_ALQ[k] || Object.assign({}, MARCA_ALQ.otra, { t: '<span class="text-sky-300 font-black text-[13px]">' + escaparHtml(plataformaNf(grupos[k][0])) + '</span>' });
+        return `<div class="p-3 rounded-2xl border" style="border-color:${M.b};background:linear-gradient(135deg,${M.g},rgba(17,24,39,.55) 70%)"><h4 class="text-xs font-black text-white mb-2.5 flex items-center gap-2">${M.t} Mis cuentas asignadas</h4><div class="space-y-3">${grupos[k].map(a => htmlTarjetaNetflixCliente(a, 'p')).join('')}</div></div>`; }).join('');
       asignadas.forEach(a => pintarOtpNetflix('p', a.id));
     }
 
@@ -18823,7 +18824,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-11-10u56';
+    const VERSION_PAGINA = '2026-11-10u57';
     const ACTUALIZACIONES_PAGINA = [
       { id: 'act_20261105_ranking', fecha: '2026-11-05', titulo: '🏆 ¡Llegó el ranking del mes!', mensaje: 'Ahora en la página ves **en qué puesto vas** (arriba, debajo de tu saldo). Los **3 que más recarguen** en el mes se llevan **saldo de regalo**: el **4%**, el **3%** y el **2%** de lo que recargaron. Para participar debes recargar mínimo **$150.000** en el mes. Se actualiza cada hora, cierra el último día del mes y el premio te cae solo el día 1. ¿Quién va a ser el primero? 😎', ir: '' },
       { id: 'act_20261102_codigos_seguros', fecha: '2026-11-02', titulo: 'Tus códigos, más protegidos 🔒', mensaje: 'Tu enlace de códigos ahora es más seguro: los códigos para **crear cuentas nuevas** con nuestros correos ya no se muestran a nadie sin permiso. Los códigos para **entrar a tu cuenta** y **cambiar la contraseña** te siguen llegando al instante, igual que siempre.', ir: '' },
@@ -28396,7 +28397,7 @@ async function pintarPanelWa() {
           ${badgeAv || ''}${nueva ? '<span class="shrink-0 px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-500 text-black">NUEVA</span>' : '<i class="fa-solid fa-chevron-right text-gray-600 text-xs"></i>'}</button>`; };
       let h = orden.map(n => { const nAv = avisos.filter(a => prods[n].correos.includes(String(a.correo).toLowerCase())).length;
         return fila(n, n, prods[n].cuentas, prods[n].ult, nAv ? `<span class="shrink-0 px-1.5 py-0.5 rounded-full text-[9px] font-black bg-red-500/15 text-red-300 border border-red-400/40">${nAv} aviso${nAv === 1 ? '' : 's'}</span>` : ''); });
-      if (nNf) h.unshift(fila('__netflix', 'Netflix', nNf, '', ''));
+      if (nNf) h.unshift(fila('__netflix', nombreGrupoAlq(), nNf, '', ''));
       grid.innerHTML = `<p class="text-[10px] font-black text-gray-400 uppercase tracking-wider mb-2 px-1">Mis productos</p><div class="flex flex-col gap-2">${h.join('')}</div>`;
       if (!misProductoActivo) {
         grid.classList.remove('hidden'); barra.classList.add('hidden'); bloque.classList.add('hidden'); if (nf) nf.style.display = 'none';
@@ -28405,12 +28406,17 @@ async function pintarPanelWa() {
       }
       grid.classList.toggle('hidden', !dos);
       ocultarExtrasMisCuentas(true);
-      const esNf = misProductoActivo === '__netflix', nom = esNf ? 'Netflix' : misProductoActivo, cant = esNf ? nNf : ((prods[misProductoActivo] || {}).cuentas || 0);
+      const esNf = misProductoActivo === '__netflix', nom = esNf ? nombreGrupoAlq() : misProductoActivo, cant = esNf ? nNf : ((prods[misProductoActivo] || {}).cuentas || 0);
       barra.innerHTML = `<div class="flex items-center gap-2">${dos ? '' : `<button type="button" onclick="volverMisProductos()" class="shrink-0 px-3.5 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black text-[12px] font-black"><i class="fa-solid fa-arrow-left mr-1"></i>Atrás</button>`}<p class="min-w-0 truncate text-sm font-black text-white">${escaparHtml(nom)} <span class="text-gray-400 font-bold">· ${cant} ${cant === 1 ? 'cuenta' : 'cuentas'}</span></p></div>`;
       barra.classList.remove('hidden');
       if (esNf) { bloque.classList.add('hidden'); if (nf) nf.style.display = ''; return; }
       if (nf) nf.style.display = 'none';
       bloque.classList.remove('hidden');
+      try { let ab = document.getElementById('mcAmzBuscar'); const esAmz = /amazon|prime/i.test(String(nom || ''));   // 🔎 u57: buscador de códigos arriba, en Amazon
+        if (esAmz && lista && lista.parentNode) { if (!ab) { ab = document.createElement('div'); ab.id = 'mcAmzBuscar'; ab.className = 'mb-3 p-3 rounded-2xl border'; ab.style.cssText = 'border-color:rgba(26,152,255,.45);background:linear-gradient(135deg,rgba(26,152,255,.14),rgba(17,24,39,.55) 70%)';
+            ab.innerHTML = '<h4 class="text-xs font-black text-white mb-2 flex items-center gap-2">' + MARCA_ALQ.prime.t + ' Buscar código de una cuenta</h4><div class="flex gap-2"><input id="mcAmzCorreo" type="email" autocapitalize="off" autocomplete="off" placeholder="Pega el correo de la cuenta" onkeydown="if(event.key===\'Enter\')amzBuscarCodigoMis()" class="min-w-0 flex-1 px-3 py-2.5 rounded-xl bg-gray-900 border border-gray-700 text-white text-[13px]"><button type="button" onclick="amzBuscarCodigoMis()" class="shrink-0 px-3.5 py-2.5 rounded-xl bg-sky-500 hover:bg-sky-400 text-black text-[12px] font-black"><i class="fa-solid fa-key mr-1"></i>Buscar código</button></div><div id="mcAmzRes"></div>'; }
+          if (ab.nextSibling !== lista) lista.parentNode.insertBefore(ab, lista); }
+        else if (ab) ab.remove(); } catch (e) { /* nada */ }
       try { let dh = document.getElementById('mcDetHead'); if (mcAbierta() && dos) { if (!dh) { dh = document.createElement('div'); dh.id = 'mcDetHead'; bloque.insertBefore(dh, bloque.firstChild); }
           const [colD, icD] = ICONO_PROD(nom); dh.className = 'flex items-center gap-3 mb-3 px-4 py-3 rounded-2xl border border-white/[0.06]'; dh.style.background = 'linear-gradient(90deg,' + colD + '26,transparent 70%)';
           dh.innerHTML = `<span class="w-9 h-9 rounded-xl flex items-center justify-center text-white text-sm shrink-0" style="background:${colD}"><i class="${icD}"></i></span><div class="min-w-0 flex-grow"><p class="text-[15px] font-black text-white truncate">${escaparHtml(nom)}</p><p class="text-[11px] text-gray-400">${cant} ${cant === 1 ? 'cuenta' : 'cuentas'}</p></div><button type="button" onclick="cerrarMisCompras()" class="shrink-0 px-3.5 py-1.5 rounded-full font-black text-xs" style="background:linear-gradient(135deg,#f5d97a,#c9a227);color:#1a1405">🛒 Comprar más</button>`; }
@@ -28645,7 +28651,7 @@ async function pintarPanelWa() {
               <div class="bg-gray-800/90 border border-gray-700 rounded-xl p-3 font-mono text-xs text-gray-200 select-all leading-relaxed">${lineasVista}</div>
               ${esNfC ? htmlGuiaNetflix(false) : ''}
               ${esNfC ? htmlAvisoNetflixDispositivo() : ''}
-              ${!esNfC && /@epicstreaming\.vip/i.test(String(c.credenciales || '')) ? `<button type="button" onclick="verCodigoDominioCompra(${idx}, this)" class="w-full py-2.5 rounded-xl bg-sky-500 hover:bg-sky-400 text-black text-xs font-black flex items-center justify-center gap-1.5">📩 Ver código de Amazon</button><div id="codDom_${idx}" class="hidden"></div>` : ''}
+              ${!esNfC && tieneCorreoPropio(c.credenciales) ? `<button type="button" onclick="verCodigoDominioCompra(${idx}, this)" class="w-full py-2.5 rounded-xl bg-sky-500 hover:bg-sky-400 text-black text-xs font-black flex items-center justify-center gap-1.5">📩 Ver código de Amazon</button><div id="codDom_${idx}" class="hidden"></div>` : ''}
               ${esNfC ? `<button type="button" onclick="pedirCodigoCompraNetflix(${idx})" class="w-full py-2.5 rounded-xl nf-btn text-xs font-bold flex items-center justify-center gap-1.5"><i class="fa-solid fa-key"></i> Pedir código</button>` : ''}
               ${(c.claveAcceso && !esNfC && (esProductoPrime(c) || String(c.claveAcceso) !== obtenerClaveMaster())) ? `<div class="text-xs text-gray-300 flex items-center gap-1.5"><i class="fa-solid fa-key text-emerald-400"></i> Contraseña: <span class="font-mono font-bold text-white select-all">${escaparHtml(c.claveAcceso)}</span></div>` : ''}
               ${htmlDuracionCompra(c, idx)}
@@ -30240,6 +30246,33 @@ const LUISA_COM_DEF_PAG = { activo: true, stockHora: '08:00', mediodiaHora: '12:
     };
     function plataformaNf(a) { const p = String((a && a.plataforma) || 'Netflix').trim(); return p || 'Netflix'; }
     function esNetflixNf(a) { return plataformaNf(a).toLowerCase() === 'netflix'; }
+    // 🏷 u57 (Alex, 10-nov: «el que es Disney sale como Netflix»): el grupo de alquileres se llama por su plataforma REAL (antes siempre «Netflix»)
+    function nombreGrupoAlq() { const L = (misAlquileres || []).filter(a => a.estado === 'asignado').map(plataformaNf), u = L.filter((x, i) => L.indexOf(x) === i);
+      return u.length === 1 ? u[0] : (u.length ? 'Mis alquileres' : 'Netflix'); }
+    // 🎨 u57 (Alex: «copiar lo de Netflix a Disney y a Amazon, con sus propios colores»): marca de cada cuadro de alquileres
+    const MARCA_ALQ = {
+      netflix: { t: '<span class="nf-wordmark text-[12px]">NETFLIX</span>', b: 'rgba(229,9,20,.45)', g: 'rgba(229,9,20,.12)' },
+      disney: { t: '<span style="font-family:Georgia,\'Times New Roman\',serif;font-style:italic;font-weight:800;font-size:16px;letter-spacing:.3px;background:linear-gradient(90deg,#01D0E5,#5b8cff);-webkit-background-clip:text;background-clip:text;color:transparent">Disney+</span>', b: 'rgba(1,208,229,.45)', g: 'rgba(17,60,207,.20)' },
+      prime: { t: '<span style="font-weight:900;font-size:14px;letter-spacing:.2px;white-space:nowrap"><span style="position:relative;color:#1A98FF">prime<span style="position:absolute;left:3px;right:1px;bottom:-5px;height:6px;border-bottom:2.5px solid #FF9900;border-radius:0 0 50% 50%"></span></span><span style="color:#fff"> video</span></span>', b: 'rgba(26,152,255,.45)', g: 'rgba(26,152,255,.14)' },
+      otra: { t: '', b: 'rgba(56,189,248,.40)', g: 'rgba(56,189,248,.10)' } };
+    function marcaAlqClave(a) { const p = plataformaNf(a).toLowerCase(); return /netflix/.test(p) ? 'netflix' : /disney/.test(p) ? 'disney' : /prime|amazon/.test(p) ? 'prime' : 'p_' + p.replace(/[^a-z0-9]/g, ''); }
+    // 🔎 u57 (Alex: «Amazon son muchísimos correos: arriba un buscador, coloque el correo y le dé buscar código»)
+    async function amzBuscarCodigoMis() {
+      const inp = document.getElementById('mcAmzCorreo'), box = document.getElementById('mcAmzRes'); if (!inp || !box) return;
+      const m = String(inp.value || '').trim().toLowerCase().match(/[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}/), msg = (t, c) => { box.innerHTML = '<p class="text-[12px] mt-2 ' + (c || 'text-amber-300') + '">' + t + '</p>'; };
+      if (!m) return msg('Pega el correo de la cuenta (ej: nombre@dominio.com).');
+      const correo = m[0], idx = (misComprasPerfilCache || []).findIndex(c => String((c && c.credenciales) || '').toLowerCase().indexOf(correo) !== -1);
+      if (idx < 0) return msg('Ese correo no aparece en tus compras 🤔 Revísalo bien.');
+      if (!tieneCorreoPropio(correo)) return msg('Ese correo es de Hotmail/Gmail: su código le llega a ese mismo correo, no a nuestra bandeja. Ábrelo allá.');
+      const c = misComprasPerfilCache[idx]; box.innerHTML = '<p class="text-[12px] text-gray-400 mt-2"><i class="fa-solid fa-spinner fa-spin"></i> Buscando el código de ' + escaparHtml(correo) + '…</p>';
+      try { const r = await llamarBackend('codigo_dominio', { compraId: c.id || c.docId || c.compraId, correo: correo });
+        if (!r || !r.ok) return msg(escaparHtml((r && r.error) || 'No se pudo.'));
+        const L = (r.codigos || []).filter(x => !x.correo || x.correo === correo);
+        if (!L.length) return msg('⏳ Aún no llega ningún código de ' + escaparHtml(correo) + '. Pídelo en Amazon y toca <b>Buscar código</b> otra vez en unos 30 segundos.', 'text-gray-300');
+        box.innerHTML = L.slice(0, 2).map(x => `<div class="mt-2 p-2.5 rounded-xl bg-gray-900/80 border border-sky-500/40 flex items-center gap-2"><div class="min-w-0 flex-1"><p class="font-mono font-black text-2xl tracking-[0.25em] text-sky-300">${escaparHtml(x.codigo)}</p><p class="text-[10px] text-gray-500 truncate">${escaparHtml(correo)}${x.fecha ? ' · ' + escaparHtml(new Date(x.fecha).toLocaleString('es-CO', { hour: 'numeric', minute: '2-digit', day: 'numeric', month: 'short' })) : ''}</p></div><button type="button" onclick="copiarTexto('${escaparJsAttr(x.codigo)}', this, 'Código')" class="shrink-0 px-3 py-2 rounded-lg bg-sky-500 text-black text-[11px] font-black"><i class="fa-solid fa-copy mr-1"></i>Copiar</button></div>`).join('');
+      } catch (e) { msg(escaparHtml(e.message || 'Error')); } }
+    // 🔑 u57: el botón de código sale para TODOS tus dominios (antes solo @epicstreaming.vip); el servidor confirma que el correo es tuyo
+    function tieneCorreoPropio(cred) { return /@(?!(?:gmail|googlemail|hotmail|outlook|live|msn|yahoo|ymail|icloud|me|mac|proton|protonmail|aol|gmx|zoho)\.)[a-z0-9-]+(\.[a-z0-9-]+)+/i.test(String(cred || '')); }
     function esDisneyNf(a) { return /disney/i.test(plataformaNf(a)); }
     function tieneRobotNf(a) { return esNetflixNf(a) || esDisneyNf(a); }
     function tieneCodigoNf(a) { return esNetflixNf(a) || esDisneyNf(a); }   // 🔑 Netflix y Disney+ tienen «Ver código»   // 🤖 Netflix y Disney+ tienen robot
