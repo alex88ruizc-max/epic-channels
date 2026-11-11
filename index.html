@@ -3879,10 +3879,10 @@
           <input type="text" id="inputEditNuevaCatTexto" placeholder="Nombre de la nueva categoría" class="w-full hidden bg-gray-800 border border-emerald-500/50 rounded-xl px-3 py-2 text-xs text-white focus:outline-none mt-2">
         </div>
 
-        <!-- 👁 u66 (Alex: «a cada producto una opción de mostrar o no mostrar stock, de forma individual… solo para la página»): solo cambia lo que ve el CLIENTE en la página; tú, el bot de Telegram y Mary siguen viendo el número -->
+        <!-- 🔢 u67 (Alex, 11-nov: «si la casilla está apagada, no se puede dar el número; si está activa, se da el número. Y ya»): la casilla de la u66 estaba AL REVÉS («Ocultar»). Ahora ENCENDIDA = se ve la cantidad. Campo nuevo: inventario.mostrarStock. Los productos que marcaste con la casilla vieja (ocultarStock) se toman como «mostrar», que es lo que querías. --><!-- 👁 u66 (Alex: «a cada producto una opción de mostrar o no mostrar stock, de forma individual… solo para la página»): solo cambia lo que ve el CLIENTE en la página; tú, el bot de Telegram y Mary siguen viendo el número -->
         <label class="flex items-start gap-2 p-2 rounded-lg bg-gray-800/60 border border-gray-700 cursor-pointer text-[12px] text-gray-300">
           <input type="checkbox" id="editProdOcultarStock" class="mt-0.5 accent-indigo-500">
-          <span><b>👁 Ocultar el stock en la página</b><br><span class="text-[10px] text-gray-500">El cliente ve «✅ Disponible» en vez del número. Tú, el bot de Telegram y Mary siguen viendo el número real.</span></span>
+          <span><b>🔢 Mostrar la cantidad disponible</b><br><span class="text-[10px] text-gray-500">Encendida: el cliente ve cuántas hay (en la página) y Mary le dice la cantidad. Apagada: solo ve «✅ Disponible» y Mary no da el número. Tú siempre ves el número real.</span></span>
         </label>
 
         <!-- 🔗 ENLACE DE CÓDIGOS DEL PRODUCTO (solo en las tiendas de clientes) -->
@@ -10465,7 +10465,7 @@
           esVip: esVipFinal,
           tipoGarantia: tipoGarantiaFinal,
           activo: activo,
-          ocultarStock: !!(docInventario && docInventario.ocultarStock === true)   // 👁 u66
+          ocultarStock: !!(docInventario && docInventario.ocultarStock === true), mostrarStock: (docInventario && docInventario.mostrarStock !== undefined) ? docInventario.mostrarStock === true : undefined   // 👁 u66 · 🔢 u67
         });
       });
 
@@ -10498,7 +10498,7 @@
             tipoGarantia: data.tipoGarantia || '',
             esAmazon: data.nombre.toLowerCase().includes('amazon') && data.sinClaveCorreo !== true, sinClaveCorreo: data.sinClaveCorreo === true, indicacionesEntrega: String(data.indicacionesEntrega || ''),
             activo: data.activo !== false,
-            ocultarStock: data.ocultarStock === true   // 👁 u66
+            ocultarStock: data.ocultarStock === true, mostrarStock: data.mostrarStock !== undefined ? data.mostrarStock === true : undefined   // 👁 u66 · 🔢 u67
           });
         }
       });
@@ -11217,7 +11217,7 @@
       document.getElementById('editProdPrecio').value = (prod.precioLista !== undefined ? prod.precioLista : prod.precio) || 0;
       document.getElementById('editProdMinimo').value = prod.minCompra || 1;
       try { const lc = document.getElementById('editProdLinkCod'); if (lc) lc.value = String(prod.linkCodigos || ((snapshotInventario[prod.docId] || {}).linkCodigos) || ''); } catch (e) { /* nada */ }
-      try { const os = document.getElementById('editProdOcultarStock'); if (os) os.checked = ((snapshotInventario[prod.docId] || {}).ocultarStock === true) || prod.ocultarStock === true; } catch (e) { /* nada */ }   // 👁 u66
+      try { const os = document.getElementById('editProdOcultarStock'); if (os) os.checked = stockSeMuestra(Object.assign({}, prod, snapshotInventario[prod.docId] || {})); } catch (e) { /* nada */ }   // 🔢 u67: encendida = se ve la cantidad
       document.getElementById('editProdTipoGarantia').value = prod.tipoGarantia || ''; garantiaHaciaUI('editProd', prod.tipoGarantia || '', prod.garantiaInicio || ((snapshotInventario[prod.docId] || {}).garantiaInicio) || 'compra'); encargoHaciaUI('editProd', Object.assign({}, snapshotInventario[prod.docId] || {}, prod)); try { duracionHaciaUI('editProd', Object.assign({}, snapshotInventario[prod.docId] || {}, prod)); } catch (e) { /* nada */ } tarjetaHaciaUI('editProd', Object.assign({}, snapshotInventario[prod.docId] || {}, prod));
 
       actualizarSelectCategoriasAdmin();
@@ -11316,7 +11316,7 @@
           facturacion: String((document.getElementById('editProdFacturacion') || {}).value || '').trim().slice(0, 60),
           precio: precio,
           minCompra: minCompra,
-          tipoGarantia: tipoGarantia, garantiaInicio: 'compra', linkCodigos: linkCodigosDesdeUI('editProd'), ocultarStock: !!((document.getElementById('editProdOcultarStock') || {}).checked),   // 👁 u66
+          tipoGarantia: tipoGarantia, garantiaInicio: 'compra', linkCodigos: linkCodigosDesdeUI('editProd'), mostrarStock: !!((document.getElementById('editProdOcultarStock') || {}).checked), ocultarStock: false,   // 🔢 u67 (la casilla ahora es «Mostrar la cantidad»; el campo viejo se limpia)
           ...encargoDesdeUI('editProd'), ...tarjetaDesdeUI('editProd'), ...duracionDesdeUI('editProd')
         };
 
@@ -18848,7 +18848,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-11-11u66';
+    const VERSION_PAGINA = '2026-11-11u67';
     // 🧑 u58 (Alex, 10-nov): la AGENTE DE D-ID (Luisa con cara, conversa en vivo). Piloto: SOLO en epicstreaming.vip (nunca en las tiendas de tus clientes),
     //    SOLO a visitantes sin sesión, a la IZQUIERDA (a la derecha está tu botón de WhatsApp). Se carga después de la página para no hacerla lenta.
     (function () { try {
@@ -23023,7 +23023,9 @@
     }
     function cambioReciente(id) { const c = stockCambioEl[id]; return c && Date.now() - c.t < 90000 ? c.dir : ''; }
     // 👁 u66: ¿este producto oculta su stock al CLIENTE en la página? (tú y tu equipo siempre ven el número)
-    function stockOculto(p) { try { if (typeof p === 'string') p = (catalogoUnificado || []).find(x => x.docId === p) || snapshotInventario[p] || {}; const staff = (function () { try { return esStaffSesion(); } catch (e) { return false; } })(); return !!(p && p.ocultarStock === true) && !staff; } catch (e) { return false; } }
+    // 🔢 u67: ¿este producto muestra su cantidad? Casilla encendida (mostrarStock) = sí. Sin tocar la casilla nueva, vale lo que marcaste con la vieja.
+    function stockSeMuestra(p) { p = p || {}; if (p.mostrarStock !== undefined && p.mostrarStock !== null) return p.mostrarStock === true; return p.ocultarStock === true; }
+    function stockOculto(p) { try { if (typeof p === 'string') p = (catalogoUnificado || []).find(x => x.docId === p) || snapshotInventario[p] || {}; const staff = (function () { try { return esStaffSesion(); } catch (e) { return false; } })(); return !stockSeMuestra(p) && !staff; } catch (e) { return false; } }
     function htmlBateriaStock(id, n, agotado) {
       if (stockOculto(id) && !agotado && n > 0) return `<span class="inline-flex items-center gap-1.5 text-[11px] font-black text-emerald-400"><i class="fa-solid fa-circle-check"></i>Disponible</span>`;   // 👁 u66
       if (agotado || !(n > 0)) return `<span class="inline-flex items-center gap-1.5 text-[11px] font-black text-red-400"><i class="fa-solid fa-box-open"></i>Stock: agotado</span>`;
