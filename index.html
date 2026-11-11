@@ -2630,6 +2630,7 @@
               <label class="flex items-center gap-2 p-2 rounded-lg bg-gray-800/60 border border-gray-700 cursor-pointer"><input type="radio" name="encOp" value="cobrar" checked onchange="encCambioOp()" class="accent-indigo-500">💳 Cobrarle</label>
               <label class="flex items-center gap-2 p-2 rounded-lg bg-gray-800/60 border border-gray-700 cursor-pointer"><input type="radio" name="encOp" value="entregar" onchange="encCambioOp()" class="accent-indigo-500">📦 Entregar una venta</label>
               <label class="flex items-center gap-2 p-2 rounded-lg bg-amber-500/10 border border-amber-500/40 cursor-pointer"><input type="radio" name="encOp" value="sobrepedido" onchange="encCambioOp()" class="accent-amber-500">⏳ Sobre pedido (ya me pagó)</label>
+              <label class="flex items-center gap-2 p-2 rounded-lg bg-teal-500/10 border border-teal-500/40 cursor-pointer"><input type="radio" name="encOp" value="sobrecobrar" onchange="encCambioOp()" class="accent-teal-500">📦 Sobre pedido (le cobra Mary)</label>
             </div>
             <p id="encAyuda" class="text-[11px] text-gray-500">Mary le escribe primero con el precio, el mínimo y el QR, y se encarga del pago, los recordatorios y la entrega. Si el número no tiene cuenta, se la crea en el chat.</p>
             <label class="block text-[11px] text-gray-400">WhatsApp del cliente<input id="encNumero" type="tel" inputmode="numeric" placeholder="3001234567" class="mt-1 w-full bg-gray-900 border border-gray-700 rounded-lg px-2 py-1.5 text-white text-sm"></label>
@@ -3877,6 +3878,12 @@
           </select>
           <input type="text" id="inputEditNuevaCatTexto" placeholder="Nombre de la nueva categoría" class="w-full hidden bg-gray-800 border border-emerald-500/50 rounded-xl px-3 py-2 text-xs text-white focus:outline-none mt-2">
         </div>
+
+        <!-- 👁 u66 (Alex: «a cada producto una opción de mostrar o no mostrar stock, de forma individual… solo para la página»): solo cambia lo que ve el CLIENTE en la página; tú, el bot de Telegram y Mary siguen viendo el número -->
+        <label class="flex items-start gap-2 p-2 rounded-lg bg-gray-800/60 border border-gray-700 cursor-pointer text-[12px] text-gray-300">
+          <input type="checkbox" id="editProdOcultarStock" class="mt-0.5 accent-indigo-500">
+          <span><b>👁 Ocultar el stock en la página</b><br><span class="text-[10px] text-gray-500">El cliente ve «✅ Disponible» en vez del número. Tú, el bot de Telegram y Mary siguen viendo el número real.</span></span>
+        </label>
 
         <!-- 🔗 ENLACE DE CÓDIGOS DEL PRODUCTO (solo en las tiendas de clientes) -->
         <div class="solo-tienda">
@@ -8781,7 +8788,7 @@
         const cantidad = inputCant ? (parseInt(inputCant.value) || minRequerido) : minRequerido;
         const disponibles = Math.max(0, parseInt(prodInfo.stock, 10) || 0);
 
-        if (disponibles < cantidad) { alert(`Stock insuficiente. Solo quedan ${disponibles} cuentas disponibles.`); return; }
+        if (disponibles < cantidad) { alert(stockOculto(prodInfo) ? 'No hay suficientes disponibles para esa cantidad en este momento. Prueba con menos o pídelo sobre pedido.' : `Stock insuficiente. Solo quedan ${disponibles} cuentas disponibles.`);   /* 👁 u66 */ return; }
         if (cantidad < minRequerido && (disponibles >= minRequerido || prodInfo.encargoActivo === true)) { alert(`La compra mínima es de ${minRequerido} cuentas.` + (prodInfo.encargoActivo === true && disponibles < minRequerido ? ` Ahora hay ${disponibles}: pide ${minRequerido} sobre pedido y te llegan apenas entre stock.` : '')); return; }
 
         if (prodInfo.esCombo) {
@@ -10457,7 +10464,8 @@
           imagenUrl: imagenFinal,
           esVip: esVipFinal,
           tipoGarantia: tipoGarantiaFinal,
-          activo: activo
+          activo: activo,
+          ocultarStock: !!(docInventario && docInventario.ocultarStock === true)   // 👁 u66
         });
       });
 
@@ -10489,7 +10497,8 @@
             esVip: data.esVip === true,
             tipoGarantia: data.tipoGarantia || '',
             esAmazon: data.nombre.toLowerCase().includes('amazon') && data.sinClaveCorreo !== true, sinClaveCorreo: data.sinClaveCorreo === true, indicacionesEntrega: String(data.indicacionesEntrega || ''),
-            activo: data.activo !== false
+            activo: data.activo !== false,
+            ocultarStock: data.ocultarStock === true   // 👁 u66
           });
         }
       });
@@ -10687,7 +10696,7 @@
               <div class="mb-4">
                 <span class="inline-flex items-center gap-1.5 text-xs font-medium ${esNf ? 'text-red-200 bg-red-500/10 border border-red-500/30' : (marcaT ? 'brand-chip !text-xs !font-medium' : 'text-emerald-300 bg-emerald-500/10 border border-emerald-500/30')} px-3 py-1 rounded-xl shadow-sm">
                   <i class="fa-solid fa-layer-group text-[11px] ${esNf ? 'text-red-400' : (marcaT ? '' : 'text-emerald-400')}" ${marcaT ? 'style="color:var(--b-color)"' : ''}></i>
-                  ${stockDisponible > 0 && stockDisponible < minRequerido 
+                  ${stockDisponible > 0 && stockDisponible < minRequerido && !stockOculto(prod) 
                     ? `<span class="text-amber-400 font-bold">${escaparHtml(tt('textoUltimas').replace(/\{n\}/g, stockDisponible + ' ' + ttUnidad(stockDisponible)))}</span>` 
                     : `${ttH('textoMinimo')} <strong class="text-white font-black text-xs">${minRequerido} ${escaparHtml(ttUnidad(minRequerido))}</strong>`}
                 </span>
@@ -11208,6 +11217,7 @@
       document.getElementById('editProdPrecio').value = (prod.precioLista !== undefined ? prod.precioLista : prod.precio) || 0;
       document.getElementById('editProdMinimo').value = prod.minCompra || 1;
       try { const lc = document.getElementById('editProdLinkCod'); if (lc) lc.value = String(prod.linkCodigos || ((snapshotInventario[prod.docId] || {}).linkCodigos) || ''); } catch (e) { /* nada */ }
+      try { const os = document.getElementById('editProdOcultarStock'); if (os) os.checked = ((snapshotInventario[prod.docId] || {}).ocultarStock === true) || prod.ocultarStock === true; } catch (e) { /* nada */ }   // 👁 u66
       document.getElementById('editProdTipoGarantia').value = prod.tipoGarantia || ''; garantiaHaciaUI('editProd', prod.tipoGarantia || '', prod.garantiaInicio || ((snapshotInventario[prod.docId] || {}).garantiaInicio) || 'compra'); encargoHaciaUI('editProd', Object.assign({}, snapshotInventario[prod.docId] || {}, prod)); try { duracionHaciaUI('editProd', Object.assign({}, snapshotInventario[prod.docId] || {}, prod)); } catch (e) { /* nada */ } tarjetaHaciaUI('editProd', Object.assign({}, snapshotInventario[prod.docId] || {}, prod));
 
       actualizarSelectCategoriasAdmin();
@@ -11306,7 +11316,7 @@
           facturacion: String((document.getElementById('editProdFacturacion') || {}).value || '').trim().slice(0, 60),
           precio: precio,
           minCompra: minCompra,
-          tipoGarantia: tipoGarantia, garantiaInicio: 'compra', linkCodigos: linkCodigosDesdeUI('editProd'),
+          tipoGarantia: tipoGarantia, garantiaInicio: 'compra', linkCodigos: linkCodigosDesdeUI('editProd'), ocultarStock: !!((document.getElementById('editProdOcultarStock') || {}).checked),   // 👁 u66
           ...encargoDesdeUI('editProd'), ...tarjetaDesdeUI('editProd'), ...duracionDesdeUI('editProd')
         };
 
@@ -18838,7 +18848,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-11-11u65';
+    const VERSION_PAGINA = '2026-11-11u66';
     // 🧑 u58 (Alex, 10-nov): la AGENTE DE D-ID (Luisa con cara, conversa en vivo). Piloto: SOLO en epicstreaming.vip (nunca en las tiendas de tus clientes),
     //    SOLO a visitantes sin sesión, a la IZQUIERDA (a la derecha está tu botón de WhatsApp). Se carga después de la página para no hacerla lenta.
     (function () { try {
@@ -23012,7 +23022,10 @@
       });
     }
     function cambioReciente(id) { const c = stockCambioEl[id]; return c && Date.now() - c.t < 90000 ? c.dir : ''; }
+    // 👁 u66: ¿este producto oculta su stock al CLIENTE en la página? (tú y tu equipo siempre ven el número)
+    function stockOculto(p) { try { if (typeof p === 'string') p = (catalogoUnificado || []).find(x => x.docId === p) || snapshotInventario[p] || {}; const staff = (function () { try { return esStaffSesion(); } catch (e) { return false; } })(); return !!(p && p.ocultarStock === true) && !staff; } catch (e) { return false; } }
     function htmlBateriaStock(id, n, agotado) {
+      if (stockOculto(id) && !agotado && n > 0) return `<span class="inline-flex items-center gap-1.5 text-[11px] font-black text-emerald-400"><i class="fa-solid fa-circle-check"></i>Disponible</span>`;   // 👁 u66
       if (agotado || !(n > 0)) return `<span class="inline-flex items-center gap-1.5 text-[11px] font-black text-red-400"><i class="fa-solid fa-box-open"></i>Stock: agotado</span>`;
       const niveles = n >= 20 ? 4 : (n >= 10 ? 3 : (n >= 5 ? 2 : 1)), col = niveles >= 3 ? '#34d399' : (niveles === 2 ? '#a3e635' : '#fbbf24');
       const gira = cambioReciente(id) ? ' num-cambio' : '';
@@ -23030,6 +23043,7 @@
       const L = (staff ? catalogoUnificado.filter(p => p.activo !== false && !p.esCombo) : (visitante ? catalogoUnificado.filter(p => p.activo !== false && !p.esCombo && Number(p.precio) > 0 && Number(p.stock) > 0) : productosVisiblesStock()))
         .filter(p => !esProductoVip(p))
         .sort((a, b) => (Number(b.stock) || 0) - (Number(a.stock) || 0) || String(a.nombre).localeCompare(String(b.nombre), 'es'));
+      try { if (!staff) { const L2 = L.filter(p => !stockOculto(p)); L.length = 0; L2.forEach(x => L.push(x)); } } catch (e) { /* nada */ }   // 👁 u66: los de stock oculto no salen en la cinta
       const mostrar = cfgVistaTienda.cintaStock !== false && enLugar && L.length > 0 && !(esProveedorSesion() && !staff) && !modoPruebaCliente;   // en el simulador no se muestra
       c.classList.toggle('hidden', !mostrar);
       if (!mostrar) return;
@@ -23064,7 +23078,7 @@
     function pintarRadarStock() {
       const caja = document.getElementById('radarStock'); if (!caja) return;
       if (!currentUser || esStaffSesion() || (esProveedorSesion() && (userTipoCuenta === 'externo' || userTipoCuenta === 'reseller'))) { caja.classList.add('hidden'); return; }
-      const L = productosVisiblesStock(); caja.classList.toggle('hidden', !L.length); if (!L.length) return;
+      const L = productosVisiblesStock().filter(p => !stockOculto(p)); caja.classList.toggle('hidden', !L.length); if (!L.length) return;   // 👁 u66
       const ago = L.filter(p => !(Number(p.stock) > 0)).length;
       document.getElementById('radarStockResumen').textContent = `${L.length} ${L.length === 1 ? 'producto' : 'productos'}${ago ? ' · ' + ago + (ago === 1 ? ' agotado' : ' agotados') : ''}`;
       document.getElementById('radarStockLista').innerHTML = L.map(p => { const n = Number(p.stock) || 0, col = n ? (n <= 5 ? 'text-amber-300' : 'text-emerald-400') : 'text-red-400', esp = misAvisosStock.has(p.docId);
@@ -23288,7 +23302,7 @@
         <p id="mixto_${id}" class="hidden"></p></div>`;
     }
     // Texto claro del máximo: lo disponible ya + lo que se puede encargar
-    function textoMaximoPedido(prod) { const st = Number(prod.stock) || 0, enc = datosEncargo(prod).max, max = st + enc; return { st, enc, max, msg: `Hay ${st} para entrega inmediata y puedes encargar hasta ${enc} más, que te llegan cuando entre stock.\n\n¿Cuántas necesitas en total? (máximo ${max})` }; }
+    function textoMaximoPedido(prod) { const st = Number(prod.stock) || 0, enc = datosEncargo(prod).max, max = st + enc; return { st, enc, max, msg: stockOculto(prod) ? `Una parte te llega al instante y el resto sobre pedido, apenas esté lista.\n\n¿Cuántas necesitas en total? (máximo ${max})` : `Hay ${st} para entrega inmediata y puedes encargar hasta ${enc} más, que te llegan cuando entre stock.\n\n¿Cuántas necesitas en total? (máximo ${max})` }; }   // 👁 u66
     async function crElegirPedido(sel) {
       const p = catalogoUnificado.find(x => x.docId === crId), i = document.getElementById('crCant'); if (!p || !i) return;
       if (sel.value === 'otra') { const t = textoMaximoPedido(p); const r = await pedirNumeroModal('¿Cuántas necesitas?', t.msg, Math.min(t.max, t.st + 10), t.max); if (!r) { sel.value = ''; return; } i.value = String(Math.max(1, Math.min(t.max, parseInt(r, 10) || 1))); }
@@ -29448,6 +29462,7 @@ const LUISA_COM_DEF_PAG = { activo: true, stockHora: '08:00', mediodiaHora: '12:
     function encCambioOp() { const op = (document.querySelector('input[name="encOp"]:checked') || {}).value, a = document.getElementById('encAyuda'), f = document.getElementById('encFueraBox');
       if (f) f.classList.toggle('hidden', op !== 'entregar');
       { const t = document.getElementById('encPrecioTit'), i = document.getElementById('encPrecio'); if (t) t.textContent = op === 'sobrepedido' ? 'Lo que te pagó (total)' : 'Precio especial del total (opcional)'; if (i) i.placeholder = op === 'sobrepedido' ? 'Vacío = su precio normal' : 'Vacío = su precio normal'; }   // ⏳ u62
+      if (a && op === 'sobrecobrar') { a.textContent = 'Todavía NO te ha pagado: Mary le escribe con el pedido sobre pedido, el total y el QR, y le cobra ANTES de entregar (recordatorio a las 6 h; el cobro vence a las 12 h). Pagado, lo que haya sale al instante y el resto le llega solo por WhatsApp apenas entre.'; try { encPrepararProductos(true); } catch (e) { /* nada */ } return; }   // 📦 u66 (Alex: «sobre pedido sin pago, debe cobrar el bot antes de entregar»)
       if (a && op === 'sobrepedido') { a.textContent = 'Ya te pagó: Mary NO le cobra ni toca su saldo. Queda en «Pedidos en espera» a su nombre (su cuenta, o cliente de WhatsApp si no está registrado), Mary le confirma por WhatsApp y, apenas entre stock, se lo entrega por WhatsApp en orden de llegada. Sirve aunque el producto esté en 0.'; return; }
       try { encPrepararProductos(true); } catch (e) { /* nada */ }
       if (a) a.textContent = op === 'ofrecer' ? 'Mary le escribe ofreciéndole el producto con su precio, el mínimo y la garantía. No le cobra todavía: si responde que sí, ella le cobra y le entrega.' : op === 'entregar' ? 'Mary le entrega las cuentas por WhatsApp y las descuenta de su saldo (o marca que te pagó por fuera). Necesita que el número tenga cuenta en la página.' : 'Mary le escribe primero con el precio, el mínimo y el QR, y se encarga del pago, los recordatorios y la entrega. Si el número no tiene cuenta, se la crea en el chat.'; }
@@ -29459,7 +29474,7 @@ const LUISA_COM_DEF_PAG = { activo: true, stockHora: '08:00', mediodiaHora: '12:
       if (!/^3\d{9}$/.test(num) && !/^\d{11,15}$/.test(num)) { alert('Escribe el WhatsApp del cliente: 10 dígitos si es de Colombia (empieza por 3), o con el código del país si es de otro (ej: 593983600961).'); return; }
       if (!pid) { alert('Elige el producto.'); return; }
       const prod = (typeof catalogoUnificado !== 'undefined' ? catalogoUnificado : []).find(x => x.docId === pid), nom = prod ? prod.nombre : pid;
-      const res = op === 'sobrepedido' ? `⏳ SOBRE PEDIDO (ya te pagó) · ${n} ${nom} para el ${num}\nNo se le cobra ni se toca su saldo. Mary le confirma por WhatsApp y le entrega apenas entre stock.\n💵 Pagó: ${pe ? formatoCOP(pe) : 'su precio normal'}` : op === 'ofrecer' ? `🎯 Mary le OFRECE ${n} ${nom} al ${num}\nCon su precio, el mínimo y la garantía. No le cobra todavía.` : op === 'entregar' ? `📦 Mary le ENTREGA ${n} ${nom} al ${num}` + (fuera ? '\n💵 Te pagó por fuera (no se toca su saldo)' : '\n💰 Se descuenta de su saldo') : `💳 Mary le COBRA ${n} ${nom} al ${num}\nLe escribe primero, le manda el QR y gestiona todo.`;
+      const res = op === 'sobrecobrar' ? `📦 SOBRE PEDIDO (le cobra Mary) · ${n} ${nom} para el ${num}\nMary le cobra ANTES de entregar; pagado, le llega lo que haya y el resto apenas entre.` : op === 'sobrepedido' ? `⏳ SOBRE PEDIDO (ya te pagó) · ${n} ${nom} para el ${num}\nNo se le cobra ni se toca su saldo. Mary le confirma por WhatsApp y le entrega apenas entre stock.\n💵 Pagó: ${pe ? formatoCOP(pe) : 'su precio normal'}` : op === 'ofrecer' ? `🎯 Mary le OFRECE ${n} ${nom} al ${num}\nCon su precio, el mínimo y la garantía. No le cobra todavía.` : op === 'entregar' ? `📦 Mary le ENTREGA ${n} ${nom} al ${num}` + (fuera ? '\n💵 Te pagó por fuera (no se toca su saldo)' : '\n💰 Se descuenta de su saldo') : `💳 Mary le COBRA ${n} ${nom} al ${num}\nLe escribe primero, le manda el QR y gestiona todo.`;
       if (!await confirmarModal(res + (op === 'sobrepedido' ? '' : (pe ? `\n🏷 Precio especial: ${formatoCOP(pe)} en total` : '\n🏷 Su precio normal')), { textoAceptar: 'Sí, encárgaselo' })) return;
       if (window._encEnCurso) { mostrarToast('Mary ya está con ese encargo, espera un momento…'); return; } window._encEnCurso = true;
       const btnE = document.querySelector('button[onclick="encargarMary()"]'); if (btnE) { btnE.disabled = true; btnE.dataset.t = btnE.innerHTML; btnE.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Mary le está escribiendo…'; }
