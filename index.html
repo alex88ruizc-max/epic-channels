@@ -12765,6 +12765,12 @@
     let unsubRecargaCfg = null, unsubPedidosRecarga = null, unsubRecargaEstado = null, unsubPagosSinId = null, unsubPagosAcred = null;
     let pedidoRecargaActivo = null;
     const pedidosRecargaVistos = {};
+    // 💾 u69: los pedidos pendientes se recuerdan en el celular; si la página se recarga y al volver ya están acreditados, igual se avisa.
+    function recPendLeer() { try { const o = JSON.parse(localStorage.getItem('recPend') || '{}'); return (o && typeof o === 'object') ? o : {}; } catch (e) { return {}; } }
+    function recPendAnotar(p) { try { const o = recPendLeer(), lim = Date.now() - 2 * 86400000; Object.keys(o).forEach(k => { if (!(o[k] > lim)) delete o[k]; });
+      if (p.estado === 'pendiente') { if (!o[p.id]) o[p.id] = Date.now(); } else delete o[p.id];
+      localStorage.setItem('recPend', JSON.stringify(o)); } catch (e) { /* sin memoria del celular: queda como antes */ } }
+    function recPendRecordado(p) { try { if (p.estado !== 'acreditado' || !recPendLeer()[p.id]) return undefined; const a = Date.parse(p.acreditadoEl || '') || 0; return (a && Date.now() - a < 86400000) ? 'pendiente' : undefined; } catch (e) { return undefined; } }
     const recargasAvisadas = {};
     let relojRecargaTimer = null;
     let pagosSinIdentificar = [];
@@ -12799,10 +12805,10 @@
             let activo = null;
             snap.forEach(doc => {
               const p = Object.assign({ id: doc.id }, doc.data());
-              const antes = pedidosRecargaVistos[p.id];
+              const antes = pedidosRecargaVistos[p.id] || recPendRecordado(p);
               if (p.estado === 'pendiente' && (!activo || String(p.creadoEl) > String(activo.creadoEl))) activo = p;
               if (antes === 'pendiente' && p.estado === 'acreditado' && !modoPruebaCliente) recargaAutoAcreditada(p);
-              pedidosRecargaVistos[p.id] = p.estado;
+              pedidosRecargaVistos[p.id] = p.estado; if (!modoPruebaCliente) recPendAnotar(p);
             });
             if (modoPruebaCliente && respaldoRealSim) { respaldoRealSim.pedido = activo; return; }
             pedidoRecargaActivo = activo;
@@ -12899,7 +12905,9 @@
       let desde = 0; try { desde = parseInt(sessionStorage.getItem('recBusca_' + p.id) || '0', 10) || 0; } catch (e) { desde = 0; }
       const mmss = ms => { const t = Math.max(0, Math.floor(ms / 1000)); return Math.floor(t / 60) + ':' + String(t % 60).padStart(2, '0'); };
       let h;
-      if (!desde) h = `<div class="flex items-center gap-2 text-[12px] text-gray-300"><span class="w-2 h-2 rounded-full bg-amber-400"></span>Esperando tu transferencia</div>`;
+      if (!desde) { const cre = Date.parse(p.creadoEl || '') || 0, tE = cre ? Date.now() - cre : 0;   // 🟡 u69: la espera se ve viva (antes era un texto quieto)
+        h = `<div class="flex items-center gap-2 text-[12px] text-amber-100"><span class="relative flex w-2 h-2"><span class="absolute inset-0 rounded-full bg-amber-400 animate-ping opacity-75"></span><span class="relative w-2 h-2 rounded-full bg-amber-400"></span></span>Esperando tu transferencia${cre && tE > 0 && tE < 3600000 ? ` · <b class="tabular-nums">${mmss(tE)}</b>` : ''}</div>
+          <p class="text-[10.5px] text-gray-400 ml-4 mt-0.5">Apenas pagues, tu saldo entra solo y te avisamos aquí. Revisamos el banco cada minuto.</p>`; }
       else { const t = Date.now() - desde;
         h = `<div class="flex items-center gap-2 text-[12px] text-sky-200"><span class="relative flex w-2 h-2"><span class="absolute inset-0 rounded-full bg-sky-400 animate-ping opacity-75"></span><span class="relative w-2 h-2 rounded-full bg-sky-400"></span></span>Buscando tu pago · <b class="tabular-nums">${mmss(t)}</b></div>
           <p class="text-[10.5px] text-gray-500 ml-4 mt-0.5">Revisamos el banco cada minuto. Puedes cerrar esta ventana.</p>`;
@@ -18873,7 +18881,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-11-11u68';
+    const VERSION_PAGINA = '2026-11-11u69';
     // 🧑 u58 (Alex, 10-nov): la AGENTE DE D-ID (Luisa con cara, conversa en vivo). Piloto: SOLO en epicstreaming.vip (nunca en las tiendas de tus clientes),
     //    SOLO a visitantes sin sesión, a la IZQUIERDA (a la derecha está tu botón de WhatsApp). Se carga después de la página para no hacerla lenta.
     (function () { try {
@@ -29886,9 +29894,36 @@ const LUISA_COM_DEF_PAG = { activo: true, stockHora: '08:00', mediodiaHora: '12:
     }
 
     const VERSION_SERVIDOR_NECESARIA = '2026-10-30k';   // la versión del servidor que necesita esta página
+    // ⏳ u69 · PANTALLA «PROCESANDO»: sale si la compra tarda más de 0,4 s (así no parpadea cuando es instantánea) y se queda hasta que llega la respuesta.
+    const ACCIONES_CON_AVISO = { comprar: 'Procesando tu compra', renovar: 'Procesando tu renovación', renovar_compra: 'Procesando tu renovación', preorden_crear: 'Registrando tu encargo' };
+    let avisoProcN = 0, avisoProcT = null, avisoProcReloj = null, avisoProcDesde = 0;
+    function avisoProcesandoVisible() { const c = document.getElementById('avisoProcesando'); return !!(c && c.style.display !== 'none'); }
+    function avisoProcesando(encender, accion) {
+      try {
+        if (encender) { avisoProcN++; if (avisoProcN > 1 || avisoProcT) return;
+          avisoProcT = setTimeout(() => { avisoProcT = null; if (avisoProcN < 1) return;
+            let c = document.getElementById('avisoProcesando');
+            if (!c) { c = document.createElement('div'); c.id = 'avisoProcesando'; c.setAttribute('role', 'status'); c.setAttribute('aria-live', 'polite');
+              c.style.cssText = 'position:fixed;inset:0;z-index:9000;display:none;align-items:center;justify-content:center;background:rgba(3,7,18,.82);backdrop-filter:blur(3px);padding:1.5rem';
+              c.innerHTML = '<div style="max-width:20rem;width:100%;text-align:center;background:#0f172a;border:1px solid rgba(56,189,248,.45);border-radius:1.25rem;padding:1.5rem 1.25rem;box-shadow:0 20px 60px rgba(0,0,0,.6)"><div style="font-size:2rem;color:#38bdf8"><i class="fa-solid fa-spinner fa-spin"></i></div><p id="avisoProcTitulo" style="margin-top:.75rem;font-weight:900;color:#fff;font-size:1.05rem"></p><p id="avisoProcTexto" style="margin-top:.4rem;color:#cbd5e1;font-size:.82rem;line-height:1.35"></p><p id="avisoProcSeg" style="margin-top:.6rem;color:#64748b;font-size:.72rem;font-variant-numeric:tabular-nums"></p></div>';
+              document.body.appendChild(c); }
+            document.getElementById('avisoProcTitulo').textContent = (ACCIONES_CON_AVISO[accion] || 'Procesando') + '…';
+            avisoProcDesde = Date.now(); c.style.display = 'flex';
+            const pintar = () => { const s = Math.floor((Date.now() - avisoProcDesde) / 1000), t = document.getElementById('avisoProcTexto'), g = document.getElementById('avisoProcSeg'); if (!t) return;
+              t.textContent = s < 6 ? 'Un momento, ya casi está.' : s < 15 ? 'Estamos preparando tu entrega…' : 'Sigue en proceso. No cierres la página ni vuelvas a comprar: te mostramos el resultado aquí.';
+              if (g) g.textContent = s >= 3 ? s + ' s' : ''; };
+            pintar(); if (avisoProcReloj) clearInterval(avisoProcReloj); avisoProcReloj = setInterval(pintar, 1000);
+          }, 400);
+        } else { avisoProcN = Math.max(0, avisoProcN - 1); if (avisoProcN > 0) return;
+          if (avisoProcT) { clearTimeout(avisoProcT); avisoProcT = null; }
+          if (avisoProcReloj) { clearInterval(avisoProcReloj); avisoProcReloj = null; }
+          const c = document.getElementById('avisoProcesando'); if (c) c.style.display = 'none'; }
+      } catch (e) { /* el aviso nunca frena una compra */ }
+    }
     async function llamarBackend(accion, datos) {
       window._llamadasEnCurso = (window._llamadasEnCurso || 0) + 1;
-      try { return await llamarBackendBase(accion, datos); } finally { window._llamadasEnCurso = Math.max(0, (window._llamadasEnCurso || 1) - 1); }
+      const conAviso = ACCIONES_CON_AVISO[accion] && !(datos && datos.__sinAviso); if (conAviso) avisoProcesando(true, accion);   // ⏳ u69: el cliente siempre ve que su compra está en marcha
+      try { return await llamarBackendBase(accion, datos); } finally { window._llamadasEnCurso = Math.max(0, (window._llamadasEnCurso || 1) - 1); if (conAviso) avisoProcesando(false, accion); }
     }
     async function llamarBackendVps(url, accion, datos) {
       if (!currentUser) throw new Error('Debes iniciar sesión.'); const idToken = await currentUser.getIdToken();
@@ -32534,6 +32569,39 @@ const LUISA_COM_DEF_PAG = { activo: true, stockHora: '08:00', mediodiaHora: '12:
     function pieMisCompras() { try { if (typeof currentUser !== 'undefined' && currentUser) irAMisCompras(); else abrirModalAuth('login'); } catch (e) { /* nada */ } }
     function pieWaPintar() { try { let n = String((window.ajustesGeneralesConfig && ajustesGeneralesConfig.whatsappNumero) || '573043956726').replace(/\D/g, ''); if (n.length === 10) n = '57' + n; const a = document.getElementById('pieWa'); if (a) a.href = 'https://wa.me/' + n + '?text=' + encodeURIComponent('Hola 👋 vengo de la página de Epic Streaming'); const li = document.getElementById('navLogoImg'), pl = document.getElementById('pieLogo'); if (li && pl && li.src && !/^data:,?$/.test(li.src) && !li.classList.contains('hidden')) { pl.src = li.src; pl.classList.remove('hidden'); } } catch (e) { /* nada */ } }
     document.addEventListener('DOMContentLoaded', () => { pieWaPintar(); setTimeout(pieWaPintar, 4000); });
+  </script>
+  <script>
+    // ↩️ u69 · «ATRÁS» CIERRA LA VENTANA DE ARRIBA. Mientras haya una ventana abierta se guarda un paso en el historial; al tocar «atrás» se cierra esa ventana
+    //    (con su propio botón de cerrar) en vez de salirse de la página. La recarga se ESCONDE sin cancelar el pedido. Durante una compra, «atrás» no hace nada.
+    //    Lo que ya manejaba «atrás» por su cuenta (Mis compras, secciones del panel) sigue igual. Apagar: localStorage.atrasVentanas = '0'.
+    (function () {
+      try { if (!window.history || !history.pushState || localStorage.getItem('atrasVentanas') === '0') return; } catch (e) { return; }
+      const PROPIAS = /cerrarMisCompras|volverMisProductos|cerrarSesion|cerrarSesi/i;   // estas ya saben qué hacer con «atrás» (o no son ventanas)
+      let centinela = false, ignorar = 0;
+      function seVe(el) { try { if (el.classList.contains('hidden')) return false; const s = getComputedStyle(el); if (s.display === 'none' || s.visibility === 'hidden' || s.pointerEvents === 'none' || parseFloat(s.opacity) < 0.05) return false; const r = el.getBoundingClientRect(); return r.width > 40 && r.height > 40; } catch (e) { return false; } }
+      function botonCerrar(el) { const L = el.querySelectorAll('[onclick]'); let x = null, c = null;
+        for (let i = 0; i < L.length; i++) { const o = String(L[i].getAttribute('onclick') || '').trim(); if (!/^(cerrar|ocultar)[A-Za-z0-9_]*\(/.test(o) || PROPIAS.test(o)) continue;
+          if (!c) c = L[i]; if (!x && (L[i].querySelector('.fa-xmark, .fa-times, .fa-circle-xmark') || /cerrar/i.test(L[i].getAttribute('aria-label') || ''))) x = L[i]; }
+        return x || c; }
+      function ventanaDeArriba() { const L = document.querySelectorAll('.fixed.inset-0'); let mejor = null, zM = -1;
+        for (let i = 0; i < L.length; i++) { const el = L[i]; if (el.id === 'avisoProcesando' || !seVe(el)) continue; const b = botonCerrar(el); if (!b) continue;
+          const z = parseInt(getComputedStyle(el).zIndex, 10) || 0; if (z >= zM) { zM = z; mejor = { el: el, boton: b }; } }
+        return mejor; }
+      function ocupado() { try { return (typeof compraEnCurso !== 'undefined' && compraEnCurso) || (typeof avisoProcesandoVisible === 'function' && avisoProcesandoVisible()); } catch (e) { return false; } }
+      function poner() { try { history.pushState(Object.assign({}, history.state || {}, { evVentana: 1 }), '', location.href); centinela = true; } catch (e) { centinela = false; } }
+      function cerrar(v) { try { if (v.el.id === 'modalRecarga' && typeof cerrarModalRecarga === 'function') { cerrarModalRecarga(true); try { pintarAvisoRecargaEnCurso(); } catch (e) { /* nada */ } return; }   // la recarga se esconde, NO se cancela
+          v.boton.click(); } catch (e) { /* nada */ } }
+      setInterval(function () { try { const v = ventanaDeArriba(), mio = !!(history.state && history.state.evVentana);
+        if (v && !centinela) { if (mio) centinela = true; else poner(); }
+        else if (!v && centinela) { centinela = false; if (mio) { ignorar++; history.back(); } } } catch (e) { /* nada */ } }, 350);
+      window.addEventListener('popstate', function (ev) { try {
+        if (ignorar > 0) { ignorar--; ev.stopImmediatePropagation(); return; }   // fue la limpieza propia (la ventana se cerró con su botón)
+        if (!centinela || (history.state && history.state.evVentana)) return;
+        const v = ventanaDeArriba(); centinela = false; if (!v) return;
+        ev.stopImmediatePropagation();
+        if (ocupado()) { poner(); return; }   // comprando: «atrás» no hace nada
+        cerrar(v); } catch (e) { /* nada */ } }, true);
+    })();
   </script>
 </body>
 </html>
