@@ -7826,7 +7826,7 @@
     // 📦 ¿Los clientes ven la cantidad de stock? (marketing: "Stock disponible" sin número)
     function mostrarStockClientes() { try { const on = !(ajustesGeneralesConfig && ajustesGeneralesConfig.mostrarStockClientes === false); document.body.classList.toggle('stock-oculto', !on); return on; } catch (e) { return true; } }
     function veCantidadStock() { return mostrarStockClientes(); }   // aplica a todos en la tienda (las cantidades siguen en el panel: Productos y Stock)
-    function textoStockCliente(n) { return n <= 5 ? 'Últimas unidades' : 'Stock disponible'; }
+    function textoStockCliente(n) { return n <= 5 ? 'Quedan pocas' : 'Disponible'; }
     function cargarMetricasCfg() { try { const c = ajustesGeneralesConfig || {}, set = (id, v) => { const e = document.getElementById(id); if (e) { if (e.type === 'checkbox') e.checked = v; else e.value = v; } };
       set('chkMetViendo', c.mostrarViendo !== false); set('chkMet7', c.mostrarVisitas7 !== false); set('chkMetProd', c.mostrarVistasProducto === true); set('inpMetMin', parseInt(c.vistasMinimo, 10) || 300); } catch (e) { /* nada */ } }
     async function guardarMetricasCfg() { const g = id => document.getElementById(id); const d = { mostrarViendo: !!(g('chkMetViendo') || {}).checked, mostrarVisitas7: !!(g('chkMet7') || {}).checked, mostrarVistasProducto: !!(g('chkMetProd') || {}).checked, vistasMinimo: Math.max(0, parseInt((g('inpMetMin') || {}).value, 10) || 0) };
@@ -16973,7 +16973,7 @@
       botonRecarga: { def: 'Recargar Saldo', etq: 'Botón de recargar saldo', max: 30 },
       filtroTodas: { def: 'Todas', etq: 'Filtro "todas las categorías"', max: 20 },
       botonComprar: { def: 'Comprar Ahora', etq: 'Botón de comprar', max: 24 },
-      botonAgotado: { def: 'Agotado', etq: 'Botón cuando no hay stock', max: 24 },
+      botonAgotado: { def: 'Vuelve pronto', etq: 'Botón cuando no hay stock', max: 24 },
       textoStock: { def: 'Stock:', etq: 'Etiqueta de stock', max: 20 },
       textoTotal: { def: 'Total a Pagar', etq: 'Etiqueta del total', max: 24 },
       textoMinimo: { def: 'Compra mínima:', etq: 'Etiqueta de compra mínima', max: 30 },
@@ -18912,7 +18912,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-11-11u73';
+    const VERSION_PAGINA = '2026-11-11u74';
     // 🧑 u58 (Alex, 10-nov): la AGENTE DE D-ID (Luisa con cara, conversa en vivo). Piloto: SOLO en epicstreaming.vip (nunca en las tiendas de tus clientes),
     //    SOLO a visitantes sin sesión, a la IZQUIERDA (a la derecha está tu botón de WhatsApp). Se carga después de la página para no hacerla lenta.
     (function () { try {
@@ -21731,11 +21731,14 @@
 
 
     // ==================== MENÚ DEL PANEL POR GRUPOS (estilo app) ====================
-    const GRUPOS_MENU = [
-      ['Ventas', ['reporte', 'actividad', 'campanas', 'dealers', 'historial', 'recargas', 'promociones', 'marketing', 'tiendas']],
-      ['Clientes', ['usuarios', 'tickets', 'novedades', 'asistente', 'whatsapp', 'mary', 'luisa']],
-      ['Inventario', ['productos', 'stock', 'proveedores', 'buscar', 'cortes', 'dominios']],
-      ['Configuración', ['categorias', 'apariencia', 'pagos', 'vista', 'ajustes']]
+    const GRUPOS_MENU = [   /* u74: 7 grupos; arriba lo de todos los días */
+      ['Hoy', ['recargas', 'tickets', 'stock', 'buscar']],
+      ['Ventas', ['productos', 'promociones', 'campanas', 'categorias']],
+      ['Dinero', ['reporte', 'historial', 'cortes', 'pagos']],
+      ['Clientes', ['usuarios', 'dealers', 'actividad']],
+      ['Proveedores y cuentas', ['proveedores', 'dominios', 'netflix', 'primevideo']],
+      ['Asistentes', ['mary', 'luisa', 'whatsapp', 'asistente', 'marketing', 'novedades']],
+      ['Ajustes', ['tiendas', 'apariencia', 'vista', 'ajustes']]
     ];
     function armarMenuGrupos(v) {
       const grid = document.getElementById('adminMenuGrid'); if (!grid) return;
@@ -26203,7 +26206,7 @@
         <p class="text-[12px] font-bold text-white text-center leading-tight line-clamp-2 min-h-[30px]">${escaparHtml(p.nombre || '')}</p>
         <p class="text-center mt-1 leading-none">${pr.tachado ? `<s class="text-[10px] text-gray-400 font-semibold mr-1">${precioVista(pr.tachado)}</s>` : ''}<span class="text-[17px] font-black text-white">${precioVista(pr.precio)}</span>${htmlUsdMini(pr.precio, 'block text-[10px] text-gray-400 font-semibold mt-1')}${pr.pct ? `<span class="ml-1 align-middle text-[9px] font-black px-1.5 py-0.5 rounded-md bg-red-600 text-white">-${pr.pct}%</span>` : ''}</p>
         ${pr.regaloTxt ? `<p class="text-[10px] text-center mt-1 font-bold text-purple-300 leading-tight">🎁 ${escaparHtml(pr.regaloTxt)}</p>` : (pr.desde ? `<p class="text-[10px] text-center mt-1 font-bold text-emerald-300">💰 Desde ${formatoCOP(pr.desde.precio)}</p>` : '')}
-        <p class="flex items-center justify-center gap-1 text-[10px] text-gray-400 mt-1">${sp ? `<span class="px-2 py-0.5 rounded-full bg-sky-500/15 border border-sky-400/50 text-sky-200 font-black">📦 Sobre pedido · hasta ${sp.max}</span>` : htmlBateriaMini(st) + ' ' + (ag ? '<span class="text-red-400 font-bold">Agotado</span>' : '<span class="stk-num">Stock ' + st + '</span><span class="stk-gen">' + textoStockCliente(st) + '</span>')}</p>
+        <p class="flex items-center justify-center gap-1 text-[10px] text-gray-400 mt-1">${sp ? `<span class="px-2 py-0.5 rounded-full bg-sky-500/15 border border-sky-400/50 text-sky-200 font-black">📦 Sobre pedido · hasta ${sp.max}</span>` : htmlBateriaMini(st) + ' ' + (ag ? '<span class="text-amber-300 font-bold">Vuelve pronto</span>' : '<span class="stk-num">' + st + ' disponibles</span><span class="stk-gen">' + textoStockCliente(st) + '</span>')}</p>
       </button>`;
     }
     function htmlFranjaPromos(lista) {
