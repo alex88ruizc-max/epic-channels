@@ -8565,7 +8565,7 @@
             // 🧪 durante la prueba de compra simulada el saldo es de mentira: el real se guarda aparte y se repone al terminar
             if (typeof pruebaCompraCorriendo !== 'undefined' && pruebaCompraCorriendo) window.__saldoRealPrueba = dataU.saldo || 0; else userSaldo = dataU.saldo || 0;
             try { if (dataU.debeCambiarClave === true) exigirCambioClave(); } catch (e) { /* nada */ }
-            try { if (!modoPruebaCliente) { clienteInternacional = esNumeroInternacional(dataU.whatsapp); clientePagaUsd = dataU.pagaUsd === true; fijarMonedaVista(clientePagaUsd ? 'USD' : (dataU.monedaVista || (clienteInternacional ? 'USD' : 'COP')), false); actualizarSaldoHeader(); } } catch (e) { /* nada */ }
+            try { if (!modoPruebaCliente) { clienteInternacional = esNumeroInternacional(dataU.whatsapp, dataU.pais); clientePagaUsd = dataU.pagaUsd === true; fijarMonedaVista(clientePagaUsd ? 'USD' : (dataU.monedaVista || (clienteInternacional ? 'USD' : 'COP')), false); actualizarSaldoHeader(); } } catch (e) { /* nada */ }
             try { registrarUsoApp(dataU); } catch (e) { /* nada */ }
             try { perfilWa = { waVinculado: dataU.waVinculado || '', waCompraAutorizada: dataU.waCompraAutorizada === true, waSolicitaEl: dataU.waSolicitaEl || '' }; if (document.getElementById('waClienteCaja')) pintarWaCliente(); } catch (e) { /* nada */ }
             setTimeout(() => { try { revisarCompraTrasRecarga(); } catch (e) { /* nada */ } }, 0);
@@ -18881,7 +18881,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-11-11u69';
+    const VERSION_PAGINA = '2026-11-11u70';
     // 🧑 u58 (Alex, 10-nov): la AGENTE DE D-ID (Luisa con cara, conversa en vivo). Piloto: SOLO en epicstreaming.vip (nunca en las tiendas de tus clientes),
     //    SOLO a visitantes sin sesión, a la IZQUIERDA (a la derecha está tu botón de WhatsApp). Se carga después de la página para no hacerla lenta.
     (function () { try {
@@ -26102,11 +26102,15 @@
     // 💱 Moneda en que el cliente ve la tienda (el saldo siempre se guarda en pesos). COP por defecto.
     var monedaVista = 'COP', clienteInternacional = false, clientePagaUsd = false;   // 💵 10u102: REGLA: quien paga en USD (Binance/USDT) ve su saldo y precios en USD
     // 🌎 Número de WhatsApp de otro país: 57 + 10 dígitos o 10 dígitos que empiezan por 3 = Colombia; sin número = Colombia
-    function esNumeroInternacional(wa) {
+    // 💵 u70 (Alex: «por defecto pesos»): antes, cualquier número que no tuviera la forma EXACTA de Colombia contaba como extranjero, y un colombiano
+    //    con un dígito de más o de menos (o sin el 57) veía la tienda en dólares. Ahora: 1) el PAÍS que eligió al registrarse manda (CO = pesos);
+    //    2) sin país, solo es extranjero un número con indicativo de otro país (11 dígitos o más, que no empiece por 57 ni por 3). En la duda: pesos.
+    function esNumeroInternacional(wa, pais) {
+      const p = String(pais || '').trim().toUpperCase();
+      if (p) return p !== 'CO';
       const d = String(wa || '').replace(/\D/g, '');
-      if (d.length < 8) return false;
-      if (d.length === 10 && d.charAt(0) === '3') return false;
-      if (d.length === 12 && d.indexOf('57') === 0) return false;
+      if (d.length < 11) return false;
+      if (d.indexOf('57') === 0 || d.charAt(0) === '3') return false;
       return true;
     }
     // Solo los clientes con número internacional (y tú o tus moderadores, para revisar) pueden ver la tienda en USD
