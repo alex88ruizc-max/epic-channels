@@ -8565,7 +8565,7 @@
             // 🧪 durante la prueba de compra simulada el saldo es de mentira: el real se guarda aparte y se repone al terminar
             if (typeof pruebaCompraCorriendo !== 'undefined' && pruebaCompraCorriendo) window.__saldoRealPrueba = dataU.saldo || 0; else userSaldo = dataU.saldo || 0;
             try { if (dataU.debeCambiarClave === true) exigirCambioClave(); } catch (e) { /* nada */ }
-            try { if (!modoPruebaCliente) { clienteInternacional = esNumeroInternacional(dataU.whatsapp, dataU.pais); clientePagaUsd = dataU.pagaUsd === true; try { avisoWaRevisar(dataU); } catch (eW) { /* nada */ } fijarMonedaVista(clientePagaUsd ? 'USD' : (dataU.monedaVista || (clienteInternacional ? 'USD' : 'COP')), false); actualizarSaldoHeader(); } } catch (e) { /* nada */ }
+            try { if (!modoPruebaCliente) { clienteInternacional = esNumeroInternacional(dataU.whatsapp, dataU.pais); clientePagaUsd = dataU.pagaUsd === true; try { avisoWaRevisar(dataU); } catch (eW) { /* nada */ } fijarMonedaVista(clientePagaUsd ? 'USD' : (clienteInternacional ? (monedaElegidaLocal() || dataU.monedaVista || 'USD') : (monedaElegidaLocal() || 'COP')), false);   /* 💵 u73: Colombia = pesos, salvo que ÉL lo haya cambiado en este celular */ actualizarSaldoHeader(); } } catch (e) { /* nada */ }
             try { registrarUsoApp(dataU); } catch (e) { /* nada */ }
             try { perfilWa = { waVinculado: dataU.waVinculado || '', waCompraAutorizada: dataU.waCompraAutorizada === true, waSolicitaEl: dataU.waSolicitaEl || '' }; if (document.getElementById('waClienteCaja')) pintarWaCliente(); } catch (e) { /* nada */ }
             setTimeout(() => { try { revisarCompraTrasRecarga(); } catch (e) { /* nada */ } }, 0);
@@ -14977,6 +14977,7 @@
         if (!iso && /^\+/.test(w)) { const m = PAISES_WA.filter(y => dig.indexOf(y[2]) === 0).sort((a, b) => b[2].length - a[2].length)[0]; if (!m) return ''; iso = m[0]; }   // indicativo que no manejamos: no se molesta
         if (!iso) { if (dig.length >= 11 && dig.indexOf('57') !== 0 && dig.charAt(0) !== '3') return ''; iso = 'CO'; }   // extranjero sin país guardado: no se puede saber su largo
         return waErrorPais(iso, waNacional(iso, w)); } catch (e) { return ''; } }
+    setInterval(function () { try { if (typeof modoPruebaCliente !== 'undefined' && modoPruebaCliente) { const bW = document.getElementById('avisoWaRevisar'); if (bW) bW.remove(); } } catch (e) { /* nada */ } }, 700);   // 🎬 u73: en la simulación nunca
     function avisoWaRevisar(u) { try { let b = document.getElementById('avisoWaRevisar'); const e = (typeof modoPruebaCliente !== 'undefined' && modoPruebaCliente) || (typeof TIENDA_SLUG !== 'undefined' && TIENDA_SLUG) ? '' : waGuardadoError(u);
         if (!e || window._avisoWaCerrado) { if (b) b.remove(); return; }
         if (!b) { b = document.createElement('div'); b.id = 'avisoWaRevisar'; b.setAttribute('role', 'status');
@@ -18911,7 +18912,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-11-11u72';
+    const VERSION_PAGINA = '2026-11-11u73';
     // 🧑 u58 (Alex, 10-nov): la AGENTE DE D-ID (Luisa con cara, conversa en vivo). Piloto: SOLO en epicstreaming.vip (nunca en las tiendas de tus clientes),
     //    SOLO a visitantes sin sesión, a la IZQUIERDA (a la derecha está tu botón de WhatsApp). Se carga después de la página para no hacerla lenta.
     (function () { try {
@@ -26170,7 +26171,8 @@
       return true;
     }
     // Solo los clientes con número internacional (y tú o tus moderadores, para revisar) pueden ver la tienda en USD
-    function puedeUsd() { try { return clienteInternacional || clientePagaUsd || esStaffSesion(); } catch (e) { return clienteInternacional || clientePagaUsd; } }
+    function puedeUsd() { try { return clienteInternacional || clientePagaUsd || esStaffSesion() || (!!currentUser && !modoPruebaCliente); } catch (e) { return clienteInternacional || clientePagaUsd; } }   // 💵 u73: cualquier cliente con cuenta
+    function monedaElegidaLocal() { try { const v = localStorage.getItem('monedaElegida_' + ((currentUser && currentUser.uid) || '')); return v === 'USD' || v === 'COP' ? v : ''; } catch (e) { return ''; } }
     function enUsd() { return monedaVista === 'USD' && puedeUsd() && !TIENDA_SLUG && !!usdDeCop(1000); }
     function usdSaldo(cop) { const t = Math.round((tasaUsdtPagina.base || 0) * (1 + (tasaUsdtPagina.ajuste || 0) / 100)); if (!(t > 1000)) return ''; return (Math.floor(Math.max(0, Number(cop) || 0) / t * 100) / 100).toFixed(2).replace('.', ','); }
     function precioVista(cop) { return enUsd() ? usdDeCop(cop) + ' USD' : formatoCOP(cop); }
@@ -26190,6 +26192,7 @@
     function alternarMonedaVista() {
       if (monedaVista === 'COP' && !usdDeCop(1000)) { mostrarToast('La tasa del dólar aún no está disponible. Intenta en un momento.'); return; }
       fijarMonedaVista(monedaVista === 'USD' ? 'COP' : 'USD', true);
+      try { if (currentUser) localStorage.setItem('monedaElegida_' + currentUser.uid, monedaVista); } catch (e) { /* sin memoria del celular: vale por esta visita */ }
       mostrarToast(monedaVista === 'USD' ? 'Ahora ves la tienda en dólares (USD)' : 'Ahora ves la tienda en pesos (COP)');
     }
     function htmlCuadroCompacto(p) {
