@@ -18912,7 +18912,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-11-11u74';
+    const VERSION_PAGINA = '2026-11-11u75';
     // 🧑 u58 (Alex, 10-nov): la AGENTE DE D-ID (Luisa con cara, conversa en vivo). Piloto: SOLO en epicstreaming.vip (nunca en las tiendas de tus clientes),
     //    SOLO a visitantes sin sesión, a la IZQUIERDA (a la derecha está tu botón de WhatsApp). Se carga después de la página para no hacerla lenta.
     (function () { try {
@@ -29943,7 +29943,7 @@ const LUISA_COM_DEF_PAG = { activo: true, stockHora: '08:00', mediodiaHora: '12:
     // 📶 Dos servidores: el de la PÁGINA (su propio cupo de Google) y el de CORREO (codigos@: lee pagos y códigos).
     // Las acciones que necesitan el correo van al servidor de correo; el resto, al de la página. Sin el segundo, todo va al único que haya.
     const ACCIONES_SERVIDOR_CORREO = new Set(['mary_probador', 'mary_rescate', 'mary_volantes', 'mary_encargo', 'luisa', 'mary_vistos', 'mary_probar', 'mary_reporte', 'mary_banner', 'codigos_sin_subir', 'saldo_regla_desde', 'otp', 'recarga_crear', 'recarga_binance_crear', 'recarga_cancelar', 'recarga_verificar', 'recarga_diagnostico', 'recarga_comprobante', 'pago_reportar', 'prov_correos', 'prov_comprobar', 'codigo_dominio', 'amz_otp', 'amz_otp_link', 'amz_salud', 'amz_revisada', 'amz_enlace_crear', 'codigo_enlace_obtener', 'salud', 'cupo', 'saldo_vence_resumen', 'saldo_vence_revertir', 'embudo_registro', 'embudo_registro_ver', 'wa_codigo', 'wa_codigo_admin', 'binance_tasa', 'wa_grupos_log', 'wa_seguimiento_ahora']);   // tg_revisar va al servidor de la página: ahí se revisan los botones de Telegram
-    const ACCIONES_VPS = new Set(['comprar', 'preorden_crear', 'renovar', 'renovar_compra', 'ticket_crear', 'recarga_comprobante', 'recarga_crear', 'recarga_cancelar', 'prov_correos', 'prov_hoy', 'tienda_aprobar', 'tienda_crear', 'cred_cobrar']);   // ⚡ lo que hace el servidor del VPS (1.23+): compras, renovaciones, reportes, comprobantes y el generador de correos
+    const ACCIONES_VPS = new Set(['comprar', 'preorden_crear', 'renovar', 'renovar_compra', 'ticket_crear', 'recarga_comprobante', 'recarga_crear', 'recarga_cancelar', 'prov_correos', 'prov_hoy', 'tienda_aprobar', 'tienda_crear', 'alq_renovado_aviso', 'cred_cobrar']);   // ⚡ lo que hace el servidor del VPS (1.23+): compras, renovaciones, reportes, comprobantes y el generador de correos
     const OPS_CORREOS_GOOGLE = new Set(['codigo', 'revisar_bienvenidas', 'refrescar']);   // estas leen el Gmail de codigos@: siempre en Google
     function urlVps(accion, datos) { const v = String((ajustesGeneralesConfig && ajustesGeneralesConfig.vpsUrl) || '').trim().replace(/\/+$/, ''); if (!v || window.__vpsCaido || !ACCIONES_VPS.has(String(accion || ''))) return '';
       if (accion === 'prov_correos' && OPS_CORREOS_GOOGLE.has(String((datos || {}).op || ''))) return ''; return v + '/api'; }
@@ -32373,6 +32373,11 @@ const LUISA_COM_DEF_PAG = { activo: true, stockHora: '08:00', mediodiaHora: '12:
     }
 
     // ---------- Registrar pago manual ----------
+    // 💚 u75: al registrar tú el pago de un alquiler, Mary le manda al cliente la tarjeta «¡Gracias por renovar!» con la fecha nueva (va con Mary 3.13)
+    function avisarRenovacionAlq(id) { try { llamarBackend('alq_renovado_aviso', { id: id }).then(function (r) {
+        if (r && r.ok && r.avisado) mostrarToast('💚 Mary le manda el «gracias por renovar» por WhatsApp');
+        else if (r && r.ok && r.avisado === false) mostrarToast('⚠️ Ese cliente no tiene WhatsApp guardado: no se le pudo avisar');
+      }).catch(function () { /* el pago ya quedó registrado */ }); } catch (e) { /* nada */ } }
     async function registrarPagoNetflix(id) {
       const a = netflixCuentasAdmin.find(x => x.id === id);
       if (!a || a.estado !== 'asignado') return;
@@ -32405,6 +32410,7 @@ const LUISA_COM_DEF_PAG = { activo: true, stockHora: '08:00', mediodiaHora: '12:
             tx.set(db.collection('pagos_alquiler').doc(), { alquilerId: id, correo: a.correo || '', usuarioId: a.clienteUid || '', usuarioEmail: a.clienteEmail || '', clienteNombre: a.clienteNombre || '', monto: precio, meses: plan, desde: base, hasta: nuevo, fecha: ahora, metodo: 'saldo', pagadoConSaldo: precio, procesadoPor: 'admin' });
             tx.set(db.collection('compras').doc(), ventaDeAlquiler(a, precio, 'pago_alquiler', { metodoPago: 'saldo', pagadoConSaldo: precio, procesadoPor: (currentUser && currentUser.email) || 'admin', desde: base, hasta: nuevo })); });
           mostrarToast(`Pago registrado con su saldo (le quedan ${formatoCOP(sAct - precio)}). Próximo pago: ` + fechaCortaNetflix(nuevo));
+          avisarRenovacionAlq(id);
           return; }
         const lote = db.batch();
         lote.set(db.collection('alquileres').doc(id), { proximoPago: nuevo, ultimoPago: ahora, ultimoMonto: precio, actualizadoEl: ahora, productoId: prA.id, productoNombre: prA.nombre }, { merge: true });
@@ -32417,6 +32423,7 @@ const LUISA_COM_DEF_PAG = { activo: true, stockHora: '08:00', mediodiaHora: '12:
         if (precio > 0) lote.set(db.collection('compras').doc(), ventaDeAlquiler(a, precio, 'pago_alquiler', { metodoPago: 'manual', procesadoPor: (currentUser && currentUser.email) || 'admin', desde: base, hasta: nuevo }));
         await lote.commit();
         mostrarToast('Pago registrado. Próximo pago: ' + fechaCortaNetflix(nuevo));
+        avisarRenovacionAlq(id);
       } catch (err) {
         alert('No se pudo registrar el pago: ' + err.message);
       }
