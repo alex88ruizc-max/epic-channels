@@ -2504,6 +2504,7 @@
             <label class="flex items-center justify-between gap-3 cursor-pointer"><span class="text-[12px] text-gray-300">🔔 Número de <b>notificaciones</b>: Mary se presenta en los avisos (con su imagen) y, si le responden, pasa a la tienda sin ofrecer nada<br><span class="text-[10px] text-gray-500">Para todos los clientes.</span></span><input type="checkbox" id="maryAvisos" class="w-5 h-5 accent-indigo-500"></label>
             <label class="flex items-center justify-between gap-3 cursor-pointer"><span class="text-[12px] text-gray-300">🔁 Recordatorio de recompra (1 vez por compra, según cada cuánto compra el cliente)<br><span class="text-[10px] text-gray-500">Sale desde la tienda; respeta el modo de arriba (en prueba, solo a tus números).</span></span><input type="checkbox" id="maryRecompra" class="w-5 h-5 accent-indigo-500"></label>
             <label class="flex items-center justify-between gap-3 cursor-pointer"><span class="text-[12px] text-gray-300">🟢 «Ya llegó»: cuando entra un producto que no había, una imagen con la cantidad a quien preguntó y a quien su última compra (10 días) fue ese producto<br><span class="text-[10px] text-gray-500">Uno por cliente al día, de 8 a. m. a 10 p. m.</span></span><input type="checkbox" id="maryAvisoLlego" class="w-5 h-5 accent-indigo-500"></label>
+            <label class="flex items-center justify-between gap-3 cursor-pointer"><span class="text-[12px] text-gray-300">💛 Recordar el saldo: al cliente con saldo que no entra a la página hace 8 días, «¿te alisto lo de siempre?» o la lista de lo que hay<br><span class="text-[10px] text-gray-500">Un mensaje cada 8 días, máximo 15 al día, de 10 a. m. a 6 p. m.</span></span><input type="checkbox" id="maryAvisoSaldo" class="w-5 h-5 accent-indigo-500"></label>
             <label class="flex items-center justify-between gap-3 cursor-pointer"><span class="text-[12px] text-gray-300">🤝 Posventa: 30 min después de entregar, "¿pudiste entrar bien?" (una sola vez)</span><input type="checkbox" id="maryPosventa" class="w-5 h-5 accent-indigo-500"></label>
             <label class="flex items-center justify-between gap-3 cursor-pointer"><span class="text-[12px] text-gray-300">🔁 Recuperar al que preguntó y no compró: al día siguiente, UN solo mensaje con el precio de ese producto<br><span class="text-[10px] text-gray-500">Máximo uno por semana por cliente. Respeta el modo de arriba.</span></span><input type="checkbox" id="maryRecupero" class="w-5 h-5 accent-indigo-500"></label>
             <div class="p-3 rounded-xl bg-gray-800/60 border border-gray-700 space-y-2">
@@ -14273,8 +14274,27 @@
         mostrarToast(on ? '🧪 Listo: tus cuentas ya no cuentan para dormir el dominio' : 'Tus cuentas vuelven a contar para el descanso'); }
       catch (e) { alert('No se pudo guardar: ' + e.message); const c = document.getElementById('chkPropiasFalsaAlarma'); if (c) c.checked = !on; }
     }
+    /* 🗓 u79 (Alex, 12-nov: «agregar en Mis dominios la lista de las cuentas Prime Video con más de 29 días… que se pueda copiar individual o en grupo»).
+       Se pide cuando tocas «Ver la lista» (la arma el servidor leyendo los correos de Amazon). Solo muestra y copia: no cambia nada. */
+    var primeViejasDatos = null, primeViejasCarga = false;
+    function pintarPrimeViejas() { const c = document.getElementById('primeViejasCaja'); if (!c) return; const D = primeViejasDatos, F = (D && D.fuera) || {};
+      const fila = x => `<div class="flex items-center justify-between gap-2 py-1.5 border-t border-gray-800"><span class="min-w-0 truncate text-[12px] text-gray-200 font-mono">${escaparHtml(x.correo)}</span><span class="shrink-0 text-[10px] text-gray-500">${Number(x.dias) || 0} días</span><button type="button" onclick="copiarPrimeVieja('${escaparJsAttr(x.correo)}')" class="shrink-0 px-2.5 py-1 rounded-lg bg-gray-800 border border-gray-700 text-[10px] font-bold text-gray-200">Copiar</button></div>`;
+      const grupo = (tit, k, L) => `<div class="mt-3 rounded-xl bg-gray-950/50 border border-gray-800 p-3"><div class="flex items-center justify-between gap-2"><p class="text-xs font-black text-white">${tit} <span class="text-gray-500 font-bold">${L.length}</span></p>${L.length ? `<button type="button" onclick="copiarPrimeGrupo('${k}')" class="px-2.5 py-1.5 rounded-lg bg-emerald-500 text-black text-[10px] font-black">Copiar grupo</button>` : ''}</div>${L.length ? L.map(fila).join('') : '<p class="text-[11px] text-gray-500 mt-1">Ninguna por ahora.</p>'}</div>`;
+      c.innerHTML = `<p class="text-sm font-black text-white">🗓 Prime Video con más de 29 días</p><p class="text-[11px] text-gray-400 mb-2">Cuentas que siguen vivas: sin correo de suspensión y sin cambio de correo. Separadas por la moneda de su correo de bienvenida.</p>
+        <button type="button" onclick="cargarPrimeViejas(true)" ${primeViejasCarga ? 'disabled' : ''} class="px-3 py-2 rounded-xl bg-gray-800 hover:bg-gray-700 border border-gray-700 text-gray-100 font-bold text-[11px]">${primeViejasCarga ? 'Leyendo los correos de Amazon…' : (D ? '↻ Actualizar la lista' : 'Ver la lista')}</button>` +
+        (D && D.ok ? grupo('🇪🇺 Europeas · bienvenida en euros', 'europeas', D.europeas || []) + grupo('🇨🇴 Colombianas · bienvenida en pesos', 'colombianas', D.colombianas || []) + ((D.sinMoneda || []).length ? grupo('❔ No encontré su correo de bienvenida', 'sinMoneda', D.sinMoneda) : '') +
+          `<p class="text-[10px] text-gray-500 mt-2">Fuera de la lista: ${Number(F.suspendidas) || 0} con suspensión · ${Number(F.cambio) || 0} con cambio de correo · ${Number(F.retiradas) || 0} retiradas.${Number(D.total) > 80 ? ' Se muestran las 80 más antiguas de ' + D.total + '.' : ''}</p>`
+          : (D && !D.ok ? `<p class="text-[11px] text-amber-300 mt-2">${escaparHtml(D.error || 'No se pudo armar la lista.')}</p>` : '')); }
+    async function cargarPrimeViejas(fresco) { if (primeViejasCarga) return; primeViejasCarga = true; pintarPrimeViejas();
+      try { primeViejasDatos = await llamarBackend('dominios_prime_viejas', { fresco: !!fresco }); } catch (e) { primeViejasDatos = { ok: false, error: e.message || String(e) }; }
+      if (!primeViejasDatos || typeof primeViejasDatos !== 'object') primeViejasDatos = { ok: false, error: 'El servidor no respondió.' }; primeViejasCarga = false; pintarPrimeViejas(); }
+    function copiarTextoPrime(t, aviso) { const fin = () => { try { mostrarToast(aviso); } catch (e) { /* nada */ } };
+      try { navigator.clipboard.writeText(t).then(fin).catch(() => { try { const a = document.createElement('textarea'); a.value = t; document.body.appendChild(a); a.select(); document.execCommand('copy'); a.remove(); fin(); } catch (e) { alert(t); } }); } catch (e) { alert(t); } }
+    function copiarPrimeVieja(correo) { copiarTextoPrime(String(correo), '📋 Copiada: ' + correo); }
+    function copiarPrimeGrupo(k) { const L = (primeViejasDatos && primeViejasDatos[k]) || []; if (!L.length) return; copiarTextoPrime(L.map(x => x.correo).join('\n'), '📋 Copiadas ' + L.length + (L.length === 1 ? ' cuenta' : ' cuentas')); }
     function pintarMisDominios() {
       const c = document.getElementById('misDominiosCaja'); if (!c || !esAdminSesionActual()) return;
+      try { if (!window.EPIC_TIENDA && !document.getElementById('primeViejasCaja')) { const pv = document.createElement('div'); pv.id = 'primeViejasCaja'; pv.className = c.className; pv.classList.remove('hidden'); c.parentNode.insertBefore(pv, c.nextSibling); pintarPrimeViejas(); } } catch (e) { /* nada */ }
       const lista = (misDominiosCfg && Array.isArray(misDominiosCfg.lista)) ? misDominiosCfg.lista : [];
       const badge = e => e === 'activo' ? '<span class="text-emerald-300">🟢 Activo</span>' : (e === 'descanso' ? '<span class="text-amber-300">😴 Descansando</span>' : '<span class="text-gray-500">⛔ Apagado</span>');
       const base = (window.DOMINIO_BASE || 'epicstreaming.vip');
@@ -18938,7 +18958,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-11-12u78';
+    const VERSION_PAGINA = '2026-11-12u79';
     // 🧑 u58 (Alex, 10-nov): la AGENTE DE D-ID (Luisa con cara, conversa en vivo). Piloto: SOLO en epicstreaming.vip (nunca en las tiendas de tus clientes),
     //    SOLO a visitantes sin sesión, a la IZQUIERDA (a la derecha está tu botón de WhatsApp). Se carga después de la página para no hacerla lenta.
     (function () { try {
@@ -29629,7 +29649,7 @@ const LUISA_COM_DEF_PAG = { activo: true, stockHora: '08:00', mediodiaHora: '12:
         const g = id => document.getElementById(id);
         g('maryTienda').value = maryCfgLocal.tienda || 'prueba'; g('maryPrueba').value = (maryCfgLocal.prueba || []).join('\n');
         g('maryAvisos').checked = maryCfgLocal.avisos !== false; g('maryRecompra').checked = maryCfgLocal.recompra !== false;
-        if (g('maryPosventa')) g('maryPosventa').checked = maryCfgLocal.posventa !== false; if (g('maryRecupero')) g('maryRecupero').checked = maryCfgLocal.recupero !== false; if (g('maryAvisoLlego')) g('maryAvisoLlego').checked = maryCfgLocal.avisoLlego !== false; if (g('maryDueno')) g('maryDueno').value = maryCfgLocal.dueno || 'Alex';
+        if (g('maryPosventa')) g('maryPosventa').checked = maryCfgLocal.posventa !== false; if (g('maryRecupero')) g('maryRecupero').checked = maryCfgLocal.recupero !== false; if (g('maryAvisoLlego')) g('maryAvisoLlego').checked = maryCfgLocal.avisoLlego !== false; if (g('maryAvisoSaldo')) g('maryAvisoSaldo').checked = maryCfgLocal.avisoSaldo !== false; if (g('maryDueno')) g('maryDueno').value = maryCfgLocal.dueno || 'Alex';
         if (g('maryMarketing')) g('maryMarketing').checked = maryCfgLocal.marketing !== false;
         { const rt = Object.assign({ activo: true, m1: 30, m2: 180 }, maryCfgLocal.retoma || {}); if (g('maryRetoma')) { g('maryRetoma').checked = rt.activo !== false; g('maryRetM1').value = rt.m1; g('maryRetM2').value = rt.m2; } } const inac = Object.assign({ activo: true, dias: 15, cada: 30, max: 10 }, maryCfgLocal.inactivos || {});
         if (g('maryInactivos')) { g('maryInactivos').checked = inac.activo !== false; g('maryInactDias').value = inac.dias; g('maryInactCada').value = inac.cada; g('maryInactMax').value = inac.max; }
@@ -29742,7 +29762,7 @@ const LUISA_COM_DEF_PAG = { activo: true, stockHora: '08:00', mediodiaHora: '12:
       const g = id => document.getElementById(id), lineas = id => g(id).value.split('\n').map(x => x.trim()).filter(Boolean).slice(0, 40);
       const d = { tienda: g('maryTienda').value, prueba: g('maryPrueba').value.split(/[\n,;]+/).map(x => x.replace(/\D/g, '').slice(-10)).filter(x => x.length >= 7).slice(0, 20),
         avisos: g('maryAvisos').checked, recompra: g('maryRecompra').checked, reglas: lineas('maryReglas'), frases: lineas('maryFrases'), faqs: maryLeerFaqs().slice(0, 80), actualizadoEl: new Date().toISOString(),
-        posventa: g('maryPosventa') ? g('maryPosventa').checked : true, recupero: g('maryRecupero') ? g('maryRecupero').checked : true, marketing: g('maryMarketing') ? g('maryMarketing').checked : true, avisoLlego: g('maryAvisoLlego') ? g('maryAvisoLlego').checked : true,
+        posventa: g('maryPosventa') ? g('maryPosventa').checked : true, recupero: g('maryRecupero') ? g('maryRecupero').checked : true, marketing: g('maryMarketing') ? g('maryMarketing').checked : true, avisoLlego: g('maryAvisoLlego') ? g('maryAvisoLlego').checked : true, avisoSaldo: g('maryAvisoSaldo') ? g('maryAvisoSaldo').checked : true,
         volantes: g('maryVolantes') ? g('maryVolantes').checked : true, volantesExcluir: g('maryVolExcluir') ? g('maryVolExcluir').value.split('\n').map(x => x.trim()).filter(x => x.length >= 2).slice(0, 40) : [],
         estadosExcluir: g('maryEstExcluir') ? g('maryEstExcluir').value.split('\n').map(x => x.trim()).filter(x => x.length >= 2).slice(0, 300) : [],
         jefeDesde: g('maryJefeDesde') ? Math.max(0, Math.min(23, Number(g('maryJefeDesde').value) || 8)) : 8, jefeHasta: g('maryJefeHasta') ? Math.max(1, Math.min(24, Number(g('maryJefeHasta').value) || 22)) : 22,
