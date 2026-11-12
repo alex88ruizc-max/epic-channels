@@ -636,6 +636,7 @@
           <span class="text-[9px] text-gray-400 block leading-none">Mi Saldo</span>
           <span id="txtSaldoHeader" class="text-xs sm:text-sm font-bold text-white leading-tight"><span class="sk-carga" style="width:64px"></span></span>
           <span id="txtSaldoVence" onclick="event.stopPropagation(); explicarVenceSaldo()" role="button" tabindex="0" class="hidden text-[8px] font-black leading-none mt-0.5 cursor-pointer"></span>
+          <span id="txtCreditoHeader" onclick="event.stopPropagation(); irACreditoDesdeFlotante()" role="button" tabindex="0" class="hidden block text-[9px] font-black leading-none mt-0.5 cursor-pointer whitespace-nowrap text-pink-300"></span>
         </div>
         <button type="button" id="btnMonedaVista" onclick="alternarMonedaVista()" title="Ver en pesos o dólares" class="ml-1 px-1.5 py-0.5 rounded-md border border-gray-600 text-[9px] font-black text-gray-200 hover:bg-gray-700 transition">COP</button>
         <button onclick="abrirModalRecarga()" title="Recargar saldo" class="ml-1 bg-emerald-500 hover:bg-emerald-400 text-black rounded p-1 text-xs transition">
@@ -7928,7 +7929,11 @@
         if (t > 0) { userUltimoMov = new Date(t).toISOString(); try { actualizarSaldoHeader(); } catch (e) { /* nada */ } }
       } catch (e) { /* nunca afecta la tienda */ }
     }
-    let userDeuda = 0, userCupo = 0;
+    let userDeuda = 0, userCupo = 0, userCreditoActivo = false;
+    /* 💳 u77: el crédito ya no se suma al saldo. Es un cupo: se usa solo lo que falte al comprar y solo se debe lo gastado. */
+    function creditoLibre() { return userCreditoActivo ? Math.max(0, (Number(userCupo) || 0) - (Number(userDeuda) || 0)) : 0; }
+    function pintarCreditoHeader() { try { const e = document.getElementById('txtCreditoHeader'); if (!e) return; const ver = !!currentUser && !esStaffSesion() && (Number(userDeuda) || 0) > 0;
+        e.classList.toggle('hidden', !ver); if (ver) e.textContent = 'Debes ' + formatoCOP(userDeuda); } catch (e) { /* nada */ } }
     let userProductosPermitidos = [];
     let userTipoCuenta = '', userCategoriasPermitidas = [];
     let userProductosBloqueados = [];
@@ -8578,7 +8583,7 @@
             userDeuda = Math.max(0, Number(dataU.deuda) || 0);
             userUltimoMov = dataU.ultimoMovimientoEl || dataU.creadoEl || dataU.registradoEl || '';
             try { if (!dataU.ultimoMovimientoEl && !window.__movBuscado && !modoPruebaCliente) { window.__movBuscado = true; buscarUltimoMovReal(); } } catch (e) { /* nada */ }
-            userCupo = Math.max(0, Number(dataU.cupoCredito) || 0);
+            userCupo = Math.max(0, Number(dataU.cupoCredito) || 0); userCreditoActivo = !!dataU.creditoAceptadoEl && dataU.credPausa !== true;
             setTimeout(() => { try { actualizarAccesosCredito(); } catch (e) { /* nada */ } }, 0);
             if (String(dataU.avatarUrl || '') !== miAvatarUrl) { miAvatarUrl = String(dataU.avatarUrl || ''); try { pintarMiAvatar(); } catch (e) { /* nada */ } }
             try { renderizarCreditoCliente(); } catch (e) { /* nada */ }
@@ -10788,7 +10793,7 @@
         // Si ya se sabe que no alcanza (saldo + crédito disponible), se avisa al instante sin esperar al servidor
         try {
           const totalEsperado = precioPorCantidad(prodInfo, cantidad) * cantidad;
-          const disponible = (Number(userSaldo) || 0) + Math.max(0, (Number(userCupo) || 0) - (Number(userDeuda) || 0));
+          const disponible = (Number(userSaldo) || 0) + creditoLibre();
           if (totalEsperado > 0 && disponible < totalEsperado && !modoPruebaCliente) {
             abrirModalSaldoInsuficiente(`Saldo insuficiente. Tienes ${formatoCOP(userSaldo || 0)} y el total es ${formatoCOP(totalEsperado)}.`);
             return;
@@ -10954,10 +10959,10 @@
         // Si ya se sabe que el saldo no alcanza pero el crédito sí, se pregunta antes: así hay un solo viaje al servidor
         let usarCreditoYa = false;
         try {
-          const totalEsp = precioPorCantidad(prodInfo, cantidad) * cantidad, falta = totalEsp - (Number(modoPruebaCliente ? saldoSimulado : userSaldo) || 0), libreCred = (modoPruebaCliente && !simPerfil) ? 0 : Math.max(0, (Number(userCupo) || 0) - (Number(userDeuda) || 0));
+          const totalEsp = precioPorCantidad(prodInfo, cantidad) * cantidad, falta = totalEsp - (Number(modoPruebaCliente ? saldoSimulado : userSaldo) || 0), libreCred = (modoPruebaCliente && !simPerfil) ? 0 : creditoLibre();
           if (!conCombo && totalEsp > 0 && falta > 0 && libreCred >= falta) {
             if (btnCompra) btnCompra.innerHTML = htmlBtn;
-            if (!await confirmarModal(`Te faltan ${formatoCOP(falta)} COP para esta compra.\n\n¿Completarla con tu crédito? Tienes ${formatoCOP(libreCred)} disponibles. Quedarás debiendo ${formatoCOP(userDeuda + falta)} COP y tu próxima recarga paga primero esa deuda.`, { tipo: 'pregunta', textoAceptar: 'Sí, usar mi crédito' })) return;
+            if (!await confirmarModal(`Te faltan ${formatoCOP(falta)} COP para esta compra.\n\n¿Completarla con tu crédito? Tienes ${formatoCOP(libreCred)} disponibles. Solo debes lo que usas: quedarás debiendo ${formatoCOP(userDeuda + falta)} COP y tu próxima recarga paga primero esa deuda.`, { tipo: 'pregunta', textoAceptar: 'Sí, usar mi crédito' })) return;
             usarCreditoYa = true;
             if (btnCompra) btnCompra.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Procesando...';
           }
@@ -10965,7 +10970,7 @@
         let r = await llamarBackend('comprar', usarCreditoYa ? Object.assign({}, pedidoCompra, { usarCredito: true }) : pedidoCompra);
         if (r && !r.ok && r.codigo === 'USAR_CREDITO') {
           const faltante = Number(r.faltante) || 0;
-          const okCredito = await confirmarModal(`Te faltan ${formatoCOP(faltante)} COP para esta compra.\n\n¿Completarla con tu crédito? Tienes ${formatoCOP(Number(r.cupoDisponible) || 0)} disponibles. Quedarás debiendo ${formatoCOP(userDeuda + faltante)} COP y tu próxima recarga paga primero esa deuda.`, { tipo: 'pregunta', textoAceptar: 'Sí, usar mi crédito' });
+          const okCredito = await confirmarModal(`Te faltan ${formatoCOP(faltante)} COP para esta compra.\n\n¿Completarla con tu crédito? Tienes ${formatoCOP(Number(r.cupoDisponible) || 0)} disponibles. Solo debes lo que usas: quedarás debiendo ${formatoCOP(userDeuda + faltante)} COP y tu próxima recarga paga primero esa deuda.`, { tipo: 'pregunta', textoAceptar: 'Sí, usar mi crédito' });
           if (!okCredito) return;
           r = await llamarBackend('comprar', Object.assign({}, pedidoCompra, { usarCredito: true }));
         }
@@ -17339,14 +17344,13 @@
       const secCred = document.getElementById('perfilSecCredito'), enTabCredito = secCred && !secCred.classList.contains('hidden');
       if (caja) {
         caja.classList.toggle('hidden', !hay || !primerDia || enTabCredito);
-        if (hay) caja.innerHTML = (libre > 0 ? `<div class="mb-3 p-3 rounded-xl bg-gradient-to-br from-violet-500/25 to-fuchsia-500/10 border border-violet-300/50 text-center">
+        if (hay) caja.innerHTML = (libre > 0 && !userCreditoActivo ? `<div class="mb-3 p-3 rounded-xl bg-gradient-to-br from-violet-500/25 to-fuchsia-500/10 border border-violet-300/50 text-center">
             <p class="text-[10px] font-black text-violet-200 uppercase tracking-[0.2em]">Crédito pre-aprobado</p>
             <p class="text-2xl font-black text-white mt-1">${formatoCOP(libre)}</p>
-            <p class="text-[11px] text-violet-100/80 mt-1 leading-snug">Acéptalo y se suma ya a tu saldo. Tu próxima recarga lo paga automáticamente.</p>
-            <button type="button" onclick="aceptarCreditoPreaprobado()" class="mt-2.5 w-full py-2.5 rounded-xl bg-violet-500 hover:bg-violet-400 text-white font-black text-xs shadow-lg shadow-violet-500/30"><i class="fa-solid fa-hand-holding-dollar mr-1"></i>Aceptar crédito</button>
+            <p class="text-[11px] text-violet-100/80 mt-1 leading-snug">Actívalo y úsalo cuando tu saldo no alcance. Solo debes lo que gastes.</p>
+            <button type="button" onclick="aceptarCreditoPreaprobado()" class="mt-2.5 w-full py-2.5 rounded-xl bg-violet-500 hover:bg-violet-400 text-white font-black text-xs shadow-lg shadow-violet-500/30"><i class="fa-solid fa-hand-holding-dollar mr-1"></i>Activar crédito</button>
           </div>` : '') + `<div class="flex items-center justify-between gap-2"><p class="text-[11px] font-black text-violet-200 uppercase tracking-wider"><i class="fa-solid fa-hand-holding-dollar mr-1"></i>Mi crédito</p>${userDeuda > 0 ? `<span class="text-[11px] font-black px-2 py-0.5 rounded-full bg-violet-500/20 text-violet-100 border border-violet-400/40">Debes ${formatoCOP(userDeuda)}</span>` : '<span class="text-[11px] font-bold text-emerald-300">Al día</span>'}</div>
-          ${userCupo > 0 ? `<div class="mt-2"><div class="flex justify-between text-[10px] text-gray-300"><span>Crédito usado</span><span class="font-bold text-white">${formatoCOP(userDeuda)} de ${formatoCOP(userCupo)}</span></div><div class="mt-1 h-2 rounded-full bg-gray-800 overflow-hidden"><div class="h-full rounded-full" style="width:${Math.min(100, Math.round(userDeuda / userCupo * 100))}%;background:linear-gradient(90deg,#8b5cf6,#ec4899)"></div></div><p class="text-[10px] text-gray-400 mt-1">Disponible para usar: <b class="text-emerald-300">${formatoCOP(libre)}</b></p></div>` : ''}
-          ${(userDeuda > 0 && Number(userSaldo) > 0 ? `<p class="text-[11px] text-violet-100 mt-2 p-2 rounded-lg bg-violet-500/10 border border-violet-400/30"><i class="fa-solid fa-wallet mr-1"></i>De tu saldo, <b>${formatoCOP(Math.min(Number(userSaldo) || 0, userDeuda))}</b> son lo que te queda del crédito.</p>` : '')}
+          ${userCupo > 0 ? `<div class="mt-2"><div class="flex justify-between text-[10px] text-gray-300"><span>Crédito gastado</span><span class="font-bold text-white">${formatoCOP(userDeuda)} de ${formatoCOP(userCupo)}</span></div><div class="mt-1 h-2 rounded-full bg-gray-800 overflow-hidden"><div class="h-full rounded-full" style="width:${Math.min(100, Math.round(userDeuda / userCupo * 100))}%;background:linear-gradient(90deg,#8b5cf6,#ec4899)"></div></div><p class="text-[10px] text-gray-400 mt-1">Disponible para usar: <b class="text-emerald-300">${formatoCOP(libre)}</b></p></div>` : ''}
           ${userDeuda > 0 ? '<p class="text-[10px] text-gray-400 mt-2">Tu próxima recarga paga primero esta deuda; lo que sobre va a tu saldo.</p>' : ''}`;
       }
       if (aviso) {
@@ -18912,7 +18916,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-11-11u76';
+    const VERSION_PAGINA = '2026-11-11u77';
     // 🧑 u58 (Alex, 10-nov): la AGENTE DE D-ID (Luisa con cara, conversa en vivo). Piloto: SOLO en epicstreaming.vip (nunca en las tiendas de tus clientes),
     //    SOLO a visitantes sin sesión, a la IZQUIERDA (a la derecha está tu botón de WhatsApp). Se carga después de la página para no hacerla lenta.
     (function () { try {
@@ -20432,13 +20436,14 @@
     async function aceptarCreditoPreaprobado() {
       const libre = Math.max(0, userCupo - userDeuda);
       if (!(libre > 0)) return;
-      if (!await confirmarModal(`¿Aceptar ${formatoCOP(libre)} de crédito?\n\nSe suma ya a tu saldo para que compres. Tu próxima recarga lo paga automáticamente: primero se descuenta la deuda y lo que sobre queda en tu saldo.`, { tipo: 'pregunta', textoAceptar: 'Sí, aceptar crédito' })) return;
+      if (!await confirmarModal(`¿Activar tu crédito de ${formatoCOP(libre)}?\n\nNo se suma a tu saldo: queda disponible y se usa solo cuando compres y tu saldo no alcance. Solo debes lo que gastes, y tu próxima recarga lo paga primero.`, { tipo: 'pregunta', textoAceptar: 'Sí, activar crédito' })) return;
       mostrarAvisoCredito('cargando');
       try {
         const r = await llamarBackend('credito_aceptar', {});
         if (!r || !r.ok) { mostrarAvisoCredito('error', (r && r.error) || 'No se pudo aceptar el crédito.'); return; }
         lanzarConfeti(['💜', '💰', '✨']);
-        mostrarAvisoCredito('ok', r);
+        userCreditoActivo = true; if (r.cupo === undefined) r.cupo = libre;
+        mostrarAvisoCredito('ok', r); try { actualizarAccesosCredito(); renderizarCreditoCliente(); } catch (e) { /* nada */ }
       } catch (e) { mostrarAvisoCredito('error', /Unknown|desconocida|no reconoc/i.test(e.message || '') ? 'Esta opción aún no está activa. Pide a soporte que actualice el sistema.' : (e.message || 'No se pudo aceptar el crédito.')); }
     }
 
@@ -20828,7 +20833,8 @@
     function actualizarAccesosCredito() {
       const hay = !modoPruebaCliente && !esStaffSesion() && !esProveedorSesion() && (userDeuda > 0 || userCupo > 0);
       const tb = document.getElementById('perfilTabBtnCredito'); if (tb) { tb.classList.toggle('hidden', !hay); tb.style.display = hay ? 'flex' : 'none'; }
-      const libre = Math.max(0, userCupo - userDeuda);
+      pintarCreditoHeader();
+      const libre = userCreditoActivo ? 0 : Math.max(0, userCupo - userDeuda);   /* el botón y el aviso flotante son solo para el que aún no lo activa */
       const nb = document.getElementById('navCreditoBtn'); if (nb) { const v = hay && libre > 0; nb.classList.toggle('hidden', !v); nb.style.display = v ? 'flex' : 'none'; }
       const f = document.getElementById('flotanteCredito'); if (!f) return;
       let cerrada = ''; try { cerrada = localStorage.getItem(claveFlotanteCredito()) || ''; } catch (e) { cerrada = window.__credFlotMem || ''; }
@@ -20848,14 +20854,14 @@
     function renderizarTabCredito() {
       const caja = document.getElementById('perfilCreditoTab'); if (!caja) return;
       const libre = Math.max(0, userCupo - userDeuda), usado = Math.min(100, userCupo ? Math.round(userDeuda / userCupo * 100) : 0);
-      caja.innerHTML = (libre > 0 ? `<div class="p-4 rounded-2xl bg-gradient-to-br from-violet-500/25 to-fuchsia-500/10 border border-violet-300/50 text-center">
+      const cajaC = (t, v, col, sub) => `<div class="rounded-2xl p-3 bg-gray-900 border border-gray-800"><p class="text-[10px] text-gray-400">${t}</p><p class="text-base font-black ${col}">${v}</p><p class="text-[9px] text-gray-500 mt-0.5 leading-tight">${sub}</p></div>`;
+      caja.innerHTML = (libre > 0 && !userCreditoActivo ? `<div class="p-4 rounded-2xl bg-gradient-to-br from-violet-500/25 to-fuchsia-500/10 border border-violet-300/50 text-center">
           <p class="text-[10px] font-black text-violet-200 uppercase tracking-[0.2em]">Crédito pre-aprobado</p><p class="text-3xl font-black text-white mt-1">${formatoCOP(libre)}</p>
-          <p class="text-[11px] text-violet-100/80 mt-1">Acéptalo y se suma ya a tu saldo. Tu próxima recarga lo paga automáticamente.</p>
-          <button type="button" onclick="aceptarCreditoPreaprobado()" class="mt-3 w-full py-3 rounded-xl bg-violet-500 hover:bg-violet-400 text-white font-black text-sm shadow-lg shadow-violet-500/30"><i class="fa-solid fa-hand-holding-dollar mr-1"></i>Aceptar crédito</button></div>` : '') +
-        `<div class="mt-3 grid grid-cols-3 gap-2"><div class="rounded-2xl p-3 bg-gray-900 border border-gray-800"><p class="text-[10px] text-gray-400">Debes</p><p class="text-sm font-black ${userDeuda > 0 ? 'text-violet-200' : 'text-emerald-300'}">${userDeuda > 0 ? formatoCOP(userDeuda) : 'Nada'}</p></div><div class="rounded-2xl p-3 bg-gray-900 border border-gray-800"><p class="text-[10px] text-gray-400">Cupo total</p><p class="text-sm font-black text-white">${formatoCOP(userCupo)}</p></div><div class="rounded-2xl p-3 bg-gray-900 border border-gray-800"><p class="text-[10px] text-gray-400">Disponible</p><p class="text-sm font-black text-emerald-300">${formatoCOP(libre)}</p></div></div>
-        <div class="mt-2 h-2 rounded-full bg-gray-800 overflow-hidden"><div class="h-full bg-violet-400" style="width:${usado}%"></div></div>
-        ${(userDeuda > 0 && Number(userSaldo) > 0 ? `<p class="text-[11px] text-violet-100 mt-2 p-2 rounded-lg bg-violet-500/10 border border-violet-400/30"><i class="fa-solid fa-wallet mr-1"></i>De tu saldo, <b>${formatoCOP(Math.min(Number(userSaldo) || 0, userDeuda))}</b> son lo que te queda del crédito.</p>` : '')}
-        <p class="text-[11px] text-gray-400 mt-2"><i class="fa-solid fa-circle-info mr-1"></i>Cada recarga paga primero tu deuda y lo que sobra queda en tu saldo.</p>`;
+          <p class="text-[11px] text-violet-100/80 mt-1">Actívalo y úsalo cuando tu saldo no alcance. No se suma a tu saldo: solo debes lo que gastes.</p>
+          <button type="button" onclick="aceptarCreditoPreaprobado()" class="mt-3 w-full py-3 rounded-xl bg-violet-500 hover:bg-violet-400 text-white font-black text-sm shadow-lg shadow-violet-500/30"><i class="fa-solid fa-hand-holding-dollar mr-1"></i>Activar crédito</button></div>` : '') +
+        `<div class="mt-3 grid grid-cols-2 gap-2">${cajaC('Tu saldo', formatoCOP(Number(userSaldo) || 0), 'text-white', 'Tu plata recargada')}${cajaC('Crédito gastado', userDeuda > 0 ? formatoCOP(userDeuda) : 'Nada', userDeuda > 0 ? 'text-pink-300' : 'text-emerald-300', userDeuda > 0 ? 'Es lo que debes hoy' : 'Estás al día')}${cajaC('Crédito disponible', formatoCOP(libre), 'text-violet-300', userCreditoActivo ? 'Para tus próximas compras' : 'Actívalo para usarlo')}${cajaC('Cupo total', formatoCOP(userCupo), 'text-gray-200', 'Tu crédito aprobado')}</div>
+        <div class="mt-2 h-2 rounded-full bg-gray-800 overflow-hidden"><div class="h-full" style="width:${usado}%;background:linear-gradient(90deg,#8b5cf6,#ec4899)"></div></div><p class="text-[10px] text-gray-400 mt-1">Has gastado ${formatoCOP(userDeuda)} de ${formatoCOP(userCupo)}</p>
+        <p class="text-[11px] text-gray-400 mt-2"><i class="fa-solid fa-circle-info mr-1"></i>El crédito no se suma a tu saldo: se usa solo cuando compras y tu saldo no alcanza. Solo debes lo que gastas; cada recarga paga primero esa deuda y lo que sobra queda en tu saldo.</p>`;
       if (!unsubMovCredito && currentUser) {
         try {
           unsubMovCredito = db.collection('creditos_movimientos').where('usuarioId', '==', currentUser.uid).onSnapshot(snap => {
@@ -21009,8 +21015,8 @@
       const c = document.getElementById('acCuerpoCredito');
       if (estado === 'cargando') c.innerHTML = `<div class="mx-auto w-14 h-14 rounded-2xl flex items-center justify-center text-white text-xl" style="background:radial-gradient(circle at 30% 25%,#c4b5fd,#8b5cf6 55%,#6d28d9)"><i class="fa-solid fa-spinner fa-spin"></i></div><p class="mt-3 text-sm font-black text-white">Aprobando tu crédito…</p><p class="text-[11px] text-violet-200/70 mt-1">Un momento, por favor.</p>`;
       else if (estado === 'ok') c.innerHTML = `<div class="mx-auto w-16 h-16 rounded-2xl flex items-center justify-center text-white text-2xl" style="background:radial-gradient(circle at 30% 25%,#c4b5fd,#8b5cf6 55%,#6d28d9);box-shadow:0 10px 26px -8px rgba(139,92,246,.9)"><i class="fa-solid fa-hand-holding-dollar"></i></div>
-          <p class="mt-4 text-[10px] font-black uppercase tracking-[0.2em] text-violet-300">Crédito aprobado</p><p class="text-3xl font-black text-white mt-1">${formatoCOP(r.monto)}</p><p class="text-xs text-violet-100/80 mt-1">ya están en tu saldo</p>
-          <div class="mt-4 p-3 rounded-2xl bg-violet-500/10 border border-violet-400/30 text-left text-[11px] text-violet-100 leading-relaxed"><i class="fa-solid fa-circle-info mr-1 text-violet-300"></i>Tu próxima recarga paga primero tu deuda de <b class="text-white">${formatoCOP(r.deuda)}</b>; lo que sobre queda en tu saldo.</div>
+          <p class="mt-4 text-[10px] font-black uppercase tracking-[0.2em] text-violet-300">Crédito activo</p><p class="text-3xl font-black text-white mt-1">${formatoCOP(r.cupo)}</p><p class="text-xs text-violet-100/80 mt-1">disponibles para comprar</p>
+          <div class="mt-4 p-3 rounded-2xl bg-violet-500/10 border border-violet-400/30 text-left text-[11px] text-violet-100 leading-relaxed"><i class="fa-solid fa-circle-info mr-1 text-violet-300"></i>No se suma a tu saldo. Se usa solo cuando compres y tu saldo no alcance: <b class="text-white">solo debes lo que gastes</b>, y tu próxima recarga lo paga primero.</div>
           <button type="button" onclick="cerrarAvisoCredito(true)" class="mt-4 w-full py-3 rounded-xl text-white font-black text-sm" style="background:linear-gradient(135deg,#7c3aed,#db2777)">¡A comprar!</button>`;
       else c.innerHTML = `<div class="mx-auto w-14 h-14 rounded-2xl bg-red-500/15 border border-red-400/40 flex items-center justify-center text-red-300 text-xl"><i class="fa-solid fa-triangle-exclamation"></i></div><p class="mt-3 text-sm font-black text-white">No se pudo aprobar</p><p class="text-xs text-gray-300 mt-1">${escaparHtml(r || '')}</p><button type="button" onclick="cerrarAvisoCredito(false)" class="mt-4 w-full py-2.5 rounded-xl bg-gray-800 border border-gray-700 text-gray-100 font-bold text-xs">Entendido</button>`;
       m.classList.remove('hidden'); m.style.display = 'flex';
@@ -23279,7 +23285,7 @@
     async function comprarMixto(docId, cantidad) {
       const prod = catalogoUnificado.find(p => p.docId === docId) || {}, st = Number(prod.stock) || 0, resto = cantidad - st;
       const total = precioPorCantidad(prod, cantidad) * cantidad;
-      const disponible = modoPruebaCliente ? saldoSimulado : (Number(userSaldo) || 0) + Math.max(0, (Number(userCupo) || 0) - (Number(userDeuda) || 0));
+      const disponible = modoPruebaCliente ? saldoSimulado : (Number(userSaldo) || 0) + creditoLibre();
       if (disponible < total) { abrirModalSaldoInsuficiente(`Saldo insuficiente. Tienes ${formatoCOP(userSaldo || 0)} y el total (${st} ahora + ${resto} por encargo) es ${formatoCOP(total)}.`); return; }
       if (!await confirmarModal(`Pediste ${cantidad} y hay ${st} disponibles.\n\n⚡ ${st} se compran y se entregan ahora.\n⏳ ${resto} quedan por encargo: se pagan ahora y se liberan solas en tu cuenta apenas entre stock (en orden de llegada).\n\nTotal: ${formatoCOP(total)}`, { tipo: 'pregunta', textoAceptar: 'Sí, comprar y encargar' })) return;
       encargoTrasCompra = { docId: docId, cantidad: resto, t: Date.now() };
@@ -24258,7 +24264,7 @@
       userTipoCuenta = simPerfil.tipo === 'cliente' ? '' : simPerfil.tipo;
       userProductosPermitidos = simPerfil.vip ? catalogoUnificado.filter(p => esProductoVip(p)).map(p => p.docId) : [];
       userCategoriasPermitidas = []; userProductosBloqueados = [];
-      userCupo = simPerfil.cupo; userDeuda = simPerfil.deuda; saldoSimulado = simPerfil.saldo;
+      userCupo = simPerfil.cupo; userDeuda = simPerfil.deuda; saldoSimulado = simPerfil.saldo; if (!simRespaldo.hasOwnProperty('activo')) simRespaldo.activo = userCreditoActivo; userCreditoActivo = simPerfil.cupo > 0;
       miCupon = simPerfil.cupon ? { pct: simPerfil.cupon, vence: new Date(Date.now() + 48 * 3600000).toISOString(), usado: false } : null;
       progresoDealer = { mes: simPerfil.tipo === 'revendedor' ? cuentasParaNivel(simPerfil.nivel) : 0, hoy: {} };
       cerrarSimularComo();
@@ -24270,7 +24276,7 @@
     function restaurarPerfilReal() {
       if (!simRespaldo) { simPerfil = null; return; }
       userTipoCuenta = simRespaldo.tipo; userProductosPermitidos = simRespaldo.permitidos; userCategoriasPermitidas = simRespaldo.categorias; userProductosBloqueados = simRespaldo.bloqueados;
-      userCupo = simRespaldo.cupo; userDeuda = simRespaldo.deuda; miCupon = simRespaldo.cupon; progresoDealer = simRespaldo.progreso;
+      userCupo = simRespaldo.cupo; userDeuda = simRespaldo.deuda; userCreditoActivo = !!simRespaldo.activo; miCupon = simRespaldo.cupon; progresoDealer = simRespaldo.progreso;
       simRespaldo = null; simPerfil = null; const t = document.getElementById('txtPerfilSim'); if (t) t.textContent = 'Cliente';
     }
 
@@ -29245,7 +29251,7 @@ async function pintarPanelWa() {
       const hot = porId(ajustesGeneralesConfig.portadaHot) || orden.find(p => /prime\s*video\s*local/i.test(p.nombre)) || orden[0];
       const seg = porId(ajustesGeneralesConfig.portadaSegundo) || orden.find(p => p !== hot && /netflix/i.test(p.nombre)) || orden.find(p => p !== hot);
       const cc = document.getElementById('portCatalogo');
-      const tarjeta = (p, esHot) => { if (!p) return ''; const n = Number(p.stock) || 0, est = n <= 0 ? ['Sobre pedido', 'text-sky-300', 'bg-sky-500/15 text-sky-300', 'SOBRE PEDIDO'] : n <= 5 ? ['Quedan pocas', 'text-amber-300', 'bg-amber-400/15 text-amber-300', 'ÚLTIMAS UNIDADES'] : ['Disponible', 'text-emerald-300', 'bg-emerald-500/15 text-emerald-300', 'DISPONIBLE'];
+      const tarjeta = (p, esHot) => { if (!p) return ''; const n = Number(p.stock) || 0, est = n <= 0 ? ['Sobre pedido', 'text-sky-300', 'bg-sky-500/15 text-sky-300', 'SOBRE PEDIDO'] : n <= 5 ? ['Quedan pocas', 'text-amber-300', 'bg-amber-400/15 text-amber-300', 'ÚLTIMAS UNIDADES'] : ['Disponible', 'text-emerald-300', 'bg-emerald-500/15 text-emerald-300', 'DISPONIBLE']; if (n > 0 && veCantidadDe(p)) est[0] = n + ' disponibles';
         const img = p.iconoTarjeta || p.imagenUrl, ini = String(p.nombre || '?').charAt(0).toUpperCase();
         return `<button type="button" onclick="document.getElementById('portRegistro').scrollIntoView({ behavior: 'smooth', block: 'center' })" class="text-left p-3.5 rounded-3xl bg-gray-900 ${esHot ? 'border-2 border-red-500/60 shadow-lg shadow-red-500/10' : 'border border-gray-800'}">
           <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black ${esHot ? 'bg-red-500/15 text-red-300' : est[2]}">${esHot ? '<i class="fa-solid fa-fire"></i> MÁS VENDIDO' : est[3]}</span>
@@ -29857,7 +29863,7 @@ const LUISA_COM_DEF_PAG = { activo: true, stockHora: '08:00', mediodiaHora: '12:
       const conStock = p => Number(p.stock) > 0 || p.encargoActivo === true;
       const prime = L.filter(p => /prime/i.test(String(p.nombre)) && conStock(p)).sort((a, b) => (Number(b.stock) > 0) - (Number(a.stock) > 0) || Number(a.precio) - Number(b.precio)).slice(0, 2);
       const resto = L.filter(p => prime.indexOf(p) === -1 && conStock(p)).sort((a, b) => (Number(b.stock) || 0) - (Number(a.stock) || 0));
-      const estado = p => { const n = Number(p.stock) || 0; return n <= 0 ? '<span class="text-sky-300">Sobre pedido</span>' : n <= 5 ? '<span class="text-amber-300">Quedan pocas</span>' : '<span class="text-emerald-300">Disponible</span>'; };
+      const estado = p => { const n = Number(p.stock) || 0; return n <= 0 ? '<span class="text-sky-300">Sobre pedido</span>' : veCantidadDe(p) ? '<span class="' + (n <= 5 ? 'text-amber-300' : 'text-emerald-300') + '">' + n + ' disponibles</span>' : n <= 5 ? '<span class="text-amber-300">Quedan pocas</span>' : '<span class="text-emerald-300">Disponible</span>'; };
       const sub = p => { const m = minDe(p); return m > 1 ? 'Mínimo ' + m + ' · total ' + cop(Number(p.precio) * m) : 'Desde 1 cuenta'; };
       // 🔥 promo de hoy: solo si un producto tiene descuento activo (con su hora de fin si la pusiste)
       const promo = L.filter(p => Number(p.promoPct) > 0 && conStock(p) && !(p.promoHasta && Date.parse(p.promoHasta) <= Date.now())).sort((a, b) => Number(b.promoPct) - Number(a.promoPct))[0];
