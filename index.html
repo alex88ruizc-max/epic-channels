@@ -2,16 +2,18 @@
 <html lang="es" class="dark">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content">
   <script>
     // 📱 iPhone: al tocar un campo de texto Safari agranda la página y no vuelve a su tamaño. Así se queda ajustada a la pantalla (el zoom con dos dedos sigue funcionando).
-    try { if (/iPhone|iPad|iPod/i.test(navigator.userAgent)) { var vpm = document.querySelector('meta[name="viewport"]'); if (vpm) vpm.setAttribute('content', 'width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover'); } } catch (e) { /* nada */ }
+    try { if (/iPhone|iPad|iPod/i.test(navigator.userAgent)) { var vpm = document.querySelector('meta[name="viewport"]'); if (vpm) vpm.setAttribute('content', 'width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover'); } } catch (e) { /* nada */ }
   </script>
   <style>.solo-tienda{display:none}</style>
   <style>
     /* La página nunca se corre hacia los lados: lo que sea más ancho se desplaza dentro de su propia caja */
     /* Solo en body: el navegador lo aplica a la pantalla completa y no rompe el menú fijo ni el desplazamiento */
-    body { max-width: 100%; overflow-x: hidden; }
+    html { max-width: 100%; overflow-x: hidden; touch-action: pan-x pan-y; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }   /* 📐 u96: sin zoom con los dedos y nada más ancho que la pantalla */
+    body { max-width: 100%; overflow-x: hidden; touch-action: pan-x pan-y; }
+    img, video, canvas, iframe, table { max-width: 100%; }
     @supports (overflow-x: clip) { body { overflow-x: clip; } }
     body { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
     img, video, canvas, svg { max-width: 100%; }
@@ -1726,8 +1728,19 @@
             <button id="tkFiltroTodos" onclick="filtrarTickets('todos')" class="px-3 py-1 rounded-lg border">Todos</button>
           </div>
           <div class="px-4 pt-3"><input type="search" id="tkBuscar" oninput="renderizarTickets()" autocomplete="off" placeholder="Buscar por cuenta, cliente, producto o proveedor" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-amber-500/60"></div>
-          <div id="listaTickets" class="mt-2 max-h-[68vh] overflow-y-auto divide-y divide-gray-800"><p class="px-4 py-6 text-center text-gray-500 text-sm">No hay tickets.</p></div>
+          <div id="listaTickets" class="mt-2 max-h-[68vh] overflow-y-auto divide-y divide-gray-800" data-tk-lista="1"><p class="px-4 py-6 text-center text-gray-500 text-sm">No hay tickets.</p></div>
         </div>
+        <!-- 📣 u96 · AVISO DE REPORTE por producto: mientras esté activo, quien reporte ese producto recibe este mensaje -->
+        <details id="avRepCaja" class="p-4 rounded-2xl bg-gray-900 border border-amber-500/40" ontoggle="if(this.open)avRepCargar()">
+          <summary class="text-sm font-black text-white cursor-pointer">📣 Aviso de reporte por producto</summary>
+          <div class="mt-3 space-y-3">
+            <p class="text-[11px] text-gray-400">Cuando un producto esté fallando, márcalo aquí y escribe el aviso. Mientras esté activo, <b>a todo el que reporte un problema de ese producto le llega este mensaje</b> (por WhatsApp), además de quedar su reporte. Quítalo cuando se resuelva.</p>
+            <label class="block text-[11px] text-gray-400">Producto<select id="avRepProd" class="mt-1 w-full bg-gray-950 border border-gray-700 rounded-xl px-3 py-2 text-sm text-white"></select></label>
+            <label class="block text-[11px] text-gray-400">Aviso<textarea id="avRepTxt" rows="4" maxlength="500" placeholder="Ej: YouTube Premium está presentando inconvenientes. Ya lo reportamos al proveedor: deja tu reporte y te respondemos por aquí apenas esté resuelto 🙏" class="mt-1 w-full bg-gray-950 border border-gray-700 rounded-xl px-3 py-2 text-sm text-white"></textarea></label>
+            <button type="button" onclick="avRepGuardar()" class="w-full py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-black text-sm">Activar aviso</button>
+            <div id="avRepLista" class="space-y-2"></div>
+          </div>
+        </details>
       </div>
 
       <!-- TAB 2: USUARIOS REGISTRADOS Y PERMISOS -->
@@ -19143,7 +19156,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-11-12u95';
+    const VERSION_PAGINA = '2026-11-12u96';
     // 🧑 u58 (Alex, 10-nov): la AGENTE DE D-ID (Luisa con cara, conversa en vivo). Piloto: SOLO en epicstreaming.vip (nunca en las tiendas de tus clientes),
     //    SOLO a visitantes sin sesión, a la IZQUIERDA (a la derecha está tu botón de WhatsApp). Se carga después de la página para no hacerla lenta.
     (function () { try {
@@ -21331,6 +21344,64 @@
     window.atajoNivel = function () { if (userTipoCuenta !== 'revendedor' || esStaffSesion()) return ''; try { const n = nivelDealerDe(progresoDealer.mes || 0); return n.icono + ' ' + String(n.nombre || '').toUpperCase(); } catch (e) { return ''; } };
     window.atajoActivo = function () { if (document.getElementById('hojaPromos')) return 'promos'; const v = (i) => { const e = document.getElementById(i); return e && !e.classList.contains('hidden'); };
       if (v('vistaMisCuentas')) return document.body.classList.contains('solo-credito') ? 'credito' : 'perfil'; if (v('vistaTienda')) return 'tienda'; return ''; };
+
+    // ==================== 📣 u96 · AVISO DE REPORTE POR PRODUCTO (configuracion/avisos_reporte) ====================
+    var avRepDatos = {};
+    async function avRepCargar() {
+      const sel = document.getElementById('avRepProd'), lista = document.getElementById('avRepLista'); if (!sel || !lista) return;
+      const prods = catalogoUnificado.filter(p => p && p.docId).slice().sort((a, b) => String(a.nombre).localeCompare(String(b.nombre)));
+      sel.innerHTML = prods.map(p => `<option value="${escaparHtml(p.docId)}">${escaparHtml(p.nombre || p.docId)}</option>`).join('');
+      try { const d = await db.collection('configuracion').doc('avisos_reporte').get(); avRepDatos = (d.exists && (d.data() || {}).p) || {}; } catch (e) { avRepDatos = {}; }
+      const act = Object.keys(avRepDatos).filter(k => avRepDatos[k] && avRepDatos[k].activo === true);
+      lista.innerHTML = act.length ? act.map(k => `<div class="p-3 rounded-xl bg-amber-500/10 border border-amber-500/40"><div class="flex items-center justify-between gap-2"><b class="text-sm text-amber-200 min-w-0 truncate">📣 ${escaparHtml(nombreProd(k))}</b><button type="button" onclick="avRepQuitar('${escaparJsAttr(k)}')" class="shrink-0 px-2.5 py-1 rounded-lg bg-red-500/15 border border-red-400/50 text-red-200 text-[11px] font-black">✕ Quitar</button></div><p class="text-[12px] text-gray-200 mt-1 whitespace-pre-wrap">${escaparHtml(avRepDatos[k].texto || '')}</p></div>`).join('') : '<p class="text-[11px] text-gray-500">No hay avisos activos.</p>';
+    }
+    async function avRepGuardar() {
+      if (!esStaffSesion()) return; const pid = String((document.getElementById('avRepProd') || {}).value || ''), txt = String((document.getElementById('avRepTxt') || {}).value || '').trim().slice(0, 500);
+      if (!pid) { alert('Elige el producto.'); return; } if (txt.length < 10) { alert('Escribe el aviso (mínimo 10 letras).'); return; }
+      try { await db.collection('configuracion').doc('avisos_reporte').set({ p: { [pid]: { activo: true, texto: txt, el: new Date().toISOString(), por: currentUser.email || '' } } }, { merge: true }); document.getElementById('avRepTxt').value = ''; mostrarToast('📣 Aviso activado para ' + nombreProd(pid)); avRepCargar(); }
+      catch (e) { alert('No se pudo guardar: ' + e.message); }
+    }
+    async function avRepQuitar(pid) {
+      if (!esStaffSesion()) return; if (!await confirmarModal('¿Quitar el aviso de ' + nombreProd(pid) + '? Los reportes vuelven a responderse normal.', { textoAceptar: 'Sí, quitar' })) return;
+      try { await db.collection('configuracion').doc('avisos_reporte').set({ p: { [pid]: { activo: false, quitadoEl: new Date().toISOString() } } }, { merge: true }); mostrarToast('Aviso quitado.'); avRepCargar(); }
+      catch (e) { alert('No se pudo quitar: ' + e.message); }
+    }
+
+    // ==================== 🔔 u96 · AVISOS AL CELULAR (por la app): la página pide el permiso UNA vez y guarda el celular ====================
+    // 📐 u96: el iPhone no respeta el bloqueo de zoom de la página: se frena el gesto de pellizco y el doble toque (se sigue pudiendo deslizar normal)
+    try { ['gesturestart', 'gesturechange', 'gestureend'].forEach(function (ev) { document.addEventListener(ev, function (e) { e.preventDefault(); }, { passive: false }); });
+      document.addEventListener('touchmove', function (e) { if (e.touches && e.touches.length > 1) e.preventDefault(); }, { passive: false });
+      var ultToque = 0; document.addEventListener('touchend', function (e) { var a = Date.now(); if (a - ultToque < 300 && !(e.target && e.target.closest && e.target.closest('input, textarea, select, button, a'))) e.preventDefault(); ultToque = a; }, { passive: false }); } catch (eZ) { /* nada */ }
+    function pushSoportado() { try { return 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window && location.protocol === 'https:' && !window.EPIC_TIENDA; } catch (e) { return false; } }
+    function pushB64(s) { const p = '='.repeat((4 - s.length % 4) % 4), b = atob((s + p).replace(/-/g, '+').replace(/_/g, '/')), u = new Uint8Array(b.length); for (let i = 0; i < b.length; i++) u[i] = b.charCodeAt(i); return u; }
+    async function pushSuscribir() {
+      const r = await llamarBackend('push_info', {}); if (!r || !r.ok || !r.llave) throw new Error((r && r.error) || 'sin llave');
+      const reg = await navigator.serviceWorker.ready; let sub = await reg.pushManager.getSubscription();
+      if (!sub) sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: pushB64(r.llave) });
+      const j = sub.toJSON(), g = await llamarBackend('push_guardar', { sub: { endpoint: j.endpoint, keys: j.keys } }); if (!g || !g.ok) throw new Error((g && g.error) || 'no se guardó');
+      try { localStorage.setItem('pushListo', '1'); } catch (e) { /* nada */ } return true;
+    }
+    function pushCerrarHoja() { const h = document.getElementById('pushHoja'); if (h) h.remove(); }
+    function pushPreguntar() {
+      if (document.getElementById('pushHoja')) return; const h = document.createElement('div'); h.id = 'pushHoja';
+      h.style.cssText = 'position:fixed;inset:0;z-index:240;display:flex;align-items:flex-end;justify-content:center;background:rgba(3,6,12,.6)';
+      h.innerHTML = '<div style="width:100%;max-width:520px;background:linear-gradient(180deg,#131c30,#0c1322);border-top:1px solid #1f6f55;border-radius:26px 26px 0 0;padding:22px 20px calc(24px + env(safe-area-inset-bottom,0px));text-align:center;color:#fff"><div style="width:66px;height:66px;border-radius:22px;margin:0 auto 12px;background:linear-gradient(145deg,#34d399,#047857);display:flex;align-items:center;justify-content:center;font-size:32px">🔔</div><b style="font-size:20px;display:block">¿Te avisamos al celular?</b><p style="font-size:14px;color:#cbd5e1;margin-top:8px">Solo lo que te sirve, y una sola vez:</p><div style="text-align:left;display:inline-block;margin-top:12px;font-size:13.5px;line-height:1.9">🎁 Cuando te llegue un regalo<br>⚡ Cuando haya un descuento<br>🔥 Cuando salga una promo para ti</div><button type="button" id="pushSi" style="display:block;margin-top:16px;width:100%;padding:14px;border-radius:15px;background:#10b981;color:#04130d;font-weight:900;font-size:15px;border:0">Sí, avísame</button><button type="button" id="pushNo" style="display:block;margin-top:9px;width:100%;padding:11px;border-radius:15px;background:transparent;color:#94a3b8;font-weight:700;font-size:13px;border:0">Ahora no</button></div>';
+      document.body.appendChild(h);
+      document.getElementById('pushNo').onclick = () => { try { localStorage.setItem('pushDespues', String(Date.now())); } catch (e) { /* nada */ } pushCerrarHoja(); };
+      document.getElementById('pushSi').onclick = async function () { this.disabled = true; this.textContent = 'Activando…';
+        try { const p = await Notification.requestPermission(); if (p !== 'granted') { try { localStorage.setItem('pushDespues', String(Date.now())); } catch (e) { /* nada */ } pushCerrarHoja(); mostrarToast('Sin el permiso no podemos avisarte. Puedes activarlo después en los ajustes del celular.'); return; }
+          await pushSuscribir(); pushCerrarHoja(); mostrarToast('🔔 Listo: te avisamos al celular los regalos, descuentos y promos.'); }
+        catch (e) { console.warn(e); pushCerrarHoja(); mostrarToast('No se pudieron activar los avisos en este celular.'); } };
+    }
+    function pushRevisar() {
+      try { if (!pushSoportado() || !currentUser || modoPruebaCliente || (esProveedorSesion() && !userProveedorVende)) return;
+        if (Notification.permission === 'granted') { let listo = ''; try { listo = localStorage.getItem('pushListo') || ''; } catch (e) { listo = ''; } if (!listo || Math.random() < 0.08) pushSuscribir().catch(() => {}); return; }   // ya dio el permiso: se asegura que su celular esté guardado
+        if (Notification.permission === 'denied') return; let d = 0; try { d = Number(localStorage.getItem('pushDespues')) || 0; } catch (e) { d = 0; }
+        if (Date.now() - d < 7 * 86400000) return;   // dijo «ahora no»: no se le insiste por 7 días
+        if (document.querySelector('#modalAuth:not(.hidden), #hojaPromos, #epicMiTienda')) return; pushPreguntar();
+      } catch (e) { /* nada */ }
+    }
+    setTimeout(pushRevisar, 12000); setInterval(pushRevisar, 10 * 60000);
 
     // ==================== CLIENTE NORMAL: CATEGORÍAS PREDETERMINADAS ====================
     var categoriasNormalesDef = [];
