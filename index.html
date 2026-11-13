@@ -777,6 +777,14 @@
       </style>
       <style>
         /* u87 · celulares angostos: un poco menos de relleno arriba para que quepa Salir junto a la campana */
+        @media (max-width:430px) {
+          body.atajos-on header .max-w-6xl.px-3.py-3 { padding-left:8px !important; padding-right:8px !important; gap:5px !important; }
+          body.atajos-on #navSaldoDirecto { flex-shrink:1 !important; min-width:0; }
+          body.atajos-on #btnTopCreaPagina:not(.hidden) { margin-right:3px !important; flex-shrink:0; }
+          body.atajos-on #navUser > .atajo-fuera ~ *, body.atajos-on #navUser > * { margin-left:0 !important; }
+          body.atajos-on #navUser { gap:4px; display:flex; }
+          body.atajos-on #navUser > button, body.atajos-on #navUser > div > button { padding:7px !important; }
+        }
         @media (max-width:399px) { body.atajos-on #navSaldoDirecto { padding-left:7px !important; padding-right:7px !important; } body.atajos-on #btnTopCreaPagina:not(.hidden) { margin-right:4px !important; } body.atajos-on #navUser > * + * { margin-left:4px !important; } }
       </style>
       <div id="barraAtajos" class="hidden"></div>
@@ -4332,7 +4340,7 @@
             <div class="flex gap-2"><input type="number" id="editClienteCupo" min="0" step="1000" placeholder="0 = sin cupo" class="min-w-0 flex-grow bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"><button type="button" onclick="creditoGuardarCupo()" class="shrink-0 px-3 py-2 rounded-xl bg-violet-500 hover:bg-violet-400 text-white font-bold text-[11px]">Guardar cupo</button></div>
           </div>
           <div>
-            <label class="block text-[11px] text-gray-400 mb-1">Prestar saldo (se suma ya y queda debiéndolo)</label>
+            <label class="block text-[11px] text-gray-400 mb-1">Prestar (le sube el cupo: compra sin saldo hasta ese monto y lo paga con su próxima recarga)</label>
             <div class="flex gap-2"><input type="number" id="editCreditoPrestar" min="0" step="1000" placeholder="Monto" class="min-w-0 flex-grow bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"><button type="button" onclick="creditoPrestar()" class="shrink-0 px-3 py-2 rounded-xl bg-gray-800 hover:bg-gray-700 border border-violet-500/40 text-violet-200 font-bold text-[11px]">Prestar</button></div>
           </div>
           <div>
@@ -17590,7 +17598,7 @@
       if (tipo === 'pago' && monto > creditoEditando.deuda) { alert(`El cliente solo debe ${formatoCOP(creditoEditando.deuda)} COP.`); return; }
       if (tipo === 'cupo_cambio' && monto > 0 && (await servidorTiene('credito')) === false) { alert('Para que el cupo funcione al comprar necesitas actualizar el servidor (Apps Script) con el archivo nuevo. No se guardó.'); return; }
       const preguntas = {
-        prestamo: `¿Prestarle ${formatoCOP(monto)} COP? Se suman a su saldo ya y queda debiéndolos. Su próxima recarga los paga primero.`,
+        prestamo: `¿Prestarle ${formatoCOP(monto)} COP? Se le sube el cupo para que compre sin saldo hasta ese monto (no se mete como saldo: o tiene saldo o debe). Su próxima recarga paga primero lo que gaste.`,
         pago: `¿Registrar que pagó ${formatoCOP(monto)} COP de su deuda? No cambia su saldo.`,
         cupo_cambio: monto > 0 ? `¿Darle un cupo de ${formatoCOP(monto)} COP? Podrá comprar sin saldo hasta ese monto (contando lo que ya debe).` : '¿Quitarle el cupo? Lo que ya debe se mantiene.'
       };
@@ -17603,9 +17611,10 @@
           const deuda = Math.max(0, Number(d.deuda) || 0), saldo = Number(d.saldo) || 0;
           const mov = db.collection('creditos_movimientos').doc();
           if (tipo === 'prestamo') {
-            t.update(ref, { saldo: saldo + monto, deuda: deuda + monto, notificaciones: agregarNotifALista(d.notificaciones, crearNotificacionPersonal('saldo', `Te prestamos ${formatoCOP(monto)} COP`, `Ya están en tu saldo. Tu próxima recarga paga primero este crédito.`)) });
-            t.set(mov, datosMovimientoCredito(uid, d.email, 'prestamo', monto, deuda, deuda + monto, 'préstamo de saldo', nota));
-            return { saldo: saldo + monto, deuda: deuda + monto, cupo: Number(d.cupoCredito) || 0 };
+            const cupoAntes = Math.max(0, Number(d.cupoCredito) || 0), cupoNuevo = Math.max(cupoAntes, deuda + monto);   // 💳 u88: o saldo o deuda → el préstamo es cupo, no saldo
+            t.update(ref, { cupoCredito: cupoNuevo, notificaciones: agregarNotifALista(d.notificaciones, crearNotificacionPersonal('saldo', `Te aprobamos ${formatoCOP(monto)} COP de crédito`, `Compra ya aunque no tengas saldo, hasta ${formatoCOP(monto)} COP. Tu próxima recarga paga primero lo que gastes.`)) });
+            t.set(mov, datosMovimientoCredito(uid, d.email, 'cupo_cambio', cupoNuevo, deuda, deuda, 'préstamo como cupo', nota));
+            return { saldo: saldo, deuda: deuda, cupo: cupoNuevo };
           }
           if (tipo === 'pago') {
             const m = Math.min(monto, deuda);
@@ -17622,7 +17631,7 @@
           editClienteOriginal.saldo = res.saldo;
           const inp = document.getElementById('editClienteSaldo'); if (inp) inp.value = String(res.saldo);
         }
-        mostrarToast(tipo === 'prestamo' ? `Listo: le prestaste ${formatoCOP(monto)} COP.` : (tipo === 'pago' ? 'Listo: pago registrado.' : 'Listo: cupo guardado.'));
+        mostrarToast(tipo === 'prestamo' ? `Listo: le subiste el cupo para que compre ${formatoCOP(monto)} COP a crédito.` : (tipo === 'pago' ? 'Listo: pago registrado.' : 'Listo: cupo guardado.'));
         await cargarCreditoEditar(uid, { email: creditoEditando.email, deuda: res.deuda, cupoCredito: res.cupo });
       } catch (err) {
         alert('No se pudo guardar: ' + err.message);
@@ -19086,7 +19095,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-11-12u87';
+    const VERSION_PAGINA = '2026-11-12u88';
     // 🧑 u58 (Alex, 10-nov): la AGENTE DE D-ID (Luisa con cara, conversa en vivo). Piloto: SOLO en epicstreaming.vip (nunca en las tiendas de tus clientes),
     //    SOLO a visitantes sin sesión, a la IZQUIERDA (a la derecha está tu botón de WhatsApp). Se carga después de la página para no hacerla lenta.
     (function () { try {
