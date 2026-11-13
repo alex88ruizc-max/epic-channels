@@ -790,7 +790,6 @@
       <style>
         /* u91 · Crédito solo: sin tarjeta de perfil, sin pestañas, sin tarjeta Dealer */
         body.solo-credito #perfilColIzq, body.solo-credito .perfil-tabs-barra, body.solo-credito #bannerDealer, body.solo-credito #perfilAdminPanel { display:none !important; }
-        body.tiendas-cerradas #btnTopCreaPagina, body.tiendas-cerradas #fabCreaTienda, body.tiendas-cerradas #promoTiendaCredito, body.tiendas-cerradas #btnCreaTiendaTienda, body.tiendas-cerradas #btnCreaTiendaPerfil, body.tiendas-cerradas [onclick="abrirLandingTiendas()"] { display:none !important; }
         #promoTiendaCredito { display:none; }
         body.solo-credito:not(.modo-tienda) #promoTiendaCredito { display:flex; align-items:center; gap:12px; margin-top:16px; padding:14px; border-radius:18px; text-align:left; width:100%;
           border:1px solid rgba(196,181,253,.40); background:linear-gradient(135deg,rgba(139,92,246,.22),rgba(76,29,149,.16) 55%,rgba(34,211,238,.10)); box-shadow:inset 0 1px 0 rgba(255,255,255,.12),0 10px 24px -14px rgba(139,92,246,.7); }
@@ -812,6 +811,10 @@
               var conSesion = !nav.classList.contains('hidden') && !apagado(); document.body.classList.toggle('atajos-on', conSesion);
               [].slice.call(nav.children).forEach(function (h) { var esCampana = !!(h.querySelector && h.querySelector('#badgeNotifCount')) || h.title === 'Cerrar sesión'; h.classList.toggle('atajo-fuera', !esCampana); });
               if (top) top.classList.toggle('hidden', !(conSesion && !window.EPIC_TIENDA && typeof abrirCreaTienda === 'function'));
+              try { var ms = (typeof miSolicitudTienda !== 'undefined' && miSolicitudTienda) || null, slugT = ms && ms.estado === 'aprobada' ? String(ms.slug || ms.enlace || '').toLowerCase().replace(/[^a-z0-9-]/g, '') : '';   // u95: quien ya tiene tienda ve «Abrir mi tienda»
+                [top, document.getElementById('fabCreaTienda')].forEach(function (bt) { if (!bt) return; var est = slugT ? 'abrir:' + slugT : 'crear'; if (bt.dataset.modo === est) return; bt.dataset.modo = est; var tx = bt.querySelector('span:last-child');
+                  if (tx) tx.innerHTML = slugT ? 'Abrir mi tienda<br><span class="tc-gratis">ENTRAR</span>' : 'Crea tu tienda<br><span class="tc-gratis">GRATIS</span>';
+                  bt.onclick = slugT ? function (ev) { try { ev.preventDefault(); } catch (e0) { /* nada */ } window.open('https://' + slugT + '.epicstreaming.vip', '_blank', 'noopener'); } : function () { abrirCreaTienda(); }; }); } catch (eAb) { /* nada */ }
               try { document.body.classList.toggle('mc-on', typeof mcAbierta === 'function' && !!mcAbierta()); } catch (eM) { /* nada */ }
               try { var vA = document.getElementById('vistaAdmin'), vT = document.getElementById('vistaTienda'); document.body.classList.toggle('tc-on', conSesion && !window.EPIC_TIENDA && typeof abrirCreaTienda === 'function' && !(vA && !vA.classList.contains('hidden')) && !!(vT && !vT.classList.contains('hidden'))); } catch (eT) { /* nada */ }
               if (!conSesion) { bar.classList.add('hidden'); firma = ''; return; }
@@ -19140,7 +19143,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-11-12u94';
+    const VERSION_PAGINA = '2026-11-12u95';
     // 🧑 u58 (Alex, 10-nov): la AGENTE DE D-ID (Luisa con cara, conversa en vivo). Piloto: SOLO en epicstreaming.vip (nunca en las tiendas de tus clientes),
     //    SOLO a visitantes sin sesión, a la IZQUIERDA (a la derecha está tu botón de WhatsApp). Se carga después de la página para no hacerla lenta.
     (function () { try {
@@ -21839,13 +21842,13 @@
     // 🔌 u92 · apagar / encender la creación de tiendas (Alex: «si quiero apagar las tiendas para que no creen más»)
     function tiendasCerradas() { return !!(cfgTiendas && cfgTiendas.autoCrear === false); }
     function pintarTiendasAbiertas() { try { const c = document.getElementById('ctAbierto'), t = document.getElementById('ctAbiertoTxt'), caja = document.getElementById('ctAbiertoCaja'); if (!c || !cfgTiendas) return; const ab = !tiendasCerradas(); c.checked = ab;
-      if (t) t.textContent = ab ? 'Encendido: cualquier cliente puede crear su tienda (página y WhatsApp).' : 'APAGADO: nadie puede crear tiendas nuevas. Las que ya existen siguen normal.';
+      if (t) t.textContent = ab ? 'Encendido: cualquier cliente puede crear su tienda (página y WhatsApp).' : 'APAGADO: las tiendas nuevas pasan por tu aprobación (el botón «Crea tu tienda» sigue saliendo). Las que ya existen siguen normal.';
       if (caja) { caja.classList.toggle('border-emerald-500/40', ab); caja.classList.toggle('border-red-500/60', !ab); } } catch (e) { /* nada */ } }
     async function guardarTiendasAbiertas(abierto) {
       if (!esAdminSesionActual()) { pintarTiendasAbiertas(); return; }
-      if (!abierto && !await confirmarModal('¿Apagar la creación de tiendas nuevas? Nadie podrá crear una (ni por la página ni por WhatsApp) y se esconden los botones «Crea tu tienda». Las tiendas que ya existen siguen funcionando.', { textoAceptar: 'Sí, apagar' })) { pintarTiendasAbiertas(); return; }
+      if (!abierto && !await confirmarModal('¿Apagar la creación de tiendas nuevas? Nadie podrá crear una sola: quien toque «Crea tu tienda» te deja la solicitud y tú la apruebas. Los botones siguen saliendo. Las tiendas que ya existen siguen funcionando.', { textoAceptar: 'Sí, apagar' })) { pintarTiendasAbiertas(); return; }
       try { await db.collection('configuracion').doc('tiendas').set({ autoCrear: !!abierto, autoCrearEl: new Date().toISOString() }, { merge: true }); cfgTiendas = Object.assign({}, cfgTiendas || CFG_TIENDAS_BASE, { autoCrear: !!abierto });
-        mostrarToast(abierto ? '🏪 Encendido: ya se pueden crear tiendas nuevas.' : '🔌 Apagado: nadie puede crear tiendas nuevas.'); }
+        mostrarToast(abierto ? '🏪 Encendido: ya se pueden crear tiendas nuevas.' : '🔌 Apagado: las tiendas nuevas pasan por tu aprobación.'); }
       catch (e) { alert('No se pudo guardar: ' + e.message); }
       pintarTiendasAbiertas();
     }
