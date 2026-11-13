@@ -2930,6 +2930,12 @@
         <div class="flex flex-wrap gap-2">
           <button type="button" onclick="guardarLuisaCfg()" class="flex-1 py-2.5 rounded-xl bg-pink-500 hover:bg-pink-400 text-white font-black text-sm">Guardar Luisa</button>
         </div>
+        <details id="redesPromoCaja" open class="p-4 rounded-2xl bg-gray-900 border border-emerald-500/40" ontoggle="if (this.open && typeof redesPromoCargar === 'function') redesPromoCargar()"><summary class="text-sm font-black text-white cursor-pointer">📣 Qué se promociona en redes <span id="redesPromoCuenta" class="text-[10px] font-normal text-gray-500"></span></summary>
+          <div class="mt-3 space-y-2">
+            <p class="text-[11px] text-gray-400 leading-relaxed">Todo viene <b class="text-emerald-300">encendido</b>. Apaga el producto que <b class="text-white">no</b> quieres que Luisa publique: deja de salir en estados, canal, comunidad, volantes y videos. Se sigue vendiendo normal en la página y por WhatsApp.</p>
+            <div id="redesPromoLista" class="divide-y divide-gray-800 rounded-xl border border-gray-800 overflow-hidden"></div>
+          </div>
+        </details>
         <details id="luiVideosCaja" class="p-4 rounded-2xl bg-gray-900 border border-pink-500/30" ontoggle="if (this.open) luisaVideosCargar()"><summary class="text-sm font-black text-white cursor-pointer">🎬 Videos de Luisa <span class="text-[10px] font-normal text-gray-500">estados en video desde el VPS</span></summary>
           <div class="mt-3 space-y-3">
             <p class="text-[11px] text-gray-400 leading-relaxed">Luisa publica un video cuando <b class="text-white">llega stock</b>, hay <b class="text-white">producto nuevo</b> o <b class="text-white">promo nueva</b>, y uno de <b class="text-white">«Stock de hoy»</b> al día. Reglas: máximo 3 al día, de 8 a 21, nunca dos seguidos, 1 por producto cada 24 h, y si llegan varios juntos sale un solo video. Se cambian en Firebase → secretos/luisa → video.</p>
@@ -8431,7 +8437,10 @@
         soporte: ajustesGeneralesConfig.whatsappNumero || '',
         contrasena: resolverClaveAccesoCuentas(cuentas)
       };
-      return reemplazarVariablesPlantilla(plantilla, vars).replace(/\n{3,}/g, '\n\n').trim();
+      let salidaEnt = reemplazarVariablesPlantilla(plantilla, vars);
+      if (!String(vars.contrasena || '').trim()) { let esAlqEnt = false; try { const idE = prodInfo.docId || prodInfo.productoId, cE = ((catalogoUnificado || []).find(p => p.docId === idE)) || {}; esAlqEnt = String(prodInfo.tipoVenta || cE.tipoVenta || '') === 'alquiler'; } catch (e) { esAlqEnt = false; }
+        salidaEnt = salidaEnt.replace(/^[^\n]*Contraseña:[ \t]*$/m, esAlqEnt ? '🔐 Sin contraseña: se entra con el correo y un código. Míralo en Alquileres → Ver código.' : ''); }
+      return salidaEnt.replace(/\n{3,}/g, '\n\n').trim();
     }
 
     // extras (opcional): { total, saldo, cliente } · overrides (opcional): { plantilla, plantillaCuenta } para la vista previa
@@ -10140,7 +10149,7 @@
       if (tab === 'mary') { try { cargarPanelMary(); } catch (e) { console.warn(e); } }
       if (tab === 'pagos') { try { cargarLlaveMary(); } catch (e) { console.warn(e); } }
       if (tab === 'promociones') { try { cargarRankingCfg(); } catch (e) { console.warn(e); } }
-      if (tab === 'luisa') { try { cargarPanelLuisa(); } catch (e) { console.warn(e); } }
+      if (tab === 'luisa') { try { cargarPanelLuisa(); } catch (e) { console.warn(e); } try { redesPromoCargar(); } catch (e) { console.warn(e); } }
       if (tab === 'campanas') { try { prepararCampanas(); } catch (e) { console.warn(e); } }
       if (tab === 'dealers') { try { prepararDealers(); } catch (e) { console.warn(e); } }
 
@@ -19156,7 +19165,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-11-12u96';
+    const VERSION_PAGINA = '2026-11-12u97';
     // 🧑 u58 (Alex, 10-nov): la AGENTE DE D-ID (Luisa con cara, conversa en vivo). Piloto: SOLO en epicstreaming.vip (nunca en las tiendas de tus clientes),
     //    SOLO a visitantes sin sesión, a la IZQUIERDA (a la derecha está tu botón de WhatsApp). Se carga después de la página para no hacerla lenta.
     (function () { try {
@@ -21346,6 +21355,24 @@
       if (v('vistaMisCuentas')) return document.body.classList.contains('solo-credito') ? 'credito' : 'perfil'; if (v('vistaTienda')) return 'tienda'; return ''; };
 
     // ==================== 📣 u96 · AVISO DE REPORTE POR PRODUCTO (configuracion/avisos_reporte) ====================
+    var redesPromoNo = {};
+    function redesPromoPintar() {
+      const lista = document.getElementById('redesPromoLista'), cu = document.getElementById('redesPromoCuenta'); if (!lista) return;
+      const prods = catalogoUnificado.filter(p => p && p.docId).slice().sort((a, b) => String(a.nombre).localeCompare(String(b.nombre)));
+      const si = prods.filter(p => redesPromoNo[p.docId] !== true).length; if (cu) cu.textContent = prods.length ? 'se promocionan ' + si + ' de ' + prods.length : '';
+      lista.innerHTML = prods.length ? prods.map(p => { const on = redesPromoNo[p.docId] !== true; return `<label class="flex items-center justify-between gap-3 px-3 py-2.5 cursor-pointer ${on ? 'bg-gray-950' : 'bg-red-500/10'}"><span class="min-w-0"><b class="block text-[13px] truncate ${on ? 'text-white' : 'text-gray-400 line-through'}">${escaparHtml(p.nombre || p.docId)}</b><span class="text-[10px] ${on ? 'text-emerald-300' : 'text-red-300'}">${on ? 'Se promociona' : 'No se promociona'}</span></span><input type="checkbox" ${on ? 'checked' : ''} onchange="redesPromoCambiar('${escaparJsAttr(p.docId)}', this.checked)" class="shrink-0 w-5 h-5 accent-emerald-500"></label>`; }).join('') : '<p class="p-3 text-[11px] text-gray-500">Todavía no cargan los productos. Vuelve a abrir este cuadro.</p>';
+    }
+    async function redesPromoCargar() {
+      if (!document.getElementById('redesPromoLista')) return;
+      try { const d = await db.collection('configuracion').doc('redes_promo').get(); redesPromoNo = (d.exists && (d.data() || {}).no) || {}; } catch (e) { redesPromoNo = {}; }
+      redesPromoPintar();
+    }
+    async function redesPromoCambiar(pid, on) {
+      if (!esAdminSesionActual()) { mostrarToast('Solo el administrador.'); redesPromoPintar(); return; }
+      const antes = redesPromoNo[pid]; redesPromoNo[pid] = !on; redesPromoPintar();
+      try { await db.collection('configuracion').doc('redes_promo').set({ no: { [pid]: !on }, el: new Date().toISOString(), por: currentUser.email || '' }, { merge: true }); mostrarToast(on ? '📣 ' + nombreProd(pid) + ': se vuelve a promocionar' : '🚫 ' + nombreProd(pid) + ': ya no se promociona en redes'); }
+      catch (e) { redesPromoNo[pid] = antes; redesPromoPintar(); mostrarToast('No se pudo guardar. Intenta otra vez.'); }
+    }
     var avRepDatos = {};
     async function avRepCargar() {
       const sel = document.getElementById('avRepProd'), lista = document.getElementById('avRepLista'); if (!sel || !lista) return;
