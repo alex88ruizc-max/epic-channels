@@ -760,6 +760,9 @@
               bar.classList.remove('hidden');
             } catch (e) { /* si algo falla, quedan los botones de siempre */ try { document.body.classList.remove('atajos-on'); } catch (e2) { /* nada */ } }
           }
+          window.guardarEconomico = async function () { var g = function (i) { return document.getElementById(i); };
+            try { await db.collection('configuracion').doc('economico').set({ activo: !!(g('ecoActivo') && g('ecoActivo').checked), dias: Math.max(1, Math.min(60, parseInt(g('ecoDias').value, 10) || 5)), uso: g('ecoUso') ? g('ecoUso').value : 'vender', actualizadoEl: new Date().toISOString() }, { merge: true }); mostrarToast('📦 Stock económico guardado'); }
+            catch (e) { console.warn(e); mostrarToast('⚠️ No se pudo guardar: usa «economico» en Telegram'); } };
           setInterval(pintar, 900); document.addEventListener('DOMContentLoaded', pintar);
         })();
       </script>
@@ -2561,12 +2564,6 @@
             <label class="flex items-center justify-between gap-3 cursor-pointer"><span class="text-[12px] text-gray-300">🟢 «Ya llegó»: cuando entra un producto que no había, una imagen con la cantidad a quien preguntó y a quien su última compra (10 días) fue ese producto<br><span class="text-[10px] text-gray-500">Uno por cliente al día, de 8 a. m. a 10 p. m.</span></span><input type="checkbox" id="maryAvisoLlego" class="w-5 h-5 accent-indigo-500"></label>
             <label class="flex items-center justify-between gap-3 cursor-pointer"><span class="text-[12px] text-gray-300">💛 Recordar el saldo: al cliente con saldo que no entra a la página hace 8 días, «¿te alisto lo de siempre?» o la lista de lo que hay<br><span class="text-[10px] text-gray-500">Un mensaje cada 8 días, máximo 15 al día, de 10 a. m. a 6 p. m.</span></span><input type="checkbox" id="maryAvisoSaldo" class="w-5 h-5 accent-indigo-500"></label>
             <label class="flex items-center justify-between gap-3 cursor-pointer"><span class="text-[12px] text-gray-300">🏆 Mostrar cuántas se vendieron en el podio del «Top de la semana»<br><span class="text-[10px] text-gray-500">Apagado: el podio solo muestra el puesto y el producto (así sale en WhatsApp y en Meta). También en Telegram: «top cantidad sí / no».</span></span><input type="checkbox" id="maryTopCantidad" class="w-5 h-5 accent-indigo-500"></label>
-            <div class="rounded-xl border border-gray-700 bg-gray-900/40 p-3 space-y-2">
-              <label class="flex items-center justify-between gap-3 cursor-pointer"><span class="text-[12px] text-gray-200 font-bold">📦 Stock económico<br><span class="text-[10px] text-gray-500 font-normal">Las Prime Video que llevan muchos días sin venderse pasan solas a «Prime Video Económico». El precio y la garantía del económico se ponen en ese producto.</span></span><input type="checkbox" id="ecoActivo" class="w-5 h-5 accent-indigo-500"></label>
-              <div class="flex items-center gap-2 flex-wrap"><span class="text-[11px] text-gray-400">Pasan a los</span><input type="number" id="ecoDias" min="1" max="60" value="5" class="w-16 bg-gray-950 border border-gray-700 rounded-lg px-2 py-1.5 text-sm text-white text-center"><span class="text-[11px] text-gray-400">días sin venderse ·</span>
-                <select id="ecoUso" class="bg-gray-950 border border-gray-700 rounded-lg px-2 py-1.5 text-xs text-white"><option value="vender">Venderlas más baratas</option><option value="ambos">Venderlas y darlas de regalo</option><option value="regalos">Solo para regalos (no se venden)</option></select></div>
-              <p class="text-[10px] text-gray-500">Se guarda con el botón «Guardar» de Mary. También por Telegram: «economico». Revisa cada hora y te avisa por Telegram cuántas pasó.</p>
-            </div>
             <label class="flex items-center justify-between gap-3 cursor-pointer"><span class="text-[12px] text-gray-300">🤝 Posventa: 30 min después de entregar, "¿pudiste entrar bien?" (una sola vez)</span><input type="checkbox" id="maryPosventa" class="w-5 h-5 accent-indigo-500"></label>
             <label class="flex items-center justify-between gap-3 cursor-pointer"><span class="text-[12px] text-gray-300">🔁 Recuperar al que preguntó y no compró: al día siguiente, UN solo mensaje con el precio de ese producto<br><span class="text-[10px] text-gray-500">Máximo uno por semana por cliente. Respeta el modo de arriba.</span></span><input type="checkbox" id="maryRecupero" class="w-5 h-5 accent-indigo-500"></label>
             <div class="p-3 rounded-xl bg-gray-800/60 border border-gray-700 space-y-2">
@@ -2593,6 +2590,15 @@
               <p class="text-[10px] text-gray-500">Un solo mensaje por cliente; si tiene saldo, se lo recuerda. Entre 10 a. m. y 1 p. m.</p>
             </div>
             <button type="button" onclick="guardarMaryCfg()" class="w-full py-2.5 rounded-xl bg-indigo-500 hover:bg-indigo-400 text-white font-black text-sm">Guardar</button>
+          </div></details>
+        <details class="p-4 rounded-2xl bg-gray-900 border border-emerald-700/50"><summary class="text-sm font-black text-white cursor-pointer">📦 Stock económico</summary>
+          <div class="mt-3 space-y-3">
+            <p class="text-[11px] text-gray-400">Las <b>Prime Video</b> que llevan varios días sin venderse pasan solas a <b>Prime Video Económico</b>. Las nuevas se siguen vendiendo a precio normal. El precio y la garantía del económico se ponen en ese producto.</p>
+            <label class="flex items-center justify-between gap-3 cursor-pointer"><span class="text-[12px] text-gray-200 font-bold">Encendido<br><span class="text-[10px] text-gray-500 font-normal">Apagado no mueve nada.</span></span><input type="checkbox" id="ecoActivo" class="w-5 h-5 accent-emerald-500"></label>
+            <div class="flex items-center gap-2 flex-wrap"><span class="text-[12px] text-gray-300">Pasan a los</span><input type="number" id="ecoDias" min="1" max="60" value="5" class="w-16 bg-gray-950 border border-gray-700 rounded-lg px-2 py-2 text-sm text-white text-center"><span class="text-[12px] text-gray-300">días sin venderse</span></div>
+            <div><span class="block text-[12px] text-gray-300 mb-1">¿Qué se hace con ellas?</span><select id="ecoUso" class="w-full bg-gray-950 border border-gray-700 rounded-lg px-2 py-2 text-sm text-white"><option value="vender">Venderlas más baratas</option><option value="ambos">Venderlas y darlas de regalo</option><option value="regalos">Solo para regalos (no se venden)</option></select></div>
+            <button type="button" onclick="guardarEconomico()" class="w-full py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-black text-sm">Guardar stock económico</button>
+            <p class="text-[10px] text-gray-500">Revisa cada hora y te avisa por Telegram cuántas pasó. Para ver cuántas pasarían ahora o pasarlas ya: en Telegram escribe «economico» o «economico mover».</p>
           </div></details>
         <details class="p-4 rounded-2xl bg-gray-900 border border-gray-800" ontoggle="if(this.open)campVer()"><summary class="text-sm font-black text-white cursor-pointer">📣 Campañas de Mary</summary>
           <div class="mt-3 space-y-3 text-[12px] text-gray-300">
@@ -19020,7 +19026,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-11-12u84';
+    const VERSION_PAGINA = '2026-11-12u85';
     // 🧑 u58 (Alex, 10-nov): la AGENTE DE D-ID (Luisa con cara, conversa en vivo). Piloto: SOLO en epicstreaming.vip (nunca en las tiendas de tus clientes),
     //    SOLO a visitantes sin sesión, a la IZQUIERDA (a la derecha está tu botón de WhatsApp). Se carga después de la página para no hacerla lenta.
     (function () { try {
