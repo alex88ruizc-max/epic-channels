@@ -787,6 +787,16 @@
         }
         @media (max-width:399px) { body.atajos-on #navSaldoDirecto { padding-left:7px !important; padding-right:7px !important; } body.atajos-on #btnTopCreaPagina:not(.hidden) { margin-right:4px !important; } body.atajos-on #navUser > * + * { margin-left:4px !important; } }
       </style>
+      <style>
+        /* u91 · Crédito solo: sin tarjeta de perfil, sin pestañas, sin tarjeta Dealer */
+        body.solo-credito #perfilColIzq, body.solo-credito .perfil-tabs-barra, body.solo-credito #bannerDealer, body.solo-credito #perfilAdminPanel { display:none !important; }
+        #promoTiendaCredito { display:none; }
+        body.solo-credito:not(.modo-tienda) #promoTiendaCredito { display:flex; align-items:center; gap:12px; margin-top:16px; padding:14px; border-radius:18px; text-align:left; width:100%;
+          border:1px solid rgba(196,181,253,.40); background:linear-gradient(135deg,rgba(139,92,246,.22),rgba(76,29,149,.16) 55%,rgba(34,211,238,.10)); box-shadow:inset 0 1px 0 rgba(255,255,255,.12),0 10px 24px -14px rgba(139,92,246,.7); }
+        #promoTiendaCredito .pt-i { width:46px; height:46px; flex:none; border-radius:14px; display:flex; align-items:center; justify-content:center; font-size:24px; background:linear-gradient(145deg,#a78bfa,#6d28d9); box-shadow:inset 0 1px 0 rgba(255,255,255,.45); }
+        #promoTiendaCredito b { display:block; color:#fff; font-size:14px; font-weight:900; line-height:1.2; } #promoTiendaCredito small { display:block; color:#ddd6fe; font-size:11.5px; margin-top:2px; line-height:1.3; }
+        #promoTiendaCredito em { flex:none; font-style:normal; font-size:11px; font-weight:900; color:#1a1203; background:linear-gradient(180deg,#fcd34d,#f59e0b); border-radius:10px; padding:8px 10px; white-space:nowrap; }
+      </style>
       <div id="barraAtajos" class="hidden"></div>
       <button type="button" id="fabCreaTienda" onclick="abrirCreaTienda()" class="items-center gap-1 px-2.5 py-2 rounded-xl text-[11px] font-black text-white whitespace-nowrap"><span style="font-size:15px">🏪</span><span style="line-height:1.05;text-align:left">Crea tu tienda<br><span class="tc-gratis">GRATIS</span></span></button>
       <script>
@@ -816,6 +826,7 @@
               B.forEach(function (b) { var ic = b.querySelector('i'), n = contador(b), t = document.createElement('button'); t.type = 'button'; t.className = 'atajo'; t.title = b.title; t.style.setProperty('--c', MAPA[b.title][1]);
                 var cl = ic ? String(ic.className).split(' ').filter(function (c) { return /^fa-/.test(c); }).join(' ') : 'fa-solid fa-circle';
                 t.innerHTML = (n ? '<em>' + n + '</em>' : '') + '<span class="atajo-i" style="color:' + MAPA[b.title][1] + '"><i class="' + cl + '"></i></span><span class="atajo-t">' + MAPA[b.title][0] + '</span>';
+                if (b.title === 'Tienes crédito pre-aprobado' && actV === 'credito') t.classList.add('atajo-act');
                 if (b.title === 'Mi Perfil') { if (oroP) { t.classList.add('atajo-oro'); t.insertAdjacentHTML('beforeend', '<b class="atajo-nv">' + oroP + '</b>'); } if (actV === 'perfil') t.classList.add('atajo-act'); }
                 t.addEventListener('click', function () { b.click(); setTimeout(pintar, 50); }); bar.appendChild(t); });
               var nT = B.length + X.length; bar.style.gridTemplateColumns = 'repeat(' + Math.max(1, nT) + ',minmax(0,1fr))'; bar.classList.toggle('atajos-muchos', nT >= 5); bar.classList.toggle('atajos-mas', nT >= 6);
@@ -829,6 +840,16 @@
           function redesBajo() { try { var dst = document.getElementById('redesBajoCinta'), org = document.querySelector('#navLogoContainer .redesEpic'), ng = document.getElementById('navGuest');
             if (!dst || !org) return; if (!dst.dataset.listo) { dst.innerHTML = org.innerHTML; dst.dataset.listo = '1'; }
             document.body.classList.toggle('sin-sesion', !!(ng && !ng.classList.contains('hidden')) && !(window.currentUser || (typeof currentUser !== 'undefined' && currentUser))); } catch (e) { /* nada */ } }
+          // u91 · modo «solo crédito»: dura mientras se ve la pestaña de crédito abierta desde el cuadro Crédito
+          function soloCredito() { try { var sec = document.getElementById('perfilSecCredito'), vm = document.getElementById('vistaMisCuentas'), tb = document.getElementById('perfilTabBtnCuentas');
+            if (tb && tb.parentElement && !tb.parentElement.classList.contains('perfil-tabs-barra')) tb.parentElement.classList.add('perfil-tabs-barra');
+            var visible = !!(sec && vm && !vm.classList.contains('hidden') && !sec.classList.contains('hidden'));
+            if (window.__soloCredito && !visible) { if (window.__soloCreditoVisto) { window.__soloCredito = false; window.__soloCreditoVisto = false; } } else if (window.__soloCredito && visible) window.__soloCreditoVisto = true;
+            var on = !!(window.__soloCredito && visible); document.body.classList.toggle('solo-credito', on);
+            if (on && sec && !document.getElementById('promoTiendaCredito') && typeof abrirCreaTienda === 'function' && !window.EPIC_TIENDA) { var p = document.createElement('button'); p.type = 'button'; p.id = 'promoTiendaCredito';
+              p.innerHTML = '<span class="pt-i">🏪</span><span style="flex:1;min-width:0"><b>Crea tu propia tienda de streaming</b><small>Con tu marca, tus precios y tu enlace. Nosotros ponemos las cuentas.</small></span><em>Crear gratis</em>';
+              p.addEventListener('click', function () { try { abrirCreaTienda(); } catch (e) { /* nada */ } }); sec.insertAdjacentElement('afterend', p); } } catch (e) { /* nada */ } }
+          setInterval(soloCredito, 300); document.addEventListener('click', function (ev) { try { var a = ev.target && ev.target.closest ? ev.target.closest('#barraAtajos .atajo') : null; if (a && a.title !== 'Tienes crédito pre-aprobado') { window.__soloCredito = false; window.__soloCreditoVisto = false; document.body.classList.remove('solo-credito'); } } catch (e) { /* nada */ } }, true);
           setInterval(redesBajo, 900); document.addEventListener('DOMContentLoaded', redesBajo);
           setInterval(pintar, 900); document.addEventListener('DOMContentLoaded', pintar);
         })();
@@ -19117,7 +19138,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-11-12u90';
+    const VERSION_PAGINA = '2026-11-12u91';
     // 🧑 u58 (Alex, 10-nov): la AGENTE DE D-ID (Luisa con cara, conversa en vivo). Piloto: SOLO en epicstreaming.vip (nunca en las tiendas de tus clientes),
     //    SOLO a visitantes sin sesión, a la IZQUIERDA (a la derecha está tu botón de WhatsApp). Se carga después de la página para no hacerla lenta.
     (function () { try {
@@ -21051,7 +21072,7 @@
       try { localStorage.setItem(claveFlotanteCredito(), String(userCupo)); } catch (e) { /* nada */ }
       const f = document.getElementById('flotanteCredito'); if (f) f.classList.add('hidden');
     }
-    function irACreditoDesdeFlotante() { cambiarVista('mis-cuentas'); setTimeout(() => { try { cambiarTabPerfil('credito'); window.scrollTo({ top: 0, behavior: 'smooth' }); } catch (e) { /* nada */ } }, 150); }
+    function irACreditoDesdeFlotante() { window.__soloCredito = true; cambiarVista('mis-cuentas'); setTimeout(() => { try { cambiarTabPerfil('credito'); window.scrollTo({ top: 0, behavior: 'smooth' }); } catch (e) { /* nada */ } }, 150); }
     var unsubMovCredito = null, movsCredito = [];
     function renderizarTabCredito() {
       const caja = document.getElementById('perfilCreditoTab'); if (!caja) return;
@@ -21304,7 +21325,7 @@
     };
     window.atajoNivel = function () { if (userTipoCuenta !== 'revendedor' || esStaffSesion()) return ''; try { const n = nivelDealerDe(progresoDealer.mes || 0); return n.icono + ' ' + String(n.nombre || '').toUpperCase(); } catch (e) { return ''; } };
     window.atajoActivo = function () { if (document.getElementById('hojaPromos')) return 'promos'; const v = (i) => { const e = document.getElementById(i); return e && !e.classList.contains('hidden'); };
-      if (v('vistaMisCuentas')) return 'perfil'; if (v('vistaTienda')) return 'tienda'; return ''; };
+      if (v('vistaMisCuentas')) return document.body.classList.contains('solo-credito') ? 'credito' : 'perfil'; if (v('vistaTienda')) return 'tienda'; return ''; };
 
     // ==================== CLIENTE NORMAL: CATEGORÍAS PREDETERMINADAS ====================
     var categoriasNormalesDef = [];
