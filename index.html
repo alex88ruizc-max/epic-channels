@@ -18515,6 +18515,52 @@
     window.addEventListener('hashchange', function () { try { revisarVistaPagoUsdt(); } catch (e) { console.warn(e); } });
     window.addEventListener('DOMContentLoaded', function () { try { revisarVistaPagoUsdt(); } catch (e) { console.warn(e); } });
 
+    // ==================== 🔑 u99 · PÁGINA PRIVADA DE CÓDIGOS (/<llave>codigo): sin sesión y sin filtros; la llave la valida el servidor, aquí no está escrita ====================
+    let cpLlaveRef = null;
+    function llaveCodigoPrivado() {
+      if (window.EPIC_TIENDA) return '';
+      let m = String(location.hash || '').match(/^#\/?(\d{4,12})codigo\/?$/i); if (m) return m[1];
+      if (cpLlaveRef === null) { cpLlaveRef = '';   // vino de /<llave>codigo: la página de enlaces cortos lo mandó a la portada; se mira una sola vez
+        try { const r = new URL(document.referrer); m = r.origin === location.origin && !location.hash ? r.pathname.match(/^\/(\d{4,12})codigo\/?$/i) : null;
+          if (m) { cpLlaveRef = m[1]; history.replaceState(null, '', location.pathname + location.search + '#' + m[1] + 'codigo'); return m[1]; } } catch (e) { /* sin referencia */ } }
+      return '';
+    }
+    function vistaCodigoPrivado() {
+      let v = document.getElementById('vistaCodigoPrivado');
+      if (!v) { v = document.createElement('div'); v.id = 'vistaCodigoPrivado'; v.className = 'hidden fixed inset-0 z-[320] overflow-y-auto bg-[#0b0f19]';
+        v.innerHTML = '<div class="min-h-full flex flex-col items-center px-4 py-8" style="padding-top:max(2rem, env(safe-area-inset-top));"><div class="w-full max-w-sm"><div class="text-center mb-5"><p class="text-3xl">🔑</p><p class="text-lg font-black text-white mt-1">Códigos · uso privado</p><p class="text-xs text-gray-400">Sin filtros · últimas 24 horas</p></div>'
+          + '<form id="llvForm" class="flex gap-2"><input id="llvCorreo" type="email" inputmode="email" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="correo completo de la cuenta" class="flex-1 min-w-0 px-3 py-3 rounded-xl bg-gray-900 border border-gray-700 text-white text-sm"><button id="llvBtn" type="submit" class="px-4 py-3 rounded-xl bg-emerald-500 text-black font-black text-sm">Ver</button></form>'
+          + '<div id="llvLista" class="mt-4 space-y-2.5"></div><p id="llvPie" class="mt-4 text-[11px] text-gray-500 text-center"></p></div></div>';
+        document.body.appendChild(v);
+        document.getElementById('llvForm').addEventListener('submit', function (ev) { ev.preventDefault(); buscarCodigoPrivado(); }); }
+      return v;
+    }
+    function copiarCodigoPrivado(btn) { const t = btn.getAttribute('data-c') || ''; try { navigator.clipboard.writeText(t).then(function () { btn.textContent = 'Copiado'; }, function () { btn.textContent = t; }); } catch (e) { btn.textContent = t; } }
+    async function buscarCodigoPrivado() {
+      const ll = llaveCodigoPrivado(), l = document.getElementById('llvLista'), b = document.getElementById('llvBtn'), pie = document.getElementById('llvPie'), inp = document.getElementById('llvCorreo'); if (!ll || !l) return;
+      const correo = String((inp && inp.value) || '').trim().toLowerCase();
+      if (b) { b.disabled = true; b.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>'; }
+      try {
+        const r = await llamarPagoPublico('amz_codigo_llave', { llave: ll, correo: correo });
+        if (!r || !r.ok) { l.innerHTML = '<p class="text-center text-amber-300 text-sm py-6">' + escaparHtml((r && r.error) || 'No se pudo abrir.') + '</p>'; const f = document.getElementById('llvForm'); if (f && !correo) f.classList.add('hidden'); return; }
+        if (!correo) { l.innerHTML = '<p class="text-center text-gray-400 text-sm py-4">Escribe el correo de la cuenta y toca «Ver».</p>'; return; }
+        const cuando = function (f) { const d = new Date(f); return isNaN(d) ? '' : d.toLocaleString('es-CO', { day: '2-digit', month: '2-digit', hour: 'numeric', minute: '2-digit' }); }, reciente = function (f) { const d = Date.parse(f); return d && Date.now() - d < 15 * 60000; };
+        l.innerHTML = (r.codigos || []).map(function (c) { const rc = reciente(c.fecha); return '<div class="p-3 rounded-2xl bg-gray-900 border ' + (rc ? 'border-emerald-500/60' : 'border-gray-800') + '"><div class="flex items-center gap-2"><span class="font-mono font-black text-2xl tracking-[0.25em] ' + (rc ? 'text-emerald-400' : 'text-gray-300') + '">' + escaparHtml(c.codigo) + '</span>'
+          + '<button type="button" data-c="' + escaparHtml(c.codigo) + '" onclick="copiarCodigoPrivado(this)" class="ml-auto px-3 py-1.5 rounded-lg bg-emerald-500 text-black text-[11px] font-black">Copiar</button></div>'
+          + '<p class="text-[11px] ' + (rc ? 'text-emerald-300' : 'text-gray-400') + ' mt-1">' + escaparHtml([c.tipo, c.plataforma, cuando(c.fecha)].filter(Boolean).join(' · ')) + '</p>' + (c.asunto ? '<p class="text-[10px] text-gray-500 mt-0.5 break-words">' + escaparHtml(c.asunto) + '</p>' : '') + '</div>'; }).join('')
+          || '<p class="text-center text-gray-400 text-sm py-6">A <b class="text-white">' + escaparHtml(correo) + '</b> no le ha llegado ningún código en las últimas 24 horas.</p>';
+        if (pie) pie.textContent = 'Revisado a las ' + new Date(r.ahora || Date.now()).toLocaleTimeString('es-CO', { hour: 'numeric', minute: '2-digit' });
+      } catch (e) { l.innerHTML = '<p class="text-center text-amber-300 text-sm py-6">' + escaparHtml(e.message || 'No se pudo abrir.') + '</p>'; }
+      finally { if (b) { b.disabled = false; b.textContent = 'Ver'; } }
+    }
+    function revisarVistaCodigoPrivado() {
+      const ll = llaveCodigoPrivado(), ex = document.getElementById('vistaCodigoPrivado');
+      if (!ll) { if (ex && !ex.classList.contains('hidden')) { ex.classList.add('hidden'); document.body.style.overflow = ''; } return; }
+      const v = vistaCodigoPrivado(); if (!v.classList.contains('hidden')) return; v.classList.remove('hidden'); document.body.style.overflow = 'hidden'; buscarCodigoPrivado();
+    }
+    window.addEventListener('hashchange', function () { try { revisarVistaCodigoPrivado(); } catch (e) { console.warn(e); } });
+    window.addEventListener('DOMContentLoaded', function () { try { revisarVistaCodigoPrivado(); } catch (e) { console.warn(e); } });
+
     // ==================== 📩 CÓDIGOS DE AMAZON DE UNA ENTREGA (enlace /c/<token>, sin iniciar sesión) ====================
     function tokenAmzDeRuta() { const m = String(location.hash || '').match(/^#amz\/([A-Za-z0-9]{16,40})$/); return m ? m[1] : ''; }
     function revisarVistaAmz() { const v = document.getElementById('vistaAmzPublico'); if (!v) return; const t = tokenAmzDeRuta();
@@ -19168,7 +19214,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-11-12u98';
+    const VERSION_PAGINA = '2026-11-12u99';
     // 🧑 u58 (Alex, 10-nov): la AGENTE DE D-ID (Luisa con cara, conversa en vivo). Piloto: SOLO en epicstreaming.vip (nunca en las tiendas de tus clientes),
     //    SOLO a visitantes sin sesión, a la IZQUIERDA (a la derecha está tu botón de WhatsApp). Se carga después de la página para no hacerla lenta.
     (function () { try {
