@@ -8223,7 +8223,10 @@
     }
 
     function escaparJsAttr(valor) {
-      return String(valor || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '&quot;').replace(/\n/g, ' ');
+      return String(valor || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/\r?\n/g, ' ').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');   // 🔒 u98
+    }
+    // 🔒 u98: una imagen solo puede venir de https, de la propia página o ser una imagen incrustada; cualquier otra cosa no se pinta
+    function urlImagenSegura(u) { const s = String(u || '').trim(); if (!s) return ''; if (/^https:\/\/[^\s"'<>`]+$/i.test(s) || /^data:image\/(png|jpe?g|webp|gif|svg\+xml);base64,[A-Za-z0-9+\/=]+$/i.test(s) || /^(\.{0,2}\/)?[A-Za-z0-9_\-./%]+$/.test(s)) return escaparHtml(s); return '';
     }
 
     // ✍️ Nombres de registrados: solo letras (con tildes, ñ, ü) y espacios. Los nombres viejos no se tocan; se valida al cambiarlos.
@@ -10791,7 +10794,7 @@
       categorias.forEach(cat => {
         const esActiva = categoriaActiva === cat;
         const icono = obtenerIconoCategoria(cat);
-        html += `<button onclick="filtrarCategoria('${cat}')" class="btn-cat ${esActiva ? 'active bg-emerald-500 text-black font-bold' : 'bg-gray-800 hover:bg-gray-700 text-gray-300 font-medium'} px-4 py-1.5 rounded-xl whitespace-nowrap flex items-center gap-2"><i class="fa-solid ${icono}"></i> ${cat}</button>`;
+        html += `<button onclick="filtrarCategoria('${escaparJsAttr(cat)}')" class="btn-cat ${esActiva ? 'active bg-emerald-500 text-black font-bold' : 'bg-gray-800 hover:bg-gray-700 text-gray-300 font-medium'} px-4 py-1.5 rounded-xl whitespace-nowrap flex items-center gap-2"><i class="fa-solid ${icono}"></i> ${escaparHtml(cat)}</button>`;
       });
 
       if (puedeEditarDesdeTienda()) html += `<button type="button" onclick="irAConfigurarProductos()" class="btn-cat shrink-0 bg-amber-400/15 hover:bg-amber-400/25 border border-amber-400/50 text-amber-200 font-bold px-4 py-2 rounded-xl text-sm flex items-center gap-2" title="Ir a la configuración de productos"><i class="fa-solid fa-gear"></i> Configurar</button>`;
@@ -10884,7 +10887,7 @@
         
         const badgeStyle = estiloCat.badge;
         const badgeIcon = obtenerIconoCategoria(prod.categoria);
-        const badgeText = prod.categoria;
+        const badgeText = escaparHtml(prod.categoria);
 
         const esVipTienda = esProductoVip(prod);
         const esComboT = prod.esCombo === true;
@@ -10899,7 +10902,7 @@
           + (promoCli ? `<div class="mb-3 mr-1.5 inline-flex"><span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black text-white bg-gradient-to-r from-pink-500 to-fuchsia-500 shadow-lg shadow-pink-500/30"><i class="fa-solid fa-gift"></i> Por ${promoCli.compra || 10} cuentas te llevas ${promoCli.regalo || 1} gratis</span></div>` : '') + (esComboT ? '<div class="mb-3 mr-1.5 inline-flex"><span class="combo-chip"><i class="fa-solid fa-gift"></i> Combo</span></div>' : '') + promoBadgeHtml + (esVipTienda ? `<div class="mb-3 mr-1.5 inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider text-black bg-gradient-to-r from-amber-300 via-yellow-400 to-amber-500 shadow-md shadow-amber-500/30"><i class="fa-solid fa-crown"></i> VIP</div>` : '') + (esHot ? `<div class="mb-3 inline-flex items-center gap-1.5 bg-red-500/10 text-red-400 border border-red-500/30 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider"><i class="fa-solid fa-fire animate-pulse text-red-500"></i> Producto Más Vendido / HOT</div>` : '');
 
         const imagenProdHtml = prod.imagenUrl 
-          ? `<img loading="lazy" decoding="async" src="${prod.imagenUrl}" alt="${prod.nombre}" data-ampliar="${escaparHtml(prod.nombre || 'Producto')}" class="w-10 h-10 rounded-full object-cover border border-gray-700/80 shadow-md shrink-0 cursor-zoom-in">` 
+          ? `<img loading="lazy" decoding="async" src="${urlImagenSegura(prod.imagenUrl)}" alt="${escaparHtml(prod.nombre)}" data-ampliar="${escaparHtml(prod.nombre || 'Producto')}" class="w-10 h-10 rounded-full object-cover border border-gray-700/80 shadow-md shrink-0 cursor-zoom-in">` 
           : '';
 
         grid.innerHTML += `
@@ -10914,16 +10917,16 @@
               </div>
 
               <div class="flex items-start justify-between gap-3 mb-1">
-                <h3 class="font-bold text-white text-base leading-snug">${prod.nombre}</h3>
+                <h3 class="font-bold text-white text-base leading-snug">${escaparHtml(prod.nombre)}</h3>
                 ${imagenProdHtml}
               </div>
 
               <div class="${esNf || marcaT ? 'text-lg font-black text-white' : 'text-xs font-bold text-emerald-400'} mb-1.5">
-                ${prod.promoPct ? `<span class="text-[11px] text-gray-500 line-through font-normal mr-1">$${(prod.precioLista || 0).toLocaleString('es-CO')}</span>` : ''}${esNf || marcaT || prod.promoPct ? '' : '<i class="fa-solid fa-tag mr-1"></i> '}<span id="precioUnit_${prod.docId}" class="${prod.promoPct && !esNf && !marcaT ? 'text-rose-300 text-sm font-black' : ''}">${precioVista(precioPorCantidad(prod, cantidadInicial))}</span><span id="precioUsd_${prod.docId}" class="ml-1.5 text-[10px] text-gray-400 font-semibold">${textoSecundarioVista(precioPorCantidad(prod, cantidadInicial))}</span> <span class="text-[10px] text-gray-400 font-normal">c/u</span>
+                ${prod.promoPct ? `<span class="text-[11px] text-gray-500 line-through font-normal mr-1">$${(prod.precioLista || 0).toLocaleString('es-CO')}</span>` : ''}${esNf || marcaT || prod.promoPct ? '' : '<i class="fa-solid fa-tag mr-1"></i> '}<span id="precioUnit_${escaparHtml(prod.docId)}" class="${prod.promoPct && !esNf && !marcaT ? 'text-rose-300 text-sm font-black' : ''}">${precioVista(precioPorCantidad(prod, cantidadInicial))}</span><span id="precioUsd_${escaparHtml(prod.docId)}" class="ml-1.5 text-[10px] text-gray-400 font-semibold">${textoSecundarioVista(precioPorCantidad(prod, cantidadInicial))}</span> <span class="text-[10px] text-gray-400 font-normal">c/u</span>
               </div>
               ${htmlEscalasTarjeta(prod)}
               ${esNf && !TIENDA_SLUG && tt('chipNetflix') !== '-' ? `<div class="mb-2"><span class="nf-chip"><i class="fa-solid fa-key"></i> ${ttH('chipNetflix')}</span></div>` : ''}
-              <p class="text-xs text-gray-400 mb-2 leading-relaxed">${alinearGarantiaDesc(prod.descripcion, prod.tipoGarantia)}</p>
+              <p class="text-xs text-gray-400 mb-2 leading-relaxed">${alinearGarantiaDesc(escaparHtml(prod.descripcion), prod.tipoGarantia)}</p>
               ${esComboT ? '' : htmlGarantiaTarjeta(prod)}${esComboT ? '' : htmlDuracionTarjeta(prod)}
               ${(!promoD && promoParaMi(prod.docId)) ? (() => { const pc = promoParaMi(prod.docId); return `<div class="mb-2.5 px-3 py-2 rounded-xl border border-pink-400/40 bg-gradient-to-r from-pink-500/15 to-violet-500/10"><p class="text-[11px] font-black text-pink-200">🎁 Promo: compra ${pc.compra || 10}, lleva ${pc.regalo || 1} gratis</p><p class="text-[10px] text-pink-100/70 mt-0.5">${pc.vence ? 'Válida ' + textoVencePromo(pc) : 'Por tiempo limitado'} · las compras del mismo día se suman.</p></div>`; })() : ''}
               ${promoD ? `<div class="mb-2.5 px-3 py-2 rounded-xl border border-yellow-400/40" style="background:linear-gradient(135deg,rgba(247,215,116,.12),rgba(184,134,11,.06))"><p class="text-[11px] font-black dealer-texto">🎁 Promo de hoy: compra ${promoD.compra || 10}, lleva ${(promoD.regalo || 1) * ((multiplicadoresDealer()[nivelDealerDe(progresoDealer.mes || 0).id]) || 1)}</p><p class="text-[10px] text-amber-100/70 mt-0.5 leading-snug">${promoD.vence ? 'Válida ' + textoVencePromo(promoD) : 'Válido mientras veas este mensaje'} · ¡aprovecha, pocas unidades! <span class="text-amber-200/90">Solo tú lo ves porque eres un partner especial 👑</span></p></div>` : ''}
@@ -10944,19 +10947,19 @@
               <div class="flex items-center justify-between">
                 <div>
                   <span class="text-[10px] text-gray-400 block leading-none">${ttH('textoTotal')}</span>
-                  <span id="txtTotal_${prod.docId}" class="text-base font-black text-white">${precioVista(totalInicial)}</span>
+                  <span id="txtTotal_${escaparHtml(prod.docId)}" class="text-base font-black text-white">${precioVista(totalInicial)}</span>
                 </div>
                 <div class="flex items-center bg-gray-800 border border-gray-700 rounded-xl p-0.5">
-                  <button type="button" onclick="cambiarCantidad('${prod.docId}', -1, ${maxTarjeta(prod, stockDisponible)}, ${limiteInferior})" ${agotado ? 'disabled' : ''} class="w-7 h-7 flex items-center justify-center rounded-lg bg-gray-700/60 hover:bg-gray-700 text-gray-200 font-black text-sm disabled:opacity-40">-</button>
-                  <input id="cant_${prod.docId}" type="number" inputmode="numeric" value="${cantidadInicial}" min="${limiteInferior}" max="${maxTarjeta(prod, stockDisponible)}" ${agotado ? 'disabled' : ''} oninput="cantidadEscrita('${prod.docId}', false)" onchange="cantidadEscrita('${prod.docId}', true)" onfocus="this.select()" class="w-11 text-center bg-transparent text-white font-bold text-xs focus:outline-none focus:bg-gray-900/60 rounded-md [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none">
-                  <button type="button" onclick="cambiarCantidad('${prod.docId}', 1, ${maxTarjeta(prod, stockDisponible)}, ${limiteInferior})" ${agotado ? 'disabled' : ''} class="w-7 h-7 flex items-center justify-center rounded-lg bg-gray-700/60 hover:bg-gray-700 text-gray-200 font-black text-sm disabled:opacity-40">+</button>
+                  <button type="button" onclick="cambiarCantidad('${escaparJsAttr(prod.docId)}', -1, ${maxTarjeta(prod, stockDisponible)}, ${limiteInferior})" ${agotado ? 'disabled' : ''} class="w-7 h-7 flex items-center justify-center rounded-lg bg-gray-700/60 hover:bg-gray-700 text-gray-200 font-black text-sm disabled:opacity-40">-</button>
+                  <input id="cant_${escaparHtml(prod.docId)}" type="number" inputmode="numeric" value="${cantidadInicial}" min="${limiteInferior}" max="${maxTarjeta(prod, stockDisponible)}" ${agotado ? 'disabled' : ''} oninput="cantidadEscrita('${escaparJsAttr(prod.docId)}', false)" onchange="cantidadEscrita('${escaparJsAttr(prod.docId)}', true)" onfocus="this.select()" class="w-11 text-center bg-transparent text-white font-bold text-xs focus:outline-none focus:bg-gray-900/60 rounded-md [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none">
+                  <button type="button" onclick="cambiarCantidad('${escaparJsAttr(prod.docId)}', 1, ${maxTarjeta(prod, stockDisponible)}, ${limiteInferior})" ${agotado ? 'disabled' : ''} class="w-7 h-7 flex items-center justify-center rounded-lg bg-gray-700/60 hover:bg-gray-700 text-gray-200 font-black text-sm disabled:opacity-40">+</button>
                 </div>
               </div>
               ${cajaPedidoVisible(prod, stockDisponible) && !agotado ? htmlCajaPedido(prod, stockDisponible) : '<p id="mixto_' + prod.docId + '" class="hidden"></p>'}
-              <button id="btnComprar_${prod.docId}" onclick="comprarProducto('${prod.docId}')" ${agotado ? 'disabled' : ''} class="w-full py-2.5 rounded-xl text-xs font-bold ${agotado ? 'bg-gray-800 text-gray-500 cursor-not-allowed' : (esNf ? 'nf-btn' : (marcaT ? 'brand-btn' : estiloCat.btn))} transition flex items-center justify-center gap-1.5">
+              <button id="btnComprar_${escaparHtml(prod.docId)}" onclick="comprarProducto('${escaparJsAttr(prod.docId)}')" ${agotado ? 'disabled' : ''} class="w-full py-2.5 rounded-xl text-xs font-bold ${agotado ? 'bg-gray-800 text-gray-500 cursor-not-allowed' : (esNf ? 'nf-btn' : (marcaT ? 'brand-btn' : estiloCat.btn))} transition flex items-center justify-center gap-1.5">
                 <i class="fa-solid fa-cart-shopping"></i> ${agotado ? ttH('botonAgotado') : ttH('botonComprar')}
               </button>
-              ${agotado && puedePedirEncargo(prod) ? `<button type="button" onclick="pedirSobrePedido('${prod.docId}')" class="mt-2 w-full py-2 rounded-xl text-[11px] font-bold border border-sky-400/40 bg-sky-500/10 hover:bg-sky-500/20 text-sky-200 flex items-center justify-center gap-1.5"><i class="fa-solid fa-hourglass-half"></i> Pedir sobre pedido · te lo entregamos al llegar</button>` : ''}
+              ${agotado && puedePedirEncargo(prod) ? `<button type="button" onclick="pedirSobrePedido('${escaparJsAttr(prod.docId)}')" class="mt-2 w-full py-2 rounded-xl text-[11px] font-bold border border-sky-400/40 bg-sky-500/10 hover:bg-sky-500/20 text-sky-200 flex items-center justify-center gap-1.5"><i class="fa-solid fa-hourglass-half"></i> Pedir sobre pedido · te lo entregamos al llegar</button>` : ''}
             </div>
           </div>
         `;
@@ -12753,7 +12756,7 @@
 
       metodosPagoList.forEach(m => {
         const qrHtml = m.qrImage 
-          ? `<img src="${m.qrImage}" onclick="abrirZoomQr('${m.qrImage}', '${m.nombre}')" class="w-10 h-10 object-contain rounded-lg border border-gray-700 bg-white p-0.5 cursor-pointer hover:scale-105 transition" title="Toca para ampliar">` 
+          ? `<img src="${urlImagenSegura(m.qrImage)}" onclick="abrirZoomQr('${escaparJsAttr(m.qrImage)}', '${escaparJsAttr(m.nombre)}')" class="w-10 h-10 object-contain rounded-lg border border-gray-700 bg-white p-0.5 cursor-pointer hover:scale-105 transition" title="Toca para ampliar">` 
           : `<span class="text-xs text-gray-500 italic">Sin QR</span>`;
 
         tbody.innerHTML += `
@@ -12827,7 +12830,7 @@
               ${m.titular ? `<span class="ml-auto text-[10px] text-gray-400 truncate">Titular: <b class="text-gray-200">${escaparHtml(m.titular)}</b></span>` : ''}
             </div>
             <div class="flex items-stretch gap-3">
-              ${m.qrImage ? `<div class="shrink-0 flex flex-col items-center"><div class="p-1.5 rounded-xl bg-white"><img src="${m.qrImage}" onclick="abrirZoomQr('${m.qrImage}', '${escaparJsAttr(m.nombre || '')}')" class="w-24 h-24 object-contain cursor-zoom-in" alt="QR ${nom}"></div><span class="text-[9px] text-gray-400 mt-1">Toca para ampliar</span></div>` : ''}
+              ${m.qrImage ? `<div class="shrink-0 flex flex-col items-center"><div class="p-1.5 rounded-xl bg-white"><img src="${urlImagenSegura(m.qrImage)}" onclick="abrirZoomQr('${escaparJsAttr(m.qrImage)}', '${escaparJsAttr(m.nombre || '')}')" class="w-24 h-24 object-contain cursor-zoom-in" alt="QR ${nom}"></div><span class="text-[9px] text-gray-400 mt-1">Toca para ampliar</span></div>` : ''}
               <div class="min-w-0 flex-1 flex flex-col justify-center gap-1.5">
                 <span class="text-[10px] text-gray-400 font-bold uppercase tracking-wider">${/qr/i.test(nom) ? 'Escanea el QR' : 'Número / llave'}</span>
                 <span class="font-mono font-black text-white text-base break-all select-all leading-tight">${llave || '—'}</span>
@@ -17437,8 +17440,8 @@
       const sinStock = c.stock < Math.max(1, cantidad);
       if (sinStock) comboElegido[prod.docId] = false;
       const marcado = !!comboElegido[prod.docId] && !sinStock;
-      return `<label id="comboCaja_${prod.docId}" class="mb-3 flex items-center gap-2.5 p-2.5 rounded-xl border cursor-pointer transition ${marcado ? 'border-amber-400/70 bg-amber-400/10' : 'border-dashed border-gray-600 bg-gray-800/40 hover:border-amber-400/50'} ${sinStock ? 'opacity-50 cursor-not-allowed' : ''}">
-        <input type="checkbox" id="combo_${prod.docId}" ${marcado ? 'checked' : ''} ${sinStock ? 'disabled' : ''} onchange="cambiarCombo('${prod.docId}')" class="w-4 h-4 accent-amber-400 shrink-0">
+      return `<label id="comboCaja_${escaparHtml(prod.docId)}" class="mb-3 flex items-center gap-2.5 p-2.5 rounded-xl border cursor-pointer transition ${marcado ? 'border-amber-400/70 bg-amber-400/10' : 'border-dashed border-gray-600 bg-gray-800/40 hover:border-amber-400/50'} ${sinStock ? 'opacity-50 cursor-not-allowed' : ''}">
+        <input type="checkbox" id="combo_${escaparHtml(prod.docId)}" ${marcado ? 'checked' : ''} ${sinStock ? 'disabled' : ''} onchange="cambiarCombo('${escaparJsAttr(prod.docId)}')" class="w-4 h-4 accent-amber-400 shrink-0">
         <span class="min-w-0 flex-grow"><span class="block text-[11px] font-black text-amber-300 uppercase tracking-wide"><i class="fa-solid fa-gift mr-1"></i>${ttH('textoCombo')}</span><span class="block text-xs text-white font-bold truncate">+ ${escaparHtml(c.nombre)}</span></span>
         <span class="shrink-0 text-right"><span class="block text-xs font-black text-white">+${formatoCOP(c.precio)}</span>${c.precio < c.precioNormal ? `<span class="block text-[10px] text-gray-400 line-through">${formatoCOP(c.precioNormal)}</span>` : `<span class="block text-[10px] text-gray-400">${sinStock ? 'sin stock' : 'c/u'}</span>`}</span>
       </label>`;
@@ -19165,7 +19168,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-11-12u97';
+    const VERSION_PAGINA = '2026-11-12u98';
     // 🧑 u58 (Alex, 10-nov): la AGENTE DE D-ID (Luisa con cara, conversa en vivo). Piloto: SOLO en epicstreaming.vip (nunca en las tiendas de tus clientes),
     //    SOLO a visitantes sin sesión, a la IZQUIERDA (a la derecha está tu botón de WhatsApp). Se carga después de la página para no hacerla lenta.
     (function () { try {
@@ -23768,7 +23771,7 @@
       const max = maxTarjeta(prod, stock), min = Math.max(1, parseInt(prod.minCompra, 10) || 1);
       const opciones = [10, 20, 30, 40, 50].filter(n => n >= min && n <= max);
       if (!opciones.length) return '';
-      return `<div class="flex items-center gap-1.5 mb-2 flex-wrap"><span class="text-[10px] text-gray-400 mr-0.5">Rápido:</span>${opciones.map(n => `<button type="button" data-chip-de="${prod.docId}" data-n="${n}" onclick="elegirCantidad('${prod.docId}', ${n})" class="px-2.5 py-1 rounded-lg text-[11px] font-black border border-sky-400/40 text-sky-200 hover:bg-sky-500/20 transition">${n}</button>`).join('')}</div>`;
+      return `<div class="flex items-center gap-1.5 mb-2 flex-wrap"><span class="text-[10px] text-gray-400 mr-0.5">Rápido:</span>${opciones.map(n => `<button type="button" data-chip-de="${prod.docId}" data-n="${n}" onclick="elegirCantidad('${escaparJsAttr(prod.docId)}', ${n})" class="px-2.5 py-1 rounded-lg text-[11px] font-black border border-sky-400/40 text-sky-200 hover:bg-sky-500/20 transition">${n}</button>`).join('')}</div>`;
     }
 
 
@@ -23855,7 +23858,7 @@
       const fila = [{ desde: minC, precio: lista, base: true }].concat(esc);
       const campana = esc.some(e => e.desde <= minC && e.precio < lista);   // escalón de campaña en la compra mínima: el normal se muestra tachado
       const sn = (snapshotInventario[prod.docId] || {}), packs = (Array.isArray(sn.escalas) ? sn.escalas : []).filter(e => e.pack && Number(e.precio) < lista && parseInt(e.desde, 10) > 1 && parseInt(e.desde, 10) <= Math.max(Number(prod.stock) || 0, maxTarjeta(prod, Number(prod.stock) || 0)));
-      return `${packs.length ? `<div class="flex items-center gap-1.5 flex-wrap mb-2">${packs.map(e => `<button type="button" onclick="elegirCantidad('${prod.docId}', ${parseInt(e.desde, 10)})" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-sky-500/15 hover:bg-sky-500/25 border border-sky-400/50 text-[11px] font-black text-sky-100">📦 Pack ${parseInt(e.desde, 10)} · ${formatoCOP(Number(e.precio) * parseInt(e.desde, 10))}<span class="text-[9px] font-bold text-emerald-300">ahorra ${formatoCOP((lista - Number(e.precio)) * parseInt(e.desde, 10))}</span></button>`).join('')}</div>` : ''}<div class="flex items-center gap-1.5 flex-wrap mb-2"><span class="text-[10px] text-gray-400"><i class="fa-solid fa-layer-group mr-1"></i>Por cantidad:</span>${fila.map((e, k) => e.base && campana ? `<span class="esc-chip line-through opacity-50">${e.desde}+ ${formatoCOP(e.precio)}</span>` : `<span class="esc-chip" data-esc-de="${prod.docId}" data-desde="${e.desde}" data-hasta="${fila[k + 1] ? fila[k + 1].desde : ''}">${e.desde}+ ${formatoCOP(e.precio)}</span>`).join('')}</div>`;
+      return `${packs.length ? `<div class="flex items-center gap-1.5 flex-wrap mb-2">${packs.map(e => `<button type="button" onclick="elegirCantidad('${escaparJsAttr(prod.docId)}', ${parseInt(e.desde, 10)})" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-sky-500/15 hover:bg-sky-500/25 border border-sky-400/50 text-[11px] font-black text-sky-100">📦 Pack ${parseInt(e.desde, 10)} · ${formatoCOP(Number(e.precio) * parseInt(e.desde, 10))}<span class="text-[9px] font-bold text-emerald-300">ahorra ${formatoCOP((lista - Number(e.precio)) * parseInt(e.desde, 10))}</span></button>`).join('')}</div>` : ''}<div class="flex items-center gap-1.5 flex-wrap mb-2"><span class="text-[10px] text-gray-400"><i class="fa-solid fa-layer-group mr-1"></i>Por cantidad:</span>${fila.map((e, k) => e.base && campana ? `<span class="esc-chip line-through opacity-50">${e.desde}+ ${formatoCOP(e.precio)}</span>` : `<span class="esc-chip" data-esc-de="${prod.docId}" data-desde="${e.desde}" data-hasta="${fila[k + 1] ? fila[k + 1].desde : ''}">${e.desde}+ ${formatoCOP(e.precio)}</span>`).join('')}</div>`;
     }
     function prepararCampanas() {
       const prods = catalogoUnificado.filter(p => !p.esCombo && Number(p.precio) > 0).sort((a, b) => String(a.nombre).localeCompare(String(b.nombre), 'es'));
@@ -25886,7 +25889,7 @@
       }
       v.innerHTML = `<button type="button" class="flecha" style="left:calc(50% - 280px)" onclick="moverEstado(-1)" aria-label="Anterior"><i class="fa-solid fa-chevron-left"></i></button>
         <div class="marco" id="estMarco"><div class="barras">${estadosActivos.map(() => '<span><i></i></span>').join('')}</div>
-        <div class="cab">${(document.getElementById('imgLogoMarca') || {}).src ? `<img src="${document.getElementById('imgLogoMarca').src}" alt="" class="w-8 h-8 rounded-full object-cover border border-amber-400/60">` : ''}<div class="min-w-0"><p class="text-[13px] font-black leading-tight">${escaparHtml(nombreTienda())}</p><p id="estHace" class="text-[11px] opacity-75"></p></div><button type="button" class="x" onclick="cerrarEstados()" aria-label="Cerrar">✕</button></div>
+        <div class="cab">${(document.getElementById('imgLogoMarca') || {}).src ? `<img src="${urlImagenSegura(document.getElementById('imgLogoMarca').src)}" alt="" class="w-8 h-8 rounded-full object-cover border border-amber-400/60">` : ''}<div class="min-w-0"><p class="text-[13px] font-black leading-tight">${escaparHtml(nombreTienda())}</p><p id="estHace" class="text-[11px] opacity-75"></p></div><button type="button" class="x" onclick="cerrarEstados()" aria-label="Cerrar">✕</button></div>
         <img class="est" id="estImg" alt="Estado"><p id="estTexto" class="hidden absolute left-0 right-0 bottom-0 z-[3] p-4 pb-36 text-center text-white text-sm font-bold" style="background:linear-gradient(0deg,rgba(0,0,0,.75),transparent)"></p>
         <div class="zona" style="left:0" onclick="moverEstado(-1)"></div><div class="zona" style="right:0" onclick="moverEstado(1)"></div>
         <div id="estCta" class="absolute left-0 right-0 z-[6] flex flex-col items-center gap-1.5 px-4" style="bottom:calc(env(safe-area-inset-bottom, 0px) + 44px)"></div></div>
@@ -26131,17 +26134,17 @@
           window.__hayPromoPerfil = true;
           const regaloNom = pr.regaloProductoId && pr.regaloProductoId !== prod.docId ? ' ' + nombreProd(pr.regaloProductoId) : '';
           const vence = pr.vence ? ' · ' + textoVencePromo(pr.vence) : '';
-          if (aplicaPromo(pr, 'dealer')) { const mu = multiplicadoresDealer() || {}; items.push(`<p class="text-[11px] text-amber-100"><b class="dealer-texto">👑 Solo Dealers:</b> compra ${pr.compra || 10}, lleva ${pr.regalo || 1}${regaloNom} gratis${(Number(mu.plata) || 1) > 1 || (Number(mu.oro) || 1) > 1 ? ` <span class="text-amber-100/60">(Plata ×${mu.plata || 1}, Oro ×${mu.oro || 1})</span>` : ''}${vence}<button type="button" onclick="quitarPromoDesdeVentana('${prod.docId}','perfil')" class="ml-1.5 px-1.5 py-0.5 rounded-md bg-red-500/15 border border-red-400/50 text-red-200 text-[10px] font-black whitespace-nowrap">✕ Quitar</button></p>`); }
-          if (aplicaPromo(pr, 'cliente')) items.push(`<p class="text-[11px] text-emerald-100"><b class="text-emerald-300">🎁 Clientes:</b> compra ${pr.compra || 10}, lleva ${pr.regalo || 1}${regaloNom} gratis${vence}${aplicaPromo(pr, 'dealer') ? '' : `<button type="button" onclick="quitarPromoDesdeVentana('${prod.docId}','perfil')" class="ml-1.5 px-1.5 py-0.5 rounded-md bg-red-500/15 border border-red-400/50 text-red-200 text-[10px] font-black whitespace-nowrap">✕ Quitar</button>`}</p>`);
+          if (aplicaPromo(pr, 'dealer')) { const mu = multiplicadoresDealer() || {}; items.push(`<p class="text-[11px] text-amber-100"><b class="dealer-texto">👑 Solo Dealers:</b> compra ${pr.compra || 10}, lleva ${pr.regalo || 1}${regaloNom} gratis${(Number(mu.plata) || 1) > 1 || (Number(mu.oro) || 1) > 1 ? ` <span class="text-amber-100/60">(Plata ×${mu.plata || 1}, Oro ×${mu.oro || 1})</span>` : ''}${vence}<button type="button" onclick="quitarPromoDesdeVentana('${escaparJsAttr(prod.docId)}','perfil')" class="ml-1.5 px-1.5 py-0.5 rounded-md bg-red-500/15 border border-red-400/50 text-red-200 text-[10px] font-black whitespace-nowrap">✕ Quitar</button></p>`); }
+          if (aplicaPromo(pr, 'cliente')) items.push(`<p class="text-[11px] text-emerald-100"><b class="text-emerald-300">🎁 Clientes:</b> compra ${pr.compra || 10}, lleva ${pr.regalo || 1}${regaloNom} gratis${vence}${aplicaPromo(pr, 'dealer') ? '' : `<button type="button" onclick="quitarPromoDesdeVentana('${escaparJsAttr(prod.docId)}','perfil')" class="ml-1.5 px-1.5 py-0.5 rounded-md bg-red-500/15 border border-red-400/50 text-red-200 text-[10px] font-black whitespace-nowrap">✕ Quitar</button>`}</p>`);
         }
         const sn = snapshotInventario[prod.docId] || {};
-        if (Number(sn.promoPct) > 0 && (!sn.promoHasta || Date.parse(sn.promoHasta) > Date.now())) items.push(`<p class="text-[11px] text-rose-100"><b class="text-rose-300">⚡ Todos:</b> -${sn.promoPct} %${sn.promoHasta ? ' hasta ' + textoFinPromo(sn.promoHasta) : ''}<button type="button" onclick="quitarPromoDesdeVentana('${prod.docId}','relampago')" class="ml-1.5 px-1.5 py-0.5 rounded-md bg-red-500/15 border border-red-400/50 text-red-200 text-[10px] font-black whitespace-nowrap">✕ Quitar</button></p>`);
+        if (Number(sn.promoPct) > 0 && (!sn.promoHasta || Date.parse(sn.promoHasta) > Date.now())) items.push(`<p class="text-[11px] text-rose-100"><b class="text-rose-300">⚡ Todos:</b> -${sn.promoPct} %${sn.promoHasta ? ' hasta ' + textoFinPromo(sn.promoHasta) : ''}<button type="button" onclick="quitarPromoDesdeVentana('${escaparJsAttr(prod.docId)}','relampago')" class="ml-1.5 px-1.5 py-0.5 rounded-md bg-red-500/15 border border-red-400/50 text-red-200 text-[10px] font-black whitespace-nowrap">✕ Quitar</button></p>`);
         const esc = escalasDe(prod), base = Number(prod.precioLista || prod.precio) || 0, rarosE = esc.filter(e => base && e.precio < base * 0.5);
         if (esc.length) items.push(`<p class="text-[11px] text-emerald-100"><b class="text-emerald-300">💰 Por cantidad:</b> ${esc.map(e => e.desde + '+ ' + formatoCOP(e.precio)).join(' · ')}</p>`);
-        if (rarosE.length) items.push(`<p class="text-[11px] text-red-200"><b>⚠️ Revisa:</b> ${rarosE.map(e => e.desde + '+ a ' + formatoCOP(e.precio)).join(', ')} es menos de la mitad del precio normal. ¿Error al escribir? <button type="button" onclick="irAPrecioPorCantidad('${prod.docId}')" class="underline font-bold">Corregir</button></p>`);
+        if (rarosE.length) items.push(`<p class="text-[11px] text-red-200"><b>⚠️ Revisa:</b> ${rarosE.map(e => e.desde + '+ a ' + formatoCOP(e.precio)).join(', ')} es menos de la mitad del precio normal. ¿Error al escribir? <button type="button" onclick="irAPrecioPorCantidad('${escaparJsAttr(prod.docId)}')" class="underline font-bold">Corregir</button></p>`);
         const sinPromo = !items.length;   // sin promo igual se puede crear la imagen para los estados
-        const links = `<p class="text-[10px] mt-1 flex gap-3 flex-wrap"><button type="button" onclick="irATabAdmin('dealers');setTimeout(()=>{dlVista='promos';pintarTabsDealers();pintarVistaDealers();},300)" class="underline text-amber-200">${pr ? 'Editar promo Dealer/clientes' : 'Crear promo Dealer/clientes'}</button>${escalasDe(prod).length ? `<button type="button" onclick="irAPrecioPorCantidad('${prod.docId}')" class="underline text-emerald-200">Editar precio por cantidad</button>` : ''}</p>`;
-        return `<div data-promos-equipo="${prod.docId}" class="mb-2.5 px-3 py-2 rounded-xl border border-dashed border-gray-500/60 bg-black/25"><p class="text-[9px] font-black uppercase tracking-[0.14em] text-gray-400 mb-0.5"><i class="fa-solid fa-eye mr-1"></i>${sinPromo ? 'Compartir · solo tú lo ves aquí' : 'Promos vigentes · solo tú las ves aquí'}</p>${sinPromo ? '<p class="text-[11px] text-gray-400">Sin promo activa. Puedes crear la imagen con el precio normal para tus estados.</p>' : items.join('')}${links}<button type="button" onclick="abrirImagenPromo('${prod.docId}')" class="mt-2 w-full py-2 rounded-xl font-black text-[11px] text-black" style="background:linear-gradient(90deg,#10b981,#f7d774)">🖼 ${sinPromo ? 'Crear imagen para estados' : 'Crear imagen de esta promo'}</button><button type="button" onclick="copiarEnlaceProducto('${prod.docId}')" class="mt-1.5 w-full py-2 rounded-xl font-black text-[11px] bg-gray-800 hover:bg-gray-700 border border-gray-600 text-white">🔗 Copiar enlace directo <span class="font-mono font-normal text-gray-400">${escaparHtml(enlaceProducto(prod.docId))}</span></button></div>`;
+        const links = `<p class="text-[10px] mt-1 flex gap-3 flex-wrap"><button type="button" onclick="irATabAdmin('dealers');setTimeout(()=>{dlVista='promos';pintarTabsDealers();pintarVistaDealers();},300)" class="underline text-amber-200">${pr ? 'Editar promo Dealer/clientes' : 'Crear promo Dealer/clientes'}</button>${escalasDe(prod).length ? `<button type="button" onclick="irAPrecioPorCantidad('${escaparJsAttr(prod.docId)}')" class="underline text-emerald-200">Editar precio por cantidad</button>` : ''}</p>`;
+        return `<div data-promos-equipo="${prod.docId}" class="mb-2.5 px-3 py-2 rounded-xl border border-dashed border-gray-500/60 bg-black/25"><p class="text-[9px] font-black uppercase tracking-[0.14em] text-gray-400 mb-0.5"><i class="fa-solid fa-eye mr-1"></i>${sinPromo ? 'Compartir · solo tú lo ves aquí' : 'Promos vigentes · solo tú las ves aquí'}</p>${sinPromo ? '<p class="text-[11px] text-gray-400">Sin promo activa. Puedes crear la imagen con el precio normal para tus estados.</p>' : items.join('')}${links}<button type="button" onclick="abrirImagenPromo('${escaparJsAttr(prod.docId)}')" class="mt-2 w-full py-2 rounded-xl font-black text-[11px] text-black" style="background:linear-gradient(90deg,#10b981,#f7d774)">🖼 ${sinPromo ? 'Crear imagen para estados' : 'Crear imagen de esta promo'}</button><button type="button" onclick="copiarEnlaceProducto('${escaparJsAttr(prod.docId)}')" class="mt-1.5 w-full py-2 rounded-xl font-black text-[11px] bg-gray-800 hover:bg-gray-700 border border-gray-600 text-white">🔗 Copiar enlace directo <span class="font-mono font-normal text-gray-400">${escaparHtml(enlaceProducto(prod.docId))}</span></button></div>`;
       } catch (e) { return ''; }
     }
 
