@@ -19207,7 +19207,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-11-12u102';
+    const VERSION_PAGINA = '2026-11-12u103';
     // 🧑 u58 (Alex, 10-nov): la AGENTE DE D-ID (Luisa con cara, conversa en vivo). Piloto: SOLO en epicstreaming.vip (nunca en las tiendas de tus clientes),
     //    SOLO a visitantes sin sesión, a la IZQUIERDA (a la derecha está tu botón de WhatsApp). Se carga después de la página para no hacerla lenta.
     (function () { try {
@@ -31954,7 +31954,7 @@ const LUISA_COM_DEF_PAG = { activo: true, stockHora: '08:00', mediodiaHora: '12:
       const slots = compartida ? netflixCuentasAdmin.filter(x => x.tipo === 'compartida' && claveCuentaNf(x) === claveCuentaNf(a)).sort((x, y) => ((x.posNf || 99) - (y.posNf || 99)) || String(x.perfil || '').localeCompare(String(y.perfil || ''), 'es', { numeric: true })) : [];   // primero la posición en Netflix (la guarda «Ya quedó»)
       const azar = nombresRobotAzar(Math.max(slots.length, 5));
       const filas = compartida
-        ? slots.map((x, i) => ({ slotId: x.id, pos: i + 1, actual: x.perfil || '', nuevo: azar[i], pin: (todaLaCuenta || x.id === id) ? generarPinNetflix(x.pin) : '', sel: !!todaLaCuenta || x.id === id }))
+        ? slots.map((x, i) => ({ slotId: x.id, libre: String(x.estado || '') !== 'asignado' && !x.clienteUid, pos: i + 1, actual: x.perfil || '', nuevo: azar[i], pin: (todaLaCuenta || x.id === id) ? generarPinNetflix(x.pin) : '', sel: !!todaLaCuenta || x.id === id }))
         : [1, 2, 3, 4, 5].map((n, i) => ({ slotId: '', pos: n, actual: '', nuevo: azar[i], pin: '', sel: false }));
       const platR = esDisneyNf(a) ? 'disney' : 'netflix';
       robotNf = { id: id, correo: a.correo || '', compartida: compartida, filas: filas, srvUrl: '', plat: platR };
@@ -31983,8 +31983,23 @@ const LUISA_COM_DEF_PAG = { activo: true, stockHora: '08:00', mediodiaHora: '12:
     function robotVpsPendPoner(p) { try { if (p) localStorage.setItem('epicRobotVpsPend', JSON.stringify(p)); else localStorage.removeItem('epicRobotVpsPend'); } catch (e) { /* nada */ } }
     function cerrarRobotNetflix() { const m = document.getElementById('modalRobotNetflix'); if (m) { m.classList.add('hidden'); m.style.display = 'none'; } try { robotVpsVivoParar(); } catch (e) { /* nada */ } try { const pd = robotVpsPendLeer(); if (window._robotVpsUnsub && !(pd && !pd.avisado)) { window._robotVpsUnsub(); window._robotVpsUnsub = null; } } catch (e) { /* nada */ } }   // con una orden del VPS en curso se sigue escuchando para avisar cómo terminó
     // 🤖 ROBOT AUTOMÁTICO (VPS): la MISMA orden que abre tu Chrome va a la fila del VPS (secretos/robots). El VPS la hace sola y avisa aquí.
+    // 📸 u103: la «foto» de las cuentas de Disney+ (qué casilla es cada perfil) que guarda el robot de tu Chrome. El panel la sube para que el VPS use la misma.
+    function robotMapaClave(correo) { return String(correo || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/\s+/g, ' ').trim(); }
+    function robotMapaSubir() { try { const mp = localStorage.getItem('epicRobotDsnMapa') || ''; if (!mp || mp === window._dsnMapaSubido || mp.length > 700000) return; if (typeof JSON.parse(mp) !== 'object') return;
+        window._dsnMapaSubido = mp; db.collection('secretos').doc('robots_mapa').set({ dsn: mp, el: new Date().toISOString(), por: (auth.currentUser && auth.currentUser.email) || '' }, { merge: true }).catch(() => { window._dsnMapaSubido = ''; }); } catch (e) { /* nada */ } }
+    async function robotMapaFoto(correo) {   // la foto de ESA cuenta: la de este navegador (si es el Chrome del robot) o la guardada en el panel
+      let mp = ''; try { mp = localStorage.getItem('epicRobotDsnMapa') || ''; } catch (e) { mp = ''; }
+      if (!mp) { try { const dm = await db.collection('secretos').doc('robots_mapa').get(); mp = (dm.exists && dm.data().dsn) || ''; } catch (e) { mp = ''; } }
+      try { const M = JSON.parse(mp || '{}') || {}, c = M[robotMapaClave(correo)], F = c && c.foto2; return (F && typeof F === 'object' && Object.keys(F).length) ? F : null; } catch (e) { return null; } }
+    async function robotMapaDeResultado(resultado) {   // lo que el VPS cambió vuelve a la foto guardada
+      try { const r = JSON.parse(resultado || 'null'); if (!r || !r.correo || !r.foto || typeof r.foto !== 'object' || !Object.keys(r.foto).length) return;
+        const ref = db.collection('secretos').doc('robots_mapa'), dm = await ref.get(); let M = {}; try { M = JSON.parse((dm.exists && dm.data().dsn) || '{}') || {}; } catch (e) { M = {}; }
+        const k = robotMapaClave(r.correo); M[k] = Object.assign({}, M[k] || {}, { foto2: r.foto }); const mp = JSON.stringify(M); window._dsnMapaSubido = mp;
+        await ref.set({ dsn: mp, el: new Date().toISOString(), por: 'robot del VPS' }, { merge: true }); } catch (e) { /* nada */ } }
     async function ejecutarRobotVps() {
       const o = ordenRobotNetflix(); if (!o) return;
+      if (robotNf.plat === 'disney') { try { robotMapaSubir(); const fo = await robotMapaFoto(o.correo || robotNf.correo); if (fo) o.foto = fo; } catch (e) { /* sigue sin foto */ }
+        o.filasPanel = (robotNf.filas || []).map((f) => ({ pos: f.pos, nombre: String(f.actual || ''), libre: f.libre === true })); }   // 📸 u103: van siempre los nombres de TODAS las filas de la cuenta: con eso el VPS arma o completa la foto ANTES de cambiar nada (nunca por el puesto) y crea primero los perfiles que falten
       let b64 = ''; try { b64 = btoa(unescape(encodeURIComponent(JSON.stringify(o)))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''); } catch (e) { alert('No se pudo armar la orden.'); return; }
       const plat = robotNf.plat === 'disney' ? 'disney' : 'netflix', destino = plat === 'disney' ? 'https://www.disneyplus.com/edit-profiles' : 'https://www.netflix.com/account/profiles';
       const id = 'r' + Date.now() + Math.floor(Math.random() * 1000);
@@ -32007,6 +32022,7 @@ const LUISA_COM_DEF_PAG = { activo: true, stockHora: '08:00', mediodiaHora: '12:
       const ver = document.getElementById('rnRobotsVer'), caja = document.getElementById('rnVpsEstado'), cola = d.cola || {};
       // 🏷️ versiones: tu Chrome deja la suya en este navegador (si tiene Tampermonkey); el panel la guarda para verla también desde el celular
       let chN = '', chD = ''; try { chN = localStorage.getItem('epicRobotNfVersion') || ''; chD = localStorage.getItem('epicRobotDsnVersion') || ''; } catch (e) { /* nada */ }
+      try { robotMapaSubir(); } catch (eMs) { /* nada */ }   // 📸 u103: si este es el Chrome del robot, su foto de las cuentas queda guardada para el VPS
       const ch = d.chrome || {}; if ((chN && chN !== ch.netflix) || (chD && chD !== ch.disney)) { db.collection('secretos').doc('robots').set({ chrome: { netflix: chN || ch.netflix || '', disney: chD || ch.disney || '', el: new Date().toISOString() } }, { merge: true }).catch(() => {}); }
       const cN = chN || ch.netflix || '', cD = chD || ch.disney || '', vv = d.versiones || {}, lat = Date.parse(d.latido || '') || 0, minLat = lat ? Math.round((Date.now() - lat) / 60000) : null, vivo = lat && minLat < 3;
       const filaV = (n, v, c) => { const dif = v && c && v !== c; return '<div class="flex items-start justify-between gap-2 py-1 border-t border-gray-800"><span class="font-bold text-white">' + n + '</span><span class="text-right ' + (dif ? 'text-amber-300' : v && c ? 'text-emerald-300' : 'text-gray-400') + '">VPS ' + escaparHtml(v || '—') + ' · Chrome ' + escaparHtml(c || '—') + (dif ? ' · distintas: actualiza el VPS' : v && c ? ' · iguales' : '') + '</span></div>'; };
@@ -32036,6 +32052,7 @@ const LUISA_COM_DEF_PAG = { activo: true, stockHora: '08:00', mediodiaHora: '12:
       if (o.estado === 'listo' && id === robotNf.vpsId && !robotNf.vpsGuardado && String(o.correo || '').toLowerCase() === correo) {
         robotNf.vpsGuardado = true; robotNf.vpsListo = true; robotVpsPendPoner(null);   // 🤖 u102
         try { if (o.resultado) localStorage.setItem(robotNf.plat === 'disney' ? 'epicRobotDsnResultado' : 'epicRobotNfResultado', o.resultado); } catch (e) { /* nada */ }
+        try { if (robotNf.plat === 'disney' && o.resultado) robotMapaDeResultado(o.resultado); } catch (e) { /* nada */ }   // 📸 u103
         setTimeout(() => { try { guardarRobotNetflix(true); } catch (e) { /* nada */ } }, 600);   // 🤖 automático: sin preguntar
       }
     }
@@ -32236,7 +32253,7 @@ const LUISA_COM_DEF_PAG = { activo: true, stockHora: '08:00', mediodiaHora: '12:
       const cambios = robotNf.filas.map(f => { const h = hechoDe[f.pos]; if (!h) return null;
         const d = { posNf: f.pos }; if (h.nombre) d.perfil = h.nombre; if (h.pin) { d.pin = h.pin; d.pinPendiente = false; d.pinRobotEl = new Date().toISOString(); }   // 🔑 u102: queda anotado que este PIN lo puso el robot, y cuándo
         return (d.perfil || d.pin) ? { slotId: f.slotId, pos: f.pos, nombre: h.nombre || '', pin: h.pin || '', d: d } : null; }).filter(Boolean);
-      if (!cambios.length) { mostrarToast('El robot no alcanzó a cambiar nada para guardar.'); cerrarRobotNetflix(); return; }
+      if (!cambios.length) { if (!auto) mostrarToast('El robot no alcanzó a cambiar nada para guardar.'); cerrarRobotNetflix(); return; }   // 🔕 u103: en automático ese aviso sobraba (salía después de «Guardado»)
       const remplTxt = (resPrevio && Array.isArray(resPrevio.reemplazados) && resPrevio.reemplazados.length) ? ' · ♻ Eliminados y creados de nuevo: ' + resPrevio.reemplazados.map(r => 'perfil ' + r).join(', ') + ' (el orden se reacomoda)' : '';
       if (!auto && !await confirmarModal('¿Guardar en el panel lo que el robot hizo de verdad? ' + cambios.map(c => 'Perfil ' + c.pos + (c.nombre ? ' → «' + c.nombre + '»' : '') + (c.pin ? ' · PIN ' + c.pin : '')).join(' · ') + remplTxt, { textoAceptar: 'Sí, guardar' })) return;
       try { const lote = db.batch(), ahora = new Date().toISOString();
