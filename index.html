@@ -2578,7 +2578,10 @@
             <label class="block text-[11px] text-gray-400">Correo (de tu dominio)<span class="flex gap-2"><input id="pvcCorreo" type="email" autocomplete="off" placeholder="Toca Generar" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none"><button type="button" onclick="pvcGenerarCorreo()" class="shrink-0 px-3 rounded-xl bg-gray-800 hover:bg-gray-700 border border-gray-600 text-white text-xs font-black">🎲 Generar</button></span></label>
             <label class="block text-[11px] text-gray-400">Contraseña<input id="pvcPass" type="password" autocomplete="new-password" placeholder="La de la cuenta nueva" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none"></label>
             <label class="block text-[11px] text-gray-400">Página de Amazon<input id="pvcUrl" type="url" autocomplete="off" value="https://music.amazon.it" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none"></label>
+            <label class="block text-[11px] text-gray-400">Al crearla, subirla a<select id="pvcDestino" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none"><option value="amazonfree">Amazon Free (en mi dominio)</option><option value="no">No subirla</option></select></label>
             <button type="button" onclick="pvcCrearEnVps()" class="w-full py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-black text-xs">🚀 Crear en el VPS</button>
+            <label class="flex items-center gap-2 p-2.5 rounded-xl bg-gray-950/60 border border-gray-800 text-xs text-white font-bold cursor-pointer"><input type="checkbox" id="pvcAuto" onchange="pvcAutoCambiar()" class="w-4 h-4 accent-amber-500"><span>🔁 Crear una cada hora, sola</span></label>
+            <p id="pvcAutoEstado" class="text-[11px] text-gray-400 leading-snug">Apagado. Al prenderlo, el VPS crea una cuenta cada hora con estos datos y la sube al producto elegido. Si Amazon frena dos veces seguidas, se apaga solo y te avisa.</p>
             <div id="pvcEstado" class="hidden"></div>
           </div>
           <details class="rounded-xl border border-gray-800 bg-gray-950/60 p-3"><summary class="text-sm font-black text-white cursor-pointer">ℹ️ Cómo se prueba</summary>
@@ -19217,7 +19220,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-11-12u104';
+    const VERSION_PAGINA = '2026-11-12u106';
     // 🧑 u58 (Alex, 10-nov): la AGENTE DE D-ID (Luisa con cara, conversa en vivo). Piloto: SOLO en epicstreaming.vip (nunca en las tiendas de tus clientes),
     //    SOLO a visitantes sin sesión, a la IZQUIERDA (a la derecha está tu botón de WhatsApp). Se carga después de la página para no hacerla lenta.
     (function () { try {
@@ -32204,13 +32207,45 @@ const LUISA_COM_DEF_PAG = { activo: true, stockHora: '08:00', mediodiaHora: '12:
       catch (e) { if (!auto) alert('No se pudo guardar: ' + e.message); }
     }
     // ==================== 🆕 u104 · AMAZON: CREAR CUENTA NUEVA EN EL VPS ====================
-    const pvc = { id: '', unsub: null, fin: '', correo: '', nombre: '', url: '' };
+    const pvc = { id: '', unsub: null, fin: '', correo: '', nombre: '', url: '', pass: '', destino: 'amazonfree' };
+    // 📦 u105 (Alex: «cuando se genere, pase a Amazon Free mi dominio»): a qué producto sube la cuenta recién creada
+    function pvcPoblarDestino(guardado) { const sel = document.getElementById('pvcDestino'); if (!sel) return; const prev = guardado || sel.value || 'amazonfree';
+      const L = (typeof catalogoUnificado !== 'undefined' && Array.isArray(catalogoUnificado) ? catalogoUnificado : []).filter((p) => p && !p.esCombo && p.docId);
+      if (L.length) sel.innerHTML = L.map((p) => '<option value="' + escaparHtml(p.docId) + '">' + escaparHtml(p.nombre || p.docId) + '</option>').join('') + '<option value="no">No subirla</option>';
+      sel.value = [...sel.options].some((x) => x.value === prev) ? prev : ([...sel.options].some((x) => x.value === 'amazonfree') ? 'amazonfree' : 'no'); }
+    function pvcNombreDestino(d) { const p = (typeof catalogoUnificado !== 'undefined' && Array.isArray(catalogoUnificado) ? catalogoUnificado : []).find((x) => x && x.docId === d); return p ? (p.nombre || d) : (d === 'amazonfree' ? 'Amazon Free (en mi dominio)' : d); }
+    async function pvcSubir(id, correo, destino, pass) {   // sube la cuenta creada al stock y lo deja anotado en el historial
+      if (!destino || destino === 'no') return false;
+      try { const r = await llamarBackend('amz_robot_creada', { correo: correo, destino: destino, pass: pass || '' });
+        if (r && r.ok) { const nom = r.nombre || pvcNombreDestino(destino); try { await db.collection('secretos').doc('robots_amazon').set({ historial: { [id]: { subidaA: nom, subidaEl: new Date().toISOString() } } }, { merge: true }); } catch (e) { /* nada */ }
+          mostrarToast('📦 ' + correo + (r.yaEstaba ? ' ya estaba en el stock de ' : ' subió al stock de ') + nom + '.', 7000); try { pvCargarHistorial(); } catch (e) { /* nada */ } return true; }
+        mostrarToast('❌ No se pudo subir ' + correo + ' al stock: ' + ((r && r.error) || 'intenta de nuevo') + '\nQueda en el historial con el botón «Subir al stock».', 9000); }
+      catch (e) { mostrarToast('❌ No se pudo subir ' + correo + ' al stock: ' + e.message, 9000); } return false; }
+    async function pvcSubirDeHistorial(id) {   // botón del historial: cuentas creadas que no alcanzaron a subir
+      try { const d = await db.collection('secretos').doc('robots_amazon').get(), x = ((d.exists && d.data().historial) || {})[id], c = (d.exists && d.data().crear) || {}; if (!x || !x.correo) return;
+        const dest = (document.getElementById('pvcDestino') || {}).value; await pvcSubir(id, x.correo, dest && dest !== 'no' ? dest : 'amazonfree', c.pass || ''); } catch (e) { mostrarToast('❌ No se pudo subir: ' + e.message); } }
     const PVC_URL_OK = /^https:\/\/([a-z0-9-]+\.)*amazon\.(it|com|es|de|fr|co\.uk|com\.mx|com\.br)(\/[^\s]*)?$/i;
     async function pvcCargar() {   // lo que usaste la última vez (nombre, contraseña y página) vive en la parte PRIVADA del panel, nunca en la página
       try { const d = await db.collection('secretos').doc('robots_amazon').get(), c = (d.exists && d.data().crear) || {}, g = (id) => document.getElementById(id);
         if (c.nombre && g('pvcNombre') && (!g('pvcNombre').value || g('pvcNombre').value === 'Amazon')) g('pvcNombre').value = c.nombre;
         if (c.pass && g('pvcPass') && !g('pvcPass').value) g('pvcPass').value = c.pass;
-        if (c.url && g('pvcUrl') && PVC_URL_OK.test(c.url)) g('pvcUrl').value = c.url; } catch (e) { /* sin datos guardados */ } }
+        if (c.url && g('pvcUrl') && PVC_URL_OK.test(c.url)) g('pvcUrl').value = c.url; pvcPoblarDestino(c.destino || ''); pvcAutoPintar(d.exists ? d.data().auto : null); } catch (e) { try { pvcPoblarDestino(''); } catch (e2) { /* nada */ } } }
+    // 🔁 u106 (Alex: «que lo haga cada 1 hora de forma automática»): el interruptor vive en la parte privada (secretos/robots_amazon.auto); el que crea es el servidor
+    function pvcAutoPintar(a) { a = a || {}; const ch = document.getElementById('pvcAuto'), el = document.getElementById('pvcAutoEstado'); if (ch) ch.checked = a.activo === true; if (!el) return;
+      const hora = (t) => { try { return new Date(t).toLocaleTimeString('es-CO', { hour: 'numeric', minute: '2-digit' }); } catch (e) { return ''; } };
+      const hoy = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Bogota' }), n = a.dia === hoy ? (Number(a.creadasHoy) || 0) : 0;
+      if (a.activo === true) { el.className = 'text-[11px] text-emerald-300 leading-snug'; el.textContent = '🟢 Prendido: una cada hora. Hoy van ' + n + '.' + (a.ordenId ? ' Ahora mismo está creando ' + (a.ordenCorreo || 'una') + '.' : a.ultimaEl ? ' La última empezó a las ' + hora(a.ultimaEl) + '; la siguiente, hacia las ' + hora(Date.parse(a.ultimaEl) + (Number(a.cadaMin) || 60) * 60000) + '.' : ' La primera sale en unos minutos.'); }
+      else if (a.pausaMotivo) { el.className = 'text-[11px] text-red-300 leading-snug'; el.textContent = '🛑 Se apagó solo: ' + a.pausaMotivo + ' Préndelo otra vez cuando quieras.'; }
+      else { el.className = 'text-[11px] text-gray-400 leading-snug'; el.textContent = 'Apagado. Al prenderlo, el VPS crea una cuenta cada hora con estos datos y la sube al producto elegido. Si Amazon frena dos veces seguidas, se apaga solo y te avisa.'; } }
+    async function pvcAutoCambiar() { const ch = document.getElementById('pvcAuto'), v = (id) => String((document.getElementById(id) || {}).value || '').trim(), ref = db.collection('secretos').doc('robots_amazon'); if (!ch) return;
+      try { if (ch.checked) { const nombre = v('pvcNombre') || 'Amazon', pass = v('pvcPass'), url = v('pvcUrl').replace(/\/+$/, ''), destino = v('pvcDestino') || 'amazonfree';
+          if (pass.length < 6) { ch.checked = false; return mostrarToast('❌ Escribe primero la contraseña de las cuentas (mínimo 6).'); }
+          if (!PVC_URL_OK.test(url)) { ch.checked = false; return mostrarToast('❌ Revisa la página de Amazon.'); }
+          await ref.set({ crear: { nombre: nombre, pass: pass, url: url, destino: destino }, auto: { activo: true, cadaMin: 60, topeDia: 24, destino: destino, fallos: 0, pausaMotivo: '', prendidoEl: new Date().toISOString() } }, { merge: true });
+          mostrarToast('🔁 Listo: el VPS crea una cuenta de Amazon cada hora y la sube a ' + pvcNombreDestino(destino) + '.', 7000); }
+        else { await ref.set({ auto: { activo: false, pausaMotivo: '' } }, { merge: true }); mostrarToast('⏸ Creación automática apagada.'); }
+        const d = await ref.get(); pvcAutoPintar((d.exists && d.data().auto) || {}); }
+      catch (e) { ch.checked = !ch.checked; mostrarToast('❌ No se pudo guardar: ' + e.message); } }
     async function pvcGenerarCorreo() { const el = document.getElementById('pvcCorreo'); if (!el) return '';
       try { const r = await llamarBackend('amz_robot_correo', {}); if (r && r.ok && r.correo) { el.value = r.correo; return r.correo; } mostrarToast('❌ No se pudo generar el correo: ' + ((r && r.error) || 'intenta de nuevo')); }
       catch (e) { mostrarToast('❌ No se pudo generar el correo: ' + e.message); } return ''; }
@@ -32226,8 +32261,9 @@ const LUISA_COM_DEF_PAG = { activo: true, stockHora: '08:00', mediodiaHora: '12:
       const id = 'r' + Date.now() + Math.floor(Math.random() * 1000);
       try { await db.collection('secretos').doc('robots').set({ cola: { [id]: { plat: 'amazon', url: url + '/#epicrobot=' + b64, nombre: 'epicrobot:' + b64, correo: correo, estado: 'pendiente', creadoEl: new Date().toISOString(), por: (auth.currentUser && auth.currentUser.email) || '' } } }, { merge: true }); }
       catch (e) { alert('No se pudo enviar la orden al VPS: ' + e.message); return; }
-      try { await db.collection('secretos').doc('robots_amazon').set({ crear: { nombre: nombre, pass: pass, url: url } }, { merge: true }); } catch (e) { /* no pasa nada: se vuelve a escribir la próxima vez */ }
-      pvc.id = id; pvc.fin = ''; pvc.correo = correo; pvc.nombre = nombre; pvc.url = url; mostrarToast('🤖 Orden enviada al robot del VPS: crear la cuenta ' + correo + '.');
+      const destino = v('pvcDestino') || 'amazonfree';
+      try { await db.collection('secretos').doc('robots_amazon').set({ crear: { nombre: nombre, pass: pass, url: url, destino: destino } }, { merge: true }); } catch (e) { /* no pasa nada: se vuelve a escribir la próxima vez */ }
+      pvc.id = id; pvc.fin = ''; pvc.correo = correo; pvc.nombre = nombre; pvc.url = url; pvc.pass = pass; pvc.destino = destino; mostrarToast('🤖 Orden enviada al robot del VPS: crear la cuenta ' + correo + '.');
       try { if (pvc.unsub) pvc.unsub(); } catch (e) { /* nada */ }
       try { pvc.unsub = db.collection('secretos').doc('robots').onSnapshot((d) => { try { pvcPintar(d.exists ? d.data() : {}); } catch (e) { /* nada */ } }, () => { pvc.unsub = null; }); } catch (e) { /* nada */ }
     }
@@ -32246,7 +32282,7 @@ const LUISA_COM_DEF_PAG = { activo: true, stockHora: '08:00', mediodiaHora: '12:
         const ok = est === 'listo', rec = { tipo: 'crear', t: Date.now(), correo: pvc.correo, cliente: pvc.nombre, sitio: pvc.url, estado: est, motivo: String(o.motivo || '').slice(0, 200) };
         db.collection('secretos').doc('robots_amazon').set({ historial: { [pvc.id]: rec } }, { merge: true }).then(() => { try { pvCargarHistorial(); } catch (e) { /* nada */ } }).catch(() => {});
         mostrarToast(ok ? '✅ Robot del VPS: cuenta de Amazon creada y verificada.\n' + pvc.correo : '❌ Robot del VPS: no se pudo crear la cuenta ' + pvc.correo + '.\n' + String(o.motivo || est).slice(0, 160), 9000);
-        if (ok) { const el = document.getElementById('pvcCorreo'); if (el) el.value = ''; }   // la próxima cuenta pide otro correo
+        if (ok) { const el = document.getElementById('pvcCorreo'); if (el) el.value = ''; pvcSubir(pvc.id, pvc.correo, pvc.destino, pvc.pass); }   // la próxima cuenta pide otro correo · 📦 u105: y esta sube sola al stock
       }
     }
     async function pvCargarHistorial() {
@@ -32255,7 +32291,7 @@ const LUISA_COM_DEF_PAG = { activo: true, stockHora: '08:00', mediodiaHora: '12:
       try { const doc = await db.collection('secretos').doc('robots_amazon').get(), h = (doc.exists ? doc.data().historial : null) || {};
         const ids = Object.keys(h).sort((a, b) => (h[b].t || 0) - (h[a].t || 0)).slice(0, 30);
         c.innerHTML = ids.length ? ids.map((k) => { const x = h[k], d = x.direccion || {}, ok = x.prime && x.estado === 'listo';
-          if (x.tipo === 'crear') { const okC = x.estado === 'listo'; return '<div class="p-3 rounded-xl bg-gray-950/60 border ' + (okC ? 'border-emerald-700/50' : 'border-gray-800') + '"><div class="flex items-start justify-between gap-2"><p class="font-bold text-white truncate">' + escaparHtml(x.correo) + '</p><span class="shrink-0 text-[10px] ' + (okC ? 'text-emerald-300' : 'text-red-300') + '">' + (okC ? '🆕 Cuenta creada' : 'No se creó') + '</span></div><p class="text-gray-500 text-[11px]">' + escaparHtml(x.cliente || '') + ' · ' + escaparHtml(String(x.sitio || '').replace(/^https:\/\//, '')) + ' · ' + escaparHtml(new Date(x.t || 0).toLocaleString('es-CO')) + (x.motivo && !okC ? ' · ' + escaparHtml(String(x.motivo).slice(0, 120)) : '') + '</p></div>'; }   // 🆕 u104
+          if (x.tipo === 'crear') { const okC = x.estado === 'listo'; return '<div class="p-3 rounded-xl bg-gray-950/60 border ' + (okC ? 'border-emerald-700/50' : 'border-gray-800') + '"><div class="flex items-start justify-between gap-2"><p class="font-bold text-white truncate">' + escaparHtml(x.correo) + '</p><span class="shrink-0 text-[10px] ' + (okC ? 'text-emerald-300' : 'text-red-300') + '">' + (okC ? (x.subidaA ? '📦 En ' + escaparHtml(String(x.subidaA).slice(0, 40)) : '🆕 Cuenta creada') : 'No se creó') + '</span></div>' + (okC && !x.subidaA ? '<button type="button" onclick="pvcSubirDeHistorial(\'' + escaparJsAttr(k) + '\')" class="mt-1 px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-black text-[11px] font-black">📦 Subir al stock</button>' : '') + '<p class="text-gray-500 text-[11px]">' + escaparHtml(x.cliente || '') + ' · ' + escaparHtml(String(x.sitio || '').replace(/^https:\/\//, '')) + ' · ' + escaparHtml(new Date(x.t || 0).toLocaleString('es-CO')) + (x.motivo && !okC ? ' · ' + escaparHtml(String(x.motivo).slice(0, 120)) : '') + '</p></div>'; }   // 🆕 u104
           return '<div class="p-3 rounded-xl bg-gray-950/60 border ' + (ok ? 'border-emerald-700/50' : 'border-gray-800') + '"><div class="flex items-start justify-between gap-2"><p class="font-bold text-white truncate">' + escaparHtml(x.correo) + '</p><span class="shrink-0 text-[10px] ' + (ok ? 'text-emerald-300' : 'text-amber-300') + '">' + (ok ? '✅ Prime' : '⚠️ ' + escaparHtml(x.estado || 'incompleto')) + '</span></div>'
             + '<p class="text-gray-400 mt-0.5">' + escaparHtml(d.nombre || x.cliente || '') + ' · ' + escaparHtml(d.linea1 || '') + ', ' + escaparHtml(d.ciudad || '') + ' (' + escaparHtml(d.departamento || '') + ')' + (x.direccionSeleccionada ? ' · 📍 seleccionada' : '') + '</p>'
             + '<p class="text-gray-500 text-[11px]">' + (x.tarjeta ? '💳 ' + escaparHtml(x.tarjeta) + ' · ' : '') + (x.producto ? '🛒 ' + escaparHtml(String(x.producto).slice(0, 40)) + ' · ' : '') + escaparHtml(new Date(x.t || 0).toLocaleString('es-CO')) + (x.motivo && !ok ? ' · ' + escaparHtml(String(x.motivo).slice(0, 80)) : '') + '</p></div>'; }).join('')
