@@ -2571,6 +2571,16 @@
             <button type="button" onclick="pvGuardarResultado(false)" class="py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs"><i class="fa-solid fa-check mr-1"></i> Ya quedó</button>
           </div>
           <div id="pvEstado" class="hidden"></div>
+          <div class="p-3 rounded-2xl bg-gray-950/60 border border-amber-500/40 space-y-2">
+            <p class="text-xs font-black text-white">🆕 Crear cuenta nueva (robot del VPS)</p>
+            <p class="text-[11px] text-gray-400 leading-snug">El robot abre Amazon en el VPS, toca crear cuenta, pone estos datos y verifica con el código que llega a tu buzón. Si Amazon pide un CAPTCHA o un celular, se pausa y te lo muestra aquí.</p>
+            <label class="block text-[11px] text-gray-400">Nombre<input id="pvcNombre" type="text" autocomplete="off" value="Amazon" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none"></label>
+            <label class="block text-[11px] text-gray-400">Correo (de tu dominio)<span class="flex gap-2"><input id="pvcCorreo" type="email" autocomplete="off" placeholder="Toca Generar" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none"><button type="button" onclick="pvcGenerarCorreo()" class="shrink-0 px-3 rounded-xl bg-gray-800 hover:bg-gray-700 border border-gray-600 text-white text-xs font-black">🎲 Generar</button></span></label>
+            <label class="block text-[11px] text-gray-400">Contraseña<input id="pvcPass" type="password" autocomplete="new-password" placeholder="La de la cuenta nueva" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none"></label>
+            <label class="block text-[11px] text-gray-400">Página de Amazon<input id="pvcUrl" type="url" autocomplete="off" value="https://music.amazon.it" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none"></label>
+            <button type="button" onclick="pvcCrearEnVps()" class="w-full py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-black text-xs">🚀 Crear en el VPS</button>
+            <div id="pvcEstado" class="hidden"></div>
+          </div>
           <details class="rounded-xl border border-gray-800 bg-gray-950/60 p-3"><summary class="text-sm font-black text-white cursor-pointer">ℹ️ Cómo se prueba</summary>
             <ol class="mt-2 text-[11px] text-gray-300 space-y-1 list-decimal pl-4"><li>En el Chrome de pruebas instala el script <b>Epic Robot Amazon 1.5.0</b> en Tampermonkey (con <b>Permitir en modo incógnito</b> si lo usas en incógnito).</li><li>Abre este panel en ese Chrome, llena los datos y toca <b>🚀 Hacerlo en Chrome</b>: se abre Amazon Music Italia con la orden.</li><li>Aquí abajo ves en vivo en qué paso va. Si Amazon pide un código o un CAPTCHA, el robot se pausa: lo resuelves y tocas <b>▶ Continuar</b> en su cajita.</li><li>Al terminar se guarda solo en el historial (o toca <b>Ya quedó</b>). La contraseña y la tarjeta completa nunca se guardan: solo los últimos 4.</li></ol></details>
         </div>
@@ -19207,7 +19217,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-11-12u103';
+    const VERSION_PAGINA = '2026-11-12u104';
     // 🧑 u58 (Alex, 10-nov): la AGENTE DE D-ID (Luisa con cara, conversa en vivo). Piloto: SOLO en epicstreaming.vip (nunca en las tiendas de tus clientes),
     //    SOLO a visitantes sin sesión, a la IZQUIERDA (a la derecha está tu botón de WhatsApp). Se carga después de la página para no hacerla lenta.
     (function () { try {
@@ -32193,11 +32203,59 @@ const LUISA_COM_DEF_PAG = { activo: true, stockHora: '08:00', mediodiaHora: '12:
         mostrarToast('✅ Guardado en el historial de Prime Video: ' + rec.correo); pvCargarHistorial(); }
       catch (e) { if (!auto) alert('No se pudo guardar: ' + e.message); }
     }
+    // ==================== 🆕 u104 · AMAZON: CREAR CUENTA NUEVA EN EL VPS ====================
+    const pvc = { id: '', unsub: null, fin: '', correo: '', nombre: '', url: '' };
+    const PVC_URL_OK = /^https:\/\/([a-z0-9-]+\.)*amazon\.(it|com|es|de|fr|co\.uk|com\.mx|com\.br)(\/[^\s]*)?$/i;
+    async function pvcCargar() {   // lo que usaste la última vez (nombre, contraseña y página) vive en la parte PRIVADA del panel, nunca en la página
+      try { const d = await db.collection('secretos').doc('robots_amazon').get(), c = (d.exists && d.data().crear) || {}, g = (id) => document.getElementById(id);
+        if (c.nombre && g('pvcNombre') && (!g('pvcNombre').value || g('pvcNombre').value === 'Amazon')) g('pvcNombre').value = c.nombre;
+        if (c.pass && g('pvcPass') && !g('pvcPass').value) g('pvcPass').value = c.pass;
+        if (c.url && g('pvcUrl') && PVC_URL_OK.test(c.url)) g('pvcUrl').value = c.url; } catch (e) { /* sin datos guardados */ } }
+    async function pvcGenerarCorreo() { const el = document.getElementById('pvcCorreo'); if (!el) return '';
+      try { const r = await llamarBackend('amz_robot_correo', {}); if (r && r.ok && r.correo) { el.value = r.correo; return r.correo; } mostrarToast('❌ No se pudo generar el correo: ' + ((r && r.error) || 'intenta de nuevo')); }
+      catch (e) { mostrarToast('❌ No se pudo generar el correo: ' + e.message); } return ''; }
+    async function pvcCrearEnVps() {
+      const v = (id) => String((document.getElementById(id) || {}).value || '').trim(), nombre = v('pvcNombre') || 'Amazon', pass = v('pvcPass'), url = v('pvcUrl').replace(/\/+$/, '');
+      if (!PVC_URL_OK.test(url)) { alert('La página debe ser de Amazon y empezar por https:// (por ejemplo https://music.amazon.it).'); return; }
+      if (pass.length < 6) { alert('Escribe la contraseña de la cuenta nueva (mínimo 6 letras o números).'); return; }
+      let correo = v('pvcCorreo').toLowerCase(); if (!correo) correo = await pvcGenerarCorreo(); if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(correo)) { if (correo) alert('Ese correo no es válido.'); return; }
+      let srv = '', clave = ''; try { srv = await urlServidorPublico(); } catch (e) { srv = ''; } try { const r = await llamarBackend('nf_robot_clave', {}); clave = (r && r.ok && r.clave) || ''; } catch (e) { clave = ''; }
+      if (!srv || !clave) { alert('Falta la dirección del servidor o la clave del robot (Alquiler → Robot). Sin eso el robot no puede traer el código del buzón.'); return; }
+      const o = { v: 1, tipo: 'crear', t: Date.now(), correo: correo, nombre: nombre, pass: pass, url: url, srv: srv, clave: clave };
+      let b64 = ''; try { b64 = btoa(unescape(encodeURIComponent(JSON.stringify(o)))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''); } catch (e) { alert('No se pudo armar la orden.'); return; }
+      const id = 'r' + Date.now() + Math.floor(Math.random() * 1000);
+      try { await db.collection('secretos').doc('robots').set({ cola: { [id]: { plat: 'amazon', url: url + '/#epicrobot=' + b64, nombre: 'epicrobot:' + b64, correo: correo, estado: 'pendiente', creadoEl: new Date().toISOString(), por: (auth.currentUser && auth.currentUser.email) || '' } } }, { merge: true }); }
+      catch (e) { alert('No se pudo enviar la orden al VPS: ' + e.message); return; }
+      try { await db.collection('secretos').doc('robots_amazon').set({ crear: { nombre: nombre, pass: pass, url: url } }, { merge: true }); } catch (e) { /* no pasa nada: se vuelve a escribir la próxima vez */ }
+      pvc.id = id; pvc.fin = ''; pvc.correo = correo; pvc.nombre = nombre; pvc.url = url; mostrarToast('🤖 Orden enviada al robot del VPS: crear la cuenta ' + correo + '.');
+      try { if (pvc.unsub) pvc.unsub(); } catch (e) { /* nada */ }
+      try { pvc.unsub = db.collection('secretos').doc('robots').onSnapshot((d) => { try { pvcPintar(d.exists ? d.data() : {}); } catch (e) { /* nada */ } }, () => { pvc.unsub = null; }); } catch (e) { /* nada */ }
+    }
+    function pvcPintar(d) {
+      const caja = document.getElementById('pvcEstado'), o = ((d && d.cola) || {})[pvc.id]; if (!o) return;
+      const logs = (o.log || []).slice(-4).map((l) => '<div class="truncate">' + escaparHtml(String(l)) + '</div>').join(''), est = String(o.estado || '');
+      let h = '';
+      if (est === 'pendiente') h = '<div class="p-2.5 rounded-xl bg-gray-800 border border-gray-700 text-[11px] text-gray-200">⏳ <b>En la fila del VPS</b> · empieza en segundos</div>';
+      else if (est === 'trabajando') h = '<div class="p-2.5 rounded-xl bg-sky-500/10 border border-sky-500/40 text-[11px] text-sky-100 space-y-0.5"><p><i class="fa-solid fa-spinner fa-spin mr-1"></i><b>VPS trabajando</b>' + (o.pasos ? ' · paso ' + Math.min((o.paso || 0) + 1, o.pasos) + ' de ' + o.pasos : '') + '</p>' + (o.avance === 'pausa' && o.motivo ? '<p class="text-amber-200">⏸ ' + escaparHtml(o.motivo) + '</p>' : '') + logs + '</div>';
+      else if (est === 'listo') h = '<div class="p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/40 text-[11px] text-emerald-200">✅ <b>Cuenta creada y verificada</b>: ' + escaparHtml(pvc.correo) + (o.ms ? ' · ' + Math.round(o.ms / 1000) + ' s' : '') + '</div>';
+      else h = '<div class="p-2.5 rounded-xl bg-red-500/10 border border-red-500/40 text-[11px] text-red-100 space-y-1"><p>✋ <b>' + (est === 'ayuda' ? 'El robot necesita ayuda' : est === 'tiempo' ? 'Se acabó el tiempo' : 'El robot no pudo') + '</b>: ' + escaparHtml(o.motivo || '') + '</p>' + logs + (o.captura ? '<div id="pvcFoto"></div>' : '') + '</div>';
+      if (caja) { caja.innerHTML = h; caja.classList.remove('hidden'); }
+      if (o.captura && document.getElementById('pvcFoto')) { db.collection('secretos').doc('robots_captura').get().then((f) => { const x = f.exists ? f.data() : {}, el = document.getElementById('pvcFoto'); if (el && x.id === pvc.id && /^data:image\//.test(String(x.img || ''))) el.innerHTML = '<img src="' + x.img + '" alt="Pantalla del VPS" class="w-full rounded-lg border border-gray-700 mt-1">'; }).catch(() => {}); }
+      if (est && !/^(pendiente|trabajando)$/.test(est) && pvc.fin !== pvc.id) {   // terminó (bien o mal): queda en el historial y en la campana, una sola vez
+        pvc.fin = pvc.id; try { if (pvc.unsub) { pvc.unsub(); pvc.unsub = null; } } catch (e) { /* nada */ }
+        const ok = est === 'listo', rec = { tipo: 'crear', t: Date.now(), correo: pvc.correo, cliente: pvc.nombre, sitio: pvc.url, estado: est, motivo: String(o.motivo || '').slice(0, 200) };
+        db.collection('secretos').doc('robots_amazon').set({ historial: { [pvc.id]: rec } }, { merge: true }).then(() => { try { pvCargarHistorial(); } catch (e) { /* nada */ } }).catch(() => {});
+        mostrarToast(ok ? '✅ Robot del VPS: cuenta de Amazon creada y verificada.\n' + pvc.correo : '❌ Robot del VPS: no se pudo crear la cuenta ' + pvc.correo + '.\n' + String(o.motivo || est).slice(0, 160), 9000);
+        if (ok) { const el = document.getElementById('pvcCorreo'); if (el) el.value = ''; }   // la próxima cuenta pide otro correo
+      }
+    }
     async function pvCargarHistorial() {
+      try { pvcCargar(); } catch (e) { /* nada */ }
       const c = document.getElementById('pvHistorial'); if (!c) return; c.innerHTML = '<p class="text-gray-500">Cargando…</p>';
       try { const doc = await db.collection('secretos').doc('robots_amazon').get(), h = (doc.exists ? doc.data().historial : null) || {};
         const ids = Object.keys(h).sort((a, b) => (h[b].t || 0) - (h[a].t || 0)).slice(0, 30);
         c.innerHTML = ids.length ? ids.map((k) => { const x = h[k], d = x.direccion || {}, ok = x.prime && x.estado === 'listo';
+          if (x.tipo === 'crear') { const okC = x.estado === 'listo'; return '<div class="p-3 rounded-xl bg-gray-950/60 border ' + (okC ? 'border-emerald-700/50' : 'border-gray-800') + '"><div class="flex items-start justify-between gap-2"><p class="font-bold text-white truncate">' + escaparHtml(x.correo) + '</p><span class="shrink-0 text-[10px] ' + (okC ? 'text-emerald-300' : 'text-red-300') + '">' + (okC ? '🆕 Cuenta creada' : 'No se creó') + '</span></div><p class="text-gray-500 text-[11px]">' + escaparHtml(x.cliente || '') + ' · ' + escaparHtml(String(x.sitio || '').replace(/^https:\/\//, '')) + ' · ' + escaparHtml(new Date(x.t || 0).toLocaleString('es-CO')) + (x.motivo && !okC ? ' · ' + escaparHtml(String(x.motivo).slice(0, 120)) : '') + '</p></div>'; }   // 🆕 u104
           return '<div class="p-3 rounded-xl bg-gray-950/60 border ' + (ok ? 'border-emerald-700/50' : 'border-gray-800') + '"><div class="flex items-start justify-between gap-2"><p class="font-bold text-white truncate">' + escaparHtml(x.correo) + '</p><span class="shrink-0 text-[10px] ' + (ok ? 'text-emerald-300' : 'text-amber-300') + '">' + (ok ? '✅ Prime' : '⚠️ ' + escaparHtml(x.estado || 'incompleto')) + '</span></div>'
             + '<p class="text-gray-400 mt-0.5">' + escaparHtml(d.nombre || x.cliente || '') + ' · ' + escaparHtml(d.linea1 || '') + ', ' + escaparHtml(d.ciudad || '') + ' (' + escaparHtml(d.departamento || '') + ')' + (x.direccionSeleccionada ? ' · 📍 seleccionada' : '') + '</p>'
             + '<p class="text-gray-500 text-[11px]">' + (x.tarjeta ? '💳 ' + escaparHtml(x.tarjeta) + ' · ' : '') + (x.producto ? '🛒 ' + escaparHtml(String(x.producto).slice(0, 40)) + ' · ' : '') + escaparHtml(new Date(x.t || 0).toLocaleString('es-CO')) + (x.motivo && !ok ? ' · ' + escaparHtml(String(x.motivo).slice(0, 80)) : '') + '</p></div>'; }).join('')
