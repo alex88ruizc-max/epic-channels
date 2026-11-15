@@ -6040,11 +6040,26 @@
       console.warn('No se pudo ajustar la conexión de Firestore:', e);
     }
 
+    // 🔔 u102 (Alex: «que todas las notificaciones me queden en notificaciones porque saltan y se pierden»): los avisos emergentes del panel quedan en la campana.
+    //    Viven en ESTE navegador (7 días, los últimos 60) y solo para el equipo; no gastan lecturas ni escriben en la base.
+    function avisosLocalesClave() { return 'epicAvisosLocales_' + ((typeof currentUser !== 'undefined' && currentUser && currentUser.uid) || ''); }
+    function avisosLocalesLeer() { try { if (typeof currentUser === 'undefined' || !currentUser || !esStaffSesion() || modoPruebaCliente) return []; const L = JSON.parse(localStorage.getItem(avisosLocalesClave()) || '[]'), lim = Date.now() - 7 * 86400000; return (Array.isArray(L) ? L : []).filter((n) => n && n.id && (Date.parse(n.fecha) || 0) >= lim); } catch (e) { return []; } }
+    function avisoLocalGuardar(mensaje) {
+      const t = String(mensaje || '').trim(); if (!t || typeof currentUser === 'undefined' || !currentUser || !esStaffSesion() || modoPruebaCliente) return;
+      if (/^Notificaciones borradas\.?$/i.test(t)) return;
+      const L = avisosLocalesLeer(), ult = L[0]; if (ult && ult.texto === t && Date.now() - (Date.parse(ult.fecha) || 0) < 5000) return;   // el mismo aviso repetido en 5 s cuenta una vez
+      const mal = /^\s*(⚠️|❌|🚫|✋)|no pude|no se pudo|\berror\b|falló|missing or insufficient/i.test(t), ls = t.split('\n');
+      L.unshift({ id: 'loc_' + Date.now() + '_' + Math.floor(Math.random() * 1000), fecha: new Date().toISOString(), tipo: mal ? 'avisoMal' : 'aviso', titulo: ls[0].slice(0, 160), mensaje: (ls.slice(1).join('\n') + (ls[0].length > 160 ? '\n' + ls[0].slice(160) : '')).trim().slice(0, 600), texto: t });
+      try { localStorage.setItem(avisosLocalesClave(), JSON.stringify(L.slice(0, 60))); } catch (e) { /* sin espacio: no se guarda */ }
+      clearTimeout(avisoLocalGuardar._t); avisoLocalGuardar._t = setTimeout(() => { try { renderizarNotificaciones(); } catch (e) { /* nada */ } }, 50);
+    }
+    function avisosLocalesQuitar(id) { try { const L = avisosLocalesLeer().filter((n) => id && n.id !== id); if (id) localStorage.setItem(avisosLocalesClave(), JSON.stringify(L)); else localStorage.removeItem(avisosLocalesClave()); } catch (e) { /* nada */ } }
     function mostrarToast(mensaje, ms) {
       const toast = document.getElementById('toastNotif');
       const txt = document.getElementById('txtToastMensaje');
       if (!toast || !txt) return;
       txt.innerText = mensaje;
+      try { avisoLocalGuardar(mensaje); } catch (eAl) { /* nada */ }   // 🔔 u102: también queda en la campana
       try { const mal = /^\s*(⚠️|❌|🚫)|no pude|no se pudo|\berror\b|falló|missing or insufficient/i.test(String(mensaje || '')), h5 = toast.querySelector('h5'), ic = toast.querySelector('i');   /* 🚦 u78 */
         if (h5) h5.textContent = mal ? 'No se pudo' : 'Operación exitosa'; if (ic) ic.className = mal ? 'fa-solid fa-triangle-exclamation' : 'fa-solid fa-check';
         toast.classList.toggle('border-red-500/70', mal); toast.classList.toggle('border-emerald-500/60', !mal); if (ic && ic.parentElement) { ic.parentElement.classList.toggle('text-red-400', mal); ic.parentElement.classList.toggle('bg-red-500/20', mal); ic.parentElement.classList.toggle('text-emerald-400', !mal); ic.parentElement.classList.toggle('bg-emerald-500/20', !mal); } } catch (e) { /* nada */ }
@@ -9250,6 +9265,8 @@
       producto: { icono: 'fa-wand-magic-sparkles', color: 'text-fuchsia-400', caja: 'bg-fuchsia-500/10 border-fuchsia-500/30', etiqueta: 'Nuevo producto' },
       nivel:    { icono: 'fa-trophy', color: 'text-yellow-400', caja: 'bg-yellow-500/10 border-yellow-500/30', etiqueta: 'Nivel' },
       anuncio:  { icono: 'fa-bullhorn', color: 'text-amber-400', caja: 'bg-amber-500/10 border-amber-500/30', etiqueta: 'Anuncio' },
+      aviso:    { icono: 'fa-circle-check', color: 'text-emerald-400', caja: 'bg-emerald-500/10 border-emerald-500/30', etiqueta: 'Aviso del panel' },   // 🔔 u102
+      avisoMal: { icono: 'fa-triangle-exclamation', color: 'text-red-400', caja: 'bg-red-500/10 border-red-500/30', etiqueta: 'No se pudo' },
       ticket:   { icono: 'fa-ticket', color: 'text-amber-300', caja: 'bg-amber-500/10 border-amber-500/30', etiqueta: 'Ticket' },
       solicitud: { icono: 'fa-envelope-open-text', color: 'text-violet-300', caja: 'bg-violet-500/10 border-violet-500/30', etiqueta: 'Pide correos' },
       registro: { icono: 'fa-user-plus', color: 'text-emerald-300', caja: 'bg-emerald-500/10 border-emerald-500/30', etiqueta: 'Nuevo cliente' }
@@ -9281,7 +9298,7 @@
         .filter(n => avisoVisibleParaUsuario(n))
         .filter(n => !n.soloDealers || userTipoCuenta === 'revendedor' || esStaffSesion())   // un cliente no ve avisos de productos que no puede comprar (por ejemplo VIP)
         .map(n => ({ ...n, origen: 'global' }));
-      return [...personales, ...globales, ...notificacionesEquipo(borradas, limite)].sort((a, b) => (new Date(b.fecha).getTime() || 0) - (new Date(a.fecha).getTime() || 0));
+      return [...personales, ...globales, ...notificacionesEquipo(borradas, limite), ...avisosLocalesLeer().map(n => ({ ...n, origen: 'local' }))].sort((a, b) => (new Date(b.fecha).getTime() || 0) - (new Date(a.fecha).getTime() || 0));
     }
 
     // Avisos solo para administrador y moderador: tickets de clientes y registros nuevos (no se guardan aparte)
@@ -9430,6 +9447,7 @@
 
     async function borrarNotificacionItem(id, origen) {
       if (!currentUser) return;
+      if (origen === 'local') { avisosLocalesQuitar(id); renderizarNotificaciones(); return; }   // 🔔 u102
       try {
         const ref = db.collection('usuarios').doc(currentUser.uid);
         if (origen === 'personal') {
@@ -9456,7 +9474,7 @@
         const idsGlobales = (novedadesGlobales || []).map(n => n.id).filter(Boolean);
         const previas = (datosUsuarioNotif.novedades_borradas || []).filter(id => idsGlobales.includes(id));
         const borradas = Array.from(new Set([...previas, ...idsGlobales]));
-        datosUsuarioNotif = { ...datosUsuarioNotif, notificaciones: [], novedades_borradas: borradas };
+        datosUsuarioNotif = { ...datosUsuarioNotif, notificaciones: [], novedades_borradas: borradas }; avisosLocalesQuitar('');   // 🔔 u102
         renderizarNotificaciones();
         await db.collection('usuarios').doc(currentUser.uid).set({
           notificaciones: [],
@@ -19189,7 +19207,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-11-12u101';
+    const VERSION_PAGINA = '2026-11-12u102';
     // 🧑 u58 (Alex, 10-nov): la AGENTE DE D-ID (Luisa con cara, conversa en vivo). Piloto: SOLO en epicstreaming.vip (nunca en las tiendas de tus clientes),
     //    SOLO a visitantes sin sesión, a la IZQUIERDA (a la derecha está tu botón de WhatsApp). Se carga después de la página para no hacerla lenta.
     (function () { try {
@@ -31142,7 +31160,8 @@ const LUISA_COM_DEF_PAG = { activo: true, stockHora: '08:00', mediodiaHora: '12:
       // La pestaña de Netflix se abre ya, mientras el clic sigue vigente (si no, el navegador la bloquea)
       const copiaCorreo = (compartida || !esNf) ? null : abrirRestablecerNetflix(a.correo, true);
 
-      const nuevoPin = compartida ? generarPinNetflix(a.pin) : '';
+      const pinDelRobot = compartida && a.pin && a.pinPendiente !== true && a.pinRobotEl && Date.now() - (Date.parse(a.pinRobotEl) || 0) < 2 * 3600000;   // 🔑 u102: el robot acaba de cambiar el PIN de este perfil (menos de 2 h): ese ES el PIN del corte
+      const nuevoPin = compartida ? (pinDelRobot ? String(a.pin) : generarPinNetflix(a.pin)) : '';
       try {
         const ahora = new Date().toISOString();
         const lote = db.batch();
@@ -31156,13 +31175,14 @@ const LUISA_COM_DEF_PAG = { activo: true, stockHora: '08:00', mediodiaHora: '12:
           estado: 'sin_asignar', clienteNombre: '', clienteWhatsapp: '', clienteUid: '', clienteEmail: '',
           fechaInicio: '', proximoPago: '', avisoVencido: '', actualizadoEl: ahora
         };
-        if (compartida) Object.assign(cambios, { pin: nuevoPin, pinPendiente: true, limpiezaPendiente: false });
+        if (compartida) Object.assign(cambios, { pin: nuevoPin, pinPendiente: !pinDelRobot, limpiezaPendiente: false });
         else cambios.limpiezaPendiente = true;
         lote.set(db.collection('alquileres').doc(id), cambios, { merge: true });
         await lote.commit();
         delete netflixResultadosOtp['a_' + id];
 
-        if (compartida) {
+        if (compartida && pinDelRobot) { mostrarToast('✅ Perfil liberado. El robot ya había cambiado el PIN (' + nuevoPin + '): no queda nada pendiente en Netflix.', 7000); }
+        else if (compartida) {
           await abrirDialogo({
             tipo: 'info', titulo: 'Cambia el PIN en Netflix',
             mensaje: `Perfil: ${a.perfil || '—'}\nCuenta: ${a.correo}\n\nPIN NUEVO: ${nuevoPin}\n\n1) Entra a esa cuenta en Netflix.\n2) Perfil «${a.perfil || ''}» → Bloqueo de perfil.\n3) Pon este PIN.\n4) Vuelve aquí y toca "Ya cambié el PIN".\n\n(Netflix no se cambia solo desde la plataforma.)`,
@@ -31958,7 +31978,10 @@ const LUISA_COM_DEF_PAG = { activo: true, stockHora: '08:00', mediodiaHora: '12:
       sel.innerHTML = nombres.map(n => `<option value="${escaparHtml(n)}">${escaparHtml(n)}</option>`).join('') || '<option value="">(escribe los nombres arriba)</option>';
       if (prev && nombres.indexOf(prev) !== -1) sel.value = prev;
     }
-    function cerrarRobotNetflix() { const m = document.getElementById('modalRobotNetflix'); if (m) { m.classList.add('hidden'); m.style.display = 'none'; } try { robotVpsVivoParar(); } catch (e) { /* nada */ } try { if (window._robotVpsUnsub) { window._robotVpsUnsub(); window._robotVpsUnsub = null; } } catch (e) { /* nada */ } }
+    // 🤖 u102: la orden que está haciendo el VPS se recuerda en este navegador (1 hora), aunque se cierre la ventana del robot o se recargue la página
+    function robotVpsPendLeer() { try { const p = JSON.parse(localStorage.getItem('epicRobotVpsPend') || 'null'); return p && p.id && Date.now() - (p.t || 0) < 3600000 ? p : null; } catch (e) { return null; } }
+    function robotVpsPendPoner(p) { try { if (p) localStorage.setItem('epicRobotVpsPend', JSON.stringify(p)); else localStorage.removeItem('epicRobotVpsPend'); } catch (e) { /* nada */ } }
+    function cerrarRobotNetflix() { const m = document.getElementById('modalRobotNetflix'); if (m) { m.classList.add('hidden'); m.style.display = 'none'; } try { robotVpsVivoParar(); } catch (e) { /* nada */ } try { const pd = robotVpsPendLeer(); if (window._robotVpsUnsub && !(pd && !pd.avisado)) { window._robotVpsUnsub(); window._robotVpsUnsub = null; } } catch (e) { /* nada */ } }   // con una orden del VPS en curso se sigue escuchando para avisar cómo terminó
     // 🤖 ROBOT AUTOMÁTICO (VPS): la MISMA orden que abre tu Chrome va a la fila del VPS (secretos/robots). El VPS la hace sola y avisa aquí.
     async function ejecutarRobotVps() {
       const o = ordenRobotNetflix(); if (!o) return;
@@ -31967,7 +31990,7 @@ const LUISA_COM_DEF_PAG = { activo: true, stockHora: '08:00', mediodiaHora: '12:
       const id = 'r' + Date.now() + Math.floor(Math.random() * 1000);
       try { await db.collection('secretos').doc('robots').set({ cola: { [id]: { plat: plat, url: destino + '?epicrobot=' + b64 + '#epicrobot=' + b64, nombre: 'epicrobot:' + b64, correo: String(o.correo || robotNf.correo || ''), estado: 'pendiente', creadoEl: new Date().toISOString(), por: (auth.currentUser && auth.currentUser.email) || '' } } }, { merge: true }); }
       catch (e) { alert('No se pudo enviar la orden al VPS: ' + e.message); return; }
-      robotNf.enviado = o; robotNf.vpsId = id; robotNf.vpsGuardado = false; robotVpsEscuchar();
+      robotNf.enviado = o; robotNf.vpsId = id; robotNf.vpsGuardado = false; robotNf.vpsListo = false; robotVpsPendPoner({ id: id, correo: String(o.correo || robotNf.correo || '').toLowerCase(), plat: plat, t: Date.now() }); robotVpsEscuchar();
       mostrarToast('🤖 Orden enviada al robot del VPS. Te muestro aquí cómo va.');
     }
     function robotVpsEscuchar() {
@@ -31975,7 +31998,12 @@ const LUISA_COM_DEF_PAG = { activo: true, stockHora: '08:00', mediodiaHora: '12:
       try { window._robotVpsUnsub = db.collection('secretos').doc('robots').onSnapshot((d) => { try { robotVpsPintar(d.exists ? d.data() : {}); } catch (e) { /* nada */ } }, () => { window._robotVpsUnsub = null; }); } catch (e) { /* nada */ }
     }
     function robotVpsPintar(d) {
-      const m = document.getElementById('modalRobotNetflix'); if (!m || m.classList.contains('hidden')) { if (window._robotVpsUnsub) { window._robotVpsUnsub(); window._robotVpsUnsub = null; } return; }
+      const m = document.getElementById('modalRobotNetflix'); if (!m || m.classList.contains('hidden')) {   // 🤖 u102: ventana cerrada → solo se avisa cómo terminó la orden del VPS (y queda en la campana)
+        const pd = robotVpsPendLeer(), op = pd && (d.cola || {})[pd.id], fin = !!op && !/^(pendiente|trabajando)$/.test(String(op.estado || ''));
+        if (op && fin && !pd.avisado) { pd.avisado = true; robotVpsPendPoner(pd);
+          mostrarToast(op.estado === 'listo' ? '✅ Robot del VPS: terminó bien ' + pd.correo + '.\nAbre 🤖 Robot en esa cuenta y se guarda solo en el panel.' : '❌ Robot del VPS: hubo un error con ' + pd.correo + '.\n' + String(op.motivo || op.estado || '').slice(0, 160), 9000); }
+        if (!pd || !op || fin) { if (window._robotVpsUnsub) { window._robotVpsUnsub(); window._robotVpsUnsub = null; } }
+        return; }
       const ver = document.getElementById('rnRobotsVer'), caja = document.getElementById('rnVpsEstado'), cola = d.cola || {};
       // 🏷️ versiones: tu Chrome deja la suya en este navegador (si tiene Tampermonkey); el panel la guarda para verla también desde el celular
       let chN = '', chD = ''; try { chN = localStorage.getItem('epicRobotNfVersion') || ''; chD = localStorage.getItem('epicRobotDsnVersion') || ''; } catch (e) { /* nada */ }
@@ -31989,6 +32017,7 @@ const LUISA_COM_DEF_PAG = { activo: true, stockHora: '08:00', mediodiaHora: '12:
         + (!cN || !cD ? '<p class="text-[10px] text-gray-500">La versión de Chrome aparece cuando abres este panel en el Chrome que tiene los robots en Tampermonkey.</p>' : '');
       // 📋 la orden de ESTA cuenta (la que mandaste, o la última de los últimos 30 min)
       if (!caja || !robotNf) return; const correo = String(robotNf.correo || '').toLowerCase();
+      if (!robotNf.vpsId) { const pd = robotVpsPendLeer(); if (pd && pd.correo === correo && cola[pd.id]) { robotNf.vpsId = pd.id; robotNf.vpsGuardado = false; } }   // 🤖 u102: reabriste la ventana (o se recargó la página): es la misma orden
       let id = robotNf.vpsId && cola[robotNf.vpsId] ? robotNf.vpsId : '';
       if (!id) { const ks = Object.keys(cola).filter((k) => String((cola[k] || {}).correo || '').toLowerCase() === correo && Date.now() - (Date.parse((cola[k] || {}).creadoEl || '') || 0) < 30 * 60000).sort((a, b) => String(cola[b].creadoEl).localeCompare(String(cola[a].creadoEl))); id = ks[0] || ''; }
       if (!id) { caja.classList.add('hidden'); caja.innerHTML = ''; return; }
@@ -32001,10 +32030,11 @@ const LUISA_COM_DEF_PAG = { activo: true, stockHora: '08:00', mediodiaHora: '12:
       else h = '<div class="p-2.5 rounded-xl bg-red-500/10 border border-red-500/40 text-[11px] text-red-100 space-y-1"><p>✋ <b>' + (o.estado === 'ayuda' ? 'El robot del VPS necesita ayuda' : o.estado === 'tiempo' ? 'Se acabó el tiempo' : 'El robot del VPS no pudo') + '</b>' + ((o.intentos || 1) > 1 ? ' (' + (o.intento || 1) + ' intento' + ((o.intento || 1) === 1 ? '' : 's') + ')' : '') + ': ' + escaparHtml(o.motivo || '') + '</p>' + (o.diagnostico ? '<p class="text-[10px] text-red-200/70">Diagnóstico: ' + escaparHtml(o.diagnostico) + '</p>' : '') + '<div class="text-red-200/80">' + logs + '</div>'
         + (o.captura ? '<div id="rnVpsFoto"></div>' : '') + '<p class="text-gray-300">' + (/bloqueo|captcha|pais/.test(o.diagnostico || '') ? 'Netflix no deja entrar al VPS desde su conexión. Hazlo con <b>Chrome (manual)</b> o pon un proxy residencial en el VPS (robots.env → ROBOT_PROXY).' : 'Puedes hacerlo con <b>Chrome (manual)</b>.') + '</p></div>';
       caja.innerHTML = h; caja.classList.remove('hidden');
+      if (id === robotNf.vpsId && !/^(pendiente|trabajando|listo)$/.test(String(o.estado || '')) && robotNf.vpsAvisoErr !== id) { robotNf.vpsAvisoErr = id; const pdE = robotVpsPendLeer(); if (pdE && pdE.id === id) { pdE.avisado = true; robotVpsPendPoner(pdE); } mostrarToast('❌ Robot del VPS: hubo un error con ' + correo + '.\n' + String(o.motivo || o.estado || '').slice(0, 160), 9000); }   // 🤖 u102: el error también queda en la campana
       if (o.estado === 'trabajando' || (o.captura && o.estado !== 'listo')) robotVpsVivoEscuchar(id); else robotVpsVivoParar();   // 📸 pantalla en vivo (y la foto final sin tocar nada)
       // ✅ terminó bien: el panel guarda solo (lo mismo que «Ya quedó»), una sola vez
       if (o.estado === 'listo' && id === robotNf.vpsId && !robotNf.vpsGuardado && String(o.correo || '').toLowerCase() === correo) {
-        robotNf.vpsGuardado = true;
+        robotNf.vpsGuardado = true; robotNf.vpsListo = true; robotVpsPendPoner(null);   // 🤖 u102
         try { if (o.resultado) localStorage.setItem(robotNf.plat === 'disney' ? 'epicRobotDsnResultado' : 'epicRobotNfResultado', o.resultado); } catch (e) { /* nada */ }
         setTimeout(() => { try { guardarRobotNetflix(true); } catch (e) { /* nada */ } }, 600);   // 🤖 automático: sin preguntar
       }
@@ -32186,7 +32216,7 @@ const LUISA_COM_DEF_PAG = { activo: true, stockHora: '08:00', mediodiaHora: '12:
       robotNf.enviado = o; mostrarToast('🤖 Orden enviada a ' + (robotNf.plat === 'disney' ? 'Disney+' : 'Netflix') + '. Cuando la cajita del robot diga «Listo», vuelve y toca «Ya quedó».');
     }
     async function guardarRobotNetflix(auto) {   // auto = lo terminó el VPS: se guarda sin preguntar
-      if (!robotNf) return; const o = robotNf.enviado;
+      if (!robotNf) return; const o = robotNf.enviado; auto = auto || robotNf.vpsListo === true;   // 🤖 u102 (Alex: «si es automático por VPS no puede pedirme confirmar»)
       const correoNf = String(robotNf.correo || '').toLowerCase(), kUsado = 'epicRobotNfUsado_' + (robotNf.plat === 'disney' ? 'dsn_' : '') + correoNf;
       const kRes = robotNf.plat === 'disney' ? 'epicRobotDsnResultado' : 'epicRobotNfResultado';   // 🌉 cada robot entrega su resultado por su propio puente (Tampermonkey) y también al servidor
       let resNav = null; try { resNav = JSON.parse(localStorage.getItem(kRes) || 'null'); } catch (e) { resNav = null; }
@@ -32197,14 +32227,14 @@ const LUISA_COM_DEF_PAG = { activo: true, stockHora: '08:00', mediodiaHora: '12:
       let usado = 0; try { usado = parseInt(localStorage.getItem(kUsado) || '0', 10) || 0; } catch (e) {}
       if (resPrevio && (resPrevio.t || 0) <= usado) resPrevio = null;
       const hayResultado = resPrevio && String(resPrevio.correo || '').toLowerCase() === String(robotNf.correo || '').toLowerCase() && (resPrevio.perfiles || []).length;
-      if (!o && !hayResultado) { alert('Primero toca «Hacerlo en Netflix».'); return; }   // si el robot ya terminó en esta cuenta, se puede guardar aunque hayas reabierto esta ventana
+      if (!o && !hayResultado) { if (auto) return; alert('Primero toca «Hacerlo en Netflix».'); return; }   // si el robot ya terminó en esta cuenta, se puede guardar aunque hayas reabierto esta ventana
       if (!robotNf.compartida) { mostrarToast('Listo. En cuentas completas no hay perfiles guardados en el panel.'); robotNf.enviado = null; cerrarRobotNetflix(); return; }
       // Lee lo que el robot REALMENTE hizo (lo guarda en el navegador al terminar). Solo eso se guarda en el panel.
       let res = resPrevio; if (res && String(res.correo || '').toLowerCase() !== String(robotNf.correo || '').toLowerCase()) res = null;   // solo el resultado de ESTA cuenta
       const hechoDe = {}; if (res && res.perfiles) res.perfiles.forEach(x => { hechoDe[x.pos] = x; });
       // empareja por posición (fila N del panel = perfil N de Netflix) solo si el robot lo confirmó
       const cambios = robotNf.filas.map(f => { const h = hechoDe[f.pos]; if (!h) return null;
-        const d = { posNf: f.pos }; if (h.nombre) d.perfil = h.nombre; if (h.pin) { d.pin = h.pin; d.pinPendiente = false; }
+        const d = { posNf: f.pos }; if (h.nombre) d.perfil = h.nombre; if (h.pin) { d.pin = h.pin; d.pinPendiente = false; d.pinRobotEl = new Date().toISOString(); }   // 🔑 u102: queda anotado que este PIN lo puso el robot, y cuándo
         return (d.perfil || d.pin) ? { slotId: f.slotId, pos: f.pos, nombre: h.nombre || '', pin: h.pin || '', d: d } : null; }).filter(Boolean);
       if (!cambios.length) { mostrarToast('El robot no alcanzó a cambiar nada para guardar.'); cerrarRobotNetflix(); return; }
       const remplTxt = (resPrevio && Array.isArray(resPrevio.reemplazados) && resPrevio.reemplazados.length) ? ' · ♻ Eliminados y creados de nuevo: ' + resPrevio.reemplazados.map(r => 'perfil ' + r).join(', ') + ' (el orden se reacomoda)' : '';
