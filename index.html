@@ -2586,6 +2586,7 @@
             <label class="block text-[11px] text-gray-400">Al crearla, subirla a<select id="pvcDestino" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none"><option value="amazonfree">Amazon Free (en mi dominio)</option><option value="no">No subirla</option></select></label>
             <button type="button" onclick="pvcCrearEnVps()" class="w-full py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-black text-xs">🚀 Crear en el VPS</button>
             <label class="flex items-center gap-2 p-2.5 rounded-xl bg-gray-950/60 border border-gray-800 text-xs text-white font-bold cursor-pointer"><input type="checkbox" id="pvcAuto" onchange="pvcAutoCambiar()" class="w-4 h-4 accent-amber-500"><span class="flex-1">🔁 Crear sola, cada</span><select id="pvcCada" onchange="pvcCadaCambiar()" onclick="event.stopPropagation()" class="bg-gray-800 border border-gray-700 rounded-lg px-2 py-1 text-xs text-white focus:outline-none"><option value="15">15 min</option><option value="30">30 min</option><option value="60" selected>1 hora</option><option value="120">2 horas</option><option value="180">3 horas</option><option value="360">6 horas</option><option value="720">12 horas</option></select></label>
+            <div class="p-2.5 rounded-xl bg-gray-950/60 border border-gray-800 space-y-1.5"><label class="block text-[11px] text-gray-400">🌍 Salida de la creación automática<select data-vpn-plat="amazonauto" onchange="vpnElegir(this)" class="vpnSel w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none"><option value="sin">Sin VPN (como está ahora)</option></select></label><div class="flex items-start gap-2"><p data-vpn-estado="amazonauto" class="flex-1 min-w-0 text-[11px] text-gray-400 leading-snug">Sin VPN: sale como siempre. Tú eliges; el robot no la cambia solo.</p><button type="button" onclick="vpnAbrir()" class="shrink-0 px-2.5 py-1.5 rounded-lg bg-gray-800 border border-gray-700 text-[11px] font-bold text-white">⚙️ Archivos de VPN</button></div></div>
             <p id="pvcAutoEstado" class="text-[11px] text-gray-400 leading-snug">Apagado. Al prenderlo, el VPS crea una cuenta con la frecuencia que elijas, con estos datos y la sube al producto elegido. Si Amazon frena dos veces seguidas, se apaga solo y te avisa.</p>
             <div id="pvcEstado" class="hidden"></div>
           </div>
@@ -2618,6 +2619,17 @@
           <div class="rounded-2xl p-3 bg-gray-900 border border-red-500/30"><span class="text-[10px] text-gray-400 block">Por cortar</span><span id="cortesStatCortar" class="text-lg font-black text-red-300">0</span></div>
           <div class="rounded-2xl p-3 bg-gray-900 border border-amber-500/30"><span class="text-[10px] text-gray-400 block">Por limpiar</span><span id="cortesStatLimpiar" class="text-lg font-black text-amber-300">0</span></div>
           <div class="rounded-2xl p-3 bg-gray-900 border border-sky-500/30"><span class="text-[10px] text-gray-400 block">Por avisar</span><span id="cortesStatAvisar" class="text-lg font-black text-sky-300">0</span></div>
+        </div>
+        <div class="p-4 rounded-2xl bg-gray-900 border border-violet-500/40 space-y-3">
+          <div class="flex items-start justify-between gap-3"><div class="min-w-0"><p class="text-sm font-black text-white">🤖 Corte automático (Netflix y Disney+)</p>
+            <p class="text-[11px] text-gray-400 leading-snug mt-0.5">Solo perfiles compartidos que pasaron su fecha sin renovar. El robot del VPS les cambia el nombre y el PIN y, cuando lo confirma, libera el perfil (igual que «Marcar cortada»). No toca cuentas completas ni otras plataformas, y no le escribe al cliente. Te avisa por Telegram.</p></div>
+            <label class="shrink-0 flex items-center gap-2 cursor-pointer"><input id="ctaActivo" type="checkbox" onchange="ctaPrender(this)" class="w-5 h-5 accent-violet-500"><span class="text-[11px] font-bold text-white">Prendido</span></label></div>
+          <p id="ctaEstado" class="text-[11px] text-gray-400 leading-snug">Revisando…</p>
+          <div class="grid grid-cols-2 gap-2 text-center"><div class="p-2 rounded-xl bg-gray-950/60 border border-gray-800"><p class="text-[11px] text-gray-400">✂️ El bot ha sacado a</p><p id="ctaSacados" class="text-white font-black text-lg">—</p></div><div class="p-2 rounded-xl bg-gray-950/60 border border-gray-800"><p class="text-[11px] text-gray-400">Hoy</p><p id="ctaHoy" class="text-white font-black text-lg">—</p></div></div>
+          <div id="ctaHechos" class="space-y-1 text-[11px] text-gray-300"></div>
+          <div><div class="flex items-center justify-between gap-2"><p class="text-xs font-black text-white">⚠️ Errores <span id="ctaNErr" class="text-gray-400 font-bold"></span></p><button type="button" id="ctaBorrarTodos" onclick="ctaBorrarErrores()" class="hidden px-2.5 py-1 rounded-lg bg-gray-800 border border-gray-700 text-[11px] font-bold text-red-300">🗑 Borrar todos</button></div>
+            <p class="text-[10px] text-gray-500 mt-0.5">Un perfil con error no se vuelve a intentar hasta que borres su error.</p>
+            <div id="ctaErrores" class="mt-1.5 space-y-1.5 text-[11px]"></div></div>
         </div>
         <div id="cortesListas" class="space-y-4"></div>
       </div>
@@ -10216,7 +10228,7 @@
       if (tab === 'tiendas') { try { ctAdmPrevia(); } catch (e) { /* nada */ } try { const cg = document.getElementById('cgCaja'); if (cg && cg.open) cgCargar(); } catch (e) { /* nada */ } }
       if (tab === 'marketing') { try { if (!cfgDealer) cargarCfgDealer().then(prepararMarketing); } catch (e) { /* nada */ } prepararMarketing(); }
       if (tab === 'novedades') { iniciarNovedadesClientes(); renderizarNovedadesAdmin(); renderizarActualizacionesPagina(); }
-      if (tab === 'cortes') { try { iniciarNetflixAdmin(); } catch (e) { /* nada */ } renderizarCortes(); }
+      if (tab === 'cortes') { try { iniciarNetflixAdmin(); } catch (e) { /* nada */ } renderizarCortes(); try { ctaCargar(); } catch (e) { /* nada */ } }
       if (tab === 'primevideo') { try { prepararPrimeVideo(); } catch (e) { console.warn(e); } }
       if (tab === 'buscar') prepararBuscadorAdmin();
       try { const vAdm = document.getElementById('vistaAdmin'); if (vAdm && !vAdm.classList.contains('hidden')) fijarRuta('admin/' + tab); } catch (e) { /* nada */ }
@@ -18429,6 +18441,32 @@
       b.classList.toggle('hidden', n === 0);
     }
 
+    // ✂️ u113: CORTE AUTOMÁTICO (lo hace Mary 3.84 con el robot del VPS). Aquí solo se prende/apaga, se ve el contador y se borran errores.
+    const ctaRef = () => db.collection('secretos').doc('robots_cortes');
+    async function ctaCargar() { const g = (id) => document.getElementById(id); if (!g('ctaEstado')) return;
+      try { const d = await ctaRef().get(), D = (d.exists && d.data()) || {}, A = D.auto || {}, H = D.hechos || {}, E = D.errores || {}, hoy = hoyNetflix();
+        g('ctaActivo').checked = A.activo === true;
+        g('ctaSacados').textContent = (Number(A.sacados) || 0) + ((Number(A.sacados) || 0) === 1 ? ' persona' : ' personas'); g('ctaHoy').textContent = A.dia === hoy ? String(Number(A.sacadosHoy) || 0) : '0';
+        const est = g('ctaEstado');
+        if (A.activo === true && A.ordenId) { est.className = 'text-[11px] text-sky-300 leading-snug'; est.textContent = '⏳ Cortando ahora: ' + (A.ordenCliente || 'un cliente') + ' · ' + (A.ordenPlat === 'disney' ? 'Disney+' : 'Netflix') + ' · ' + (A.ordenCorreo || '') + ' · «' + (A.ordenPerfil || '') + '».'; }
+        else if (A.activo === true) { est.className = 'text-[11px] text-emerald-300 leading-snug'; est.textContent = '🟢 Prendido. Revisa cada 10 minutos y corta de a uno cuando el robot esté libre.'; }
+        else if (A.pausaMotivo) { est.className = 'text-[11px] text-red-300 leading-snug'; est.textContent = '🛑 Apagado solo: ' + A.pausaMotivo + '. Revisa los errores y préndelo otra vez.'; }
+        else { est.className = 'text-[11px] text-gray-400 leading-snug'; est.textContent = 'Apagado. Los cortes siguen como siempre: a mano con «Marcar cortada».'; }
+        const ks = Object.keys(H).sort((a, b) => (H[b].t || 0) - (H[a].t || 0)).slice(0, 5);
+        g('ctaHechos').innerHTML = ks.length ? '<p class="text-gray-500">Últimos que sacó:</p>' + ks.map((k) => { const x = H[k] || {}; return '<div class="truncate">✂️ ' + escaparHtml(String(x.cliente || '')) + ' · ' + (x.plat === 'disney' ? 'Disney+' : 'Netflix') + ' · ' + escaparHtml(String(x.correo || '')) + ' · «' + escaparHtml(String(x.perfil || '')) + '»' + (x.nuevo && x.nuevo !== x.perfil ? ' → «' + escaparHtml(String(x.nuevo)) + '»' : '') + ' <span class="text-gray-500">' + escaparHtml(new Date(x.t || 0).toLocaleString('es-CO', { timeZone: 'America/Bogota', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' })) + '</span></div>'; }).join('') : '';
+        const ke = Object.keys(E).sort((a, b) => (E[b].t || 0) - (E[a].t || 0));
+        g('ctaNErr').textContent = ke.length ? '(' + ke.length + ')' : ''; g('ctaBorrarTodos').classList.toggle('hidden', ke.length < 2);
+        g('ctaErrores').innerHTML = ke.length ? ke.map((k) => { const x = E[k] || {}; return '<div class="flex items-start gap-2 p-2 rounded-lg bg-red-500/10 border border-red-500/30"><div class="flex-1 min-w-0"><p class="text-white font-bold truncate">' + escaparHtml(String(x.cliente || '')) + ' · ' + (x.plat === 'disney' ? 'Disney+' : 'Netflix') + ' · «' + escaparHtml(String(x.perfil || '')) + '»</p><p class="text-gray-400 truncate">' + escaparHtml(String(x.correo || '')) + '</p><p class="text-red-200">' + escaparHtml(String(x.motivo || '')) + '</p></div><button type="button" data-cta-err="' + escaparHtml(k) + '" onclick="ctaBorrarErrores(this.getAttribute(\'data-cta-err\'))" class="shrink-0 px-2 py-1 rounded-md bg-gray-900 border border-gray-700 text-red-300 font-bold">🗑</button></div>'; }).join('') : '<p class="text-gray-500">Sin errores.</p>';
+      } catch (e) { g('ctaEstado').textContent = 'No pude leer el corte automático: ' + e.message; } }
+    async function ctaPrender(ch) { const on = !!(ch && ch.checked);
+      try { await ctaRef().set({ auto: on ? { activo: true, fallos: 0, pausaMotivo: '', ultimaEl: '' } : { activo: false, pausaMotivo: '' } }, { merge: true });
+        mostrarToast(on ? '✂️ Corte automático prendido. Empieza en unos minutos con el más vencido.' : '✂️ Corte automático apagado. Los cortes vuelven a ser a mano.'); }
+      catch (e) { mostrarToast('❌ No se pudo cambiar: ' + e.message); if (ch) ch.checked = !on; } await ctaCargar(); }
+    async function ctaBorrarErrores(id) {
+      try { if (id) await ctaRef().set({ errores: { [id]: firebase.firestore.FieldValue.delete() } }, { merge: true });
+        else { if (!await confirmarModal('¿Borrar todos los errores del corte automático? Esos perfiles se vuelven a intentar.', { textoAceptar: 'Sí, borrar' })) return; await ctaRef().set({ errores: firebase.firestore.FieldValue.delete() }, { merge: true }); }
+        mostrarToast('🗑 Error borrado. Ese perfil se vuelve a intentar en la próxima vuelta.'); }
+      catch (e) { mostrarToast('❌ No se pudo borrar: ' + e.message); } await ctaCargar(); }
     function renderizarCortes() {
       actualizarBadgeCortes();
       const cont = document.getElementById('cortesListas');
@@ -19244,7 +19282,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-11-12u112';
+    const VERSION_PAGINA = '2026-11-12u113';
     // 🧑 u58 (Alex, 10-nov): la AGENTE DE D-ID (Luisa con cara, conversa en vivo). Piloto: SOLO en epicstreaming.vip (nunca en las tiendas de tus clientes),
     //    SOLO a visitantes sin sesión, a la IZQUIERDA (a la derecha está tu botón de WhatsApp). Se carga después de la página para no hacerla lenta.
     (function () { try {
@@ -32259,7 +32297,7 @@ const LUISA_COM_DEF_PAG = { activo: true, stockHora: '08:00', mediodiaHora: '12:
     // 🌍 u112: UNA VPN PARA TODOS LOS ROBOTS. Los archivos y la llave viven en un solo lugar (ventana «VPN de los robots»); cada robot solo elige su salida.
     //    Por defecto todo es «Sin VPN». La página nunca cambia una salida sola: solo cuando se elige en la lista.
     const vpnRef = () => db.collection('secretos').doc('robots_vpn');
-    const VPN_ROBOT = { amazon: 'El robot de Amazon (crear cuenta)', amazonprep: 'El robot de Amazon (dirección y carrito)', netflix: 'El robot de Netflix', disney: 'El robot de Disney+' };
+    const VPN_ROBOT = { amazon: 'El robot de Amazon («Crear en el VPS»)', amazonauto: 'La creación automática de Amazon («Crear sola»)', amazonprep: 'El robot de Amazon (dirección y carrito)', netflix: 'El robot de Netflix', disney: 'El robot de Disney+' };
     const VPN_LLAVE_OK = /^[A-Za-z0-9+\/]{43}=$/;
     let vpnD = { C: {}, salidas: {}, llave: false };
     const vpnTraeLlave = (t) => { const m = /PrivateKey\s*=\s*(\S+)/i.exec(String(t || '')); return !!m && VPN_LLAVE_OK.test(m[1]); };
@@ -32269,13 +32307,13 @@ const LUISA_COM_DEF_PAG = { activo: true, stockHora: '08:00', mediodiaHora: '12:
         const ids = Object.keys(C).sort((a, b) => String(C[a].nombre || a).localeCompare(String(C[b].nombre || b)));
         vpnD = { C: C, salidas: S0, llave: VPN_LLAVE_OK.test(String(V.llave || '').trim()), ids: ids, vieja: V.salida || '' };
         let S = null, ver = ''; try { const r = await db.collection('secretos').doc('robots').get(); S = r.exists ? r.data().salida : null; ver = r.exists ? String(r.data().version || '') : ''; } catch (e) { /* nada */ }
-        const lista = /^robots-(\d+)\.(\d+)/.exec(ver), sirve = !!lista && (Number(lista[1]) > 1 || Number(lista[2]) >= 9);
+        const lista = /^robots-(\d+)\.(\d+)/.exec(ver), sirve = !!lista && (Number(lista[1]) > 1 || Number(lista[2]) >= 9), sirve10 = !!lista && (Number(lista[1]) > 1 || Number(lista[2]) >= 10);
         const ops = '<option value="sin">Sin VPN (como está ahora)</option>' + ids.map((k) => '<option value="' + escaparHtml(k) + '">VPN · ' + escaparHtml(String(C[k].nombre || k).slice(0, 40)) + '</option>').join('');
         document.querySelectorAll('select.vpnSel').forEach((sel) => { const plat = vpnPlatDe(sel), id = String(S0[plat] || (plat === 'amazon' ? V.salida : '') || 'sin'); sel.innerHTML = ops; sel.value = C[id] ? id : 'sin'; });
         document.querySelectorAll('[data-vpn-estado]').forEach((el) => { const plat = vpnPlatDe(el), id = String(S0[plat] || (plat === 'amazon' ? V.salida : '') || 'sin'), c = C[id], gris = 'flex-1 min-w-0 text-[11px] leading-snug ';
           if (!c) { el.className = gris + 'text-gray-400'; el.textContent = 'Sin VPN: sale como siempre. Tú eliges; el robot no la cambia solo.'; return; }
           const nombre = String(c.nombre || id), mia = S && S.nombre === nombre && (!S.plat || S.plat === plat);
-          if (!sirve) { el.className = gris + 'text-amber-300'; el.textContent = '⚠️ El robot del VPS todavía no sabe usar esta VPN (falta instalar robots-1.9). Por ahora sale como siempre.'; }
+          if (!sirve || (plat === 'amazonauto' && !sirve10)) { el.className = gris + 'text-amber-300'; el.textContent = '⚠️ El robot del VPS todavía no sabe usar esta VPN (falta instalar ' + (plat === 'amazonauto' ? 'robots-1.10' : 'robots-1.9') + '). Por ahora sale como siempre.'; }
           else if (!vpnD.llave && !vpnTraeLlave(c.texto)) { el.className = gris + 'text-amber-300'; el.textContent = '⚠️ Falta la llave privada: toca «Archivos de VPN» y pégala una vez. Sin ella, la orden falla y te lo dice.'; }
           else if (mia && S.ok === false) { el.className = gris + 'text-red-300'; el.textContent = '❌ La última vez esta salida no conectó. Revisa la llave o el archivo, o elige «Sin VPN».'; }
           else if (mia && S.ok) { el.className = gris + 'text-emerald-300'; el.textContent = '🟢 La última vez salió por esta VPN' + (S.pais ? ' (país: ' + S.pais + ')' : '') + '.'; }
@@ -32426,7 +32464,7 @@ const LUISA_COM_DEF_PAG = { activo: true, stockHora: '08:00', mediodiaHora: '12:
     async function pvSaludPintar() { const S = [...document.querySelectorAll('#pvHistorial .pv-salud')], correos = [...new Set(S.map((e) => e.dataset.correo).filter(Boolean))], g = (id) => document.getElementById(id);
       try { const r = await llamarBackend('amz_robot_salud', { correos: correos }); if (!r || !r.ok) return; const sal = r.salud || {}, T = r.totales || null;
         S.forEach((e) => { const s = sal[e.dataset.correo]; if (!s) return; let f = ''; try { f = s.el ? new Date(s.el).toLocaleString('es-CO') : ''; } catch (er) { f = ''; }
-          if (s.caida) { e.textContent = '🔴'; e.title = 'Amazon avisó suspensión' + (f ? ' · ' + f : '') + (s.motivo ? ' · ' + s.motivo : ''); const fila = e.closest('div.p-3'); if (fila) { fila.classList.remove('border-emerald-700/50'); fila.classList.add('border-red-700/60'); const p = document.createElement('p'); p.className = 'text-red-300 text-[11px] pv-salud-nota'; p.textContent = '🔴 Suspendida' + (f ? ' · ' + f : '') + (s.motivo ? ' · ' + String(s.motivo).slice(0, 90) : ''); fila.appendChild(p); } }
+          if (s.caida) { e.textContent = '🔴'; e.title = 'Amazon avisó suspensión' + (f ? ' · ' + f : '') + (s.motivo ? ' · ' + s.motivo : ''); const fila = e.closest('div.p-3'); if (fila) { fila.classList.remove('border-emerald-700/50'); fila.classList.add('border-red-700/60'); } }
           else if (s.prime) { e.textContent = '👑'; e.title = 'Ya tiene Prime (dejó de ser Free)'; }
           else { e.textContent = '🟢'; e.title = 'Sin aviso de suspensión'; } });
         if (T) { if (g('pvTotManual')) g('pvTotManual').textContent = String(T.manual || 0); if (g('pvTotAuto')) g('pvTotAuto').textContent = String(T.auto || 0); if (g('pvTotSusp')) g('pvTotSusp').textContent = String(T.suspendidas || 0); }
