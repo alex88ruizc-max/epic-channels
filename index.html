@@ -2570,6 +2570,9 @@
             <button type="button" onclick="ejecutarRobotAmazon()" class="py-2.5 rounded-xl bg-sky-600 hover:bg-sky-500 text-white font-black text-xs"><i class="fa-brands fa-chrome mr-1"></i> 🚀 Hacerlo en Chrome</button>
             <button type="button" onclick="pvGuardarResultado(false)" class="py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs"><i class="fa-solid fa-check mr-1"></i> Ya quedó</button>
           </div>
+          <div class="p-2.5 rounded-xl bg-gray-950/60 border border-emerald-600/40 space-y-2"><p class="text-[11px] text-gray-300 leading-snug">🤖 <b class="text-white">En el VPS (solo cuando tú lo mandas):</b> inicia sesión, pone la dirección de arriba y agrega al carrito un producto al azar por debajo del tope. Ahí termina. <b>No usa la tarjeta ni toca pagos.</b></p>
+            <div class="flex items-center gap-2"><label class="text-[11px] text-gray-400 shrink-0">Tope (USD)</label><input id="pvpTope" type="number" min="3" max="100" value="20" class="w-20 bg-gray-800 border border-gray-700 rounded-lg px-2 py-1.5 text-sm text-white focus:outline-none"><button type="button" onclick="pvpEnVps()" class="flex-1 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs">🤖 Dirección y carrito en el VPS</button></div>
+            <div id="pvpEstado" class="hidden"></div></div>
           <div id="pvEstado" class="hidden"></div>
           <div class="p-3 rounded-2xl bg-gray-950/60 border border-amber-500/40 space-y-2">
             <p class="text-xs font-black text-white">🆕 Crear cuenta nueva (robot del VPS)</p>
@@ -2592,6 +2595,8 @@
         </div>
         <div class="p-4 rounded-2xl bg-gray-900 border border-gray-800">
           <div class="flex items-center justify-between gap-2"><p class="text-xs font-black text-white">📋 Historial Prime Video</p><button type="button" onclick="pvCargarHistorial()" class="text-[11px] text-gray-400 hover:text-white"><i class="fa-solid fa-rotate"></i></button></div>
+          <div id="pvTotales" class="mt-2 grid grid-cols-3 gap-2 text-center text-[11px]"><div class="p-2 rounded-xl bg-gray-950/60 border border-gray-800"><p class="text-gray-400">👤 Creadas por ti</p><p id="pvTotManual" class="text-white font-black text-base">—</p></div><div class="p-2 rounded-xl bg-gray-950/60 border border-gray-800"><p class="text-gray-400">🔁 Automáticas</p><p id="pvTotAuto" class="text-white font-black text-base">—</p></div><div class="p-2 rounded-xl bg-gray-950/60 border border-gray-800"><p class="text-gray-400">🔴 Suspendidas</p><p id="pvTotSusp" class="text-white font-black text-base">—</p></div></div>
+          <p class="mt-1 text-[10px] text-gray-500">🟢 sin aviso de suspensión · 🔴 Amazon avisó suspensión · 👑 ya tiene Prime. De las automáticas se muestran solo las de hoy.</p>
           <div id="pvHistorial" class="mt-2 space-y-2 text-[12px]"></div>
         </div>
       </div>
@@ -19223,7 +19228,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-11-12u109';
+    const VERSION_PAGINA = '2026-11-12u111';
     // 🧑 u58 (Alex, 10-nov): la AGENTE DE D-ID (Luisa con cara, conversa en vivo). Piloto: SOLO en epicstreaming.vip (nunca en las tiendas de tus clientes),
     //    SOLO a visitantes sin sesión, a la IZQUIERDA (a la derecha está tu botón de WhatsApp). Se carga después de la página para no hacerla lenta.
     (function () { try {
@@ -32287,6 +32292,41 @@ const LUISA_COM_DEF_PAG = { activo: true, stockHora: '08:00', mediodiaHora: '12:
     async function pvcGenerarCorreo() { const el = document.getElementById('pvcCorreo'); if (!el) return '';
       try { const r = await llamarBackend('amz_robot_correo', {}); if (r && r.ok && r.correo) { el.value = r.correo; return r.correo; } mostrarToast('❌ No se pudo generar el correo: ' + ((r && r.error) || 'intenta de nuevo')); }
       catch (e) { mostrarToast('❌ No se pudo generar el correo: ' + e.message); } return ''; }
+    // 🛒 u111: «Dirección y carrito» en el VPS. La orden lleva SOLO correo, contraseña, dirección y tope: nunca datos de tarjeta.
+    const pvp = { id: '', unsub: null, fin: '', correo: '', ciudad: '' };
+    async function pvpEnVps() {
+      const v = (id) => String((document.getElementById(id) || {}).value || '').trim(), correo = v('pvCorreo').toLowerCase(), pass = v('pvPass'), tope = Math.max(3, Math.min(100, Number(v('pvpTope')) || 20));
+      if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(correo)) { alert('Escribe el correo de la cuenta de Amazon.'); return; }
+      if (pass.length < 6) { alert('Escribe la contraseña de la cuenta.'); return; }
+      if (!pv.dir) pv.dir = pvDireccionAzar(); const d = pv.dir;
+      let srv = '', clave = ''; try { srv = await urlServidorPublico(); } catch (e) { srv = ''; } try { const r = await llamarBackend('nf_robot_clave', {}); clave = (r && r.ok && r.clave) || ''; } catch (e) { clave = ''; }
+      const o = { v: 1, tipo: 'preparar', t: Date.now(), correo: correo, pass: pass, dir: { nombre: d.nombre, tel: d.telefono, linea1: d.linea1, linea2: d.linea2 || '', departamento: d.departamento, ciudad: d.ciudad, barrio: d.barrio, cp: d.codigoPostal }, tope: tope, srv: srv, clave: clave };
+      let b64 = ''; try { b64 = btoa(unescape(encodeURIComponent(JSON.stringify(o)))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''); } catch (e) { alert('No se pudo armar la orden.'); return; }
+      const id = 'r' + Date.now() + Math.floor(Math.random() * 1000);
+      try { await db.collection('secretos').doc('robots').set({ cola: { [id]: { plat: 'amazonprep', url: 'https://www.primevideo.com/#epicrobot=' + b64, nombre: 'epicrobot:' + b64, correo: correo, estado: 'pendiente', creadoEl: new Date().toISOString(), por: (auth.currentUser && auth.currentUser.email) || '' } } }, { merge: true }); }
+      catch (e) { alert('No se pudo enviar la orden al VPS: ' + e.message); return; }
+      pvp.id = id; pvp.fin = ''; pvp.correo = correo; pvp.ciudad = d.ciudad + ', ' + d.departamento; mostrarToast('🤖 Orden enviada al robot del VPS: dirección y carrito para ' + correo + '.');
+      try { if (pvp.unsub) pvp.unsub(); } catch (e) { /* nada */ }
+      try { pvp.unsub = db.collection('secretos').doc('robots').onSnapshot((x) => { try { pvpPintar(x.exists ? x.data() : {}); } catch (e) { /* nada */ } }, () => { pvp.unsub = null; }); } catch (e) { /* nada */ }
+    }
+    function pvpPintar(D) {
+      const caja = document.getElementById('pvpEstado'), o = ((D && D.cola) || {})[pvp.id]; if (!o) return;
+      const logs = (o.log || []).slice(-4).map((l) => '<div class="truncate">' + escaparHtml(String(l)) + '</div>').join(''), est = String(o.estado || '');
+      let R = {}; try { R = JSON.parse(o.resultado || '{}') || {}; } catch (e) { R = {}; }
+      let h = '';
+      if (est === 'pendiente') h = '<div class="p-2.5 rounded-xl bg-gray-800 border border-gray-700 text-[11px] text-gray-200">⏳ <b>En la fila del VPS</b> · empieza en segundos</div>';
+      else if (est === 'trabajando') h = '<div class="p-2.5 rounded-xl bg-sky-500/10 border border-sky-500/40 text-[11px] text-sky-100 space-y-0.5"><p><i class="fa-solid fa-spinner fa-spin mr-1"></i><b>VPS trabajando</b>' + (o.pasos ? ' · paso ' + Math.min((o.paso || 0) + 1, o.pasos) + ' de ' + o.pasos : '') + '</p>' + (o.avance === 'pausa' && o.motivo ? '<p class="text-amber-200">⏸ ' + escaparHtml(o.motivo) + '</p>' : '') + logs + '</div>';
+      else if (est === 'listo') h = '<div class="p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/40 text-[11px] text-emerald-200">🟢 <b>Listo</b>: ' + escaparHtml(pvp.correo) + ' · dirección puesta y en el carrito' + (R.producto ? ' «' + escaparHtml(String(R.producto).slice(0, 50)) + '»' : '') + (R.precio ? ' ($' + escaparHtml(String(R.precio)) + ')' : '') + (o.ms ? ' · ' + Math.round(o.ms / 1000) + ' s' : '') + '</div>';
+      else h = '<div class="p-2.5 rounded-xl bg-red-500/10 border border-red-500/40 text-[11px] text-red-100 space-y-1"><p>🔴 <b>' + (est === 'ayuda' ? 'El robot necesita ayuda' : est === 'tiempo' ? 'Se acabó el tiempo' : 'El robot no pudo') + '</b>: ' + escaparHtml(o.motivo || '') + '</p>' + logs + (o.captura ? '<div id="pvpFoto"></div>' : '') + '</div>';
+      if (caja) { caja.innerHTML = h; caja.classList.remove('hidden'); }
+      if (o.captura && document.getElementById('pvpFoto')) { db.collection('secretos').doc('robots_captura').get().then((f) => { const x = f.exists ? f.data() : {}, el = document.getElementById('pvpFoto'); if (el && x.id === pvp.id && /^data:image\//.test(String(x.img || ''))) el.innerHTML = '<img src="' + x.img + '" alt="Pantalla del VPS" class="w-full rounded-lg border border-gray-700 mt-1">'; }).catch(() => {}); }
+      if (est && !/^(pendiente|trabajando)$/.test(est) && pvp.fin !== pvp.id) {   // terminó: al historial (sin contraseña) y aviso, una sola vez
+        pvp.fin = pvp.id; try { if (pvp.unsub) { pvp.unsub(); pvp.unsub = null; } } catch (e) { /* nada */ }
+        const ok = est === 'listo', rec = { tipo: 'preparar', t: Date.now(), correo: pvp.correo, ciudad: pvp.ciudad, estado: est, motivo: String(o.motivo || '').slice(0, 200), producto: String(R.producto || '').slice(0, 80), precio: Number(R.precio) || 0, direccion: R.direccion === true, carrito: R.carrito === true };
+        db.collection('secretos').doc('robots_amazon').set({ historial: { [pvp.id]: rec } }, { merge: true }).then(() => { try { pvCargarHistorial(); } catch (e) { /* nada */ } }).catch(() => {});
+        mostrarToast(ok ? '🟢 Robot del VPS: dirección puesta y producto en el carrito para ' + pvp.correo + '.' : '🔴 Robot del VPS: no se pudo con ' + pvp.correo + ': ' + String(o.motivo || est), 9000);
+        if (ok) { try { pvDireccionNueva(); } catch (e) { /* nada */ } } }
+    }
     async function pvcCrearEnVps() {
       const v = (id) => String((document.getElementById(id) || {}).value || '').trim(), nombre = v('pvcNombre') || 'Amazon', pass = v('pvcPass'), url = v('pvcUrl').replace(/\/+$/, '');
       if (!PVC_URL_OK.test(url)) { alert('La página debe ser de Amazon y empezar por https:// (por ejemplo https://music.amazon.it).'); return; }
@@ -32327,15 +32367,27 @@ const LUISA_COM_DEF_PAG = { activo: true, stockHora: '08:00', mediodiaHora: '12:
       try { pvcCargar(); } catch (e) { /* nada */ }
       const c = document.getElementById('pvHistorial'); if (!c) return; c.innerHTML = '<p class="text-gray-500">Cargando…</p>';
       try { const doc = await db.collection('secretos').doc('robots_amazon').get(), h = (doc.exists ? doc.data().historial : null) || {};
-        const ids = Object.keys(h).sort((a, b) => (h[b].t || 0) - (h[a].t || 0)).slice(0, 30);
+        const hoyB = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Bogota' }), esDeHoy = (t) => { try { return new Date(t || 0).toLocaleDateString('en-CA', { timeZone: 'America/Bogota' }) === hoyB; } catch (e) { return true; } };
+        const ids = Object.keys(h).filter((k) => !(h[k] && h[k].auto === true && !esDeHoy(h[k].t))).sort((a, b) => (h[b].t || 0) - (h[a].t || 0)).slice(0, 30);   // 🚦 u110: de las automáticas, solo las de hoy
         c.innerHTML = ids.length ? ids.map((k) => { const x = h[k], d = x.direccion || {}, ok = x.prime && x.estado === 'listo';
-          if (x.tipo === 'crear') { const okC = x.estado === 'listo'; return '<div class="p-3 rounded-xl bg-gray-950/60 border ' + (okC ? 'border-emerald-700/50' : 'border-gray-800') + '"><div class="flex items-start justify-between gap-2"><p class="font-bold text-white truncate">' + escaparHtml(x.correo) + '</p><span class="shrink-0 text-[10px] ' + (okC ? 'text-emerald-300' : 'text-red-300') + '">' + (okC ? (x.subidaA ? '📦 En ' + escaparHtml(String(x.subidaA).slice(0, 40)) : '🆕 Cuenta creada') : 'No se creó') + '</span></div>' + (okC && !x.subidaA ? '<button type="button" onclick="pvcSubirDeHistorial(\'' + escaparJsAttr(k) + '\')" class="mt-1 px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-black text-[11px] font-black">📦 Subir al stock</button>' : '') + '<p class="text-gray-500 text-[11px]">' + escaparHtml(x.cliente || '') + ' · ' + escaparHtml(String(x.sitio || '').replace(/^https:\/\//, '')) + ' · ' + escaparHtml(new Date(x.t || 0).toLocaleString('es-CO')) + (x.motivo && !okC ? ' · ' + escaparHtml(String(x.motivo).slice(0, 120)) : '') + '</p></div>'; }   // 🆕 u104
+          if (x.tipo === 'preparar') { const okP = x.estado === 'listo'; return '<div class="p-3 rounded-xl bg-gray-950/60 border ' + (okP ? 'border-emerald-700/50' : 'border-red-700/60') + '"><div class="flex items-start justify-between gap-2"><p class="font-bold text-white truncate">' + (okP ? '🟢' : '🔴') + ' ' + escaparHtml(x.correo) + '</p><span class="shrink-0 text-[10px] ' + (okP ? 'text-emerald-300' : 'text-red-300') + '">' + (okP ? '🛒 Dirección y carrito' : 'No terminó') + '</span></div><p class="text-gray-400 mt-0.5">' + (x.direccion ? '🏠 ' + escaparHtml(String(x.ciudad || 'dirección puesta')) : '🏠 sin dirección') + (x.carrito ? ' · 🛒 ' + escaparHtml(String(x.producto || 'producto').slice(0, 50)) + (x.precio ? ' ($' + escaparHtml(String(x.precio)) + ')' : '') : ' · 🛒 sin producto') + '</p><p class="text-gray-500 text-[11px]">' + escaparHtml(new Date(x.t || 0).toLocaleString('es-CO')) + (x.motivo && !okP ? ' · ' + escaparHtml(String(x.motivo).slice(0, 120)) : '') + '</p></div>'; }   // 🛒 u111
+          if (x.tipo === 'crear') { const okC = x.estado === 'listo'; return '<div class="p-3 rounded-xl bg-gray-950/60 border ' + (okC ? 'border-emerald-700/50' : 'border-gray-800') + '"><div class="flex items-start justify-between gap-2"><p class="font-bold text-white truncate">' + (okC ? '<span class="pv-salud" data-correo="' + escaparHtml(String(x.correo || '').toLowerCase()) + '" title="Consultando…">⚪</span> ' : '') + (x.auto ? '🔁 ' : '') + escaparHtml(x.correo) + '</p><span class="shrink-0 text-[10px] ' + (okC ? 'text-emerald-300' : 'text-red-300') + '">' + (okC ? (x.subidaA ? '📦 En ' + escaparHtml(String(x.subidaA).slice(0, 40)) : '🆕 Cuenta creada') : 'No se creó') + '</span></div>' + (okC && !x.subidaA ? '<button type="button" onclick="pvcSubirDeHistorial(\'' + escaparJsAttr(k) + '\')" class="mt-1 px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-black text-[11px] font-black">📦 Subir al stock</button>' : '') + '<p class="text-gray-500 text-[11px]">' + escaparHtml(x.cliente || '') + ' · ' + escaparHtml(String(x.sitio || '').replace(/^https:\/\//, '')) + ' · ' + escaparHtml(new Date(x.t || 0).toLocaleString('es-CO')) + (x.motivo && !okC ? ' · ' + escaparHtml(String(x.motivo).slice(0, 120)) : '') + '</p></div>'; }   // 🆕 u104
           return '<div class="p-3 rounded-xl bg-gray-950/60 border ' + (ok ? 'border-emerald-700/50' : 'border-gray-800') + '"><div class="flex items-start justify-between gap-2"><p class="font-bold text-white truncate">' + escaparHtml(x.correo) + '</p><span class="shrink-0 text-[10px] ' + (ok ? 'text-emerald-300' : 'text-amber-300') + '">' + (ok ? '✅ Prime' : '⚠️ ' + escaparHtml(x.estado || 'incompleto')) + '</span></div>'
             + '<p class="text-gray-400 mt-0.5">' + escaparHtml(d.nombre || x.cliente || '') + ' · ' + escaparHtml(d.linea1 || '') + ', ' + escaparHtml(d.ciudad || '') + ' (' + escaparHtml(d.departamento || '') + ')' + (x.direccionSeleccionada ? ' · 📍 seleccionada' : '') + '</p>'
             + '<p class="text-gray-500 text-[11px]">' + (x.tarjeta ? '💳 ' + escaparHtml(x.tarjeta) + ' · ' : '') + (x.producto ? '🛒 ' + escaparHtml(String(x.producto).slice(0, 40)) + ' · ' : '') + escaparHtml(new Date(x.t || 0).toLocaleString('es-CO')) + (x.motivo && !ok ? ' · ' + escaparHtml(String(x.motivo).slice(0, 80)) : '') + '</p></div>'; }).join('')
           : '<p class="text-gray-500">Todavía no hay corridas guardadas.</p>';
+        pvSaludPintar();   // 🚦 u110
       } catch (e) { c.innerHTML = '<p class="text-red-300">No pude cargar el historial: ' + escaparHtml(e.message) + '</p>'; }
     }
+    // 🚦 u110: semáforo de cada cuenta creada y contadores. Lo responde el servidor (solo lectura); si no responde, queda el ícono gris.
+    async function pvSaludPintar() { const S = [...document.querySelectorAll('#pvHistorial .pv-salud')], correos = [...new Set(S.map((e) => e.dataset.correo).filter(Boolean))], g = (id) => document.getElementById(id);
+      try { const r = await llamarBackend('amz_robot_salud', { correos: correos }); if (!r || !r.ok) return; const sal = r.salud || {}, T = r.totales || null;
+        S.forEach((e) => { const s = sal[e.dataset.correo]; if (!s) return; let f = ''; try { f = s.el ? new Date(s.el).toLocaleString('es-CO') : ''; } catch (er) { f = ''; }
+          if (s.caida) { e.textContent = '🔴'; e.title = 'Amazon avisó suspensión' + (f ? ' · ' + f : '') + (s.motivo ? ' · ' + s.motivo : ''); const fila = e.closest('div.p-3'); if (fila) { fila.classList.remove('border-emerald-700/50'); fila.classList.add('border-red-700/60'); const p = document.createElement('p'); p.className = 'text-red-300 text-[11px] pv-salud-nota'; p.textContent = '🔴 Suspendida' + (f ? ' · ' + f : '') + (s.motivo ? ' · ' + String(s.motivo).slice(0, 90) : ''); fila.appendChild(p); } }
+          else if (s.prime) { e.textContent = '👑'; e.title = 'Ya tiene Prime (dejó de ser Free)'; }
+          else { e.textContent = '🟢'; e.title = 'Sin aviso de suspensión'; } });
+        if (T) { if (g('pvTotManual')) g('pvTotManual').textContent = String(T.manual || 0); if (g('pvTotAuto')) g('pvTotAuto').textContent = String(T.auto || 0); if (g('pvTotSusp')) g('pvTotSusp').textContent = String(T.suspendidas || 0); }
+      } catch (e) { /* servidor sin la consulta todavía: se ve como antes */ } }
 
     function ordenRobotNetflix() {
       if (!robotNf) return null;
