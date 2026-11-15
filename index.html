@@ -2578,10 +2578,13 @@
             <label class="block text-[11px] text-gray-400">Correo (de tu dominio)<span class="flex gap-2"><input id="pvcCorreo" type="email" autocomplete="off" placeholder="Toca Generar" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none"><button type="button" onclick="pvcGenerarCorreo()" class="shrink-0 px-3 rounded-xl bg-gray-800 hover:bg-gray-700 border border-gray-600 text-white text-xs font-black">🎲 Generar</button></span></label>
             <label class="block text-[11px] text-gray-400">Contraseña<input id="pvcPass" type="password" autocomplete="new-password" placeholder="La de la cuenta nueva" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none"></label>
             <label class="block text-[11px] text-gray-400">Página de Amazon<input id="pvcUrl" type="url" autocomplete="off" value="https://music.amazon.it" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none"></label>
+            <div class="p-2.5 rounded-xl bg-gray-950/60 border border-gray-800 space-y-2"><label class="block text-[11px] text-gray-400">🌍 Salida del robot (solo Amazon)<select id="pvcSalida" onchange="pvcVpnElegir()" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none"><option value="sin">Sin VPN (como está ahora)</option></select></label>
+              <div class="flex gap-2"><label class="flex-1 text-center px-3 py-2 rounded-lg bg-gray-800 border border-gray-700 text-[11px] font-bold text-white cursor-pointer">➕ Subir archivo .conf<input type="file" id="pvcConfArchivo" accept=".conf,text/plain" class="hidden" onchange="pvcVpnSubir(this)"></label><button type="button" onclick="pvcVpnQuitar()" class="px-3 py-2 rounded-lg bg-gray-800 border border-gray-700 text-[11px] font-bold text-red-300">🗑 Quitar</button></div>
+              <p id="pvcSalidaEstado" class="text-[11px] text-gray-400 leading-snug">Tú eliges por dónde sale; el robot no la cambia solo.</p></div>
             <label class="block text-[11px] text-gray-400">Al crearla, subirla a<select id="pvcDestino" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none"><option value="amazonfree">Amazon Free (en mi dominio)</option><option value="no">No subirla</option></select></label>
             <button type="button" onclick="pvcCrearEnVps()" class="w-full py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-black text-xs">🚀 Crear en el VPS</button>
-            <label class="flex items-center gap-2 p-2.5 rounded-xl bg-gray-950/60 border border-gray-800 text-xs text-white font-bold cursor-pointer"><input type="checkbox" id="pvcAuto" onchange="pvcAutoCambiar()" class="w-4 h-4 accent-amber-500"><span>🔁 Crear una cada hora, sola</span></label>
-            <p id="pvcAutoEstado" class="text-[11px] text-gray-400 leading-snug">Apagado. Al prenderlo, el VPS crea una cuenta cada hora con estos datos y la sube al producto elegido. Si Amazon frena dos veces seguidas, se apaga solo y te avisa.</p>
+            <label class="flex items-center gap-2 p-2.5 rounded-xl bg-gray-950/60 border border-gray-800 text-xs text-white font-bold cursor-pointer"><input type="checkbox" id="pvcAuto" onchange="pvcAutoCambiar()" class="w-4 h-4 accent-amber-500"><span class="flex-1">🔁 Crear sola, cada</span><select id="pvcCada" onchange="pvcCadaCambiar()" onclick="event.stopPropagation()" class="bg-gray-800 border border-gray-700 rounded-lg px-2 py-1 text-xs text-white focus:outline-none"><option value="15">15 min</option><option value="30">30 min</option><option value="60" selected>1 hora</option><option value="120">2 horas</option><option value="180">3 horas</option><option value="360">6 horas</option><option value="720">12 horas</option></select></label>
+            <p id="pvcAutoEstado" class="text-[11px] text-gray-400 leading-snug">Apagado. Al prenderlo, el VPS crea una cuenta con la frecuencia que elijas, con estos datos y la sube al producto elegido. Si Amazon frena dos veces seguidas, se apaga solo y te avisa.</p>
             <div id="pvcEstado" class="hidden"></div>
           </div>
           <details class="rounded-xl border border-gray-800 bg-gray-950/60 p-3"><summary class="text-sm font-black text-white cursor-pointer">ℹ️ Cómo se prueba</summary>
@@ -19220,7 +19223,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-11-12u106';
+    const VERSION_PAGINA = '2026-11-12u108';
     // 🧑 u58 (Alex, 10-nov): la AGENTE DE D-ID (Luisa con cara, conversa en vivo). Piloto: SOLO en epicstreaming.vip (nunca en las tiendas de tus clientes),
     //    SOLO a visitantes sin sesión, a la IZQUIERDA (a la derecha está tu botón de WhatsApp). Se carga después de la página para no hacerla lenta.
     (function () { try {
@@ -32229,20 +32232,51 @@ const LUISA_COM_DEF_PAG = { activo: true, stockHora: '08:00', mediodiaHora: '12:
       try { const d = await db.collection('secretos').doc('robots_amazon').get(), c = (d.exists && d.data().crear) || {}, g = (id) => document.getElementById(id);
         if (c.nombre && g('pvcNombre') && (!g('pvcNombre').value || g('pvcNombre').value === 'Amazon')) g('pvcNombre').value = c.nombre;
         if (c.pass && g('pvcPass') && !g('pvcPass').value) g('pvcPass').value = c.pass;
-        if (c.url && g('pvcUrl') && PVC_URL_OK.test(c.url)) g('pvcUrl').value = c.url; pvcPoblarDestino(c.destino || ''); pvcAutoPintar(d.exists ? d.data().auto : null); } catch (e) { try { pvcPoblarDestino(''); } catch (e2) { /* nada */ } } }
+        if (c.url && g('pvcUrl') && PVC_URL_OK.test(c.url)) g('pvcUrl').value = c.url; pvcPoblarDestino(c.destino || ''); pvcAutoPintar(d.exists ? d.data().auto : null); pvcVpnCargar(); } catch (e) { try { pvcPoblarDestino(''); } catch (e2) { /* nada */ } } }
     // 🔁 u106 (Alex: «que lo haga cada 1 hora de forma automática»): el interruptor vive en la parte privada (secretos/robots_amazon.auto); el que crea es el servidor
-    function pvcAutoPintar(a) { a = a || {}; const ch = document.getElementById('pvcAuto'), el = document.getElementById('pvcAutoEstado'); if (ch) ch.checked = a.activo === true; if (!el) return;
+    // 🌍 u108: salida del robot de Amazon. Los .conf viven en la parte privada (secretos/robots_vpn) y nunca en la página.
+    const pvcVpnRef = () => db.collection('secretos').doc('robots_vpn');
+    async function pvcVpnCargar() { const sel = document.getElementById('pvcSalida'), el = document.getElementById('pvcSalidaEstado'); if (!sel) return;
+      try { const d = await pvcVpnRef().get(), V = (d.exists && d.data()) || {}, C = V.confs || {}, ids = Object.keys(C).sort((a, b) => String(C[a].nombre || a).localeCompare(String(C[b].nombre || b)));
+        sel.innerHTML = '<option value="sin">Sin VPN (como está ahora)</option>' + ids.map((k) => '<option value="' + escaparHtml(k) + '">VPN · ' + escaparHtml(String(C[k].nombre || k).slice(0, 40)) + '</option>').join('');
+        sel.value = V.salida && C[V.salida] ? V.salida : 'sin';
+        let S = null, ver = ''; try { const r = await db.collection('secretos').doc('robots').get(); S = r.exists ? r.data().salida : null; ver = r.exists ? String(r.data().version || '') : ''; } catch (e) { /* nada */ }
+        const lista = /^robots-(\d+)\.(\d+)/.exec(ver), sirve = !!lista && (Number(lista[1]) > 1 || Number(lista[2]) >= 7);
+        if (el) { if (sel.value !== 'sin' && !sirve) { el.className = 'text-[11px] text-amber-300 leading-snug'; el.textContent = '⚠️ El robot del VPS todavía no sabe usar la VPN (falta instalar robots-1.7). Por ahora sale como siempre.'; }
+          else if (sel.value === 'sin') { el.className = 'text-[11px] text-gray-400 leading-snug'; el.textContent = 'Sin VPN: sale como siempre. Tú eliges por dónde sale; el robot no la cambia solo.'; }
+          else if (S && S.nombre === String(C[sel.value].nombre || sel.value) && S.ok === false) { el.className = 'text-[11px] text-red-300 leading-snug'; el.textContent = '❌ La última vez esta salida no conectó. Revisa el archivo o elige «Sin VPN».'; }
+          else if (S && S.nombre === String(C[sel.value].nombre || sel.value) && S.ok) { el.className = 'text-[11px] text-emerald-300 leading-snug'; el.textContent = '🟢 La última cuenta salió por esta VPN' + (S.pais ? ' (país: ' + S.pais + ')' : '') + '.'; }
+          else { el.className = 'text-[11px] text-gray-400 leading-snug'; el.textContent = 'Elegida. Se usa desde la próxima cuenta; si no conecta, la orden falla y te lo dice (no salta a otra).'; } }
+      } catch (e) { if (el) el.textContent = 'No pude leer las salidas: ' + e.message; } }
+    async function pvcVpnElegir() { const sel = document.getElementById('pvcSalida'); if (!sel) return;
+      try { await pvcVpnRef().set({ salida: sel.value || 'sin' }, { merge: true }); mostrarToast(sel.value === 'sin' ? '🌍 El robot de Amazon sale sin VPN (como siempre).' : '🌍 El robot de Amazon sale por ' + sel.options[sel.selectedIndex].text + '.'); await pvcVpnCargar(); }
+      catch (e) { mostrarToast('❌ No se pudo guardar la salida: ' + e.message); } }
+    async function pvcVpnSubir(inp) { const f = inp && inp.files && inp.files[0]; if (!f) return;
+      try { if (f.size > 6000) throw new Error('ese archivo es muy grande para ser una configuración de WireGuard');
+        const t = await f.text(); if (!/\[Interface\]/i.test(t) || !/PrivateKey\s*=/i.test(t) || !/\[Peer\]/i.test(t) || !/Endpoint\s*=/i.test(t)) throw new Error('no es un archivo .conf de WireGuard (Surfshark → Configuración manual → WireGuard)');
+        const nombre = String(f.name || 'vpn').replace(/\.conf$/i, '').replace(/[^A-Za-z0-9 ._-]/g, '').slice(0, 40) || 'vpn', id = 'v' + nombre.toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 30) || ('v' + Date.now());
+        await pvcVpnRef().set({ confs: { [id]: { nombre: nombre, texto: t, subidoEl: new Date().toISOString() } } }, { merge: true });
+        mostrarToast('🌍 Guardé la salida «' + nombre + '». Elígela en la lista cuando quieras usarla.', 7000); await pvcVpnCargar(); }
+      catch (e) { mostrarToast('❌ No se pudo subir: ' + e.message, 8000); } finally { try { inp.value = ''; } catch (e) { /* nada */ } } }
+    async function pvcVpnQuitar() { const sel = document.getElementById('pvcSalida'); if (!sel || sel.value === 'sin') return mostrarToast('Elige en la lista la VPN que quieres quitar.');
+      const id = sel.value, txt = sel.options[sel.selectedIndex].text;
+      try { await pvcVpnRef().set({ salida: 'sin', confs: { [id]: firebase.firestore.FieldValue.delete() } }, { merge: true }); mostrarToast('🗑 Quité ' + txt + '. El robot queda sin VPN.'); await pvcVpnCargar(); }
+      catch (e) { mostrarToast('❌ No se pudo quitar: ' + e.message); } }
+    function pvcCadaTxt(m) { m = Number(m) || 60; return m < 60 ? m + ' min' : m === 60 ? 'hora' : (m / 60) + ' horas'; }
+    async function pvcCadaCambiar() { const s = document.getElementById('pvcCada'), ch = document.getElementById('pvcAuto'), m = Math.max(15, Number(s && s.value) || 60), ref = db.collection('secretos').doc('robots_amazon');   // ⏱ u107: la frecuencia se guarda al cambiarla
+      try { await ref.set({ auto: { cadaMin: m } }, { merge: true }); const d = await ref.get(); pvcAutoPintar((d.exists && d.data().auto) || {}); mostrarToast('⏱ Frecuencia: una cada ' + pvcCadaTxt(m) + (ch && ch.checked ? '.' : ' (cuando lo prendas).')); } catch (e) { mostrarToast('❌ No se pudo guardar la frecuencia: ' + e.message); } }
+    function pvcAutoPintar(a) { a = a || {}; const ch = document.getElementById('pvcAuto'), el = document.getElementById('pvcAutoEstado'); if (ch) ch.checked = a.activo === true; const sc = document.getElementById('pvcCada'); if (sc && a.cadaMin && [...sc.options].some((x) => x.value === String(Number(a.cadaMin)))) sc.value = String(Number(a.cadaMin)); if (!el) return;
       const hora = (t) => { try { return new Date(t).toLocaleTimeString('es-CO', { hour: 'numeric', minute: '2-digit' }); } catch (e) { return ''; } };
       const hoy = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Bogota' }), n = a.dia === hoy ? (Number(a.creadasHoy) || 0) : 0;
-      if (a.activo === true) { el.className = 'text-[11px] text-emerald-300 leading-snug'; el.textContent = '🟢 Prendido: una cada hora. Hoy van ' + n + '.' + (a.ordenId ? ' Ahora mismo está creando ' + (a.ordenCorreo || 'una') + '.' : a.ultimaEl ? ' La última empezó a las ' + hora(a.ultimaEl) + '; la siguiente, hacia las ' + hora(Date.parse(a.ultimaEl) + (Number(a.cadaMin) || 60) * 60000) + '.' : ' La primera sale en unos minutos.'); }
+      if (a.activo === true) { el.className = 'text-[11px] text-emerald-300 leading-snug'; el.textContent = '🟢 Prendido: una cada ' + pvcCadaTxt(a.cadaMin) + '. Hoy van ' + n + '.' + (a.ordenId ? ' Ahora mismo está creando ' + (a.ordenCorreo || 'una') + '.' : a.ultimaEl ? ' La última empezó a las ' + hora(a.ultimaEl) + '; la siguiente, hacia las ' + hora(Date.parse(a.ultimaEl) + (Number(a.cadaMin) || 60) * 60000) + '.' : ' La primera sale en unos minutos.'); }
       else if (a.pausaMotivo) { el.className = 'text-[11px] text-red-300 leading-snug'; el.textContent = '🛑 Se apagó solo: ' + a.pausaMotivo + ' Préndelo otra vez cuando quieras.'; }
-      else { el.className = 'text-[11px] text-gray-400 leading-snug'; el.textContent = 'Apagado. Al prenderlo, el VPS crea una cuenta cada hora con estos datos y la sube al producto elegido. Si Amazon frena dos veces seguidas, se apaga solo y te avisa.'; } }
+      else { el.className = 'text-[11px] text-gray-400 leading-snug'; el.textContent = 'Apagado. Al prenderlo, el VPS crea una cuenta con la frecuencia que elijas, con estos datos y la sube al producto elegido. Si Amazon frena dos veces seguidas, se apaga solo y te avisa.'; } }
     async function pvcAutoCambiar() { const ch = document.getElementById('pvcAuto'), v = (id) => String((document.getElementById(id) || {}).value || '').trim(), ref = db.collection('secretos').doc('robots_amazon'); if (!ch) return;
       try { if (ch.checked) { const nombre = v('pvcNombre') || 'Amazon', pass = v('pvcPass'), url = v('pvcUrl').replace(/\/+$/, ''), destino = v('pvcDestino') || 'amazonfree';
           if (pass.length < 6) { ch.checked = false; return mostrarToast('❌ Escribe primero la contraseña de las cuentas (mínimo 6).'); }
           if (!PVC_URL_OK.test(url)) { ch.checked = false; return mostrarToast('❌ Revisa la página de Amazon.'); }
-          await ref.set({ crear: { nombre: nombre, pass: pass, url: url, destino: destino }, auto: { activo: true, cadaMin: 60, topeDia: 24, destino: destino, fallos: 0, pausaMotivo: '', prendidoEl: new Date().toISOString() } }, { merge: true });
-          mostrarToast('🔁 Listo: el VPS crea una cuenta de Amazon cada hora y la sube a ' + pvcNombreDestino(destino) + '.', 7000); }
+          await ref.set({ crear: { nombre: nombre, pass: pass, url: url, destino: destino }, auto: { activo: true, cadaMin: Math.max(15, Number(v('pvcCada')) || 60), topeDia: 24, destino: destino, fallos: 0, pausaMotivo: '', prendidoEl: new Date().toISOString() } }, { merge: true });
+          mostrarToast('🔁 Listo: el VPS crea una cuenta de Amazon cada ' + pvcCadaTxt(v('pvcCada')) + ' y la sube a ' + pvcNombreDestino(destino) + '.', 7000); }
         else { await ref.set({ auto: { activo: false, pausaMotivo: '' } }, { merge: true }); mostrarToast('⏸ Creación automática apagada.'); }
         const d = await ref.get(); pvcAutoPintar((d.exists && d.data().auto) || {}); }
       catch (e) { ch.checked = !ch.checked; mostrarToast('❌ No se pudo guardar: ' + e.message); } }
