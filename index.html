@@ -4495,6 +4495,12 @@
       <div class="shrink-0 flex items-center justify-between gap-3 px-4 py-3 border-b border-gray-800"><p class="text-sm font-black text-white">🌍 VPN de los robots</p><button type="button" onclick="vpnCerrar()" class="text-gray-400 hover:text-white text-lg leading-none">✕</button></div>
       <div class="flex-1 overflow-y-auto p-4 space-y-3">
         <p class="text-[11px] text-gray-400 leading-snug">Un solo lugar para todos los robots. Aquí subes los archivos y pones la llave una vez; en cada robot solo eliges por dónde sale (por defecto, <b class="text-white">Sin VPN</b>).</p>
+        <div class="p-3 rounded-xl bg-gray-950/60 border border-emerald-700/50 space-y-2"><p class="text-xs font-black text-white">Orden de salida <span class="text-gray-400 font-bold">(vale para todos los robots)</span></p>
+          <div id="vpnOrden" class="space-y-1.5 text-[11px]"></div>
+          <div class="flex items-center justify-between gap-2"><label class="flex items-center gap-2 text-[11px] text-white font-bold cursor-pointer"><input type="checkbox" id="vpnCasaOn" onchange="vpnCasaPrender(this)" class="w-4 h-4 accent-emerald-500"> 🏠 Usar el internet de mi casa</label>
+            <button type="button" onclick="vpnOrdenCambiar()" class="px-2.5 py-1.5 rounded-lg bg-gray-800 border border-gray-700 text-[11px] font-bold text-white">⇅ Cambiar orden</button></div>
+          <p id="vpnCasaEstado" class="text-[11px] text-gray-400 leading-snug"></p>
+          <p class="text-[10px] text-gray-500 leading-snug">Regla: antes de cada orden el robot comprueba que de verdad está saliendo por tu casa. Si no (el teléfono apagado, sin wifi o Tailscale desconectado), usa la 2.ª y lo anota. Nunca recorre una lista de salidas.</p></div>
         <div class="p-3 rounded-xl bg-gray-950/60 border border-gray-800 space-y-2"><p class="text-xs font-black text-white">1 · Archivos .conf</p>
           <label class="block text-center px-3 py-2 rounded-lg bg-gray-800 border border-gray-700 text-[11px] font-bold text-white cursor-pointer">➕ Subir archivos .conf (varios a la vez)<input type="file" id="vpnArchivos" accept=".conf,text/plain" multiple class="hidden" onchange="vpnSubir(this)"></label>
           <div id="vpnLista" class="space-y-1 text-[11px] text-gray-300">Revisando…</div></div>
@@ -19334,7 +19340,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-11-12u115';
+    const VERSION_PAGINA = '2026-11-12u116';
     // 🧑 u58 (Alex, 10-nov): la AGENTE DE D-ID (Luisa con cara, conversa en vivo). Piloto: SOLO en epicstreaming.vip (nunca en las tiendas de tus clientes),
     //    SOLO a visitantes sin sesión, a la IZQUIERDA (a la derecha está tu botón de WhatsApp). Se carga después de la página para no hacerla lenta.
     (function () { try {
@@ -32354,8 +32360,28 @@ const LUISA_COM_DEF_PAG = { activo: true, stockHora: '08:00', mediodiaHora: '12:
     let vpnD = { C: {}, salidas: {}, llave: false };
     const vpnTraeLlave = (t) => { const m = /PrivateKey\s*=\s*(\S+)/i.exec(String(t || '')); return !!m && VPN_LLAVE_OK.test(m[1]); };
     const vpnPlatDe = (el) => { if (el && el.id && /^rnSalida/.test(el.id)) { const p = (typeof robotNf !== 'undefined' && robotNf && robotNf.plat === 'disney') ? 'disney' : 'netflix'; el.setAttribute(el.id === 'rnSalida' ? 'data-vpn-plat' : 'data-vpn-estado', p); return p; } return el.getAttribute('data-vpn-plat') || el.getAttribute('data-vpn-estado') || ''; };
+    // 🏠 u116: orden de salida (1.ª casa · 2.ª la de cada robot) y estado de la casa
+    let vpnCasa = { on: true, primero: true, orden: ['casa', 'robot'], S: null, ver: '' };
+    function vpnCasaPintar() { const L = document.getElementById('vpnOrden'), E = document.getElementById('vpnCasaEstado'), ch = document.getElementById('vpnCasaOn'); if (!L) return;
+      const casaTxt = '🏠 Internet de mi casa <span class="text-gray-400">(teléfono a51-de-alex)</span>', robTxt = '🌍 La salida elegida en cada robot <span class="text-gray-400">(abajo, en cada uno)</span>';
+      const filas = (vpnCasa.on ? vpnCasa.orden : ['robot']).map((k, i) => '<div class="flex items-center gap-2 px-2 py-1.5 rounded-lg bg-gray-800/70 border border-gray-700"><b class="text-emerald-300">' + (i + 1) + '.ª</b><span class="text-white">' + (k === 'casa' ? casaTxt : robTxt) + '</span></div>');
+      L.innerHTML = filas.join('') + (!vpnCasa.on ? '<p class="text-gray-500">La casa está apagada: cada robot sale solo por su salida.</p>' : '');
+      if (ch) ch.checked = vpnCasa.on;
+      if (E) { const S = vpnCasa.S, m = /^robots-(\d+)\.(\d+)/.exec(vpnCasa.ver || ''), sirve = !!m && (Number(m[1]) > 1 || Number(m[2]) >= 11);
+        if (!vpnCasa.on) { E.className = 'text-[11px] text-gray-400 leading-snug'; E.textContent = ''; }
+        else if (!sirve) { E.className = 'text-[11px] text-amber-300 leading-snug'; E.textContent = '⚠️ El robot del VPS todavía no sabe salir por la casa (falta instalar robots-1.11).'; }
+        else if (S && S.via === 'casa' && S.ok) { E.className = 'text-[11px] text-emerald-300 leading-snug'; E.textContent = '🟢 La última orden salió por tu casa' + (S.ip ? ' (' + S.ip + (S.pais ? ' · ' + S.pais : '') + ')' : '') + '.'; }
+        else if (S && S.via === 'casa' && S.ok === false) { E.className = 'text-[11px] text-red-300 leading-snug'; E.textContent = '🔴 La última vez la casa no respondió: ' + String(S.motivo || '') + ' Se usó la 2.ª salida.'; }
+        else { E.className = 'text-[11px] text-gray-400 leading-snug'; E.textContent = 'Lista. Se usa desde la próxima orden.'; } } }
+    async function vpnCasaPrender(ch) { const on = !!(ch && ch.checked);
+      try { await vpnRef().set({ casa: { activo: on, nombre: 'a51-de-alex', ip: '100.92.127.38' } }, { merge: true }); mostrarToast(on ? '🏠 Los robots salen primero por tu casa (si responde).' : '🏠 Casa apagada: cada robot sale por su salida.'); }
+      catch (e) { mostrarToast('❌ No se pudo cambiar: ' + e.message); if (ch) ch.checked = !on; } await vpnCargar(); }
+    async function vpnOrdenCambiar() { const nuevo = vpnCasa.orden[0] === 'casa' ? ['robot', 'casa'] : ['casa', 'robot'];
+      try { await vpnRef().set({ orden: nuevo }, { merge: true }); mostrarToast(nuevo[0] === 'casa' ? '⇅ Primero la casa; si no responde, la salida de cada robot.' : '⇅ Primero la salida de cada robot; si falla, la casa.'); }
+      catch (e) { mostrarToast('❌ No se pudo cambiar el orden: ' + e.message); } await vpnCargar(); }
     async function vpnCargar() {
       try { const d = await vpnRef().get(), V = (d.exists && d.data()) || {}, C = V.confs || {}, S0 = V.salidas || {};
+        vpnCasa.on = !(V.casa && V.casa.activo === false); vpnCasa.orden = Array.isArray(V.orden) && V.orden.length === 2 ? V.orden.map(String) : ['casa', 'robot']; vpnCasa.primero = vpnCasa.on && vpnCasa.orden[0] === 'casa';
         const ids = Object.keys(C).sort((a, b) => String(C[a].nombre || a).localeCompare(String(C[b].nombre || b)));
         vpnD = { C: C, salidas: S0, llave: VPN_LLAVE_OK.test(String(V.llave || '').trim()), ids: ids, vieja: V.salida || '' };
         let S = null, ver = ''; try { const r = await db.collection('secretos').doc('robots').get(); S = r.exists ? r.data().salida : null; ver = r.exists ? String(r.data().version || '') : ''; } catch (e) { /* nada */ }
@@ -32370,13 +32396,15 @@ const LUISA_COM_DEF_PAG = { activo: true, stockHora: '08:00', mediodiaHora: '12:
           else if (mia && S.ok === false) { el.className = gris + 'text-red-300'; el.textContent = '❌ La última vez esta salida no conectó. Revisa la llave o el archivo, o elige «Sin VPN».'; }
           else if (mia && S.ok) { el.className = gris + 'text-emerald-300'; el.textContent = '🟢 La última vez salió por esta VPN' + (S.pais ? ' (país: ' + S.pais + ')' : '') + '.'; }
           else { el.className = gris + 'text-gray-400'; el.textContent = 'Elegida: ' + nombre + '. Se usa desde la próxima orden; si no conecta, la orden falla y te lo dice (no salta a otra).'; } });
-        vpnPintarVentana();
+        try { const r2 = await db.collection('secretos').doc('robots').get(); vpnCasa.S = r2.exists ? r2.data().salida || null : null; vpnCasa.ver = r2.exists ? String(r2.data().version || '') : ''; } catch (e) { /* nada */ }
+        if (vpnCasa.on) document.querySelectorAll('[data-vpn-estado]').forEach((el) => { el.textContent = (vpnCasa.primero ? '🏠 Primero sale por tu casa; si no responde: ' : '1.ª esta salida; si falla, tu casa 🏠 · ') + el.textContent; });   // 🏠 u116
+        vpnCasaPintar(); vpnPintarVentana();
       } catch (e) { document.querySelectorAll('[data-vpn-estado]').forEach((el) => { el.textContent = 'No pude leer las salidas: ' + e.message; }); } }
     function vpnPintarVentana() { const L = document.getElementById('vpnLista'), E = document.getElementById('vpnLlaveEstado'), A = document.getElementById('vpnAviso'); if (!L) return;
       const C = vpnD.C || {}, ids = vpnD.ids || [], enUso = (id) => Object.keys(VPN_ROBOT).filter((p) => String((vpnD.salidas || {})[p] || (p === 'amazon' ? vpnD.vieja : '') || 'sin') === id);
       L.innerHTML = ids.length ? ids.map((k) => { const u = enUso(k); return '<div class="flex items-center gap-2 px-2 py-1.5 rounded-lg bg-gray-800/70 border border-gray-700"><span class="flex-1 min-w-0 truncate">' + escaparHtml(String(C[k].nombre || k).slice(0, 40)) + (u.length ? ' <span class="text-emerald-300">· en uso</span>' : '') + (vpnTraeLlave(C[k].texto) ? '' : vpnD.llave ? '' : ' <span class="text-amber-300">· sin llave</span>') + '</span><button type="button" data-vpn-quitar="' + escaparHtml(k) + '" onclick="vpnQuitar(this.getAttribute(\'data-vpn-quitar\'))" class="shrink-0 px-2 py-1 rounded-md bg-gray-900 border border-gray-700 text-red-300 font-bold">🗑 Quitar</button></div>'; }).join('') : '<p class="text-gray-500">Todavía no hay archivos. Súbelos arriba.</p>';
       if (E) { E.className = 'text-[11px] leading-snug ' + (vpnD.llave ? 'text-emerald-300' : 'text-amber-300'); E.textContent = vpnD.llave ? '🔑 Llave guardada. Vale para todos los archivos. Para cambiarla, pega la nueva y toca Guardar.' : '⚠️ Todavía no hay llave guardada. Sin ella los archivos de Surfshark no conectan.'; }
-      if (A) A.textContent = ids.length + (ids.length === 1 ? ' archivo' : ' archivos') + ' · Todos los robots salen sin VPN hasta que elijas otra cosa en cada uno.'; }
+      if (A) A.textContent = ids.length + (ids.length === 1 ? ' archivo' : ' archivos') + (vpnCasa.on ? (vpnCasa.primero ? ' · Todos los robots salen primero por tu casa; en cada robot eliges la 2.ª.' : ' · Cada robot sale por su salida; si falla, por tu casa.') : ' · Todos los robots salen sin VPN hasta que elijas otra cosa en cada uno.'); }
     function vpnAbrir() { const m = document.getElementById('modalVpn'); if (!m) return; m.classList.remove('hidden'); m.classList.add('flex'); vpnCargar(); }
     function vpnCerrar() { const m = document.getElementById('modalVpn'); if (!m) return; m.classList.add('hidden'); m.classList.remove('flex'); const i = document.getElementById('vpnLlave'); if (i) i.value = ''; }
     async function vpnElegir(sel) { if (!sel) return; const plat = vpnPlatDe(sel), val = sel.value || 'sin'; if (!VPN_ROBOT[plat]) return;
