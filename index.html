@@ -638,11 +638,11 @@
         <i class="fa-solid fa-wallet text-emerald-400 text-xs"></i>
         <div>
           <span class="text-[9px] text-gray-400 block leading-none">Mi Saldo</span>
-          <span id="txtSaldoHeader" class="text-xs sm:text-sm font-bold text-white leading-tight"><span class="sk-carga" style="width:64px"></span></span>
-          <span id="txtSaldoVence" onclick="event.stopPropagation(); explicarVenceSaldo()" role="button" tabindex="0" class="hidden text-[8px] font-black leading-none mt-0.5 cursor-pointer"></span>
+          <span id="txtSaldoHeader" class="block text-xs sm:text-sm font-bold text-white leading-tight whitespace-nowrap"><span class="sk-carga" style="width:64px"></span></span>
+          <span id="txtSaldoVence" onclick="event.stopPropagation(); explicarVenceSaldo()" role="button" tabindex="0" title="Tu saldo vence si no compras ni recargas" class="hidden w-fit px-1.5 py-0.5 rounded-full text-[9px] font-black leading-none mt-1 cursor-pointer whitespace-nowrap"></span>
           <span id="txtCreditoHeader" onclick="event.stopPropagation(); irACreditoDesdeFlotante()" role="button" tabindex="0" class="hidden block text-[9px] font-black leading-none mt-0.5 cursor-pointer whitespace-nowrap text-pink-300"></span>
         </div>
-        <button type="button" id="btnMonedaVista" onclick="alternarMonedaVista()" title="Ver en pesos o dólares" class="ml-1 px-1.5 py-0.5 rounded-md border border-gray-600 text-[9px] font-black text-gray-200 hover:bg-gray-700 transition">COP</button>
+        
         <button onclick="abrirModalRecarga()" title="Recargar saldo" class="ml-1 bg-emerald-500 hover:bg-emerald-400 text-black rounded p-1 text-xs transition">
           <i class="fa-solid fa-plus"></i>
         </button>
@@ -1299,6 +1299,7 @@
       </div>
 
       <div id="perfilSecDatos" class="hidden">
+        <div id="cajaMonedaPerfil" class="hidden mb-3 p-3 sm:p-4 bg-gray-900 border border-gray-800 rounded-2xl flex items-center justify-between gap-3"><div><p class="text-sm font-bold text-white">💱 Moneda de la tienda</p><p class="text-[11px] text-gray-400 leading-snug">Elige si ves los precios y tu saldo en pesos o en dólares.</p></div><button type="button" id="btnMonedaVista" onclick="alternarMonedaVista()" title="Ver en pesos o dólares" class="shrink-0 px-4 py-2 rounded-xl border border-gray-600 text-xs font-black text-gray-200 hover:bg-gray-700 transition">COP</button></div>
         <div id="tgClienteCaja" class="mb-3"></div>
         <form onsubmit="guardarDatosPerfil(event)" class="p-4 sm:p-5 bg-gray-900 border border-gray-800 rounded-2xl space-y-3">
           <div>
@@ -8179,9 +8180,11 @@
     let userSaldo = 0;
     var saldoListo = false, perfilListo = false, ticketsListos = false, lotesListos = false, recargasPendListas = false;   // ⏳ hasta que lleguen, se muestran barritas de carga
     var userUltimoMov = '';
+    // ⏳ u122: días de vigencia del saldo. 0 = sin límite (antes el 0 se tomaba como «vacío» y salía «vence en 20 días»); vacío = 20.
+    function diasVenceSaldoCfg() { const v = ajustesGeneralesConfig ? ajustesGeneralesConfig.saldoVenceDias : undefined; if (v === 0 || v === '0') return 0; const n = parseInt(v, 10); return n > 0 ? n : 20; }
     function explicarVenceSaldo() {
       try {
-        const dias = Math.max(1, parseInt((ajustesGeneralesConfig && ajustesGeneralesConfig.saldoVenceDias) || 20, 10) || 20);
+        const dias = diasVenceSaldoCfg(); if (!(dias > 0)) return;
         const mov = userUltimoMov ? Date.parse(userUltimoMov) : 0;
         const quedan = mov ? Math.max(0, Math.ceil((mov + dias * 86400000 - Date.now()) / 86400000)) : dias;
         const saldoTxt = formatoCOP(Math.max(0, userSaldo));
@@ -8995,20 +8998,20 @@
       const el = document.getElementById('txtSaldoHeader');
       const saldoVer = modoPruebaCliente ? saldoSimulado : userSaldo;
       if (el && !saldoListo && !modoPruebaCliente) { if (!el.querySelector('.sk-carga')) el.innerHTML = '<span class="sk-carga" style="width:64px"></span>'; }
-      else if (el) el.innerText = enUsd() && usdSaldo(saldoVer) ? `${usdSaldo(saldoVer)} USD` : `$${saldoVer.toLocaleString('es-CO')} COP`;
-      try { const bm = document.getElementById('btnMonedaVista'); if (bm) { bm.textContent = enUsd() ? 'USD' : 'COP'; bm.classList.toggle('hidden', !!TIENDA_SLUG || !usdDeCop(1000) || !puedeUsd()); bm.classList.toggle('border-yellow-400', enUsd()); bm.classList.toggle('text-yellow-200', enUsd()); } } catch (e) { /* nada */ }
+      else if (el) el.innerText = enUsd() && usdSaldo(saldoVer) ? `${usdSaldo(saldoVer)} USD` : `$${saldoVer.toLocaleString('es-CO')}`;
+      try { const bm = document.getElementById('btnMonedaVista'); if (bm) { bm.textContent = enUsd() ? 'USD' : 'COP'; bm.classList.toggle('hidden', !!TIENDA_SLUG || !usdDeCop(1000) || !puedeUsd()); bm.classList.toggle('border-yellow-400', enUsd()); bm.classList.toggle('text-yellow-200', enUsd()); const cjM = document.getElementById('cajaMonedaPerfil'); if (cjM) cjM.classList.toggle('hidden', bm.classList.contains('hidden')); } } catch (e) { /* nada */ }
       try {
         const bv = document.getElementById('txtSaldoVence');
         if (bv) {
-          const dias = Math.max(1, parseInt((ajustesGeneralesConfig && ajustesGeneralesConfig.saldoVenceDias) || 20, 10) || 20);
+          const dias = diasVenceSaldoCfg();
           const mov = userUltimoMov ? Date.parse(userUltimoMov) : 0;
-          const quedan = (mov && saldoVer > 0 && !esStaffSesion() && !modoPruebaCliente) ? Math.ceil((mov + dias * 86400000 - Date.now()) / 86400000) : null;
+          const quedan = (dias > 0 && mov && saldoVer > 0 && !esStaffSesion() && !modoPruebaCliente) ? Math.ceil((mov + dias * 86400000 - Date.now()) / 86400000) : null;
           if (quedan !== null && quedan > 0) {
-            bv.textContent = '⏳ vence en ' + quedan + (quedan === 1 ? ' día' : ' días');
-            bv.classList.remove('hidden');
-            bv.classList.toggle('text-rose-300', quedan <= 3);
-            bv.classList.toggle('text-amber-300', quedan > 3);
-          } else { bv.classList.add('hidden'); }
+            bv.textContent = '⏳ ' + quedan + (quedan === 1 ? ' día' : ' días');
+            bv.classList.remove('hidden'); bv.classList.add('block');
+            bv.classList.toggle('text-rose-300', quedan <= 3); bv.classList.toggle('bg-rose-500/20', quedan <= 3);
+            bv.classList.toggle('text-amber-300', quedan > 3); bv.classList.toggle('bg-amber-500/15', quedan > 3);
+          } else { bv.classList.add('hidden'); bv.classList.remove('block'); }
         }
       } catch (e) { /* nada */ }
       const caja = document.getElementById('navSaldoDirecto');
@@ -10982,7 +10985,8 @@
 
         if (!agotado) {
           if (stockDisponible >= minRequerido) { cantidadInicial = minRequerido; limiteInferior = minRequerido; }
-          else { cantidadInicial = stockDisponible; limiteInferior = stockDisponible; }
+          else { cantidadInicial = stockDisponible; limiteInferior = stockDisponible;
+            try { if (maxTarjeta(prod, stockDisponible) >= minRequerido) cantidadInicial = minRequerido; } catch (eMx) { /* queda en el stock */ } }   // ⏳ u122: hay menos que el mínimo pero acepta encargo → mínimo = lo que hay + el resto por encargo
         }
 
         const totalInicial = cantidadInicial * precioUnitarioConCombo(prod, cantidadInicial);
@@ -19387,7 +19391,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-11-12u121';
+    const VERSION_PAGINA = '2026-11-12u122';
     // 🧑 u58 (Alex, 10-nov): la AGENTE DE D-ID (Luisa con cara, conversa en vivo). Piloto: SOLO en epicstreaming.vip (nunca en las tiendas de tus clientes),
     //    SOLO a visitantes sin sesión, a la IZQUIERDA (a la derecha está tu botón de WhatsApp). Se carga después de la página para no hacerla lenta.
     (function () { try {
