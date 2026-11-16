@@ -8855,6 +8855,7 @@
           if (doc.exists) {
             const dataU = doc.data();
             try { ldAplicarVivo(dataU); } catch (eV) { /* nada */ }
+            try { favAplicarVivo(dataU.favoritos); } catch (eF) { /* nada */ }   // ❤️ u120
             try { window.miRanking = dataU.rankingMes || null; rankingEscuchar(); pintarFranjaRanking(); } catch (eR) { /* nada */ }
             // 🧪 durante la prueba de compra simulada el saldo es de mentira: el real se guarda aparte y se repone al terminar
             if (typeof pruebaCompraCorriendo !== 'undefined' && pruebaCompraCorriendo) window.__saldoRealPrueba = dataU.saldo || 0; else userSaldo = dataU.saldo || 0;
@@ -10890,6 +10891,7 @@
       let html = `<button onclick="filtrarCategoria('todas')" class="btn-cat ${categoriaActiva === 'todas' ? 'active bg-emerald-500 text-black font-bold' : 'bg-gray-800 text-gray-300 font-medium'} px-4 py-1.5 rounded-xl whitespace-nowrap flex items-center gap-2"><i class="fa-solid fa-border-all"></i> ${ttH('filtroTodas')}</button>`;
 
       if (catalogoUnificado.some(p => p.activo !== false && usuarioTienePermisoProducto(p) && promoDeProducto(p).tipo)) html += `<button onclick="filtrarCategoria('promos')" class="btn-cat ${categoriaActiva === 'promos' ? 'active bg-orange-500 text-black font-bold' : 'bg-orange-500/15 text-orange-200 border border-orange-500/40 font-bold'} px-4 py-1.5 rounded-xl whitespace-nowrap transition shrink-0">🔥 Promos</button>`;
+      if (favLista().length && catalogoUnificado.some(p => p.activo !== false && esFavorito(p.docId) && usuarioTienePermisoProducto(p))) html += `<button onclick="filtrarCategoria('favoritos')" class="btn-cat ${categoriaActiva === 'favoritos' ? 'active font-bold' : 'font-bold'} px-4 py-1.5 rounded-xl whitespace-nowrap flex items-center gap-2 shrink-0" style="${categoriaActiva === 'favoritos' ? 'background:#fb7185;color:#111' : 'background:rgba(244,63,94,.15);color:#fecdd3;border:1px solid rgba(244,63,94,.5)'}"><i class="fa-solid fa-heart"></i> Mis favoritos</button>`;   // ❤️ u120
       categorias.forEach(cat => {
         const esActiva = categoriaActiva === cat;
         const icono = obtenerIconoCategoria(cat);
@@ -10942,12 +10944,16 @@
         if (!usuarioTienePermisoProducto(p)) return false;
         if (categoriaActiva === 'todas') return true;
         if (categoriaActiva === 'promos') return !!promoDeProducto(p).tipo;
+        if (categoriaActiva === 'favoritos') return esFavorito(p.docId);   // ❤️ u120
         return p.categoria === categoriaActiva;
       });
 
       const ordenados = ordenarParaTienda(filtrados);
       filtrados.length = 0; ordenados.forEach(x => filtrados.push(x));
+      let favCorte = 0;   // ❤️ u120: en «Todas», los favoritos del cliente van de primeros
+      if (categoriaActiva === 'todas' && favLista().length) { const fv = filtrados.filter(p => esFavorito(p.docId)); if (fv.length && fv.length < filtrados.length) { const rs = filtrados.filter(p => !esFavorito(p.docId)); filtrados.length = 0; fv.concat(rs).forEach(x => filtrados.push(x)); favCorte = fv.length; } }
 
+      if (filtrados.length === 0 && categoriaActiva === 'favoritos') { grid.innerHTML = `<p class="col-span-full text-center text-gray-400 py-12">Toca el <i class="fa-regular fa-heart" style="color:#fb7185"></i> de un producto para guardarlo aquí.</p>`; return; }
       if (filtrados.length === 0) {
         grid.innerHTML += catalogoCargado
           ? `<p class="col-span-full text-center text-gray-500 py-12">${ttH('textoVacio')}</p>`
@@ -10959,11 +10965,12 @@
       if (!grid.dataset.claseOriginal) grid.dataset.claseOriginal = grid.className;
       if (vistaCatalogoActual() === 'compacta') {
         grid.className = 'grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2.5 sm:gap-3';
-        grid.innerHTML = (categoriaActiva === 'todas' ? htmlFranjaPromos(filtrados) : '') + filtrados.map(htmlCuadroCompacto).join('');
+        grid.innerHTML = (categoriaActiva === 'todas' ? htmlFranjaPromos(filtrados) : '') + filtrados.map((p, iF) => (favCorte && iF === 0 ? favTitulo(1) : '') + (favCorte && iF === favCorte ? favTitulo(2) : '') + htmlCuadroCompacto(p)).join('');
         return;
       }
       grid.className = grid.dataset.claseOriginal;
-      filtrados.forEach(prod => {
+      filtrados.forEach((prod, iF) => {
+        if (favCorte && iF === 0) grid.innerHTML += favTitulo(1); if (favCorte && iF === favCorte) grid.innerHTML += favTitulo(2);   // ❤️ u120
         const esNf = esProductoNetflix(prod) && prod.esCombo !== true;
         const stockDisponible = prod.stock;
         const agotado = stockDisponible <= 0;
@@ -11012,7 +11019,7 @@
                 ${esNf ? `<span class="nf-wordmark text-[13px]">NETFLIX</span>` : marcaT ? `<span class="brand-wordmark text-[13px] truncate max-w-[70%]">${escaparHtml(marcaT.etiqueta)}</span>` : `<span class="text-[11px] font-bold ${badgeStyle} px-3 py-1 rounded-full flex items-center gap-1">
                   <i class="fa-solid ${badgeIcon}"></i> ${badgeText}
                 </span>`}
-                <span class="inline-flex items-center gap-2">${htmlBateriaStock(prod.docId, stockDisponible, agotado)}${btnEditarDesdeTienda(prod)}</span>
+                <span class="inline-flex items-center gap-2">${htmlCorazon(prod, 'linea')}${htmlBateriaStock(prod.docId, stockDisponible, agotado)}${btnEditarDesdeTienda(prod)}</span>
               </div>
 
               <div class="flex items-start justify-between gap-3 mb-1">
@@ -11075,6 +11082,28 @@
 
       actualizarTotalTarjeta(docId);
     }
+
+    // ❤️ u120 · MIS FAVORITOS (idea de un cliente; Alex: «sí»): corazón en cada producto; los favoritos salen de primeros y hay un botón «Mis favoritos».
+    //    Se guardan en la cuenta del cliente (le sirven en el celular y en el computador); sin sesión, solo en ese equipo.
+    var misFavoritos = [], favClaveCargada = null, favGuardarT = null;
+    function favClave() { return 'misFavoritos' + (typeof currentUser !== 'undefined' && currentUser && currentUser.uid ? '_' + currentUser.uid : ''); }
+    function favLimpia(v) { return Array.isArray(v) ? v.filter(x => typeof x === 'string' && x).slice(0, 60) : []; }
+    function favLista() { const k = favClave(); if (k !== favClaveCargada) { favClaveCargada = k; try { misFavoritos = favLimpia(JSON.parse(localStorage.getItem(k) || '[]')); } catch (e) { misFavoritos = []; } } return misFavoritos; }
+    function esFavorito(id) { return favLista().indexOf(String(id)) !== -1; }
+    function favAplicarVivo(lista) { if (!Array.isArray(lista)) return; const n = favLimpia(lista), antes = JSON.stringify(favLista()); misFavoritos = n; favClaveCargada = favClave();
+      try { localStorage.setItem(favClaveCargada, JSON.stringify(n)); } catch (e) { /* nada */ }
+      if (antes !== JSON.stringify(n)) { try { renderizarFiltrosCategorias(); renderizarCatalogo(); } catch (e) { /* nada */ } } }
+    function alternarFavorito(id, ev) { if (ev) { ev.stopPropagation(); ev.preventDefault(); } id = String(id || ''); if (!id) return;
+      const L = favLista().slice(), i = L.indexOf(id); if (i === -1) L.unshift(id); else L.splice(i, 1); misFavoritos = L.slice(0, 60);
+      try { localStorage.setItem(favClave(), JSON.stringify(misFavoritos)); } catch (e) { /* nada */ }
+      try { mostrarToast(i === -1 ? '❤️ Agregado a tus favoritos' : 'Quitado de tus favoritos'); } catch (e) { /* nada */ }
+      if (categoriaActiva === 'favoritos' && !misFavoritos.length) categoriaActiva = 'todas';
+      try { renderizarFiltrosCategorias(); renderizarCatalogo(); } catch (e) { /* nada */ }
+      if (currentUser && !(typeof TIENDA_SLUG !== 'undefined' && TIENDA_SLUG)) { clearTimeout(favGuardarT); const enviar = misFavoritos.slice();
+        favGuardarT = setTimeout(() => { try { Promise.resolve(llamarBackend('favoritos_guardar', { ids: enviar })).catch(() => {}); } catch (e) { /* nada */ } }, 700); } }
+    function htmlCorazon(p, arriba) { const f = esFavorito(p.docId), pos = arriba === 'linea' ? 'relative shrink-0' : 'absolute z-10';
+      return `<span role="button" tabindex="0" aria-label="${f ? 'Quitar de favoritos' : 'Agregar a favoritos'}" aria-pressed="${f}" data-fav="${escaparHtml(p.docId)}" onclick="alternarFavorito('${escaparJsAttr(p.docId)}', event)" class="fav-corazon ${pos} w-8 h-8 rounded-full flex items-center justify-center text-[16px] cursor-pointer" style="${arriba === 'linea' ? '' : 'top:' + arriba + 'px;right:6px;'}background:${f ? 'rgba(244,63,94,.18)' : 'rgba(0,0,0,.35)'};border:1px solid ${f ? 'rgba(244,63,94,.7)' : 'rgba(255,255,255,.18)'}"><i class="${f ? 'fa-solid' : 'fa-regular'} fa-heart" style="color:${f ? '#fb7185' : '#cbd5e1'}"></i></span>`; }
+    function favTitulo(n) { return `<div class="fav-titulo col-span-full flex items-center gap-2 text-[13px] font-black mt-1" style="color:${n === 1 ? '#fda4af' : '#a7f3d0'}"><i class="fa-solid ${n === 1 ? 'fa-heart' : 'fa-border-all'}"></i> ${n === 1 ? 'Tus favoritos' : 'Todos los productos'}</div>`; }
 
     function filtrarCategoria(cat) {
       categoriaActiva = cat;
@@ -19355,7 +19384,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-11-12u119';
+    const VERSION_PAGINA = '2026-11-12u120';
     // 🧑 u58 (Alex, 10-nov): la AGENTE DE D-ID (Luisa con cara, conversa en vivo). Piloto: SOLO en epicstreaming.vip (nunca en las tiendas de tus clientes),
     //    SOLO a visitantes sin sesión, a la IZQUIERDA (a la derecha está tu botón de WhatsApp). Se carga después de la página para no hacerla lenta.
     (function () { try {
@@ -26744,7 +26773,7 @@
 
     // ==================== VISTA DE LA TIENDA: DETALLADA O 2 COLUMNAS ====================
     // El administrador elige la predeterminada (Vista de tienda); cada cliente puede cambiarla y se le recuerda.
-    var vistaCatalogo = (() => { try { return localStorage.getItem('vistaCatalogo') || ''; } catch (e) { return ''; } })();
+    var vistaCatalogo = (() => { try { return localStorage.getItem('vistaCatalogo2') || ''; } catch (e) { return ''; } })();
     function esPantallaPc() { return window.innerWidth >= 768; }
     function vistaPredeterminadaDispositivo() {
       const c = (typeof cfgVistaTienda !== 'undefined' && cfgVistaTienda) || {};
@@ -26754,7 +26783,7 @@
     // Si el cliente no eligió una vista, al pasar de celular a PC (o al revés) se usa la predeterminada de esa pantalla
     var __pcAntes = esPantallaPc();
     window.addEventListener('resize', () => { const pc = esPantallaPc(); if (pc !== __pcAntes) { __pcAntes = pc; if (!vistaCatalogo) { try { renderizarFiltrosCategorias(); renderizarCatalogo(); } catch (e) { /* nada */ } } } });
-    function cambiarVistaCatalogo(v) { vistaCatalogo = v === 'compacta' ? 'compacta' : 'detallada'; try { localStorage.setItem('vistaCatalogo', vistaCatalogo); } catch (e) { /* nada */ } renderizarFiltrosCategorias(); renderizarCatalogo(); }
+    function cambiarVistaCatalogo(v) { vistaCatalogo = v === 'compacta' ? 'compacta' : 'detallada'; try { localStorage.setItem('vistaCatalogo2', vistaCatalogo); } catch (e) { /* nada */ } renderizarFiltrosCategorias(); renderizarCatalogo(); }
     function htmlSelectorVista() {
       const v = vistaCatalogoActual(), b = (k, ic, t) => `<button type="button" title="${t}" aria-label="${t}" onclick="cambiarVistaCatalogo('${k}')" class="w-9 h-8 rounded-lg flex items-center justify-center text-base font-black leading-none ${v === k ? 'bg-emerald-500 text-black' : 'text-gray-300 hover:text-white'}">${ic}</button>`;
       return `<span class="shrink-0 inline-flex gap-0.5 p-0.5 rounded-xl bg-gray-900 border border-gray-700">${b('detallada', '☰', 'Vista detallada')}${b('compacta', '▦', 'Vista en 2 columnas')}</span>`;
@@ -26829,6 +26858,7 @@
     function htmlCuadroCompacto(p) {
       const st = Number(p.stock) || 0, pr = promoDeProducto(p), sp = sobrePedidoTarjeta(p), ag = st <= 0 && !sp;
       return `<button type="button" onclick="abrirCompraRapida('${escaparJsAttr(p.docId)}')" class="cuadro-compacto ${pr.cinta ? 'con-cinta' : ''} relative text-left rounded-2xl p-2.5 pt-3 overflow-hidden transition active:scale-[.97] ${ag ? 'opacity-55' : ''}" style="background:linear-gradient(160deg,rgba(15,42,44,.9),rgba(11,17,32,.95));border:1px solid ${pr.cinta ? 'rgba(249,115,22,.75)' : 'rgba(19,78,74,.9)'};${pr.cinta ? 'box-shadow:0 8px 22px -12px rgba(249,115,22,.7)' : ''}">
+        ${htmlCorazon(p, pr.cinta ? 26 : 6)}
         ${pr.cinta ? `<span class="absolute top-0 left-0 right-0 text-center text-[10px] font-black py-1 tracking-wide text-white" style="background:${pr.cinta[1]}">${pr.cinta[0]}${pr.tipo === 'flash' && pr.hasta ? ` <span data-cuenta-atras="${escaparHtml(pr.hasta)}">${textoCuentaAtras(pr.hasta)}</span>` : ''}</span>` : ''}
         <div class="${pr.cinta ? 'mt-5' : 'mt-1'} mb-1.5">${htmlLogoProducto(p, 52)}</div>
         <p class="text-[12px] font-bold text-white text-center leading-tight line-clamp-2 min-h-[30px]">${escaparHtml(p.nombre || '')}</p>
