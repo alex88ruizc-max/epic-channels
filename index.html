@@ -10987,7 +10987,7 @@
         if (!agotado) {
           if (stockDisponible >= minRequerido) { cantidadInicial = minRequerido; limiteInferior = minRequerido; }
           else { cantidadInicial = stockDisponible; limiteInferior = stockDisponible;
-            try { if (maxTarjeta(prod, stockDisponible) >= minRequerido) cantidadInicial = minRequerido; } catch (eMx) { /* queda en el stock */ } }   // ⏳ u122: hay menos que el mínimo pero acepta encargo → mínimo = lo que hay + el resto por encargo
+            try { if (maxTarjeta(prod, stockDisponible) >= minRequerido) { cantidadInicial = minRequerido; limiteInferior = minRequerido; } } catch (eMx) { /* queda en el stock */ } }   // 🔒 u130: con encargo nunca baja del mínimo   // ⏳ u122: hay menos que el mínimo pero acepta encargo → mínimo = lo que hay + el resto por encargo
         }
 
         const totalInicial = cantidadInicial * precioUnitarioConCombo(prod, cantidadInicial);
@@ -19411,7 +19411,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-11-12u129';
+    const VERSION_PAGINA = '2026-11-12u130';
     // 🧑 u58 (Alex, 10-nov): la AGENTE DE D-ID (Luisa con cara, conversa en vivo). Piloto: SOLO en epicstreaming.vip (nunca en las tiendas de tus clientes),
     //    SOLO a visitantes sin sesión, a la IZQUIERDA (a la derecha está tu botón de WhatsApp). Se carga después de la página para no hacerla lenta.
     (function () { try {
@@ -23899,7 +23899,10 @@
     // ==================== COMPRA MIXTA: LO QUE HAY SE ENTREGA YA, EL RESTO POR ENCARGO ====================
     var encargoTrasCompra = null;
     function encargoMixtoActivo(prod) { try { return !!prod && puedePedirEncargo(prod) && datosEncargo(prod).activo; } catch (e) { return false; } }
-    function maxTarjeta(prod, stock) { return (stock > 0 && encargoMixtoActivo(prod)) ? stock + datosEncargo(prod).max : stock; }
+    function maxTarjeta(prod, stock) { if (!(stock > 0 && encargoMixtoActivo(prod))) return stock;   // 🔒 u130: con encargo, el tope siempre deja llegar al mínimo (antes: stock 2 + encargo 2 = 4 < mínimo 5)
+      const v = stock + datosEncargo(prod).max, mn = Math.max(1, parseInt(prod.minCompra, 10) || 1), cabe = stock + Math.max(0, maxSobrePedidoCliente() - sobrePedidoMioEnFila(prod.docId));
+      return v >= mn ? v : Math.min(mn, cabe); }
+    function minTarjeta(prod, stock) { const mn = Math.max(1, parseInt(prod.minCompra, 10) || 1), mx = maxTarjeta(prod, stock); return mx >= mn ? mn : Math.max(1, mx); }   // 🔒 u130: el mínimo real (menos solo si no hay encargo y quedan pocas)
     // Con encargo activo la caja siempre está: lo disponible se entrega ya y lo que falte (hasta tu máximo) queda por encargo
     function encargoUtil(prod, stock) { return stock > 0 && encargoMixtoActivo(prod); }
     // La caja "¿Lo necesitas en cantidad?" solo se muestra cuando queda poco stock (con mucho stock no tiene sentido)
@@ -23955,12 +23958,12 @@
         document.body.appendChild(m);
       }
       const st = Number(p.stock) || 0, minC = Math.max(1, parseInt(p.minCompra, 10) || 1), m2 = marcaDeProducto(p);
-      const maxC = maxTarjeta(p, st), ini = Math.min(Math.max(minC, parseInt(cantidadInicial, 10) || 1), Math.max(maxC, 1));
+      const maxC = maxTarjeta(p, st), minE = minTarjeta(p, st), ini = Math.min(Math.max(minE, parseInt(cantidadInicial, 10) || 1), Math.max(maxC, 1));   // 🔒 u130
       m.innerHTML = `<div class="w-full max-w-sm rounded-3xl bg-gray-900 border border-gray-700 p-4 shadow-2xl max-h-[85vh] overflow-y-auto" style="animation:credEntrar .25s ease-out;margin-bottom:max(0px, env(safe-area-inset-bottom))">
         <div class="flex items-start justify-between gap-2"><div class="min-w-0"><p class="text-[10px] font-black tracking-[0.2em] uppercase" style="color:${m2.color}">${escaparHtml(m2.etiqueta)}</p><p class="text-base font-black text-white leading-snug">${escaparHtml(p.nombre)}</p><p class="text-xs text-gray-400 mt-0.5">${st ? `<span class="${st <= 5 ? 'text-amber-300' : 'text-emerald-300'} font-bold">${veCantidadDe(p) ? st + ' disponibles' : textoStockCliente(st)}</span>` : (sobrePedidoTarjeta(p) ? `<span class="text-sky-300 font-bold">📦 sobre pedido · hasta ${sobrePedidoTarjeta(p).max}</span>` : '<span class="text-amber-300 font-bold">Vuelve pronto</span>')}</p></div><div class="flex items-start gap-2 shrink-0"><div class="text-right leading-none pt-0.5">${promoDeProducto(p).precio < (Number(p.precio) || 0) ? `<p class="text-[11px] text-gray-500 line-through">${precioVista(Number(p.precio) || 0)}</p>` : ''}<p class="text-2xl font-black text-white" style="text-shadow:0 1px 10px rgba(0,0,0,.45)">${precioVista(promoDeProducto(p).precio)}</p><p class="text-[10px] text-gray-400 font-bold mt-1">${textoSecundarioVista(promoDeProducto(p).precio) ? textoSecundarioVista(promoDeProducto(p).precio) + ' · ' : ''}c/u</p></div><button type="button" onclick="cerrarCompraRapida()" class="w-8 h-8 shrink-0 rounded-full bg-gray-800 text-gray-300"><i class="fa-solid fa-xmark"></i></button></div></div>
         ${htmlInfoFicha(p)}
         ${maxC > 0 ? `<div class="flex items-center justify-between gap-3 mt-4"><div><p class="text-[10px] text-gray-400">Total</p><p id="crTotal" class="text-xl font-black text-white">$0</p><p id="crTotalAlt" class="text-[10px] text-gray-400 font-semibold"></p></div>
-          <div class="flex items-center bg-gray-800 border border-gray-700 rounded-xl p-0.5"><button type="button" onclick="crCambiar(-1)" class="w-9 h-9 rounded-lg bg-gray-700/60 text-white font-black">-</button><input id="crCant" type="number" inputmode="numeric" value="${ini}" min="${minC}" max="${maxC}" onfocus="this.select()" oninput="crRecalcular()" onchange="crCambiar(0)" class="w-14 text-center bg-transparent text-white font-bold focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"><button type="button" onclick="crCambiar(1)" class="w-9 h-9 rounded-lg bg-gray-700/60 text-white font-black">+</button></div></div>
+          <div class="flex items-center bg-gray-800 border border-gray-700 rounded-xl p-0.5"><button type="button" onclick="crCambiar(-1)" class="w-9 h-9 rounded-lg bg-gray-700/60 text-white font-black">-</button><input id="crCant" type="number" inputmode="numeric" value="${ini}" min="${minE}" max="${maxC}" onfocus="this.select()" oninput="crRecalcular()" onchange="crCambiar(0)" class="w-14 text-center bg-transparent text-white font-bold focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"><button type="button" onclick="crCambiar(1)" class="w-9 h-9 rounded-lg bg-gray-700/60 text-white font-black">+</button></div></div>
           ${cajaPedidoVisible(p, st) ? `<div class="caja-pedido mt-3"><div class="flex items-center gap-2.5"><span class="ico"><i class="fa-solid fa-box-open text-sm"></i></span><div class="min-w-0 flex-1"><p class="text-[13.5px] font-black text-white leading-tight">¿Lo necesitas en cantidad?</p><p class="text-[11px] text-sky-200">Lo que falte te llega cuando entre stock</p></div></div><div class="flex flex-wrap gap-1.5 mt-2.5">${opcionesPedido(p, st).map(n => `<button type="button" data-crop="${n}" onclick="crElegirPedido({value:'${n}'})" class="op-cuantas">${n}</button>`).join('')}<button type="button" data-crop="otra" onclick="crElegirPedido({value:'otra'})" class="op-cuantas">Otra…</button></div></div>` : ''}
           <p id="crMixto" class="hidden mt-2 text-[11px] text-sky-100 px-2.5 py-1.5 rounded-lg bg-sky-500/10 border border-sky-400/30"></p>
           <button type="button" id="btnCompraRapida" onclick="confirmarCompraRapida()" class="mt-3 w-full py-3 rounded-xl text-black font-black text-sm" style="background:${m2.color}"><i class="fa-solid fa-bolt mr-1"></i>Comprar</button>
@@ -23976,6 +23979,7 @@
       const p = catalogoUnificado.find(x => x.docId === crId), i = document.getElementById('crCant'); if (!p || !i) return;
       let n = parseInt(i.value, 10) || 0; const st = Number(p.stock) || 0;
       if (n > (Number(i.max) || n)) { n = Number(i.max); i.value = String(n); mostrarToast('El máximo para este producto es ' + n); }
+      const minI = Number(i.min) || 1; if (n < minI && document.activeElement !== i) { n = minI; i.value = String(n); }   // 🔒 u130: nunca por debajo del mínimo
       const t = document.getElementById('crTotal'); if (t) t.textContent = precioVista(n * precioPorCantidad(p, n));
       const ta = document.getElementById('crTotalAlt'); if (ta) ta.textContent = textoSecundarioVista(n * precioPorCantidad(p, n));
       const mx = document.getElementById('crMixto'), b = document.getElementById('btnCompraRapida');
@@ -23986,7 +23990,8 @@
     }
     async function confirmarCompraRapida() {
       const id = crId, i = document.getElementById('crCant'); if (!id || !i) return;
-      const n = parseInt(i.value, 10) || 1;
+      let n = parseInt(i.value, 10) || 1; const minI = Number(i.min) || 1;
+      if (n < minI) { i.value = String(minI); crRecalcular(); mostrarToast('La compra mínima es ' + minI + '. Te dejé ' + minI + '.'); return; }   // 🔒 u130
       if (TIENDA_SLUG) { pedidoTiendaWhatsApp(id, n); cerrarCompraRapida(); return; }
       const limpiarCant = asegurarCampoCantidad(id, n);
       if (!limpiarCant) { alert('Este producto no está disponible ahora.'); return; }
