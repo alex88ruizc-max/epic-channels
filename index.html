@@ -4522,6 +4522,7 @@
             <ol class="mt-1.5 space-y-1 list-decimal pl-4"><li><b>Agregar:</b> en el equipo (PC o teléfono que se queda en tu casa) instala <b>Tailscale</b> y entra con tu misma cuenta.</li><li>En ese equipo prende <b>«Run as exit node»</b> (en Android: toca «Exit node» → «Run as exit node»; en Windows: clic derecho en el ícono → Exit node → Run exit node).</li><li>Apruébalo en la consola: el equipo → ⋯ → <i>Edit route settings</i> → <b>Use as exit node</b> → Save.</li><li>En máximo 5 minutos aparece aquí: toca <b>«Usar como casa»</b>.</li><li><b>Quitar:</b> en la consola de Tailscale, el equipo → ⋯ → <b>Remove</b>.</li></ol>
             <p class="mt-1.5">Consola de Tailscale: <span class="select-all text-sky-300">login.tailscale.com/admin/machines</span></p></details></div>
         <div id="vpnParaleloCaja" class="p-3 rounded-xl bg-gray-950/60 border border-gray-800 space-y-2"><div class="flex items-center justify-between gap-2"><p class="text-xs font-black text-white">🏠🏠 Varios Amazon a la vez</p><label class="flex items-center gap-2 text-[11px] text-white font-bold cursor-pointer"><input type="checkbox" id="vpnParalelo" onchange="vpnParaleloGuardar(this)" class="w-4 h-4 accent-emerald-500"> Prendido</label></div><p class="text-[11px] text-gray-400 leading-snug">Un Amazon por cada equipo de tu casa: el principal sale por <b class="text-white">tu casa</b> y el 2.º por el equipo que elijas aquí. Apagado = uno a la vez (como siempre).</p><label class="block text-[11px] text-gray-400">Equipo extra<select id="vpnExtraSel" class="w-full mt-1 bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-sm text-white"></select></label><label class="block text-[11px] text-gray-400">Llave de Tailscale (solo la primera vez · empieza por tskey-auth-)<input id="vpnTsLlave" type="password" autocomplete="off" placeholder="tskey-auth-…" class="w-full mt-1 bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-sm text-white font-mono"></label><button type="button" onclick="vpnExtraGuardar()" class="w-full py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs">Guardar equipo y llave</button><p id="vpnParaleloEstado" class="text-[11px] text-gray-400 leading-snug"></p></div>
+        <div id="vpnTerceroCaja" class="p-3 rounded-xl bg-gray-950/60 border border-gray-800 space-y-2"><p class="text-xs font-black text-white">🔑 Teléfonos nuevos, solos (cliente OAuth de Tailscale)</p><p class="text-[11px] text-gray-400 leading-snug">Pega <b class="text-white">una sola vez</b> el Client ID y el Client secret (Tailscale → Settings → Trust credentials, con «Auth Keys: Write» y tag:robot). El robot los guarda y saca solo la llave de cada teléfono que elijas. <b class="text-white">Nunca se vuelven a mostrar</b> y no se vencen.</p><input id="vpnOauthId" type="text" autocomplete="off" placeholder="Client ID" class="w-full mt-1 bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-sm text-white"><input id="vpnOauthSec" type="password" autocomplete="off" placeholder="Client secret" class="w-full mt-1 bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-sm text-white"><button type="button" onclick="vpnOauthGuardar()" class="w-full py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs">Guardar cliente OAuth</button><p id="vpnOauthEstado" class="text-[11px] text-gray-400 leading-snug"></p><p class="text-xs font-black text-white pt-1">📱 3.º teléfono (opcional)</p><label class="block text-[11px] text-gray-400">Equipo<select id="vpnTerceroSel" onchange="vpnTerceroGuardar()" class="w-full mt-1 bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-sm text-white"></select></label><label class="flex items-center gap-2 text-[12px] text-gray-300 cursor-pointer"><input type="checkbox" id="vpnTercero" onchange="vpnTerceroGuardar()" class="w-4 h-4 accent-emerald-500"> <span><b class="text-white">Usarlo también</b>: 3 Amazon a la vez. Apagado = 2 (como hoy).</span></label><p id="vpnTerceroEstado" class="text-[11px] text-gray-400 leading-snug"></p></div>
         <div class="p-3 rounded-xl bg-gray-950/60 border border-gray-800 space-y-2"><p class="text-xs font-black text-white">1 · Archivos .conf</p>
           <label class="block text-center px-3 py-2 rounded-lg bg-gray-800 border border-gray-700 text-[11px] font-bold text-white cursor-pointer">➕ Subir archivos .conf (varios a la vez)<input type="file" id="vpnArchivos" accept=".conf,text/plain" multiple class="hidden" onchange="vpnSubir(this)"></label>
           <div id="vpnLista" class="space-y-1 text-[11px] text-gray-300">Revisando…</div></div>
@@ -12719,6 +12720,9 @@
           try { await db.collection('inventario').doc(docId).set({ indicacionesEntrega: lectura.indicaciones.slice(0, 1500) }, { merge: true }); mostrarToast('📋 Indicaciones guardadas en el producto'); } catch (ei) { console.warn(ei); }
         }
       }
+      /* u134h · «Hotmail»: solo @hotmail.com y @outlook.com */
+      { const nomHm = String(((catalogoUnificado || []).find(p => p.docId === docId) || {}).nombre || ''); const hm = soloHotmailOutlook_(nomHm, lineas);
+        if (hm.fuera.length) { avisoSoloHotmailOutlook_(nomHm, hm.fuera.length); if (!hm.ok.length) return; lineas = hm.ok; } }
       // Repetidas: dentro de la carga, ya en stock o ya vendidas
       try {
         const rev = await revisarRepetidasCuentas(lineas);
@@ -14383,6 +14387,17 @@
       detenerPagosProveedor();
     }
 
+    /* u134h · productos con «Hotmail» en el nombre: solo entran @hotmail.com y @outlook.com. Devuelve { ok: [líneas], fuera: [líneas] }. Los demás productos: todo en ok. */
+    function soloHotmailOutlook_(nombreProducto, lineas) {
+      const L = Array.isArray(lineas) ? lineas : [];
+      if (!/hotmail/i.test(String(nombreProducto || ''))) return { ok: L.slice(), fuera: [] };
+      const ok = [], fuera = [];
+      L.forEach(x => { const e = String(correoDeCuenta(x) || '').trim(); (/^[^@\s]+@(hotmail|outlook)\.com$/i.test(e) ? ok : fuera).push(x); });
+      return { ok, fuera };
+    }
+    function avisoSoloHotmailOutlook_(nombreProducto, nFuera) {
+      mostrarToast('En «' + nombreProducto + '» solo entran @hotmail.com y @outlook.com: ' + nFuera + (nFuera === 1 ? ' cuenta de otro dominio no se subió' : ' cuentas de otro dominio no se subieron') + '. Súbelas en «Amazon Free (en mi dominio)».', 7000);
+    }
     function parsearCuentasProveedor(texto) {
       // Solo líneas con correo (el texto que acompaña, como indicaciones, se ignora). 3 datos: correo:clave del correo:clave de la plataforma
       const vistos = new Set(), lista = [];
@@ -14476,10 +14491,12 @@
       if (!esProveedorSesion() || !currentUser) return;
       const prodId = (document.getElementById('provProducto') || {}).value || '';
       if (!prodId || !(userPermisosSubirStock || []).includes(prodId)) { alert('Elige un producto habilitado para ti.'); return; }
-      const cuentas = parsearCuentasProveedor((document.getElementById('provCuentas') || {}).value);
+      let cuentas = parsearCuentasProveedor((document.getElementById('provCuentas') || {}).value);
       if (!cuentas.length) { alert('Escribe al menos una cuenta.'); return; }
       if (cuentas.length > 500) { alert('Máximo 500 cuentas por envío. Divide el lote.'); return; }
       const nombreProd = nombreProductoProv(prodId);
+      /* u134h · «Hotmail»: solo @hotmail.com y @outlook.com */
+      { const hm = soloHotmailOutlook_(nombreProd, cuentas); if (hm.fuera.length) { avisoSoloHotmailOutlook_(nombreProd, hm.fuera.length); if (!hm.ok.length) return; cuentas = hm.ok; } }
       if (!await confirmarModal(`¿Enviar ${cuentas.length} ${cuentas.length === 1 ? 'cuenta' : 'cuentas'} de ${nombreProd} para aprobación?`, { textoAceptar: 'Sí, enviar' })) return;
       const btn = document.getElementById('btnEnviarLote');
       if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Enviando...'; }
@@ -14861,7 +14878,11 @@
         if (!isFinite(precio) || precio < 0) { alert('El precio de venta no es válido.'); return; }
       }
       // Repetidas: dentro del lote, ya en stock o ya vendidas. No entran ni se pagan.
-      const revision = await revisarRepetidasCuentas((l.cuentas || []).map(String));
+      /* u134h · «Hotmail»: lo de otro dominio no se aprueba (se queda fuera del lote) */
+      const nomLoteHm = String(l.productoNombre || nombreProductoProv(l.productoId) || '');
+      const hmLote = soloHotmailOutlook_(nomLoteHm, (l.cuentas || []).map(String));
+      if (hmLote.fuera.length) { avisoSoloHotmailOutlook_(nomLoteHm, hmLote.fuera.length); if (!hmLote.ok.length) return false; }
+      const revision = await revisarRepetidasCuentas(hmLote.ok);
       const nOk = revision.unicas.length, nRep = revision.repetidas.length, enviadas = (l.cuentas || []).length;
       const monto = costo * nOk;
       if (!nOk && auto) {
@@ -19415,7 +19436,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-11-12u133';
+    const VERSION_PAGINA = '2026-11-12u134';
     // 🧑 u58 (Alex, 10-nov): la AGENTE DE D-ID (Luisa con cara, conversa en vivo). Piloto: SOLO en epicstreaming.vip (nunca en las tiendas de tus clientes),
     //    SOLO a visitantes sin sesión, a la IZQUIERDA (a la derecha está tu botón de WhatsApp). Se carga después de la página para no hacerla lenta.
     (function () { try {
@@ -20808,10 +20829,12 @@
     }
     async function subirCuentasPedido(id) {
       const p = misPedidos.find(x => x.id === id); if (!p) return;
-      const cuentas = parsearCuentasProveedor((document.getElementById('pedCuentas_' + id) || {}).value);
+      let cuentas = parsearCuentasProveedor((document.getElementById('pedCuentas_' + id) || {}).value);
       const enRev = (proveedorLotes || []).filter(l => l.pedidoId === id && l.estado === 'pendiente').reduce((t, l) => t + (l.cantidad || 0), 0);
       const falta = Math.max(0, (p.cantidad || 0) - (p.entregadas || 0) - enRev);
       if (!cuentas.length) { alert('Escribe al menos una cuenta.'); return; }
+      /* u134h · «Hotmail»: solo @hotmail.com y @outlook.com */
+      { const hm = soloHotmailOutlook_(p.productoNombre, cuentas); if (hm.fuera.length) { avisoSoloHotmailOutlook_(p.productoNombre, hm.fuera.length); if (!hm.ok.length) return; cuentas = hm.ok; } }
       if (cuentas.length > falta) { alert(`Este pedido solo necesita ${falta} cuentas más. Quita ${cuentas.length - falta}.`); return; }
       if (!await confirmarModal(`¿Enviar ${cuentas.length} cuentas de ${p.productoNombre} para este pedido?`, { textoAceptar: 'Sí, enviar' })) return;
       try {
@@ -32552,7 +32575,24 @@ const LUISA_COM_DEF_PAG = { activo: true, stockHora: '08:00', mediodiaHora: '12:
       else if (XE.listo || (XE.ok && !XE.error)) t = '✅ 2.º Tailscale listo' + (XE.equipo ? ' (sale por ' + escaparHtml(XE.equipo) + ')' : '') + '. ' + (vpnCasa.par ? 'Varios Amazon a la vez: PRENDIDO.' : 'Prende el interruptor para usarlo.');
       else if (XE.error) t = '⚠️ ' + escaparHtml(XE.error) + ' Crea otra llave y guárdala de nuevo.';
       else t = ex.ip ? 'Falta la llave de Tailscale para iniciar el 2.º equipo.' : 'Elige el equipo extra y pega la llave de Tailscale.';
+      if (E) E.innerHTML = t; try { vpnTerceroPintar(); } catch (eT) { /* nada */ } }
+    // 🔑📱 u134 · cliente OAuth de Tailscale (solo se escribe; nunca se lee) y 3.º teléfono (casilla)
+    function vpnTerceroPintar() { const S = document.getElementById('vpnTerceroSel'), ch = document.getElementById('vpnTercero'), E = document.getElementById('vpnTerceroEstado'), O = document.getElementById('vpnOauthEstado'); if (!S || !ch) return;
+      const nrm = (x) => String(x || '').toLowerCase().replace(/\s+/g, '-'), pri = nrm((vpnCasa.sel && vpnCasa.sel.nombre) || 'a51-de-alex'), ex = vpnCasa.extra || {}, te = vpnCasa.tercera || {};
+      const L = ((vpnCasa.E && vpnCasa.E.lista) || []).filter((x) => x.salida && !vpnEsDelVps(x) && nrm(x.nombre) !== pri && x.ip !== ex.ip && !/^epic-robots/i.test(String(x.nombre || '')));
+      S.innerHTML = '<option value="">— ninguno —</option>' + L.map((x) => '<option value="' + escaparHtml(x.ip) + '" data-n="' + escaparHtml(x.nombre) + '"' + (te.ip === x.ip ? ' selected' : '') + '>' + escaparHtml(x.nombre) + (x.online ? '' : ' (apagado)') + '</option>').join('');
+      ch.checked = vpnCasa.tercero === true; if (O) O.innerHTML = vpnCasa.oauthEl ? '✅ Cliente OAuth guardado (' + escaparHtml(new Date(vpnCasa.oauthEl).toLocaleString('es-CO')) + '). El robot lo usa solo.' : 'Sin cliente OAuth: los teléfonos nuevos necesitan uno para entrar solos.';
+      const X2 = vpnCasa.XE2 || {}; let t = '';
+      if (!te.ip) t = 'Sin 3.º teléfono: trabajan 2 a la vez.'; else if (X2.listo || (X2.ok && !X2.error)) t = '✅ 3.º Tailscale listo (sale por ' + escaparHtml(X2.equipo || te.nombre || '') + '). ' + (vpnCasa.tercero ? '3 a la vez: PRENDIDO.' : 'Marca la casilla para usarlo.');
+      else if (X2.error) t = '⚠️ ' + escaparHtml(X2.error); else t = vpnCasa.tercero ? (vpnCasa.oauthEl ? '⏳ El robot inicia su Tailscale en los próximos 5 minutos.' : 'Falta el cliente OAuth para iniciarlo.') : 'Elegido ' + escaparHtml(te.nombre || '') + '. Marca la casilla para usarlo.';
       if (E) E.innerHTML = t; }
+    async function vpnOauthGuardar() { const I = document.getElementById('vpnOauthId'), Sx = document.getElementById('vpnOauthSec'), id = I ? String(I.value || '').trim() : '', sec = Sx ? String(Sx.value || '').trim() : '';
+      if (id.length < 6 || sec.length < 10 || /\s/.test(id + sec)) { alert('Pega el Client ID y el Client secret completos (Tailscale → Settings → Trust credentials).'); return false; }
+      const el = new Date().toISOString(); try { await db.collection('secretos').doc('robots_tsoauth').set({ id: id, secreto: sec, el: el }); await vpnRef().set({ tsOauthEl: el }, { merge: true }); if (I) I.value = ''; if (Sx) Sx.value = ''; vpnCasa.oauthEl = el; mostrarToast('🔑 Cliente OAuth guardado. El robot lo usa solo; no se vuelve a mostrar.'); } catch (e) { mostrarToast('❌ No se pudo guardar: ' + e.message); return false; } vpnTerceroPintar(); return true; }
+    async function vpnTerceroGuardar() { const S = document.getElementById('vpnTerceroSel'), ch = document.getElementById('vpnTercero'), ip = S ? S.value : '', op = S && S.selectedOptions[0], on = !!(ch && ch.checked);
+      if (on && !ip) { alert('Elige primero el 3.º teléfono (debe salir «puede ser salida»).'); if (ch) ch.checked = false; return false; }
+      const d = { casaTercera: ip ? { nombre: String((op && op.getAttribute('data-n')) || ''), ip: ip } : null, tercero: on && !!ip };
+      try { await vpnRef().set(d, { merge: true }); vpnCasa.tercera = d.casaTercera; vpnCasa.tercero = d.tercero; mostrarToast(d.tercero ? '📱 3 a la vez: PRENDIDO con ' + d.casaTercera.nombre + '.' : (ip ? '📱 3.º teléfono elegido (apagado: siguen 2).' : '📱 Sin 3.º teléfono: siguen 2.')); } catch (e) { mostrarToast('❌ No se pudo guardar: ' + e.message); return false; } vpnTerceroPintar(); return true; }
     async function vpnParaleloGuardar(ch) { const on = !!(ch && ch.checked); try { await vpnRef().set({ amazonParalelo: on }, { merge: true }); vpnCasa.par = on; mostrarToast(on ? '🏠🏠 Varios Amazon a la vez: PRENDIDO (solo funciona con el 2.º equipo listo).' : '🏠🏠 Apagado: un Amazon a la vez.'); } catch (e) { mostrarToast('❌ No se pudo cambiar: ' + e.message); if (ch) ch.checked = !on; } vpnParaleloPintar(); }
     async function vpnExtraGuardar() { const S = document.getElementById('vpnExtraSel'), I = document.getElementById('vpnTsLlave'), ip = S ? S.value : '', op = S && S.selectedOptions[0], ll = I ? String(I.value || '').trim() : '';
       if (!ip) { alert('Elige el equipo extra (debe salir «puede ser salida»).'); return; } if (ll && !/^tskey-auth-[A-Za-z0-9_-]{10,200}$/.test(ll)) { alert('La llave debe empezar por tskey-auth- (cópiala completa de Tailscale → Settings → Keys).'); return; }
@@ -32578,6 +32618,7 @@ const LUISA_COM_DEF_PAG = { activo: true, stockHora: '08:00', mediodiaHora: '12:
       try { const d = await vpnRef().get(), V = (d.exists && d.data()) || {}, C = V.confs || {}, S0 = V.salidas || {};
         try { pvpCasillasCargar(V); } catch (eC) { /* nada */ }   // 👑⏳ u131
         vpnCasa.par = V.amazonParalelo === true; vpnCasa.extra = (Array.isArray(V.casasExtra) ? V.casasExtra : [])[0] || null; vpnCasa.hayLlave = !!V.tsLlave;   // 🏠🏠 u132
+        vpnCasa.tercera = V.casaTercera || null; vpnCasa.tercero = V.tercero === true; vpnCasa.oauthEl = String(V.tsOauthEl || '');   /* 🔑📱 u134 */
         vpnCasa.on = !(V.casa && V.casa.activo === false); vpnCasa.plats = V.casaPlats || {}; vpnCasa.sel = V.casa || {}; vpnCasa.orden = Array.isArray(V.orden) && V.orden.length === 2 ? V.orden.map(String) : ['casa', 'robot']; vpnCasa.primero = vpnCasa.on && vpnCasa.orden[0] === 'casa';
         const ids = Object.keys(C).sort((a, b) => String(C[a].nombre || a).localeCompare(String(C[b].nombre || b)));
         vpnD = { C: C, salidas: S0, llave: VPN_LLAVE_OK.test(String(V.llave || '').trim()), ids: ids, vieja: V.salida || '' };
@@ -32593,7 +32634,7 @@ const LUISA_COM_DEF_PAG = { activo: true, stockHora: '08:00', mediodiaHora: '12:
           else if (mia && S.ok === false) { el.className = gris + 'text-red-300'; el.textContent = '❌ La última vez esta salida no conectó. Revisa la llave o el archivo, o elige «Sin VPN».'; }
           else if (mia && S.ok) { el.className = gris + 'text-emerald-300'; el.textContent = '🟢 La última vez salió por esta VPN' + (S.pais ? ' (país: ' + S.pais + ')' : '') + '.'; }
           else { el.className = gris + 'text-gray-400'; el.textContent = 'Elegida: ' + nombre + '. Se usa desde la próxima orden; si no conecta, la orden falla y te lo dice (no salta a otra).'; } });
-        try { const r2 = await db.collection('secretos').doc('robots').get(); vpnCasa.S = r2.exists ? r2.data().salida || null : null; vpnCasa.E = r2.exists ? r2.data().casaEquipos || null : null; vpnCasa.XE = r2.exists ? r2.data().casaExtraEstado || null : null; vpnCasa.ver = r2.exists ? String(r2.data().version || '') : ''; } catch (e) { /* nada */ }
+        try { const r2 = await db.collection('secretos').doc('robots').get(); vpnCasa.S = r2.exists ? r2.data().salida || null : null; vpnCasa.E = r2.exists ? r2.data().casaEquipos || null : null; vpnCasa.XE = r2.exists ? r2.data().casaExtraEstado || null : null; vpnCasa.XE2 = r2.exists ? r2.data().casaTerceraEstado || null : null; vpnCasa.ver = r2.exists ? String(r2.data().version || '') : ''; } catch (e) { /* nada */ }
         if (vpnCasa.on) document.querySelectorAll('[data-vpn-estado]').forEach((el) => { if (!vpnCasaUsa(vpnPlatDe(el))) return; el.textContent = (vpnCasa.primero ? '🏠 Primero sale por tu casa; si no responde: ' : '1.ª esta salida; si falla, tu casa 🏠 · ') + el.textContent; });   // 🏠 u116 · u117: solo los robots que usan la casa
         document.querySelectorAll('input.vpnCasaPlat').forEach((ch) => { const p = vpnCasaPlatDe(ch); ch.checked = vpnCasaUsa(p); ch.disabled = !vpnCasa.on; const lb = ch.closest('label'); if (lb) lb.style.opacity = vpnCasa.on ? '1' : '.5'; });
         vpnCasaPintar(); vpnEquiposPintar(); vpnPintarVentana(); navCargar();   // 🧭 u121
@@ -32627,7 +32668,7 @@ const LUISA_COM_DEF_PAG = { activo: true, stockHora: '08:00', mediodiaHora: '12:
     //    esto es el candado propio: en una tienda (window.EPIC_TIENDA) nada de los robots se muestra ni se abre, aunque se llegue por otro camino.
     (function robotsSoloEnEpic() { if (!window.EPIC_TIENDA) return;
       try { const st = document.createElement('style'); st.textContent = '#modalRobotNetflix, #modalVpn, #adminSecPrimevideo, #tabBtnPrimevideo, select.navSel, select.vpnSel, [data-nav-estado], [data-vpn-estado], [onclick*="abrirRobotNetflix"], [onclick*="CrearEnVps"], [onclick*="pvpEnVps"], [onclick*="vpnAbrir"], [onclick*="ejecutarRobotAmazon"] { display: none !important; }'; (document.head || document.documentElement).appendChild(st); } catch (e) { /* nada */ }
-      const tapar = () => { ['abrirRobotNetflix', 'vpnAbrir', 'pvcCrearEnVps', 'pvpEnVps', 'ejecutarRobotAmazon', 'navElegir', 'vpnElegir', 'navCargar', 'pvpSubir', 'pvpPrimeGuardar', 'pvpSoloGuardar', 'vpnParaleloGuardar', 'vpnExtraGuardar', 'pvpDescansoGuardar'].forEach((f) => { try { if (typeof window[f] === 'function' && !window[f].__soloEpic) { const n = function () { return false; }; n.__soloEpic = true; window[f] = n; } } catch (e) { /* nada */ } }); };
+      const tapar = () => { ['abrirRobotNetflix', 'vpnAbrir', 'pvcCrearEnVps', 'pvpEnVps', 'ejecutarRobotAmazon', 'navElegir', 'vpnElegir', 'navCargar', 'pvpSubir', 'pvpPrimeGuardar', 'pvpSoloGuardar', 'vpnParaleloGuardar', 'vpnExtraGuardar', 'pvpDescansoGuardar', 'vpnOauthGuardar', 'vpnTerceroGuardar'].forEach((f) => { try { if (typeof window[f] === 'function' && !window[f].__soloEpic) { const n = function () { return false; }; n.__soloEpic = true; window[f] = n; } } catch (e) { /* nada */ } }); };
       tapar(); document.addEventListener('DOMContentLoaded', tapar); window.addEventListener('load', tapar); })();
     function vpnPintarVentana() { const L = document.getElementById('vpnLista'), E = document.getElementById('vpnLlaveEstado'), A = document.getElementById('vpnAviso'); if (!L) return;
       const C = vpnD.C || {}, ids = vpnD.ids || [], enUso = (id) => Object.keys(VPN_ROBOT).filter((p) => String((vpnD.salidas || {})[p] || (p === 'amazon' ? vpnD.vieja : '') || 'sin') === id);
