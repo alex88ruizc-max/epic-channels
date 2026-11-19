@@ -14091,6 +14091,11 @@
     // =================== 📬 LISTA DIARIA DE CORREOS (proveedor) ===================
     let ldFiltro = 'todos', ldCargando = false;
     function ldHoy() { return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Bogota', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date()); }
+    /* 📬 u137: true si en Colombia ya pasó la hora de salida de la lista (r.salidaMin de Mary 4.37; si no viene, se lee r.salidaTxt «8:00 a. m.»; sin dato, 6:00 a. m.) */
+    function ldYaSalio(r) { try { let m = (r && typeof r.salidaMin === 'number') ? r.salidaMin : null;
+        if (m === null) { const x = /(\d{1,2}):(\d{2})\s*([ap])/i.exec(String((r && r.salidaTxt) || '')); m = x ? ((parseInt(x[1], 10) % 12) + (/p/i.test(x[3]) ? 12 : 0)) * 60 + parseInt(x[2], 10) : 6 * 60; }
+        const p = new Intl.DateTimeFormat('en-GB', { timeZone: 'America/Bogota', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).formatToParts(new Date());
+        const h = parseInt(p.find(q => q.type === 'hour').value, 10), mi = parseInt(p.find(q => q.type === 'minute').value, 10); return h * 60 + mi >= m; } catch (e) { return true; } }
     async function cargarListaDiaria(forzar) {
       if (!currentUser || ldCargando) return; ldCargando = true;   // 🔒 una sola petición a la vez (si no, el servidor podría crear la lista dos veces)
       const k = 'provDiaria_' + currentUser.uid;
@@ -14098,7 +14103,8 @@
         for (let w = 0; w < 40 && !obtenerBackendUrl('prov_correos'); w++) await new Promise(res => setTimeout(res, 500));   // ⏳ espera los ajustes (hasta 20 s)
         let c = null; try { c = JSON.parse(localStorage.getItem(k) || 'null'); } catch (e) { c = null; }
         // 📌 lista "quieta": la de HOY se carga una sola vez y queda en el celular; solo se vuelve a pedir con Refrescar / Pedir 10 más o al cambiar de día
-        if (c && c.r && !forzar) { pintarListaDiaria(c.r); if (c.r.dia === ldHoy() || (c.r.hoy === ldHoy() && Date.now() - c.t < 30 * 60000)) return; }
+        if (c && c.r && !forzar) { pintarListaDiaria(c.r); const hoyL = ldHoy(), deAyerYaSalio = String(c.r.dia || '') < hoyL && ldYaSalio(c.r);   /* 📬 u137: si la guardada es de un día anterior y ya pasó la hora de salida, se pide YA (antes esperaba hasta 30 min) */
+          if (c.r.dia === hoyL || (!deAyerYaSalio && c.r.hoy === hoyL && Date.now() - c.t < 30 * 60000)) return; }
         const r = await llamarBackend('prov_correos', { op: 'diaria', enUso: ldUsoPendientes() }); if (r && r.ok) { ldUsoEnviados(); try { localStorage.setItem(k, JSON.stringify({ t: Date.now(), r: r })); } catch (e) { /* nada */ } pintarListaDiaria(r); } else ldError((r && r.error) || 'el servidor no respondió');
       } catch (e) { ldError(e.message || 'sin conexión'); } finally { ldCargando = false; }
     }
@@ -14127,9 +14133,17 @@
     }
     async function ldRefrescar(btn) {
       if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i>Revisando…'; }
-      try { await ldUsoEnviar(); const r = await llamarBackend('prov_correos', { op: 'refrescar' }); if (!r || !r.ok) throw new Error((r && r.error) || 'No se pudo.'); mostrarToast('✅ Revisado: si llegó el Prime, ya aparece'); await cargarListaDiaria(true); }
-      catch (e) { mostrarToast(e.message); }
+      /* 🔄 u137: pase lo que pase con la revisión del Prime (incluida la espera de 6 min), la lista se vuelve a pedir al servidor */
+      let aviso = '';
+      try { try { await ldUsoEnviar(); } catch (e) { /* sigue */ }
+        const r = await llamarBackend('prov_correos', { op: 'refrescar' });
+        if (r && r.ok) aviso = '✅ Revisado: si llegó el Prime, ya aparece';
+        else if (r && r.espera) aviso = String(r.error || '⏳ El Prime se acaba de revisar.') + ' Tu lista sí se recargó.';
+        else aviso = '⚠️ ' + String((r && r.error) || 'No se pudo revisar el Prime.') + ' Tu lista sí se recargó.';
+      } catch (e) { aviso = '⚠️ ' + String((e && e.message) || 'Sin conexión') + ' · igual recargo tu lista.'; }
+      try { for (let w = 0; w < 40 && ldCargando; w++) await new Promise(res => setTimeout(res, 500)); await cargarListaDiaria(true); } catch (e) { /* nada: cargarListaDiaria muestra su propio error */ }
       finally { if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-rotate mr-1"></i>Refrescar Prime'; } }
+      if (aviso) mostrarToast(aviso);
     }
     function ldCopiar(btn, c) {
       try { navigator.clipboard.writeText(c); } catch (e) { /* nada */ }
@@ -19436,7 +19450,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-11-12u136';
+    const VERSION_PAGINA = '2026-11-12u137';
     // 🧑 u58 (Alex, 10-nov): la AGENTE DE D-ID (Luisa con cara, conversa en vivo). Piloto: SOLO en epicstreaming.vip (nunca en las tiendas de tus clientes),
     //    SOLO a visitantes sin sesión, a la IZQUIERDA (a la derecha está tu botón de WhatsApp). Se carga después de la página para no hacerla lenta.
     (function () { try {
