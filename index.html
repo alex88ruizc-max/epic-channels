@@ -19436,7 +19436,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-11-12u134';
+    const VERSION_PAGINA = '2026-11-12u135';
     // 🧑 u58 (Alex, 10-nov): la AGENTE DE D-ID (Luisa con cara, conversa en vivo). Piloto: SOLO en epicstreaming.vip (nunca en las tiendas de tus clientes),
     //    SOLO a visitantes sin sesión, a la IZQUIERDA (a la derecha está tu botón de WhatsApp). Se carga después de la página para no hacerla lenta.
     (function () { try {
@@ -26832,17 +26832,17 @@
 
     // ==================== VISTA DE LA TIENDA: DETALLADA O 2 COLUMNAS ====================
     // El administrador elige la predeterminada (Vista de tienda); cada cliente puede cambiarla y se le recuerda.
-    var vistaCatalogo = (() => { try { return localStorage.getItem('vistaCatalogo2') || ''; } catch (e) { return ''; } })();
+    var vistaCatalogo = (() => { try { const n = localStorage.getItem('vistaCatalogo3'); if (n === 'compacta' || n === 'detallada') return n; return localStorage.getItem('vistaCatalogo2') === 'compacta' ? 'compacta' : ''; /* 🔲 u135: una 'detallada' vieja se ignora */ } catch (e) { return ''; } })();
     function esPantallaPc() { return window.innerWidth >= 768; }
     function vistaPredeterminadaDispositivo() {
       const c = (typeof cfgVistaTienda !== 'undefined' && cfgVistaTienda) || {};
-      return esPantallaPc() ? (c.vistaPc || 'detallada') : (c.vistaCel || c.vistaPredeterminada || 'compacta');
+      return 'compacta';   /* 🔲 u135: todo cliente sin elección propia ve la cuadrícula (la vista de Alex), en celular y en computador */
     }
     function vistaCatalogoActual() { const v = vistaCatalogo || vistaPredeterminadaDispositivo(); return v === 'compacta' ? 'compacta' : 'detallada'; }
     // Si el cliente no eligió una vista, al pasar de celular a PC (o al revés) se usa la predeterminada de esa pantalla
     var __pcAntes = esPantallaPc();
     window.addEventListener('resize', () => { const pc = esPantallaPc(); if (pc !== __pcAntes) { __pcAntes = pc; if (!vistaCatalogo) { try { renderizarFiltrosCategorias(); renderizarCatalogo(); } catch (e) { /* nada */ } } } });
-    function cambiarVistaCatalogo(v) { vistaCatalogo = v === 'compacta' ? 'compacta' : 'detallada'; try { localStorage.setItem('vistaCatalogo2', vistaCatalogo); } catch (e) { /* nada */ } renderizarFiltrosCategorias(); renderizarCatalogo(); }
+    function cambiarVistaCatalogo(v) { vistaCatalogo = v === 'compacta' ? 'compacta' : 'detallada'; try { localStorage.setItem('vistaCatalogo3', vistaCatalogo); } catch (e) { /* nada */ } renderizarFiltrosCategorias(); renderizarCatalogo(); }
     function htmlSelectorVista() {
       const v = vistaCatalogoActual(), b = (k, ic, t) => `<button type="button" title="${t}" aria-label="${t}" onclick="cambiarVistaCatalogo('${k}')" class="w-9 h-8 rounded-lg flex items-center justify-center text-base font-black leading-none ${v === k ? 'bg-emerald-500 text-black' : 'text-gray-300 hover:text-white'}">${ic}</button>`;
       return `<span class="shrink-0 inline-flex gap-0.5 p-0.5 rounded-xl bg-gray-900 border border-gray-700">${b('detallada', '☰', 'Vista detallada')}${b('compacta', '▦', 'Vista en 2 columnas')}</span>`;
