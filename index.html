@@ -19436,7 +19436,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-11-12u135';
+    const VERSION_PAGINA = '2026-11-12u136';
     // 🧑 u58 (Alex, 10-nov): la AGENTE DE D-ID (Luisa con cara, conversa en vivo). Piloto: SOLO en epicstreaming.vip (nunca en las tiendas de tus clientes),
     //    SOLO a visitantes sin sesión, a la IZQUIERDA (a la derecha está tu botón de WhatsApp). Se carga después de la página para no hacerla lenta.
     (function () { try {
@@ -27489,7 +27489,7 @@
       } catch (e) { alert('No se pudo guardar: ' + (e.message || e)); }
     }
 async function pintarPanelWa() {
-      const c = document.getElementById('waPanel'); if (!c || !esAdminSesionActual()) return;
+      const c = document.getElementById('waPanel'); if (!c || !esAdminSesionActual()) return; setTimeout(() => { try { pintarEstadoClaude(); } catch (e) { /* nada */ } }, 600);   /* 🧠 u136 */
       try { const d = await db.collection('configuracion').doc('whatsapp').get(); cfgWaPanel = d.exists ? (d.data() || {}) : {}; } catch (e) { cfgWaPanel = {}; }
       const k = cfgWaPanel, on = v => v !== false;
       const tg = (id, t, sub, v) => `<label class="flex items-center justify-between gap-3 py-2 cursor-pointer"><span class="min-w-0"><span class="block text-[12px] font-bold text-white">${t}</span><span class="block text-[10px] text-gray-400">${sub}</span></span><input type="checkbox" id="${id}" ${on(v) ? 'checked' : ''} class="accent-emerald-500 w-5 h-5 shrink-0"></label>`;
@@ -27654,6 +27654,12 @@ async function pintarPanelWa() {
             <div class="flex gap-1.5 mt-2"><input type="text" id="waIaPrueba" maxlength="200" placeholder="Frase de prueba: quiubo, qué hay pa hoy" class="${inp}"><button type="button" onclick="probarIaWa()" class="px-3 rounded-lg bg-gray-800 border border-violet-500/50 text-violet-200 font-bold text-[11px] shrink-0">🧪 Probar IA</button></div>
             <p id="waIaResultado" class="text-[11px] mt-1.5"></p>
           </div>
+          ${!window.EPIC_TIENDA ? `<div id="waClaudeCaja" class="mt-2 p-2.5 rounded-xl bg-amber-500/5 border border-amber-500/30">
+            <span class="block text-[12px] font-black text-white">🧠 Claude (Haiku)</span><span class="block text-[10px] text-gray-400">Solo lee las <b class="text-gray-300">fotos de los reportes</b> y hace la <b class="text-gray-300">sombra</b> (revisa las respuestas de Mary). Las respuestas a clientes y los audios siguen igual. Al llegar al tope del día vuelve sola a Gemini hasta mañana.</span>
+            <div class="flex gap-1.5 mt-2"><input type="password" id="waClaudeKey" autocomplete="off" placeholder="Llave de Claude · sk-ant-…" class="${inp}"><button type="button" onclick="guardarClaveClaude()" class="px-3 rounded-lg bg-amber-600 text-white font-bold text-[11px]">Guardar</button></div>
+            <div class="flex gap-1.5 mt-1.5 items-end"><label class="flex-1 text-[10px] text-gray-400">Tope diario (USD)<input type="number" id="waClaudeTope" min="0" max="100" step="0.1" placeholder="1" class="${inp} mt-1"></label><button type="button" onclick="guardarTopeClaude()" class="px-3 py-2 rounded-lg bg-amber-600 text-white font-bold text-[11px]">Guardar tope</button></div>
+            <p id="waClaudeEstado" class="text-[10px] text-gray-500 mt-1">La llave nunca se muestra. Para quitarla, deja la casilla vacía y toca Guardar.</p>
+          </div>` : ''}
           <div id="waNoEnt" class="space-y-1.5 mt-2 max-h-80 overflow-y-auto"><p class="text-[11px] text-gray-500">Toca "Cargar".</p></div>
           <p class="text-[11px] font-bold text-gray-300 mt-3">Frases que ya aprendió</p><div id="waAprendidas" class="mt-1"></div>
         </div>
@@ -28641,6 +28647,20 @@ async function pintarPanelWa() {
         if (est) { est.textContent = acc ? '✓ Guardado (el token queda oculto). Toca 🧪 Probar IA: si Gemini falla, verás que responde Cloudflare.' : '✓ Cloudflare quitado.'; est.className = 'text-[10px] text-emerald-400 mt-1'; } }
       catch (e) { if (est) { est.textContent = '❌ ' + e.message; est.className = 'text-[10px] text-red-400 mt-1'; } }
     }
+    /* 🧠 u136: Claude (Haiku) para Mary 4.31. La llave va a secretos/ajustes.claudeKey (como Gemini) y la página nunca la lee; el espejo sin llave está en configuracion/claude_estado. Solo en la tienda de Alex. */
+    async function pintarEstadoClaude() { if (window.EPIC_TIENDA) return; const est = document.getElementById('waClaudeEstado'), top = document.getElementById('waClaudeTope'); if (!est) { pintarEstadoClaude.n = (pintarEstadoClaude.n || 0) + 1; if (pintarEstadoClaude.n < 20) setTimeout(pintarEstadoClaude, 500); return; } pintarEstadoClaude.n = 0;
+      try { const d = await db.collection('configuracion').doc('claude_estado').get(), x = d.exists ? (d.data() || {}) : {}; if (top && x.tope !== undefined && x.tope !== null) top.value = x.tope;
+        est.textContent = (x.llave ? 'Llave guardada ✓ (oculta).' : 'Sin llave: fotos y sombra siguen con Gemini.') + ' Tope de hoy: US$' + (x.tope !== undefined && x.tope !== null ? x.tope : 1) + '.'; est.className = 'text-[10px] mt-1 ' + (x.llave ? 'text-emerald-400' : 'text-gray-500'); } catch (e) { /* sin espejo: queda el texto de ayuda */ } }
+    async function guardarClaveClaude() { if (window.EPIC_TIENDA) return; const i = document.getElementById('waClaudeKey'), v = String((i || {}).value || '').trim(), est = document.getElementById('waClaudeEstado');
+      if (v && !/^sk-ant-[0-9A-Za-z_-]{20,}$/.test(v)) { alert('Esa llave no parece de Claude: debe empezar por "sk-ant-" (cópiala completa desde console.anthropic.com → API Keys).'); return; }
+      try { await db.collection('secretos').doc('ajustes').set({ claudeKey: v }, { merge: true }); if (i) i.value = '';
+        await db.collection('configuracion').doc('claude_estado').set({ llave: !!v, el: new Date().toISOString() }, { merge: true });
+        if (est) { est.textContent = v ? 'Llave guardada ✓ (oculta). Mary la usa desde ya para fotos de reportes y la sombra.' : 'Llave quitada: fotos y sombra vuelven a Gemini.'; est.className = 'text-[10px] mt-1 text-emerald-400'; }
+        mostrarToast(v ? '🧠 Llave de Claude guardada' : 'Llave de Claude quitada'); } catch (e) { alert(e.message); } }
+    async function guardarTopeClaude() { if (window.EPIC_TIENDA) return; const i = document.getElementById('waClaudeTope'), raw = String((i || {}).value || '').trim().replace(',', '.'), est = document.getElementById('waClaudeEstado');
+      const t = raw === '' ? 1 : Number(raw); if (!isFinite(t) || t < 0 || t > 100) { alert('El tope va en dólares por día, entre 0 y 100 (por ejemplo 1 o 0.5).'); return; }
+      try { await db.collection('secretos').doc('ajustes').set({ claudeTopeUsd: t }, { merge: true }); await db.collection('configuracion').doc('claude_estado').set({ tope: t, el: new Date().toISOString() }, { merge: true });
+        if (i) i.value = t; if (est) { est.textContent = 'Tope guardado ✓: US$' + t + ' por día. Al llegar, Claude descansa hasta mañana.'; est.className = 'text-[10px] mt-1 text-emerald-400'; } mostrarToast('🧠 Tope de Claude: US$' + t + ' al día'); } catch (e) { alert(e.message); } }
     async function guardarClaveGemini(cual) {
       const idK = cual === 2 ? 'waGeminiKey2' : 'waGeminiKey', campoK = cual === 2 ? 'geminiKey2' : 'geminiKey';
       const v = String((document.getElementById(idK) || {}).value || '').trim(), est = document.getElementById('waGeminiEstado');
