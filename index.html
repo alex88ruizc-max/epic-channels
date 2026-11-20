@@ -1702,6 +1702,12 @@
             <div class="rounded-xl bg-gray-900/70 border border-emerald-500/20 p-2.5 text-center"><span class="text-[10px] text-gray-400 block">Resueltos</span><span id="tkStatResueltos" class="text-lg font-black text-emerald-300">0</span></div>
             <div class="rounded-xl bg-gray-900/70 border border-gray-700 p-2.5 text-center"><span class="text-[10px] text-gray-400 block">Sin proveedor</span><span id="tkStatSinProv" class="text-lg font-black text-white">0</span></div>
           </div>
+          <div id="garAutoCaja" class="hidden mt-3 rounded-xl border border-emerald-500/30 bg-gray-900/70 p-3 space-y-2.5">   <!-- 🛡 u140 -->
+            <p class="text-xs font-black text-white flex items-center gap-2 flex-wrap"><i class="fa-solid fa-robot text-emerald-400"></i> Cambio automático de garantía <span class="text-[10px] font-bold text-emerald-300">solo Prime Video / Amazon</span></p>
+            <label class="flex items-start gap-2.5 text-xs text-gray-200 cursor-pointer"><input type="checkbox" id="chkGarAutoTg" onchange="guardarGarAuto('garAutoTg', this.checked, this)" class="mt-0.5 w-4 h-4 shrink-0 accent-emerald-500"><span><b class="text-white">Cambio automático revisado por Telegram</b><span class="block text-[11px] text-gray-400 leading-snug mt-0.5">Si la revisión no encuentra compras, te llega a Telegram con ✅ Aprobar / ❌ Rechazar. Aprobar le entrega al cliente una cuenta del mismo producto; rechazar no le dice nada (la cambias tú).</span></span></label>
+            <label class="flex items-start gap-2.5 text-xs text-gray-200 cursor-pointer"><input type="checkbox" id="chkGarAutoSolo" onchange="guardarGarAuto('garAutoSolo', this.checked, this)" class="mt-0.5 w-4 h-4 shrink-0 accent-emerald-500"><span><b class="text-white">Cambio automático sin Telegram</b><span class="block text-[11px] text-gray-400 leading-snug mt-0.5">Para cuando la prueba sea 100 % exitosa: si no hubo compras, le cambia la cuenta solo. Si no hay stock, te avisa por Telegram y el reporte queda abierto.</span></span></label>
+            <p class="text-[10px] text-gray-500 leading-snug">Si la cuenta tuvo una compra confirmada, se rechaza como siempre. Con las dos prendidas manda «sin Telegram». Las dos apagadas: todo como antes.</p>
+          </div>
         </div>
         <div id="informeTicketsCaja" class="bg-gray-900 border border-amber-500/30 rounded-2xl overflow-hidden">
           <button type="button" onclick="alternarInformeTickets()" class="w-full text-left p-4 flex items-center gap-3">
@@ -8125,12 +8131,25 @@
       set('chkMetViendo', c.mostrarViendo !== false); set('chkMet7', c.mostrarVisitas7 !== false); set('chkMetProd', c.mostrarVistasProducto === true); set('inpMetMin', parseInt(c.vistasMinimo, 10) || 300); } catch (e) { /* nada */ } }
     async function guardarMetricasCfg() { const g = id => document.getElementById(id); const d = { mostrarViendo: !!(g('chkMetViendo') || {}).checked, mostrarVisitas7: !!(g('chkMet7') || {}).checked, mostrarVistasProducto: !!(g('chkMetProd') || {}).checked, vistasMinimo: Math.max(0, parseInt((g('inpMetMin') || {}).value, 10) || 0) };
       try { await db.collection('configuracion').doc('ajustes').set(d, { merge: true }); Object.assign(ajustesGeneralesConfig, d); metPintarViendo(); mostrarToast('👀 Contadores guardados'); } catch (e) { alert('No se pudo guardar: ' + e.message); } }
+    function pintarGarAuto() {   /* 🛡 u140: solo el dueño ve y cambia el cambio automático de garantía */
+      try { const caja = document.getElementById('garAutoCaja'); if (!caja) return; const dueno = typeof esAdminSesionActual === 'function' && esAdminSesionActual(); caja.classList.toggle('hidden', !dueno); if (!dueno) return;
+        const c = ajustesGeneralesConfig || {}, a = document.getElementById('chkGarAutoTg'), b = document.getElementById('chkGarAutoSolo');
+        if (a && document.activeElement !== a) a.checked = c.garAutoTg === true; if (b && document.activeElement !== b) b.checked = c.garAutoSolo === true; } catch (e) { /* nada */ }
+    }
+    async function guardarGarAuto(campo, on, el) {
+      if (!esAdminSesionActual() || ['garAutoTg', 'garAutoSolo'].indexOf(campo) === -1) { if (el) el.checked = !on; return; }
+      const d = {}; d[campo] = !!on; d.garAutoEl = new Date().toISOString();
+      try { await db.collection('configuracion').doc('ajustes').set(d, { merge: true }); Object.assign(ajustesGeneralesConfig, d);
+        mostrarToast((campo === 'garAutoTg' ? '🛡 Cambio automático revisado por Telegram ' : '🤖 Cambio automático sin Telegram ') + (on ? 'prendido' : 'apagado')); }
+      catch (e) { if (el) el.checked = !on; alert('No se pudo guardar: ' + e.message); }
+    }
     async function guardarMostrarStock(on) {
       if (!esAdminSesionActual()) return;
       try { await db.collection('configuracion').doc('ajustes').set({ mostrarStockClientes: !!on }, { merge: true }); ajustesGeneralesConfig.mostrarStockClientes = !!on; mostrarToast(on ? '📦 Los clientes ven la cantidad de stock' : '📦 Los clientes ven "Stock disponible", sin número'); try { renderizarCatalogo(); pintarCintaStock(); } catch (e) { /* nada */ } }
       catch (e) { alert('No se pudo guardar: ' + e.message); }
     }
     function pintarCajaMant() {
+      try { pintarGarAuto(); } catch (e) { /* nada */ }   /* 🛡 u140 */
       try { const c = document.getElementById('chkMostrarStock'); if (c) c.checked = mostrarStockClientes(); } catch (e) { /* nada */ } try { cargarMetricasCfg(); } catch (e) { /* nada */ } const d = datosMant(), m = (ajustesGeneralesConfig && ajustesGeneralesConfig.mantenimiento) || {}; const a = document.getElementById('mantActivo'); if (!a || document.activeElement && /^mant/.test(document.activeElement.id || '')) return; a.checked = d.activo; document.getElementById('mantWa').value = d.wa; if (m.mensaje) document.getElementById('mantMsg').value = m.mensaje; }
     async function guardarMantenimiento() {
       if (!esAdminSesionActual()) return;
@@ -15919,6 +15938,7 @@
       const setT = (idE, v) => { const e = document.getElementById(idE); if (e) e.textContent = v; };
       setT('tkStatAbiertos', abiertos); setT('tkStatResueltos', ticketsCuentas.length - abiertos - porAprobar);
       setT('tkStatSinProv', ticketsCuentas.filter(t => t.estado !== 'resuelto' && !t.proveedorNombre).length);
+      try { pintarGarAuto(); } catch (e) { /* nada */ }   /* 🛡 u140 */
       try { renderizarPerfilAdmin(); } catch (e) { /* el perfil del administrador se dibuja aparte */ }
       const cont = document.getElementById('listaTickets');
       if (!cont) return;
@@ -15945,7 +15965,8 @@
               <p class="text-[11px] text-gray-300">${escaparHtml(t.motivo || '')}${t.detalle ? ' · ' + escaparHtml(t.detalle) : ''}</p>
               <p class="text-[10px] text-gray-400">${t.origen === 'cliente' ? '<span class="px-1.5 py-0.5 rounded bg-sky-500/20 text-sky-300 text-[9px] font-black mr-1">CLIENTE</span>' : ''}${escaparHtml(t.productoNombre || 'Producto no identificado')} · ${asignado} · ${fecha}${t.clienteEmail ? ' · cliente ' + escaparHtml(t.clienteEmail) : ''}</p>
               ${t.usoCompra ? `<div class="mt-1 p-2 rounded-lg bg-amber-500/10 border border-amber-400/50"><p class="text-[11px] font-black text-amber-200">⚠️ Posible mal uso: compra con la cuenta antes de caerse</p><p class="text-[10px] text-amber-100/90 break-all">"${escaparHtml(t.usoCompraAsunto || '')}"${t.usoCompraEl ? ' · ' + new Date(t.usoCompraEl).toLocaleString('es-CO', { day: '2-digit', month: '2-digit', hour: 'numeric', minute: '2-digit' }) : ''}</p><p class="text-[10px] text-gray-400 mt-0.5">Si se hizo una compra o suscripción con la cuenta, no entra por garantía (lo decides tú).</p></div>` : ''}
-              ${(t.proveedorUid && t.estado !== 'resuelto') ? `<p class="text-[10px] mt-0.5 font-bold ${t.provGarantiaVigente ? 'text-emerald-300' : 'text-amber-300'}">${t.provGarantiaVigente ? '🟢 Garantía del proveedor vigente (48 h): se la puedes cobrar a él' : '🟠 Pasaron las 48 h del proveedor: la asumes tú'}</p>` : ''}
+              ${t.cuentaDeAlex ? '<p class="tkRobot text-[10px] mt-0.5 font-bold text-sky-300">🤖 Cuenta del robot: la asumes tú (no se le cobra al proveedor)</p>' : ''}
+              ${(t.proveedorUid && !t.cuentaDeAlex && t.estado !== 'resuelto') ? `<p class="text-[10px] mt-0.5 font-bold ${t.provGarantiaVigente ? 'text-emerald-300' : 'text-amber-300'}">${t.provGarantiaVigente ? '🟢 Garantía del proveedor vigente (48 h): se la puedes cobrar a él' : '🟠 Pasaron las 48 h del proveedor: la asumes tú'}</p>` : ''}
               ${textoGarantiaTicket(t)}
               ${t.fotoPorWhatsapp && t.estado !== 'resuelto' ? '<p class="text-[10px] font-bold text-sky-300 mt-0.5"><i class="fa-brands fa-whatsapp mr-1"></i>El cliente envió una foto por WhatsApp: revísala en el chat</p>' : ''}
               ${(() => { const L = dobleVentaMapa && dobleVentaMapa.get(String(t.cuenta || '').trim().toLowerCase()); if (!L) return ''; const f = x => x.fecha ? new Date(x.fecha).toLocaleDateString('es-CO', { day: '2-digit', month: '2-digit' }) : ''; return `<p class="text-[10px] mt-1 px-2 py-1 rounded-lg bg-rose-500/15 border border-rose-500/40 text-rose-200"><b>⚠️ Vendida ${L.length} veces:</b> ${L.map((x, k) => (k + 1) + 'ª ' + f(x) + ' · ' + escaparHtml(x.cliente)).join(' · ')}. Repónsela a quien la compró de último.</p>`; })()}
@@ -16306,7 +16327,8 @@
         if (!admin && (resultado === 'arreglada' || resultado === 'reemplazo')) msg += ' El cliente la ve en su ticket; la compra la actualiza el administrador.';
         // Regla: si el proveedor no lo arregló ni lo reemplazó y lo resuelves TÚ (arreglada o reemplazo), se le descuenta.
         // Si lo resuelve el propio proveedor (o un moderador), no se descuenta: tú lo apruebas o lo rechazas.
-        if (admin && t.proveedorUid && !enNombre && (resultado === 'arreglada' || resultado === 'reemplazo')) { registrarDescuentoReemplazo(t); msg += ' Se le descontó al proveedor el costo de la cuenta.'; }
+        if (admin && t.proveedorUid && !t.cuentaDeAlex && !enNombre && (resultado === 'arreglada' || resultado === 'reemplazo')) { registrarDescuentoReemplazo(t); msg += ' Se le descontó al proveedor el costo de la cuenta.'; }
+        else if (admin && t.cuentaDeAlex && (resultado === 'arreglada' || resultado === 'reemplazo')) msg += ' 🤖 Cuenta del robot: la asumes tú (no se le cobra al proveedor).';   /* 🤖 u140 */
         mostrarToast(msg);
         if (t.clienteUid) avisarClienteTicket(t.clienteUid, 'Tu ticket fue resuelto', `Revisa la respuesta sobre ${t.cuenta} en "Mis reportes", dentro de Mis Cuentas.`);
         if (t.clienteUid) llamarBackend('ticket_aviso_wa', { ticketId: id }).catch(() => {});   // 📲 aviso por el número de avisos, al instante
@@ -16447,7 +16469,7 @@
       try {
         unsubProvTickets = db.collection('tickets_cuentas').where('proveedorUid', '==', currentUser.uid).onSnapshot(snap => {
           proveedorTickets = [];
-          snap.forEach(d => proveedorTickets.push(Object.assign({ id: d.id }, d.data())));
+          snap.forEach(d => { const x = d.data() || {}; if (x.cuentaDeAlex === true) return; proveedorTickets.push(Object.assign({ id: d.id }, x)); });   /* 🤖 u140: la cuenta del robot la atiende la tienda */
           proveedorTickets.sort((a, b) => String(b.creadoEl).localeCompare(String(a.creadoEl)));
           renderizarTicketsProveedor();
         }, err => console.warn('Mis reportes no disponibles:', err));
@@ -17131,11 +17153,11 @@
           <p class="text-xs text-gray-300">${v.ticketId ? 'Entregada como <b>reposición de garantía</b>' : (v.compraId ? (v.compraExiste ? 'Vendida en una compra' : 'Vendida en una compra que <b class="text-red-300">ya no existe</b> (anulada o borrada)') : 'Vendida en un combo')}${v.fecha ? ' · ' + escaparHtml(f(v.fecha)) : ''}${v.cliente ? ' · a <b>' + escaparHtml(v.cliente) + '</b>' : ''}</p></div>`; }
       else h += `<div class="p-4 bg-gray-900 border border-gray-800 rounded-2xl"><p class="text-[11px] font-black uppercase tracking-wide text-emerald-400"><i class="fa-solid fa-shield-halved mr-1.5"></i>Registro de venta: nunca se ha vendido</p></div>`;
       if (rg.creada || rg.subida) { const sb = rg.subida;
-        h += `<div class="p-4 bg-gray-900 border border-gray-800 rounded-2xl text-xs text-gray-300 space-y-1">${rg.creada ? `<p>🏭 <b>Creada por:</b> ${escaparHtml(rg.creada.por)}${rg.creada.el ? ' · ' + escaparHtml(f(rg.creada.el)) : ''}</p>` : ''}${sb ? `<p>📤 <b>Subida por:</b> ${escaparHtml(sb.por || '—')}${sb.el ? ' · ' + escaparHtml(f(sb.el)) : ''}${sb.estado ? ' · ' + escaparHtml(sb.estado) : ''}${sb.costo ? ' · costo ' + escaparHtml(formatoCOP(sb.costo)) : ''}</p>` : ''}${rg.descontada ? `<p class="text-emerald-300">💸 Ya se le descontó al proveedor: ${escaparHtml(formatoCOP(rg.descontada.monto))} · ${escaparHtml(f(rg.descontada.fecha))}</p>` : ''}</div>`; }
+        h += `<div class="p-4 bg-gray-900 border border-gray-800 rounded-2xl text-xs text-gray-300 space-y-1">${rg.creada ? `<p>🏭 <b>Creada por:</b> ${escaparHtml(rg.creada.por)}${rg.creada.el ? ' · ' + escaparHtml(f(rg.creada.el)) : ''}</p>` : ''}${sb ? `<p>📤 <b>Subida por:</b> ${escaparHtml(sb.por || '—')}${sb.el ? ' · ' + escaparHtml(f(sb.el)) : ''}${sb.estado ? ' · ' + escaparHtml(sb.estado) : ''}${sb.costo ? ' · costo ' + escaparHtml(formatoCOP(sb.costo)) : ''}</p>` : ''}${rg.robot ? '<p class="bcRobot text-sky-300">🤖 Esta cuenta la tomó el robot: la asumes tú (no se le cobra al proveedor).</p>' : ''}${rg.descontada ? `<p class="text-emerald-300">💸 Ya se le descontó al proveedor: ${escaparHtml(formatoCOP(rg.descontada.monto))} · ${escaparHtml(f(rg.descontada.fecha))}</p>` : ''}</div>`; }
       if (rg.retirada) { const r = rg.retirada, prods = (catalogoUnificado || []).filter(p => !p.esCombo);
         const sel = prods.map(p => `<option value="${escaparHtml(p.docId)}" ${String(p.nombre || '') === r.producto ? 'selected' : ''}>${escaparHtml(p.nombre || p.docId)}</option>`).join('');
         h += `<div class="p-4 bg-gray-900 border border-red-500/30 rounded-2xl"><p class="text-[11px] font-black uppercase tracking-wide text-red-300 mb-2"><i class="fa-solid fa-box-archive mr-1.5"></i>Retirada del stock</p>
-          <p class="text-xs text-gray-300">De <b>${escaparHtml(r.producto)}</b> · ${escaparHtml(f(r.retiradaEl))}<br>Motivo: ${escaparHtml(r.motivo)}</p>${r.caida ? '<p class="mt-1 text-[11px] text-red-300">🔴 Cuenta caída: no se puede devolver al stock.</p>' : ''}${esAdminSesionActual() && rg.subida && rg.subida.uid && !rg.descontada ? (() => { const hs = rg.subida.aprobadaEl || rg.subida.el ? Math.round((Date.parse(r.retiradaEl || new Date().toISOString()) - Date.parse(rg.subida.aprobadaEl || rg.subida.el)) / 3600000) : null; return `<div class="mt-3 p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/30"><p class="text-[11px] text-amber-100">${hs !== null ? 'Duró <b>' + hs + ' h</b> desde que se subió' + (hs <= 48 ? ' (dentro de las 48 h)' : '') + '.' : ''}</p><button type="button" onclick="bcDescontar('${escaparJsAttr(q)}')" class="mt-2 w-full px-3 py-1.5 rounded-lg text-[11px] font-black bg-amber-500 hover:bg-amber-400 text-black">💸 Descontar al proveedor ${escaparHtml(formatoCOP(rg.subida.costo || 0))}</button></div>`; })() : ''}
+          <p class="text-xs text-gray-300">De <b>${escaparHtml(r.producto)}</b> · ${escaparHtml(f(r.retiradaEl))}<br>Motivo: ${escaparHtml(r.motivo)}</p>${r.caida ? '<p class="mt-1 text-[11px] text-red-300">🔴 Cuenta caída: no se puede devolver al stock.</p>' : ''}${esAdminSesionActual() && rg.subida && rg.subida.uid && !rg.descontada && !rg.robot ? (() => { const hs = rg.subida.aprobadaEl || rg.subida.el ? Math.round((Date.parse(r.retiradaEl || new Date().toISOString()) - Date.parse(rg.subida.aprobadaEl || rg.subida.el)) / 3600000) : null; return `<div class="mt-3 p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/30"><p class="text-[11px] text-amber-100">${hs !== null ? 'Duró <b>' + hs + ' h</b> desde que se subió' + (hs <= 48 ? ' (dentro de las 48 h)' : '') + '.' : ''}</p><button type="button" onclick="bcDescontar('${escaparJsAttr(q)}')" class="mt-2 w-full px-3 py-1.5 rounded-lg text-[11px] font-black bg-amber-500 hover:bg-amber-400 text-black">💸 Descontar al proveedor ${escaparHtml(formatoCOP(rg.subida.costo || 0))}</button></div>`; })() : ''}
           ${esAdminSesionActual() && !r.caida ? `<div class="flex gap-2 mt-3"><select id="bcDevProd" class="flex-1 min-w-0 bg-gray-800 border border-gray-700 rounded-lg px-2 py-1.5 text-xs text-white">${sel}</select><button type="button" onclick="bcDevolverStock('${escaparJsAttr(q)}')" class="px-3 py-1.5 rounded-lg text-[11px] font-black bg-emerald-500 hover:bg-emerald-400 text-black">Devolver al stock</button></div><p class="text-[10px] text-gray-500 mt-1.5">Hazlo solo si estás seguro de que no la tiene ningún cliente.</p>` : ''}</div>`; }
       return h;
     }
@@ -19476,7 +19498,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-11-12u139';
+    const VERSION_PAGINA = '2026-11-12u140';
     // 🧑 u58 (Alex, 10-nov): la AGENTE DE D-ID (Luisa con cara, conversa en vivo). Piloto: SOLO en epicstreaming.vip (nunca en las tiendas de tus clientes),
     //    SOLO a visitantes sin sesión, a la IZQUIERDA (a la derecha está tu botón de WhatsApp). Se carga después de la página para no hacerla lenta.
     (function () { try {
@@ -21156,7 +21178,7 @@
     }
     function descuentosPendientesDe(uid, lista) { return (lista || descuentosProv).filter(d => d.proveedorUid === uid && !d.aplicado && !d.anulado); }
     async function registrarDescuentoReemplazo(t) {
-      if (!esAdminSesionActual() || !t || !t.proveedorUid) return;
+      if (!esAdminSesionActual() || !t || !t.proveedorUid || t.cuentaDeAlex) return;   /* 🤖 u140: cuenta del robot → la asumes tú */
       try {
         const ya = await db.collection('descuentos_proveedor').doc('tk_' + t.id).get();
         if (ya.exists) return;   // ese ticket ya tiene su descuento: no se cobra dos veces
@@ -26528,13 +26550,13 @@
     }
     async function rechazarResolucionTicket(id) {
       const t = ticketsCuentas.find(x => x.id === id); if (!t || !esAdminSesionActual()) return;
-      const costoTxt = t.proveedorUid ? ' y se le descuenta al proveedor el costo de esta cuenta' : '';
+      const costoTxt = (t.proveedorUid && !t.cuentaDeAlex) ? ' y se le descuenta al proveedor el costo de esta cuenta' : '';   /* 🤖 u140 */
       const motivo = await pedirTextoModal(`Rechazar la resolución${t.proveedorNombre ? ' de ' + t.proveedorNombre : ''}: el ticket se reabre${costoTxt}. ¿Motivo? (lo verá el proveedor)`, 'La cuenta sigue sin funcionar.');
       if (motivo === null) return;
       try {
         await db.collection('tickets_cuentas').doc(id).update({ estado: 'abierto', revisado: 'rechazado', motivoRechazo: motivo, revisadoPor: currentUser.email, revisadoEl: new Date().toISOString(), resolucion: '', resueltoPor: '', resueltoEl: '' });
-        if (t.proveedorUid) { await registrarDescuentoReemplazo(t); try { await notificarUsuarioPanel(t.proveedorUid, 'anuncio', '✗ Rechazamos una resolución', `${t.cuenta || 'Una cuenta'}: ${motivo} Se descuenta su costo de lo que te debemos.`); } catch (x) { /* nada */ } }
-        mostrarToast(t.proveedorUid ? 'Rechazada: ticket reabierto y descuento registrado' : 'Rechazada: ticket reabierto');
+        if (t.proveedorUid && !t.cuentaDeAlex) { await registrarDescuentoReemplazo(t); try { await notificarUsuarioPanel(t.proveedorUid, 'anuncio', '✗ Rechazamos una resolución', `${t.cuenta || 'Una cuenta'}: ${motivo} Se descuenta su costo de lo que te debemos.`); } catch (x) { /* nada */ } }
+        mostrarToast((t.proveedorUid && !t.cuentaDeAlex) ? 'Rechazada: ticket reabierto y descuento registrado' : 'Rechazada: ticket reabierto');   /* 🤖 u140 */
       } catch (e) { alert('No se pudo: ' + e.message); }
     }
 
