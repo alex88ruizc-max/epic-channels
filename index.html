@@ -4516,12 +4516,16 @@
       <div class="shrink-0 flex items-center justify-between gap-3 px-4 py-3 border-b border-gray-800"><p class="text-sm font-black text-white">🌍 VPN de los robots</p><button type="button" onclick="vpnCerrar()" class="text-gray-400 hover:text-white text-lg leading-none">✕</button></div>
       <div class="flex-1 overflow-y-auto p-4 space-y-3">
         <p class="text-[11px] text-gray-400 leading-snug">Un solo lugar para todos los robots. Aquí subes los archivos y pones la llave una vez; en cada robot solo eliges por dónde sale (por defecto, <b class="text-white">Sin VPN</b>).</p>
-        <div class="p-3 rounded-xl bg-gray-950/60 border border-emerald-700/50 space-y-2"><p class="text-xs font-black text-white">Orden de salida <span class="text-gray-400 font-bold">(vale para todos los robots)</span></p>
+        <div class="p-3 rounded-xl bg-gray-950/60 border border-emerald-700/50 space-y-2"><p class="text-xs font-black text-white">Por dónde salen los robots de Amazon <span class="text-gray-400 font-bold">(dirección, Prime, vaciar carrito y crear cuenta)</span></p>   <!-- 🎬 u141 -->
+          <p class="text-[11px] text-gray-400 leading-snug">Cada teléfono de tu casa trabaja <b class="text-white">su propia orden</b>, al mismo tiempo que los otros.</p>
           <div id="vpnOrden" class="space-y-1.5 text-[11px]"></div>
           <div class="flex items-center justify-between gap-2"><label class="flex items-center gap-2 text-[11px] text-white font-bold cursor-pointer"><input type="checkbox" id="vpnCasaOn" onchange="vpnCasaPrender(this)" class="w-4 h-4 accent-emerald-500"> 🏠 Usar el internet de mi casa</label>
             <button type="button" onclick="vpnOrdenCambiar()" class="px-2.5 py-1.5 rounded-lg bg-gray-800 border border-gray-700 text-[11px] font-bold text-white">⇅ Cambiar orden</button></div>
           <p id="vpnCasaEstado" class="text-[11px] text-gray-400 leading-snug"></p>
-          <p class="text-[10px] text-gray-500 leading-snug">Regla: antes de cada orden el robot comprueba que de verdad está saliendo por tu casa. Si no (el teléfono apagado, sin wifi o Tailscale desconectado), usa la 2.ª y lo anota. Nunca recorre una lista de salidas.</p></div>
+          <div id="vpnCaeBox" class="p-2.5 rounded-lg bg-gray-900 border border-gray-800 space-y-1.5 text-[11px] leading-snug"></div>   <!-- 🎬 u141: «Si un teléfono se cae» (lo pinta vpnCasaPintar) -->
+          <p class="text-[10px] text-gray-500 leading-snug">Antes de cada orden el robot mira que el teléfono responda y que su IP no sea la del servidor. No mira el país: un teléfono que viaja contigo saldría con IP de ese país.</p></div>
+        <div class="p-3 rounded-xl bg-gray-950/60 border border-gray-800 space-y-1.5"><p class="text-xs font-black text-white">🎬 Netflix y Disney+ <span class="text-gray-400 font-bold">(van aparte)</span></p>   <!-- 🎬 u141 -->
+          <p class="text-[11px] text-gray-400 leading-snug">No usan los teléfonos: salen por el servidor (Sin VPN · Cloudflare, Brasil), siempre con el navegador de siempre. Solo usarían tu casa si marcas «🏠 Salir primero por mi casa» dentro de ese robot.</p></div>
         <div class="p-3 rounded-xl bg-gray-950/60 border border-gray-800 space-y-2"><div class="flex items-center justify-between gap-2"><p class="text-xs font-black text-white">🏠 Equipos de tu casa <span class="text-gray-400 font-bold">(Tailscale)</span></p><button type="button" onclick="vpnCargar()" class="text-[11px] text-gray-400 hover:text-white"><i class="fa-solid fa-rotate"></i></button></div>
           <div id="vpnEquipos" class="space-y-1.5 text-[11px]"><p class="text-gray-500">Revisando…</p></div>
           <details class="text-[11px] text-gray-300"><summary class="cursor-pointer font-bold text-white">➕ Agregar o 🗑 quitar un equipo</summary>
@@ -14310,12 +14314,12 @@
       const cu = document.getElementById('pdCuerpo'); cu.innerHTML = '<p class="text-center text-gray-400 text-sm py-10"><i class="fa-solid fa-spinner fa-spin mr-1"></i> Cargando…</p>';
       let r, errD = ''; try { r = await llamarBackend('dominios_panel', { dias: 0, fresco: !!fresco });   /* 🚨 u139: todo el historial */ } catch (e) { r = null; errD = e.message || String(e); }
       if (!r || !r.ok) { cu.innerHTML = '<p class="text-center text-red-400 text-sm py-10">No se pudo cargar. Toca 🔄.' + ((errD || (r && r.error)) ? '<span class="block text-[11px] text-red-300/80 mt-2">🩺 ' + escaparHtml(String(errD || r.error).slice(0, 300)) + '</span>' : '') + '</p>'; return; }
-      window._pd = r; pintarPanelDominios();
+      { const perAnt = window._pd && window._pd.per; window._pd = r; if (perAnt) r.per = perAnt; } pintarPanelDominios();   /* 🚨 u142: el período elegido sobrevive a 🔄 */
       try { if (!document.getElementById('pgDesde')) pgPintarFiltro(); } catch (e) { /* nada */ }
     }
     function cerrarPanelDominios() { const v = document.getElementById('panelDominios'); if (v) v.classList.add('hidden'); document.body.style.overflow = ''; }
     function pdCopiar(lista) { try { navigator.clipboard.writeText(((window._pd || {})[lista] || []).map(x => x.e).join('\n')); mostrarToast('📋 Lista copiada'); } catch (e) { /* nada */ } }
-    function pdCaidasProv(r, col) {   /* 🚨 u139 (Alex, 19-nov): Activas | Suspendidas | % con la regla de 25 días, robots aparte, todo el historial */
+    function pdCaidasProvTodo(r, col) {   /* 🚨 u139 (Alex, 19-nov): Activas | Suspendidas | % con la regla de 25 días, robots aparte, todo el historial */
       const L = r.caidasProv || [], dz = r.caidaDias || 25, n = r.caidasSinProv || 0, sf = r.caidasSinFecha || 0, pl = (k, s) => k === 1 ? s : s + 's';
       const est = c => c.estado === 'vendida' ? 'vendida' : c.estado === 'stock' ? 'retirada del stock' : 'fuera del stock';
       const fila = p => `<details class="border-t border-gray-800"><summary class="flex items-center gap-1 py-2 cursor-pointer list-none text-xs"><span class="flex-1 min-w-0 leading-tight break-words font-bold" style="color:${p.robot ? '#f5d97a' : '#ffffff'}">${escaparHtml(p.nombre)}</span><span class="w-12 text-right text-gray-200">${p.act}</span><span class="w-[4.25rem] text-right text-red-300 font-bold">${p.susp}</span><span class="w-14 text-right font-black" style="color:${col(p.pct)}">${p.pct}%</span><i class="fa-solid fa-chevron-down text-gray-500 text-[10px] w-3 text-right"></i></summary>
@@ -14325,6 +14329,82 @@
       const nota = `<p class="mt-2 text-[10px] text-gray-500 leading-snug">Suspendida = se cayó antes de ${dz} días desde que se subió · % = suspendidas ÷ (activas + suspendidas) · todo el historial. Las caídas después de ${dz} días ya cumplieron su mes y no cuentan.${n ? ' Sin proveedor (cuenta reciclada): el correo ya se borró o se recicló y no quedó quién la subió.' : ''}${sf ? ' ' + sf + ' ' + pl(sf, 'caída') + ' sin fecha de subida (no se pueden medir).' : ''}</p>`;
       return L.length ? cab + L.map(fila).join('') + sinP + nota : '<p class="text-xs text-gray-500">Sin caídas 🎉</p>' + sinP;
     }
+    /* 🚨 u142 (Alex, 20-nov): caídas por período. Datos de Mary 4.43: fila.ex = «S,C,T;…» (S subida, C suspensión, T=1 tardía; horas base36 desde 2025-01-01Z) y r.sinProvEl (recicladas). */
+    const PD_BASE = Date.UTC(2025, 0, 1), PD_CO = 5 * 3600000, PD_DIA = 86400000, PD_MES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'], PD_DSEM = ['dom', 'lun', 'mar', 'mié', 'jue', 'vie', 'sáb'], PD_MESL = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+    const pdColor = p => p >= 10 ? '#f87171' : p >= 5 ? '#fbbf24' : '#34d399';
+    const pdH = s => { if (!s) return 0; const n = parseInt(s, 36); return isNaN(n) ? 0 : PD_BASE + n * 3600000; };
+    const pdCo = t => new Date(t - PD_CO);   /* leer con getUTC*: fecha de Colombia */
+    function pdIni(m, t) { const d = pdCo(t), y = d.getUTCFullYear(), mo = d.getUTCMonth(), dd = d.getUTCDate();
+      if (m === 'dia') return Date.UTC(y, mo, dd) + PD_CO;
+      if (m === 'sem') return Date.UTC(y, mo, dd - ((d.getUTCDay() + 6) % 7)) + PD_CO;
+      if (m === 'mes') return Date.UTC(y, mo, 1) + PD_CO;
+      return Date.UTC(y, 0, 1) + PD_CO; }
+    function pdSig(m, A) { const d = pdCo(A), y = d.getUTCFullYear(), mo = d.getUTCMonth();
+      if (m === 'dia') return A + PD_DIA; if (m === 'sem') return A + 7 * PD_DIA;
+      if (m === 'mes') return Date.UTC(y, mo + 1, 1) + PD_CO; return Date.UTC(y + 1, 0, 1) + PD_CO; }
+    function pdEx(p) { if (!p._ex) p._ex = String(p.ex || '').split(';').filter(Boolean).map(e => { const a = e.split(','); return [pdH(a[0]), pdH(a[1]), a[2] === '1']; }); return p._ex; }
+    function pdCalc(r, A, B) {
+      const filas = [];
+      (r.caidasProv || []).forEach(p => { let act = 0, susp = 0, tarde = 0;
+        pdEx(p).forEach(([t0, t1, T]) => {
+          if (t1 && t0 && t1 < t0 - PD_DIA) t1 = 0;                       /* caída vieja de antes de esta subida: no es de esta cuenta */
+          const enP = t1 && t1 >= A && t1 < B;
+          if (enP && !T) { susp++; return; }
+          if (enP && T) tarde++;
+          if (!t0) return;
+          if (t0 < B && (!t1 || t1 >= A)) act++; });
+        if (act || susp || tarde) filas.push({ p, act, susp, tarde, pct: act + susp ? Math.round(susp * 1000 / (act + susp)) / 10 : 0, nombre: p.nombre, robot: !!p.robot }); });
+      const ord = f => f.robot ? 2 : /^Sin proveedor/i.test(String(f.nombre || '')) ? 4 : 0;
+      filas.sort((a, b) => (ord(a) - ord(b)) || (b.susp - a.susp) || (b.act - a.act));
+      if (!r._sp) r._sp = String(r.sinProvEl || '').split(';').filter(Boolean).map(pdH);
+      return { A, B, filas, sinP: r._sp.filter(t => t >= A && t < B).length }; }
+    function pdPerDe(r) { if (!r.per) r.per = { modo: 'sem', ref: Date.now() }; return r.per; }
+    function pdEtq(m, A) { const d = pdCo(A); return m === 'mes' ? PD_MES[d.getUTCMonth()] : m === 'anio' ? String(d.getUTCFullYear()) : d.getUTCDate() + '/' + (d.getUTCMonth() + 1); }
+    function pdTitulo(m, A, B) { const d = pdCo(A), f = pdCo(B - 1), ahora = pdIni(m, Date.now()) === A;
+      if (m === 'dia') return { t: PD_DSEM[d.getUTCDay()] + ' ' + d.getUTCDate() + ' ' + PD_MES[d.getUTCMonth()] + (d.getUTCFullYear() !== pdCo(Date.now()).getUTCFullYear() ? ' ' + d.getUTCFullYear() : ''), s: 'toca para elegir la fecha en el calendario' + (ahora ? ' · hoy hasta ahora' : '') };
+      if (m === 'sem') return { t: 'Semana ' + d.getUTCDate() + (d.getUTCMonth() !== f.getUTCMonth() ? ' ' + PD_MES[d.getUTCMonth()] : '') + ' – ' + f.getUTCDate() + ' ' + PD_MES[f.getUTCMonth()], s: 'lunes a domingo' + (ahora ? ' · semana actual' : '') };
+      if (m === 'mes') return { t: PD_MESL[d.getUTCMonth()] + ' ' + d.getUTCFullYear(), s: 'mes calendario' + (ahora ? ' · mes actual' : '') };
+      return { t: String(d.getUTCFullYear()), s: 'año calendario' + (ahora ? ' · año actual' : '') }; }
+    function pdGrafica(r, m, A) {
+      const L = []; let a = A; for (let i = 0; i < 8; i++) { L.unshift(pdCalc(r, a, pdSig(m, a))); a = pdIni(m, a - 1); }
+      const ks = {}; L.forEach(P => P.filas.forEach(f => { if (f.susp) ks[f.nombre] = f.robot; }));
+      const orden = Object.keys(ks).sort((x, y) => (ks[x] - ks[y]) || String(x).localeCompare(String(y)));
+      if (!orden.length) return '<p class="mt-3 pt-3 border-t border-gray-800 text-[11px] text-gray-500">📈 Sin suspensiones en los últimos 8 períodos 🎉</p>';
+      const PAL = ['#60a5fa', '#c084fc', '#2dd4bf', '#f472b6', '#a3e635'], DOR = ['#f5d97a', '#c9a227', '#e8b84a']; let pi = 0, di = 0; const cF = {}; orden.forEach(k => { cF[k] = ks[k] ? DOR[di++ % DOR.length] : PAL[pi++ % PAL.length]; });
+      const top = Math.ceil(Math.max(10, ...L.flatMap(P => P.filas.map(f => f.pct))) / 10) * 10, etq = L.map(P => pdEtq(m, P.A));
+      const filas = orden.map(k => { const v = L.map(P => { const f = P.filas.find(x => x.nombre === k); return f && (f.act + f.susp) ? f : null; }), ult = v[7];
+        const bars = v.map((f, i) => { const h = f ? Math.max(f.pct ? 2 : 0, Math.round(f.pct / top * 34)) : 0;
+          return `<div title="${escaparHtml(etq[i])}" style="flex:1;display:flex;flex-direction:column;justify-content:flex-end;height:100%">${f ? `<i data-pct="${f.pct}" style="display:block;height:${h}px;background:${cF[k]};border-radius:2px 2px 0 0;${i === 7 ? '' : 'opacity:.55'}"></i>${f.pct ? '' : '<i style="display:block;height:1px;background:#4b5563"></i>'}` : '<i style="display:block;height:2px;width:2px;margin:0 auto;background:#374151;border-radius:2px"></i>'}</div>`; }).join('');
+        return `<div class="pdGf" style="display:flex;align-items:flex-end;gap:6px;padding:5px 0"><span style="width:98px;font-size:10.5px;font-weight:700;line-height:1.15;display:flex;gap:5px;align-items:flex-start;padding-bottom:2px;color:${ks[k] ? '#f5d97a' : '#fff'}"><b style="width:7px;height:7px;border-radius:2px;flex:none;margin-top:3px;background:${cF[k]}"></b>${escaparHtml(k)}</span><div style="flex:1;display:flex;gap:3px;align-items:flex-end;height:36px;border-bottom:1px solid #374151">${bars}</div><span style="width:38px;text-align:right;font-size:11px;font-weight:900;color:${ult ? pdColor(ult.pct) : '#6b7280'}">${ult ? ult.pct + '%' : '—'}</span></div>`; }).join('');
+      const eje = `<div style="display:flex;align-items:flex-end;gap:6px"><span style="width:98px"></span><div style="flex:1;display:flex;gap:3px">${etq.map((e, i) => `<div style="flex:1;text-align:center;font-size:8.5px;${i === 7 ? 'color:#f5d97a;font-weight:800' : 'color:#6b7280'}">${escaparHtml(e)}</div>`).join('')}</div><span style="width:38px"></span></div>`;
+      return `<p class="mt-3 pt-3 border-t border-gray-800 text-xs font-black text-gray-200 mb-1">📈 % de caídas · últimos 8 ${{ dia: 'días', sem: 'semanas', mes: 'meses', anio: 'años' }[m]} <span class="text-gray-500 font-normal">(escala 0–${top}%)</span></p>` + filas + eje
+        + '<p class="mt-2 text-[10px] text-gray-500 leading-snug">Barra vacía = 0 % · «·» = esa fila todavía no tenía cuentas. La barra fuerte es el período elegido.</p>'; }
+    function pdCaidasVista(r, col) {
+      const per = pdPerDe(r), m = per.modo, dz = r.caidaDias || 25, pl = (k, s) => k === 1 ? s : s + 's';
+      const MODOS = [['dia', 'Día'], ['sem', 'Semana'], ['mes', 'Mes'], ['anio', 'Año'], ['todo', 'Todo']];
+      const pills = `<div class="flex gap-1 p-[3px] mb-2 rounded-xl" style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08)">${MODOS.map(([k, t]) => `<button type="button" data-pm="${k}" onclick="pdPerModo('${k}')" class="flex-1 text-center text-[11.5px] font-bold py-1.5 rounded-[9px]" style="${k === m ? 'background:#f5d97a;color:#111827' : 'color:#9ca3af'}">${t}</button>`).join('')}</div>`;
+      if (m === 'todo') return pills + pdCaidasProvTodo(r, col);
+      const A = pdIni(m, per.ref), B = pdSig(m, A), P = pdCalc(r, A, B), T = pdTitulo(m, A, B), esAhora = pdIni(m, Date.now()) === A, n = P.sinP;
+      const hoyIso = (() => { const d = pdCo(Date.now()); return d.getUTCFullYear() + '-' + String(d.getUTCMonth() + 1).padStart(2, '0') + '-' + String(d.getUTCDate()).padStart(2, '0'); })();
+      const isoA = (() => { const d = pdCo(A); return d.getUTCFullYear() + '-' + String(d.getUTCMonth() + 1).padStart(2, '0') + '-' + String(d.getUTCDate()).padStart(2, '0'); })();
+      const btn = (d, off, txt) => `<button type="button" ${off ? 'disabled' : `onclick="pdPerMover(${d})"`} data-pf="${d}" class="w-[34px] h-[34px] rounded-[10px] text-xs text-gray-200 shrink-0" style="background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);${off ? 'opacity:.3' : ''}">${txt}</button>`;
+      const nav = `<div class="flex items-center gap-2 mb-2.5">${btn(-1, false, '◀')}<div class="flex-1 text-center relative"><p id="pdPerTit" class="text-[13px] font-extrabold text-white">${m === 'dia' ? '📅 ' : ''}${escaparHtml(T.t)}</p><p class="text-[10px] text-gray-500">${escaparHtml(T.s)}</p>${m === 'dia' ? `<input type="date" id="pdPerFecha" value="${isoA}" max="${hoyIso}" onchange="pdPerFecha(this.value)" aria-label="Elegir fecha" style="position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer">` : ''}</div>${btn(1, esAhora, '▶')}</div>`;
+      const cab = `<div class="flex items-center gap-1 pb-1 text-[10px] text-gray-500"><span class="flex-1">Proveedor</span><span class="w-12 text-right">Activas</span><span class="w-[4.25rem] text-right">Suspendidas</span><span class="w-14 text-right">% caídas</span><span class="w-3"></span></div>`;
+      const est = c => c.estado === 'vendida' ? 'vendida' : c.estado === 'stock' ? 'retirada del stock' : 'fuera del stock';
+      const fila = f => { const cu = (f.p.cuentas || []).filter(c => { const t = Date.parse(c.el); return t >= A && t < B; });
+        return `<details class="border-t border-gray-800"><summary class="flex items-center gap-1 py-2 cursor-pointer list-none text-xs"><span class="flex-1 min-w-0 leading-tight break-words font-bold" style="color:${f.robot ? '#f5d97a' : '#ffffff'}">${escaparHtml(f.nombre)}</span><span class="w-12 text-right text-gray-200">${f.act}</span><span class="w-[4.25rem] text-right text-red-300 font-bold">${f.susp}</span><span class="w-14 text-right font-black" style="color:${col(f.pct)}">${f.pct}%</span><i class="fa-solid fa-chevron-down text-gray-500 text-[10px] w-3 text-right"></i></summary>
+          <div class="pb-2">${cu.map(c => `<div class="pl-2 py-1 text-[11px] border-l-2 border-red-500/40 mb-1"><span class="font-mono text-white">${escaparHtml(c.e)}</span> <span class="text-gray-500">· ${escaparHtml(est(c))} · ${escaparHtml(new Date(c.el).toLocaleDateString('es-CO', { day: '2-digit', month: '2-digit' }))}</span><br><span class="text-gray-400">${escaparHtml(motivoAmazonEs(c.motivo))}</span></div>`).join('') || '<p class="pl-2 text-[11px] text-gray-500">Ninguna suspendida en este período 🎉</p>'}${f.tarde ? `<p class="pl-2 mt-1 text-[10px] text-gray-500">+ ${f.tarde} ${pl(f.tarde, 'caída')} después de ${dz} días (ya cumplieron su mes: no cuentan)</p>` : ''}</div></details>`; };
+      const sinP = n ? `<div class="flex items-center gap-2 py-2 border-t border-gray-800 text-xs"><span class="flex-1 min-w-0 font-bold text-gray-300">♻️ Sin proveedor (cuenta reciclada)</span><span class="text-gray-400 shrink-0">${n} ${pl(n, 'caída')} · fuera del %</span></div>` : '';
+      const nota = `<p class="mt-2 text-[10px] text-gray-500 leading-snug">Suspendida = su fecha de suspensión cae en este período y se cayó antes de ${dz} días desde que se subió · Activas = cuentas que estuvieron activas en algún momento del período (ya subidas antes de que termine y sin caerse antes de que empiece) y no se suspendieron en él · % = suspendidas ÷ (activas + suspendidas). Base: fecha de suspensión, hora Colombia.</p>`;
+      return pills + nav + (P.filas.length ? cab + P.filas.map(fila).join('') : '<p class="text-xs text-gray-500 py-2">Sin cuentas activas ni caídas en este período.</p>') + sinP + nota + pdGrafica(r, m, A); }
+    function pdCaidasProv(r, col) {   /* 🚨 u142: con `ex` de Mary → selector de período; sin `ex` (Mary vieja) → exactamente la tarjeta de u141 */
+      if (!(r.caidasProv || []).some(p => typeof p.ex === 'string')) return pdCaidasProvTodo(r, col);
+      return `<div id="pdCaidasBox">${pdCaidasVista(r, col)}</div>`; }
+    function pdCaidasRepintar() { const r = window._pd, b = document.getElementById('pdCaidasBox'); if (r && b) b.innerHTML = pdCaidasVista(r, pdColor); }
+    function pdPerModo(m) { const r = window._pd; if (!r) return; const per = pdPerDe(r); if (per.modo !== m) { per.modo = m; if (m !== 'todo') per.ref = Math.min(per.ref, Date.now()); } pdCaidasRepintar(); }
+    function pdPerMover(d) { const r = window._pd; if (!r) return; const per = pdPerDe(r), m = per.modo; if (m === 'todo') return; const A = pdIni(m, per.ref);
+      if (d < 0) per.ref = pdIni(m, A - 1); else { const B = pdSig(m, A); if (B > Date.now()) return; per.ref = B; } pdCaidasRepintar(); }
+    function pdPerFecha(v) { const r = window._pd, a = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(v || '')); if (!r || !a) return; const t = Date.UTC(+a[1], +a[2] - 1, +a[3]) + PD_CO; pdPerDe(r).ref = Math.min(t, Date.now()); pdCaidasRepintar(); }
     function pintarPanelDominios() {
       const r = window._pd, cu = document.getElementById('pdCuerpo'); if (!r || !cu) return;
       const sub = document.getElementById('pdSub'); if (sub) sub.textContent = (r.dias ? 'Últimos ' + r.dias + ' días' : 'Todo el historial') + ' · actualizado ' + new Date(r.generadoEl).toLocaleTimeString('es-CO', { hour: 'numeric', minute: '2-digit' });
@@ -19498,7 +19578,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-11-12u140';
+    const VERSION_PAGINA = '2026-11-12u142';
     // 🧑 u58 (Alex, 10-nov): la AGENTE DE D-ID (Luisa con cara, conversa en vivo). Piloto: SOLO en epicstreaming.vip (nunca en las tiendas de tus clientes),
     //    SOLO a visitantes sin sesión, a la IZQUIERDA (a la derecha está tu botón de WhatsApp). Se carga después de la página para no hacerla lenta.
     (function () { try {
@@ -32628,16 +32708,39 @@ const LUISA_COM_DEF_PAG = { activo: true, stockHora: '08:00', mediodiaHora: '12:
       try { await vpnRef().set({ descansoMin: a, descansoMax: b }, { merge: true }); pvpCas.dMin = a; pvpCas.dMax = b; mostrarToast('🎲 Descanso entre órdenes del bot: al azar de ' + a + ' a ' + b + ' minutos por teléfono.'); return true; } catch (e) { mostrarToast('❌ No se pudo guardar: ' + e.message); return false; } }
     async function pvpSoloGuardar(ch) { const on = !!(ch && ch.checked); try { await vpnRef().set({ soloPrincipal: on }, { merge: true }); pvpCas.solo = on; mostrarToast(on ? '⏳ Solo por tu salida principal: si no está en línea, la orden espera.' : '⏳ Apagado: si la 1.ª salida no responde, el robot usa la 2.ª (como antes).'); } catch (e) { mostrarToast('❌ No se pudo cambiar: ' + e.message); if (ch) ch.checked = !on; } }
     function vpnCasaPintar() { const L = document.getElementById('vpnOrden'), E = document.getElementById('vpnCasaEstado'), ch = document.getElementById('vpnCasaOn'); if (!L) return;
-      const casaTxt = '🏠 Internet de mi casa <span class="text-gray-400">(' + escaparHtml(String((vpnCasa.sel && vpnCasa.sel.nombre) || 'a51-de-alex')) + ')</span>', robTxt = '🌍 La salida elegida en cada robot <span class="text-gray-400">(abajo, en cada uno)</span>';
-      const filas = (vpnCasa.on ? vpnCasa.orden : ['robot']).map((k, i) => '<div class="flex items-center gap-2 px-2 py-1.5 rounded-lg bg-gray-800/70 border border-gray-700"><b class="text-emerald-300">' + (i + 1) + '.ª</b><span class="text-white">' + (k === 'casa' ? casaTxt : robTxt) + '</span></div>');
-      L.innerHTML = filas.join('') + (!vpnCasa.on ? '<p class="text-gray-500">La casa está apagada: cada robot sale solo por su salida.</p>' : '');
+      /* 🎬 u141: solo presentación. Lee vpnCasa / pvpCas; no escribe nada en la base. */
+      const nrm = (x) => String(x || '').toLowerCase().replace(/\s+/g, '-'), eq = (vpnCasa.E && vpnCasa.E.lista) || [], solo = (typeof pvpCas !== 'undefined' && pvpCas.solo === true);
+      const hallar = (o) => (o && eq.find((x) => (o.ip && x.ip === o.ip) || (o.nombre && nrm(x.nombre) === nrm(o.nombre)))) || null;
+      const ent = (n, tx, cls) => '<div class="flex items-start gap-2 px-2 py-1.5 rounded-lg ' + (cls || 'bg-gray-800/70 border border-gray-700') + '"><b class="' + (/no se usa/.test(tx) ? 'text-gray-500' : 'text-emerald-300') + '">' + n + '</b><div class="flex-1 min-w-0">' + tx + '</div></div>';
+      const enl = (x) => x ? (x.online ? '<span class="text-emerald-300 font-normal">· 🟢 en línea</span>' : '<span class="text-gray-400 font-normal">· ⚪ apagado</span>') : '<span class="text-gray-400 font-normal">· sin dato</span>';
+      const pri = vpnCasa.sel || {}, nomPri = String(pri.nombre || 'a51-de-alex'), ePri = hallar({ nombre: nomPri, ip: pri.ip });
+      const ex = vpnCasa.extra || null, te = vpnCasa.tercera || null;
+      let filas = [];
+      if (!vpnCasa.on) { filas.push('<p class="text-gray-500">La casa está apagada: cada robot sale solo por su salida.</p>'); }
+      else {
+        filas.push(ent('1.º', '<p class="text-white font-bold">🏠 ' + escaparHtml(nomPri) + ' ' + enl(ePri) + '</p><p class="text-gray-400">Principal. <b class="text-white">También crea las cuentas</b> (crear cuenta solo sale por este).</p>', 'bg-gray-800/70 border border-emerald-600'));
+        if (!vpnCasa.par) filas.push('<p class="text-gray-500">«Varios Amazon a la vez» está apagado: trabaja solo el principal.</p>');
+        else {
+          if (ex && ex.ip) { const eE = hallar(ex); filas.push(ent('2.º', '<p class="text-white font-bold">📱 ' + escaparHtml(String(ex.nombre || ex.ip)) + ' ' + enl(eE) + '</p><p class="text-gray-400">Dirección, Prime y vaciar carrito.</p>' + (eE && eE.online && !eE.salida ? '<p class="text-amber-300">Está en línea, pero no comparte internet («Run as exit node» apagado).</p>' : ''))); }
+          if (te && te.ip) { const eT = hallar(te), usa = vpnCasa.tercero === true;
+            const aviso = (eT && eT.online && !eT.salida) ? '<p class="text-amber-300">Está en línea, pero no comparte internet («Run as exit node» apagado).</p>' : '';
+            if (!usa) filas.push(ent('3.º', '<p class="text-gray-300 font-bold">📱 ' + escaparHtml(String(te.nombre || te.ip)) + ' <span class="text-gray-400 font-normal">· ⚪ no se usa</span></p><p class="text-gray-400">Su casilla «Usarlo también» está apagada.</p>' + aviso, 'bg-gray-800/40 border border-gray-800'));
+            else filas.push(ent('3.º', '<p class="text-white font-bold">📱 ' + escaparHtml(String(te.nombre || te.ip)) + ' ' + enl(eT) + '</p><p class="text-gray-400">Dirección, Prime y vaciar carrito.</p>' + aviso)); } }
+        if (vpnCasa.orden[0] !== 'casa') filas.push('<p class="text-amber-300">El orden hoy es: primero la salida de cada robot; si falla, la casa.</p>'); }
+      L.innerHTML = filas.join('');
       if (ch) ch.checked = vpnCasa.on;
       if (E) { const S = vpnCasa.S, m = /^robots-(\d+)\.(\d+)/.exec(vpnCasa.ver || ''), sirve = !!m && (Number(m[1]) > 1 || Number(m[2]) >= 11);
+        const hora = (v) => { try { const d = new Date(v); return isNaN(d) ? '' : ' · ' + d.toLocaleString('es-CO', { weekday: 'short', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }); } catch (e) { return ''; } };
         if (!vpnCasa.on) { E.className = 'text-[11px] text-gray-400 leading-snug'; E.textContent = ''; }
         else if (!sirve) { E.className = 'text-[11px] text-amber-300 leading-snug'; E.textContent = '⚠️ El robot del VPS todavía no sabe salir por la casa (falta instalar robots-1.11).'; }
-        else if (S && S.via === 'casa' && S.ok) { E.className = 'text-[11px] text-emerald-300 leading-snug'; E.textContent = '🟢 La última orden salió por tu casa' + (S.ip ? ' (' + S.ip + (S.pais ? ' · ' + S.pais : '') + ')' : '') + '.'; }
-        else if (S && S.via === 'casa' && S.ok === false) { E.className = 'text-[11px] text-red-300 leading-snug'; E.textContent = '🔴 La última vez la casa no respondió: ' + String(S.motivo || '') + ' Se usó la 2.ª salida.'; }
-        else { E.className = 'text-[11px] text-gray-400 leading-snug'; E.textContent = 'Lista. Se usa desde la próxima orden.'; } } }
+        else if (S && S.via === 'casa' && S.ok) { E.className = 'text-[11px] text-emerald-300 leading-snug'; E.innerHTML = '🟢 La última orden salió por <b>' + escaparHtml(String(S.nombre || nomPri)) + '</b>' + (S.ip ? ' (' + escaparHtml(String(S.ip)) + (S.pais ? ' · ' + escaparHtml(String(S.pais)) : '') + ')' : '') + escaparHtml(hora(S.el)); }
+        else if (S && S.via === 'casa' && S.ok === false) { E.className = (solo ? 'text-[11px] text-amber-300' : 'text-[11px] text-red-300') + ' leading-snug'; E.textContent = (solo ? '⚠️ La última vez la casa no respondió: ' : '🔴 La última vez la casa no respondió: ') + String(S.motivo || '') + (solo ? '' : ' Se usó la 2.ª salida.'); }
+        else { E.className = 'text-[11px] text-gray-400 leading-snug'; E.textContent = 'Lista. Se usa desde la próxima orden.'; } }
+      const C = document.getElementById('vpnCaeBox');
+      if (C) { C.innerHTML = '<p class="text-white font-bold">Si un teléfono se cae</p>'
+        + '<p class="text-gray-300">Con <b class="text-white">⏳ Solo por mi salida principal</b> marcada <span class="' + (solo ? 'text-emerald-300' : 'text-amber-300') + '">(hoy: ' + (solo ? '✅ marcada' : '⬜ sin marcar') + ')</span>: ese teléfono descansa 1:30 y la orden la toma <b class="text-white">otro teléfono de la casa</b> que esté en línea. Si se caen todos, la orden espera. <b class="text-white">No sale por el servidor</b>, incluido crear cuenta.</p>'
+        + '<p class="text-gray-400">Si desmarcas la casilla, o apagas «Usar el internet de mi casa», o tocas «Cambiar orden», las órdenes salen por el servidor (Sin VPN · Cloudflare, Brasil) o por la VPN elegida en cada robot.</p>'; }
+      const sc = document.getElementById('pvpSolo'); if (sc && !sc.getAttribute('data-u141')) { sc.setAttribute('data-u141', '1'); sc.addEventListener('change', () => { setTimeout(() => { try { vpnCasaPintar(); } catch (e) { /* nada */ } }, 400); }); } }
     async function vpnCasaPrender(ch) { const on = !!(ch && ch.checked);
       try { await vpnRef().set({ casa: { activo: on, nombre: 'a51-de-alex', ip: '100.92.127.38' } }, { merge: true }); mostrarToast(on ? '🏠 Los robots salen primero por tu casa (si responde).' : '🏠 Casa apagada: cada robot sale por su salida.'); }
       catch (e) { mostrarToast('❌ No se pudo cambiar: ' + e.message); if (ch) ch.checked = !on; } await vpnCargar(); }
