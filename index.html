@@ -14314,7 +14314,7 @@
       const cu = document.getElementById('pdCuerpo'); cu.innerHTML = '<p class="text-center text-gray-400 text-sm py-10"><i class="fa-solid fa-spinner fa-spin mr-1"></i> Cargando…</p>';
       let r, errD = ''; try { r = await llamarBackend('dominios_panel', { dias: 0, fresco: !!fresco });   /* 🚨 u139: todo el historial */ } catch (e) { r = null; errD = e.message || String(e); }
       if (!r || !r.ok) { cu.innerHTML = '<p class="text-center text-red-400 text-sm py-10">No se pudo cargar. Toca 🔄.' + ((errD || (r && r.error)) ? '<span class="block text-[11px] text-red-300/80 mt-2">🩺 ' + escaparHtml(String(errD || r.error).slice(0, 300)) + '</span>' : '') + '</p>'; return; }
-      { const perAnt = window._pd && window._pd.per; window._pd = r; if (perAnt) r.per = perAnt; } pintarPanelDominios();   /* 🚨 u142: el período elegido sobrevive a 🔄 */
+      { const perAnt = window._pd && window._pd.per, rdAnt = window._pd && window._pd.rdRef; window._pd = r; if (perAnt) r.per = perAnt; if (rdAnt) r.rdRef = rdAnt; } pintarPanelDominios();   /* 🤖 u143: también el día de «Robots por día» */   /* 🚨 u142: el período elegido sobrevive a 🔄 */
       try { if (!document.getElementById('pgDesde')) pgPintarFiltro(); } catch (e) { /* nada */ }
     }
     function cerrarPanelDominios() { const v = document.getElementById('panelDominios'); if (v) v.classList.add('hidden'); document.body.style.overflow = ''; }
@@ -14404,7 +14404,51 @@
     function pdPerModo(m) { const r = window._pd; if (!r) return; const per = pdPerDe(r); if (per.modo !== m) { per.modo = m; if (m !== 'todo') per.ref = Math.min(per.ref, Date.now()); } pdCaidasRepintar(); }
     function pdPerMover(d) { const r = window._pd; if (!r) return; const per = pdPerDe(r), m = per.modo; if (m === 'todo') return; const A = pdIni(m, per.ref);
       if (d < 0) per.ref = pdIni(m, A - 1); else { const B = pdSig(m, A); if (B > Date.now()) return; per.ref = B; } pdCaidasRepintar(); }
-    function pdPerFecha(v) { const r = window._pd, a = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(v || '')); if (!r || !a) return; const t = Date.UTC(+a[1], +a[2] - 1, +a[3]) + PD_CO; pdPerDe(r).ref = Math.min(t, Date.now()); pdCaidasRepintar(); }
+    function pdPerFecha(v, cual) { const r = window._pd, a = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(v || '')); if (!r || !a) return; const t = Date.UTC(+a[1], +a[2] - 1, +a[3]) + PD_CO;
+      if (cual === 'rd') { r.rdRef = Math.min(t, Date.now()); rdRepintar(); return; }   /* 🤖 u143 */
+      pdPerDe(r).ref = Math.min(t, Date.now()); pdCaidasRepintar(); }
+    /* 🤖 u143 (Alex, 21-nov «Si»): «Robots por día de trabajo». Datos de Mary 4.44 (r.robotsDia); sin ellos no se pinta la tarjeta. */
+    const RD_DSEM = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+    const RD_TEL = { A51: '🏠 A51 de Alex', OPPO: '🏠 OPPO A17', S24: '🏠 S24', VPS: '🖥 Servidor (VPS)', '?': 'Sin registro' };
+    const rdIso = t => { const d = pdCo(t); return d.getUTCFullYear() + '-' + String(d.getUTCMonth() + 1).padStart(2, '0') + '-' + String(d.getUTCDate()).padStart(2, '0'); };
+    const rdPc = (n, s) => n ? Math.round(s * 1000 / n) / 10 : null;
+    const rdFp = p => p === null ? '—' : String(p).replace('.', ',') + '%';
+    const rdVacio = () => ({ d: [0, 0, 0, 0], c: [0, 0, 0, 0], td: {}, tc: {} });
+    function rdDia(R, k) { const x = (R.dias || {})[k]; if (!x) return rdVacio(); return { d: x.d || [0, 0, 0, 0], c: x.c || [0, 0, 0, 0], td: x.td || {}, tc: x.tc || {} }; }
+    function rdTelFilas(T) {   /* [tel, hechas, susp] · conocidos primero, «sin registro» al final */
+      return Object.keys(T || {}).map(k => [k, (T[k] || [])[0] || 0, (T[k] || [])[1] || 0]).sort((a, b) => ((a[0] === '?') - (b[0] === '?')) || (b[1] - a[1])); }
+    function rdTelHtml(T) { return rdTelFilas(T).map(([k, n, s]) => { const gris = k === '?', p = rdPc(n, s);
+      return `<div class="rdTel flex items-center gap-1 py-1.5 border-t border-gray-800 text-[11.5px]"><span class="flex-1 min-w-0 font-bold" style="color:${gris ? '#9ca3af' : '#ffffff'}">${escaparHtml(RD_TEL[k] || k)}</span><span class="w-12 text-right text-gray-200">${n}</span><span class="w-[4.25rem] text-right text-red-300 font-bold">${s}</span><span class="w-14 text-right font-black" style="color:${gris ? '#6b7280' : pdColor(p || 0)}">${gris ? '—' : rdFp(p)}</span><span class="w-3"></span></div>`; }).join(''); }
+    function rdVista(r) {
+      const R = r.robotsDia || {}, ahora = Date.now(), A = pdIni('dia', r.rdRef || ahora), k = rdIso(A), hoyA = pdIni('dia', ahora), hoyIso = rdIso(ahora), x = rdDia(R, k), d = pdCo(A);
+      const viejo = !R.desde || k <= R.desde, esHoy = A >= hoyA, pl = (n, s) => n === 1 ? s : s + 's';
+      const btn = (dd, off, txt) => `<button type="button" ${off ? 'disabled' : `onclick="rdMover(${dd})"`} data-rf="${dd}" class="w-[34px] h-[34px] rounded-[10px] text-xs text-gray-200 shrink-0" style="background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);${off ? 'opacity:.3' : ''}">${txt}</button>`;
+      const nav = `<div class="flex items-center gap-2 mb-2.5">${btn(-1, viejo, '◀')}<div class="flex-1 text-center relative"><p id="rdTit" class="text-[13px] font-extrabold text-white">📅 ${RD_DSEM[d.getUTCDay()]} ${d.getUTCDate()} ${PD_MES[d.getUTCMonth()]}${d.getUTCFullYear() !== pdCo(ahora).getUTCFullYear() ? ' ' + d.getUTCFullYear() : ''}</p><p class="text-[10px] text-gray-500">toca para elegir otro día en el calendario${esHoy ? ' · hoy hasta ahora' : ''}</p><input type="date" id="rdFecha" value="${k}" max="${hoyIso}"${R.desde ? ` min="${R.desde}"` : ''} onchange="pdPerFecha(this.value, 'rd')" aria-label="Elegir día" style="position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer"></div>${btn(1, esHoy, '▶')}</div>`;
+      const reciente = Math.round((hoyA - A) / PD_DIA) <= 2 ? '<div id="rdAviso" class="text-[10.5px] leading-snug rounded-[10px] px-2 py-1.5 mb-2" style="color:#fcd34d;background:#f59e0b14;border:1px solid #f59e0b40">⏳ Día reciente: Amazon suele avisar la suspensión horas o días después. Este % todavía puede subir.</div>' : '';
+      const cab = `<div class="flex items-center gap-1 pb-1 text-[10px] text-gray-500"><span class="flex-1">Robot</span><span class="w-12 text-right">Hechas</span><span class="w-[4.25rem] text-right">Suspendidas</span><span class="w-14 text-right">%</span><span class="w-3"></span></div>`;
+      const fila = (id, nom, q, sub, T) => { const p = rdPc(q[0], q[1]), sus = q[1] - q[2] - q[3];
+        const det = q[0] ? (rdTelFilas(T).some(f => f[0] !== '?') ? `<p class="text-[10px] text-gray-500 pt-1">📱 Por teléfono</p>${rdTelHtml(T)}` : '<p class="pl-2 text-[11px] text-gray-500">Sin registro de teléfono para estas órdenes.</p>') : '<p class="pl-2 text-[11px] text-gray-500">Sin trabajos este día.</p>';
+        return `<details id="${id}" class="border-t border-gray-800"><summary class="flex items-center gap-1 py-2 cursor-pointer list-none text-xs"><span class="flex-1 min-w-0 leading-tight"><b class="block font-bold" style="color:#f5d97a">${nom}</b><span class="block text-[10px] text-gray-500 font-normal mt-0.5">${sub} · ${sus} ${pl(sus, 'suspendida')} · ${q[2]} en espera${q[3] ? ' · ' + q[3] + ' ' + pl(q[3], 'pausa') + ' de pago' : ''}</span></span><span class="w-12 text-right text-gray-200">${q[0]}</span><span class="w-[4.25rem] text-right text-red-300 font-bold">${q[1]}</span><span class="w-14 text-right font-black" style="color:${p === null ? '#6b7280' : pdColor(p)}">${rdFp(p)}</span><i class="fa-solid fa-chevron-down text-gray-500 text-[10px] w-3 text-right"></i></summary><div class="pb-2">${det}</div></details>`; };
+      const sal = R.salidaDesde ? new Date(R.salidaDesde) : null, salTxt = sal ? sal.toLocaleDateString('es-CO', { day: 'numeric', month: 'short', timeZone: 'America/Bogota' }) + ' ' + sal.toLocaleTimeString('es-CO', { hour: 'numeric', minute: '2-digit', timeZone: 'America/Bogota' }) : '';
+      const conTelD = rdTelFilas(x.td).some(f => f[0] !== '?'), conTelC = rdTelFilas(x.tc).some(f => f[0] !== '?');
+      let tel = '<p class="mt-3 pt-3 border-t border-gray-800 text-xs font-black text-gray-200 mb-1">📱 Por teléfono (por dónde salió cada orden)</p>';
+      if (conTelD || conTelC) {
+        if (conTelD) tel += (conTelC ? '<p class="text-[10px] font-bold mt-1" style="color:#f5d97a">🤖 Dirección</p>' : '') + rdTelHtml(x.td);
+        if (conTelC) tel += '<p class="text-[10px] font-bold mt-1" style="color:#f5d97a">🤖 Crear</p>' + rdTelHtml(x.tc);
+        tel += `<p class="mt-1.5 text-[10px] text-gray-500 leading-snug">${conTelC ? '' : 'Solo Dirección. '}«Sin registro»: órdenes de antes de que el robot guardara por dónde salió cada una${salTxt ? ' (desde el ' + escaparHtml(salTxt) + ')' : ''}.</p>`;
+      } else tel += `<div id="rdSinTel" class="text-[11px] text-gray-400 leading-snug rounded-[10px] p-2 mt-1" style="background:rgba(255,255,255,.03);border:1px dashed #374151">${x.d[0] || x.c[0] ? 'Sin registro de teléfono para este día: el robot todavía no guardaba por dónde salió cada orden.' : 'Sin trabajos del robot este día.'} Desde que se guarda, aquí sale A51 · OPPO · S24 · otra, con sus suspendidas.</div>`;
+      const dias = []; for (let i = 6; i >= 0; i--) dias.push(A - i * PD_DIA);
+      const celdas = q => { const p = rdPc(q[0], q[1]); return q[0] ? `<td class="py-1.5 px-0.5 text-right text-gray-200">${q[0]}</td><td class="py-1.5 px-0.5 text-right text-red-300 font-bold">${q[1]}</td><td class="py-1.5 px-0.5 text-right font-black" style="color:${pdColor(p)}">${rdFp(p)}</td>` : '<td class="py-1.5 px-0.5 text-right" style="color:#4b5563">0</td><td class="py-1.5 px-0.5 text-right" style="color:#4b5563">—</td><td class="py-1.5 px-0.5 text-right" style="color:#4b5563">—</td>'; };
+      const tD = [0, 0], tC = [0, 0];
+      const filas7 = dias.map(t => { const y = rdDia(R, rdIso(t)), dd = pdCo(t), sel = t === A; tD[0] += y.d[0]; tD[1] += y.d[1]; tC[0] += y.c[0]; tC[1] += y.c[1];
+        return `<tr class="rd7 border-t border-gray-800"${sel ? ' style="background:#f5d97a14"' : ''}><td class="py-1.5 pr-1 text-left" style="${sel ? 'color:#f5d97a;font-weight:800' : 'color:#d1d5db'}">${PD_DSEM[dd.getUTCDay()]} ${dd.getUTCDate()}</td>${celdas(y.d)}${celdas(y.c)}</tr>`; }).join('');
+      const d6 = pdCo(A);
+      const tabla = `<p class="mt-3 pt-3 border-t border-gray-800 text-xs font-black text-gray-200 mb-1">📊 Últimos 7 días (hasta el ${d6.getUTCDate()} ${PD_MES[d6.getUTCMonth()]})</p><div class="overflow-x-auto"><table id="rdTabla" class="w-full text-[11px] whitespace-nowrap"><thead><tr><th></th><th colspan="3" class="text-center text-[9.5px] font-extrabold pb-0.5" style="color:#f5d97a">🤖 Dirección</th><th colspan="3" class="text-center text-[9.5px] font-extrabold pb-0.5" style="color:#f5d97a">🤖 Crear</th></tr><tr class="text-[9.5px] text-gray-500"><th class="text-left font-semibold pb-1">Día</th><th class="text-right font-semibold">Hechas</th><th class="text-right font-semibold">Susp.</th><th class="text-right font-semibold">%</th><th class="text-right font-semibold">Hechas</th><th class="text-right font-semibold">Susp.</th><th class="text-right font-semibold">%</th></tr></thead><tbody>${filas7}<tr class="rd7t border-t border-gray-800"><td class="py-1.5 pr-1 text-left font-extrabold text-white">7 días</td>${celdas([tD[0], tD[1]])}${celdas([tC[0], tC[1]])}</tr></tbody></table></div>`;
+      const nota = `<p class="mt-2 text-[10px] text-gray-500 leading-snug">Hechas = cuentas a las que el robot les terminó el trabajo ESE día (hora Colombia; Dirección = dirección + tarjeta + Prime, Crear = cuentas nuevas). Suspendidas = de esas, las que después Amazon suspendió, puso en espera o pausó por pago (la misma regla que «Caídas por proveedor»), hasta ${R.ventana || 25} días después.${R.desde ? ' El robot empezó el ' + escaparHtml(String(+R.desde.slice(8, 10))) + ' ' + PD_MES[+R.desde.slice(5, 7) - 1] + '.' : ''}</p>`;
+      return nav + reciente + cab + fila('rdDir', '🤖 Dirección', x.d, 'dirección + tarjeta + Prime', x.td) + fila('rdCrear', '🤖 Crear', x.c, 'cuentas nuevas', x.tc) + tel + tabla + nota; }
+    function rdRepintar() { const r = window._pd, b = document.getElementById('rdBox'); if (r && b) b.innerHTML = rdVista(r); }
+    function rdMover(dd) { const r = window._pd; if (!r || !r.robotsDia) return; const A = pdIni('dia', r.rdRef || Date.now()), R = r.robotsDia;
+      if (dd < 0) { if (!R.desde || rdIso(A) <= R.desde) return; r.rdRef = A - PD_DIA; } else { const B = A + PD_DIA; if (B > Date.now()) return; r.rdRef = B; } rdRepintar(); }
     function pintarPanelDominios() {
       const r = window._pd, cu = document.getElementById('pdCuerpo'); if (!r || !cu) return;
       const sub = document.getElementById('pdSub'); if (sub) sub.textContent = (r.dias ? 'Últimos ' + r.dias + ' días' : 'Todo el historial') + ' · actualizado ' + new Date(r.generadoEl).toLocaleTimeString('es-CO', { hour: 'numeric', minute: '2-digit' });
@@ -14421,7 +14465,8 @@
       cu.innerHTML = tarj('🌐 Mis dominios', `<div class="overflow-x-auto"><table class="w-full text-xs text-gray-300"><thead><tr class="text-[10px] text-gray-500 text-left"><th class="pb-1">Dominio</th><th class="pb-1">Estado</th><th class="pb-1 text-right">Cuentas</th><th class="pb-1 text-right">Caídas</th><th class="pb-1 text-right">% caída</th></tr></thead><tbody>${doms}</tbody></table></div>`)
         + `<div class="grid lg:grid-cols-2 gap-3 mt-3">` + tarj('🏗 Quién creó más', rk(r.creadores, x => x.n + ' · ' + (x.n ? Math.round(x.caidas * 100 / x.n) : 0) + '% caídas')) + tarj('📩 Quién pide más códigos', rk(r.codigos, x => x.n + ' · ' + x.cuentas + ' cuentas')) + `</div>`
         + `<div class="grid lg:grid-cols-2 gap-3 mt-3">` + tarj('🎬 Con Prime y fuera del stock', lista(r.fueraPrime || [], 'fueraPrime', true)) + tarj('📭 Sin Prime y fuera del stock', lista(r.fueraNoPrime || [], 'fueraNoPrime', false)) + `</div>`
-        + `<div class="mt-3">` + tarj('🚨 Caídas por proveedor', cp) + `</div>`;
+        + `<div class="mt-3">` + tarj('🚨 Caídas por proveedor', cp) + `</div>`
+        + (r.robotsDia && r.robotsDia.dias ? `<div class="mt-3">` + tarj('🤖 Robots por día de trabajo', `<div id="rdBox">${rdVista(r)}</div>`) + `</div>` : '');   /* 🤖 u143: Mary vieja sin robotsDia = no sale */
     }
     async function provDominioCargar() {
       provDomMezclar([]); pintarProvDominio();
@@ -19578,7 +19623,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-11-12u142';
+    const VERSION_PAGINA = '2026-11-12u143';
     // 🧑 u58 (Alex, 10-nov): la AGENTE DE D-ID (Luisa con cara, conversa en vivo). Piloto: SOLO en epicstreaming.vip (nunca en las tiendas de tus clientes),
     //    SOLO a visitantes sin sesión, a la IZQUIERDA (a la derecha está tu botón de WhatsApp). Se carga después de la página para no hacerla lenta.
     (function () { try {
