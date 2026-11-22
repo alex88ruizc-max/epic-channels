@@ -19623,7 +19623,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-11-12u143';
+    const VERSION_PAGINA = '2026-11-12u144';
     // 🧑 u58 (Alex, 10-nov): la AGENTE DE D-ID (Luisa con cara, conversa en vivo). Piloto: SOLO en epicstreaming.vip (nunca en las tiendas de tus clientes),
     //    SOLO a visitantes sin sesión, a la IZQUIERDA (a la derecha está tu botón de WhatsApp). Se carga después de la página para no hacerla lenta.
     (function () { try {
@@ -32955,6 +32955,20 @@ const LUISA_COM_DEF_PAG = { activo: true, stockHora: '08:00', mediodiaHora: '12:
       catch (e) { mostrarToast('❌ No se pudo generar el correo: ' + e.message); } return ''; }
     // 🛒 u111: «Dirección y carrito» en el VPS. La orden lleva SOLO correo, contraseña, dirección y tope: nunca datos de tarjeta.
     const pvp = { id: '', unsub: null, fin: '', correo: '', ciudad: '' };
+    /* 🙈 u144 (22-nov, 429 «maximum bandwidth» de Firestore): con la pestaña oculta se cierran las escuchas de secretos/robots y al volver se
+       reabren igual (el primer aviso de Firestore repinta lo de siempre). Bloque aparte: no cambia robotVpsEscuchar, pvp… ni pvc…. */
+    const robotsOculta = { vps: false, pvp: false, pvc: false };
+    function robotsPausarEscuchas() {
+      try { if (window._robotVpsUnsub) { try { window._robotVpsUnsub(); } catch (e) { /* nada */ } window._robotVpsUnsub = null; robotsOculta.vps = true; } } catch (e) { /* nada */ }
+      try { if (pvp.unsub) { try { pvp.unsub(); } catch (e) { /* nada */ } pvp.unsub = null; robotsOculta.pvp = true; } } catch (e) { /* nada */ }
+      try { if (pvc.unsub) { try { pvc.unsub(); } catch (e) { /* nada */ } pvc.unsub = null; robotsOculta.pvc = true; } } catch (e) { /* nada */ }
+    }
+    function robotsReanudarEscuchas() {
+      if (robotsOculta.vps) { robotsOculta.vps = false; try { robotVpsEscuchar(); } catch (e) { /* nada */ } }
+      if (robotsOculta.pvp) { robotsOculta.pvp = false; try { if (!pvp.unsub && pvp.id && pvp.fin !== pvp.id) pvp.unsub = db.collection('secretos').doc('robots').onSnapshot((x) => { try { pvpPintar(x.exists ? x.data() : {}); } catch (e) { /* nada */ } }, () => { pvp.unsub = null; }); } catch (e) { /* nada */ } }
+      if (robotsOculta.pvc) { robotsOculta.pvc = false; try { if (!pvc.unsub && pvc.id && pvc.fin !== pvc.id) pvc.unsub = db.collection('secretos').doc('robots').onSnapshot((d) => { try { pvcPintar(d.exists ? d.data() : {}); } catch (e) { /* nada */ } }, () => { pvc.unsub = null; }); } catch (e) { /* nada */ } }
+    }
+    document.addEventListener('visibilitychange', () => { try { if (document.visibilityState === 'hidden') robotsPausarEscuchas(); else if (document.visibilityState === 'visible') robotsReanudarEscuchas(); } catch (e) { /* nada */ } });
     // 📦 u115: la cuenta sale del stock (la más vieja que no esté vendida) y se puede regresar al mismo producto
     function pvpTomadaLeer() { try { return JSON.parse(localStorage.getItem('pvpTomada') || 'null'); } catch (e) { return null; } }
     function pvpTomadaPintar() { const c = document.getElementById('pvpTomada'), T = pvpTomadaLeer(); if (!c) return; if (!T || !T.correo) { c.classList.add('hidden'); c.innerHTML = ''; return; }
