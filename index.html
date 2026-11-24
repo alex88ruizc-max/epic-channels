@@ -19708,7 +19708,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-11-12u148';
+    const VERSION_PAGINA = '2026-11-12u149';
     // 🧑 u58 (Alex, 10-nov): la AGENTE DE D-ID (Luisa con cara, conversa en vivo). Piloto: SOLO en epicstreaming.vip (nunca en las tiendas de tus clientes),
     //    SOLO a visitantes sin sesión, a la IZQUIERDA (a la derecha está tu botón de WhatsApp). Se carga después de la página para no hacerla lenta.
     (function () { try {
@@ -32825,6 +32825,7 @@ const LUISA_COM_DEF_PAG = { activo: true, stockHora: '08:00', mediodiaHora: '12:
     // 🏠 u116: orden de salida (1.ª casa · 2.ª la de cada robot) y estado de la casa
     let vpnCasa = { on: true, primero: true, orden: ['casa', 'robot'], S: null, ver: '' };
     // 🏠 u131: los equipos del propio VPS (el escritorio, el robot) no son «de la casa»: no se les pide aprobarlos como salida
+    const vpnEsMullvad = (x) => /^[a-z]{2}-[a-z]{3}-wg-\d+$/i.test(String((x && x.nombre) || '').trim()) || /^escritorio-vps$/i.test(String((x && x.nombre) || '').trim());   // u149
     const vpnEsDelVps = (x) => /linux/i.test(String((x && x.os) || '')) && /vps|^epic-|escritorio/i.test(String((x && x.nombre) || ''));
     // 👑 u131 · casilla «Volver Prime» (secretos/robots_amazon.primeAuto; marcada mientras no se diga lo contrario) y ⏳ «Solo por mi salida principal» (secretos/robots_vpn.soloPrincipal)
     let pvpCas = { prime: true, solo: false };
@@ -32885,7 +32886,7 @@ const LUISA_COM_DEF_PAG = { activo: true, stockHora: '08:00', mediodiaHora: '12:
     // 🏠 u118: equipos de la casa (los deja el robot cada 5 min)
     function vpnParaleloPintar() { const ch = document.getElementById('vpnParalelo'), S = document.getElementById('vpnExtraSel'), E = document.getElementById('vpnParaleloEstado'); if (!ch || !S) return;
       ch.checked = vpnCasa.par === true; const pri = String((vpnCasa.sel && vpnCasa.sel.nombre) || 'a51-de-alex').toLowerCase().replace(/\s+/g, '-'), ex = vpnCasa.extra || {};
-      const L = ((vpnCasa.E && vpnCasa.E.lista) || []).filter((x) => x.salida && !vpnEsDelVps(x) && String(x.nombre || '').toLowerCase().replace(/\s+/g, '-') !== pri && !/^epic-robots/i.test(String(x.nombre || '')));
+      const L = ((vpnCasa.E && vpnCasa.E.lista) || []).filter((x) => x.salida && !vpnEsDelVps(x) && !vpnEsMullvad(x) && String(x.nombre || '').toLowerCase().replace(/\s+/g, '-') !== pri && !/^epic-robots/i.test(String(x.nombre || '')));
       S.innerHTML = '<option value="">— elige el equipo —</option>' + L.map((x) => '<option value="' + escaparHtml(x.ip) + '" data-n="' + escaparHtml(x.nombre) + '"' + (ex.ip === x.ip ? ' selected' : '') + '>' + escaparHtml(x.nombre) + (x.online ? '' : ' (apagado)') + '</option>').join('');
       const XE = vpnCasa.XE || {}; let t = '';
       if (vpnCasa.hayLlave) t = '⏳ Llave guardada: el robot la usa en los próximos 5 minutos y la borra.';
@@ -32896,7 +32897,7 @@ const LUISA_COM_DEF_PAG = { activo: true, stockHora: '08:00', mediodiaHora: '12:
     // 🔑📱 u134 · cliente OAuth de Tailscale (solo se escribe; nunca se lee) y 3.º teléfono (casilla)
     function vpnTerceroPintar() { const S = document.getElementById('vpnTerceroSel'), ch = document.getElementById('vpnTercero'), E = document.getElementById('vpnTerceroEstado'), O = document.getElementById('vpnOauthEstado'); if (!S || !ch) return;
       const nrm = (x) => String(x || '').toLowerCase().replace(/\s+/g, '-'), pri = nrm((vpnCasa.sel && vpnCasa.sel.nombre) || 'a51-de-alex'), ex = vpnCasa.extra || {}, te = vpnCasa.tercera || {};
-      const L = ((vpnCasa.E && vpnCasa.E.lista) || []).filter((x) => x.salida && !vpnEsDelVps(x) && nrm(x.nombre) !== pri && x.ip !== ex.ip && !/^epic-robots/i.test(String(x.nombre || '')));
+      const L = ((vpnCasa.E && vpnCasa.E.lista) || []).filter((x) => x.salida && !vpnEsDelVps(x) && !vpnEsMullvad(x) && nrm(x.nombre) !== pri && x.ip !== ex.ip && !/^epic-robots/i.test(String(x.nombre || '')));
       S.innerHTML = '<option value="">— ninguno —</option>' + L.map((x) => '<option value="' + escaparHtml(x.ip) + '" data-n="' + escaparHtml(x.nombre) + '"' + (te.ip === x.ip ? ' selected' : '') + '>' + escaparHtml(x.nombre) + (x.online ? '' : ' (apagado)') + '</option>').join('');
       ch.checked = vpnCasa.tercero === true; if (O) O.innerHTML = vpnCasa.oauthEl ? '✅ Cliente OAuth guardado (' + escaparHtml(new Date(vpnCasa.oauthEl).toLocaleString('es-CO')) + '). El robot lo usa solo.' : 'Sin cliente OAuth: los teléfonos nuevos necesitan uno para entrar solos.';
       const X2 = vpnCasa.XE2 || {}; let t = '';
@@ -33196,27 +33197,34 @@ const LUISA_COM_DEF_PAG = { activo: true, stockHora: '08:00', mediodiaHora: '12:
     const rbMes = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
     let rbFiltroAct = 'todas';
     function rbListo(x) { return x === 'listo' || !!(x && typeof x === 'object' && (x.listo === true || x.estado === 'listo' || (x.ok === true && !x.error))); }
+    function rbTerceroTel() { const t = vpnCasa.tercera; return !!(t && (t.ip || t.nombre)); }   // u149: el 3.er equipo tiene teléfono asignado
     function rbCrearActual() {   // lo guardado, o los valores que equivalen a lo de hoy (sin escribir nada)
       const c = (vpnCasa.crear && typeof vpnCasa.crear === 'object') ? vpnCasa.crear : null, E = (c && c.equipos) || {};
       const def = { 0: { dir: true, crear: true, modo: 'sinvpn' }, 1: { dir: true, crear: false, modo: 'sinvpn' }, 2: { dir: false, crear: false, modo: 'vpn' } }, eq = {};
-      [0, 1, 2].forEach((i) => { const x = E[String(i)] || {}, d = def[i]; eq[i] = { dir: typeof x.dir === 'boolean' ? x.dir : d.dir, crear: typeof x.crear === 'boolean' ? x.crear : d.crear, modo: RB_MODOS.indexOf(x.modo) !== -1 ? x.modo : d.modo, dirModo: RB_DIRMODOS.indexOf(x.dirModo) !== -1 ? x.dirModo : 'sinvpn' }; });
-      eq[2].dir = false; eq[2].modo = 'vpn';   // el equipo 3 no tiene teléfono: solo crea y siempre con VPN
+      [0, 1, 2].forEach((i) => { const x = E[String(i)] || {}; let d = def[i]; if (c && E[String(i)] === undefined && (i < 2 || rbTerceroTel())) d = { dir: true, crear: true, modo: 'sinvpn' }; if (!c && i === 2 && rbTerceroTel()) d = { dir: true, crear: true, modo: 'sinvpn' }; eq[i] = { dir: typeof x.dir === 'boolean' ? x.dir : d.dir, crear: typeof x.crear === 'boolean' ? x.crear : d.crear, modo: RB_MODOS.indexOf(x.modo) !== -1 ? x.modo : d.modo, dirModo: RB_DIRMODOS.indexOf(x.dirModo) !== -1 ? x.dirModo : 'sinvpn' }; });
+      if (!rbTerceroTel()) { eq[2].dir = false; eq[2].modo = 'vpn'; }   // sin teléfono asignado: solo crea y siempre con VPN (con teléfono es un equipo normal, u149)
       const p = Array.isArray(c && c.paises) ? c.paises.map(String).filter((x) => /^[A-Z]{2}$/.test(x)) : [];
       return { equipos: eq, paises: p };   // u147: lista vacía = TODOS los países (nunca se rellena)
     }
     function rbEquiposLista() {
       const sel = vpnCasa.sel || {}, ex = vpnCasa.extra, te = vpnCasa.tercera, L = [{ i: 0, nombre: String(sel.nombre || 'A51'), ref: { nombre: sel.nombre, ip: sel.ip }, tel: true }];
       if (ex && (ex.ip || ex.nombre)) L.push({ i: 1, nombre: String(ex.nombre || ex.ip), ref: ex, tel: true });
-      L.push({ i: 2, nombre: String((te && te.nombre) || 'epic-robots-3'), ref: te || null, tel: false }); return L;
+      L.push({ i: 2, nombre: String((te && te.nombre) || 'epic-robots-3'), ref: te || null, tel: rbTerceroTel() }); return L;
     }
     function rbEquiposPintar() {
       const box = rbG('rbEquipos'); if (!box) return;
-      const C = rbCrearActual(), habil = rbListo(vpnCasa.terceraEstado), eq = (vpnCasa.E && vpnCasa.E.lista) || [], nrm = (x) => String(x || '').toLowerCase().replace(/\s+/g, '-');
+      const C = rbCrearActual(), est2 = vpnCasa.XE2 || vpnCasa.terceraEstado || null, est1 = vpnCasa.XE || null, eq = (vpnCasa.E && vpnCasa.E.lista) || [], nrm = (x) => String(x || '').toLowerCase().replace(/\s+/g, '-');
       box.innerHTML = rbEquiposLista().map((q) => {
         const x = C.equipos[q.i], r = q.ref || {}, en = (r.ip || r.nombre) ? eq.find((e) => (r.ip && e.ip === r.ip) || (r.nombre && nrm(e.nombre) === nrm(r.nombre))) : null;
-        const bloq = q.i === 2 && !habil, crearOn = x.crear === true, nota = bloq ? 'todavía no está encendido en el servidor' : (q.i === 2 ? 'sin teléfono' : (en ? (en.online ? 'en línea' : 'apagado') : 'sin dato'));
+        const est = q.i === 2 ? est2 : (q.i === 1 ? est1 : null), eErr = est && est.error ? String(est.error).replace(/\s+/g, ' ').trim().slice(0, 70) : '';
+        const bloq = (q.i === 1 || q.i === 2) && !!est && (!!eErr || !rbListo(est)) || (q.i === 2 && !est && true), crearOn = x.crear === true;
+        let nota; if (q.i === 0) nota = en ? (en.online ? 'en línea' : 'apagado') : 'sin dato';
+        else if (eErr) nota = '⚠️ el servidor no pudo encenderlo: ' + eErr;
+        else if (bloq) nota = q.tel ? '⏳ el servidor lo está encendiendo (hasta 5 min)' : 'todavía no está encendido en el servidor';
+        else if (q.i === 2 && !q.tel) nota = 'sin teléfono';
+        else nota = en ? (en.online ? 'en línea' : '📵 teléfono desconectado: abre Tailscale en ese teléfono') : 'sin dato';
         const sw = (k, on, dis) => '<label class="rb-sw"><input type="checkbox" data-rb="' + k + '-' + q.i + '"' + (on ? ' checked' : '') + (dis ? ' disabled' : '') + ' onchange="rbEqInterruptor(' + q.i + ',\'' + k + '\',this)"><i></i></label>';
-        const seg = RB_MODOS.map((m) => '<button type="button" data-rbm="' + q.i + '-' + m + '" class="' + (x.modo === m ? 'a' : '') + '"' + ((!crearOn || bloq || (q.i === 2 && m !== 'vpn')) ? ' disabled' : '') + ' onclick="rbEqModo(' + q.i + ',\'' + m + '\')">' + RB_MODO_TXT[m][0] + '</button>').join('');
+        const seg = RB_MODOS.map((m) => '<button type="button" data-rbm="' + q.i + '-' + m + '" class="' + (x.modo === m ? 'a' : '') + '"' + ((!crearOn || bloq || (q.i === 2 && !q.tel && m !== 'vpn')) ? ' disabled' : '') + ' onclick="rbEqModo(' + q.i + ',\'' + m + '\')">' + RB_MODO_TXT[m][0] + '</button>').join('');
         return '<div class="rb-eq' + (bloq ? ' off' : '') + '" data-eq="' + q.i + '"><div class="rb-row"><span class="rb-n"><i class="rb-dot' + (en && en.online ? ' on' : '') + '"></i> ' + escaparHtml(q.nombre) + '</span><span class="rb-sub" style="margin:0;text-align:right">' + escaparHtml(nota) + '</span></div>'
           + (q.tel ? '<div class="rb-ctl"><span>Dirección y Prime</span>' + sw('dir', x.dir, false) + '</div>'
             + '<div class="rb-segd">' + RB_DIRMODOS.map((m) => '<button type="button" data-rbd="' + q.i + '-' + m + '" class="' + (x.dirModo === m ? 'a' : '') + '"' + (!x.dir ? ' disabled' : '') + ' onclick="rbEqDirModo(' + q.i + ',\'' + m + '\')">' + RB_DIRMODO_TXT[m][0] + '</button>').join('') + '</div><span class="rb-sub">' + escaparHtml(x.dir ? RB_DIRMODO_TXT[x.dirModo][1] : 'Dirección está apagada en este equipo') + '</span>' : '')
@@ -33232,8 +33240,8 @@ const LUISA_COM_DEF_PAG = { activo: true, stockHora: '08:00', mediodiaHora: '12:
       rbEquiposPintar(); return true;
     }
     async function rbEqInterruptor(i, k, ch) { if (window.EPIC_TIENDA) return false; const C = rbCrearActual(); if (!C.equipos[i] || (k !== 'dir' && k !== 'crear')) return false; C.equipos[i][k] = !!(ch && ch.checked); return rbGuardarCrear(C); }
-    async function rbEqModo(i, m) { if (window.EPIC_TIENDA) return false; const C = rbCrearActual(); if (!C.equipos[i] || RB_MODOS.indexOf(m) === -1 || C.equipos[i].crear !== true || (i === 2 && m !== 'vpn')) return false; C.equipos[i].modo = m; return rbGuardarCrear(C); }
-    async function rbEqDirModo(i, m) { if (window.EPIC_TIENDA) return false; const C = rbCrearActual(); if (i === 2 || !C.equipos[i] || RB_DIRMODOS.indexOf(m) === -1 || C.equipos[i].dir !== true) return false; C.equipos[i].dirModo = m; return rbGuardarCrear(C); }
+    async function rbEqModo(i, m) { if (window.EPIC_TIENDA) return false; const C = rbCrearActual(); if (!C.equipos[i] || RB_MODOS.indexOf(m) === -1 || C.equipos[i].crear !== true || (i === 2 && !rbTerceroTel() && m !== 'vpn')) return false; C.equipos[i].modo = m; return rbGuardarCrear(C); }
+    async function rbEqDirModo(i, m) { if (window.EPIC_TIENDA) return false; const C = rbCrearActual(); if ((i === 2 && !rbTerceroTel()) || !C.equipos[i] || RB_DIRMODOS.indexOf(m) === -1 || C.equipos[i].dir !== true) return false; C.equipos[i].dirModo = m; return rbGuardarCrear(C); }
     async function rbPais(cod) {
       if (window.EPIC_TIENDA || !RB_PAISES[cod]) return false; const C = rbCrearActual(), p = C.paises.slice(), k = p.indexOf(cod);
       if (k !== -1) p.splice(k, 1); else p.push(cod);   // u147: si queda vacía vuelve a «Todos» (se guarda [])
