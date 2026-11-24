@@ -2599,6 +2599,7 @@
 #adminSecPrimevideo .rb-ord{border:1px solid #1f2937;border-radius:12px;padding:9px;margin-top:6px;background:#030712;font-size:12px;min-width:0}
 #adminSecPrimevideo .rb-ord b{font-size:12px;color:#fff;word-break:break-all}#adminSecPrimevideo .rb-ord small{color:#9ca3af;font-size:11px;display:block}
 #adminSecPrimevideo .rb-aviso{background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.4);color:#fde68a;border-radius:12px;padding:9px;font-size:12px;margin-top:8px}
+#adminSecPrimevideo .rb-in{background:#1f2937;border:1px solid #374151;border-radius:10px;color:#f3f4f6;font-size:12px;padding:7px 8px;min-width:0}
 #adminSecPrimevideo .rb-ctlcampo{margin-top:8px;font-size:12px;color:#d1d5db}
 #adminSecPrimevideo .rb-ctlcampo>label,#adminSecPrimevideo .rb-ctlcampo label.block{color:#9ca3af}
 #adminSecPrimevideo .rb-card details{border:1px solid #1f2937;border-radius:12px;background:#030712;padding:9px;margin-top:8px}
@@ -2618,6 +2619,14 @@
           <div class="rb-t"><span>🏠 Equipos y salidas</span><span class="rb-pill">nuevo</span></div>
           <div id="rbEquipos"><p class="rb-sub">Cargando…</p></div>
           <p class="rb-sub">En Dirección, la VPN sale solo por Colombia (Bogotá). “Alterna”: una cuenta por el teléfono, la siguiente por la VPN.</p>
+          <div class="rb-sec" id="rbAgregarBox"><div style="font-weight:800;color:#fff">➕ Agregar equipo</div>
+            <span class="rb-sub">Teléfonos de tu cuenta que pueden ser salida. El nuevo equipo se enciende solo.</span>
+            <div class="rb-ctl"><select id="rbAgregarSel" class="rb-in" style="flex:1"></select><button id="rbAgregarBtn" type="button" class="rb-btn mini" onclick="rbAgregar()">Agregar</button></div>
+            <p id="rbAgregarNota" class="rb-sub"></p><div id="rbMemAviso" class="rb-aviso hidden">⚠️ Cada equipo ocupa memoria del servidor aunque no trabaje.</div></div>
+          <div class="rb-sec" id="rbSimulBox"><div style="font-weight:800;color:#fff">⚡ Cuántos trabajan a la vez</div>
+            <div class="rb-ctl"><span>Órdenes de Amazon a la vez (1 a 20)</span><input id="rbSimul" type="number" min="1" max="20" step="1" inputmode="numeric" class="rb-in" style="width:72px" onchange="rbSimulGuardar(this)" oninput="rbSimulAviso()"></div>
+            <div id="rbSimulAviso" class="rb-aviso hidden">⚠️ Más de 4 a la vez puede cargar demasiado tu servidor. Puedes dejarlo así; si se pone lento, baja el número.</div>
+            <p class="rb-sub">Tu servidor aguanta bien 3 o 4 a la vez. Con más equipos que este número, se turnan. Para la VPN, Mullvad cubre 5 equipos por licencia.</p></div>
           <div class="rb-sec"><div style="font-weight:800;color:#fff">🌍 VPN (Mullvad)</div><span class="rb-sub">Países permitidos</span>
             <div id="rbPaises" class="rb-chips"></div>
             <p class="rb-sub">Con “Todos”, cada cuenta que se crea sale por cualquier país de la VPN, siempre una ubicación distinta. Estos países son solo para crear.</p></div>
@@ -19708,7 +19717,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-11-12u149';
+    const VERSION_PAGINA = '2026-11-12u150';
     // 🧑 u58 (Alex, 10-nov): la AGENTE DE D-ID (Luisa con cara, conversa en vivo). Piloto: SOLO en epicstreaming.vip (nunca en las tiendas de tus clientes),
     //    SOLO a visitantes sin sesión, a la IZQUIERDA (a la derecha está tu botón de WhatsApp). Se carga después de la página para no hacerla lenta.
     (function () { try {
@@ -32938,6 +32947,7 @@ const LUISA_COM_DEF_PAG = { activo: true, stockHora: '08:00', mediodiaHora: '12:
         vpnCasa.par = V.amazonParalelo === true; vpnCasa.extra = (Array.isArray(V.casasExtra) ? V.casasExtra : [])[0] || null; vpnCasa.hayLlave = !!V.tsLlave;   // 🏠🏠 u132
         vpnCasa.tercera = V.casaTercera || null; vpnCasa.tercero = V.tercero === true; vpnCasa.oauthEl = String(V.tsOauthEl || '');   /* 🔑📱 u134 */
         vpnCasa.crear = V.crear || null; vpnCasa.terceraEstado = V.casaTerceraEstado || null;   /* 🤖 u146 */
+        vpnCasa.eqExtra = Array.isArray(V.equiposExtra) ? V.equiposExtra : []; vpnCasa.simul = V.simultaneos;   /* 🤖 u150 */
         vpnCasa.on = !(V.casa && V.casa.activo === false); vpnCasa.plats = V.casaPlats || {}; vpnCasa.sel = V.casa || {}; vpnCasa.orden = Array.isArray(V.orden) && V.orden.length === 2 ? V.orden.map(String) : ['casa', 'robot']; vpnCasa.primero = vpnCasa.on && vpnCasa.orden[0] === 'casa';
         const ids = Object.keys(C).sort((a, b) => String(C[a].nombre || a).localeCompare(String(C[b].nombre || b)));
         vpnD = { C: C, salidas: S0, llave: VPN_LLAVE_OK.test(String(V.llave || '').trim()), ids: ids, vieja: V.salida || '' };
@@ -32953,7 +32963,7 @@ const LUISA_COM_DEF_PAG = { activo: true, stockHora: '08:00', mediodiaHora: '12:
           else if (mia && S.ok === false) { el.className = gris + 'text-red-300'; el.textContent = '❌ La última vez esta salida no conectó. Revisa la llave o el archivo, o elige «Sin VPN».'; }
           else if (mia && S.ok) { el.className = gris + 'text-emerald-300'; el.textContent = '🟢 La última vez salió por esta VPN' + (S.pais ? ' (país: ' + S.pais + ')' : '') + '.'; }
           else { el.className = gris + 'text-gray-400'; el.textContent = 'Elegida: ' + nombre + '. Se usa desde la próxima orden; si no conecta, la orden falla y te lo dice (no salta a otra).'; } });
-        try { const r2 = await db.collection('secretos').doc('robots').get(); vpnCasa.S = r2.exists ? r2.data().salida || null : null; vpnCasa.E = r2.exists ? r2.data().casaEquipos || null : null; vpnCasa.XE = r2.exists ? r2.data().casaExtraEstado || null : null; vpnCasa.XE2 = r2.exists ? r2.data().casaTerceraEstado || null : null; vpnCasa.ver = r2.exists ? String(r2.data().version || '') : ''; vpnCasa.R = r2.exists ? r2.data() : null; /* 🤖 u146 */ } catch (e) { /* nada */ }
+        try { const r2 = await db.collection('secretos').doc('robots').get(); vpnCasa.S = r2.exists ? r2.data().salida || null : null; vpnCasa.E = r2.exists ? r2.data().casaEquipos || null : null; vpnCasa.XE = r2.exists ? r2.data().casaExtraEstado || null : null; vpnCasa.XE2 = r2.exists ? r2.data().casaTerceraEstado || null : null; vpnCasa.ver = r2.exists ? String(r2.data().version || '') : ''; vpnCasa.EE = r2.exists ? r2.data().equiposEstado || null : null; /* 🤖 u150 */ vpnCasa.R = r2.exists ? r2.data() : null; /* 🤖 u146 */ } catch (e) { /* nada */ }
         if (vpnCasa.on) document.querySelectorAll('[data-vpn-estado]').forEach((el) => { if (!vpnCasaUsa(vpnPlatDe(el))) return; el.textContent = (vpnCasa.primero ? '🏠 Primero sale por tu casa; si no responde: ' : '1.ª esta salida; si falla, tu casa 🏠 · ') + el.textContent; });   // 🏠 u116 · u117: solo los robots que usan la casa
         document.querySelectorAll('input.vpnCasaPlat').forEach((ch) => { const p = vpnCasaPlatDe(ch); ch.checked = vpnCasaUsa(p); ch.disabled = !vpnCasa.on; const lb = ch.closest('label'); if (lb) lb.style.opacity = vpnCasa.on ? '1' : '.5'; });
         vpnCasaPintar(); vpnEquiposPintar(); vpnPintarVentana(); try { rbTodoPintar(); } catch (eRb) { /* nada */ } navCargar();   // 🧭 u121
@@ -33198,50 +33208,135 @@ const LUISA_COM_DEF_PAG = { activo: true, stockHora: '08:00', mediodiaHora: '12:
     let rbFiltroAct = 'todas';
     function rbListo(x) { return x === 'listo' || !!(x && typeof x === 'object' && (x.listo === true || x.estado === 'listo' || (x.ok === true && !x.error))); }
     function rbTerceroTel() { const t = vpnCasa.tercera; return !!(t && (t.ip || t.nombre)); }   // u149: el 3.er equipo tiene teléfono asignado
+    function rbExtras() { return Array.isArray(vpnCasa.eqExtra) ? vpnCasa.eqExtra : []; }   // u150: equipos 3, 4, 5… (un null = quitado)
+    function rbSrvNuevo() { const m = /^robots-(\d+)\.(\d+)/.exec(vpnCasa.ver || ''); return !!m && (Number(m[1]) > 1 || Number(m[2]) >= 43) && !!vpnCasa.EE && typeof vpnCasa.EE === 'object'; }   // u150: robots-1.43 o mayor
+    function rbBorrar() { try { return firebase.firestore.FieldValue.delete(); } catch (e) { return null; } }
+    let rbQuitando = null;   // u150: equipo que espera el «¿Seguro?» (confirmación dentro de la página, sin confirm())
     function rbCrearActual() {   // lo guardado, o los valores que equivalen a lo de hoy (sin escribir nada)
       const c = (vpnCasa.crear && typeof vpnCasa.crear === 'object') ? vpnCasa.crear : null, E = (c && c.equipos) || {};
       const def = { 0: { dir: true, crear: true, modo: 'sinvpn' }, 1: { dir: true, crear: false, modo: 'sinvpn' }, 2: { dir: false, crear: false, modo: 'vpn' } }, eq = {};
       [0, 1, 2].forEach((i) => { const x = E[String(i)] || {}; let d = def[i]; if (c && E[String(i)] === undefined && (i < 2 || rbTerceroTel())) d = { dir: true, crear: true, modo: 'sinvpn' }; if (!c && i === 2 && rbTerceroTel()) d = { dir: true, crear: true, modo: 'sinvpn' }; eq[i] = { dir: typeof x.dir === 'boolean' ? x.dir : d.dir, crear: typeof x.crear === 'boolean' ? x.crear : d.crear, modo: RB_MODOS.indexOf(x.modo) !== -1 ? x.modo : d.modo, dirModo: RB_DIRMODOS.indexOf(x.dirModo) !== -1 ? x.dirModo : 'sinvpn' }; });
       if (!rbTerceroTel()) { eq[2].dir = false; eq[2].modo = 'vpn'; }   // sin teléfono asignado: solo crea y siempre con VPN (con teléfono es un equipo normal, u149)
+      rbExtras().forEach((r, k) => { if (!r || !(r.ip || r.nombre)) return; const i = 3 + k, x = E[String(i)] || {};   // u150: equipo nuevo sin entrada = habilitado, sin escribir
+        eq[i] = { dir: typeof x.dir === 'boolean' ? x.dir : true, crear: typeof x.crear === 'boolean' ? x.crear : true, modo: RB_MODOS.indexOf(x.modo) !== -1 ? x.modo : 'sinvpn', dirModo: RB_DIRMODOS.indexOf(x.dirModo) !== -1 ? x.dirModo : 'sinvpn' }; });
+      Object.keys(eq).forEach((i) => { const x = E[String(i)] || {}, e = eq[i]; e.esG = typeof x.esDir === 'boolean' || typeof x.esCrear === 'boolean' || RB_DIRMODOS.indexOf(x.esDirModo) !== -1 || RB_MODOS.indexOf(x.esCrearModo) !== -1;   // 🇪🇸 u150: sin campos de España = «igual que hoy» (sin escribir)
+        e.esDir = typeof x.esDir === 'boolean' ? x.esDir : e.dir; e.esDirModo = RB_DIRMODOS.indexOf(x.esDirModo) !== -1 ? x.esDirModo : 'sinvpn'; e.esCrear = typeof x.esCrear === 'boolean' ? x.esCrear : e.crear; e.esCrearModo = RB_MODOS.indexOf(x.esCrearModo) !== -1 ? x.esCrearModo : e.modo; });
       const p = Array.isArray(c && c.paises) ? c.paises.map(String).filter((x) => /^[A-Z]{2}$/.test(x)) : [];
       return { equipos: eq, paises: p };   // u147: lista vacía = TODOS los países (nunca se rellena)
     }
     function rbEquiposLista() {
       const sel = vpnCasa.sel || {}, ex = vpnCasa.extra, te = vpnCasa.tercera, L = [{ i: 0, nombre: String(sel.nombre || 'A51'), ref: { nombre: sel.nombre, ip: sel.ip }, tel: true }];
       if (ex && (ex.ip || ex.nombre)) L.push({ i: 1, nombre: String(ex.nombre || ex.ip), ref: ex, tel: true });
-      L.push({ i: 2, nombre: String((te && te.nombre) || 'epic-robots-3'), ref: te || null, tel: rbTerceroTel() }); return L;
+      L.push({ i: 2, nombre: String((te && te.nombre) || 'epic-robots-3'), ref: te || null, tel: rbTerceroTel() });
+      rbExtras().forEach((r, k) => { if (r && (r.ip || r.nombre)) L.push({ i: 3 + k, nombre: String(r.nombre || r.ip), ref: r, tel: true }); });   // u150
+      return L;
     }
     function rbEquiposPintar() {
       const box = rbG('rbEquipos'); if (!box) return;
       const C = rbCrearActual(), est2 = vpnCasa.XE2 || vpnCasa.terceraEstado || null, est1 = vpnCasa.XE || null, eq = (vpnCasa.E && vpnCasa.E.lista) || [], nrm = (x) => String(x || '').toLowerCase().replace(/\s+/g, '-');
+      const nuevo = rbSrvNuevo(), EE = nuevo ? vpnCasa.EE : {};
       box.innerHTML = rbEquiposLista().map((q) => {
         const x = C.equipos[q.i], r = q.ref || {}, en = (r.ip || r.nombre) ? eq.find((e) => (r.ip && e.ip === r.ip) || (r.nombre && nrm(e.nombre) === nrm(r.nombre))) : null;
-        const est = q.i === 2 ? est2 : (q.i === 1 ? est1 : null), eErr = est && est.error ? String(est.error).replace(/\s+/g, ' ').trim().slice(0, 70) : '';
-        const bloq = (q.i === 1 || q.i === 2) && !!est && (!!eErr || !rbListo(est)) || (q.i === 2 && !est && true), crearOn = x.crear === true;
+        const ee = q.i > 0 ? (EE[String(q.i)] || null) : null, viejo = q.i >= 3 && !nuevo;
+        const est = q.i === 0 ? null : (ee || (q.i === 2 ? est2 : (q.i === 1 ? est1 : null))), eErr = est && est.error ? String(est.error).replace(/\s+/g, ' ').trim().slice(0, 70) : '';
+        const bloq = viejo || (q.i === 1 || q.i === 2) && !!est && (!!eErr || !rbListo(est)) || (q.i === 2 && !est && true) || (q.i >= 3 && (!est || !!eErr || !rbListo(est))), crearOn = x.crear === true;
+        const linea = (ee && typeof ee.telefonoEnLinea === 'boolean') ? ee.telefonoEnLinea : !!(en && en.online);
         let nota; if (q.i === 0) nota = en ? (en.online ? 'en línea' : 'apagado') : 'sin dato';
+        else if (viejo) nota = '⏳ espera la actualización del robot';
         else if (eErr) nota = '⚠️ el servidor no pudo encenderlo: ' + eErr;
         else if (bloq) nota = q.tel ? '⏳ el servidor lo está encendiendo (hasta 5 min)' : 'todavía no está encendido en el servidor';
         else if (q.i === 2 && !q.tel) nota = 'sin teléfono';
-        else nota = en ? (en.online ? 'en línea' : '📵 teléfono desconectado: abre Tailscale en ese teléfono') : 'sin dato';
+        else nota = (ee && typeof ee.telefonoEnLinea === 'boolean') ? (linea ? 'en línea' : '📵 teléfono desconectado: abre Tailscale en ese teléfono') : (en ? (en.online ? 'en línea' : '📵 teléfono desconectado: abre Tailscale en ese teléfono') : 'sin dato');
         const sw = (k, on, dis) => '<label class="rb-sw"><input type="checkbox" data-rb="' + k + '-' + q.i + '"' + (on ? ' checked' : '') + (dis ? ' disabled' : '') + ' onchange="rbEqInterruptor(' + q.i + ',\'' + k + '\',this)"><i></i></label>';
         const seg = RB_MODOS.map((m) => '<button type="button" data-rbm="' + q.i + '-' + m + '" class="' + (x.modo === m ? 'a' : '') + '"' + ((!crearOn || bloq || (q.i === 2 && !q.tel && m !== 'vpn')) ? ' disabled' : '') + ' onclick="rbEqModo(' + q.i + ',\'' + m + '\')">' + RB_MODO_TXT[m][0] + '</button>').join('');
-        return '<div class="rb-eq' + (bloq ? ' off' : '') + '" data-eq="' + q.i + '"><div class="rb-row"><span class="rb-n"><i class="rb-dot' + (en && en.online ? ' on' : '') + '"></i> ' + escaparHtml(q.nombre) + '</span><span class="rb-sub" style="margin:0;text-align:right">' + escaparHtml(nota) + '</span></div>'
-          + (q.tel ? '<div class="rb-ctl"><span>Dirección y Prime</span>' + sw('dir', x.dir, false) + '</div>'
-            + '<div class="rb-segd">' + RB_DIRMODOS.map((m) => '<button type="button" data-rbd="' + q.i + '-' + m + '" class="' + (x.dirModo === m ? 'a' : '') + '"' + (!x.dir ? ' disabled' : '') + ' onclick="rbEqDirModo(' + q.i + ',\'' + m + '\')">' + RB_DIRMODO_TXT[m][0] + '</button>').join('') + '</div><span class="rb-sub">' + escaparHtml(x.dir ? RB_DIRMODO_TXT[x.dirModo][1] : 'Dirección está apagada en este equipo') + '</span>' : '')
+        const quitar = (q.i >= 1 && (q.i !== 2 || q.tel)) ? '<div class="rb-row" style="margin-top:8px;justify-content:flex-end">' + (rbQuitando === q.i
+          ? '<span class="rb-sub" style="margin:0">¿Seguro?</span><button type="button" data-rbq-si="' + q.i + '" class="rb-btn mini m" onclick="rbQuitarSi(' + q.i + ')">Sí, quitar</button><button type="button" data-rbq-no="' + q.i + '" class="rb-btn mini s" onclick="rbQuitarNo()">No</button>'
+          : '<button type="button" data-rbq="' + q.i + '" class="rb-btn mini s" onclick="rbQuitarPedir(' + q.i + ')">Quitar</button>') + '</div>' : '';
+        const esSw = (k, on, dis) => '<label class="rb-sw"><input type="checkbox" data-rb="' + k + '-' + q.i + '"' + (on ? ' checked' : '') + (dis ? ' disabled' : '') + ' onchange="' + (k === 'esDir' ? 'rbEqEsDir' : 'rbEqEsCrear') + '(' + q.i + ',this)"><i></i></label>';
+        const esSeg = (cls, at, fn, mods, act, dis) => '<div class="' + cls + '">' + mods.map((m) => '<button type="button" data-' + at + '="' + q.i + '-' + m + '" class="' + (act === m ? 'a' : '') + '"' + (dis ? ' disabled' : '') + ' onclick="' + fn + '(' + q.i + ',\'' + m + '\')">' + (m === 'sinvpn' ? 'Sin VPN' : m === 'alterna' ? 'Alterna' : 'VPN España') + '</button>').join('') + '</div>';
+        const espana = q.tel ? '<div style="border-top:1px solid #1f2937;margin-top:10px;padding-top:2px"><div style="font-weight:800;color:#fff;font-size:12px;margin-top:8px">🇪🇸 España</div>'
+          + '<div class="rb-ctl"><span>Dirección España</span>' + esSw('esDir', x.esDir, viejo) + '</div>' + esSeg('rb-segd', 'rbed', 'rbEqEsDirModo', RB_DIRMODOS, x.esDirModo, !x.esDir || viejo)
+          + '<div class="rb-ctl"><span>Crear España</span>' + esSw('esCrear', x.esCrear, bloq) + '</div>' + esSeg('rb-seg', 'rbec', 'rbEqEsCrearModo', RB_MODOS, x.esCrearModo, !x.esCrear || bloq)
+          + '<span class="rb-sub">' + (x.esG ? '' : 'Igual que hoy (sin guardar). ') + 'En España la VPN sale solo por España. En Colombia la VPN de dirección sale solo por Colombia; la de crear usa los países marcados abajo.</span></div>' : '';
+        return '<div class="rb-eq' + (bloq ? ' off' : '') + '" data-eq="' + q.i + '"><div class="rb-row"><span class="rb-n"><i class="rb-dot' + (linea ? ' on' : '') + '"></i> ' + escaparHtml(q.nombre) + '</span><span class="rb-sub" style="margin:0;text-align:right">' + escaparHtml(nota) + '</span></div>'
+          + '<div style="font-weight:800;color:#fff;font-size:12px;margin-top:8px">🇨🇴 Colombia</div>' + (q.tel ? '<div class="rb-ctl" style="margin-top:4px"><span>Dirección y Prime</span>' + sw('dir', x.dir, viejo) + '</div>'
+            + '<div class="rb-segd">' + RB_DIRMODOS.map((m) => '<button type="button" data-rbd="' + q.i + '-' + m + '" class="' + (x.dirModo === m ? 'a' : '') + '"' + ((!x.dir || viejo) ? ' disabled' : '') + ' onclick="rbEqDirModo(' + q.i + ',\'' + m + '\')">' + RB_DIRMODO_TXT[m][0] + '</button>').join('') + '</div><span class="rb-sub">' + escaparHtml(x.dir ? RB_DIRMODO_TXT[x.dirModo][1] : 'Dirección está apagada en este equipo') + '</span>' : '')
           + '<div class="rb-ctl"><span>Crear</span>' + sw('crear', crearOn, bloq) + '</div>'
-          + '<div class="rb-seg">' + seg + '</div><span class="rb-sub">' + escaparHtml(crearOn ? RB_MODO_TXT[x.modo][1] : 'Crear está apagado en este equipo') + '</span></div>'; }).join('');
+          + '<div class="rb-seg">' + seg + '</div><span class="rb-sub">' + escaparHtml(crearOn ? RB_MODO_TXT[x.modo][1] : 'Crear está apagado en este equipo') + '</span>'
+          + espana + quitar + '</div>'; }).join('');
       const pb = rbG('rbPaises'); if (pb) pb.innerHTML = '<button type="button" data-rbp="TODOS" class="' + (C.paises.length === 0 ? 'a' : '') + '" onclick="rbPaisTodos()">🌍 Todos los países</button>' + Object.keys(RB_PAISES).map((k) => '<button type="button" data-rbp="' + k + '" class="' + (C.paises.indexOf(k) !== -1 ? 'a' : '') + '" onclick="rbPais(\'' + k + '\')">' + escaparHtml(RB_PAISES[k]) + '</button>').join('');
+      try { rbAgregarPintar(); rbSimulPintar(); } catch (e) { /* nada */ }
     }
     async function rbGuardarCrear(C) {
       if (window.EPIC_TIENDA) return false;
-      const obj = { equipos: { '0': C.equipos[0], '1': C.equipos[1], '2': C.equipos[2] }, paises: C.paises.slice() };   // u148: cada equipo lleva dir, crear, modo y dirModo
+      const eqs = {}; Object.keys(C.equipos).forEach((k) => { eqs[String(k)] = rbEqSal(C.equipos[k]); });   // u150: todos los equipos listados (0, 1, 2 y los extra); lo de otros no se borra (merge)
+      const obj = { equipos: eqs, paises: C.paises.slice() };   // u148: cada equipo lleva dir, crear, modo y dirModo
       try { await vpnRef().set({ crear: obj }, { merge: true }); vpnCasa.crear = obj; mostrarToast('🏠 Guardado: equipos y salidas para crear cuentas.'); }
       catch (e) { mostrarToast('❌ No se pudo guardar: ' + e.message); }
       rbEquiposPintar(); return true;
     }
-    async function rbEqInterruptor(i, k, ch) { if (window.EPIC_TIENDA) return false; const C = rbCrearActual(); if (!C.equipos[i] || (k !== 'dir' && k !== 'crear')) return false; C.equipos[i][k] = !!(ch && ch.checked); return rbGuardarCrear(C); }
-    async function rbEqModo(i, m) { if (window.EPIC_TIENDA) return false; const C = rbCrearActual(); if (!C.equipos[i] || RB_MODOS.indexOf(m) === -1 || C.equipos[i].crear !== true || (i === 2 && !rbTerceroTel() && m !== 'vpn')) return false; C.equipos[i].modo = m; return rbGuardarCrear(C); }
-    async function rbEqDirModo(i, m) { if (window.EPIC_TIENDA) return false; const C = rbCrearActual(); if ((i === 2 && !rbTerceroTel()) || !C.equipos[i] || RB_DIRMODOS.indexOf(m) === -1 || C.equipos[i].dir !== true) return false; C.equipos[i].dirModo = m; return rbGuardarCrear(C); }
+    function rbEqSal(e) { const o = { dir: e.dir, crear: e.crear, modo: e.modo, dirModo: e.dirModo }; if (e.esG) { o.esDir = e.esDir; o.esDirModo = e.esDirModo; o.esCrear = e.esCrear; o.esCrearModo = e.esCrearModo; } return o; }   // 🇪🇸 u150: los campos de España solo van en los equipos que ya los tienen
+    function rbEqOk(i) { return !(i >= 3 && !rbSrvNuevo()); }   // u150: sin robots-1.43 los equipos n≥3 no se tocan
+    async function rbEqInterruptor(i, k, ch) { if (window.EPIC_TIENDA || !rbEqOk(i)) return false; const C = rbCrearActual(); if (!C.equipos[i] || (k !== 'dir' && k !== 'crear')) return false; C.equipos[i][k] = !!(ch && ch.checked); return rbGuardarCrear(C); }
+    async function rbEqModo(i, m) { if (window.EPIC_TIENDA || !rbEqOk(i)) return false; const C = rbCrearActual(); if (!C.equipos[i] || RB_MODOS.indexOf(m) === -1 || C.equipos[i].crear !== true || (i === 2 && !rbTerceroTel() && m !== 'vpn')) return false; C.equipos[i].modo = m; return rbGuardarCrear(C); }
+    async function rbEqDirModo(i, m) { if (window.EPIC_TIENDA || !rbEqOk(i)) return false; const C = rbCrearActual(); if ((i === 2 && !rbTerceroTel()) || !C.equipos[i] || RB_DIRMODOS.indexOf(m) === -1 || C.equipos[i].dir !== true) return false; C.equipos[i].dirModo = m; return rbGuardarCrear(C); }
+    async function rbEqEsCambiar(i, k, v) { if (window.EPIC_TIENDA || !rbEqOk(i)) return false; const C = rbCrearActual(), e = C.equipos[i]; if (!e || (i === 2 && !rbTerceroTel())) return false;
+      if (k === 'esDirModo' && (RB_DIRMODOS.indexOf(v) === -1 || e.esDir !== true)) return false; if (k === 'esCrearModo' && (RB_MODOS.indexOf(v) === -1 || e.esCrear !== true)) return false;
+      e[k] = v; e.esG = true; return rbGuardarCrear(C); }   // 🇪🇸 u150: al tocar cualquier control se guardan los cuatro campos de España de ese equipo (los no tocados, con lo que se mostraba)
+    async function rbEqEsDir(i, ch) { return rbEqEsCambiar(i, 'esDir', !!(ch && ch.checked)); }
+    async function rbEqEsDirModo(i, m) { return rbEqEsCambiar(i, 'esDirModo', m); }
+    async function rbEqEsCrear(i, ch) { return rbEqEsCambiar(i, 'esCrear', !!(ch && ch.checked)); }
+    async function rbEqEsCrearModo(i, m) { return rbEqEsCambiar(i, 'esCrearModo', m); }
+    // ➕ u150 · Agregar equipo (primer hueco libre: casasExtra[0] → tercera → un null de equiposExtra → al final)
+    function rbAgregarPintar() {
+      const S = rbG('rbAgregarSel'), B = rbG('rbAgregarBtn'), N = rbG('rbAgregarNota'); if (!S) return;
+      const nrm = (x) => String(x || '').toLowerCase().replace(/\s+/g, '-'), usados = rbEquiposLista().filter((q) => q.i === 0 || (q.ref && (q.ref.ip || q.ref.nombre)));
+      { const MA = rbG('rbMemAviso'), av = rbSrvNuevo() && vpnCasa.EE && vpnCasa.EE.aviso, nT = Math.max(usados.length, Number(av && av.equipos) || 0);   // u150: aviso de memoria (sin tope)
+        if (MA) { MA.classList.toggle('hidden', !(nT > 8)); MA.textContent = '⚠️ Cada equipo ocupa memoria del servidor aunque no trabaje (tienes ' + nT + ' equipos con teléfono).'; } }
+      const L = ((vpnCasa.E && vpnCasa.E.lista) || []).filter((x) => x.salida && !vpnEsDelVps(x) && !vpnEsMullvad(x) && !/^epic-robots/i.test(String(x.nombre || '')) && !usados.some((q) => (q.ref.ip && q.ref.ip === x.ip) || (q.ref.nombre && nrm(q.ref.nombre) === nrm(x.nombre))));
+      const antes = S.value; S.innerHTML = '<option value="">— elige el teléfono —</option>' + L.map((x) => '<option value="' + escaparHtml(x.ip) + '" data-n="' + escaparHtml(x.nombre) + '">' + escaparHtml(x.nombre) + (x.online ? '' : ' (apagado)') + '</option>').join('');
+      if (antes && L.some((x) => x.ip === antes)) S.value = antes; if (B) B.disabled = !L.length;
+      if (N) N.textContent = L.length ? '' : 'No hay más teléfonos disponibles. Agrega el teléfono a tu cuenta de Tailscale y apruébalo como salida.';
+    }
+    async function rbAgregar() {
+      if (window.EPIC_TIENDA) return false;
+      const S = rbG('rbAgregarSel'), ip = S ? String(S.value || '') : '', op = S && S.selectedOptions[0]; if (!/^100\.\d+\.\d+\.\d+$/.test(ip)) { mostrarToast('Elige primero el teléfono.'); return false; }
+      const ref = { nombre: String((op && op.getAttribute('data-n')) || ''), ip: ip }, C = rbCrearActual(), d = { amazonParalelo: true }; let n;
+      if (!vpnCasa.extra) { n = 1; d.casasExtra = [ref]; }
+      else if (!rbTerceroTel()) { n = 2; d.casaTercera = ref; d.tercero = true; }
+      else { const a = rbExtras().slice(); let k = a.findIndex((z) => z == null); if (k === -1) { a.push(ref); k = a.length - 1; } else a[k] = ref; d.equiposExtra = a; n = 3 + k; }
+      C.equipos[n] = { dir: true, crear: true, modo: 'sinvpn', dirModo: 'sinvpn', esG: false };
+      const eqs = {}; Object.keys(C.equipos).forEach((k) => { eqs[String(k)] = rbEqSal(C.equipos[k]); }); d.crear = { equipos: eqs, paises: C.paises.slice() };
+      try { await vpnRef().set(d, { merge: true }); }
+      catch (e) { mostrarToast('❌ No se pudo agregar: ' + e.message); return false; }
+      vpnCasa.par = true; vpnCasa.crear = d.crear; if (n === 1) vpnCasa.extra = ref; else if (n === 2) { vpnCasa.tercera = ref; vpnCasa.tercero = true; } else vpnCasa.eqExtra = d.equiposExtra;
+      if (S) S.value = ''; mostrarToast('➕ Equipo agregado: ' + ref.nombre + '. El servidor lo enciende solo (hasta 5 min).'); rbEquiposPintar(); return true;
+    }
+    function rbQuitarPedir(i) { if (window.EPIC_TIENDA) return false; rbQuitando = i; rbEquiposPintar(); return true; }
+    function rbQuitarNo() { rbQuitando = null; rbEquiposPintar(); return true; }
+    async function rbQuitarSi(i) { if (window.EPIC_TIENDA || rbQuitando !== i) return false; return rbQuitar(i); }
+    async function rbQuitar(i) {
+      if (window.EPIC_TIENDA || rbQuitando !== i || !(i >= 1)) return false;
+      const d = {}, del = rbBorrar();
+      if (i === 1) d.casasExtra = []; else if (i === 2) { d.casaTercera = null; d.tercero = false; }
+      else { const a = rbExtras().slice(); if (!a[i - 3]) { rbQuitando = null; rbEquiposPintar(); return false; } a[i - 3] = null; d.equiposExtra = a; }
+      if (del) d['crear.equipos.' + i] = del;   // para que un equipo nuevo en ese hueco no herede ajustes
+      try { await vpnRef().update(d); } catch (e) { mostrarToast('❌ No se pudo quitar: ' + e.message); rbQuitando = null; rbEquiposPintar(); return false; }
+      if (i === 1) vpnCasa.extra = null; else if (i === 2) { vpnCasa.tercera = null; vpnCasa.tercero = false; } else vpnCasa.eqExtra = d.equiposExtra;
+      if (vpnCasa.crear && vpnCasa.crear.equipos) delete vpnCasa.crear.equipos[String(i)];
+      rbQuitando = null; mostrarToast('➖ Equipo quitado.'); rbEquiposPintar(); return true;
+    }
+    // ⚡ u150 · cuántas órdenes de Amazon a la vez (secretos/robots_vpn.simultaneos; sin dato = 3, sin escribir)
+    function rbSimulValor() { const n = vpnCasa.simul; return (typeof n === 'number' && Number.isInteger(n) && n >= 1) ? n : 3; }
+    function rbSimulAviso() { const I = rbG('rbSimul'), av = rbG('rbSimulAviso'); if (I && av) av.classList.toggle('hidden', !(Number(I.value) > 4)); }
+    function rbSimulPintar() { const I = rbG('rbSimul'); if (!I) return; if (document.activeElement !== I) I.value = String(rbSimulValor()); const av = rbG('rbSimulAviso'); if (av) av.classList.toggle('hidden', !(Number(I.value) > 4)); }
+    async function rbSimulGuardar(el) {
+      if (window.EPIC_TIENDA || !el) return false; const t = String(el.value).trim(), n = Number(t);
+      if (t === '' || !Number.isInteger(n) || n < 1 || n > 20) { mostrarToast('Pon un número entero de 1 a 20.'); el.value = String(rbSimulValor()); rbSimulPintar(); return false; }
+      try { await vpnRef().set({ simultaneos: n }, { merge: true }); vpnCasa.simul = n; mostrarToast('⚡ Ahora trabajan ' + n + ' a la vez.'); }
+      catch (e) { mostrarToast('❌ No se pudo guardar: ' + e.message); return false; }
+      rbSimulPintar(); return true;
+    }
     async function rbPais(cod) {
       if (window.EPIC_TIENDA || !RB_PAISES[cod]) return false; const C = rbCrearActual(), p = C.paises.slice(), k = p.indexOf(cod);
       if (k !== -1) p.splice(k, 1); else p.push(cod);   // u147: si queda vacía vuelve a «Todos» (se guarda [])
