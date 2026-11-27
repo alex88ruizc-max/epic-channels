@@ -5287,6 +5287,7 @@
       </div>
       <div class="overflow-y-auto px-4 py-3 space-y-3 flex-grow">
         <p id="rtResumen" class="text-xs text-gray-200 break-all"></p>
+        <p id="rtAvisoCompra" class="hidden text-[11px] leading-snug p-2.5 rounded-xl border"></p>
 <label id="rtEnNombreCaja" class="hidden flex items-start gap-2 p-2.5 rounded-lg bg-sky-500/10 border border-sky-500/30 cursor-pointer"><input type="checkbox" id="rtEnNombreProv" onchange="pintarAvisoDescuentoTicket()" class="mt-0.5 accent-sky-500 w-4 h-4 shrink-0"><span class="text-[11px] text-sky-100"><b id="rtEnNombreTxt">Resolver en nombre del proveedor (sin descuento)</b><span class="block text-sky-200/70">Úsalo si el proveedor tuvo un imprevisto. No se le descuenta nada.</span></span></label>
         <p id="resolverAvisoDescuento" class="hidden text-[11px] text-amber-200 bg-amber-500/10 border border-amber-500/30 rounded-lg px-2.5 py-1.5"></p>
         <p id="rtMotivoCliente" class="hidden text-[11px] text-amber-200 bg-amber-500/10 border border-amber-500/30 rounded-xl px-2.5 py-1.5 leading-snug"></p>
@@ -16243,7 +16244,7 @@
 
     function abrirModalTicket() {
       ['tkCuenta', 'tkDetalle', 'tkCliente', 'tkFoto'].forEach(id => { const e = document.getElementById(id); if (e) e.value = ''; });
-      tkCompraDetectada = null; tkClienteManual = false; tkBusquedaN++;
+      tkCompraDetectada = null; tkClienteManual = false; tkBusquedaN++; tkRespaldoProbado = '';   // 🔎 u152
       try { actualizarClienteTicket(); } catch (e) { /* nada */ }
       const sel = document.getElementById('tkAsignar');
       if (sel) {
@@ -16312,6 +16313,8 @@
       const btn = document.getElementById('btnCrearTicket');
       if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>'; }
       try {
+        // 🔎 u152: respaldo solo si el detector no probó ya sin cliente (no repetir la búsqueda). Con cliente escrito solo vale una compra de ESE cliente; sin cliente, solo si es de un solo cliente.
+        if (!compraT && (correoCliente || tkRespaldoProbado !== cuenta)) { try { const r = await ticketBuscarCompraDeCuenta(cuenta, { uid: cli.uid, email: correoCliente }); if (r && r.h) compraT = r.h; } catch (e) { /* nada */ } }
         const archivoFoto = ((document.getElementById('tkFoto') || {}).files || [])[0];
         const fotoManual = archivoFoto ? await prepararFotoReporte(archivoFoto) : '';
         const refTicket = db.collection('tickets_cuentas').doc();
@@ -16351,6 +16354,50 @@
       return p ? (p.cuentas || []).filter(c => !(c && typeof c === 'object' && c.alquilerId)).length : 0;
     }
 
+    // 🔎 u152: compra de una cuenta cuando el ticket no trae compraId. Candidatas: registro de venta (cuentas_vendidas/<correo> → compraId) + búsqueda de siempre (bcBuscarCompras).
+    //  · la cuenta debe estar HOY en las credenciales de la compra; · con cliente (uid o correo) solo valen compras de ESE cliente;
+    //  · sin cliente y compras de varios clientes → no se elige ({multi}). Costo: 2 lecturas de documento + la búsqueda de siempre (array-contains; sin índice, una lectura de todas las compras cada 5 min).
+    async function ticketBuscarCompraDeCuenta(cuenta, cli) {
+      cuenta = String(cuenta || '').trim().toLowerCase(); if (!cuenta) return null; cli = cli || {};
+      const uid = String(cli.uid || ''), mail = String(cli.email || '').trim().toLowerCase();
+      const arma = (id, c) => ({ compraId: id, uid: c.usuarioId || '', email: String(c.usuarioEmail || '').toLowerCase(), productoId: c.productoId || '', productoNombre: c.productoNombre || '', fecha: c.fecha || '', garantia: (resolverTipoGarantiaCompra(c) || {}).tipo || '' });
+      const cand = {};
+      try {
+        const v = await db.collection('cuentas_vendidas').doc(idVendida(cuenta)).get();
+        const cid = v.exists ? String((v.data() || {}).compraId || '') : '';
+        if (cid) { const cd = await db.collection('compras').doc(cid).get(); if (cd.exists) cand[cid] = cd.data() || {}; }
+      } catch (e) { console.warn('Compra por cuentas_vendidas:', e); }
+      try { (await bcBuscarCompras(cuenta)).forEach(c => { if (c && c.id && !cand[c.id]) cand[c.id] = c; }); } catch (e) { console.warn('Compra por búsqueda:', e); }
+      let L = Object.keys(cand).map(id => ({ id: id, c: cand[id] }))
+        .filter(x => String(x.c.credenciales || '').split('\n').some(l => emailDeLineaCuenta(l) === cuenta))   // la cuenta sigue en la compra (no solo en correos/reemplazos)
+        .filter(x => !(uid || mail) || (uid && x.c.usuarioId === uid) || (mail && String(x.c.usuarioEmail || '').toLowerCase() === mail));
+      if (!L.length) return null;
+      const clientes = {}; L.forEach(x => { clientes[x.c.usuarioId || String(x.c.usuarioEmail || '').toLowerCase() || x.id] = 1; });
+      if (Object.keys(clientes).length > 1) return { multi: Object.keys(clientes).length };
+      L.sort((p, q) => String(q.c.fecha).localeCompare(String(p.c.fecha)));
+      return { h: arma(L[0].id, L[0].c) };
+    }
+    let rtCompraHallada = null;   // { id: <ticket>, h: <compra> }: aparte del ticket para que el refresco en vivo de tickets no la borre
+    function rtHallada(id) { return rtCompraHallada && rtCompraHallada.id === id ? rtCompraHallada.h : null; }
+    function rtPintarEnlace(t, estado, extra) {   // estado: 'buscando' | 'hallada' | 'no' | 'multi'
+      const hall = rtHallada(t.id), enlazado = !!t.compraId || (estado === 'hallada' && !!hall);
+      ['rtOpcArreglada', 'rtOpcReemplazo'].forEach(i => {
+        const e = document.getElementById(i); if (!e) return;
+        e.classList.toggle('opacity-40', !enlazado);
+        const inp = e.querySelector('input'); if (inp) { inp.disabled = !enlazado; if (!enlazado && inp.checked) { inp.checked = false; const k = document.querySelector('input[name="rtResultado"][value="cerrar"]'); if (k) k.checked = true; } }
+        e.title = enlazado ? '' : (estado === 'buscando' ? 'Buscando la compra de esta cuenta…' : estado === 'multi' ? 'Hay varias compras de distintos clientes' : 'No encuentro la compra de esta cuenta');
+      });
+      const av = document.getElementById('rtAvisoCompra'); if (av) {
+        const K = 'text-[11px] leading-snug p-2.5 rounded-xl border ';
+        if (t.compraId) { av.className = 'hidden'; av.textContent = ''; }
+        else if (estado === 'hallada' && hall) { av.className = K + 'bg-emerald-500/10 border-emerald-500/30 text-emerald-200'; av.textContent = 'Encontré la compra de esta cuenta' + (hall.email ? ' (' + hall.email + ')' : '') + '. El ticket no venía enlazado, pero puedes arreglarla o cambiarla igual.'; }
+        else if (estado === 'buscando') { av.className = K + 'bg-gray-800 border-gray-700 text-gray-300'; av.textContent = 'Buscando la compra de esta cuenta…'; }
+        else if (estado === 'multi') { av.className = K + 'bg-amber-500/10 border-amber-500/30 text-amber-200'; av.textContent = 'No encuentro la compra de esta cuenta con seguridad: hay varias compras de distintos clientes (' + (extra || '') + ') y el ticket no dice de quién es. Por eso no se puede arreglar ni cambiar desde aquí; crea el ticket de nuevo indicando el cliente, o ciérralo.'; }
+        else { av.className = K + 'bg-amber-500/10 border-amber-500/30 text-amber-200'; av.textContent = 'No encuentro la compra de esta cuenta: no está en el registro de ventas ni en las compras de ningún cliente (puede ser una cuenta no vendida, o vendida y luego cambiada). Por eso no se puede arreglar ni cambiar desde aquí. Puedes cerrar el ticket o decir que la cuenta funciona.'; }
+      }
+    }
+    function compraIdDeTicket(t) { const h = rtHallada(t.id); return t.compraId || (h && h.compraId) || ''; }
+
     function resolverTicket(id) {
       if (!esStaffSesion()) return;
       const t = ticketsCuentas.find(x => x.id === id);
@@ -16361,17 +16408,18 @@
       resolviendoTicketId = id;
       const enlazado = !!t.compraId;
       const admin = esAdminSesionActual();
+      rtCompraHallada = null;
       document.getElementById('rtResumen').innerHTML = `<b class="font-mono">${escaparHtml(t.cuenta || '')}</b>${t.clienteEmail ? ' · cliente ' + escaparHtml(t.clienteEmail) : ''}${t.productoNombre ? '<br><span class="text-gray-400">' + escaparHtml(t.productoNombre) + '</span>' : ''}`;
       const mot = document.getElementById('rtMotivoCliente');
       if (mot) { const txtM = [t.motivo, t.detalle].filter(Boolean).join(' · '); mot.textContent = txtM ? 'Reportó: ' + txtM : ''; mot.classList.toggle('hidden', !txtM); }
       document.querySelectorAll('input[name="rtResultado"]').forEach(r => { r.checked = r.value === 'cerrar'; r.disabled = false; });
-      ['rtOpcArreglada', 'rtOpcReemplazo'].forEach(i => {
-        const e = document.getElementById(i);
-        if (!e) return;
-        e.classList.toggle('opacity-40', !enlazado);
-        const inp = e.querySelector('input'); if (inp) inp.disabled = !enlazado;
-        e.title = enlazado ? '' : 'Este ticket no está enlazado a una compra';
-      });
+      rtPintarEnlace(t, enlazado ? 'hallada' : 'buscando');   // 🔎 u152: sin compraId se busca por la cuenta (y por el cliente del ticket, si lo trae)
+      if (!enlazado) ticketBuscarCompraDeCuenta(t.cuenta, { uid: t.clienteUid, email: t.clienteEmail }).then(r => {
+        if (resolviendoTicketId !== id) return;   // ya cerró o abrió otro ticket
+        if (r && r.h) rtCompraHallada = { id: id, h: r.h };
+        const tt = ticketsCuentas.find(x => x.id === id) || t;   // el ticket puede haberse refrescado
+        rtPintarEnlace(tt, r && r.h ? 'hallada' : r && r.multi ? 'multi' : 'no', r && r.multi); rtCambioResultado();
+      }).catch(() => { if (resolviendoTicketId === id) rtPintarEnlace(ticketsCuentas.find(x => x.id === id) || t, 'no'); });
       const caja = document.getElementById('rtDesdeStockCaja'); if (caja) caja.classList.toggle('hidden', !admin);
       const av = document.getElementById('rtAvisoServidor'); if (av) av.classList.toggle('hidden', admin);
       document.getElementById('rtNota').value = '';
@@ -16415,8 +16463,9 @@
     }
 
     function rtCambioResultado() {
-      const t = ticketsCuentas.find(x => x.id === resolviendoTicketId) || {};
+      let t = ticketsCuentas.find(x => x.id === resolviendoTicketId) || {};
       const r = rtResultadoActual();
+      const hallG = rtHallada(resolviendoTicketId); if (!t.garantia && hallG && hallG.garantia) t = Object.assign({}, t, { garantia: hallG.garantia });   // 🔎 u152
       document.getElementById('rtBloqueNueva').classList.toggle('hidden', r !== 'reemplazo');
       document.getElementById('rtBloqueClave').classList.toggle('hidden', r !== 'arreglada');
       let txt;
@@ -16468,17 +16517,21 @@
         };
         const fotoRef = db.collection('tickets_fotos').doc(id + '_resp');
         const datosFoto = { foto: foto, clienteUid: t.clienteUid || '', ticketId: id, creadoEl: ahora };
-        const tocaCompra = admin && !!t.compraId && (resultado === 'arreglada' || resultado === 'reemplazo');
+        const cidEf = compraIdDeTicket(t), hallC = rtHallada(id);   // 🔎 u152
+        if (!cidEf && (resultado === 'arreglada' || resultado === 'reemplazo')) throw new Error('No encuentro la compra de esta cuenta. Cierra el ticket o espera a que termine la búsqueda.');
+        if (!t.compraId && cidEf && admin) { cambios.compraId = cidEf; if (!t.productoId && hallC && hallC.productoId) cambios.productoId = hallC.productoId; }
+        const tocaCompra = admin && !!cidEf && (resultado === 'arreglada' || resultado === 'reemplazo');
         let resumen;
         if (tocaCompra) {
           resumen = await db.runTransaction(async (tx) => {
             const tDoc = await tx.get(tRef);
             if (!tDoc.exists) throw new Error('No encontré ese ticket.');
             if ((tDoc.data() || {}).estado === 'resuelto') throw new Error('Ese ticket ya estaba resuelto.');
-            const cRef = db.collection('compras').doc(t.compraId);
+            const cRef = db.collection('compras').doc(cidEf);
             const cDoc = await tx.get(cRef);
             if (!cDoc.exists) throw new Error('No encontré la compra de este ticket. Puedes cerrarlo sin cambios.');
             const c = cDoc.data() || {};
+            if (t.clienteUid && c.usuarioId && c.usuarioId !== t.clienteUid) throw new Error('Esa compra es de otro cliente, no del que reportó. No se tocó nada.');   // 🔎 u152
             const viejo = String(t.cuenta || '').toLowerCase();
             const lineas = String(c.credenciales || '').split('\n');
             const pos = lineas.findIndex(l => emailDeLineaCuenta(l) === viejo);
@@ -18507,7 +18560,7 @@
 
 
     // ==================== TICKET DEL EQUIPO ASIGNADO A UN CLIENTE ====================
-    let tkCompraDetectada = null, tkBusquedaN = 0, tkBusquedaTimer = null, tkClienteManual = false;
+    let tkRespaldoProbado = '', tkCompraDetectada = null, tkBusquedaN = 0, tkBusquedaTimer = null, tkClienteManual = false;
 
     function programarBusquedaCompraTicket() {
       if (tkBusquedaTimer) clearTimeout(tkBusquedaTimer);
@@ -18517,7 +18570,7 @@
     async function buscarCompraParaTicket() {
       const cuenta = String((document.getElementById('tkCuenta') || {}).value || '').trim().toLowerCase();
       const n = ++tkBusquedaN;
-      tkCompraDetectada = null;
+      tkCompraDetectada = null; tkRespaldoProbado = '';   // 🔎 u152
       if (!/^\S+@\S+\.\S+$/.test(cuenta)) { actualizarClienteTicket(); return; }
       const info = document.getElementById('tkClienteInfo');
       if (info) { info.className = 'text-[11px] mt-1.5 text-gray-400'; info.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i>Buscando quién la compró...'; }
@@ -18527,6 +18580,7 @@
         if (n !== tkBusquedaN) return;
         lista.sort((a, b) => String(b.fecha).localeCompare(String(a.fecha)));
         const c = lista[0];
+        if (!c) { const r = await ticketBuscarCompraDeCuenta(cuenta, {}); if (n !== tkBusquedaN) return; tkRespaldoProbado = cuenta; if (r && r.h) tkCompraDetectada = r.h; }   // 🔎 u152 (solo si es de un solo cliente)
         if (c) tkCompraDetectada = { compraId: c.id, uid: c.usuarioId || '', email: String(c.usuarioEmail || '').toLowerCase(), productoId: c.productoId || '', productoNombre: c.productoNombre || '', fecha: c.fecha || '', garantia: resolverTipoGarantiaCompra(c).tipo || '' };
         const inp = document.getElementById('tkCliente');
         if (tkCompraDetectada && inp && (!tkClienteManual || !inp.value.trim())) { inp.value = tkCompraDetectada.email; tkClienteManual = false; }
@@ -19771,7 +19825,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-11-12u151';
+    const VERSION_PAGINA = '2026-11-12u152';
     // 🧑 u58 (Alex, 10-nov): la AGENTE DE D-ID (Luisa con cara, conversa en vivo). Piloto: SOLO en epicstreaming.vip (nunca en las tiendas de tus clientes),
     //    SOLO a visitantes sin sesión, a la IZQUIERDA (a la derecha está tu botón de WhatsApp). Se carga después de la página para no hacerla lenta.
     (function () { try {
