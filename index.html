@@ -2666,6 +2666,13 @@
             <details><summary>ℹ️ Qué hace el robot de dirección y carrito</summary><p class="text-[11px] text-gray-300 leading-snug">🤖 <b class="text-white">En el VPS (solo cuando tú lo mandas):</b> toma la cuenta más vieja de <b>Amazon Free (en mi dominio)</b>, inicia sesión, pone la dirección de arriba y agrega al carrito un producto al azar por debajo del tope. Ahí termina. <b class="text-white">💳 Si arriba escribiste tu tarjeta</b>, también la agrega como método de pago en Prime Video (después de la dirección y antes del carrito); si la casilla de la tarjeta está vacía, no toca el pago.</p></details>
           </div>
         </div>
+        <div class="rb-card" id="sdCard">
+          <div class="rb-t"><span>📦 ¿A qué stock suben las cuentas del robot?</span></div>
+          <p class="rb-sub">Cuando el robot termina una cuenta y llega su correo de Bienvenida, sube sola al producto que elijas aquí.</p>
+          <div class="rb-ctlcampo"><label class="block text-[11px] text-gray-400">🇨🇴 Colombia (dirección y Prime)<select id="sdColombia" onchange="sdGuardar('amazonprep', this)" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none"></select></label></div>
+          <div class="rb-ctlcampo"><label class="block text-[11px] text-gray-400">🇪🇸 España<select id="sdEspana" onchange="sdGuardar('amazones', this)" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none"></select></label></div>
+          <p id="sdNota" class="rb-sub"></p>
+        </div>
         <div class="rb-card">
           <div class="rb-t"><span>📋 Fila e historial</span><button type="button" onclick="pvCargarHistorial()" class="rb-btn mini s" title="Actualizar"><i class="fa-solid fa-rotate"></i></button></div>
           <div id="rbFiltros" class="rb-tabs"><button type="button" data-rbf="todas" onclick="rbFiltro('todas')" class="a">Todas</button><button type="button" data-rbf="crear" onclick="rbFiltro('crear')">Crear</button><button type="button" data-rbf="dir" onclick="rbFiltro('dir')">Dirección</button><button type="button" data-rbf="err" onclick="rbFiltro('err')">Errores</button></div>
@@ -18851,24 +18858,45 @@
       const c = document.getElementById('cortesAvisoIncognito'); if (c) c.classList.add('hidden');
     }
 
+    // 🤖 u151 · ORDEN DE ALEX (26 y 27-nov: «Esto lo hace el bot, no yo»): desde la Mary 4.79 el robot de cortes pone solo el PIN de los perfiles compartidos
+    //    de Netflix/Disney+ que quedaron libres con «PIN pendiente», saca los dispositivos y devuelve el perfil a la tienda. Estas funciones solo MIRAN lo que el robot dejó
+    //    en secretos/robots_cortes (auto, hechos, errores) y ofrecen «Reintentar» (borrar el error, igual que ctaBorrarErrores) y prender el robot (ctaPrender).
+    let cortesRobot = { ok: false, A: {}, H: {}, E: {} };
+    function cortePlatPag(a) { const p = plataformaNf(a).toLowerCase(); return p === 'netflix' ? 'netflix' : /disney/.test(p) ? 'disney' : ''; }   // igual que cortePlat_ de Mary
+    function corteRobotPlat(a) { return !window.EPIC_TIENDA && !!a && a.tipo === 'compartida' && !!cortePlatPag(a); }   // ¿este perfil es de los que atiende el robot? (no en las tiendas de clientes)
+    function cortePinRobotAplica(a) { return corteRobotPlat(a) && a.pinPendiente === true && a.estado === 'sin_asignar' && !a.clienteUid && !!String(a.correo || '').trim() && !!String(a.perfil || '').trim(); }   // el mismo filtro de cortePinPendientes_ en Mary
+    function cortePinEstado(a) {
+      const R = cortesRobot; if (!R.ok) return { k: 'sin' };
+      const ks = Object.keys(R.E || {}).filter(k => R.E[k] && R.E[k].alq === a.id).sort((x, y) => (R.E[y].t || 0) - (R.E[x].t || 0));
+      if (ks.length) return { k: 'fallo', motivo: String(R.E[ks[0]].motivo || '').trim() || 'sin motivo', claves: ks };
+      if (R.A && R.A.ordenId && R.A.ordenAlq === a.id) return { k: 'curso' };
+      return { k: 'fila' };
+    }
+    async function cortePinReintentar(alq) {
+      const R = cortesRobot, d = {}; Object.keys(R.E || {}).forEach(k => { if (R.E[k] && R.E[k].alq === alq) d[k] = firebase.firestore.FieldValue.delete(); });
+      if (!Object.keys(d).length) { mostrarToast('Ese perfil ya no tiene error.'); await ctaCargar(); return; }
+      try { await ctaRef().set({ errores: d }, { merge: true }); mostrarToast(R.A && R.A.activo === true ? '🔁 Listo: el robot vuelve a intentar ese perfil en la próxima vuelta.' : '🔁 Listo: queda en la fila. El robot está apagado: préndelo para que lo intente.'); }
+      catch (e) { mostrarToast('❌ No se pudo reintentar: ' + e.message); } await ctaCargar(); }
+    async function cortePrenderRobot() { const ch = document.getElementById('ctaActivo'); if (!ch) return; ch.checked = true; await ctaPrender(ch); }   // el mismo interruptor «Prendido» de arriba
+
     function listasCortes() {
       const cuentas = netflixCuentasAdmin || [];
-      const cortar = [], limpiar = [], avisar = [];
+      const cortar = [], limpiar = [], avisar = [], pinRobot = [];
       cuentas.forEach(a => {
         const e = estadoNetflix(a);
         if (a.estado === 'asignado' && e.clave === 'vencida') cortar.push(a);
         else if (a.estado === 'asignado' && (e.clave === 'vence_hoy' || (e.clave === 'por_vencer' && e.dias <= 1))) avisar.push(a);
-        if (a.estado !== 'asignado' && (a.limpiezaPendiente === true || a.pinPendiente === true)) limpiar.push(a);
+        if (a.estado !== 'asignado' && (a.limpiezaPendiente === true || a.pinPendiente === true)) { if (a.limpiezaPendiente !== true && cortePinRobotAplica(a)) pinRobot.push(a); else limpiar.push(a); }   // 🤖 u151: el PIN lo pone el robot
       });
       cortar.sort((x, y) => estadoNetflix(x).dias - estadoNetflix(y).dias);
-      return { cortar: cortar, limpiar: limpiar, avisar: avisar };
+      return { cortar: cortar, limpiar: limpiar, avisar: avisar, pinRobot: pinRobot };
     }
 
     function actualizarBadgeCortes() {
       const b = document.getElementById('badgeTabCortes');
       if (!b) return;
       const l = listasCortes();
-      const n = l.cortar.length + l.limpiar.length;
+      const n = l.cortar.length + l.limpiar.length + l.pinRobot.filter(a => cortePinEstado(a).k === 'fallo').length;   // 🤖 u151: del robot solo cuentan los que fallaron
       b.textContent = n > 9 ? '9+' : n;
       b.classList.toggle('hidden', n === 0);
     }
@@ -18877,6 +18905,7 @@
     const ctaRef = () => db.collection('secretos').doc('robots_cortes');
     async function ctaCargar() { const g = (id) => document.getElementById(id); if (!g('ctaEstado')) return;
       try { const d = await ctaRef().get(), D = (d.exists && d.data()) || {}, A = D.auto || {}, H = D.hechos || {}, E = D.errores || {}, hoy = hoyNetflix();
+        cortesRobot = { ok: true, A: A, H: H, E: E };   // 🤖 u151: lo usa «PIN por el robot»
         g('ctaActivo').checked = A.activo === true; if (g('ctaSoloPin')) g('ctaSoloPin').checked = A.soloPin !== false;   // 🔑 u126: prendido de entrada
         g('ctaSacados').textContent = (Number(A.sacados) || 0) + ((Number(A.sacados) || 0) === 1 ? ' persona' : ' personas'); g('ctaHoy').textContent = A.dia === hoy ? String(Number(A.sacadosHoy) || 0) : '0';
         const est = g('ctaEstado');
@@ -18889,6 +18918,7 @@
         const ke = Object.keys(E).sort((a, b) => (E[b].t || 0) - (E[a].t || 0));
         g('ctaNErr').textContent = ke.length ? '(' + ke.length + ')' : ''; g('ctaBorrarTodos').classList.toggle('hidden', ke.length < 2);
         g('ctaErrores').innerHTML = ke.length ? ke.map((k) => { const x = E[k] || {}; return '<div class="flex items-start gap-2 p-2 rounded-lg bg-red-500/10 border border-red-500/30"><div class="flex-1 min-w-0"><p class="text-white font-bold truncate">' + escaparHtml(String(x.cliente || '')) + ' · ' + (x.plat === 'disney' ? 'Disney+' : 'Netflix') + ' · «' + escaparHtml(String(x.perfil || '')) + '»</p><p class="text-gray-400 truncate">' + escaparHtml(String(x.correo || '')) + '</p><p class="text-red-200">' + escaparHtml(String(x.motivo || '')) + '</p></div><button type="button" data-cta-err="' + escaparHtml(k) + '" onclick="ctaBorrarErrores(this.getAttribute(\'data-cta-err\'))" class="shrink-0 px-2 py-1 rounded-md bg-gray-900 border border-gray-700 text-red-300 font-bold">🗑</button></div>'; }).join('') : '<p class="text-gray-500">Sin errores.</p>';
+        try { renderizarCortes(); } catch (e2) { /* nada */ }   // 🤖 u151
       } catch (e) { g('ctaEstado').textContent = 'No pude leer el corte automático: ' + e.message; } }
     async function ctaSoloPinCambiar(ch) { const on = !!(ch && ch.checked);   // 🔑 u126 (Alex: «la opción de cambiar solo el pin»)
       try { await ctaRef().set({ auto: { soloPin: on } }, { merge: true }); mostrarToast(on ? '🔑 Listo: el corte cambia solo el PIN y deja el nombre.' : '🔑 Listo: el corte vuelve a cambiar nombre y PIN.'); }
@@ -18926,7 +18956,7 @@
       };
       const cabecera = (a, extra) => `<div class="min-w-0"><p class="text-xs font-black text-white break-all">${escaparHtml(a.correo || '')}</p><p class="text-[11px] text-gray-400">${escaparHtml(plataformaNf(a))} · ${a.tipo === 'compartida' ? 'Compartida · ' + escaparHtml(a.perfil || 'Perfil') : 'Cuenta completa'}${a.clienteNombre || a.clienteEmail ? ' · ' + escaparHtml(a.clienteNombre || a.clienteEmail) : ''}</p>${extra || ''}</div>`;
       const pasos = (lista) => `<ol class="mt-2 text-[11px] text-gray-300 space-y-0.5 list-decimal pl-4">${lista.map(x => `<li>${x}</li>`).join('')}</ol>`;
-      const seccion = (titulo, icono, color, items, vacio) => `<div class="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden"><div class="px-4 py-3 border-b border-gray-800 flex items-center gap-2"><i class="fa-solid ${icono} ${color}"></i><h4 class="text-sm font-black text-white">${titulo}</h4><span class="ml-auto text-[11px] font-bold text-gray-400">${items.length}</span></div><div class="divide-y divide-gray-800">${items.length ? items.join('') : `<p class="px-4 py-5 text-center text-gray-500 text-xs">${vacio}</p>`}</div></div>`;
+      const seccion = (titulo, icono, color, items, vacio, antes, cuenta) => `<div class="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden"><div class="px-4 py-3 border-b border-gray-800 flex items-center gap-2"><i class="fa-solid ${icono} ${color}"></i><h4 class="text-sm font-black text-white">${titulo}</h4><span class="ml-auto text-[11px] font-bold text-gray-400">${cuenta === undefined ? items.length : cuenta}</span></div>${antes || ''}<div class="divide-y divide-gray-800">${items.length ? items.join('') : `<p class="px-4 py-5 text-center text-gray-500 text-xs">${vacio}</p>`}</div></div>`;
 
       const filasCortar = l.cortar.map(a => {
         const e = estadoNetflix(a), comp = a.tipo === 'compartida';
@@ -18950,7 +18980,31 @@
         const e = estadoNetflix(a);
         return `<div class="px-4 py-3 flex items-start justify-between gap-2">${cabecera(a, `<p class="text-[11px] mt-1 ${e.dias === 0 ? 'text-amber-300' : 'text-sky-300'}">${e.dias === 0 ? 'Vence hoy' : 'Vence mañana'} · ${fechaCortaNetflix(a.proximoPago)}</p>`)}${puedeEscribirWhatsappNf(a) ? b('bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 border border-emerald-500/30 shrink-0', `escribirWhatsappNf('${escaparJsAttr(a.id)}')`, 'fa-comment', 'Recordar') : '<span class="shrink-0 text-[10px] text-gray-500">Sin WhatsApp</span>'}</div>`;
       });
+      // 🤖 u151: «PIN por el robot» (Netflix y Disney+ compartidos, perfiles libres con PIN pendiente). Alex no hace nada aquí salvo reintentar un error.
+      const R = cortesRobot, apagado = R.ok && R.A && R.A.activo !== true, hhmm = (t) => { try { return new Date(t || 0).toLocaleString('es-CO', { timeZone: 'America/Bogota', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }); } catch (e) { return ''; } };
+      const chip = (cls, txt) => `<span class="shrink-0 px-2 py-0.5 rounded-full text-[10px] font-black border ${cls}">${txt}</span>`;
+      const avisoApagado = apagado ? `<div id="cortesRobotApagado" class="px-4 py-3 bg-red-500/10 border-b border-red-500/30"><p class="text-xs font-black text-red-200">🛑 El robot de cortes está apagado</p><p class="text-[11px] text-red-200/80 mt-0.5">${R.A.pausaMotivo ? escaparHtml(String(R.A.pausaMotivo)) + '. ' : ''}Mientras esté apagado, los PIN esperan en la fila.</p><div class="mt-2">${b('bg-emerald-600 hover:bg-emerald-500 text-white', 'cortePrenderRobot()', 'fa-power-off', 'Prender el robot')}</div></div>` : '';
+      const notaRobot = '<p class="px-4 py-2 text-[11px] text-gray-400 leading-snug border-b border-gray-800">El robot pone el PIN nuevo, saca los dispositivos y devuelve el perfil a la tienda. <b class="text-gray-200">No tienes que hacer nada.</b></p>';
+      let nFila = 0;
+      const filasRobot = l.pinRobot.slice().sort((x, y) => String(x.actualizadoEl || '').localeCompare(String(y.actualizadoEl || ''))).map(a => {
+        const s = cortePinEstado(a), id = escaparJsAttr(a.id);
+        const estado = s.k === 'fallo' ? chip('bg-red-500/15 text-red-300 border-red-500/30', '❌ falló')
+          : s.k === 'curso' ? chip('bg-sky-500/15 text-sky-300 border-sky-500/30', '🤖 el robot está en eso')
+          : s.k === 'fila' ? chip('bg-gray-700/40 text-gray-300 border-gray-600', '⏳ en fila · n.º ' + (++nFila) + (apagado ? ' (robot apagado)' : ''))
+          : chip('bg-gray-700/40 text-gray-400 border-gray-600', 'revisando…');
+        const falla = s.k !== 'fallo' ? '' : `<div class="mt-2 p-2 rounded-lg bg-red-500/10 border border-red-500/30 text-[11px] text-red-200 break-words">${escaparHtml(s.motivo.slice(0, 120))}</div>
+          <div class="flex flex-wrap gap-1.5 mt-2">${b('bg-amber-500 hover:bg-amber-400 text-black', `cortePinReintentar('${id}')`, 'fa-rotate-right', 'Reintentar')}</div>
+          <details class="mt-2"><summary class="text-[11px] text-gray-400 cursor-pointer select-none">Hacerlo a mano</summary>
+            <p class="text-[11px] text-gray-400 mt-1.5">PIN para ese perfil: <b class="font-mono text-white">${escaparHtml(a.pin || '—')}</b></p>
+            <div class="flex flex-wrap gap-1.5 mt-2">${enlaces(a, 'perfil')}${b('bg-yellow-500/20 hover:bg-yellow-500/30 text-yellow-300 border border-yellow-500/40', `marcarPinCambiadoNetflix('${id}')`, 'fa-key', 'Ya lo puse a mano')}</div></details>`;
+        return `<div class="px-4 py-3"><div class="flex items-start justify-between gap-2"><div class="min-w-0"><p class="text-xs font-black text-white break-all">${escaparHtml(a.correo || '')}</p><p class="text-[11px] text-gray-400">${escaparHtml(plataformaNf(a))} · Perfil «${escaparHtml(a.perfil || '?')}»</p></div>${estado}</div>${falla}</div>`;
+      });
+      const haceDia = Date.now() - 86400000;
+      const hechosRobot = Object.keys(R.H || {}).map(k => R.H[k]).filter(x => x && x.tipo === 'pin' && (x.t || 0) > haceDia).sort((x, y) => (y.t || 0) - (x.t || 0)).slice(0, 5).map(x =>
+        `<div class="px-4 py-2.5 flex items-start justify-between gap-2"><div class="min-w-0"><p class="text-xs font-bold text-gray-200 break-all">${escaparHtml(String(x.correo || ''))}</p><p class="text-[11px] text-gray-500">${x.plat === 'disney' ? 'Disney+' : 'Netflix'} · Perfil «${escaparHtml(String(x.perfil || '?'))}» · ${escaparHtml(hhmm(x.t))}</p></div>${x.tienda === true ? chip('bg-emerald-500/15 text-emerald-300 border-emerald-500/30', '✅ hecho · volvió a la tienda') : chip('bg-emerald-500/10 text-emerald-200 border-emerald-500/30', '✅ hecho · PIN puesto')}</div>`);
+      const secRobot = window.EPIC_TIENDA ? '' : seccion('PIN por el robot', 'fa-robot', 'text-violet-300', filasRobot.concat(hechosRobot), 'El robot no tiene PIN por poner.', avisoApagado + notaRobot, l.pinRobot.length);
       cont.innerHTML = seccion('Por cortar', 'fa-scissors', 'text-red-400', filasCortar, 'No hay cuentas vencidas. ¡Todo al día!')
+        + secRobot
         + seccion('Por limpiar (después del corte)', 'fa-broom', 'text-amber-300', filasLimpiar, 'No hay cuentas pendientes de limpiar.')
         + seccion('Por avisar (vencen hoy o mañana)', 'fa-bell', 'text-sky-300', filasAvisar, 'Nadie vence hoy ni mañana.');
     }
@@ -19717,7 +19771,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-11-12u150';
+    const VERSION_PAGINA = '2026-11-12u151';
     // 🧑 u58 (Alex, 10-nov): la AGENTE DE D-ID (Luisa con cara, conversa en vivo). Piloto: SOLO en epicstreaming.vip (nunca en las tiendas de tus clientes),
     //    SOLO a visitantes sin sesión, a la IZQUIERDA (a la derecha está tu botón de WhatsApp). Se carga después de la página para no hacerla lenta.
     (function () { try {
@@ -31768,6 +31822,7 @@ const LUISA_COM_DEF_PAG = { activo: true, stockHora: '08:00', mediodiaHora: '12:
         delete netflixResultadosOtp['a_' + id];
 
         if (compartida && pinDelRobot) { mostrarToast('✅ Perfil liberado. El robot ya había cambiado el PIN (' + nuevoPin + '): no queda nada pendiente en Netflix.', 7000); }
+        else if (compartida && corteRobotPlat(a)) { mostrarToast('✅ Perfil liberado. El robot pone el PIN nuevo y lo devuelve a la tienda: míralo en Cortes → «PIN por el robot».', 7000); }   // 🤖 u151: sin diálogo, lo hace el robot
         else if (compartida) {
           await abrirDialogo({
             tipo: 'info', titulo: 'Cambia el PIN en Netflix',
@@ -32816,11 +32871,30 @@ const LUISA_COM_DEF_PAG = { activo: true, stockHora: '08:00', mediodiaHora: '12:
       try { const d = await db.collection('secretos').doc('robots_amazon').get(), x = ((d.exists && d.data().historial) || {})[id], c = (d.exists && d.data().crear) || {}; if (!x || !x.correo) return;
         const dest = (document.getElementById('pvcDestino') || {}).value; await pvcSubir(id, x.correo, dest && dest !== 'no' ? dest : 'amazonfree', c.pass || ''); } catch (e) { mostrarToast('❌ No se pudo subir: ' + e.message); } }
     const PVC_URL_OK = /^https:\/\/([a-z0-9-]+\.)*amazon\.(it|com|es|de|fr|co\.uk|com\.mx|com\.br)(\/[^\s]*)?$/i;
+    // 📦 u151 (Alex, 26-nov): destino del stock por tipo de robot. Guarda en secretos/robots_amazon.stockDestino[robot] (amazonprep = Colombia, amazones = España);
+    //    la Mary 4.79 lo lee en amzStockDestinoDe_. Vacío = «Automático» (Colombia: Prime Video; España: Prime Video Económico), como ya funciona hoy.
+    const SD_DEF = { amazonprep: ['prime_local', 'Prime Video'], amazones: ['primevideo', 'Prime Video Económico'] };
+    let sdUlt = {};
+    function sdPintar(mapa) {
+      sdUlt = (mapa && typeof mapa === 'object') ? mapa : {};
+      const L = (typeof catalogoUnificado !== 'undefined' && Array.isArray(catalogoUnificado) ? catalogoUnificado : []).filter((p) => p && !p.esCombo && p.docId);
+      [['amazonprep', 'sdColombia'], ['amazones', 'sdEspana']].forEach((par) => { const sel = document.getElementById(par[1]); if (!sel) return;
+        const def = SD_DEF[par[0]], pd = L.find((p) => p.docId === def[0]), guardado = String(sdUlt[par[0]] || '');
+        let h = '<option value="">Automático · ' + escaparHtml(String((pd && pd.nombre) || def[1])) + '</option>' + L.map((p) => '<option value="' + escaparHtml(p.docId) + '">' + escaparHtml(p.nombre || p.docId) + '</option>').join('');
+        if (guardado && !L.some((p) => p.docId === guardado)) h += '<option value="' + escaparHtml(guardado) + '">' + escaparHtml(guardado) + '</option>';
+        sel.innerHTML = h; sel.value = guardado && [...sel.options].some((o) => o.value === guardado) ? guardado : ''; }); }
+    async function sdGuardar(robot, sel) {
+      if (window.EPIC_TIENDA || !sel || !SD_DEF[robot]) return false; const v = String(sel.value || '');
+      if (v && !/^[A-Za-z0-9_-]{1,80}$/.test(v)) return false;
+      try { await db.collection('secretos').doc('robots_amazon').set({ stockDestino: { [robot]: v ? v : firebase.firestore.FieldValue.delete() } }, { merge: true }); sdUlt[robot] = v;
+        const nom = v ? String(sel.options[sel.selectedIndex].text) : SD_DEF[robot][1]; const n = document.getElementById('sdNota'); if (n) n.textContent = '✅ Guardado: las de ' + (robot === 'amazones' ? 'España' : 'Colombia') + ' suben a «' + nom + '».';
+        mostrarToast('📦 Listo: las cuentas de ' + (robot === 'amazones' ? 'España' : 'Colombia') + ' suben a «' + nom + '».'); return true; }
+      catch (e) { mostrarToast('❌ No se pudo guardar: ' + e.message); sdPintar(sdUlt); return false; } }
     async function pvcCargar() {   // lo que usaste la última vez (nombre, contraseña y página) vive en la parte PRIVADA del panel, nunca en la página
       try { const d = await db.collection('secretos').doc('robots_amazon').get(), c = (d.exists && d.data().crear) || {}, g = (id) => document.getElementById(id);
         if (c.nombre && g('pvcNombre') && (!g('pvcNombre').value || g('pvcNombre').value === 'Amazon')) g('pvcNombre').value = c.nombre;
         if (c.pass && g('pvcPass') && !g('pvcPass').value) g('pvcPass').value = c.pass;
-        if (c.url && g('pvcUrl') && PVC_URL_OK.test(c.url)) g('pvcUrl').value = c.url; pvcPoblarDestino(c.destino || ''); pvcAutoPintar(d.exists ? d.data().auto : null); vpnCargar(); } catch (e) { try { pvcPoblarDestino(''); } catch (e2) { /* nada */ } } }
+        if (c.url && g('pvcUrl') && PVC_URL_OK.test(c.url)) g('pvcUrl').value = c.url; pvcPoblarDestino(c.destino || ''); pvcAutoPintar(d.exists ? d.data().auto : null); try { sdPintar(d.exists ? d.data().stockDestino : null); } catch (e3) { /* nada */ } vpnCargar(); } catch (e) { try { pvcPoblarDestino(''); } catch (e2) { /* nada */ } } }
     // 🔁 u106 (Alex: «que lo haga cada 1 hora de forma automática»): el interruptor vive en la parte privada (secretos/robots_amazon.auto); el que crea es el servidor
     // 🌍 u108: salida del robot de Amazon. Los .conf viven en la parte privada (secretos/robots_vpn) y nunca en la página.
     // 🌍 u112: UNA VPN PARA TODOS LOS ROBOTS. Los archivos y la llave viven en un solo lugar (ventana «VPN de los robots»); cada robot solo elige su salida.
@@ -33621,7 +33695,8 @@ const LUISA_COM_DEF_PAG = { activo: true, stockHora: '08:00', mediodiaHora: '12:
         }
       }
       if (a.limpiezaPendiente === true) botones += btn('bg-yellow-500/20 hover:bg-yellow-500/30 text-yellow-300 border border-yellow-500/40', `marcarLimpiaNetflix('${id}')`, 'fa-broom', 'Ya cambié la clave');
-      if (a.pinPendiente === true) botones += btn('bg-yellow-500/20 hover:bg-yellow-500/30 text-yellow-300 border border-yellow-500/40', `marcarPinCambiadoNetflix('${id}')`, 'fa-key', 'Ya cambié el PIN');
+      if (a.pinPendiente === true && !cortePinRobotAplica(a)) botones += btn('bg-yellow-500/20 hover:bg-yellow-500/30 text-yellow-300 border border-yellow-500/40', `marcarPinCambiadoNetflix('${id}')`, 'fa-key', 'Ya cambié el PIN');
+      else if (a.pinPendiente === true) botones += '<span class="px-2.5 py-1.5 rounded-lg text-[11px] font-bold bg-violet-500/10 text-violet-200 border border-violet-500/30">🤖 PIN por el robot</span>';   // 🤖 u151
       if (a.limpiezaPendiente === true && a.tipo !== 'compartida' && esNetflixNf(a)) botones += btn(gris, `abrirRestablecerNetflix('${escaparJsAttr(a.correo)}')`, 'fa-arrow-up-right-from-square', 'Restablecer clave');
       if (puedeEscribirWhatsappNf(a)) botones += `<button onclick="escribirWhatsappNf('${id}')" class="px-2.5 py-1.5 rounded-lg text-[11px] font-bold flex items-center gap-1 transition bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 border border-emerald-500/30"><i class="fa-brands fa-whatsapp"></i> WhatsApp</button>`;
       if (tieneRobotNf(a)) botones += btn('bg-violet-500/15 hover:bg-violet-500/25 text-violet-200 border border-violet-500/40', `abrirRobotNetflix('${id}')`, 'fa-robot', 'Robot');
