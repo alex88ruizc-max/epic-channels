@@ -2615,6 +2615,14 @@
           <div class="rb-g" style="grid-template-columns:1fr 1fr"><div>Hoy bien<b id="rbHoyBien" style="color:#34d399">—</b></div><div>Hoy con error<b id="rbHoyMal" style="color:#f87171">—</b></div></div>
           <div class="rb-row" style="margin-top:8px"><div id="pvTotales" class="rb-sub" style="margin:0">👤 Creadas por ti <b id="pvTotManual" style="color:#fff">—</b> · 🔁 Automáticas <b id="pvTotAuto" style="color:#fff">—</b> · 🔴 Suspendidas <b id="pvTotSusp" style="color:#fff">—</b></div><button type="button" onclick="pvCargarHistorial()" class="rb-btn mini s" title="Actualizar"><i class="fa-solid fa-rotate"></i></button></div>
         </div>
+        <details id="tjCaja" class="rb-card" ontoggle="if (this.open) tjCargar()">
+          <summary class="rb-t" style="cursor:pointer;list-style:none"><span>💳 Tarjetas</span><span class="rb-pill sky">activas · suspendidas · %</span></summary>
+          <div class="rb-chips"><button type="button" data-tj-p="datos" class="a" onclick="tjElegir(this)">Desde que hay datos</button><button type="button" data-tj-p="hoy" onclick="tjElegir(this)">Hoy</button>
+            <button type="button" data-tj-o="reciente" class="a" onclick="tjElegir(this)">Más reciente</button><button type="button" data-tj-o="cantidad" onclick="tjElegir(this)">Más cuentas</button>
+            <button type="button" class="rb-btn mini s" onclick="tjCargar(true)">↻ Actualizar</button></div>
+          <div id="tjLista" style="margin-top:8px"><p class="rb-sub">Ábrela para ver las tarjetas.</p></div>
+          <p class="rb-sub">Solo tarjetas con los primeros 5 guardados (las anteriores, con solo los últimos 4, no salen aquí) y los IBAN de España. Cada cuenta cuenta con la última tarjeta que el robot le puso. Activa = con Prime y sin caída · Suspendida = con caída (las pausas no cuentan).</p>
+        </details>
         <div class="rb-card">
           <div class="rb-t"><span>🏠 Equipos y salidas</span><span class="rb-pill">nuevo</span></div>
           <div id="rbEquipos"><p class="rb-sub">Cargando…</p></div>
@@ -17407,7 +17415,7 @@
         const compras = completo ? await bcBuscarCompras(q) : [];
         cont.innerHTML = bcHtmlResultado(q, local, compras, completo);
         // 🛡 Lo que dice el registro de ventas del servidor (es lo que decide si se puede volver a vender)
-        if (completo && q.indexOf('@') > 0 && obtenerBackendUrl()) { try { const rg = await llamarBackend('cuenta_registro', { correo: q }); if (rg && rg.ok) cont.insertAdjacentHTML('beforeend', bcHtmlRegistro(q, rg)); } catch (e) { /* opcional */ } }
+        if (completo && q.indexOf('@') > 0 && obtenerBackendUrl()) { try { const rg = await llamarBackend('cuenta_registro', { correo: q }); if (rg && rg.ok) { cont.insertAdjacentHTML('beforeend', bcHtmlRegistro(q, rg)); bcPonerOrigen(cont, rg); } } catch (e) { /* opcional */ } }
         if (completo && q.indexOf('@') > 0 && obtenerBackendUrl() && esAdminSesionActual()) { try { const ra = await llamarBackend('avisos_de_cuenta', { correo: q }); if (ra && ra.ok && ra.avisos && ra.avisos.length) cont.insertAdjacentHTML('beforeend', bcHtmlAvisos(ra.avisos)); } catch (e) { /* opcional */ } }
       } catch (err) {
         cont.innerHTML = `<p class="px-2 text-xs text-red-300">No se pudo buscar: ${escaparHtml(err.message)}</p>`;
@@ -17418,6 +17426,63 @@
       return false;
     }
 
+    // 💳🏭 u153 · ORDEN DE ALEX (27-nov): «Acá me debe salir los primeros 5 números de la tarjeta y quién la creó». SOLO el dueño y SOLO en su tienda (robots: regla del 16-nov).
+    //   rg.origen lo manda la Mary 5.07 solo al dueño. Nunca el número completo: primeros 5 + últimos 4, o IBAN …1234. Sin dato: «sin dato» (no se inventa).
+    // 💳 u153 · sección «Tarjetas» (solo el dueño, solo en su tienda; lectura bajo demanda, nada periódico)
+    let tjDatos = { datos: null, hoy: null }, tjPer = 'datos', tjOrden = 'reciente', tjCargando = false;
+    function tjElegir(b) { if (!b) return; const p = b.getAttribute('data-tj-p'), o = b.getAttribute('data-tj-o');
+      document.querySelectorAll(p ? '#tjCaja [data-tj-p]' : '#tjCaja [data-tj-o]').forEach(x => x.classList.toggle('a', x === b));
+      if (p) { tjPer = p; tjCargar(); } else { tjOrden = o; tjPintar(); } }
+    async function tjCargar(forzar) {
+      const L = document.getElementById('tjLista'); if (!L || window.EPIC_TIENDA || !esAdminSesionActual() || tjCargando) return;
+      if (tjDatos[tjPer] && !forzar) { tjPintar(); return; }
+      if (!obtenerBackendUrl()) { L.innerHTML = '<p class="rb-sub">Sin servidor configurado.</p>'; return; }
+      tjCargando = true; L.innerHTML = '<p class="rb-sub"><i class="fa-solid fa-spinner fa-spin mr-1"></i>Leyendo tarjetas…</p>';
+      const per = tjPer;
+      try { const r = await llamarBackend('tarjetas_resumen', { hoy: per === 'hoy' });
+        if (!r || !r.ok) { const m = String((r && r.error) || ''); throw new Error(!m || /no reconocida/i.test(m) ? 'El servidor todavía no tiene esta sección (Mary 5.07).' : m); }
+        tjDatos[per] = r; } catch (e) { tjCargando = false; if (tjPer !== per) { tjCargar(); return; } L.innerHTML = '<p class="rb-sub" style="color:#f87171">No pude leer las tarjetas: ' + escaparHtml(e.message) + '</p>'; return; }
+      finally { tjCargando = false; }
+      if (tjPer !== per) tjCargar(); else tjPintar(); }
+    function tjPintar() {
+      const L = document.getElementById('tjLista'), r = tjDatos[tjPer]; if (!L || !r || window.EPIC_TIENDA || !esAdminSesionActual()) return;
+      const f = x => { try { const d = new Date(x); return isNaN(d.getTime()) ? '' : d.toLocaleString('es-CO', { day: '2-digit', month: '2-digit', hour: 'numeric', minute: '2-digit' }); } catch (e) { return ''; } };
+      const nom = x => { const s = String(x || ''); const m = s.match(/^IBAN\D*(\d{4})$/); if (m) return 'IBAN …' + m[1]; const k = s.match(/^(\d{5})?\D*(\d{4})$/); return k ? (k[1] || '') + '…' + k[2] : '—'; };
+      const filas = (r.filas || []).slice().sort((a, b) => (a.es - b.es) || (tjOrden === 'cantidad' ? (b.n - a.n) || String(b.ult).localeCompare(String(a.ult)) : String(b.ult).localeCompare(String(a.ult))));
+      if (!filas.length) { L.innerHTML = '<p class="rb-sub">' + (tjPer === 'hoy' ? 'Hoy no se usó ninguna tarjeta en el robot.' : 'Todavía no hay tarjetas con los primeros 5 guardados.') + '</p>'; return; }
+      const col = p => p >= 50 ? '#f87171' : p >= 20 ? '#f59e0b' : '#34d399', t = r.total || {};
+      const fila = (x, tot) => `<tr style="border-top:1px solid #1f2937${tot ? ';background:#0b1220' : ''}"><td style="padding:5px 4px;text-align:left" class="font-mono">${tot ? '<b>' + escaparHtml(tot) + '</b>' : escaparHtml(nom(x.nom)) + (x.ult ? '<br><span class="rb-sub" style="margin:0">' + escaparHtml(f(x.ult)) + '</span>' : '')}</td><td>${x.n | 0}</td><td style="color:#34d399">${x.act | 0}</td><td style="color:#f87171">${x.sus | 0}${!tot && x.suspendidas && x.suspendidas.length ? '<br><span class="rb-sub" style="margin:0" title="' + escaparHtml(x.suspendidas.map(s => s.c + ' · ' + f(s.el)).join('\n')) + '">' + escaparHtml(f(x.suspendidas[x.suspendidas.length - 1].el).split(',')[0]) + '</span>' : ''}</td><td style="color:${col(Number(x.pct) || 0)};font-weight:800">${(Number(x.pct) || 0).toLocaleString('es-CO')} %</td></tr>`;
+      L.innerHTML = (r.datosDesde || r.ibanDesde ? `<p class="rb-sub tjDesde" style="margin:0 0 6px">📅 Hay datos desde el ${escaparHtml(r.datosDesde ? f(r.datosDesde) + ' (tarjetas con primeros 5)' : '—')}${r.ibanDesde ? ' · IBAN desde el ' + escaparHtml(f(r.ibanDesde)) : ''}</p>` : '') + `<div class="rb-g" style="grid-template-columns:repeat(4,1fr);margin-top:0"><div>Cuentas<b>${t.n | 0}</b></div><div>Activas<b style="color:#34d399">${t.act | 0}</b></div><div>Suspendidas<b style="color:#f87171">${t.sus | 0}</b></div><div>% susp.<b style="color:${col(Number(t.pct) || 0)}">${(Number(t.pct) || 0).toLocaleString('es-CO')} %</b></div></div>`
+        + `<div style="max-height:420px;overflow:auto;margin-top:8px;border:1px solid #1f2937;border-radius:12px"><table style="width:100%;font-size:11px;color:#d1d5db;text-align:center;border-collapse:collapse"><thead style="position:sticky;top:0;background:#111827"><tr><th style="padding:6px 4px;text-align:left">Tarjeta</th><th>Cuentas</th><th>Activas</th><th>Susp.</th><th>%</th></tr></thead><tbody>`
+        + (() => { const TJ = filas.filter(x => !x.es), ES = filas.filter(x => x.es), pl = (n, a, b) => n + ' ' + (n === 1 ? a : b), sub = (L) => { const o = L.reduce((a, x) => ({ n: a.n + (x.n | 0), act: a.act + (x.act | 0), sus: a.sus + (x.sus | 0) }), { n: 0, act: 0, sus: 0 }); o.pct = o.n ? Math.round(o.sus * 1000 / o.n) / 10 : 0; return o; };
+            const ambos = TJ.length && ES.length;
+            return TJ.map(x => fila(x)).join('') + (ambos ? fila(sub(TJ), 'Subtotal · ' + pl(TJ.length, 'tarjeta', 'tarjetas')) : '')
+              + (ES.length ? '<tr><td colspan="5" style="padding:6px 4px;text-align:left;font-weight:800;color:#fff">🇪🇸 España</td></tr>' + ES.map(x => fila(x)).join('') + (ambos ? fila(sub(ES), 'Subtotal · ' + pl(ES.length, 'IBAN', 'IBAN')) : '') : '')
+              + fila(t, 'Total · ' + (ambos ? pl(filas.length, 'tarjeta o IBAN', 'tarjetas e IBAN') : TJ.length ? pl(TJ.length, 'tarjeta', 'tarjetas') : pl(ES.length, 'IBAN', 'IBAN'))); })() + '</tbody></table></div>'
+        + `<p class="rb-sub">${escaparHtml(tjPer === 'hoy' ? 'Hoy' : 'Desde que hay datos')} · leído ${escaparHtml(f(r.el))}${r.sinSuspendidas ? ' · ⚠️ no pude leer las suspendidas' : ''}</p>`; }
+    function bcPonerOrigen(cont, rg) {
+      if (!cont || !rg || !rg.origen || window.EPIC_TIENDA || !esAdminSesionActual()) return;
+      const cab = cont.firstElementChild, h = bcHtmlOrigen(rg.origen);
+      if (cab) cab.insertAdjacentHTML('afterend', h); else cont.insertAdjacentHTML('beforeend', h);
+    }
+    function bcHtmlOrigen(o) {
+      o = o || {}; const f = x => { try { const d = new Date(x); return isNaN(d.getTime()) ? '' : d.toLocaleString('es-CO', { day: '2-digit', month: '2-digit', year: 'numeric', hour: 'numeric', minute: '2-digit' }); } catch (e) { return ''; } };
+      const d = (v, n) => String(v == null ? '' : v).replace(/\D/g, '').slice(-n), sin = '<span class="text-gray-500">sin dato</span>', gris = t => ' <span class="text-gray-500">' + escaparHtml(t) + '</span>';
+      const det = (a) => a.filter(Boolean).map(x => escaparHtml(x)).join(' · ');
+      let tj = sin; const t = o.tarjeta;
+      if (t && t.espana && d(t.iban4, 4).length === 4) tj = '<b class="font-mono text-white">IBAN …' + escaparHtml(d(t.iban4, 4)) + '</b>';
+      else if (t && d(t.t4, 4).length === 4) { const p5 = String(t.t5 || '').replace(/\D/g, ''); tj = '<b class="font-mono text-white">' + escaparHtml((p5.length === 5 ? p5 : '') + '…' + d(t.t4, 4)) + '</b>' + (p5.length === 5 ? '' : gris('(sin los primeros 5: se puso antes de que se guardaran)')); }
+      if (tj !== sin && t) { const x = det([t.salida, f(t.el), t.pago === false ? 'no quedó agregada' : '']); if (x) tj += '<br><span class="text-[11px] text-gray-400">Puesta por el robot' + (x ? ' · ' + x : '') + '</span>'; }
+      let cr = sin; const c = o.creo;
+      if (c && c.por) {
+        if (c.tipo === 'robot') cr = '🤖 <b class="text-sky-300">' + escaparHtml(c.por) + '</b>' + (c.sinDetalle ? gris('(sin detalle: el registro del robot ya no la tiene)') : '');
+        else if (c.tipo === 'proveedor') cr = '<b class="text-white">' + escaparHtml(c.por) + '</b> (proveedor' + (c.segunLote ? ', según su lote' : '') + ')';
+        else cr = '<b class="text-white">' + escaparHtml(c.por) + '</b>';
+        const x = det([c.sitio, c.salida, f(c.el)]); if (x) cr += '<br><span class="text-[11px] text-gray-400">' + x + '</span>';
+      }
+      return `<div class="bcOrigen p-4 bg-gray-900 border border-sky-500/30 rounded-2xl"><p class="text-[11px] font-black uppercase tracking-wide text-sky-300 mb-2"><i class="fa-solid fa-credit-card mr-1.5"></i>Tarjeta y creación <span class="normal-case font-bold text-gray-500">· solo tú</span></p>
+        <p class="text-xs text-gray-300"><span class="text-gray-500">💳 Tarjeta:</span> ${tj}</p><p class="text-xs text-gray-300 mt-1.5"><span class="text-gray-500">🏭 Creada por:</span> ${cr}</p></div>`;
+    }
     async function bcDescontar(q) {
       if (!await confirmarModal('💸 ¿Descontar esta cuenta al proveedor que la subió?\n\nSe resta de lo que se le debe. Solo se puede hacer una vez por cuenta.', { textoAceptar: 'Sí, descontar' })) return;
       try { const r = await llamarBackend('descontar_cuenta', { correo: q }); if (!r || !r.ok) throw new Error((r && r.error) || 'No se pudo.');
@@ -19825,7 +19890,7 @@
 
     // ==================== VERSIÓN DE LA PÁGINA Y SUS ACTUALIZACIONES ====================
     // Cada versión nueva del archivo trae aquí sus mejoras para clientes (ya redactadas para difundir).
-    const VERSION_PAGINA = '2026-11-12u152';
+    const VERSION_PAGINA = '2026-11-12u153';
     // 🧑 u58 (Alex, 10-nov): la AGENTE DE D-ID (Luisa con cara, conversa en vivo). Piloto: SOLO en epicstreaming.vip (nunca en las tiendas de tus clientes),
     //    SOLO a visitantes sin sesión, a la IZQUIERDA (a la derecha está tu botón de WhatsApp). Se carga después de la página para no hacerla lenta.
     (function () { try {
